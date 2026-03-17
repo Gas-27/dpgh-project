@@ -37,7 +37,7 @@ const HeroSection = () => {
               <p className="text-xs text-muted-foreground">Uptime</p>
             </div>
             <div>
-              <p className="font-display text-2xl font-bold text-foreground">&lt;5s</p>
+              <p className="font-display text-2xl font-bold text-foreground"><10</p>
               <p className="text-xs text-muted-foreground">Delivery Time</p>
             </div>
           </div>
@@ -48,8 +48,8 @@ const HeroSection = () => {
           <QuickBuyWidget />
         </div>
       </div>
-    </section>
-  );
+    </section>);
+
 };
 
 export default HeroSection;
