@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_package_prices: {
+        Row: {
+          agent_store_id: string
+          created_at: string | null
+          id: string
+          package_id: string
+          sell_price: number
+        }
+        Insert: {
+          agent_store_id: string
+          created_at?: string | null
+          id?: string
+          package_id: string
+          sell_price?: number
+        }
+        Update: {
+          agent_store_id?: string
+          created_at?: string | null
+          id?: string
+          package_id?: string
+          sell_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_package_prices_agent_store_id_fkey"
+            columns: ["agent_store_id"]
+            isOneToOne: false
+            referencedRelation: "agent_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_package_prices_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "data_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_stores: {
         Row: {
           approved: boolean | null
@@ -85,6 +124,57 @@ export type Database = {
           size_gb?: number
         }
         Relationships: []
+      }
+      orders: {
+        Row: {
+          agent_store_id: string
+          amount: number
+          created_at: string | null
+          customer_number: string
+          id: string
+          network: string
+          package_id: string
+          size_gb: number
+          status: string
+        }
+        Insert: {
+          agent_store_id: string
+          amount: number
+          created_at?: string | null
+          customer_number: string
+          id?: string
+          network: string
+          package_id: string
+          size_gb: number
+          status?: string
+        }
+        Update: {
+          agent_store_id?: string
+          amount?: number
+          created_at?: string | null
+          customer_number?: string
+          id?: string
+          network?: string
+          package_id?: string
+          size_gb?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_agent_store_id_fkey"
+            columns: ["agent_store_id"]
+            isOneToOne: false
+            referencedRelation: "agent_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "data_packages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
