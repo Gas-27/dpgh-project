@@ -7,7 +7,7 @@ interface AuthGuardProps {
 }
 
 const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
-  const { user, loading, hasRole } = useAuth();
+  const { user, loading, hasRole, isAdmin } = useAuth();
 
   if (loading) {
     return (
@@ -18,7 +18,11 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (requiredRole && !hasRole(requiredRole)) return <Navigate to="/" replace />;
+  
+  // Admins can access any role-gated page
+  if (requiredRole && !hasRole(requiredRole) && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
   return <>{children}</>;
 };

@@ -25,14 +25,13 @@ const Signup = () => {
       password,
       options: {
         data: { full_name: fullName, role },
-        emailRedirectTo: window.location.origin,
       },
     });
     setLoading(false);
     if (error) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Account created!", description: "Check your email to confirm your account." });
+      toast({ title: "Account created!", description: "Welcome to Data Plug GH!" });
       if (role === "agent") {
         navigate("/agent-onboarding");
       } else {
