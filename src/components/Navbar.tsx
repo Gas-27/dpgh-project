@@ -1,30 +1,55 @@
 import { Zap, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, isAdmin, isAgent, signOut } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <Zap className="h-6 w-6 text-primary" />
           <span className="font-display text-lg font-bold text-foreground">
             DATA PLUG <span className="text-primary">GH</span>
           </span>
-        </div>
+        </Link>
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-6 md:flex">
-          <a href="#services" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Services</a>
-          <a href="#agent" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Become an Agent</a>
-          <a href="#about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</a>
+          <Link to="/packages" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Packages</Link>
+          <a href="/#services" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Services</a>
+          <a href="/#agent" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Become an Agent</a>
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Button variant="ghost" size="sm">Log In</Button>
-          <Button variant="hero" size="sm">Sign Up</Button>
+          {user ? (
+            <>
+              {isAdmin && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/admin">Admin</Link>
+                </Button>
+              )}
+              {isAgent && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/agent">Dashboard</Link>
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={signOut}>Sign Out</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/login">Log In</Link>
+              </Button>
+              <Button variant="hero" size="sm" asChild>
+                <Link to="/signup">Sign Up</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -36,12 +61,34 @@ const Navbar = () => {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-background px-6 py-4 space-y-4">
-          <a href="#services" className="block text-sm text-muted-foreground">Services</a>
-          <a href="#agent" className="block text-sm text-muted-foreground">Become an Agent</a>
-          <a href="#about" className="block text-sm text-muted-foreground">About</a>
+          <Link to="/packages" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Packages</Link>
+          <a href="/#services" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Services</a>
+          <a href="/#agent" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Become an Agent</a>
           <div className="flex gap-3 pt-2">
-            <Button variant="ghost" size="sm" className="flex-1">Log In</Button>
-            <Button variant="hero" size="sm" className="flex-1">Sign Up</Button>
+            {user ? (
+              <>
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" className="flex-1" asChild>
+                    <Link to="/admin">Admin</Link>
+                  </Button>
+                )}
+                {isAgent && (
+                  <Button variant="ghost" size="sm" className="flex-1" asChild>
+                    <Link to="/agent">Dashboard</Link>
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" className="flex-1" onClick={signOut}>Sign Out</Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" className="flex-1" asChild>
+                  <Link to="/login">Log In</Link>
+                </Button>
+                <Button variant="hero" size="sm" className="flex-1" asChild>
+                  <Link to="/signup">Sign Up</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
