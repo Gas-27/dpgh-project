@@ -1,4 +1,4 @@
-import { Zap, Menu, X } from "lucide-react";
+import { Zap, Menu, X, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, isAdmin, isAgent, signOut } = useAuth();
+  const { user, isAdmin, isAgent, signOut, getDashboardRoute } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
@@ -28,16 +28,12 @@ const Navbar = () => {
         <div className="hidden items-center gap-3 md:flex">
           {user ? (
             <>
-              {isAdmin && (
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/admin">Admin</Link>
-                </Button>
-              )}
-              {isAgent && (
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/agent">Dashboard</Link>
-                </Button>
-              )}
+              <Button variant="hero" size="sm" asChild>
+                <Link to={getDashboardRoute()}>
+                  <LayoutDashboard className="h-4 w-4 mr-1" />
+                  {isAdmin ? "Admin Dashboard" : isAgent ? "Agent Dashboard" : "Dashboard"}
+                </Link>
+              </Button>
               <Button variant="outline" size="sm" onClick={signOut}>Sign Out</Button>
             </>
           ) : (
@@ -60,32 +56,27 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-background px-6 py-4 space-y-4">
+        <div className="md:hidden border-t border-border bg-background px-6 py-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
           <Link to="/packages" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Packages</Link>
           <a href="/#services" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Services</a>
           <a href="/#agent" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Become an Agent</a>
           <div className="flex gap-3 pt-2">
             {user ? (
               <>
-                {isAdmin && (
-                  <Button variant="ghost" size="sm" className="flex-1" asChild>
-                    <Link to="/admin">Admin</Link>
-                  </Button>
-                )}
-                {isAgent && (
-                  <Button variant="ghost" size="sm" className="flex-1" asChild>
-                    <Link to="/agent">Dashboard</Link>
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" className="flex-1" onClick={signOut}>Sign Out</Button>
+                <Button variant="hero" size="sm" className="flex-1" asChild>
+                  <Link to={getDashboardRoute()} onClick={() => setMobileOpen(false)}>
+                    <LayoutDashboard className="h-4 w-4 mr-1" /> Dashboard
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => { signOut(); setMobileOpen(false); }}>Sign Out</Button>
               </>
             ) : (
               <>
                 <Button variant="ghost" size="sm" className="flex-1" asChild>
-                  <Link to="/login">Log In</Link>
+                  <Link to="/login" onClick={() => setMobileOpen(false)}>Log In</Link>
                 </Button>
                 <Button variant="hero" size="sm" className="flex-1" asChild>
-                  <Link to="/signup">Sign Up</Link>
+                  <Link to="/signup" onClick={() => setMobileOpen(false)}>Sign Up</Link>
                 </Button>
               </>
             )}

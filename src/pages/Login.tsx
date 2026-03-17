@@ -26,35 +26,31 @@ const Login = () => {
       }
 
       // Fetch roles to determine redirect
-      const { data: rolesData, error: rolesError } = await supabase
+      const { data: rolesData } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", data.user.id);
 
-      if (rolesError) {
-        console.error("Roles fetch error:", rolesError);
-      }
-
       const roles = (rolesData ?? []).map((r: any) => r.role);
 
       if (roles.includes("admin")) {
-        navigate("/admin");
+        navigate("/admin", { replace: true });
       } else if (roles.includes("agent")) {
-        const { data: store } = await supabase
+        const { data: storeData } = await supabase
           .from("agent_stores")
           .select("approved")
           .eq("user_id", data.user.id)
-          .single();
+          .maybeSingle();
 
-        if (!store) {
-          navigate("/agent-onboarding");
-        } else if (!store.approved) {
-          navigate("/pending-approval");
+        if (!storeData) {
+          navigate("/agent-onboarding", { replace: true });
+        } else if (!storeData.approved) {
+          navigate("/pending-approval", { replace: true });
         } else {
-          navigate("/agent");
+          navigate("/agent", { replace: true });
         }
       } else {
-        navigate("/");
+        navigate("/", { replace: true });
       }
     } catch (err) {
       console.error("Login error:", err);
