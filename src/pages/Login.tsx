@@ -18,41 +18,49 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setLoading(false);
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
-      return;
-    }
-
-    // Fetch roles to determine redirect
-    const { data: rolesData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.user.id);
-
-    const roles = (rolesData ?? []).map((r: any) => r.role);
-    setLoading(false);
-
-    if (roles.includes("admin")) {
-      navigate("/admin");
-    } else if (roles.includes("agent")) {
-      // Check if agent has a store and if approved
-      const { data: store } = await supabase
-        .from("agent_stores")
-        .select("approved")
-        .eq("user_id", data.user.id)
-        .single();
-
-      if (!store) {
-        navigate("/agent-onboarding");
-      } else if (!store.approved) {
-        navigate("/pending-approval");
-      } else {
-        navigate("/agent");
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast({ title: "Login failed", description: error.message, variant: "destructive" });
+        return;
       }
-    } else {
-      navigate("/");
+
+      // Fetch roles to determine redirect
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id);
+
+      if (rolesError) {
+        console.error("Roles fetch error:", rolesError);
+      }
+
+      const roles = (rolesData ?? []).map((r: any) => r.role);
+
+      if (roles.includes("admin")) {
+        navigate("/admin");
+      } else if (roles.includes("agent")) {
+        const { data: store } = await supabase
+          .from("agent_stores")
+          .select("approved")
+          .eq("user_id", data.user.id)
+          .single();
+
+        if (!store) {
+          navigate("/agent-onboarding");
+        } else if (!store.approved) {
+          navigate("/pending-approval");
+        } else {
+          navigate("/agent");
+        }
+      } else {
+        navigate("/");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      toast({ title: "Login failed", description: "An unexpected error occurred", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
 
