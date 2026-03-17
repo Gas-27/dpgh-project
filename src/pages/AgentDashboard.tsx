@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Store, Wifi, Settings } from "lucide-react";
+import { Store, Wifi, Settings, ExternalLink, Copy } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface AgentStore {
   id: string;
@@ -27,7 +28,8 @@ interface DataPackage {
 }
 
 const AgentDashboard = () => {
-  const { user, isAgent, loading: authLoading, signOut } = useAuth();
+  const { user, isAgent, isAdmin, loading: authLoading, signOut } = useAuth();
+  const { toast } = useToast();
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,10 +59,21 @@ const AgentDashboard = () => {
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (!store) return <Navigate to="/agent-onboarding" replace />;
-  if (!store.approved) return <Navigate to="/pending-approval" replace />;
+  
+  // Admin viewing agent dashboard without a store is fine
+  if (!isAdmin) {
+    if (!store) return <Navigate to="/agent-onboarding" replace />;
+    if (!store.approved) return <Navigate to="/pending-approval" replace />;
+  }
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
+  const storeUrl = `${window.location.origin}/store/${storeSlug}`;
+
+  const copyStoreLink = () => {
+    navigator.clipboard.writeText(storeUrl);
+    toast({ title: "Link copied!", description: storeUrl });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,10 +82,15 @@ const AgentDashboard = () => {
           <div className="flex items-center gap-2">
             <Store className="h-6 w-6 text-primary" />
             <span className="font-display text-lg font-bold">
-              {store.store_name}
+              {store?.store_name ?? "Agent Dashboard"}
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/admin">Admin</Link>
+              </Button>
+            )}
             <Button variant="ghost" size="sm" asChild>
               <Link to="/">Home</Link>
             </Button>
@@ -82,6 +100,28 @@ const AgentDashboard = () => {
       </nav>
 
       <div className="container py-8 space-y-8">
+        {/* Store Link Banner */}
+        {store && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Your Store Website</p>
+                <p className="text-xs text-muted-foreground">{storeUrl}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={copyStoreLink}>
+                  <Copy className="h-4 w-4 mr-1" /> Copy Link
+                </Button>
+                <Button variant="hero" size="sm" asChild>
+                  <Link to={`/store/${storeSlug}`} target="_blank">
+                    <ExternalLink className="h-4 w-4 mr-1" /> Visit Store
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="border-border">
@@ -93,13 +133,13 @@ const AgentDashboard = () => {
           <Card className="border-border">
             <CardContent className="p-6 text-center">
               <p className="text-muted-foreground text-sm">WhatsApp</p>
-              <p className="font-display font-bold mt-1">{store.whatsapp_number}</p>
+              <p className="font-display font-bold mt-1">{store?.whatsapp_number ?? "N/A"}</p>
             </CardContent>
           </Card>
           <Card className="border-border">
             <CardContent className="p-6 text-center">
               <p className="text-muted-foreground text-sm">Support Line</p>
-              <p className="font-display font-bold mt-1">{store.support_number}</p>
+              <p className="font-display font-bold mt-1">{store?.support_number ?? "N/A"}</p>
             </CardContent>
           </Card>
         </div>
@@ -161,15 +201,15 @@ const AgentDashboard = () => {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Store Name</p>
-                    <p className="font-semibold">{store.store_name}</p>
+                    <p className="font-semibold">{store?.store_name}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">WhatsApp</p>
-                    <p className="font-semibold">{store.whatsapp_number}</p>
+                    <p className="font-semibold">{store?.whatsapp_number}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Support Number</p>
-                    <p className="font-semibold">{store.support_number}</p>
+                    <p className="font-semibold">{store?.support_number}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Status</p>

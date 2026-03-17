@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Check, X, Save } from "lucide-react";
+import { Zap, Check, X, Save, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 
@@ -42,14 +42,17 @@ const AdminDashboard = () => {
   const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number }>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [saving, setSaving] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const fetchData = async () => {
+    setDataLoading(true);
     const [pkgRes, agentRes] = await Promise.all([
       supabase.from("data_packages").select("*").order("size_gb"),
       supabase.from("agent_stores").select("*").order("created_at", { ascending: false }),
     ]);
     setPackages(pkgRes.data ?? []);
     setAgents(agentRes.data ?? []);
+    setDataLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -80,6 +83,15 @@ const AdminDashboard = () => {
   };
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const storeSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-primary font-display text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,7 +105,10 @@ const AdminDashboard = () => {
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/">Home</Link>
+              <Link to="/">User View</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/agent">Agent View</Link>
             </Button>
             <Button variant="outline" size="sm" onClick={signOut}>Sign Out</Button>
           </div>
@@ -188,6 +203,16 @@ const AdminDashboard = () => {
                         <div className="pt-2">
                           <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} • {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
                         </div>
+                        {agent.approved && (
+                          <div className="pt-1">
+                            <Link
+                              to={`/store/${storeSlug(agent.store_name)}`}
+                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                            >
+                              <Eye className="h-3 w-3" /> View Store Page
+                            </Link>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         {agent.approved ? (

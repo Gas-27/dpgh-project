@@ -13,6 +13,7 @@ import AgentOnboarding from "./pages/AgentOnboarding";
 import PendingApproval from "./pages/PendingApproval";
 import AdminDashboard from "./pages/AdminDashboard";
 import AgentDashboard from "./pages/AgentDashboard";
+import AgentStorefront from "./pages/AgentStorefront";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/packages" element={<Packages />} />
           <Route path="/agent-onboarding" element={<AgentOnboarding />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
+          <Route path="/store/:storeName" element={<AgentStorefront />} />
           <Route
             path="/admin"
             element={
