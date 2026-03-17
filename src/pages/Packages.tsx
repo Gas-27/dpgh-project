@@ -1,0 +1,100 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import Navbar from "@/components/Navbar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Wifi } from "lucide-react";
+
+type Network = "mtn" | "airteltigo" | "telecel";
+
+interface DataPackage {
+  id: string;
+  network: string;
+  size_gb: number;
+  price: number;
+}
+
+const networkConfig: Record<Network, { label: string; color: string }> = {
+  mtn: { label: "MTN", color: "text-mtn" },
+  airteltigo: { label: "AirtelTigo", color: "text-telecel" },
+  telecel: { label: "Telecel", color: "text-telecel" },
+};
+
+const Packages = () => {
+  const [packages, setPackages] = useState<DataPackage[]>([]);
+  const [selectedNetwork, setSelectedNetwork] = useState<Network>("mtn");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPackages = async () => {
+      const { data } = await supabase
+        .from("data_packages")
+        .select("id, network, size_gb, price")
+        .eq("active", true)
+        .order("size_gb", { ascending: true });
+      setPackages(data ?? []);
+      setLoading(false);
+    };
+    fetchPackages();
+  }, []);
+
+  const filtered = packages.filter((p) => p.network === selectedNetwork);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="container pt-24 pb-16">
+        <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">
+          Data <span className="text-primary">Packages</span>
+        </h1>
+        <p className="text-muted-foreground text-center mb-8">
+          Choose your network and select a data bundle
+        </p>
+
+        {/* Network tabs */}
+        <div className="flex justify-center gap-3 mb-8">
+          {(Object.keys(networkConfig) as Network[]).map((net) => (
+            <Button
+              key={net}
+              variant={selectedNetwork === net ? "hero" : "outline"}
+              onClick={() => setSelectedNetwork(net)}
+              className="font-semibold"
+            >
+              {networkConfig[net].label}
+            </Button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="text-center text-muted-foreground">Loading packages...</div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {filtered.map((pkg) => (
+              <Card key={pkg.id} className="border-border hover:border-primary/50 transition-colors group">
+                <CardContent className="p-4 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
+                    <Wifi className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-display text-2xl font-bold">{pkg.size_gb}GB</p>
+                    <p className={`text-xs font-semibold ${networkConfig[selectedNetwork].color}`}>
+                      {networkConfig[selectedNetwork].label}
+                    </p>
+                  </div>
+                  <p className="font-display text-lg font-bold text-primary">
+                    GH₵ {Number(pkg.price).toFixed(2)}
+                  </p>
+                  <Button variant="hero" size="sm" className="w-full">
+                    Buy Now
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Packages;

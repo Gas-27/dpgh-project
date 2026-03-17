@@ -14,16 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agent_stores: {
+        Row: {
+          approved: boolean | null
+          created_at: string | null
+          id: string
+          momo_name: string
+          momo_network: string
+          momo_number: string
+          store_name: string
+          support_number: string
+          user_id: string
+          whatsapp_group: string | null
+          whatsapp_number: string
+        }
+        Insert: {
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          momo_name: string
+          momo_network: string
+          momo_number: string
+          store_name: string
+          support_number: string
+          user_id: string
+          whatsapp_group?: string | null
+          whatsapp_number: string
+        }
+        Update: {
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          momo_name?: string
+          momo_network?: string
+          momo_number?: string
+          store_name?: string
+          support_number?: string
+          user_id?: string
+          whatsapp_group?: string | null
+          whatsapp_number?: string
+        }
+        Relationships: []
+      }
+      data_packages: {
+        Row: {
+          active: boolean | null
+          agent_price: number
+          created_at: string | null
+          id: string
+          network: string
+          price: number
+          size_gb: number
+        }
+        Insert: {
+          active?: boolean | null
+          agent_price?: number
+          created_at?: string | null
+          id?: string
+          network: string
+          price?: number
+          size_gb: number
+        }
+        Update: {
+          active?: boolean | null
+          agent_price?: number
+          created_at?: string | null
+          id?: string
+          network?: string
+          price?: number
+          size_gb?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "agent" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +266,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "agent", "user"],
+    },
   },
 } as const
