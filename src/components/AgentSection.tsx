@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Store, DollarSign, Settings, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -20,10 +21,12 @@ const AgentSection = () => {
             Start Your <span className="text-primary">Data Business</span>
           </h2>
           <p className="text-muted-foreground leading-relaxed max-w-lg">
-            Sign up as an agent and get your own mini website to resell data bundles. 
+            Sign up as an agent and get your own mini website to resell data bundles.
             Set your prices, manage your store, and start earning today.
           </p>
-          <Button variant="hero" size="lg">Become an Agent</Button>
+          <Button variant="hero" size="lg" asChild>
+            <Link to="/signup">Become an Agent</Link>
+          </Button>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

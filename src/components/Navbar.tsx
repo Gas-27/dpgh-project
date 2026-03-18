@@ -1,4 +1,4 @@
-import { Zap, Menu, X, LayoutDashboard } from "lucide-react";
+import { Zap, Menu, X, LayoutDashboard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, isAdmin, isAgent, signOut, getDashboardRoute } = useAuth();
+  const { user, isAdmin, isAgent, signOut, getDashboardRoute, loading } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
@@ -18,15 +18,19 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Desktop nav */}
         <div className="hidden items-center gap-6 md:flex">
           <Link to="/packages" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Packages</Link>
-          <a href="/#services" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Services</a>
-          <a href="/#agent" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Become an Agent</a>
+          <Link to="/#services" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Services</Link>
+          <Link to="/#agent" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Become an Agent</Link>
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
-          {user ? (
+          {loading ? (
+            <Button variant="ghost" size="sm" disabled>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading
+            </Button>
+          ) : user ? (
             <>
               <Button variant="hero" size="sm" asChild>
                 <Link to={getDashboardRoute()}>
@@ -48,27 +52,30 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* Mobile toggle */}
-        <button className="md:hidden text-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
+        <button type="button" className="md:hidden text-foreground" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
-      {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-background px-6 py-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
           <Link to="/packages" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Packages</Link>
-          <a href="/#services" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Services</a>
-          <a href="/#agent" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Become an Agent</a>
+          <Link to="/#services" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Services</Link>
+          <Link to="/#agent" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Become an Agent</Link>
           <div className="flex gap-3 pt-2">
-            {user ? (
+            {loading ? (
+              <Button variant="ghost" size="sm" className="flex-1" disabled>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading
+              </Button>
+            ) : user ? (
               <>
                 <Button variant="hero" size="sm" className="flex-1" asChild>
                   <Link to={getDashboardRoute()} onClick={() => setMobileOpen(false)}>
                     <LayoutDashboard className="h-4 w-4 mr-1" /> Dashboard
                   </Link>
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => { signOut(); setMobileOpen(false); }}>Sign Out</Button>
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => { void signOut(); setMobileOpen(false); }}>Sign Out</Button>
               </>
             ) : (
               <>
