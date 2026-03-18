@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Zap } from "lucide-react";
 
 const Footer = () => {
@@ -16,16 +17,16 @@ const Footer = () => {
         <div className="space-y-3">
           <h4 className="font-display text-sm font-semibold">Quick Links</h4>
           <div className="space-y-2 text-xs text-muted-foreground">
-            <a href="#services" className="block hover:text-foreground transition-colors">Services</a>
-            <a href="#agent" className="block hover:text-foreground transition-colors">Agent Portal</a>
-            <a href="#" className="block hover:text-foreground transition-colors">Contact Us</a>
+            <Link to="/#services" className="block hover:text-foreground transition-colors">Services</Link>
+            <Link to="/#agent" className="block hover:text-foreground transition-colors">Agent Portal</Link>
+            <Link to="/packages" className="block hover:text-foreground transition-colors">Buy Data</Link>
           </div>
         </div>
         <div className="space-y-3">
           <h4 className="font-display text-sm font-semibold">Contact</h4>
           <div className="space-y-2 text-xs text-muted-foreground">
-            <p>WhatsApp: +233 XX XXX XXXX</p>
-            <p>Email: support@datapluggh.com</p>
+            <a href="https://wa.me/233000000000" target="_blank" rel="noopener noreferrer" className="block hover:text-foreground transition-colors">WhatsApp Support</a>
+            <a href="mailto:support@datapluggh.com" className="block hover:text-foreground transition-colors">support@datapluggh.com</a>
           </div>
         </div>
       </div>
