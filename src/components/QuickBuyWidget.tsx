@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Wifi } from "lucide-react";
 
@@ -34,6 +35,18 @@ const QuickBuyWidget = () => {
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
   const [phone, setPhone] = useState("");
 
+  const ctaLink = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("network", selectedNetwork);
+    if (selectedPlan !== null) {
+      params.set("plan", plans[selectedNetwork][selectedPlan].gb);
+    }
+    if (phone.trim()) {
+      params.set("phone", phone.trim());
+    }
+    return `/packages?${params.toString()}`;
+  }, [phone, selectedNetwork, selectedPlan]);
+
   return (
     <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 space-y-5 glow-primary-sm">
       <div className="flex items-center gap-2">
@@ -41,15 +54,15 @@ const QuickBuyWidget = () => {
         <h3 className="font-display text-lg font-semibold text-foreground">Quick Buy</h3>
       </div>
 
-      {/* Network selector */}
       <div className="grid grid-cols-3 gap-2">
         {networks.map((n) => (
           <button
             key={n.id}
+            type="button"
             onClick={() => { setSelectedNetwork(n.id); setSelectedPlan(null); }}
             className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
               selectedNetwork === n.id
-                ? n.color + " shadow-md"
+                ? `${n.color} shadow-md`
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -58,11 +71,11 @@ const QuickBuyWidget = () => {
         ))}
       </div>
 
-      {/* Plans */}
       <div className="grid grid-cols-2 gap-2">
         {plans[selectedNetwork].map((plan, i) => (
           <button
-            key={i}
+            key={plan.gb}
+            type="button"
             onClick={() => setSelectedPlan(i)}
             className={`rounded-lg border p-3 text-left transition-all ${
               selectedPlan === i
@@ -76,7 +89,6 @@ const QuickBuyWidget = () => {
         ))}
       </div>
 
-      {/* Phone input */}
       <input
         type="tel"
         placeholder="Enter phone number"
@@ -85,8 +97,8 @@ const QuickBuyWidget = () => {
         className="w-full rounded-lg border border-border bg-secondary px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
       />
 
-      <Button variant="hero" className="w-full" size="lg">
-        Buy Now
+      <Button variant="hero" className="w-full" size="lg" asChild>
+        <Link to={ctaLink}>Buy Now</Link>
       </Button>
     </div>
   );
