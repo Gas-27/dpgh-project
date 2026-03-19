@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import PaymentDialog from "@/components/PaymentDialog";
 import { Zap, MessageCircle, Phone, Wifi, Shield, Clock, Star } from "lucide-react";
 
 interface AgentStore {
@@ -32,6 +33,7 @@ const AgentStorefront = () => {
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -94,15 +96,15 @@ const AgentStorefront = () => {
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const whatsappLink = `https://wa.me/${store.whatsapp_number.replace(/[^0-9]/g, "")}`;
 
-  const getPrice = (pkg: DataPackage) => {
-    return agentPrices[pkg.id] ?? pkg.price;
-  };
+  const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
 
   const networkColors: Record<string, string> = {
     mtn: "from-yellow-500 to-yellow-600",
     airteltigo: "from-red-500 to-red-600",
     telecel: "from-red-600 to-rose-700",
   };
+
+  const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -193,14 +195,8 @@ const AgentStorefront = () => {
                     </div>
                     <p className="font-display text-2xl font-bold text-foreground">{pkg.size_gb}GB</p>
                     <p className="text-xl font-bold text-primary">GH₵ {Number(price).toFixed(2)}</p>
-                    <Button variant="hero" size="sm" className="w-full" asChild>
-                      <a
-                        href={`${whatsappLink}?text=${encodeURIComponent(`Hi, I'd like to buy ${pkg.size_gb}GB ${networkFilter.toUpperCase()} data for GH₵${Number(price).toFixed(2)}`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Buy Now
-                      </a>
+                    <Button variant="hero" size="sm" className="w-full" onClick={() => setPaymentPkg(pkg)}>
+                      Buy Now
                     </Button>
                   </div>
                 </CardContent>
@@ -233,6 +229,19 @@ const AgentStorefront = () => {
           </p>
         </div>
       </footer>
+
+      {/* Payment Dialog */}
+      {paymentPkg && (
+        <PaymentDialog
+          open={!!paymentPkg}
+          onOpenChange={(v) => !v && setPaymentPkg(null)}
+          packageName={`${paymentPkg.size_gb}GB`}
+          network={networkFilter}
+          price={Number(selectedPaymentPrice)}
+          packageId={paymentPkg.id}
+          agentStoreId={store.id}
+        />
+      )}
     </div>
   );
 };
