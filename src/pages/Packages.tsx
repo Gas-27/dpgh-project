@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import PaymentDialog from "@/components/PaymentDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Wifi } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 type Network = "mtn" | "airteltigo" | "telecel";
 
@@ -24,6 +26,9 @@ const networkConfig: Record<Network, { label: string; color: string }> = {
 
 const Packages = () => {
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
     const network = searchParams.get("network");
@@ -57,6 +62,15 @@ const Packages = () => {
     () => packages.filter((pkg) => pkg.network === selectedNetwork),
     [packages, selectedNetwork],
   );
+
+  const handleBuyNow = (pkg: DataPackage) => {
+    if (!user) {
+      toast({ title: "Login Required", description: "Please create an account or log in to purchase data.", variant: "destructive" });
+      navigate("/login");
+      return;
+    }
+    setPaymentPkg(pkg);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,7 +115,7 @@ const Packages = () => {
                   <p className="font-display text-lg font-bold text-primary">
                     GH₵ {Number(pkg.price).toFixed(2)}
                   </p>
-                  <Button variant="hero" size="sm" className="w-full" onClick={() => setPaymentPkg(pkg)}>
+                  <Button variant="hero" size="sm" className="w-full" onClick={() => handleBuyNow(pkg)}>
                     Buy Now
                   </Button>
                 </CardContent>
