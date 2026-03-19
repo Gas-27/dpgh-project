@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
+import PaymentDialog from "@/components/PaymentDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Wifi } from "lucide-react";
@@ -29,6 +30,7 @@ const Packages = () => {
     return network === "mtn" || network === "airteltigo" || network === "telecel" ? network : "mtn";
   });
   const [loading, setLoading] = useState(true);
+  const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -51,27 +53,10 @@ const Packages = () => {
     }
   }, [searchParams]);
 
-  const selectedPlan = searchParams.get("plan");
-  const selectedPhone = searchParams.get("phone") ?? "";
-
   const filtered = useMemo(
     () => packages.filter((pkg) => pkg.network === selectedNetwork),
     [packages, selectedNetwork],
   );
-
-  const createWhatsAppLink = (pkg: DataPackage) => {
-    const message = [
-      "Hi, I want to buy a data bundle.",
-      `Network: ${networkConfig[selectedNetwork].label}`,
-      `Bundle: ${pkg.size_gb}GB`,
-      `Price: GH₵ ${Number(pkg.price).toFixed(2)}`,
-      selectedPhone ? `Phone number: ${selectedPhone}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    return `https://wa.me/?text=${encodeURIComponent(message)}`;
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -83,13 +68,6 @@ const Packages = () => {
         <p className="text-muted-foreground text-center mb-8">
           Choose your network and select a data bundle
         </p>
-
-        {(selectedPlan || selectedPhone) && (
-          <div className="mx-auto mb-8 max-w-xl rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-            {selectedPlan && <p>Selected bundle: <span className="font-semibold text-foreground">{selectedPlan}</span></p>}
-            {selectedPhone && <p>Phone: <span className="font-semibold text-foreground">{selectedPhone}</span></p>}
-          </div>
-        )}
 
         <div className="flex justify-center gap-3 mb-8">
           {(Object.keys(networkConfig) as Network[]).map((net) => (
@@ -108,35 +86,41 @@ const Packages = () => {
           <div className="text-center text-muted-foreground">Loading packages...</div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filtered.map((pkg) => {
-              const isHighlighted = selectedPlan === `${pkg.size_gb}GB`;
-              return (
-                <Card key={pkg.id} className={`border-border transition-colors group hover:border-primary/50 ${isHighlighted ? "border-primary bg-primary/5" : ""}`}>
-                  <CardContent className="p-4 text-center space-y-3">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
-                      <Wifi className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-display text-2xl font-bold">{pkg.size_gb}GB</p>
-                      <p className={`text-xs font-semibold ${networkConfig[selectedNetwork].color}`}>
-                        {networkConfig[selectedNetwork].label}
-                      </p>
-                    </div>
-                    <p className="font-display text-lg font-bold text-primary">
-                      GH₵ {Number(pkg.price).toFixed(2)}
+            {filtered.map((pkg) => (
+              <Card key={pkg.id} className="border-border transition-colors group hover:border-primary/50">
+                <CardContent className="p-4 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
+                    <Wifi className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-display text-2xl font-bold">{pkg.size_gb}GB</p>
+                    <p className={`text-xs font-semibold ${networkConfig[selectedNetwork].color}`}>
+                      {networkConfig[selectedNetwork].label}
                     </p>
-                    <Button variant="hero" size="sm" className="w-full" asChild>
-                      <a href={createWhatsAppLink(pkg)} target="_blank" rel="noopener noreferrer">
-                        Buy Now
-                      </a>
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  </div>
+                  <p className="font-display text-lg font-bold text-primary">
+                    GH₵ {Number(pkg.price).toFixed(2)}
+                  </p>
+                  <Button variant="hero" size="sm" className="w-full" onClick={() => setPaymentPkg(pkg)}>
+                    Buy Now
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>
+
+      {paymentPkg && (
+        <PaymentDialog
+          open={!!paymentPkg}
+          onOpenChange={(v) => !v && setPaymentPkg(null)}
+          packageName={`${paymentPkg.size_gb}GB`}
+          network={selectedNetwork}
+          price={Number(paymentPkg.price)}
+          packageId={paymentPkg.id}
+        />
+      )}
     </div>
   );
 };
