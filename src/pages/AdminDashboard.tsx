@@ -3,13 +3,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Check, X, Save, Eye } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Zap, Check, X, Save, Eye, Plus, Trash2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DataPackage {
   id: string;
@@ -34,24 +50,49 @@ interface AgentStore {
   created_at: string;
 }
 
+interface UserProfile {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  created_at: string | null;
+  role: string;
+}
+
 const AdminDashboard = () => {
   const { signOut } = useAuth();
   const { toast } = useToast();
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [agents, setAgents] = useState<AgentStore[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number }>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [saving, setSaving] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newPkg, setNewPkg] = useState({ network: "mtn", size_gb: "", price: "", agent_price: "" });
 
   const fetchData = async () => {
     setDataLoading(true);
-    const [pkgRes, agentRes] = await Promise.all([
+    const [pkgRes, agentRes, profilesRes, rolesRes] = await Promise.all([
       supabase.from("data_packages").select("*").order("size_gb"),
       supabase.from("agent_stores").select("*").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+      supabase.from("user_roles").select("*"),
     ]);
+
     setPackages(pkgRes.data ?? []);
     setAgents(agentRes.data ?? []);
+
+    // Map users with roles
+    const rolesMap: Record<string, string> = {};
+    (rolesRes.data ?? []).forEach((r: any) => {
+      rolesMap[r.user_id] = r.role;
+    });
+    const userList = (profilesRes.data ?? []).map((p: any) => ({
+      ...p,
+      role: rolesMap[p.id] || "user",
+    }));
+    setUsers(userList);
     setDataLoading(false);
   };
 
@@ -74,6 +115,42 @@ const AdminDashboard = () => {
     await fetchData();
     setSaving(false);
     toast({ title: "Prices updated!" });
+  };
+
+  const toggleActive = async (pkgId: string, active: boolean) => {
+    await supabase.from("data_packages").update({ active }).eq("id", pkgId);
+    setPackages((prev) => prev.map((p) => (p.id === pkgId ? { ...p, active } : p)));
+    toast({ title: active ? "Package activated" : "Package deactivated" });
+  };
+
+  const deletePackage = async (pkgId: string) => {
+    await supabase.from("data_packages").delete().eq("id", pkgId);
+    setPackages((prev) => prev.filter((p) => p.id !== pkgId));
+    toast({ title: "Package deleted" });
+  };
+
+  const addPackage = async () => {
+    const size = parseFloat(newPkg.size_gb);
+    const price = parseFloat(newPkg.price);
+    const agentPrice = parseFloat(newPkg.agent_price);
+    if (!size || !price || !agentPrice) {
+      toast({ title: "Fill all fields", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.from("data_packages").insert({
+      network: newPkg.network,
+      size_gb: size,
+      price,
+      agent_price: agentPrice,
+    });
+    if (error) {
+      toast({ title: "Error adding package", description: error.message, variant: "destructive" });
+      return;
+    }
+    setAddDialogOpen(false);
+    setNewPkg({ network: "mtn", size_gb: "", price: "", agent_price: "" });
+    await fetchData();
+    toast({ title: "Package added!" });
   };
 
   const toggleApproval = async (agentId: string, approved: boolean) => {
@@ -120,11 +197,14 @@ const AdminDashboard = () => {
           <TabsList className="mb-6">
             <TabsTrigger value="prices">Manage Prices</TabsTrigger>
             <TabsTrigger value="agents">Agent Approvals ({agents.filter((a) => !a.approved).length})</TabsTrigger>
+            <TabsTrigger value="users">
+              <Users className="h-4 w-4 mr-1" /> Users ({users.length})
+            </TabsTrigger>
           </TabsList>
 
           {/* PRICES TAB */}
           <TabsContent value="prices" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex gap-2">
                 {["mtn", "airteltigo", "telecel"].map((net) => (
                   <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
@@ -132,12 +212,17 @@ const AdminDashboard = () => {
                   </Button>
                 ))}
               </div>
-              {Object.keys(editedPrices).length > 0 && (
-                <Button variant="hero" size="sm" onClick={savePrices} disabled={saving}>
-                  <Save className="h-4 w-4 mr-1" />
-                  {saving ? "Saving..." : "Save Changes"}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Package
                 </Button>
-              )}
+                {Object.keys(editedPrices).length > 0 && (
+                  <Button variant="hero" size="sm" onClick={savePrices} disabled={saving}>
+                    <Save className="h-4 w-4 mr-1" />
+                    {saving ? "Saving..." : "Save Changes"}
+                  </Button>
+                )}
+              </div>
             </div>
 
             <Card className="border-border">
@@ -147,7 +232,8 @@ const AdminDashboard = () => {
                     <TableHead>Size</TableHead>
                     <TableHead>User Price (GH₵)</TableHead>
                     <TableHead>Agent Price (GH₵)</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Active</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -173,9 +259,20 @@ const AdminDashboard = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        <Badge variant={pkg.active ? "default" : "secondary"}>
-                          {pkg.active ? "Active" : "Inactive"}
-                        </Badge>
+                        <Switch
+                          checked={pkg.active}
+                          onCheckedChange={(checked) => toggleActive(pkg.id, checked)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => deletePackage(pkg.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -237,8 +334,78 @@ const AdminDashboard = () => {
               ))
             )}
           </TabsContent>
+
+          {/* USERS TAB */}
+          <TabsContent value="users" className="space-y-4">
+            <Card className="border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Joined</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{u.phone || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant={u.role === "admin" ? "default" : u.role === "agent" ? "secondary" : "outline"}>
+                          {u.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Add Package Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-md border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="font-display">Add New Package</DialogTitle>
+            <DialogDescription>Create a new data package for users and agents.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Network</Label>
+              <Select value={newPkg.network} onValueChange={(v) => setNewPkg((p) => ({ ...p, network: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mtn">MTN</SelectItem>
+                  <SelectItem value="airteltigo">AirtelTigo</SelectItem>
+                  <SelectItem value="telecel">Telecel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Size (GB)</Label>
+              <Input type="number" placeholder="e.g. 5" value={newPkg.size_gb} onChange={(e) => setNewPkg((p) => ({ ...p, size_gb: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>User Price (GH₵)</Label>
+              <Input type="number" step="0.01" placeholder="e.g. 15.00" value={newPkg.price} onChange={(e) => setNewPkg((p) => ({ ...p, price: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Agent Price (GH₵)</Label>
+              <Input type="number" step="0.01" placeholder="e.g. 12.00" value={newPkg.agent_price} onChange={(e) => setNewPkg((p) => ({ ...p, agent_price: e.target.value }))} />
+            </div>
+            <Button variant="hero" className="w-full" onClick={addPackage}>
+              <Plus className="h-4 w-4 mr-1" /> Add Package
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

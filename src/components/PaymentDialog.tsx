@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Phone, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PaymentDialogProps {
   open: boolean;
@@ -24,7 +26,7 @@ interface PaymentDialogProps {
 }
 
 const PAYSTACK_CHARGE_PERCENT = 1.95;
-const PAYSTACK_FLAT_FEE = 0; // GHS flat fee if any
+const PAYSTACK_FLAT_FEE = 0;
 
 function calculateTotal(price: number) {
   const charge = (price * PAYSTACK_CHARGE_PERCENT) / 100 + PAYSTACK_FLAT_FEE;
@@ -40,6 +42,8 @@ const PaymentDialog = ({
   packageId,
   agentStoreId,
 }: PaymentDialogProps) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState<"phone" | "confirm">("phone");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,7 +51,16 @@ const PaymentDialog = ({
 
   const { charge, total } = calculateTotal(price);
 
+  // If not on an agent storefront and user is not logged in, redirect to login
+  const requiresAuth = !agentStoreId;
+
   const handleContinue = () => {
+    if (requiresAuth && !user) {
+      toast({ title: "Login Required", description: "Please create an account or log in to purchase data.", variant: "destructive" });
+      onOpenChange(false);
+      navigate("/login");
+      return;
+    }
     if (phone.trim().length < 10) {
       toast({ title: "Invalid number", description: "Please enter a valid phone number", variant: "destructive" });
       return;
@@ -58,10 +71,11 @@ const PaymentDialog = ({
   const handlePay = async () => {
     setLoading(true);
     try {
+      const userEmail = user?.email || `${phone.replace(/[^0-9]/g, "")}@datapluggh.com`;
       const callbackUrl = `${window.location.origin}/packages?payment=success`;
       const { data, error } = await supabase.functions.invoke("initialize-payment", {
         body: {
-          email: `${phone.replace(/[^0-9]/g, "")}@datapluggh.com`,
+          email: userEmail,
           amount: total,
           phone: phone.trim(),
           callback_url: callbackUrl,
