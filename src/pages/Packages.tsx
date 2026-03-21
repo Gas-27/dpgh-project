@@ -136,6 +136,7 @@ const Packages = () => {
           packageId={paymentPkg.id}
         />
       )}
+      <PaymentVerifier />
     </div>
   );
 };

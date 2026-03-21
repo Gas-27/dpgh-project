@@ -243,6 +243,7 @@ const AgentStorefront = () => {
           agentStoreId={store.id}
         />
       )}
+      <PaymentVerifier />
     </div>
   );
 };
