@@ -72,7 +72,8 @@ const PaymentDialog = ({
     setLoading(true);
     try {
       const userEmail = user?.email || `${phone.replace(/[^0-9]/g, "")}@datapluggh.com`;
-      const callbackUrl = `${window.location.origin}/packages?payment=success`;
+      const returnPath = agentStoreId ? window.location.pathname : "/packages";
+      const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
       const { data, error } = await supabase.functions.invoke("initialize-payment", {
         body: {
           email: userEmail,
