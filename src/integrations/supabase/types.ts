@@ -127,35 +127,44 @@ export type Database = {
       }
       orders: {
         Row: {
-          agent_store_id: string
+          agent_store_id: string | null
           amount: number
+          api_response: string | null
           created_at: string | null
           customer_number: string
+          fulfillment_status: string
           id: string
           network: string
           package_id: string
+          paystack_reference: string | null
           size_gb: number
           status: string
         }
         Insert: {
-          agent_store_id: string
+          agent_store_id?: string | null
           amount: number
+          api_response?: string | null
           created_at?: string | null
           customer_number: string
+          fulfillment_status?: string
           id?: string
           network: string
           package_id: string
+          paystack_reference?: string | null
           size_gb: number
           status?: string
         }
         Update: {
-          agent_store_id?: string
+          agent_store_id?: string | null
           amount?: number
+          api_response?: string | null
           created_at?: string | null
           customer_number?: string
+          fulfillment_status?: string
           id?: string
           network?: string
           package_id?: string
+          paystack_reference?: string | null
           size_gb?: number
           status?: string
         }
