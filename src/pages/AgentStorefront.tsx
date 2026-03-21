@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import PaymentDialog from "@/components/PaymentDialog";
+import PaymentVerifier from "@/components/PaymentVerifier";
 import { Zap, MessageCircle, Phone, Wifi, Shield, Clock, Star } from "lucide-react";
 
 interface AgentStore {
@@ -242,6 +243,7 @@ const AgentStorefront = () => {
           agentStoreId={store.id}
         />
       )}
+      <PaymentVerifier />
     </div>
   );
 };

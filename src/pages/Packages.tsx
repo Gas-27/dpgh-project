@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import PaymentDialog from "@/components/PaymentDialog";
+import PaymentVerifier from "@/components/PaymentVerifier";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Wifi } from "lucide-react";
@@ -135,6 +136,7 @@ const Packages = () => {
           packageId={paymentPkg.id}
         />
       )}
+      <PaymentVerifier />
     </div>
   );
 };

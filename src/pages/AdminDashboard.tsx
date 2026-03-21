@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Zap, Check, X, Save, Eye, Plus, Trash2, Users } from "lucide-react";
+import { Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import {
@@ -58,32 +58,49 @@ interface UserProfile {
   role: string;
 }
 
+interface Order {
+  id: string;
+  customer_number: string;
+  network: string;
+  size_gb: number;
+  amount: number;
+  status: string;
+  fulfillment_status: string;
+  api_response: string | null;
+  paystack_reference: string | null;
+  created_at: string | null;
+  agent_store_id: string | null;
+}
+
 const AdminDashboard = () => {
   const { signOut } = useAuth();
   const { toast } = useToast();
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [agents, setAgents] = useState<AgentStore[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number }>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [saving, setSaving] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newPkg, setNewPkg] = useState({ network: "mtn", size_gb: "", price: "", agent_price: "" });
+  const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
 
   const fetchData = async () => {
     setDataLoading(true);
-    const [pkgRes, agentRes, profilesRes, rolesRes] = await Promise.all([
+    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes] = await Promise.all([
       supabase.from("data_packages").select("*").order("size_gb"),
       supabase.from("agent_stores").select("*").order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("*"),
+      supabase.from("orders").select("*").order("created_at", { ascending: false }),
     ]);
 
     setPackages(pkgRes.data ?? []);
     setAgents(agentRes.data ?? []);
+    setOrders((ordersRes.data as Order[]) ?? []);
 
-    // Map users with roles
     const rolesMap: Record<string, string> = {};
     (rolesRes.data ?? []).forEach((r: any) => {
       rolesMap[r.user_id] = r.role;
@@ -159,8 +176,40 @@ const AdminDashboard = () => {
     toast({ title: approved ? "Agent approved!" : "Agent suspended" });
   };
 
+  const retryOrder = async (orderId: string) => {
+    setRetryingOrders((prev) => new Set(prev).add(orderId));
+    try {
+      const { data, error } = await supabase.functions.invoke("fulfill-order", {
+        body: { order_id: orderId },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast({ title: "Order fulfilled successfully!" });
+      } else {
+        toast({ title: "Fulfillment failed", description: data?.message || "Check API balance", variant: "destructive" });
+      }
+      await fetchData();
+    } catch (err: any) {
+      toast({ title: "Retry failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRetryingOrders((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
+
+  const retryAllFailed = async () => {
+    const failedOrders = orders.filter((o) => o.fulfillment_status === "failed");
+    for (const order of failedOrders) {
+      await retryOrder(order.id);
+    }
+  };
+
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const storeSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
 
   if (dataLoading) {
     return (
@@ -196,6 +245,12 @@ const AdminDashboard = () => {
         <Tabs defaultValue="prices">
           <TabsList className="mb-6">
             <TabsTrigger value="prices">Manage Prices</TabsTrigger>
+            <TabsTrigger value="orders">
+              <ShoppingCart className="h-4 w-4 mr-1" /> Orders
+              {failedCount > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs px-1.5 py-0">{failedCount}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="agents">Agent Approvals ({agents.filter((a) => !a.approved).length})</TabsTrigger>
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-1" /> Users ({users.length})
@@ -276,6 +331,85 @@ const AdminDashboard = () => {
                       </TableCell>
                     </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          {/* ORDERS TAB */}
+          <TabsContent value="orders" className="space-y-4">
+            {failedCount > 0 && (
+              <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
+                <p className="text-sm text-foreground">
+                  <span className="font-bold text-destructive">{failedCount} failed</span> order(s) — likely insufficient API balance. Top up and retry.
+                </p>
+                <Button variant="destructive" size="sm" onClick={retryAllFailed}>
+                  <RefreshCw className="h-4 w-4 mr-1" /> Retry All Failed
+                </Button>
+              </div>
+            )}
+            <Card className="border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Network</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Payment</TableHead>
+                    <TableHead>Fulfillment</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        No orders yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    orders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {order.created_at ? new Date(order.created_at).toLocaleString() : "—"}
+                        </TableCell>
+                        <TableCell className="font-medium">{order.customer_number}</TableCell>
+                        <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                        <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                        <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>
+                            {order.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}
+                          >
+                            {order.fulfillment_status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {order.fulfillment_status !== "completed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => retryOrder(order.id)}
+                              disabled={retryingOrders.has(order.id)}
+                            >
+                              {retryingOrders.has(order.id) ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>
+                              )}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </Card>
