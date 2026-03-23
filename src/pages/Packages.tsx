@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
+import NotificationPopup from "@/components/NotificationPopup";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import { Card, CardContent } from "@/components/ui/card";
@@ -75,6 +76,7 @@ const Packages = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <NotificationPopup />
       <Navbar />
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">

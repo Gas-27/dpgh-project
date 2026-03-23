@@ -63,7 +63,9 @@ export type Database = {
           momo_number: string
           store_name: string
           support_number: string
+          topup_reference: string | null
           user_id: string
+          wallet_balance: number
           whatsapp_group: string | null
           whatsapp_number: string
         }
@@ -76,7 +78,9 @@ export type Database = {
           momo_number: string
           store_name: string
           support_number: string
+          topup_reference?: string | null
           user_id: string
+          wallet_balance?: number
           whatsapp_group?: string | null
           whatsapp_number: string
         }
@@ -89,7 +93,9 @@ export type Database = {
           momo_number?: string
           store_name?: string
           support_number?: string
+          topup_reference?: string | null
           user_id?: string
+          wallet_balance?: number
           whatsapp_group?: string | null
           whatsapp_number?: string
         }
@@ -125,6 +131,62 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_dismissals: {
+        Row: {
+          dismissed_at: string
+          id: string
+          notification_id: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          id?: string
+          notification_id: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          id?: string
+          notification_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_dismissals_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          message: string
+          target_role: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message: string
+          target_role: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string
+          target_role?: string
+          title?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           agent_store_id: string | null
@@ -136,6 +198,7 @@ export type Database = {
           id: string
           network: string
           package_id: string
+          payment_method: string
           paystack_reference: string | null
           size_gb: number
           status: string
@@ -150,6 +213,7 @@ export type Database = {
           id?: string
           network: string
           package_id: string
+          payment_method?: string
           paystack_reference?: string | null
           size_gb: number
           status?: string
@@ -164,6 +228,7 @@ export type Database = {
           id?: string
           network?: string
           package_id?: string
+          payment_method?: string
           paystack_reference?: string | null
           size_gb?: number
           status?: string
@@ -223,6 +288,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wallet_topups: {
+        Row: {
+          admin_id: string | null
+          agent_store_id: string
+          amount: number
+          created_at: string
+          id: string
+        }
+        Insert: {
+          admin_id?: string | null
+          agent_store_id: string
+          amount: number
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          admin_id?: string | null
+          agent_store_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_topups_agent_store_id_fkey"
+            columns: ["agent_store_id"]
+            isOneToOne: false
+            referencedRelation: "agent_stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

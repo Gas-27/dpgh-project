@@ -9,8 +9,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save, LogOut, Zap, Edit2 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
+  LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import NotificationPopup from "@/components/NotificationPopup";
 
 interface AgentStore {
   id: string;
@@ -22,6 +32,8 @@ interface AgentStore {
   momo_name: string;
   momo_network: string;
   approved: boolean;
+  wallet_balance: number;
+  topup_reference: string;
 }
 
 interface DataPackage {
@@ -30,6 +42,7 @@ interface DataPackage {
   size_gb: number;
   price: number;
   agent_price: number;
+  active: boolean;
 }
 
 interface Order {
@@ -39,6 +52,8 @@ interface Order {
   size_gb: number;
   amount: number;
   status: string;
+  fulfillment_status: string;
+  payment_method: string;
   created_at: string;
 }
 
@@ -55,55 +70,46 @@ const AgentDashboard = () => {
   const [savingPrices, setSavingPrices] = useState(false);
   const [editingStore, setEditingStore] = useState(false);
   const [storeForm, setStoreForm] = useState({
-    store_name: "",
-    whatsapp_number: "",
-    support_number: "",
-    whatsapp_group: "",
-    momo_number: "",
-    momo_name: "",
-    momo_network: "",
+    store_name: "", whatsapp_number: "", support_number: "", whatsapp_group: "",
+    momo_number: "", momo_name: "", momo_network: "",
   });
   const [savingStore, setSavingStore] = useState(false);
 
+  // Buy data dialog state
+  const [buyDialogOpen, setBuyDialogOpen] = useState(false);
+  const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
+  const [buyPhone, setBuyPhone] = useState("");
+  const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
+  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"wallet" | "paystack">("wallet");
+  const [buyLoading, setBuyLoading] = useState(false);
+
   useEffect(() => {
     if (!user) return;
-
     const fetchData = async () => {
       const { data: storeData } = await supabase
-        .from("agent_stores")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      setStore(storeData);
+        .from("agent_stores").select("*").eq("user_id", user.id).maybeSingle();
+      setStore(storeData as AgentStore | null);
 
       if (storeData) {
         setStoreForm({
-          store_name: storeData.store_name,
-          whatsapp_number: storeData.whatsapp_number,
-          support_number: storeData.support_number,
-          whatsapp_group: storeData.whatsapp_group || "",
-          momo_number: storeData.momo_number,
-          momo_name: storeData.momo_name,
-          momo_network: storeData.momo_network,
+          store_name: storeData.store_name, whatsapp_number: storeData.whatsapp_number,
+          support_number: storeData.support_number, whatsapp_group: storeData.whatsapp_group || "",
+          momo_number: storeData.momo_number, momo_name: storeData.momo_name, momo_network: storeData.momo_network,
         });
-
         const [pkgRes, priceRes, orderRes] = await Promise.all([
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", storeData.id),
           supabase.from("orders").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }).limit(50),
         ]);
-
         setPackages(pkgRes.data ?? []);
         const priceMap: Record<string, number> = {};
         (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
         setAgentPrices(priceMap);
-        setOrders(orderRes.data ?? []);
+        setOrders((orderRes.data as Order[]) ?? []);
       } else {
         const { data: pkgData } = await supabase.from("data_packages").select("*").eq("active", true).order("size_gb");
         setPackages(pkgData ?? []);
       }
-
       setLoading(false);
     };
     fetchData();
@@ -135,6 +141,13 @@ const AgentDashboard = () => {
     toast({ title: "Link copied!", description: storeUrl });
   };
 
+  const copyRef = () => {
+    if (store?.topup_reference) {
+      navigator.clipboard.writeText(store.topup_reference);
+      toast({ title: "Reference copied!" });
+    }
+  };
+
   const handlePriceChange = (pkgId: string, value: string) => {
     setEditedPrices((prev) => ({ ...prev, [pkgId]: parseFloat(value) || 0 }));
   };
@@ -149,9 +162,7 @@ const AgentDashboard = () => {
           .eq("agent_store_id", store.id).eq("package_id", pkgId);
       } else {
         await supabase.from("agent_package_prices").insert({
-          agent_store_id: store.id,
-          package_id: pkgId,
-          sell_price: sellPrice,
+          agent_store_id: store.id, package_id: pkgId, sell_price: sellPrice,
         });
       }
       setAgentPrices((prev) => ({ ...prev, [pkgId]: sellPrice }));
@@ -165,15 +176,10 @@ const AgentDashboard = () => {
     if (!store) return;
     setSavingStore(true);
     const { error } = await supabase.from("agent_stores").update({
-      store_name: storeForm.store_name,
-      whatsapp_number: storeForm.whatsapp_number,
-      support_number: storeForm.support_number,
-      whatsapp_group: storeForm.whatsapp_group || null,
-      momo_number: storeForm.momo_number,
-      momo_name: storeForm.momo_name,
-      momo_network: storeForm.momo_network,
+      store_name: storeForm.store_name, whatsapp_number: storeForm.whatsapp_number,
+      support_number: storeForm.support_number, whatsapp_group: storeForm.whatsapp_group || null,
+      momo_number: storeForm.momo_number, momo_name: storeForm.momo_name, momo_network: storeForm.momo_network,
     }).eq("id", store.id);
-
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -184,31 +190,119 @@ const AgentDashboard = () => {
     setSavingStore(false);
   };
 
+  // Buy data flow
+  const openBuyDialog = (pkg: DataPackage) => {
+    setBuyPkg(pkg);
+    setBuyPhone("");
+    setBuyStep("phone");
+    setBuyPaymentMethod("wallet");
+    setBuyDialogOpen(true);
+  };
+
+  const handleBuyConfirm = async () => {
+    if (!store || !buyPkg) return;
+    setBuyLoading(true);
+
+    const agentPrice = Number(buyPkg.agent_price);
+
+    if (buyPaymentMethod === "wallet") {
+      if (Number(store.wallet_balance) < agentPrice) {
+        toast({ title: "Insufficient balance", description: "Top up your wallet to continue.", variant: "destructive" });
+        setBuyLoading(false);
+        return;
+      }
+      // Deduct wallet and create order
+      const { error: walletErr } = await supabase.from("agent_stores")
+        .update({ wallet_balance: Number(store.wallet_balance) - agentPrice })
+        .eq("id", store.id);
+      if (walletErr) {
+        toast({ title: "Error", description: walletErr.message, variant: "destructive" });
+        setBuyLoading(false);
+        return;
+      }
+      // Create order
+      const { error: orderErr } = await supabase.from("orders").insert({
+        customer_number: buyPhone.trim(),
+        network: buyPkg.network,
+        size_gb: buyPkg.size_gb,
+        amount: agentPrice,
+        package_id: buyPkg.id,
+        agent_store_id: store.id,
+        status: "paid",
+        fulfillment_status: "pending",
+        payment_method: "wallet",
+      });
+      if (orderErr) {
+        toast({ title: "Order error", description: orderErr.message, variant: "destructive" });
+        setBuyLoading(false);
+        return;
+      }
+      // Trigger fulfillment
+      await supabase.functions.invoke("fulfill-order", {
+        body: { phone: buyPhone.trim(), size: buyPkg.size_gb, network: buyPkg.network },
+      });
+      setStore({ ...store, wallet_balance: Number(store.wallet_balance) - agentPrice });
+      toast({ title: "Order placed!", description: "Your data is being processed." });
+      setBuyDialogOpen(false);
+      // Refresh orders
+      const { data: newOrders } = await supabase.from("orders").select("*")
+        .eq("agent_store_id", store.id).order("created_at", { ascending: false }).limit(50);
+      setOrders((newOrders as Order[]) ?? []);
+    } else {
+      // Paystack flow - redirect to paystack, do NOT deduct wallet
+      try {
+        const userEmail = user?.email || `agent-${store.id}@datapluggh.com`;
+        const PAYSTACK_CHARGE_PERCENT = 1.95;
+        const total = Math.round((agentPrice + (agentPrice * PAYSTACK_CHARGE_PERCENT / 100)) * 100) / 100;
+        const callbackUrl = `${window.location.origin}/agent?payment=verifying`;
+        const { data, error } = await supabase.functions.invoke("initialize-payment", {
+          body: {
+            email: userEmail,
+            amount: total,
+            phone: buyPhone.trim(),
+            callback_url: callbackUrl,
+            metadata: {
+              package_id: buyPkg.id,
+              network: buyPkg.network,
+              package_name: `${buyPkg.size_gb}GB`,
+              agent_store_id: store.id,
+              payment_method: "paystack",
+              use_agent_price: true,
+            },
+          },
+        });
+        if (error) throw error;
+        if (data?.authorization_url) {
+          window.location.href = data.authorization_url;
+        } else {
+          throw new Error(data?.error || "Failed to initialize payment");
+        }
+      } catch (err: any) {
+        toast({ title: "Payment Error", description: err.message, variant: "destructive" });
+      }
+    }
+    setBuyLoading(false);
+  };
+
   // Stats
   const totalOrders = orders.length;
   const pendingOrders = orders.filter((o) => o.status === "pending").length;
-  const totalRevenue = orders.filter((o) => o.status === "completed").reduce((sum, o) => sum + Number(o.amount), 0);
+  const totalRevenue = orders.filter((o) => o.status === "completed" || o.status === "paid").reduce((sum, o) => sum + Number(o.amount), 0);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar */}
+      <NotificationPopup />
       <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <Store className="h-6 w-6 text-primary" />
-            <span className="font-display text-lg font-bold">
-              {store?.store_name ?? "Agent Dashboard"}
-            </span>
+            <span className="font-display text-lg font-bold">{store?.store_name ?? "Agent Dashboard"}</span>
           </div>
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/admin">Admin</Link>
-              </Button>
+              <Button variant="ghost" size="sm" asChild><Link to="/admin">Admin</Link></Button>
             )}
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/">Home</Link>
-            </Button>
+            <Button variant="ghost" size="sm" asChild><Link to="/">Home</Link></Button>
             <Button variant="outline" size="sm" onClick={signOut}>
               <LogOut className="h-4 w-4 mr-1" /> Sign Out
             </Button>
@@ -239,20 +333,34 @@ const AgentDashboard = () => {
           </Card>
         )}
 
+        {/* Topup Reference Banner */}
+        {store?.topup_reference && (
+          <Card className="border-border bg-card">
+            <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Your Topup Reference</p>
+                  <p className="font-display text-3xl font-black text-primary tracking-widest">{store.topup_reference}</p>
+                </div>
+                <div className="border-l border-border pl-4">
+                  <p className="text-xs text-muted-foreground">Wallet Balance</p>
+                  <p className="font-display text-2xl font-bold text-green-400">GH₵ {Number(store.wallet_balance).toFixed(2)}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={copyRef}>
+                <Copy className="h-4 w-4 mr-1" /> Copy Ref
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <Tabs defaultValue="overview">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">
-              <BarChart3 className="h-4 w-4 mr-1" /> Overview
-            </TabsTrigger>
-            <TabsTrigger value="store">
-              <Store className="h-4 w-4 mr-1" /> Store
-            </TabsTrigger>
-            <TabsTrigger value="orders">
-              <ShoppingCart className="h-4 w-4 mr-1" /> Orders
-            </TabsTrigger>
-            <TabsTrigger value="settings">
-              <Settings className="h-4 w-4 mr-1" /> Settings
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview"><BarChart3 className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
+            <TabsTrigger value="buy"><ShoppingCart className="h-4 w-4 mr-1" /> Buy Data</TabsTrigger>
+            <TabsTrigger value="store"><Store className="h-4 w-4 mr-1" /> Store</TabsTrigger>
+            <TabsTrigger value="topup"><Wallet className="h-4 w-4 mr-1" /> Topup</TabsTrigger>
+            <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
           </TabsList>
 
           {/* OVERVIEW TAB */}
@@ -284,29 +392,93 @@ const AgentDashboard = () => {
               </Card>
             </div>
 
+            {/* Recent Orders */}
             <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="font-display text-lg">Quick Info</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">WhatsApp</p>
-                  <p className="font-semibold text-foreground">{store?.whatsapp_number ?? "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Support Line</p>
-                  <p className="font-semibold text-foreground">{store?.support_number ?? "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">MoMo</p>
-                  <p className="font-semibold text-foreground">{store?.momo_name} • {store?.momo_number}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">MoMo Network</p>
-                  <p className="font-semibold text-foreground">{store?.momo_network?.toUpperCase()}</p>
+              <CardHeader><CardTitle className="font-display text-lg">Recent Orders</CardTitle></CardHeader>
+              <CardContent>
+                {orders.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No orders yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Number</TableHead>
+                        <TableHead>Network</TableHead>
+                        <TableHead>Size</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orders.slice(0, 10).map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                          <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                          <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                          <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {order.payment_method === "wallet" ? "Wallet" : "Paystack"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={
+                              order.fulfillment_status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30"
+                                : order.fulfillment_status === "failed" ? "bg-red-600/20 text-red-400 border-red-600/30"
+                                  : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                            }>{order.fulfillment_status}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* BUY DATA TAB */}
+          <TabsContent value="buy" className="space-y-4 mt-6">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Wallet Balance</p>
+                    <p className="font-display text-2xl font-bold text-green-400">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
+                  </div>
+                  <Wallet className="h-8 w-8 text-primary" />
                 </div>
               </CardContent>
             </Card>
+
+            <div className="flex gap-2">
+              {["mtn", "airteltigo", "telecel"].map((net) => (
+                <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
+                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                </Button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {filteredPackages.map((pkg) => (
+                <Card key={pkg.id} className="border-border hover:border-primary/50 transition-all">
+                  <CardContent className="p-4 text-center space-y-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                      <Wifi className="h-5 w-5 text-primary" />
+                    </div>
+                    <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p>
+                    <p className="text-lg font-bold text-primary">GH₵ {Number(pkg.agent_price).toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Agent Price</p>
+                    <Button variant="hero" size="sm" className="w-full" onClick={() => openBuyDialog(pkg)}>
+                      Buy Now
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
 
           {/* STORE TAB - Customize Prices */}
@@ -325,11 +497,7 @@ const AgentDashboard = () => {
                 </Button>
               )}
             </div>
-
-            <p className="text-sm text-muted-foreground">
-              Set your own sell prices for each package. Your cost (agent price) is fixed — you keep the difference as profit.
-            </p>
-
+            <p className="text-sm text-muted-foreground">Set your sell prices. Your cost is fixed — keep the difference as profit.</p>
             <Card className="border-border">
               <Table>
                 <TableHeader>
@@ -349,13 +517,9 @@ const AgentDashboard = () => {
                         <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
                         <TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell>
                         <TableCell>
-                          <Input
-                            type="number"
-                            step="0.01"
+                          <Input type="number" step="0.01"
                             value={editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price}
-                            onChange={(e) => handlePriceChange(pkg.id, e.target.value)}
-                            className="w-24 h-8"
-                          />
+                            onChange={(e) => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" />
                         </TableCell>
                         <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
                           GH₵ {profit.toFixed(2)}
@@ -368,52 +532,56 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* ORDERS TAB */}
-          <TabsContent value="orders" className="space-y-4 mt-6">
-            {orders.length === 0 ? (
-              <Card className="border-border">
-                <CardContent className="p-12 text-center">
-                  <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No orders yet. Share your store link to start receiving orders!</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Number</TableHead>
-                      <TableHead>Network</TableHead>
-                      <TableHead>Size</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="text-sm">
-                          {new Date(order.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
-                        <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                        <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
-                        <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Badge className={order.status === "completed"
-                            ? "bg-green-600/20 text-green-400 border-green-600/30"
-                            : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                          }>
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Card>
-            )}
+          {/* TOPUP TAB */}
+          <TabsContent value="topup" className="space-y-6 mt-6">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-6 text-center space-y-2">
+                <Wallet className="h-10 w-10 text-primary mx-auto" />
+                <p className="text-muted-foreground text-sm">Current Wallet Balance</p>
+                <p className="font-display text-4xl font-black text-green-400">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display text-lg">How to Top Up</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-xl border border-border bg-secondary/50 p-6 space-y-4">
+                  <p className="text-sm text-foreground font-semibold">Send money via MoMo to:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="text-center p-3 rounded-lg bg-background border border-border">
+                      <p className="text-xs text-muted-foreground">Number</p>
+                      <p className="font-display text-lg font-bold text-foreground">0550617425</p>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-background border border-border">
+                      <p className="text-xs text-muted-foreground">Name</p>
+                      <p className="font-display text-lg font-bold text-foreground">ADABAH MICHAEL JUNIOR</p>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-background border border-border">
+                      <p className="text-xs text-muted-foreground">Network</p>
+                      <p className="font-display text-lg font-bold text-foreground">MTN</p>
+                    </div>
+                  </div>
+                  <div className="border-t border-border pt-4">
+                    <p className="text-sm text-foreground text-center">
+                      Use your <span className="font-bold text-primary">Topup Reference</span> as payment reference when sending money:
+                    </p>
+                    <div className="flex items-center justify-center gap-3 mt-3">
+                      <p className="font-display text-4xl font-black text-primary tracking-widest">{store?.topup_reference}</p>
+                      <Button variant="outline" size="sm" onClick={copyRef}>
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
+                    <p className="text-xs text-foreground text-center">
+                      After sending, your wallet will be credited by the admin within a few minutes. You'll see the balance update automatically.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* SETTINGS TAB */}
@@ -431,34 +599,13 @@ const AgentDashboard = () => {
                 {editingStore ? (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Store Name</Label>
-                        <Input value={storeForm.store_name} onChange={(e) => setStoreForm({ ...storeForm, store_name: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>WhatsApp Number</Label>
-                        <Input value={storeForm.whatsapp_number} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Support Number</Label>
-                        <Input value={storeForm.support_number} onChange={(e) => setStoreForm({ ...storeForm, support_number: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>WhatsApp Group Link</Label>
-                        <Input value={storeForm.whatsapp_group} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Optional" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>MoMo Name</Label>
-                        <Input value={storeForm.momo_name} onChange={(e) => setStoreForm({ ...storeForm, momo_name: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>MoMo Number</Label>
-                        <Input value={storeForm.momo_number} onChange={(e) => setStoreForm({ ...storeForm, momo_number: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>MoMo Network</Label>
-                        <Input value={storeForm.momo_network} onChange={(e) => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" />
-                      </div>
+                      <div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={(e) => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>Support Number</Label><Input value={storeForm.support_number} onChange={(e) => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>WhatsApp Group Link</Label><Input value={storeForm.whatsapp_group} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Optional" /></div>
+                      <div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={(e) => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>MoMo Number</Label><Input value={storeForm.momo_number} onChange={(e) => setStoreForm({ ...storeForm, momo_number: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>MoMo Network</Label><Input value={storeForm.momo_network} onChange={(e) => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" /></div>
                     </div>
                     <div className="flex gap-2 pt-2">
                       <Button variant="hero" size="sm" onClick={saveStoreInfo} disabled={savingStore}>
@@ -469,38 +616,14 @@ const AgentDashboard = () => {
                   </>
                 ) : (
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Store Name</p>
-                      <p className="font-semibold text-foreground">{store?.store_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">WhatsApp</p>
-                      <p className="font-semibold text-foreground">{store?.whatsapp_number}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Support Number</p>
-                      <p className="font-semibold text-foreground">{store?.support_number}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">WhatsApp Group</p>
-                      <p className="font-semibold text-foreground">{store?.whatsapp_group || "Not set"}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">MoMo Name</p>
-                      <p className="font-semibold text-foreground">{store?.momo_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">MoMo Number</p>
-                      <p className="font-semibold text-foreground">{store?.momo_number}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">MoMo Network</p>
-                      <p className="font-semibold text-foreground">{store?.momo_network?.toUpperCase()}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Status</p>
-                      <Badge className="bg-green-600/20 text-green-400 border-green-600/30">Approved</Badge>
-                    </div>
+                    <div><p className="text-muted-foreground">Store Name</p><p className="font-semibold text-foreground">{store?.store_name}</p></div>
+                    <div><p className="text-muted-foreground">WhatsApp</p><p className="font-semibold text-foreground">{store?.whatsapp_number}</p></div>
+                    <div><p className="text-muted-foreground">Support Number</p><p className="font-semibold text-foreground">{store?.support_number}</p></div>
+                    <div><p className="text-muted-foreground">WhatsApp Group</p><p className="font-semibold text-foreground">{store?.whatsapp_group || "Not set"}</p></div>
+                    <div><p className="text-muted-foreground">MoMo Name</p><p className="font-semibold text-foreground">{store?.momo_name}</p></div>
+                    <div><p className="text-muted-foreground">MoMo Number</p><p className="font-semibold text-foreground">{store?.momo_number}</p></div>
+                    <div><p className="text-muted-foreground">MoMo Network</p><p className="font-semibold text-foreground">{store?.momo_network?.toUpperCase()}</p></div>
+                    <div><p className="text-muted-foreground">Topup Reference</p><p className="font-display text-xl font-bold text-primary">{store?.topup_reference}</p></div>
                   </div>
                 )}
               </CardContent>
@@ -508,6 +631,80 @@ const AgentDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Buy Data Dialog */}
+      <Dialog open={buyDialogOpen} onOpenChange={(v) => { if (!v) setBuyDialogOpen(false); }}>
+        <DialogContent className="sm:max-w-md border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">
+              Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}
+            </DialogTitle>
+            <DialogDescription>Purchase data at agent price</DialogDescription>
+          </DialogHeader>
+
+          {buyStep === "phone" ? (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Recipient Phone Number</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input type="tel" placeholder="0XX XXX XXXX" value={buyPhone}
+                    onChange={(e) => setBuyPhone(e.target.value)} className="pl-10" autoFocus />
+                </div>
+              </div>
+              <Button variant="hero" className="w-full" onClick={() => {
+                if (buyPhone.trim().length < 10) {
+                  toast({ title: "Invalid number", variant: "destructive" });
+                  return;
+                }
+                setBuyStep("confirm");
+              }}>Continue</Button>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Package</span>
+                  <span className="font-semibold text-foreground">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Phone</span>
+                  <span className="font-semibold text-foreground">{buyPhone}</span>
+                </div>
+                <div className="border-t border-border my-1" />
+                <div className="flex justify-between text-base font-bold">
+                  <span className="text-foreground">Agent Price</span>
+                  <span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Payment Method</Label>
+                <Select value={buyPaymentMethod} onValueChange={(v) => setBuyPaymentMethod(v as "wallet" | "paystack")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="wallet">
+                      <span className="flex items-center gap-2"><Wallet className="h-4 w-4" /> Wallet (GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)})</span>
+                    </SelectItem>
+                    <SelectItem value="paystack">
+                      <span className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Paystack (+ 1.95% charge)</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button>
+                <Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>
+                  {buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing...</> : "Confirm Purchase"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

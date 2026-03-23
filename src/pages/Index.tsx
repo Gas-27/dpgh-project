@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import NotificationPopup from "@/components/NotificationPopup";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import TrustTicker from "@/components/TrustTicker";
@@ -25,6 +26,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <NotificationPopup />
       <Navbar />
       <HeroSection />
       <TrustTicker />
