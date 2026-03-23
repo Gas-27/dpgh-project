@@ -26,6 +26,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <NotificationPopup />
       <Navbar />
       <HeroSection />
       <TrustTicker />
