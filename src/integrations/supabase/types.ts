@@ -321,6 +321,41 @@ export type Database = {
           },
         ]
       }
+      withdrawal_requests: {
+        Row: {
+          agent_store_id: string
+          amount: number
+          created_at: string
+          id: string
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          agent_store_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          agent_store_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_requests_agent_store_id_fkey"
+            columns: ["agent_store_id"]
+            isOneToOne: false
+            referencedRelation: "agent_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
