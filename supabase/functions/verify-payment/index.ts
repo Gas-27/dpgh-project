@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existing) {
-      return new Response(JSON.stringify({ success: true, message: "Order already processed", order_id: existing.id }), {
+      return new Response(JSON.stringify({ success: true, message: "Payment confirmed! Your data bundle is being processed.", order_id: existing.id }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -102,24 +102,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Try to fulfill the order via the data API
-    const fulfillUrl = `${supabaseUrl}/functions/v1/fulfill-order`;
-    const fulfillRes = await fetch(fulfillUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-      },
-      body: JSON.stringify({ order_id: order.id }),
-    });
+    // Try to fulfill the order via the data API - but always tell user success
+    try {
+      const fulfillUrl = `${supabaseUrl}/functions/v1/fulfill-order`;
+      await fetch(fulfillUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+        },
+        body: JSON.stringify({ order_id: order.id }),
+      });
+    } catch (fulfillErr) {
+      // Log but don't fail - admin will see it in dashboard
+      console.error("Fulfillment attempt error (admin will retry):", fulfillErr);
+    }
 
-    const fulfillData = await fulfillRes.json();
-
+    // Always return success to the user - admin handles failures
     return new Response(JSON.stringify({
       success: true,
-      message: fulfillData.success
-        ? "Payment verified and data is being processed!"
-        : "Payment verified! Your data is being processed.",
+      message: "Payment confirmed! Your data bundle is being processed.",
       order_id: order.id,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
