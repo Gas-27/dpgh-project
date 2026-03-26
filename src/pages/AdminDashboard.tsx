@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -44,6 +44,11 @@ interface Order {
   payment_method: string;
 }
 
+interface WithdrawalRequest {
+  id: string; agent_store_id: string; amount: number; status: string;
+  created_at: string; processed_at: string | null;
+}
+
 const AdminDashboard = () => {
   const { signOut } = useAuth();
   const { toast } = useToast();
@@ -51,6 +56,7 @@ const AdminDashboard = () => {
   const [agents, setAgents] = useState<AgentStore[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number }>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [saving, setSaving] = useState(false);
@@ -58,6 +64,7 @@ const AdminDashboard = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newPkg, setNewPkg] = useState({ network: "mtn", size_gb: "", price: "", agent_price: "" });
   const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
+  const [processingWithdrawals, setProcessingWithdrawals] = useState<Set<string>>(new Set());
 
   // Topup state
   const [topupSearch, setTopupSearch] = useState("");
@@ -73,16 +80,18 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     setDataLoading(true);
-    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes] = await Promise.all([
+    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes] = await Promise.all([
       supabase.from("data_packages").select("*").order("size_gb"),
       supabase.from("agent_stores").select("*").order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("*"),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("withdrawal_requests").select("*").order("created_at", { ascending: false }),
     ]);
     setPackages(pkgRes.data ?? []);
     setAgents((agentRes.data as AgentStore[]) ?? []);
     setOrders((ordersRes.data as Order[]) ?? []);
+    setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
 
     const rolesMap: Record<string, string> = {};
     (rolesRes.data ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
@@ -219,9 +228,37 @@ const AdminDashboard = () => {
     setSendingNotif(false);
   };
 
+  // Process withdrawal
+  const processWithdrawal = async (withdrawalId: string, agentStoreId: string, amount: number) => {
+    setProcessingWithdrawals((prev) => new Set(prev).add(withdrawalId));
+    try {
+      // Deduct from agent wallet
+      const agent = agents.find((a) => a.id === agentStoreId);
+      if (!agent) throw new Error("Agent not found");
+      const newBalance = Math.max(0, Number(agent.wallet_balance) - amount);
+      
+      const { error: walletErr } = await supabase.from("agent_stores")
+        .update({ wallet_balance: newBalance }).eq("id", agentStoreId);
+      if (walletErr) throw walletErr;
+
+      const { error: statusErr } = await supabase.from("withdrawal_requests")
+        .update({ status: "completed", processed_at: new Date().toISOString() })
+        .eq("id", withdrawalId);
+      if (statusErr) throw statusErr;
+
+      toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted from agent wallet.` });
+      await fetchData();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessingWithdrawals((prev) => { const next = new Set(prev); next.delete(withdrawalId); return next; });
+    }
+  };
+
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const storeSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
+  const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
 
   if (dataLoading) {
     return (
@@ -257,6 +294,10 @@ const AdminDashboard = () => {
             </TabsTrigger>
             <TabsTrigger value="agents">Agents ({agents.filter((a) => !a.approved).length})</TabsTrigger>
             <TabsTrigger value="topup"><Wallet className="h-4 w-4 mr-1" /> Topup</TabsTrigger>
+            <TabsTrigger value="withdrawals">
+              <ArrowDownToLine className="h-4 w-4 mr-1" /> Withdrawals
+              {pendingWithdrawals.length > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1.5 py-0">{pendingWithdrawals.length}</Badge>}
+            </TabsTrigger>
             <TabsTrigger value="users"><Users className="h-4 w-4 mr-1" /> Users</TabsTrigger>
             <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1" /> Notify</TabsTrigger>
           </TabsList>
@@ -325,7 +366,7 @@ const AdminDashboard = () => {
             {failedCount > 0 && (
               <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
                 <p className="text-sm text-foreground">
-                  <span className="font-bold text-destructive">{failedCount} failed</span> order(s) — top up API balance and retry.
+                  <span className="font-bold text-destructive">{failedCount} failed</span> order(s) — payment received but data not fulfilled. Top up API balance and retry.
                 </p>
                 <Button variant="destructive" size="sm" onClick={retryAllFailed}>
                   <RefreshCw className="h-4 w-4 mr-1" /> Retry All Failed
@@ -479,6 +520,70 @@ const AdminDashboard = () => {
                   </div>
                 )}
               </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* WITHDRAWALS TAB */}
+          <TabsContent value="withdrawals" className="space-y-4">
+            {pendingWithdrawals.length > 0 && (
+              <div className="p-4 rounded-lg border border-yellow-600/30 bg-yellow-600/5">
+                <p className="text-sm text-foreground">
+                  <span className="font-bold text-yellow-400">{pendingWithdrawals.length} pending</span> withdrawal request(s) awaiting processing.
+                </p>
+              </div>
+            )}
+            <Card className="border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Agent</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Wallet Balance</TableHead>
+                    <TableHead>MoMo Name</TableHead>
+                    <TableHead>MoMo Number</TableHead>
+                    <TableHead>Network</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {withdrawals.length === 0 ? (
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No withdrawal requests yet.</TableCell></TableRow>
+                  ) : (
+                    withdrawals.map((w) => {
+                      const agent = agents.find((a) => a.id === w.agent_store_id);
+                      return (
+                        <TableRow key={w.id}>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(w.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="font-medium">{agent?.store_name ?? "—"}</TableCell>
+                          <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
+                          <TableCell className="font-bold text-green-400">GH₵ {Number(agent?.wallet_balance ?? 0).toFixed(2)}</TableCell>
+                          <TableCell>{agent?.momo_name ?? "—"}</TableCell>
+                          <TableCell className="font-mono">{agent?.momo_number ?? "—"}</TableCell>
+                          <TableCell className="uppercase text-sm">{agent?.momo_network ?? "—"}</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30"
+                                : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                            }>{w.status}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {w.status === "pending" && (
+                              <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount))}
+                                disabled={processingWithdrawals.has(w.id)}>
+                                {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
             </Card>
           </TabsContent>
 

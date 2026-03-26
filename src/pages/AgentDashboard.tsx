@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import {
   Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
-  LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2,
+  LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -57,12 +57,20 @@ interface Order {
   created_at: string;
 }
 
+interface WithdrawalRequest {
+  id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+}
+
 const AgentDashboard = () => {
   const { user, isAgent, isAdmin, loading: authLoading, signOut } = useAuth();
   const { toast } = useToast();
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -83,6 +91,10 @@ const AgentDashboard = () => {
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"wallet" | "paystack">("wallet");
   const [buyLoading, setBuyLoading] = useState(false);
 
+  // Withdrawal state
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
@@ -96,16 +108,18 @@ const AgentDashboard = () => {
           support_number: storeData.support_number, whatsapp_group: storeData.whatsapp_group || "",
           momo_number: storeData.momo_number, momo_name: storeData.momo_name, momo_network: storeData.momo_network,
         });
-        const [pkgRes, priceRes, orderRes] = await Promise.all([
+        const [pkgRes, priceRes, orderRes, withdrawRes] = await Promise.all([
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", storeData.id),
           supabase.from("orders").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }).limit(50),
+          supabase.from("withdrawal_requests").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }),
         ]);
         setPackages(pkgRes.data ?? []);
         const priceMap: Record<string, number> = {};
         (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
         setAgentPrices(priceMap);
         setOrders((orderRes.data as Order[]) ?? []);
+        setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
       } else {
         const { data: pkgData } = await supabase.from("data_packages").select("*").eq("active", true).order("size_gb");
         setPackages(pkgData ?? []);
@@ -211,7 +225,6 @@ const AgentDashboard = () => {
         setBuyLoading(false);
         return;
       }
-      // Deduct wallet and create order
       const { error: walletErr } = await supabase.from("agent_stores")
         .update({ wallet_balance: Number(store.wallet_balance) - agentPrice })
         .eq("id", store.id);
@@ -220,8 +233,7 @@ const AgentDashboard = () => {
         setBuyLoading(false);
         return;
       }
-      // Create order
-      const { error: orderErr } = await supabase.from("orders").insert({
+      const { data: orderData, error: orderErr } = await supabase.from("orders").insert({
         customer_number: buyPhone.trim(),
         network: buyPkg.network,
         size_gb: buyPkg.size_gb,
@@ -231,25 +243,23 @@ const AgentDashboard = () => {
         status: "paid",
         fulfillment_status: "pending",
         payment_method: "wallet",
-      });
+      }).select("id").single();
       if (orderErr) {
         toast({ title: "Order error", description: orderErr.message, variant: "destructive" });
         setBuyLoading(false);
         return;
       }
-      // Trigger fulfillment
+      // Trigger fulfillment with order_id
       await supabase.functions.invoke("fulfill-order", {
-        body: { phone: buyPhone.trim(), size: buyPkg.size_gb, network: buyPkg.network },
+        body: { order_id: orderData.id },
       });
       setStore({ ...store, wallet_balance: Number(store.wallet_balance) - agentPrice });
       toast({ title: "Order placed!", description: "Your data is being processed." });
       setBuyDialogOpen(false);
-      // Refresh orders
       const { data: newOrders } = await supabase.from("orders").select("*")
         .eq("agent_store_id", store.id).order("created_at", { ascending: false }).limit(50);
       setOrders((newOrders as Order[]) ?? []);
     } else {
-      // Paystack flow - redirect to paystack, do NOT deduct wallet
       try {
         const userEmail = user?.email || `agent-${store.id}@datapluggh.com`;
         const PAYSTACK_CHARGE_PERCENT = 1.95;
@@ -282,6 +292,38 @@ const AgentDashboard = () => {
       }
     }
     setBuyLoading(false);
+  };
+
+  // Withdrawal
+  const handleWithdraw = async () => {
+    if (!store) return;
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount < 10) {
+      toast({ title: "Minimum withdrawal is GH₵ 10.00", variant: "destructive" });
+      return;
+    }
+    // Calculate total profits (revenue from storefront orders minus agent cost)
+    const totalProfits = Number(store.wallet_balance);
+    if (amount > totalProfits) {
+      toast({ title: "Insufficient balance", description: `Your wallet balance is GH₵ ${totalProfits.toFixed(2)}`, variant: "destructive" });
+      return;
+    }
+    setWithdrawLoading(true);
+    const { error } = await supabase.from("withdrawal_requests").insert({
+      agent_store_id: store.id,
+      amount,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Withdrawal request placed!", description: "You will receive payment within 24 hours." });
+      setWithdrawAmount("");
+      // Refresh withdrawals
+      const { data } = await supabase.from("withdrawal_requests").select("*")
+        .eq("agent_store_id", store.id).order("created_at", { ascending: false });
+      setWithdrawals((data as WithdrawalRequest[]) ?? []);
+    }
+    setWithdrawLoading(false);
   };
 
   // Stats
@@ -355,11 +397,12 @@ const AgentDashboard = () => {
         )}
 
         <Tabs defaultValue="overview">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview"><BarChart3 className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
             <TabsTrigger value="buy"><ShoppingCart className="h-4 w-4 mr-1" /> Buy Data</TabsTrigger>
             <TabsTrigger value="store"><Store className="h-4 w-4 mr-1" /> Store</TabsTrigger>
             <TabsTrigger value="topup"><Wallet className="h-4 w-4 mr-1" /> Topup</TabsTrigger>
+            <TabsTrigger value="withdraw"><ArrowDownToLine className="h-4 w-4 mr-1" /> Withdraw</TabsTrigger>
             <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
           </TabsList>
 
@@ -426,10 +469,9 @@ const AgentDashboard = () => {
                           </TableCell>
                           <TableCell>
                             <Badge className={
-                              order.fulfillment_status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30"
-                                : order.fulfillment_status === "failed" ? "bg-red-600/20 text-red-400 border-red-600/30"
-                                  : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                            }>{order.fulfillment_status}</Badge>
+                              order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30"
+                                : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                            }>{order.status === "paid" ? "completed" : order.status}</Badge>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -582,6 +624,86 @@ const AgentDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* WITHDRAW TAB */}
+          <TabsContent value="withdraw" className="space-y-6 mt-6">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-6 text-center space-y-2">
+                <ArrowDownToLine className="h-10 w-10 text-primary mx-auto" />
+                <p className="text-muted-foreground text-sm">Available for Withdrawal</p>
+                <p className="font-display text-4xl font-black text-green-400">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display text-lg">Request Withdrawal</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">MoMo Name</p>
+                      <p className="font-bold text-foreground">{store?.momo_name}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">MoMo Number</p>
+                      <p className="font-bold text-foreground">{store?.momo_number}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Network</p>
+                      <p className="font-bold text-foreground">{store?.momo_network?.toUpperCase()}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Minimum withdrawal: GH₵ 10.00. Withdrawals are processed within 24 hours.</p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 space-y-1">
+                    <Label>Amount (GH₵)</Label>
+                    <Input type="number" step="0.01" placeholder="e.g. 50.00" value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)} />
+                  </div>
+                  <Button variant="hero" onClick={handleWithdraw} disabled={withdrawLoading}>
+                    {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                    Withdraw
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Withdrawal History */}
+            {withdrawals.length > 0 && (
+              <Card className="border-border">
+                <CardHeader><CardTitle className="font-display text-lg">Withdrawal History</CardTitle></CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {withdrawals.map((w) => (
+                        <TableRow key={w.id}>
+                          <TableCell className="text-sm">{new Date(w.created_at).toLocaleString()}</TableCell>
+                          <TableCell className="font-bold">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30"
+                                : w.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                                  : "bg-red-600/20 text-red-400 border-red-600/30"
+                            }>{w.status}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* SETTINGS TAB */}
