@@ -17,6 +17,7 @@ const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AgentDashboard = lazy(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazy(() => import("./pages/AgentStorefront"));
+const AgentRegistrationCallback = lazy(() => import("./pages/AgentRegistrationCallback"));
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/agent-onboarding" element={<AgentOnboarding />} />
               <Route path="/pending-approval" element={<PendingApproval />} />
               <Route path="/store/:storeName" element={<AgentStorefront />} />
+              <Route path="/agent-registration-callback" element={<AgentRegistrationCallback />} />
               <Route
                 path="/admin"
                 element={

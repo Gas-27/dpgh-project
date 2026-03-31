@@ -25,7 +25,7 @@ const Footer = () => {
         <div className="space-y-3">
           <h4 className="font-display text-sm font-semibold">Contact</h4>
           <div className="space-y-2 text-xs text-muted-foreground">
-            <a href="https://wa.me/233000000000" target="_blank" rel="noopener noreferrer" className="block hover:text-foreground transition-colors">WhatsApp Support</a>
+            <a href="https://wa.me/233200511211" target="_blank" rel="noopener noreferrer" className="block hover:text-foreground transition-colors">WhatsApp Support</a>
             <a href="mailto:support@datapluggh.com" className="block hover:text-foreground transition-colors">support@datapluggh.com</a>
           </div>
         </div>
