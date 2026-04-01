@@ -152,10 +152,11 @@ const AgentRegistrationCallback = () => {
                     <Button onClick={() => navigate("/agent-onboarding")} variant="outline">
                         Try Again
                     </Button>
+                </CardContent>
             </Card>
-        </Card>
-    </div >
-  );
+
+        </div >
+    );
 };
 
 export default AgentRegistrationCallback;
