@@ -106,7 +106,7 @@ const AgentOnboarding = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>MoMo Network</Label>
-                    <Select value={momoNetwork} onValueChange={setMomoNetwork} required>
+                    <Select value={momoNetwork} onValueChange={setMomoNetwork}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>

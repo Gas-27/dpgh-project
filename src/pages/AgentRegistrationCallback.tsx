@@ -84,7 +84,7 @@ const AgentRegistrationCallback = () => {
 
                 // Redirect after 3 seconds
                 setTimeout(() => {
-                    navigate("/agent-dashboard");
+                    navigate("/agent");
                 }, 3000);
 
             } catch (err: any) {
