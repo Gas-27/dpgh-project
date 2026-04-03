@@ -55,7 +55,7 @@ const AgentRegistrationCallback = () => {
                     }
                 }
 
-                // Create the agent store
+                // Create the agent store with auto-approval after payment
                 const { error: insertError } = await supabase.from("agent_stores").insert({
                     user_id: userId,
                     store_name: storeData.store_name,
@@ -65,6 +65,7 @@ const AgentRegistrationCallback = () => {
                     momo_number: storeData.momo_number,
                     momo_name: storeData.momo_name,
                     momo_network: storeData.momo_network,
+                    approved: true,
                 });
 
                 if (insertError) throw insertError;
@@ -76,14 +77,14 @@ const AgentRegistrationCallback = () => {
 
                 toast({
                     title: "Registration Successful!",
-                    description: "Your store has been created and is pending approval.",
+                    description: "Your store has been created and automatically approved!",
                 });
 
                 setStatus("success");
 
                 // Redirect after 3 seconds
                 setTimeout(() => {
-                    navigate("/pending-approval");
+                    navigate("/agent-dashboard");
                 }, 3000);
 
             } catch (err: any) {
@@ -130,7 +131,7 @@ const AgentRegistrationCallback = () => {
                         </div>
                         <h2 className="text-xl font-semibold">Payment Successful!</h2>
                         <p className="text-muted-foreground">
-                            Your store is being set up. Redirecting you to the pending approval page...
+                            Your store has been created and approved! Redirecting you to your dashboard...
                         </p>
                     </CardContent>
                 </Card>

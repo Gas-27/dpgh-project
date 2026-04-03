@@ -21,7 +21,7 @@ interface PaymentModalProps {
     storeData: any;
 }
 
-const AGENT_REGISTRATION_FEE = 50;
+const AGENT_REGISTRATION_FEE = 17;
 
 export const PaymentModal = ({
     open,
