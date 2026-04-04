@@ -66,10 +66,11 @@ export const PaymentModal = ({
                 throw new Error(data?.error || "No authorization URL received");
             }
         } catch (err: any) {
-            console.error("Payment initialization error:", err);
+            console.error("[v0] Payment initialization error:", err);
+            const errorDescription = err?.message || err?.error?.message || "Failed to initialize payment. Please try again.";
             toast({
                 title: "Payment Error",
-                description: err.message || "Failed to initialize payment",
+                description: errorDescription,
                 variant: "destructive"
             });
         } finally {

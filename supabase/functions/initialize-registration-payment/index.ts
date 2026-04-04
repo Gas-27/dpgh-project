@@ -16,21 +16,40 @@ Deno.serve(async (req) => {
         const { email, amount, phone, metadata } = await req.json();
 
         if (!email || !amount || !phone) {
-            return new Response(JSON.stringify({ error: "Missing required fields" }), {
+            return new Response(JSON.stringify({ error: "Missing required fields: email, amount, phone" }), {
                 status: 400,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
         }
 
         const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+        const APP_URL = Deno.env.get("APP_URL");
+
         if (!PAYSTACK_SECRET_KEY) {
+            console.error("[PAYMENT] PAYSTACK_SECRET_KEY not configured");
             return new Response(JSON.stringify({ error: "Paystack not configured" }), {
                 status: 500,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
         }
 
+        if (!APP_URL) {
+            console.error("[PAYMENT] APP_URL not configured");
+            return new Response(JSON.stringify({ error: "APP_URL not configured" }), {
+                status: 500,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+
         const amountInPesewas = Math.round(amount * 100);
+
+        console.log("[PAYMENT] Initializing payment:", {
+            email,
+            amount,
+            phone,
+            amountInPesewas,
+            callback_url: `${APP_URL}/agent-registration-callback`,
+        });
 
         const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
             method: "POST",
@@ -42,7 +61,7 @@ Deno.serve(async (req) => {
                 email,
                 amount: amountInPesewas,
                 currency: "GHS",
-                callback_url: `${Deno.env.get("APP_URL")}/agent-registration-callback`,
+                callback_url: `${APP_URL}/agent-registration-callback`,
                 metadata: {
                     ...metadata,
                     phone,
@@ -53,7 +72,10 @@ Deno.serve(async (req) => {
 
         const result = await paystackRes.json();
 
+        console.log("[PAYMENT] Paystack response:", result);
+
         if (!result.status) {
+            console.error("[PAYMENT] Paystack error:", result.message);
             return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
                 status: 400,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -64,10 +86,13 @@ Deno.serve(async (req) => {
             authorization_url: result.data.authorization_url,
             reference: result.data.reference
         }), {
+            status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
     } catch (err) {
-        return new Response(JSON.stringify({ error: (err as Error).message }), {
+        const errorMessage = (err as Error).message;
+        console.error("[PAYMENT] Error:", errorMessage, err);
+        return new Response(JSON.stringify({ error: errorMessage || "Internal server error" }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
