@@ -23,6 +23,7 @@ interface PaymentDialogProps {
   price: number;
   packageId: string;
   agentStoreId?: string;
+  sellingPrice?: number;
 }
 
 const PAYSTACK_CHARGE_PERCENT = 1.95;
@@ -41,6 +42,7 @@ const PaymentDialog = ({
   price,
   packageId,
   agentStoreId,
+  sellingPrice,
 }: PaymentDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -85,6 +87,7 @@ const PaymentDialog = ({
             network,
             package_name: packageName,
             agent_store_id: agentStoreId || null,
+            selling_price: sellingPrice || price,
           },
         },
       });

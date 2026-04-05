@@ -87,7 +87,7 @@ const PendingApproval = () => {
 
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  You also agent prices are cheaper than users price. To complete your store approval, please make a payment of:
+                  You also get agent prices that are cheaper than users price. To complete your store approval, please make a payment of:
                 </p>
                 <div className="text-center">
                   <span className="text-3xl font-bold text-primary">GHC 15.00</span>

@@ -1,12 +1,34 @@
-import { Zap, Menu, X, LayoutDashboard, Loader2 } from "lucide-react";
+import { Zap, Menu, X, LayoutDashboard, Loader2, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const { user, isAdmin, isAgent, signOut, getDashboardRoute, loading } = useAuth();
+
+  useEffect(() => {
+    // Check if dark mode is enabled
+    const isDarkMode = document.documentElement.classList.contains("dark");
+    setIsDark(isDarkMode);
+  }, []);
+
+  const toggleTheme = () => {
+    const htmlElement = document.documentElement;
+    const newIsDark = !isDark;
+    
+    if (newIsDark) {
+      htmlElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      htmlElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+    
+    setIsDark(newIsDark);
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
@@ -22,6 +44,12 @@ const Navbar = () => {
           <Link to="/packages" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Packages</Link>
           <Link to="/#services" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Services</Link>
           <Link to="/#agent" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Become an Agent</Link>
+        </div>
+
+        <div className="hidden items-center gap-3 md:flex">
+          <Button variant="ghost" size="sm" onClick={toggleTheme}>
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
         </div>
 
         <div className="hidden items-center gap-3 md:flex">

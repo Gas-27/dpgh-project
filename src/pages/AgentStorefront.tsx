@@ -240,6 +240,7 @@ const AgentStorefront = () => {
           price={Number(selectedPaymentPrice)}
           packageId={paymentPkg.id}
           agentStoreId={store.id}
+          sellingPrice={Number(selectedPaymentPrice)}
         />
       )}
       <PaymentVerifier />

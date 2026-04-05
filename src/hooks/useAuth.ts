@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let sessionCheckTimeout: NodeJS.Timeout;
 
     const syncSession = async (currentUser: User | null, forceRoles = false) => {
       if (!mounted) return;
@@ -69,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       const shouldRefreshRoles = event === "SIGNED_IN" || event === "USER_UPDATED";
-      if (!session?.user) {
+      if (!session?.user && event === "SIGNED_OUT") {
         rolesCache.current = {};
       }
       void syncSession(session?.user ?? null, shouldRefreshRoles);
@@ -79,9 +80,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void syncSession(session?.user ?? null);
     });
 
+    // Periodically refresh session to prevent auto-logout
+    sessionCheckTimeout = setInterval(async () => {
+      if (mounted) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && !user) {
+          void syncSession(session.user);
+        }
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      clearInterval(sessionCheckTimeout);
     };
   }, [fetchRoles]);
 
