@@ -56,6 +56,8 @@ interface Order {
   payment_method: string;
   created_at: string;
   selling_price?: number;
+  package_id?: string;
+  agent_store_id?: string;
 }
 
 interface WithdrawalRequest {
@@ -66,35 +68,35 @@ interface WithdrawalRequest {
 }
 
 const AgentDashboard = () => {
-//   const { user, isAgent, isAdmin, loading: authLoading, signOut } = useAuth();
-//   const { toast } = useToast();
-//   const [store, setStore] = useState<AgentStore | null>(null);
-//   const [packages, setPackages] = useState<DataPackage[]>([]);
-//   const [orders, setOrders] = useState<Order[]>([]);
-//   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
-//   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
-//   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
-//   const [loading, setLoading] = useState(true);
-//   const [networkFilter, setNetworkFilter] = useState("mtn");
-//   const [savingPrices, setSavingPrices] = useState(false);
-//   const [editingStore, setEditingStore] = useState(false);
-//   const [storeForm, setStoreForm] = useState({
-//     store_name: "", whatsapp_number: "", support_number: "", whatsapp_group: "",
-//     momo_number: "", momo_name: "", momo_network: "",
-//   });
-//   const [savingStore, setSavingStore] = useState(false);
+  const { user, isAgent, isAdmin, loading: authLoading, signOut } = useAuth();
+  const { toast } = useToast();
+  const [store, setStore] = useState<AgentStore | null>(null);
+  const [packages, setPackages] = useState<DataPackage[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
+  const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
+  const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [networkFilter, setNetworkFilter] = useState("mtn");
+  const [savingPrices, setSavingPrices] = useState(false);
+  const [editingStore, setEditingStore] = useState(false);
+  const [storeForm, setStoreForm] = useState({
+    store_name: "", whatsapp_number: "", support_number: "", whatsapp_group: "",
+    momo_number: "", momo_name: "", momo_network: "",
+  });
+  const [savingStore, setSavingStore] = useState(false);
 
-//   // Buy data dialog state
-//   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
-//   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
-//   const [buyPhone, setBuyPhone] = useState("");
-//   const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
-//   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"wallet" | "paystack">("wallet");
-//   const [buyLoading, setBuyLoading] = useState(false);
+  // Buy data dialog state
+  const [buyDialogOpen, setBuyDialogOpen] = useState(false);
+  const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
+  const [buyPhone, setBuyPhone] = useState("");
+  const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
+  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"wallet" | "paystack">("wallet");
+  const [buyLoading, setBuyLoading] = useState(false);
 
-//   // Withdrawal state
-//   const [withdrawAmount, setWithdrawAmount] = useState("");
-//   const [withdrawLoading, setWithdrawLoading] = useState(false);
+  // Withdrawal state
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
