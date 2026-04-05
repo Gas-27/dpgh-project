@@ -165,9 +165,14 @@ const PaymentDialog = ({
                 <span className="text-primary">GH₵ {total.toFixed(2)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="h-4 w-4 text-primary flex-shrink-0" />
-              Secured by Paystack. Your payment is safe.
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 text-primary flex-shrink-0" />
+                Secured by Paystack. Your payment is safe.
+              </div>
+              <div className="text-xs text-red-600 dark:text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-2">
+                ⚠️ After payment please wait for paystack to confirm payment and bring you back to the site automatically before leaving the page this is urgent
+              </div>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setStep("phone")} disabled={loading}>

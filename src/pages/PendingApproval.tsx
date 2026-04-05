@@ -82,12 +82,12 @@ const PendingApproval = () => {
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
                 <AlertCircle className="h-5 w-5" />
-                <span className="text-sm font-semibold">Payment Required for Approval</span>
+                <span className="text-sm font-semibold">Pay to get your own site and shop where you set you own selling price</span>
               </div>
 
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  To complete your store approval, please make a payment of:
+                  You also agent prices are cheaper than users price. To complete your store approval, please make a payment of:
                 </p>
                 <div className="text-center">
                   <span className="text-3xl font-bold text-primary">GHC 15.00</span>
@@ -127,8 +127,7 @@ const PendingApproval = () => {
 
             <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
               <p className="text-xs text-green-800 dark:text-green-400">
-                ✅ After payment, your store will be reviewed and approved within 24-48 hours.
-                You'll receive a notification once approved.
+                ✅ After payment, your store will be reviewed and approved within  minutes. You'll receive a notification once approved.
               </p>
             </div>
           </div>

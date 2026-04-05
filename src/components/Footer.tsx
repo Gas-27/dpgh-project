@@ -8,7 +8,7 @@ const Footer = () => {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
-            <span className="font-display text-sm font-bold">DATA PLUG <span className="text-primary">GH</span></span>
+            <span className="font-display text-sm font-bold">DATAPLUG</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Ghana's trusted platform for instant, affordable data bundles across all networks.
@@ -31,7 +31,7 @@ const Footer = () => {
         </div>
       </div>
       <div className="container mt-8 pt-6 border-t border-border text-center text-xs text-muted-foreground">
-        © 2026 Data Plug GH. All rights reserved.
+        © 2026 Dataplug. All rights reserved.
       </div>
     </footer>
   );

@@ -67,7 +67,7 @@ const Login = () => {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Zap className="h-8 w-8 text-primary" />
             <span className="font-display text-2xl font-bold">
-              DATA PLUG <span className="text-primary">GH</span>
+              DATAPLUG
             </span>
           </div>
           <CardTitle className="font-display">Welcome Back</CardTitle>

@@ -155,7 +155,7 @@ const AgentStorefront = () => {
               <Shield className="h-4 w-4 text-primary" /> Trusted Seller
             </span>
             <span className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" /> &lt;10min Delivery
+              <Clock className="h-4 w-4 text-primary" /> &lt; 2 hours Delivery
             </span>
             <span className="flex items-center gap-2">
               <Star className="h-4 w-4 text-primary" /> 24/7 Support
@@ -224,8 +224,7 @@ const AgentStorefront = () => {
           <p className="text-sm text-muted-foreground">
             Powered by{" "}
             <span className="font-display font-bold">
-              <span className="text-foreground">DATA PLUG</span>{" "}
-              <span className="text-primary">GH</span>
+              <span className="text-foreground">DATAPLUG</span>
             </span>
           </p>
         </div>

@@ -31,7 +31,7 @@ const Signup = () => {
     if (error) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Account created!", description: "Welcome to Data Plug GH!" });
+      toast({ title: "Account created!", description: "Welcome to Dataplug!" });
       if (role === "agent") {
         navigate("/agent-onboarding");
       } else {
@@ -47,7 +47,7 @@ const Signup = () => {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Zap className="h-8 w-8 text-primary" />
             <span className="font-display text-2xl font-bold">
-              DATA PLUG <span className="text-primary">GH</span>
+              DATAPLUG
             </span>
           </div>
           <CardTitle className="font-display">Create Account</CardTitle>
@@ -81,6 +81,7 @@ const Signup = () => {
               <Store className="h-6 w-6" />
               <span className="text-sm font-semibold">Agent</span>
               <span className="text-xs text-center">Sell & earn profit</span>
+              <span className="text-xs text-center">You also get data prices cheaper than normal user</span>
             </button>
           </div>
 
