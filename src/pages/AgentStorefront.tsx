@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
-import { Zap, MessageCircle, Phone, Wifi, Shield, Clock, Star } from "lucide-react";
+import { Zap, MessageCircle, Phone, Wifi, Shield, Clock, Star, UserPlus } from "lucide-react";
 
 interface AgentStore {
   id: string;
@@ -121,6 +121,11 @@ const AgentStorefront = () => {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/agent-onboarding">
+                <UserPlus className="h-4 w-4 mr-1" /> Become an Agent
+              </Link>
+            </Button>
             <Button variant="outline" size="sm" asChild>
               <a href={`tel:${store.support_number}`}>
                 <Phone className="h-4 w-4 mr-1" /> Call

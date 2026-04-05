@@ -9,14 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Store } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { PaymentModal } from "@/components/PaymentModal";
 
 const AgentOnboarding = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const [storeName, setStoreName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
@@ -25,6 +23,7 @@ const AgentOnboarding = () => {
   const [momoNumber, setMomoNumber] = useState("");
   const [momoName, setMomoName] = useState("");
   const [momoNetwork, setMomoNetwork] = useState("");
+  const [minPrice, setMinPrice] = useState("");
 
   if (authLoading) {
     return (
@@ -40,9 +39,10 @@ const AgentOnboarding = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
-    // Prepare store data for payment metadata
-    const storeData = {
+    const { error } = await supabase.from("agent_stores").insert({
+      user_id: user.id,
       store_name: storeName,
       whatsapp_number: whatsappNumber,
       support_number: supportNumber,
@@ -50,13 +50,18 @@ const AgentOnboarding = () => {
       momo_number: momoNumber,
       momo_name: momoName,
       momo_network: momoNetwork,
-    };
+      minimum_subagent_price: parseFloat(minPrice) || 0,
+      approved: true,
+    });
 
-    // Store in session storage as backup
-    sessionStorage.setItem("pending_registration_store_data", JSON.stringify(storeData));
+    setLoading(false);
 
-    // Show payment modal
-    setShowPaymentModal(true);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Success!", description: "Your store has been created and approved." });
+      navigate("/agent");
+    }
   };
 
   return (
@@ -121,29 +126,28 @@ const AgentOnboarding = () => {
               </div>
             </div>
 
-            <Button type="submit" variant="hero" className="w-full" disabled={!momoNetwork}>
-              Continue to Payment
+            <div className="border-t border-border pt-4 mt-4">
+              <p className="text-sm font-semibold text-foreground mb-3">Sub-Agent Settings</p>
+              <div className="space-y-2">
+                <Label>Minimum Price for Sub-Agents (GHS)</Label>
+                <Input 
+                  type="number" 
+                  value={minPrice} 
+                  onChange={(e) => setMinPrice(e.target.value)} 
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+                <p className="text-xs text-muted-foreground">Set the minimum price sub-agents can offer under your store</p>
+              </div>
+            </div>
+
+            <Button type="submit" variant="hero" className="w-full" disabled={loading || !momoNetwork}>
+              {loading ? "Creating..." : "Create Store"}
             </Button>
           </form>
         </CardContent>
       </Card>
-
-      <PaymentModal
-        open={showPaymentModal}
-        onOpenChange={setShowPaymentModal}
-        userId={user.id}
-        email={user.email!}
-        phone={momoNumber}
-        storeData={{
-          store_name: storeName,
-          whatsapp_number: whatsappNumber,
-          support_number: supportNumber,
-          whatsapp_group: whatsappGroup || null,
-          momo_number: momoNumber,
-          momo_name: momoName,
-          momo_network: momoNetwork,
-        }}
-      />
     </div>
   );
 };
