@@ -1,70 +1,71 @@
-// import { useState, useEffect } from "react";
-// import { supabase } from "@/integrations/supabase/client";
-// import { useAuth } from "@/hooks/useAuth";
-// import { Navigate, Link } from "react-router-dom";
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import { Label } from "@/components/ui/label";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-// import { Badge } from "@/components/ui/badge";
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import {
-//   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-// } from "@/components/ui/dialog";
-// import {
-//   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-// } from "@/components/ui/select";
-// import {
-//   Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
-//   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
-// } from "lucide-react";
-// import { useToast } from "@/hooks/use-toast";
-// import NotificationPopup from "@/components/NotificationPopup";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Navigate, Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
+  LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import NotificationPopup from "@/components/NotificationPopup";
 
-// interface AgentStore {
-//   id: string;
-//   store_name: string;
-//   whatsapp_number: string;
-//   support_number: string;
-//   whatsapp_group: string | null;
-//   momo_number: string;
-//   momo_name: string;
-//   momo_network: string;
-//   approved: boolean;
-//   wallet_balance: number;
-//   topup_reference: string;
-// }
+interface AgentStore {
+  id: string;
+  store_name: string;
+  whatsapp_number: string;
+  support_number: string;
+  whatsapp_group: string | null;
+  momo_number: string;
+  momo_name: string;
+  momo_network: string;
+  approved: boolean;
+  wallet_balance: number;
+  topup_reference: string;
+}
 
-// interface DataPackage {
-//   id: string;
-//   network: string;
-//   size_gb: number;
-//   price: number;
-//   agent_price: number;
-//   active: boolean;
-// }
+interface DataPackage {
+  id: string;
+  network: string;
+  size_gb: number;
+  price: number;
+  agent_price: number;
+  active: boolean;
+}
 
-// interface Order {
-//   id: string;
-//   customer_number: string;
-//   network: string;
-//   size_gb: number;
-//   amount: number;
-//   status: string;
-//   fulfillment_status: string;
-//   payment_method: string;
-//   created_at: string;
-// }
+interface Order {
+  id: string;
+  customer_number: string;
+  network: string;
+  size_gb: number;
+  amount: number;
+  status: string;
+  fulfillment_status: string;
+  payment_method: string;
+  created_at: string;
+  selling_price?: number;
+}
 
-// interface WithdrawalRequest {
-//   id: string;
-//   amount: number;
-//   status: string;
-//   created_at: string;
-// }
+interface WithdrawalRequest {
+  id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+}
 
-// const AgentDashboard = () => {
+const AgentDashboard = () => {
 //   const { user, isAgent, isAdmin, loading: authLoading, signOut } = useAuth();
 //   const { toast } = useToast();
 //   const [store, setStore] = useState<AgentStore | null>(null);
@@ -95,76 +96,76 @@
 //   const [withdrawAmount, setWithdrawAmount] = useState("");
 //   const [withdrawLoading, setWithdrawLoading] = useState(false);
 
-//   useEffect(() => {
-//     if (!user) return;
-//     const fetchData = async () => {
-//       const { data: storeData } = await supabase
-//         .from("agent_stores").select("*").eq("user_id", user.id).maybeSingle();
-//       setStore(storeData as AgentStore | null);
+  useEffect(() => {
+    if (!user) return;
+    const fetchData = async () => {
+      const { data: storeData } = await supabase
+        .from("agent_stores").select("*").eq("user_id", user.id).maybeSingle();
+      setStore(storeData as AgentStore | null);
 
-//       if (storeData) {
-//         setStoreForm({
-//           store_name: storeData.store_name, whatsapp_number: storeData.whatsapp_number,
-//           support_number: storeData.support_number, whatsapp_group: storeData.whatsapp_group || "",
-//           momo_number: storeData.momo_number, momo_name: storeData.momo_name, momo_network: storeData.momo_network,
-//         });
-//         const [pkgRes, priceRes, orderRes, withdrawRes] = await Promise.all([
-//           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-//           supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", storeData.id),
-//           supabase.from("orders").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }).limit(50),
-//           supabase.from("withdrawal_requests").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }),
-//         ]);
-//         setPackages(pkgRes.data ?? []);
-//         const priceMap: Record<string, number> = {};
-//         (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-//         setAgentPrices(priceMap);
-//         setOrders((orderRes.data as Order[]) ?? []);
-//         setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
-//       } else {
-//         const { data: pkgData } = await supabase.from("data_packages").select("*").eq("active", true).order("size_gb");
-//         setPackages(pkgData ?? []);
-//       }
-//       setLoading(false);
-//     };
-//     fetchData();
-//   }, [user]);
+      if (storeData) {
+        setStoreForm({
+          store_name: storeData.store_name, whatsapp_number: storeData.whatsapp_number,
+          support_number: storeData.support_number, whatsapp_group: storeData.whatsapp_group || "",
+          momo_number: storeData.momo_number, momo_name: storeData.momo_name, momo_network: storeData.momo_network,
+        });
+        const [pkgRes, priceRes, orderRes, withdrawRes] = await Promise.all([
+          supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
+          supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", storeData.id),
+          supabase.from("orders").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }).limit(50),
+          supabase.from("withdrawal_requests").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }),
+        ]);
+        setPackages(pkgRes.data ?? []);
+        const priceMap: Record<string, number> = {};
+        (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+        setAgentPrices(priceMap);
+        setOrders((orderRes.data as Order[]) ?? []);
+        setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
+      } else {
+        const { data: pkgData } = await supabase.from("data_packages").select("*").eq("active", true).order("size_gb");
+        setPackages(pkgData ?? []);
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, [user]);
 
-//   if (authLoading || loading) {
-//     return (
-//       <div className="min-h-screen bg-background flex items-center justify-center">
-//         <div className="flex flex-col items-center gap-3">
-//           <Zap className="h-10 w-10 text-primary animate-pulse" />
-//           <p className="text-muted-foreground font-display">Loading dashboard...</p>
-//         </div>
-//       </div>
-//     );
-//   }
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Zap className="h-10 w-10 text-primary animate-pulse" />
+          <p className="text-muted-foreground font-display">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
-//   if (!user) return <Navigate to="/login" replace />;
-//   if (!isAdmin) {
-//     if (!store) return <Navigate to="/agent-onboarding" replace />;
-//     if (!store.approved) return <Navigate to="/pending-approval" replace />;
-//   }
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isAdmin) {
+    if (!store) return <Navigate to="/agent-onboarding" replace />;
+    if (!store.approved) return <Navigate to="/pending-approval" replace />;
+  }
 
-//   const filteredPackages = packages.filter((p) => p.network === networkFilter);
-//   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
-//   const storeUrl = `${window.location.origin}/store/${storeSlug}`;
+  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
+  const storeUrl = `${window.location.origin}/store/${storeSlug}`;
 
-//   const copyStoreLink = () => {
-//     navigator.clipboard.writeText(storeUrl);
-//     toast({ title: "Link copied!", description: storeUrl });
-//   };
+  const copyStoreLink = () => {
+    navigator.clipboard.writeText(storeUrl);
+    toast({ title: "Link copied!", description: storeUrl });
+  };
 
-//   const copyRef = () => {
-//     if (store?.topup_reference) {
-//       navigator.clipboard.writeText(store.topup_reference);
-//       toast({ title: "Reference copied!" });
-//     }
-//   };
+  const copyRef = () => {
+    if (store?.topup_reference) {
+      navigator.clipboard.writeText(store.topup_reference);
+      toast({ title: "Reference copied!" });
+    }
+  };
 
-//   const handlePriceChange = (pkgId: string, value: string) => {
-//     setEditedPrices((prev) => ({ ...prev, [pkgId]: parseFloat(value) }));
-//   };
+  const handlePriceChange = (pkgId: string, value: string) => {
+    setEditedPrices((prev) => ({ ...prev, [pkgId]: parseFloat(value) }));
+  };
 
 
 
@@ -188,300 +189,300 @@
 //   //   toast({ title: "Prices saved!" });
 //   // };
 
-//   const savePrices = async () => {
-//     if (!store) return;
-//     setSavingPrices(true);
+  const savePrices = async () => {
+    if (!store) return;
+    setSavingPrices(true);
 
-//     // Validate all edited prices before saving
-//     for (const [pkgId, sellPrice] of Object.entries(editedPrices)) {
-//       const pkg = packages.find(p => p.id === pkgId);
-//       if (!pkg) continue;
+    // Validate all edited prices before saving
+    for (const [pkgId, sellPrice] of Object.entries(editedPrices)) {
+      const pkg = packages.find(p => p.id === pkgId);
+      if (!pkg) continue;
 
-//       // Check for empty string
-//       if (sellPrice === "") {
-//         toast({
-//           title: "Validation error",
-//           description: `Price for ${pkg.size_gb}GB ${pkg.network} cannot be empty.`,
-//           variant: "destructive",
-//         });
-//         setSavingPrices(false);
-//         return;
-//       }
+      // Check for empty string
+      if (sellPrice === "") {
+        toast({
+          title: "Validation error",
+          description: `Price for ${pkg.size_gb}GB ${pkg.network} cannot be empty.`,
+          variant: "destructive",
+        });
+        setSavingPrices(false);
+        return;
+      }
 
-//       // Ensure it's a valid number
-//       const numericPrice = Number(sellPrice);
-//       if (isNaN(numericPrice)) {
-//         toast({
-//           title: "Validation error",
-//           description: `Price for ${pkg.size_gb}GB ${pkg.network} must be a valid number.`,
-//           variant: "destructive",
-//         });
-//         setSavingPrices(false);
-//         return;
-//       }
+      // Ensure it's a valid number
+      const numericPrice = Number(sellPrice);
+      if (isNaN(numericPrice)) {
+        toast({
+          title: "Validation error",
+          description: `Price for ${pkg.size_gb}GB ${pkg.network} must be a valid number.`,
+          variant: "destructive",
+        });
+        setSavingPrices(false);
+        return;
+      }
 
-//       // Check minimum price
-//       if (numericPrice < pkg.agent_price) {
-//         toast({
-//           title: "Validation error",
-//           description: `Price for ${pkg.size_gb}GB ${pkg.network} cannot be below GH₵ ${pkg.agent_price.toFixed(2)}.`,
-//           variant: "destructive",
-//         });
-//         setSavingPrices(false);
-//         return;
-//       }
-//     }
+      // Check minimum price
+      if (numericPrice < pkg.agent_price) {
+        toast({
+          title: "Validation error",
+          description: `Price for ${pkg.size_gb}GB ${pkg.network} cannot be below GH₵ ${pkg.agent_price.toFixed(2)}.`,
+          variant: "destructive",
+        });
+        setSavingPrices(false);
+        return;
+      }
+    }
 
-//     // Proceed with saving...
-//     for (const [pkgId, sellPrice] of Object.entries(editedPrices)) {
-//       const numericPrice = Number(sellPrice);
-//       const existing = agentPrices[pkgId];
+    // Proceed with saving...
+    for (const [pkgId, sellPrice] of Object.entries(editedPrices)) {
+      const numericPrice = Number(sellPrice);
+      const existing = agentPrices[pkgId];
 
-//       if (existing !== undefined) {
-//         await supabase
-//           .from("agent_package_prices")
-//           .update({ sell_price: numericPrice })
-//           .eq("agent_store_id", store.id)
-//           .eq("package_id", pkgId);
-//       } else {
-//         await supabase
-//           .from("agent_package_prices")
-//           .insert({
-//             agent_store_id: store.id,
-//             package_id: pkgId,
-//             sell_price: numericPrice,
-//           });
-//       }
-//       setAgentPrices((prev) => ({ ...prev, [pkgId]: numericPrice }));
-//     }
+      if (existing !== undefined) {
+        await supabase
+          .from("agent_package_prices")
+          .update({ sell_price: numericPrice })
+          .eq("agent_store_id", store.id)
+          .eq("package_id", pkgId);
+      } else {
+        await supabase
+          .from("agent_package_prices")
+          .insert({
+            agent_store_id: store.id,
+            package_id: pkgId,
+            sell_price: numericPrice,
+          });
+      }
+      setAgentPrices((prev) => ({ ...prev, [pkgId]: numericPrice }));
+    }
 
-//     setEditedPrices({});
-//     setSavingPrices(false);
-//     toast({ title: "Prices saved!" });
-//   };
+    setEditedPrices({});
+    setSavingPrices(false);
+    toast({ title: "Prices saved!" });
+  };
 
-//   const saveStoreInfo = async () => {
-//     if (!store) return;
-//     setSavingStore(true);
-//     const { error } = await supabase.from("agent_stores").update({
-//       store_name: storeForm.store_name, whatsapp_number: storeForm.whatsapp_number,
-//       support_number: storeForm.support_number, whatsapp_group: storeForm.whatsapp_group || null,
-//       momo_number: storeForm.momo_number, momo_name: storeForm.momo_name, momo_network: storeForm.momo_network,
-//     }).eq("id", store.id);
-//     if (error) {
-//       toast({ title: "Error", description: error.message, variant: "destructive" });
-//     } else {
-//       setStore({ ...store, ...storeForm, whatsapp_group: storeForm.whatsapp_group || null });
-//       setEditingStore(false);
-//       toast({ title: "Store info updated!" });
-//     }
-//     setSavingStore(false);
-//   };
+  const saveStoreInfo = async () => {
+    if (!store) return;
+    setSavingStore(true);
+    const { error } = await supabase.from("agent_stores").update({
+      store_name: storeForm.store_name, whatsapp_number: storeForm.whatsapp_number,
+      support_number: storeForm.support_number, whatsapp_group: storeForm.whatsapp_group || null,
+      momo_number: storeForm.momo_number, momo_name: storeForm.momo_name, momo_network: storeForm.momo_network,
+    }).eq("id", store.id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setStore({ ...store, ...storeForm, whatsapp_group: storeForm.whatsapp_group || null });
+      setEditingStore(false);
+      toast({ title: "Store info updated!" });
+    }
+    setSavingStore(false);
+  };
 
-//   // Buy data flow
-//   const openBuyDialog = (pkg: DataPackage) => {
-//     setBuyPkg(pkg);
-//     setBuyPhone("");
-//     setBuyStep("phone");
-//     setBuyPaymentMethod("wallet");
-//     setBuyDialogOpen(true);
-//   };
+  // Buy data flow
+  const openBuyDialog = (pkg: DataPackage) => {
+    setBuyPkg(pkg);
+    setBuyPhone("");
+    setBuyStep("phone");
+    setBuyPaymentMethod("wallet");
+    setBuyDialogOpen(true);
+  };
 
-//   const handleBuyConfirm = async () => {
-//     if (!store || !buyPkg) return;
-//     setBuyLoading(true);
+  const handleBuyConfirm = async () => {
+    if (!store || !buyPkg) return;
+    setBuyLoading(true);
 
-//     const agentPrice = Number(buyPkg.agent_price);
+    const agentPrice = Number(buyPkg.agent_price);
 
-//     if (buyPaymentMethod === "wallet") {
-//       if (Number(store.wallet_balance) < agentPrice) {
-//         toast({ title: "Insufficient balance", description: "Top up your wallet to continue.", variant: "destructive" });
-//         setBuyLoading(false);
-//         return;
-//       }
-//       const { error: walletErr } = await supabase.from("agent_stores")
-//         .update({ wallet_balance: Number(store.wallet_balance) - agentPrice })
-//         .eq("id", store.id);
-//       if (walletErr) {
-//         toast({ title: "Error", description: walletErr.message, variant: "destructive" });
-//         setBuyLoading(false);
-//         return;
-//       }
-//       const { data: orderData, error: orderErr } = await supabase.from("orders").insert({
-//         customer_number: buyPhone.trim(),
-//         network: buyPkg.network,
-//         size_gb: buyPkg.size_gb,
-//         amount: agentPrice,
-//         package_id: buyPkg.id,
-//         agent_store_id: store.id,
-//         status: "paid",
-//         fulfillment_status: "pending",
-//         payment_method: "wallet",
-//       }).select("id").single();
-//       if (orderErr) {
-//         toast({ title: "Order error", description: orderErr.message, variant: "destructive" });
-//         setBuyLoading(false);
-//         return;
-//       }
-//       // Trigger fulfillment with order_id
-//       await supabase.functions.invoke("fulfill-order", {
-//         body: { order_id: orderData.id },
-//       });
-//       setStore({ ...store, wallet_balance: Number(store.wallet_balance) - agentPrice });
-//       toast({ title: "Order placed!", description: "Your data is being processed." });
-//       setBuyDialogOpen(false);
-//       const { data: newOrders } = await supabase.from("orders").select("*")
-//         .eq("agent_store_id", store.id).order("created_at", { ascending: false }).limit(50);
-//       setOrders((newOrders as Order[]) ?? []);
-//     } else {
-//       try {
-//         const userEmail = user?.email || `agent-${store.id}@datapluggh.com`;
-//         const PAYSTACK_CHARGE_PERCENT = 1.95;
-//         const total = Math.round((agentPrice + (agentPrice * PAYSTACK_CHARGE_PERCENT / 100)) * 100) / 100;
-//         const callbackUrl = `${window.location.origin}/agent?payment=verifying`;
-//         const { data, error } = await supabase.functions.invoke("initialize-payment", {
-//           body: {
-//             email: userEmail,
-//             amount: total,
-//             phone: buyPhone.trim(),
-//             callback_url: callbackUrl,
-//             metadata: {
-//               package_id: buyPkg.id,
-//               network: buyPkg.network,
-//               package_name: `${buyPkg.size_gb}GB`,
-//               agent_store_id: store.id,
-//               payment_method: "paystack",
-//               use_agent_price: true,
-//             },
-//           },
-//         });
-//         if (error) throw error;
-//         if (data?.authorization_url) {
-//           window.location.href = data.authorization_url;
-//         } else {
-//           throw new Error(data?.error || "Failed to initialize payment");
-//         }
-//       } catch (err: any) {
-//         toast({ title: "Payment Error", description: err.message, variant: "destructive" });
-//       }
-//     }
-//     setBuyLoading(false);
-//   };
+    if (buyPaymentMethod === "wallet") {
+      if (Number(store.wallet_balance) < agentPrice) {
+        toast({ title: "Insufficient balance", description: "Top up your wallet to continue.", variant: "destructive" });
+        setBuyLoading(false);
+        return;
+      }
+      const { error: walletErr } = await supabase.from("agent_stores")
+        .update({ wallet_balance: Number(store.wallet_balance) - agentPrice })
+        .eq("id", store.id);
+      if (walletErr) {
+        toast({ title: "Error", description: walletErr.message, variant: "destructive" });
+        setBuyLoading(false);
+        return;
+      }
+      const { data: orderData, error: orderErr } = await supabase.from("orders").insert({
+        customer_number: buyPhone.trim(),
+        network: buyPkg.network,
+        size_gb: buyPkg.size_gb,
+        amount: agentPrice,
+        package_id: buyPkg.id,
+        agent_store_id: store.id,
+        status: "paid",
+        fulfillment_status: "pending",
+        payment_method: "wallet",
+      }).select("id").single();
+      if (orderErr) {
+        toast({ title: "Order error", description: orderErr.message, variant: "destructive" });
+        setBuyLoading(false);
+        return;
+      }
+      // Trigger fulfillment with order_id
+      await supabase.functions.invoke("fulfill-order", {
+        body: { order_id: orderData.id },
+      });
+      setStore({ ...store, wallet_balance: Number(store.wallet_balance) - agentPrice });
+      toast({ title: "Order placed!", description: "Your data is being processed." });
+      setBuyDialogOpen(false);
+      const { data: newOrders } = await supabase.from("orders").select("*")
+        .eq("agent_store_id", store.id).order("created_at", { ascending: false }).limit(50);
+      setOrders((newOrders as Order[]) ?? []);
+    } else {
+      try {
+        const userEmail = user?.email || `agent-${store.id}@datapluggh.com`;
+        const PAYSTACK_CHARGE_PERCENT = 1.95;
+        const total = Math.round((agentPrice + (agentPrice * PAYSTACK_CHARGE_PERCENT / 100)) * 100) / 100;
+        const callbackUrl = `${window.location.origin}/agent?payment=verifying`;
+        const { data, error } = await supabase.functions.invoke("initialize-payment", {
+          body: {
+            email: userEmail,
+            amount: total,
+            phone: buyPhone.trim(),
+            callback_url: callbackUrl,
+            metadata: {
+              package_id: buyPkg.id,
+              network: buyPkg.network,
+              package_name: `${buyPkg.size_gb}GB`,
+              agent_store_id: store.id,
+              payment_method: "paystack",
+              use_agent_price: true,
+            },
+          },
+        });
+        if (error) throw error;
+        if (data?.authorization_url) {
+          window.location.href = data.authorization_url;
+        } else {
+          throw new Error(data?.error || "Failed to initialize payment");
+        }
+      } catch (err: any) {
+        toast({ title: "Payment Error", description: err.message, variant: "destructive" });
+      }
+    }
+    setBuyLoading(false);
+  };
 
-//   // Withdrawal
-//   const handleWithdraw = async () => {
-//     if (!store) return;
-//     const amount = parseFloat(withdrawAmount);
-//     if (!amount || amount < 10) {
-//       toast({ title: "Minimum withdrawal is GH₵ 10.00", variant: "destructive" });
-//       return;
-//     }
-//     // Calculate total profits (revenue from storefront orders minus agent cost)
-//     const totalProfits = Number(store.wallet_balance);
-//     if (amount > totalProfits) {
-//       toast({ title: "Insufficient balance", description: `Your wallet balance is GH₵ ${totalProfits.toFixed(2)}`, variant: "destructive" });
-//       return;
-//     }
-//     setWithdrawLoading(true);
-//     const { error } = await supabase.from("withdrawal_requests").insert({
-//       agent_store_id: store.id,
-//       amount,
-//     });
-//     if (error) {
-//       toast({ title: "Error", description: error.message, variant: "destructive" });
-//     } else {
-//       toast({ title: "Withdrawal request placed!", description: "You will receive payment within 24 hours." });
-//       setWithdrawAmount("");
-//       // Refresh withdrawals
-//       const { data } = await supabase.from("withdrawal_requests").select("*")
-//         .eq("agent_store_id", store.id).order("created_at", { ascending: false });
-//       setWithdrawals((data as WithdrawalRequest[]) ?? []);
-//     }
-//     setWithdrawLoading(false);
-//   };
+  // Withdrawal
+  const handleWithdraw = async () => {
+    if (!store) return;
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount < 10) {
+      toast({ title: "Minimum withdrawal is GH₵ 10.00", variant: "destructive" });
+      return;
+    }
+    // Calculate total profits (revenue from storefront orders minus agent cost)
+    const totalProfits = Number(store.wallet_balance);
+    if (amount > totalProfits) {
+      toast({ title: "Insufficient balance", description: `Your wallet balance is GH₵ ${totalProfits.toFixed(2)}`, variant: "destructive" });
+      return;
+    }
+    setWithdrawLoading(true);
+    const { error } = await supabase.from("withdrawal_requests").insert({
+      agent_store_id: store.id,
+      amount,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Withdrawal request placed!", description: "You will receive payment within 24 hours." });
+      setWithdrawAmount("");
+      // Refresh withdrawals
+      const { data } = await supabase.from("withdrawal_requests").select("*")
+        .eq("agent_store_id", store.id).order("created_at", { ascending: false });
+      setWithdrawals((data as WithdrawalRequest[]) ?? []);
+    }
+    setWithdrawLoading(false);
+  };
 
-//   // Stats
-//   const totalOrders = orders.length;
-//   const pendingOrders = orders.filter((o) => o.status === "pending").length;
-//   const totalRevenue = orders.filter((o) => o.status === "completed" || o.status === "paid").reduce((sum, o) => sum + Number(o.amount), 0);
+  // Stats
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter((o) => o.status === "pending").length;
+  const totalRevenue = orders.filter((o) => o.status === "completed" || o.status === "paid").reduce((sum, o) => sum + Number(o.selling_price || o.amount), 0);
 
-//   return (
-//     <div className="min-h-screen bg-background">
-//       <NotificationPopup />
-//       <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
-//         <div className="container flex h-16 items-center justify-between">
-//           <div className="flex items-center gap-2">
-//             <Store className="h-6 w-6 text-primary" />
-//             <span className="font-display text-lg font-bold">{store?.store_name ?? "Agent Dashboard"}</span>
-//           </div>
-//           <div className="flex items-center gap-3">
-//             {isAdmin && (
-//               <Button variant="ghost" size="sm" asChild><Link to="/admin">Admin</Link></Button>
-//             )}
-//             <Button variant="ghost" size="sm" asChild><Link to="/">Home</Link></Button>
-//             <Button variant="outline" size="sm" onClick={signOut}>
-//               <LogOut className="h-4 w-4 mr-1" /> Sign Out
-//             </Button>
-//           </div>
-//         </div>
-//       </nav>
+  return (
+    <div className="min-h-screen bg-background">
+      <NotificationPopup />
+      <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Store className="h-6 w-6 text-primary" />
+            <span className="font-display text-lg font-bold">{store?.store_name ?? "Agent Dashboard"}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Button variant="ghost" size="sm" asChild><Link to="/admin">Admin</Link></Button>
+            )}
+            <Button variant="ghost" size="sm" asChild><Link to="/">Home</Link></Button>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-1" /> Sign Out
+            </Button>
+          </div>
+        </div>
+      </nav>
 
-//       <div className="container py-8 space-y-6">
-//         {/* Store Link Banner */}
-//         {store && (
-//           <Card className="border-primary/30 bg-primary/5">
-//             <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
-//               <div>
-//                 <p className="text-sm font-semibold text-foreground">Your Store Website</p>
-//                 <p className="text-xs text-muted-foreground">{storeUrl}</p>
-//               </div>
-//               <div className="flex gap-2">
-//                 <Button variant="outline" size="sm" onClick={copyStoreLink}>
-//                   <Copy className="h-4 w-4 mr-1" /> Copy Link
-//                 </Button>
-//                 <Button variant="hero" size="sm" asChild>
-//                   <Link to={`/store/${storeSlug}`} target="_blank">
-//                     <ExternalLink className="h-4 w-4 mr-1" /> Visit Store
-//                   </Link>
-//                 </Button>
-//               </div>
-//             </CardContent>
-//           </Card>
-//         )}
+      <div className="container py-8 space-y-6">
+        {/* Store Link Banner */}
+        {store && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Your Store Website</p>
+                <p className="text-xs text-muted-foreground">{storeUrl}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={copyStoreLink}>
+                  <Copy className="h-4 w-4 mr-1" /> Copy Link
+                </Button>
+                <Button variant="hero" size="sm" asChild>
+                  <Link to={`/store/${storeSlug}`} target="_blank">
+                    <ExternalLink className="h-4 w-4 mr-1" /> Visit Store
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-//         {/* Topup Reference Banner */}
-//         {store?.topup_reference && (
-//           <Card className="border-border bg-card">
-//             <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
-//               <div className="flex items-center gap-4">
-//                 <div>
-//                   <p className="text-xs text-muted-foreground">Your Topup Reference</p>
-//                   <p className="font-display text-3xl font-black text-primary tracking-widest">{store.topup_reference}</p>
-//                 </div>
-//                 <div className="border-l border-border pl-4">
-//                   <p className="text-xs text-muted-foreground">Wallet Balance</p>
-//                   <p className="font-display text-2xl font-bold text-green-400">GH₵ {Number(store.wallet_balance).toFixed(2)}</p>
-//                 </div>
-//               </div>
-//               <Button variant="outline" size="sm" onClick={copyRef}>
-//                 <Copy className="h-4 w-4 mr-1" /> Copy Ref
-//               </Button>
-//             </CardContent>
-//           </Card>
-//         )}
+        {/* Topup Reference Banner */}
+        {store?.topup_reference && (
+          <Card className="border-border bg-card">
+            <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Your Topup Reference</p>
+                  <p className="font-display text-3xl font-black text-primary tracking-widest">{store.topup_reference}</p>
+                </div>
+                <div className="border-l border-border pl-4">
+                  <p className="text-xs text-muted-foreground">Wallet Balance</p>
+                  <p className="font-display text-2xl font-bold text-green-400">GH₵ {Number(store.wallet_balance).toFixed(2)}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={copyRef}>
+                <Copy className="h-4 w-4 mr-1" /> Copy Ref
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-//         <Tabs defaultValue="overview">
-//           <TabsList className="grid w-full grid-cols-6">
-//             <TabsTrigger value="overview"><BarChart3 className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
-//             <TabsTrigger value="buy"><ShoppingCart className="h-4 w-4 mr-1" /> Buy Data</TabsTrigger>
-//             <TabsTrigger value="store"><Store className="h-4 w-4 mr-1" /> Store</TabsTrigger>
-//             <TabsTrigger value="topup"><Wallet className="h-4 w-4 mr-1" /> Topup</TabsTrigger>
-//             <TabsTrigger value="withdraw"><ArrowDownToLine className="h-4 w-4 mr-1" /> Withdraw</TabsTrigger>
-//             <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
-//           </TabsList>
+        <Tabs defaultValue="overview">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1">
+            <TabsTrigger value="overview"><BarChart3 className="h-4 w-4 mr-1 hidden sm:inline" /> Overview</TabsTrigger>
+            <TabsTrigger value="buy"><ShoppingCart className="h-4 w-4 mr-1 hidden sm:inline" /> Buy Data</TabsTrigger>
+            <TabsTrigger value="store"><Store className="h-4 w-4 mr-1 hidden sm:inline" /> Store</TabsTrigger>
+            <TabsTrigger value="topup"><Wallet className="h-4 w-4 mr-1 hidden sm:inline" /> Topup</TabsTrigger>
+            <TabsTrigger value="withdraw"><ArrowDownToLine className="h-4 w-4 mr-1 hidden sm:inline" /> Withdraw</TabsTrigger>
+            <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1 hidden sm:inline" /> Settings</TabsTrigger>
+          </TabsList>
 
-//           {/* OVERVIEW TAB */}
-//           <TabsContent value="overview" className="space-y-6 mt-6">
+          {/* OVERVIEW TAB */}
+          <TabsContent value="overview" className="space-y-6 mt-6">
 //             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 //               <Card className="border-border">
 //                 <CardContent className="p-6 text-center">
@@ -509,55 +510,65 @@
 //               </Card>
 //             </div>
 
-//             {/* Recent Orders */}
-//             <Card className="border-border">
-//               <CardHeader><CardTitle className="font-display text-lg">Recent Orders</CardTitle></CardHeader>
-//               <CardContent>
-//                 {orders.length === 0 ? (
-//                   <p className="text-muted-foreground text-center py-4">No orders yet.</p>
-//                 ) : (
-//                   <Table>
-//                     <TableHeader>
-//                       <TableRow>
-//                         <TableHead>Date</TableHead>
-//                         <TableHead>Number</TableHead>
-//                         <TableHead>Network</TableHead>
-//                         <TableHead>Size</TableHead>
-//                         <TableHead>Amount</TableHead>
-//                         <TableHead>Method</TableHead>
-//                         <TableHead>Status</TableHead>
-//                       </TableRow>
-//                     </TableHeader>
-//                     <TableBody>
-//                       {orders.slice(0, 10).map((order) => (
-//                         <TableRow key={order.id}>
-//                           <TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell>
-//                           <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
-//                           <TableCell className="uppercase text-sm">{order.network}</TableCell>
-//                           <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
-//                           <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
-//                           <TableCell>
-//                             <Badge variant="outline" className="text-xs">
-//                               {order.payment_method === "wallet" ? "Wallet" : "Paystack"}
-//                             </Badge>
-//                           </TableCell>
-//                           <TableCell>
-//                             <Badge className={
-//                               order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30"
-//                                 : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-//                             }>{order.status === "paid" ? "completed" : order.status}</Badge>
-//                           </TableCell>
-//                         </TableRow>
-//                       ))}
-//                     </TableBody>
-//                   </Table>
-//                 )}
-//               </CardContent>
-//             </Card>
-//           </TabsContent>
+            {/* Recent Orders */}
+            <Card className="border-border">
+              <CardHeader><CardTitle className="font-display text-lg">Recent Orders</CardTitle></CardHeader>
+              <CardContent>
+                {orders.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No orders yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Number</TableHead>
+                          <TableHead>Network</TableHead>
+                          <TableHead>Size</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Profit</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {orders.slice(0, 10).map((order) => {
+                          const pkg = packages.find(p => p.id === order.package_id);
+                          const sellingPrice = order.selling_price || order.amount;
+                          const agentCost = pkg?.agent_price || 0;
+                          const profit = calculateProfit(sellingPrice, agentCost);
+                          return (
+                            <TableRow key={order.id}>
+                              <TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                              <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                              <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                              <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                              <TableCell>GH₵ {Number(sellingPrice).toFixed(2)}</TableCell>
+                              <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {order.payment_method === "wallet" ? "Wallet" : "Paystack"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={
+                                  order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30"
+                                    : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                                }>{order.status === "paid" ? "completed" : order.status}</Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-//           {/* BUY DATA TAB */}
-//           <TabsContent value="buy" className="space-y-4 mt-6">
+          {/* BUY DATA TAB */}
+          <TabsContent value="buy" className="space-y-4 mt-6">
 //             <Card className="border-primary/30 bg-primary/5">
 //               <CardContent className="p-4">
 //                 <div className="flex items-center justify-between">
@@ -586,70 +597,70 @@
 //                       <Wifi className="h-5 w-5 text-primary" />
 //                     </div>
 //                     <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p>
-//                     <p className="text-lg font-bold text-primary">GH₵ {Number(pkg.agent_price).toFixed(2)}</p>
-//                     <p className="text-xs text-muted-foreground">Agent Price</p>
-//                     <Button variant="hero" size="sm" className="w-full" onClick={() => openBuyDialog(pkg)}>
-//                       Buy Now
-//                     </Button>
-//                   </CardContent>
-//                 </Card>
-//               ))}
-//             </div>
-//           </TabsContent>
+                    <p className="text-lg font-bold text-primary">GH₵ {Number(pkg.agent_price).toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Agent Price</p>
+                    <Button variant="hero" size="sm" className="w-full" onClick={() => openBuyDialog(pkg)}>
+                      Buy Now
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
 
-//           {/* STORE TAB - Customize Prices */}
-//           <TabsContent value="store" className="space-y-4 mt-6">
-//             <div className="flex items-center justify-between">
-//               <div className="flex gap-2">
-//                 {["mtn", "airteltigo", "telecel"].map((net) => (
-//                   <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
-//                     {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
-//                   </Button>
-//                 ))}
-//               </div>
-//               {Object.keys(editedPrices).length > 0 && (
-//                 <Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}>
-//                   <Save className="h-4 w-4 mr-1" /> {savingPrices ? "Saving..." : "Save Prices"}
-//                 </Button>
-//               )}
-//             </div>
-//             <p className="text-sm text-muted-foreground">Set your sell prices. Your cost is fixed — keep the difference as profit.</p>
-//             <Card className="border-border">
-//               <Table>
-//                 <TableHeader>
-//                   <TableRow>
-//                     <TableHead>Size</TableHead>
-//                     <TableHead>Your Cost</TableHead>
-//                     <TableHead>Your Sell Price</TableHead>
-//                     <TableHead>Profit</TableHead>
-//                   </TableRow>
-//                 </TableHeader>
-//                 <TableBody>
-//                   {filteredPackages.map((pkg) => {
-//                     const currentSellPrice = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price;
-//                     const profit = currentSellPrice - pkg.agent_price;
-//                     return (
-//                       <TableRow key={pkg.id}>
-//                         <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
-//                         <TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell>
-//                         <TableCell>
-//                           <Input type="number" step="0.01"
-//                             value={editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price}
-//                             onChange={(e) => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" />
-//                         </TableCell>
-//                         <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
-//                           GH₵ {profit.toFixed(2)}
-//                         </TableCell>
-//                       </TableRow>
-//                     );
-//                   })}
-//                 </TableBody>
-//               </Table>
-//             </Card>
-//           </TabsContent>
+          {/* STORE TAB - Customize Prices */}
+          <TabsContent value="store" className="space-y-4 mt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                {["mtn", "airteltigo", "telecel"].map((net) => (
+                  <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
+                    {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                  </Button>
+                ))}
+              </div>
+              {Object.keys(editedPrices).length > 0 && (
+                <Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}>
+                  <Save className="h-4 w-4 mr-1" /> {savingPrices ? "Saving..." : "Save Prices"}
+                </Button>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">Set your sell prices. Your cost is fixed — keep the difference as profit.</p>
+            <Card className="border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Your Cost</TableHead>
+                    <TableHead>Your Sell Price</TableHead>
+                    <TableHead>Profit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPackages.map((pkg) => {
+                    const currentSellPrice = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price;
+                    const profit = currentSellPrice - pkg.agent_price;
+                    return (
+                      <TableRow key={pkg.id}>
+                        <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                        <TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Input type="number" step="0.01"
+                            value={editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price}
+                            onChange={(e) => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" />
+                        </TableCell>
+                        <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
+                          GH₵ {profit.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
 
-//           {/* TOPUP TAB */}
-//           <TabsContent value="topup" className="space-y-6 mt-6">
+          {/* TOPUP TAB */}
+          <TabsContent value="topup" className="space-y-6 mt-6">
 //             <Card className="border-primary/30 bg-primary/5">
 //               <CardContent className="p-6 text-center space-y-2">
 //                 <Wallet className="h-10 w-10 text-primary mx-auto" />
@@ -824,88 +835,14 @@
 //                 )}
 //               </CardContent>
 //             </Card>
-//           </TabsContent>
-//         </Tabs>
-//       </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
 
-//       {/* Buy Data Dialog */}
-//       <Dialog open={buyDialogOpen} onOpenChange={(v) => { if (!v) setBuyDialogOpen(false); }}>
-//         <DialogContent className="sm:max-w-md border-border bg-card">
-//           <DialogHeader>
-//             <DialogTitle className="font-display text-xl">
-//               Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}
-//             </DialogTitle>
-//             <DialogDescription>Purchase data at agent price</DialogDescription>
-//           </DialogHeader>
-
-//           {buyStep === "phone" ? (
-//             <div className="space-y-4 pt-2">
-//               <div className="space-y-2">
-//                 <Label>Recipient Phone Number</Label>
-//                 <div className="relative">
-//                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-//                   <Input type="tel" placeholder="0XX XXX XXXX" value={buyPhone}
-//                     onChange={(e) => setBuyPhone(e.target.value)} className="pl-10" autoFocus />
-//                 </div>
-//               </div>
-//               <Button variant="hero" className="w-full" onClick={() => {
-//                 if (buyPhone.trim().length < 10) {
-//                   toast({ title: "Invalid number", variant: "destructive" });
-//                   return;
-//                 }
-//                 setBuyStep("confirm");
-//               }}>Continue</Button>
-//             </div>
-//           ) : (
-//             <div className="space-y-4 pt-2">
-//               <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
-//                 <div className="flex justify-between text-sm">
-//                   <span className="text-muted-foreground">Package</span>
-//                   <span className="font-semibold text-foreground">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span>
-//                 </div>
-//                 <div className="flex justify-between text-sm">
-//                   <span className="text-muted-foreground">Phone</span>
-//                   <span className="font-semibold text-foreground">{buyPhone}</span>
-//                 </div>
-//                 <div className="border-t border-border my-1" />
-//                 <div className="flex justify-between text-base font-bold">
-//                   <span className="text-foreground">Agent Price</span>
-//                   <span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span>
-//                 </div>
-//               </div>
-
-//               <div className="space-y-2">
-//                 <Label>Payment Method</Label>
-//                 <Select value={buyPaymentMethod} onValueChange={(v) => setBuyPaymentMethod(v as "wallet" | "paystack")}>
-//                   <SelectTrigger>
-//                     <SelectValue />
-//                   </SelectTrigger>
-//                   <SelectContent>
-//                     <SelectItem value="wallet">
-//                       <span className="flex items-center gap-2"><Wallet className="h-4 w-4" /> Wallet (GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)})</span>
-//                     </SelectItem>
-//                     <SelectItem value="paystack">
-//                       <span className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Paystack (+ 1.95% charge)</span>
-//                     </SelectItem>
-//                   </SelectContent>
-//                 </Select>
-//               </div>
-
-//               <div className="flex gap-3">
-//                 <Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button>
-//                 <Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>
-//                   {buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing...</> : "Confirm Purchase"}
-//                 </Button>
-//               </div>
-//             </div>
-//           )}
-//         </DialogContent>
-//       </Dialog>
-//     </div>
-//   );
-// };
-
-// export default AgentDashboard;
+export default AgentDashboard;
 
 
 
@@ -1001,6 +938,15 @@ interface ProfitStats {
   totalProfit: number;    // TotalRevenue - TotalCost
   availableForWithdrawal: number; // TotalProfit + wallet_balance (top-ups)
 }
+
+const PAYSTACK_FEE_PERCENT = 1.95;
+
+const calculateProfit = (sellingPrice: number, agentCost: number): number => {
+  // Calculate service fee from the selling price
+  const serviceFee = (sellingPrice * PAYSTACK_FEE_PERCENT) / 100;
+  // Profit = Selling Price - Service Fee - Agent Cost
+  return sellingPrice - serviceFee - agentCost;
+};
 
 const AgentDashboard = () => {
   const { user, isAgent, isAdmin, loading: authLoading, signOut } = useAuth();
