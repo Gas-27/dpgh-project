@@ -156,7 +156,7 @@ const PaymentDialog = ({
                 <span className="text-foreground">GH₵ {price.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Service Charge ({PAYSTACK_CHARGE_PERCENT}%)</span>
+                <span className="text-muted-foreground"> Paystack Service Charge ({PAYSTACK_CHARGE_PERCENT}%)</span>
                 <span className="text-foreground">GH₵ {charge.toFixed(2)}</span>
               </div>
               <div className="border-t border-border my-1" />
@@ -167,7 +167,7 @@ const PaymentDialog = ({
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-primary flex-shrink-0" />
-              Secured by Paystack.⚠️ Please always wait for paystack to confirm payment and return you back to the site for your order to be varified  before leaving the page,
+              ⚠️ Please always wait for paystack to confirm payment and return you back to the site for your order to be varified  before leaving the page,
               this is the only way that you data  get processed,this is urgent⚠️.
             </div>
             <div className="flex gap-3">
