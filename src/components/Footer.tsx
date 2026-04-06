@@ -31,7 +31,7 @@ const Footer = () => {
         </div>
       </div>
       <div className="container mt-8 pt-6 border-t border-border text-center text-xs text-muted-foreground">
-        © 2026 Data Plug GH. All rights reserved.
+        © 2026 Data Plug . All rights reserved.
       </div>
     </footer>
   );

@@ -3,7 +3,7 @@ import { Store, DollarSign, Settings, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const perks = [
-  { icon: Store, title: "Your Own Mini Website", desc: "Get a branded store to sell data under your name." },
+  { icon: Store, title: "Your Own Mini Website", desc: "Get a branded store to sell data under your name.Plus you get cheaper prices than normal users." },
   { icon: DollarSign, title: "Control Your Prices", desc: "Set your own markup and maximize your margins." },
   { icon: Settings, title: "Manage Your Store", desc: "Track orders, customers, and inventory with ease." },
   { icon: TrendingUp, title: "Make Profits", desc: "Earn on every transaction — grow your business." },

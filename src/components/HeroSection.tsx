@@ -31,7 +31,7 @@ const HeroSection = () => {
 
           <div className="flex gap-8 pt-4">
             <div>
-              <p className="font-display text-2xl font-bold text-foreground">10K+</p>
+              <p className="font-display text-2xl font-bold text-foreground">23K+</p>
               <p className="text-xs text-muted-foreground">Happy Users</p>
             </div>
             <div>

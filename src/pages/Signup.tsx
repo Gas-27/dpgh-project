@@ -80,7 +80,7 @@ const Signup = () => {
             >
               <Store className="h-6 w-6" />
               <span className="text-sm font-semibold">Agent</span>
-              <span className="text-xs text-center">Sell & earn profit</span>
+              <span className="text-xs text-center">Sell & earn profit ,You also get prices more cheaper than normal user</span>
             </button>
           </div>
 

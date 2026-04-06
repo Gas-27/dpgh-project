@@ -25,7 +25,7 @@ interface PaymentDialogProps {
   agentStoreId?: string;
 }
 
-const PAYSTACK_CHARGE_PERCENT = 1.95;
+const PAYSTACK_CHARGE_PERCENT = 1.96;
 const PAYSTACK_FLAT_FEE = 0;
 
 function calculateTotal(price: number) {
@@ -167,7 +167,8 @@ const PaymentDialog = ({
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-primary flex-shrink-0" />
-              Secured by Paystack. Your payment is safe.
+              Secured by Paystack.⚠️ Please always wait for paystack to confirm payment and return you back to the site for your order to be varified  before leaving the page,
+              this is the only way that you data  get processed,this is urgent⚠️.
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setStep("phone")} disabled={loading}>
