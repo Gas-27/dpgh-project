@@ -79,4 +79,27 @@
   .glow-primary-sm {
     box-shadow: 0 0 10px hsl(191 100% 50% / 0.2);
   }
+
+  /* 🔥 PAYSTACK PULSE WARNING */
+  .paystack-warning {
+    font-weight: 600;
+    line-height: 1.5;
+    animation: pulseWarning 1.5s infinite ease-in-out;
+  }
+}
+
+/* 🔥 KEYFRAMES (MUST BE OUTSIDE @layer) */
+@keyframes pulseWarning {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
