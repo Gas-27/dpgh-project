@@ -219,9 +219,8 @@ const PaymentDialog = ({
             {/* 🔥 PULSING WARNING */}
             <div className="flex items-center gap-2 text-xs text-red-600 paystack-warning ">
               <ShieldCheck className="h-4 w-4 flex-shrink-0" />
-              ⚠️🚨 Please wait for Paystack to confirm your payment and return you  back to the site for the site to verify payment before leaving this page.Money maybe deducted but purshase will not go through unless payment is verify on site This is the ONLY way your data gets  processed.This is urgent 🚨⚠️
+              ⚠️🚨 After paying, wait for Paystack to return you to Dataplug for verification. If not verified here, your purchase will NOT go through—even if money is deducted. 🚨⚠️
             </div>
-
             <div className="flex gap-3">
               <Button
                 variant="outline"
