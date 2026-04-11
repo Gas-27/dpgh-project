@@ -8,7 +8,7 @@ const Footer = () => {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
-            <span className="font-display text-sm font-bold">DATA PLUG <span className="text-primary">GH</span></span>
+            <span className="font-display text-sm font-bold">DATA PLUG <span className="text-primary">.STORE</span></span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Ghana's trusted platform for instant, affordable data bundles across all networks.
@@ -26,7 +26,7 @@ const Footer = () => {
           <h4 className="font-display text-sm font-semibold">Contact</h4>
           <div className="space-y-2 text-xs text-muted-foreground">
             <a href="https://wa.me/233200511211" target="_blank" rel="noopener noreferrer" className="block hover:text-foreground transition-colors">WhatsApp Support</a>
-            <a href="mailto:support@datapluggh.com" className="block hover:text-foreground transition-colors">support@datapluggh.com</a>
+            <a href="mailto:support@datapluggh.com" className="block hover:text-foreground transition-colors">dataplugstore@gmail.com</a>
           </div>
         </div>
       </div>

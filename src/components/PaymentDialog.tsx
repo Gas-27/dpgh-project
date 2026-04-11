@@ -25,7 +25,7 @@ interface PaymentDialogProps {
   agentStoreId?: string;
 }
 
-const PAYSTACK_CHARGE_PERCENT = 1.96;
+const PAYSTACK_CHARGE_PERCENT = 1.98;
 const PAYSTACK_FLAT_FEE = 0;
 
 function calculateTotal(price: number) {
@@ -219,7 +219,7 @@ const PaymentDialog = ({
             {/* 🔥 PULSING WARNING */}
             <div className="flex items-center gap-2 text-xs text-red-600 paystack-warning ">
               <ShieldCheck className="h-4 w-4 flex-shrink-0" />
-              ⚠️🚨 After paying, wait for Paystack to return you to Dataplug for verification. If not verified here, your purchase will NOT go through—even if money is deducted. 🚨⚠️
+              ⚠️🚨 After paying, wait for Paystack to return you to Dataplug for verification.if not verified here, your purchase Don't go through—even if money is deducted. 🚨⚠️
             </div>
             <div className="flex gap-3">
               <Button
