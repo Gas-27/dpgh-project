@@ -98,7 +98,7 @@ export const PaymentModal = ({
                             <span>GHS {AGENT_REGISTRATION_FEE.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span>Paystack Fee (1.95%)</span>
+                            <span>Paystack Fee (1.98%)</span>
                             <span>GHS {((AGENT_REGISTRATION_FEE * 1.95) / 100).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between font-semibold mt-2 pt-2 border-t">
