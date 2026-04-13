@@ -21,14 +21,18 @@ const HeroSection = () => {
             Fast, reliable, and available around the clock.
           </p>
           <div className="flex flex-wrap gap-4">
-            <Button variant="hero" size="lg" asChild>
+            <Button
+              variant="hero"
+              size="lg"
+              asChild
+              className="relative animate-[pulse-glow_1.5s_ease-in-out_infinite] shadow-lg shadow-primary/50 hover:scale-105 transition-transform duration-200"
+            >
               <Link to="/packages">Get Started</Link>
             </Button>
             <Button variant="hero-outline" size="lg" asChild>
               <Link to="/signup">Become an Agent</Link>
             </Button>
           </div>
-
           <div className="flex gap-8 pt-4">
             <div>
               <p className="font-display text-2xl font-bold text-foreground">23K+</p>
@@ -49,6 +53,22 @@ const HeroSection = () => {
           <QuickBuyWidget />
         </div>
       </div>
+
+      {/* Optional: Add global animation keyframes if not already defined in your global CSS */}
+      <style>{`
+        @keyframes pulse-glow {
+          0%, 100% {
+            box-shadow: 0 0 5px 0 rgba(var(--primary-rgb), 0.3), 0 0 10px 0 rgba(var(--primary-rgb), 0.2);
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            box-shadow: 0 0 20px 8px rgba(var(--primary-rgb), 0.8), 0 0 30px 15px rgba(var(--primary-rgb), 0.5);
+            transform: scale(1.02);
+            opacity: 0.95;
+          }
+        }
+      `}</style>
     </section>
   );
 };
