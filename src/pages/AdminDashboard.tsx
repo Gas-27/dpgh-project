@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,12 @@ const AdminDashboard = () => {
   const [newPkg, setNewPkg] = useState({ network: "mtn", size_gb: "", price: "", agent_price: "" });
   const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
   const [processingWithdrawals, setProcessingWithdrawals] = useState<Set<string>>(new Set());
+
+  // Search states for Agents, Users, Orders, and Withdrawals
+  const [agentSearchTerm, setAgentSearchTerm] = useState("");
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [orderSearchTerm, setOrderSearchTerm] = useState("");
+  const [withdrawalSearchTerm, setWithdrawalSearchTerm] = useState("");
 
   // Topup state
   const [topupSearch, setTopupSearch] = useState("");
@@ -260,6 +266,27 @@ const AdminDashboard = () => {
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
 
+  // Filter agents by store name
+  const filteredAgents = agents.filter((agent) =>
+    agent.store_name.toLowerCase().includes(agentSearchTerm.toLowerCase())
+  );
+
+  // Filter users by full name
+  const filteredUsers = users.filter((user) =>
+    (user.full_name?.toLowerCase() || "").includes(userSearchTerm.toLowerCase())
+  );
+
+  // Filter orders by customer phone number
+  const filteredOrders = orders.filter((order) =>
+    order.customer_number.toLowerCase().includes(orderSearchTerm.toLowerCase())
+  );
+
+  // Filter withdrawals by agent store name (case-insensitive)
+  const filteredWithdrawals = withdrawals.filter((withdrawal) => {
+    const agent = agents.find((a) => a.id === withdrawal.agent_store_id);
+    return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
+  });
+
   if (dataLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -373,6 +400,16 @@ const AdminDashboard = () => {
                 </Button>
               </div>
             )}
+            {/* Search input for orders by phone number */}
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by phone number..."
+                value={orderSearchTerm}
+                onChange={(e) => setOrderSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <Card className="border-border">
               <Table>
                 <TableHeader>
@@ -389,10 +426,10 @@ const AdminDashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No orders yet.</TableCell></TableRow>
+                  {filteredOrders.length === 0 ? (
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow>
                   ) : (
-                    orders.map((order) => (
+                    filteredOrders.map((order) => (
                       <TableRow key={order.id}>
                         <TableCell className="text-sm text-muted-foreground">
                           {order.created_at ? new Date(order.created_at).toLocaleString() : "—"}
@@ -433,10 +470,20 @@ const AdminDashboard = () => {
 
           {/* AGENTS TAB */}
           <TabsContent value="agents" className="space-y-4">
-            {agents.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No agent applications yet.</p>
+            {/* Search input for agent store name */}
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by store name..."
+                value={agentSearchTerm}
+                onChange={(e) => setAgentSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {filteredAgents.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No agents match your search.</p>
             ) : (
-              agents.map((agent) => (
+              filteredAgents.map((agent) => (
                 <Card key={agent.id} className="border-border">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between flex-wrap gap-4">
@@ -532,6 +579,16 @@ const AdminDashboard = () => {
                 </p>
               </div>
             )}
+            {/* Search input for withdrawals by agent store name */}
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by agent store name..."
+                value={withdrawalSearchTerm}
+                onChange={(e) => setWithdrawalSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <Card className="border-border">
               <Table>
                 <TableHeader>
@@ -548,10 +605,10 @@ const AdminDashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {withdrawals.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No withdrawal requests yet.</TableCell></TableRow>
+                  {filteredWithdrawals.length === 0 ? (
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow>
                   ) : (
-                    withdrawals.map((w) => {
+                    filteredWithdrawals.map((w) => {
                       const agent = agents.find((a) => a.id === w.agent_store_id);
                       return (
                         <TableRow key={w.id}>
@@ -589,6 +646,16 @@ const AdminDashboard = () => {
 
           {/* USERS TAB */}
           <TabsContent value="users" className="space-y-4">
+            {/* Search input for user name */}
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name..."
+                value={userSearchTerm}
+                onChange={(e) => setUserSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <Card className="border-border">
               <Table>
                 <TableHeader>
@@ -600,7 +667,7 @@ const AdminDashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((u) => (
+                  {filteredUsers.map((u) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{u.phone || "—"}</TableCell>
