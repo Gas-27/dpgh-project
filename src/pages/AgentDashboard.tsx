@@ -459,7 +459,7 @@ const AgentDashboard = () => {
           <TabsList className="flex flex-wrap justify-center gap-2 h-auto p-2 bg-transparent">
             <TabsTrigger value="overview" className="flex-1 min-w-[100px]"><BarChart3 className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
             <TabsTrigger value="buy" className="flex-1 min-w-[100px]"><ShoppingCart className="h-4 w-4 mr-1" /> Buy Data</TabsTrigger>
-            <TabsTrigger value="store" className="flex-1 min-w-[100px]"><Store className="h-4 w-4 mr-1" /> Store</TabsTrigger>
+            <TabsTrigger value="store" className="flex-1 min-w-[100px]"><Store className="h-4 w-4 mr-1" /> Store Prices</TabsTrigger>
             <TabsTrigger value="withdraw" className="flex-1 min-w-[100px]"><ArrowDownToLine className="h-4 w-4 mr-1" /> Withdraw</TabsTrigger>
             <TabsTrigger value="settings" className="flex-1 min-w-[100px]"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
           </TabsList>
@@ -599,7 +599,7 @@ const AgentDashboard = () => {
             </div>
           </TabsContent>
 
-          {/* STORE TAB */}
+          {/* STORE PRICES TAB */}
           <TabsContent value="store" className="space-y-4 mt-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex gap-2 flex-wrap">
