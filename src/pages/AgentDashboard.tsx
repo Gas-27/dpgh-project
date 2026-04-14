@@ -114,6 +114,26 @@ const AgentDashboard = () => {
   // Check if there's a pending withdrawal
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
 
+  // const calculateProfitStats = (ordersList: Order[], packagesList: DataPackage[]) => {
+  //   let totalRevenue = 0;
+  //   let totalCost = 0;
+
+  //   ordersList.forEach(order => {
+  //     if (order.status === "completed" || order.status === "paid") {
+  //       totalRevenue += Number(order.amount);
+  //       const pkg = packagesList.find(p => p.id === order.package_id);
+  //       if (pkg) {
+  //         totalCost += pkg.agent_price;
+  //       }
+  //     }
+  //   });
+
+  //   const totalProfit = totalRevenue - totalCost;
+  //   const availableForWithdrawal = totalProfit + (store?.wallet_balance || 0);
+
+  //   return { totalRevenue, totalCost, totalProfit, availableForWithdrawal };
+  // };
+
   const calculateProfitStats = (ordersList: Order[], packagesList: DataPackage[]) => {
     let totalRevenue = 0;
     let totalCost = 0;
@@ -129,9 +149,17 @@ const AgentDashboard = () => {
     });
 
     const totalProfit = totalRevenue - totalCost;
-    const availableForWithdrawal = totalProfit + (store?.wallet_balance || 0);
 
-    return { totalRevenue, totalCost, totalProfit, availableForWithdrawal };
+    // ✅ availableForWithdrawal now comes directly from wallet_balance
+    // (which includes profit from completed orders + admin topups)
+    const availableForWithdrawal = store?.wallet_balance || 0;
+
+    return {
+      totalRevenue,
+      totalCost,
+      totalProfit,
+      availableForWithdrawal,
+    };
   };
 
   useEffect(() => {
@@ -511,8 +539,8 @@ const AgentDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Available for Withdrawal</p>
-                      <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {profitStats.availableForWithdrawal.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground mt-1">(Profit + Top-ups)</p>
+                      <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground mt-1"></p>
                     </div>
                     <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                   </div>
@@ -695,7 +723,7 @@ const AgentDashboard = () => {
                             <Badge className={
                               w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30"
                                 : w.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                : "bg-red-600/20 text-red-400 border-red-600/30"
+                                  : "bg-red-600/20 text-red-400 border-red-600/30"
                             }>{w.status}</Badge>
                           </TableCell>
                         </TableRow>
