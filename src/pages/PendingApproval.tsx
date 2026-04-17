@@ -100,7 +100,7 @@ const PendingApproval = () => {
                 </p>
                 <div className="flex items-center justify-between bg-background rounded-lg p-3 border">
                   <div>
-                    <p className="font-mono font-medium">0200511211</p>
+                    <p className="font-mono font-medium">0599449202</p>
                     <p className="text-xs text-muted-foreground">MTN Mobile Money</p>
                   </div>
                   <Button
