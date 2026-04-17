@@ -69,8 +69,21 @@ const copyToClipboard = async (text: string, toast: any) => {
   }
 };
 
+// Helper: Get store name from subdomain (e.g., "acme" from "acme.datastores.shop")
+const getStoreNameFromSubdomain = (): string | null => {
+  const hostname = window.location.hostname;
+  // Only match if the hostname ends with .datastores.shop
+  if (hostname.endsWith('.datastores.shop')) {
+    const parts = hostname.split('.');
+    if (parts.length >= 3) {
+      return parts[0];
+    }
+  }
+  return null;
+};
+
 // ============================================================
-// ORDER TRACKING CARD – STEP TIMELINE (updated)
+// ORDER TRACKING CARD – STEP TIMELINE (unchanged)
 // ============================================================
 const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: AgentStore; toast: any }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -93,7 +106,6 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
   if (elapsedMinutes >= 150) {
     currentStep = 4;
     statusMessage = "Your data bundle has been delivered successfully.";
-    // Add network‑specific message about where to check
     if (order.network === "mtn") {
       extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
     } else if (order.network === "airteltigo") {
@@ -103,7 +115,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
     } else {
       extraNote = "Please check your messages for delivery confirmation.";
     }
-  } 
+  }
   else if (elapsedMinutes >= 60) {
     currentStep = 3;
     if (order.network === "mtn") {
@@ -137,7 +149,6 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
   const orderDate = new Date(order.created_at).toLocaleString();
   const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${order.size_gb}GB\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
-  // WhatsApp report link (using store's WhatsApp number)
   const whatsappNumber = store.whatsapp_number.replace(/[^0-9]/g, "");
   const whatsappMessage = encodeURIComponent(
     `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
@@ -145,10 +156,8 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 
   const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
-  // Report button appears for 2 days (48 hours) after delivery (150 to 3030 minutes)
   const showReportButton = currentStep === 4 && elapsedMinutes >= 150 && elapsedMinutes < 3030;
 
-  // Delivered step UI
   if (currentStep === 4) {
     return (
       <div className="space-y-4">
@@ -180,9 +189,9 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
           )}
         </div>
         {showReportButton && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
             asChild
           >
@@ -218,16 +227,14 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
             }
             return (
               <div key={step.step} className="flex flex-col items-center flex-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  step.step < currentStep ? "bg-green-600/20 text-green-400" :
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep ? "bg-green-600/20 text-green-400" :
                   step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
-                  "bg-muted text-muted-foreground"
-                }`}>
+                    "bg-muted text-muted-foreground"
+                  }`}>
                   {icon}
                 </div>
-                <span className={`text-xs text-center mt-1 ${
-                  step.step === currentStep ? "text-primary font-medium" : "text-muted-foreground"
-                }`}>
+                <span className={`text-xs text-center mt-1 ${step.step === currentStep ? "text-primary font-medium" : "text-muted-foreground"
+                  }`}>
                   {step.name}
                 </span>
               </div>
@@ -235,7 +242,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
           })}
         </div>
         <div className="absolute top-4 left-0 w-full h-0.5 bg-muted -z-10">
-          <div 
+          <div
             className="h-full bg-primary transition-all duration-500"
             style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
           />
@@ -257,9 +264,9 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
       </div>
 
       {showSupportButton && (
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           className="w-full"
           onClick={() => copyToClipboard(contactMessage, toast)}
         >
@@ -272,10 +279,14 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
 };
 
 // ============================================================
-// MAIN AGENT STOREFRONT COMPONENT (unchanged except tracking card)
+// MAIN AGENT STOREFRONT COMPONENT (updated to use subdomain)
 // ============================================================
 const AgentStorefront = () => {
-  const { storeName } = useParams<{ storeName: string }>();
+  // Get store name from subdomain first, fallback to URL param for backward compatibility
+  let { storeName: paramStoreName } = useParams<{ storeName: string }>();
+  const subdomainStoreName = getStoreNameFromSubdomain();
+  const storeName = subdomainStoreName || paramStoreName;
+
   const { toast } = useToast();
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
@@ -317,19 +328,28 @@ const AgentStorefront = () => {
 
   useEffect(() => {
     const fetchStore = async () => {
+      if (!storeName) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
       const { data: stores } = await supabase
         .from("agent_stores")
         .select("id, store_name, whatsapp_number, support_number, theme_config")
         .eq("approved", true) as any;
+
       const matched = (stores ?? []).find((s: any) => {
         const slug = s.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
         return slug === storeName;
       });
+
       if (!matched) {
         setNotFound(true);
         setLoading(false);
         return;
       }
+
       if (!matched.theme_config) {
         matched.theme_config = {
           primary: "#38bdf8",
@@ -550,8 +570,8 @@ const AgentStorefront = () => {
                                 order.status === "completed" || order.status === "paid"
                                   ? "bg-green-600/20 text-green-400 border-green-600/30"
                                   : order.status === "pending"
-                                  ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                  : "bg-red-600/20 text-red-400 border-red-600/30"
+                                    ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                                    : "bg-red-600/20 text-red-400 border-red-600/30"
                               }>
                                 {getStatusText(order.status)}
                               </Badge>

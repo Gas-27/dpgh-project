@@ -1,4 +1,5 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -27,6 +28,17 @@ const RouteLoader = () => (
   </div>
 );
 
+// Component to redirect old /agent/:storeName paths to new subdomain
+const RedirectToSubdomain = () => {
+  const { storeName } = useParams<{ storeName: string }>();
+  useEffect(() => {
+    if (storeName) {
+      window.location.href = `https://${storeName}.datastores.shop`;
+    }
+  }, [storeName]);
+  return <RouteLoader />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -42,6 +54,9 @@ const App = () => (
               <Route path="/packages" element={<Packages />} />
               <Route path="/agent-onboarding" element={<AgentOnboarding />} />
               <Route path="/pending-approval" element={<PendingApproval />} />
+              {/* Redirect old agent path to new subdomain */}
+              <Route path="/agent/:storeName" element={<RedirectToSubdomain />} />
+              {/* Keep existing store route – will be accessed via subdomain later */}
               <Route path="/store/:storeName" element={<AgentStorefront />} />
               <Route path="/agent-registration-callback" element={<AgentRegistrationCallback />} />
               <Route
