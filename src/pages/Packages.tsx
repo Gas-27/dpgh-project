@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Wifi, Search, Package, CheckCircle, Clock, XCircle, X, Loader2, Check, Copy, Mail } from "lucide-react";
+import { Wifi, Search, Package, CheckCircle, Clock, XCircle, X, Loader2, Check, Mail, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Network = "mtn" | "airteltigo" | "telecel";
@@ -46,24 +46,8 @@ const formatNetworkName = (network: string) => {
   return network;
 };
 
-const copyToClipboard = async (text: string, toast: any) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: "Contact information copied to clipboard.",
-    });
-  } catch (err) {
-    toast({
-      title: "Failed to copy",
-      description: "Please copy manually.",
-      variant: "destructive",
-    });
-  }
-};
-
 // ============================================================
-// ORDER TRACKING CARD – STEP TIMELINE (final)
+// ORDER TRACKING CARD – STEP TIMELINE
 // ============================================================
 const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -86,6 +70,15 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   if (elapsedMinutes >= 150) {
     currentStep = 4;
     statusMessage = "Your data bundle has been delivered successfully.";
+    if (order.network === "mtn") {
+      extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
+    } else if (order.network === "airteltigo") {
+      extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+    } else if (order.network === "telecel") {
+      extraNote = "Please check your Telecel messages for delivery confirmation.";
+    } else {
+      extraNote = "Please check your messages for delivery confirmation.";
+    }
   } 
   else if (elapsedMinutes >= 60) {
     currentStep = 3;
@@ -118,18 +111,23 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${order.size_gb}GB\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: 0200511211`;
-
-  // Email report details
-  const emailSubject = encodeURIComponent("Order Delivery Issue Report");
+  
+  // Email support (dataplugstore@gmail.com) with pre‑filled details
+  const emailSubject = encodeURIComponent("Order Support Request");
   const emailBody = encodeURIComponent(
-    `Hello,\n\nI am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist.\n\nThank you.`
+    `Hello,\n\nI need assistance with my order.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease help resolve this issue.\n\nThank you.`
   );
   const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${emailSubject}&body=${emailBody}`;
 
+  // WhatsApp report link (for "Delivered but not received")
+  const whatsappNumber = "233200511211"; // Change to your actual WhatsApp number
+  const whatsappMessage = encodeURIComponent(
+    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
+  );
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+
   const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
-  // Report button appears for 3 hours after delivery (150 to 330 minutes)
-  const showReportButton = currentStep === 4 && elapsedMinutes >= 150 && elapsedMinutes < 330;
+  const showReportButton = currentStep === 4 && elapsedMinutes >= 150 && elapsedMinutes < 3030;
 
   // Delivered step UI
   if (currentStep === 4) {
@@ -156,6 +154,11 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
         </div>
         <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
           <p className="text-sm text-foreground font-medium">{statusMessage}</p>
+          {extraNote && (
+            <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">
+              {extraNote}
+            </p>
+          )}
         </div>
         {showReportButton && (
           <Button 
@@ -164,8 +167,8 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
             className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
             asChild
           >
-            <a href={mailtoLink}>
-              <Mail className="h-4 w-4 mr-2" />
+            <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="h-4 w-4 mr-2" />
               Report: Delivered but not received
             </a>
           </Button>
@@ -239,10 +242,12 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
           variant="outline" 
           size="sm" 
           className="w-full"
-          onClick={() => copyToClipboard(contactMessage, toast)}
+          asChild
         >
-          <Copy className="h-4 w-4 mr-2" />
-          Contact Support (0200511211)
+          <a href={mailtoLink}>
+            <Mail className="h-4 w-4 mr-2" />
+            Contact Support (dataplugstore@gmail.com)
+          </a>
         </Button>
       )}
     </div>

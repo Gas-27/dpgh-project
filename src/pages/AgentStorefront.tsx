@@ -70,7 +70,7 @@ const copyToClipboard = async (text: string, toast: any) => {
 };
 
 // ============================================================
-// ORDER TRACKING CARD – STEP TIMELINE (same as Packages.tsx)
+// ORDER TRACKING CARD – STEP TIMELINE (updated)
 // ============================================================
 const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: AgentStore; toast: any }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -93,6 +93,16 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
   if (elapsedMinutes >= 150) {
     currentStep = 4;
     statusMessage = "Your data bundle has been delivered successfully.";
+    // Add network‑specific message about where to check
+    if (order.network === "mtn") {
+      extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
+    } else if (order.network === "airteltigo") {
+      extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+    } else if (order.network === "telecel") {
+      extraNote = "Please check your Telecel messages for delivery confirmation.";
+    } else {
+      extraNote = "Please check your messages for delivery confirmation.";
+    }
   } 
   else if (elapsedMinutes >= 60) {
     currentStep = 3;
@@ -135,7 +145,8 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 
   const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
-  const showReportButton = currentStep === 4 && elapsedMinutes >= 150 && elapsedMinutes < 330;
+  // Report button appears for 2 days (48 hours) after delivery (150 to 3030 minutes)
+  const showReportButton = currentStep === 4 && elapsedMinutes >= 150 && elapsedMinutes < 3030;
 
   // Delivered step UI
   if (currentStep === 4) {
@@ -162,6 +173,11 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
         </div>
         <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
           <p className="text-sm text-foreground font-medium">{statusMessage}</p>
+          {extraNote && (
+            <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">
+              {extraNote}
+            </p>
+          )}
         </div>
         {showReportButton && (
           <Button 
@@ -256,7 +272,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
 };
 
 // ============================================================
-// MAIN AGENT STOREFRONT COMPONENT
+// MAIN AGENT STOREFRONT COMPONENT (unchanged except tracking card)
 // ============================================================
 const AgentStorefront = () => {
   const { storeName } = useParams<{ storeName: string }>();
