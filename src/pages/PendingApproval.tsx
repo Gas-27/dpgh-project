@@ -73,7 +73,7 @@ const PendingApproval = () => {
           <div className="text-center">
             <h1 className="font-display text-2xl font-bold mb-2">Pending Approval</h1>
             <p className="text-muted-foreground">
-              Your agent account is being reviewed by our team.
+              Pay to get your own site to sell data and also you get to customize your agent store with a colurs and design of yout choice .PLus you also get cheaper prices as well.
             </p>
           </div>
 
@@ -90,7 +90,7 @@ const PendingApproval = () => {
                   To complete your store approval, please make a payment of:
                 </p>
                 <div className="text-center">
-                  <span className="text-3xl font-bold text-primary">GHC 15.00</span>
+                  <span className="text-3xl font-bold text-primary">GHC 20.00</span>
                 </div>
               </div>
 
@@ -100,7 +100,7 @@ const PendingApproval = () => {
                 </p>
                 <div className="flex items-center justify-between bg-background rounded-lg p-3 border">
                   <div>
-                    <p className="font-mono font-medium">0599449202</p>
+                    <p className="font-mono font-medium">0200511211</p>
                     <p className="text-xs text-muted-foreground">MTN Mobile Money</p>
                   </div>
                   <Button
@@ -127,8 +127,8 @@ const PendingApproval = () => {
 
             <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
               <p className="text-xs text-green-800 dark:text-green-400">
-                ✅ After payment, your store will be reviewed and approved within 24-48 hours.
-                You'll receive a notification once approved.
+                ✅ After payment, your store will be  approved within 1 hour.
+                After payment send a screenshot of payment to 0200511211 on whats app.Please tap on the return to Home button once store is approved  then tap on menu you will see dashboard then tap on it.
               </p>
             </div>
           </div>

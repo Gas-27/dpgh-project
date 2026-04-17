@@ -31,7 +31,7 @@ const Signup = () => {
     if (error) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Account created!", description: "Welcome to Data Plug GH!" });
+      toast({ title: "Account created!", description: "Welcome to Data Plug STORE!" });
       if (role === "agent") {
         navigate("/agent-onboarding");
       } else {
@@ -47,7 +47,7 @@ const Signup = () => {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Zap className="h-8 w-8 text-primary" />
             <span className="font-display text-2xl font-bold">
-              DATA PLUG <span className="text-primary">GH</span>
+              DATA PLUG <span className="text-primary">STORE</span>
             </span>
           </div>
           <CardTitle className="font-display">Create Account</CardTitle>

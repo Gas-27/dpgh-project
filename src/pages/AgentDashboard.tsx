@@ -18,7 +18,7 @@ import {
 import {
   Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
-  TrendingUp, Search,
+  TrendingUp, Search, Palette, RotateCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -35,6 +35,12 @@ interface AgentStore {
   approved: boolean;
   wallet_balance: number;
   topup_reference: string;
+  theme_config?: {
+    primary: string;
+    primary_foreground: string;
+    background: string;
+    card_background: string;
+  };
 }
 
 interface DataPackage {
@@ -73,6 +79,14 @@ interface ProfitStats {
   availableForWithdrawal: number;
 }
 
+// NEW DEFAULT THEME (dark mode with light blue primary)
+const DEFAULT_THEME = {
+  primary: "#38bdf8",
+  primary_foreground: "#000000",
+  background: "#0a0a0a",
+  card_background: "#171717",
+};
+
 const AgentDashboard = () => {
   const { user, isAgent, isAdmin, loading: authLoading, signOut } = useAuth();
   const { toast } = useToast();
@@ -99,7 +113,6 @@ const AgentDashboard = () => {
     availableForWithdrawal: 0,
   });
 
-  // Buy data dialog state
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
@@ -107,32 +120,13 @@ const AgentDashboard = () => {
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("paystack");
   const [buyLoading, setBuyLoading] = useState(false);
 
-  // Withdrawal state
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
 
-  // Check if there's a pending withdrawal
+  const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
+  const [savingTheme, setSavingTheme] = useState(false);
+
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
-
-  // const calculateProfitStats = (ordersList: Order[], packagesList: DataPackage[]) => {
-  //   let totalRevenue = 0;
-  //   let totalCost = 0;
-
-  //   ordersList.forEach(order => {
-  //     if (order.status === "completed" || order.status === "paid") {
-  //       totalRevenue += Number(order.amount);
-  //       const pkg = packagesList.find(p => p.id === order.package_id);
-  //       if (pkg) {
-  //         totalCost += pkg.agent_price;
-  //       }
-  //     }
-  //   });
-
-  //   const totalProfit = totalRevenue - totalCost;
-  //   const availableForWithdrawal = totalProfit + (store?.wallet_balance || 0);
-
-  //   return { totalRevenue, totalCost, totalProfit, availableForWithdrawal };
-  // };
 
   const calculateProfitStats = (ordersList: Order[], packagesList: DataPackage[]) => {
     let totalRevenue = 0;
@@ -149,9 +143,6 @@ const AgentDashboard = () => {
     });
 
     const totalProfit = totalRevenue - totalCost;
-
-    // ✅ availableForWithdrawal now comes directly from wallet_balance
-    // (which includes profit from completed orders + admin topups)
     const availableForWithdrawal = store?.wallet_balance || 0;
 
     return {
@@ -166,10 +157,20 @@ const AgentDashboard = () => {
     if (!user) return;
     const fetchData = async () => {
       const { data: storeData } = await supabase
-        .from("agent_stores").select("*").eq("user_id", user.id).maybeSingle();
+        .from("agent_stores").select("*").eq("user_id", user.id).maybeSingle() as any;
       setStore(storeData as AgentStore | null);
 
       if (storeData) {
+        if (storeData.theme_config) {
+          setThemeColors(storeData.theme_config);
+        } else {
+          // Save new default theme to DB if not set
+          await supabase
+            .from("agent_stores")
+            .update({ theme_config: DEFAULT_THEME } as any)
+            .eq("id", storeData.id);
+        }
+
         setStoreForm({
           store_name: storeData.store_name, whatsapp_number: storeData.whatsapp_number,
           support_number: storeData.support_number, whatsapp_group: storeData.whatsapp_group || "",
@@ -210,6 +211,25 @@ const AgentDashboard = () => {
       setProfitStats(stats);
     }
   }, [orders, packages]);
+
+  const saveThemeColors = async () => {
+    if (!store) return;
+    setSavingTheme(true);
+    const { error } = await supabase
+      .from("agent_stores")
+      .update({ theme_config: themeColors } as any)
+      .eq("id", store.id);
+    if (error) {
+      toast({ title: "Error saving colours", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Store colours updated!", description: "Your storefront will now use these colours." });
+    }
+    setSavingTheme(false);
+  };
+
+  const resetToDefault = () => {
+    setThemeColors(DEFAULT_THEME);
+  };
 
   if (authLoading || loading) {
     return (
@@ -256,20 +276,13 @@ const AgentDashboard = () => {
       const pkg = packages.find(p => p.id === pkgId);
       if (!pkg) continue;
 
-      if (sellPrice === "") {
-        toast({ title: "Validation error", description: `Price for ${pkg.size_gb}GB ${pkg.network} cannot be empty.`, variant: "destructive" });
+      if (isNaN(sellPrice) || sellPrice <= 0) {
+        toast({ title: "Validation error", description: `Price for ${pkg.size_gb}GB ${pkg.network} must be a valid positive number.`, variant: "destructive" });
         setSavingPrices(false);
         return;
       }
 
-      const numericPrice = Number(sellPrice);
-      if (isNaN(numericPrice)) {
-        toast({ title: "Validation error", description: `Price for ${pkg.size_gb}GB ${pkg.network} must be a valid number.`, variant: "destructive" });
-        setSavingPrices(false);
-        return;
-      }
-
-      if (numericPrice < pkg.agent_price) {
+      if (sellPrice < pkg.agent_price) {
         toast({ title: "Validation error", description: `Price for ${pkg.size_gb}GB ${pkg.network} cannot be below GH₵ ${pkg.agent_price.toFixed(2)}.`, variant: "destructive" });
         setSavingPrices(false);
         return;
@@ -402,7 +415,6 @@ const AgentDashboard = () => {
   const handleWithdraw = async () => {
     if (!store) return;
 
-    // Check for pending withdrawal first
     if (hasPendingWithdrawal) {
       toast({
         title: "Withdrawal already pending",
@@ -432,7 +444,6 @@ const AgentDashboard = () => {
     } else {
       toast({ title: "Withdrawal request placed!", description: "You will receive payment within 24 hours." });
       setWithdrawAmount("");
-      // Refresh withdrawals
       const { data } = await supabase.from("withdrawal_requests").select("*").eq("agent_store_id", store.id).order("created_at", { ascending: false });
       setWithdrawals((data as WithdrawalRequest[]) ?? []);
     }
@@ -442,7 +453,6 @@ const AgentDashboard = () => {
   const totalOrders = orders.length;
   const pendingOrders = orders.filter((o) => o.status === "pending").length;
 
-  // Filter orders based on search
   const filteredOrders = orders.filter(order =>
     order.customer_number.toLowerCase().includes(orderSearch.toLowerCase()) ||
     order.id.toLowerCase().includes(orderSearch.toLowerCase())
@@ -466,7 +476,6 @@ const AgentDashboard = () => {
       </nav>
 
       <div className="container py-8 space-y-6">
-        {/* Store Link Banner */}
         {store && (
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
@@ -483,12 +492,12 @@ const AgentDashboard = () => {
         )}
 
         <Tabs defaultValue="overview">
-          {/* Mobile-friendly tabs */}
           <TabsList className="flex flex-wrap justify-center gap-2 h-auto p-2 bg-transparent">
             <TabsTrigger value="overview" className="flex-1 min-w-[100px]"><BarChart3 className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
             <TabsTrigger value="buy" className="flex-1 min-w-[100px]"><ShoppingCart className="h-4 w-4 mr-1" /> Buy Data</TabsTrigger>
             <TabsTrigger value="store" className="flex-1 min-w-[100px]"><Store className="h-4 w-4 mr-1" /> Store Prices</TabsTrigger>
             <TabsTrigger value="withdraw" className="flex-1 min-w-[100px]"><ArrowDownToLine className="h-4 w-4 mr-1" /> Withdraw</TabsTrigger>
+            <TabsTrigger value="appearance" className="flex-1 min-w-[100px]"><Palette className="h-4 w-4 mr-1" /> Appearance</TabsTrigger>
             <TabsTrigger value="settings" className="flex-1 min-w-[100px]"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
           </TabsList>
 
@@ -540,7 +549,6 @@ const AgentDashboard = () => {
                     <div>
                       <p className="text-sm text-muted-foreground">Available for Withdrawal</p>
                       <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground mt-1"></p>
                     </div>
                     <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                   </div>
@@ -548,7 +556,6 @@ const AgentDashboard = () => {
               </Card>
             </div>
 
-            {/* Recent Orders with Search Bar */}
             <Card className="border-border">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <CardTitle className="font-display text-lg">Recent Orders</CardTitle>
@@ -665,7 +672,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* WITHDRAW TAB - With pending check */}
+          {/* WITHDRAW TAB */}
           <TabsContent value="withdraw" className="space-y-6 mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6 text-center space-y-2"><TrendingUp className="h-10 w-10 text-primary mx-auto" /><p className="text-muted-foreground text-sm">Total Profit (from sales)</p><p className="font-display text-3xl font-bold text-green-400">GH₵ {profitStats.totalProfit.toFixed(2)}</p></CardContent></Card>
@@ -675,13 +682,11 @@ const AgentDashboard = () => {
             <Card className="border-border">
               <CardHeader><CardTitle className="font-display text-lg">Request Withdrawal</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                {/* Show warning if pending withdrawal exists */}
                 {hasPendingWithdrawal && (
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-center">
                     <p className="text-sm text-yellow-400 font-medium">⚠️ You have a pending withdrawal request. Please wait until it is completed before requesting another.</p>
                   </div>
                 )}
-
                 <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div className="text-center"><p className="text-xs text-muted-foreground">MoMo Name</p><p className="font-bold text-foreground">{store?.momo_name}</p></div>
@@ -689,9 +694,7 @@ const AgentDashboard = () => {
                     <div className="text-center"><p className="text-xs text-muted-foreground">Network</p><p className="font-bold text-foreground">{store?.momo_network?.toUpperCase()}</p></div>
                   </div>
                 </div>
-
                 <p className="text-xs text-muted-foreground">Minimum withdrawal: GH₵ 10.00. Withdrawals processed within 24 hours.</p>
-
                 <div className="flex gap-2 items-end">
                   <div className="flex-1 space-y-1">
                     <Label>Amount (GH₵)</Label>
@@ -705,7 +708,6 @@ const AgentDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Withdrawal History */}
             {withdrawals.length > 0 && (
               <Card className="border-border">
                 <CardHeader><CardTitle className="font-display text-lg">Withdrawal History</CardTitle></CardHeader>
@@ -735,12 +737,100 @@ const AgentDashboard = () => {
             )}
           </TabsContent>
 
+          {/* APPEARANCE TAB */}
+          <TabsContent value="appearance" className="mt-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display">Customise Your Storefront Colours</CardTitle>
+                <p className="text-sm text-muted-foreground">Choose colours that match your brand. Your public store will update immediately.</p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Primary Colour (buttons, accents)</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input type="color" value={themeColors.primary} onChange={(e) => setThemeColors({ ...themeColors, primary: e.target.value })} className="w-16 h-10 p-1" />
+                      <Input type="text" value={themeColors.primary} onChange={(e) => setThemeColors({ ...themeColors, primary: e.target.value })} className="flex-1" placeholder="#38bdf8" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Text Colour on Primary</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input type="color" value={themeColors.primary_foreground} onChange={(e) => setThemeColors({ ...themeColors, primary_foreground: e.target.value })} className="w-16 h-10 p-1" />
+                      <Input type="text" value={themeColors.primary_foreground} onChange={(e) => setThemeColors({ ...themeColors, primary_foreground: e.target.value })} className="flex-1" placeholder="#000000" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Page Background</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input type="color" value={themeColors.background} onChange={(e) => setThemeColors({ ...themeColors, background: e.target.value })} className="w-16 h-10 p-1" />
+                      <Input type="text" value={themeColors.background} onChange={(e) => setThemeColors({ ...themeColors, background: e.target.value })} className="flex-1" placeholder="#0a0a0a" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Card Background</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input type="color" value={themeColors.card_background} onChange={(e) => setThemeColors({ ...themeColors, card_background: e.target.value })} className="w-16 h-10 p-1" />
+                      <Input type="text" value={themeColors.card_background} onChange={(e) => setThemeColors({ ...themeColors, card_background: e.target.value })} className="flex-1" placeholder="#171717" />
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
+                  <p className="text-sm font-medium">Preview</p>
+                  <div className="rounded-md p-4" style={{ backgroundColor: themeColors.background }}>
+                    <div className="rounded-md p-3" style={{ backgroundColor: themeColors.card_background }}>
+                      <div className="inline-block px-3 py-1 rounded-md text-sm" style={{ backgroundColor: themeColors.primary, color: themeColors.primary_foreground }}>Button Example</div>
+                      <p className="text-sm mt-2" style={{ color: themeColors.primary }}>Accent text colour</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="hero" onClick={saveThemeColors} disabled={savingTheme} className="flex-1">
+                    {savingTheme ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                    Save Colours
+                  </Button>
+                  <Button variant="outline" onClick={resetToDefault} className="flex-1">
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    Reset to Default
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* SETTINGS TAB */}
           <TabsContent value="settings" className="mt-6">
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between"><CardTitle className="font-display">Store Information</CardTitle>{!editingStore && (<Button variant="outline" size="sm" onClick={() => setEditingStore(true)}><Edit2 className="h-4 w-4 mr-1" /> Edit</Button>)}</CardHeader>
               <CardContent className="space-y-4">
-                {editingStore ? (<><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={(e) => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div><div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div><div className="space-y-2"><Label>Support Number</Label><Input value={storeForm.support_number} onChange={(e) => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div><div className="space-y-2"><Label>WhatsApp Group Link</Label><Input value={storeForm.whatsapp_group} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Optional" /></div><div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={(e) => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Number</Label><Input value={storeForm.momo_number} onChange={(e) => setStoreForm({ ...storeForm, momo_number: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Network</Label><Input value={storeForm.momo_network} onChange={(e) => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" /></div></div><div className="flex gap-2 pt-2"><Button variant="hero" size="sm" onClick={saveStoreInfo} disabled={savingStore}><Save className="h-4 w-4 mr-1" /> {savingStore ? "Saving..." : "Save Changes"}</Button><Button variant="outline" size="sm" onClick={() => setEditingStore(false)}>Cancel</Button></div></>) : (<div className="grid grid-cols-2 gap-4 text-sm"><div><p className="text-muted-foreground">Store Name</p><p className="font-semibold text-foreground">{store?.store_name}</p></div><div><p className="text-muted-foreground">WhatsApp</p><p className="font-semibold text-foreground">{store?.whatsapp_number}</p></div><div><p className="text-muted-foreground">Support Number</p><p className="font-semibold text-foreground">{store?.support_number}</p></div><div><p className="text-muted-foreground">WhatsApp Group</p><p className="font-semibold text-foreground">{store?.whatsapp_group || "Not set"}</p></div><div><p className="text-muted-foreground">MoMo Name</p><p className="font-semibold text-foreground">{store?.momo_name}</p></div><div><p className="text-muted-foreground">MoMo Number</p><p className="font-semibold text-foreground">{store?.momo_number}</p></div><div><p className="text-muted-foreground">MoMo Network</p><p className="font-semibold text-foreground">{store?.momo_network?.toUpperCase()}</p></div><div><p className="text-muted-foreground">Topup Reference</p><p className="font-display text-xl font-bold text-primary">{store?.topup_reference}</p></div></div>)}
+                {editingStore ? (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={(e) => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>Support Number</Label><Input value={storeForm.support_number} onChange={(e) => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>WhatsApp Group Link</Label><Input value={storeForm.whatsapp_group} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Optional" /></div>
+                      <div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={(e) => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>MoMo Number</Label><Input value={storeForm.momo_number} onChange={(e) => setStoreForm({ ...storeForm, momo_number: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>MoMo Network</Label><Input value={storeForm.momo_network} onChange={(e) => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" /></div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button variant="hero" size="sm" onClick={saveStoreInfo} disabled={savingStore}><Save className="h-4 w-4 mr-1" /> {savingStore ? "Saving..." : "Save Changes"}</Button>
+                      <Button variant="outline" size="sm" onClick={() => setEditingStore(false)}>Cancel</Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><p className="text-muted-foreground">Store Name</p><p className="font-semibold text-foreground">{store?.store_name}</p></div>
+                    <div><p className="text-muted-foreground">WhatsApp</p><p className="font-semibold text-foreground">{store?.whatsapp_number}</p></div>
+                    <div><p className="text-muted-foreground">Support Number</p><p className="font-semibold text-foreground">{store?.support_number}</p></div>
+                    <div><p className="text-muted-foreground">WhatsApp Group</p><p className="font-semibold text-foreground">{store?.whatsapp_group || "Not set"}</p></div>
+                    <div><p className="text-muted-foreground">MoMo Name</p><p className="font-semibold text-foreground">{store?.momo_name}</p></div>
+                    <div><p className="text-muted-foreground">MoMo Number</p><p className="font-semibold text-foreground">{store?.momo_number}</p></div>
+                    <div><p className="text-muted-foreground">MoMo Network</p><p className="font-semibold text-foreground">{store?.momo_network?.toUpperCase()}</p></div>
+                    <div><p className="text-muted-foreground">Topup Reference</p><p className="font-display text-xl font-bold text-primary">{store?.topup_reference}</p></div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -751,7 +841,23 @@ const AgentDashboard = () => {
       <Dialog open={buyDialogOpen} onOpenChange={(v) => { if (!v) setBuyDialogOpen(false); }}>
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display text-xl">Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</DialogTitle><DialogDescription>Purchase data at agent price</DialogDescription></DialogHeader>
-          {buyStep === "phone" ? (<div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="tel" placeholder="0XX XXX XXXX" value={buyPhone} onChange={(e) => setBuyPhone(e.target.value)} className="pl-10" autoFocus /></div></div><Button variant="hero" className="w-full" onClick={() => { if (buyPhone.trim().length < 10) { toast({ title: "Invalid number", variant: "destructive" }); return; } setBuyStep("confirm"); }}>Continue</Button></div>) : (<div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold text-foreground">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold text-foreground">{buyPhone}</span></div><div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span className="text-foreground">Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div><div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={(v) => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Paystack (+ charges)</span></SelectItem></SelectContent></Select></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing...</> : "Confirm Purchase"}</Button></div></div>)}
+          {buyStep === "phone" ? (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2"><Label>Recipient Phone Number</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="tel" placeholder="0XX XXX XXXX" value={buyPhone} onChange={(e) => setBuyPhone(e.target.value)} className="pl-10" autoFocus /></div></div>
+              <Button variant="hero" className="w-full" onClick={() => { if (buyPhone.trim().length < 10) { toast({ title: "Invalid number", variant: "destructive" }); return; } setBuyStep("confirm"); }}>Continue</Button>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold text-foreground">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold text-foreground">{buyPhone}</span></div>
+                <div className="border-t border-border my-1" />
+                <div className="flex justify-between text-base font-bold"><span className="text-foreground">Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div>
+              </div>
+              <div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={(v) => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Paystack (+ charges)</span></SelectItem></SelectContent></Select></div>
+              <div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing...</> : "Confirm Purchase"}</Button></div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
