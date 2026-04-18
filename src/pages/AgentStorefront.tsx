@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
-import { Zap, MessageCircle, Phone, Wifi, Shield, Clock, Star, Search, Package, CheckCircle, XCircle, X, Loader2, Check, Copy } from "lucide-react";
+import { Zap, Phone, Wifi, Shield, Clock, Star, Search, Package, CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AgentStore {
@@ -15,6 +15,8 @@ interface AgentStore {
   store_name: string;
   whatsapp_number: string;
   support_number: string;
+  whatsapp_group?: string | null;
+  show_whatsapp_group_icon?: boolean;
   theme_config?: {
     primary: string;
     primary_foreground: string;
@@ -46,6 +48,12 @@ interface Order {
   created_at: string;
 }
 
+interface Notification {
+  id: string;
+  message: string;
+  created_at: string;
+}
+
 const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
@@ -69,10 +77,8 @@ const copyToClipboard = async (text: string, toast: any) => {
   }
 };
 
-// Helper: Get store name from subdomain (e.g., "acme" from "acme.datastores.shop")
 const getStoreNameFromSubdomain = (): string | null => {
   const hostname = window.location.hostname;
-  // Only match if the hostname ends with .datastores.shop
   if (hostname.endsWith('.datastores.shop')) {
     const parts = hostname.split('.');
     if (parts.length >= 3) {
@@ -196,7 +202,12 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
             asChild
           >
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="h-4 w-4 mr-2" />
+              <img
+                src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
+                alt="WhatsApp"
+                className="h-4 w-4 mr-2"
+                style={{ filter: 'invert(1)' }}
+              />
               Report: Delivered but not received
             </a>
           </Button>
@@ -279,10 +290,82 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
 };
 
 // ============================================================
-// MAIN AGENT STOREFRONT COMPONENT (updated to use subdomain)
+// NOTIFICATION MODAL COMPONENT (centered popup)
+// ============================================================
+const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor }: {
+  notifications: Notification[];
+  onDismiss: (id: string) => void;
+  onCloseAll: () => void;
+  primaryColor: string;
+}) => {
+  if (notifications.length === 0) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative max-w-md w-full mx-4 bg-card rounded-2xl shadow-2xl border overflow-hidden animate-in zoom-in-95 duration-200">
+        {/* Header with gradient */}
+        <div className="relative p-6 pb-4 text-center">
+          <div className="absolute top-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${primaryColor}, ${primaryColor}cc)` }} />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ backgroundColor: `${primaryColor}20` }}>
+            <Megaphone className="h-6 w-6" style={{ color: primaryColor }} />
+          </div>
+          <h3 className="text-xl font-display font-bold text-foreground">Announcement</h3>
+          <p className="text-sm text-muted-foreground mt-1">Important information from the store</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 h-8 w-8 rounded-full"
+            onClick={onCloseAll}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Messages list */}
+        <div className="px-6 pb-6 space-y-4">
+          {notifications.map((notif) => (
+            <div
+              key={notif.id}
+              className="p-4 rounded-lg border bg-secondary/20"
+              style={{ borderColor: `${primaryColor}30` }}
+            >
+              <div className="flex items-start gap-3">
+                <Bell className="h-5 w-5 mt-0.5 shrink-0" style={{ color: primaryColor }} />
+                <p className="text-foreground text-sm flex-1">{notif.message}</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 hover:bg-destructive/10"
+                  onClick={() => onDismiss(notif.id)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 pl-8">
+                {new Date(notif.created_at).toLocaleString()}
+              </p>
+            </div>
+          ))}
+          {notifications.length > 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+              onClick={onCloseAll}
+            >
+              Dismiss All
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
+// MAIN AGENT STOREFRONT COMPONENT
 // ============================================================
 const AgentStorefront = () => {
-  // Get store name from subdomain first, fallback to URL param for backward compatibility
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain();
   const storeName = subdomainStoreName || paramStoreName;
@@ -300,6 +383,73 @@ const AgentStorefront = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
 
+  // WhatsApp tooltip (9 seconds)
+  const [showGroupTooltip, setShowGroupTooltip] = useState(true);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowGroupTooltip(false), 9000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Load dismissed IDs from localStorage
+  useEffect(() => {
+    if (store?.id) {
+      const stored = localStorage.getItem(`dismissed_notifications_${store.id}`);
+      if (stored) setDismissedIds(JSON.parse(stored));
+    }
+  }, [store?.id]);
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!store?.id) return;
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("agent_notifications")
+      .select("id, message, created_at")
+      .eq("agent_store_id", store.id)
+      .eq("is_active", true)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order("created_at", { ascending: false });
+    if (!error && data) {
+      const active = data as Notification[];
+      setNotifications(active);
+      // Open modal only if there are undismissed notifications and modal not already open
+      const undismissed = active.filter(n => !dismissedIds.includes(n.id));
+      if (undismissed.length > 0 && !modalOpen) {
+        setModalOpen(true);
+      }
+    }
+  }, [store?.id, dismissedIds, modalOpen]);
+
+  useEffect(() => {
+    if (store?.id) fetchNotifications();
+  }, [store?.id, fetchNotifications]);
+
+  const dismissNotification = (id: string) => {
+    const newDismissed = [...dismissedIds, id];
+    setDismissedIds(newDismissed);
+    localStorage.setItem(`dismissed_notifications_${store?.id}`, JSON.stringify(newDismissed));
+    // Close modal if no undismissed notifications left
+    const remaining = notifications.filter(n => !newDismissed.includes(n.id));
+    if (remaining.length === 0) setModalOpen(false);
+  };
+
+  const closeAllNotifications = () => {
+    const allIds = notifications.map(n => n.id);
+    const newDismissed = [...dismissedIds, ...allIds];
+    setDismissedIds(newDismissed);
+    localStorage.setItem(`dismissed_notifications_${store?.id}`, JSON.stringify(newDismissed));
+    setModalOpen(false);
+  };
+
+  const undismissedNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
+
+  // Search orders (unchanged)
   const searchOrders = useCallback(async () => {
     if (!store || !searchQuery.trim()) return;
     setSearching(true);
@@ -326,6 +476,7 @@ const AgentStorefront = () => {
     setSearchPerformed(false);
   };
 
+  // Fetch store data (unchanged)
   useEffect(() => {
     const fetchStore = async () => {
       if (!storeName) {
@@ -336,7 +487,7 @@ const AgentStorefront = () => {
 
       const { data: stores } = await supabase
         .from("agent_stores")
-        .select("id, store_name, whatsapp_number, support_number, theme_config")
+        .select("*")
         .eq("approved", true) as any;
 
       const matched = (stores ?? []).find((s: any) => {
@@ -358,7 +509,9 @@ const AgentStorefront = () => {
           card_background: "#171717",
         };
       }
+      matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
+
       const [pkgRes, priceRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
@@ -395,12 +548,8 @@ const AgentStorefront = () => {
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const whatsappLink = `https://wa.me/${store.whatsapp_number.replace(/[^0-9]/g, "")}`;
+  const groupLink = store.show_whatsapp_group_icon && store.whatsapp_group ? store.whatsapp_group : null;
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
-  const networkColors: Record<string, string> = {
-    mtn: "from-yellow-500 to-yellow-600",
-    airteltigo: "from-red-500 to-red-600",
-    telecel: "from-red-600 to-rose-700",
-  };
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
   const getStatusIcon = (status: string) => {
@@ -420,13 +569,23 @@ const AgentStorefront = () => {
 
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen relative"
       style={{
         backgroundColor: theme_config.background,
         '--primary': theme_config.primary,
         '--primary-foreground': theme_config.primary_foreground,
       } as React.CSSProperties}
     >
+      {/* Notification Modal (centered popup) */}
+      {modalOpen && undismissedNotifications.length > 0 && (
+        <NotificationModal
+          notifications={undismissedNotifications}
+          onDismiss={dismissNotification}
+          onCloseAll={closeAllNotifications}
+          primaryColor={theme_config.primary}
+        />
+      )}
+
       <header className="border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
@@ -446,7 +605,13 @@ const AgentStorefront = () => {
             </Button>
             <Button variant="hero" size="sm" asChild>
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp
+                <img
+                  src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
+                  alt="WhatsApp"
+                  className="h-4 w-4 mr-1"
+                  style={{ filter: 'invert(1)' }}
+                />
+                WhatsApp
               </a>
             </Button>
           </div>
@@ -658,7 +823,13 @@ const AgentStorefront = () => {
         <div className="container text-center space-y-3">
           <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-foreground transition-colors">
-              <MessageCircle className="h-4 w-4" /> {store.whatsapp_number}
+              <img
+                src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
+                alt="WhatsApp"
+                className="h-4 w-4"
+                style={{ filter: 'invert(0.5)' }}
+              />
+              {store.whatsapp_number}
             </a>
             <a href={`tel:${store.support_number}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
               <Phone className="h-4 w-4" /> {store.support_number}
@@ -669,6 +840,33 @@ const AgentStorefront = () => {
           </p>
         </div>
       </footer>
+
+      {/* FLOATING WHATSAPP GROUP ICON WITH TEMPORARY TEXT (9 seconds) */}
+      {groupLink && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <a
+            href={groupLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-[#25D366] hover:bg-[#20B859] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105"
+            style={{
+              padding: showGroupTooltip ? '0.75rem 1.5rem' : '0.75rem',
+            }}
+          >
+            <img
+              src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
+              alt="WhatsApp"
+              className="h-6 w-6"
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
+            {showGroupTooltip && (
+              <span className="font-medium text-sm whitespace-nowrap">
+                Join WhatsApp Group
+              </span>
+            )}
+          </a>
+        </div>
+      )}
 
       {paymentPkg && (
         <PaymentDialog

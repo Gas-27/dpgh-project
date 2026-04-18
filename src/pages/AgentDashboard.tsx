@@ -9,16 +9,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
-  TrendingUp, Search, Palette, RotateCcw,
+  TrendingUp, Search, Palette, RotateCcw, Bell, Plus, Trash2, Calendar,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -29,6 +31,7 @@ interface AgentStore {
   whatsapp_number: string;
   support_number: string;
   whatsapp_group: string | null;
+  show_whatsapp_group_icon: boolean;
   momo_number: string;
   momo_name: string;
   momo_network: string;
@@ -79,7 +82,14 @@ interface ProfitStats {
   availableForWithdrawal: number;
 }
 
-// NEW DEFAULT THEME (dark mode with light blue primary)
+interface Notification {
+  id: string;
+  message: string;
+  is_active: boolean;
+  created_at: string;
+  expires_at: string | null;
+}
+
 const DEFAULT_THEME = {
   primary: "#38bdf8",
   primary_foreground: "#000000",
@@ -103,6 +113,7 @@ const AgentDashboard = () => {
   const [orderSearch, setOrderSearch] = useState("");
   const [storeForm, setStoreForm] = useState({
     store_name: "", whatsapp_number: "", support_number: "", whatsapp_group: "",
+    show_whatsapp_group_icon: false,
     momo_number: "", momo_name: "", momo_network: "",
   });
   const [savingStore, setSavingStore] = useState(false);
@@ -125,6 +136,13 @@ const AgentDashboard = () => {
 
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
   const [savingTheme, setSavingTheme] = useState(false);
+
+  // Notification states
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [newNotificationMsg, setNewNotificationMsg] = useState("");
+  const [newNotificationExpiry, setNewNotificationExpiry] = useState("");
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
 
@@ -153,6 +171,7 @@ const AgentDashboard = () => {
     };
   };
 
+  // Fetch store data
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
@@ -164,7 +183,6 @@ const AgentDashboard = () => {
         if (storeData.theme_config) {
           setThemeColors(storeData.theme_config);
         } else {
-          // Save new default theme to DB if not set
           await supabase
             .from("agent_stores")
             .update({ theme_config: DEFAULT_THEME } as any)
@@ -174,6 +192,7 @@ const AgentDashboard = () => {
         setStoreForm({
           store_name: storeData.store_name, whatsapp_number: storeData.whatsapp_number,
           support_number: storeData.support_number, whatsapp_group: storeData.whatsapp_group || "",
+          show_whatsapp_group_icon: storeData.show_whatsapp_group_icon ?? false,
           momo_number: storeData.momo_number, momo_name: storeData.momo_name, momo_network: storeData.momo_network,
         });
 
@@ -211,6 +230,62 @@ const AgentDashboard = () => {
       setProfitStats(stats);
     }
   }, [orders, packages]);
+
+  // Fetch notifications when store is loaded
+  const fetchNotifications = async () => {
+    if (!store?.id) return;
+    setLoadingNotifications(true);
+    const { data, error } = await supabase
+      .from("agent_notifications")
+      .select("*")
+      .eq("agent_store_id", store.id)
+      .order("created_at", { ascending: false });
+    if (!error && data) setNotifications(data as Notification[]);
+    setLoadingNotifications(false);
+  };
+
+  useEffect(() => {
+    if (store?.id) fetchNotifications();
+  }, [store]);
+
+  const createNotification = async () => {
+    if (!store || !newNotificationMsg.trim()) {
+      toast({ title: "Error", description: "Please enter a message", variant: "destructive" });
+      return;
+    }
+    setSendingNotification(true);
+    const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
+    const { error } = await supabase.from("agent_notifications").insert({
+      agent_store_id: store.id,
+      message: newNotificationMsg.trim(),
+      is_active: true,
+      expires_at,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Notification sent!", description: "Customers will see it on the storefront." });
+      setNewNotificationMsg("");
+      setNewNotificationExpiry("");
+      fetchNotifications();
+    }
+    setSendingNotification(false);
+  };
+
+  const toggleNotificationActive = async (id: string, currentActive: boolean) => {
+    const { error } = await supabase
+      .from("agent_notifications")
+      .update({ is_active: !currentActive })
+      .eq("id", id);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else fetchNotifications();
+  };
+
+  const deleteNotification = async (id: string) => {
+    const { error } = await supabase.from("agent_notifications").delete().eq("id", id);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else fetchNotifications();
+  };
 
   const saveThemeColors = async () => {
     if (!store) return;
@@ -312,6 +387,7 @@ const AgentDashboard = () => {
     const { error } = await supabase.from("agent_stores").update({
       store_name: storeForm.store_name, whatsapp_number: storeForm.whatsapp_number,
       support_number: storeForm.support_number, whatsapp_group: storeForm.whatsapp_group || null,
+      show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon,
       momo_number: storeForm.momo_number, momo_name: storeForm.momo_name, momo_network: storeForm.momo_network,
     }).eq("id", store.id);
     if (error) {
@@ -498,6 +574,7 @@ const AgentDashboard = () => {
             <TabsTrigger value="store" className="flex-1 min-w-[100px]"><Store className="h-4 w-4 mr-1" /> Store Prices</TabsTrigger>
             <TabsTrigger value="withdraw" className="flex-1 min-w-[100px]"><ArrowDownToLine className="h-4 w-4 mr-1" /> Withdraw</TabsTrigger>
             <TabsTrigger value="appearance" className="flex-1 min-w-[100px]"><Palette className="h-4 w-4 mr-1" /> Appearance</TabsTrigger>
+            <TabsTrigger value="notifications" className="flex-1 min-w-[100px]"><Bell className="h-4 w-4 mr-1" /> Notifications</TabsTrigger>
             <TabsTrigger value="settings" className="flex-1 min-w-[100px]"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
           </TabsList>
 
@@ -798,10 +875,100 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* SETTINGS TAB */}
+          {/* NOTIFICATIONS TAB - NEW */}
+          <TabsContent value="notifications" className="mt-6 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Send Notification to Storefront
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Create announcements that appear at the top of your store page. Customers can dismiss them.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Message</Label>
+                  <Textarea
+                    placeholder="e.g., Special offer: 20% off all data bundles this weekend!"
+                    value={newNotificationMsg}
+                    onChange={(e) => setNewNotificationMsg(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expiry (optional)</Label>
+                  <Input
+                    type="datetime-local"
+                    value={newNotificationExpiry}
+                    onChange={(e) => setNewNotificationExpiry(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Leave empty for no expiry. After expiry, the notification will no longer be shown.</p>
+                </div>
+                <Button variant="hero" onClick={createNotification} disabled={sendingNotification}>
+                  {sendingNotification ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+                  Send Notification
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display">Active & Past Notifications</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingNotifications ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : notifications.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No notifications yet. Create one above.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {notifications.map((notif) => (
+                      <div key={notif.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-border rounded-lg bg-card">
+                        <div className="flex-1">
+                          <p className="text-foreground font-medium">{notif.message}</p>
+                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1">
+                            <span>Created: {new Date(notif.created_at).toLocaleString()}</span>
+                            {notif.expires_at && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Expires: {new Date(notif.expires_at).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge
+                            variant={notif.is_active ? "default" : "secondary"}
+                            className="cursor-pointer hover:opacity-80"
+                            onClick={() => toggleNotificationActive(notif.id, notif.is_active)}
+                          >
+                            {notif.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                          <Button variant="ghost" size="icon" onClick={() => deleteNotification(notif.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* SETTINGS TAB - unchanged */}
           <TabsContent value="settings" className="mt-6">
             <Card className="border-border">
-              <CardHeader className="flex flex-row items-center justify-between"><CardTitle className="font-display">Store Information</CardTitle>{!editingStore && (<Button variant="outline" size="sm" onClick={() => setEditingStore(true)}><Edit2 className="h-4 w-4 mr-1" /> Edit</Button>)}</CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="font-display">Store Information</CardTitle>
+                {!editingStore && (
+                  <Button variant="outline" size="sm" onClick={() => setEditingStore(true)}>
+                    <Edit2 className="h-4 w-4 mr-1" /> Edit
+                  </Button>
+                )}
+              </CardHeader>
               <CardContent className="space-y-4">
                 {editingStore ? (
                   <>
@@ -809,7 +976,34 @@ const AgentDashboard = () => {
                       <div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={(e) => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div>
                       <div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div>
                       <div className="space-y-2"><Label>Support Number</Label><Input value={storeForm.support_number} onChange={(e) => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div>
-                      <div className="space-y-2"><Label>WhatsApp Group Link</Label><Input value={storeForm.whatsapp_group} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Optional" /></div>
+
+                      {/* WhatsApp Group Link with toggle */}
+                      <div className="space-y-2 md:col-span-2">
+                        <div className="flex items-center justify-between gap-4">
+                          <Label>WhatsApp Group Link (Optional)</Label>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="show-group-icon" className="text-sm text-muted-foreground cursor-pointer">
+                              Show join icon on storefront
+                            </Label>
+                            <Switch
+                              id="show-group-icon"
+                              checked={storeForm.show_whatsapp_group_icon}
+                              onCheckedChange={(checked) => setStoreForm({ ...storeForm, show_whatsapp_group_icon: checked })}
+                            />
+                          </div>
+                        </div>
+                        <Input
+                          value={storeForm.whatsapp_group}
+                          onChange={(e) => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })}
+                          placeholder="https://chat.whatsapp.com/..."
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {storeForm.show_whatsapp_group_icon
+                            ? "✅ A WhatsApp join icon will appear on your storefront."
+                            : "❌ The join icon will be hidden. Only the link (if provided) may be used elsewhere."}
+                        </p>
+                      </div>
+
                       <div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={(e) => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div>
                       <div className="space-y-2"><Label>MoMo Number</Label><Input value={storeForm.momo_number} onChange={(e) => setStoreForm({ ...storeForm, momo_number: e.target.value })} /></div>
                       <div className="space-y-2"><Label>MoMo Network</Label><Input value={storeForm.momo_network} onChange={(e) => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" /></div>
@@ -825,6 +1019,7 @@ const AgentDashboard = () => {
                     <div><p className="text-muted-foreground">WhatsApp</p><p className="font-semibold text-foreground">{store?.whatsapp_number}</p></div>
                     <div><p className="text-muted-foreground">Support Number</p><p className="font-semibold text-foreground">{store?.support_number}</p></div>
                     <div><p className="text-muted-foreground">WhatsApp Group</p><p className="font-semibold text-foreground">{store?.whatsapp_group || "Not set"}</p></div>
+                    <div><p className="text-muted-foreground">Show Group Icon</p><p className="font-semibold text-foreground">{store?.show_whatsapp_group_icon ? "Yes" : "No"}</p></div>
                     <div><p className="text-muted-foreground">MoMo Name</p><p className="font-semibold text-foreground">{store?.momo_name}</p></div>
                     <div><p className="text-muted-foreground">MoMo Number</p><p className="font-semibold text-foreground">{store?.momo_number}</p></div>
                     <div><p className="text-muted-foreground">MoMo Network</p><p className="font-semibold text-foreground">{store?.momo_network?.toUpperCase()}</p></div>
