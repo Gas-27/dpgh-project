@@ -10,6 +10,9 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import { Zap, Phone, Wifi, Shield, Clock, Star, Search, Package, CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// ============================================================
+// INTERFACES
+// ============================================================
 interface AgentStore {
   id: string;
   store_name: string;
@@ -22,6 +25,7 @@ interface AgentStore {
     primary_foreground: string;
     background: string;
     card_background: string;
+    gridColumns?: number;
   };
 }
 
@@ -54,6 +58,9 @@ interface Notification {
   created_at: string;
 }
 
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
 const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
@@ -89,9 +96,9 @@ const getStoreNameFromSubdomain = (): string | null => {
 };
 
 // ============================================================
-// ORDER TRACKING CARD – STEP TIMELINE (unchanged)
+// ORDER TRACKING CARD – full working implementation
 // ============================================================
-const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: AgentStore; toast: any }) => {
+const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: AgentStore; toast: any }): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const orderCreatedAt = new Date(order.created_at);
 
@@ -239,8 +246,8 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
             return (
               <div key={step.step} className="flex flex-col items-center flex-1">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep ? "bg-green-600/20 text-green-400" :
-                  step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
-                    "bg-muted text-muted-foreground"
+                    step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
+                      "bg-muted text-muted-foreground"
                   }`}>
                   {icon}
                 </div>
@@ -290,20 +297,19 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
 };
 
 // ============================================================
-// NOTIFICATION MODAL COMPONENT (centered popup)
+// NOTIFICATION MODAL – full working implementation
 // ============================================================
 const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor }: {
   notifications: Notification[];
   onDismiss: (id: string) => void;
   onCloseAll: () => void;
   primaryColor: string;
-}) => {
-  if (notifications.length === 0) return null;
+}): JSX.Element => {
+  if (notifications.length === 0) return null as any; // or return <></>
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative max-w-md w-full mx-4 bg-card rounded-2xl shadow-2xl border overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* Header with gradient */}
         <div className="relative p-6 pb-4 text-center">
           <div className="absolute top-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${primaryColor}, ${primaryColor}cc)` }} />
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4" style={{ backgroundColor: `${primaryColor}20` }}>
@@ -321,7 +327,6 @@ const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor 
           </Button>
         </div>
 
-        {/* Messages list */}
         <div className="px-6 pb-6 space-y-4">
           {notifications.map((notif) => (
             <div
@@ -382,21 +387,18 @@ const AgentStorefront = () => {
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
-
-  // WhatsApp tooltip (9 seconds)
   const [showGroupTooltip, setShowGroupTooltip] = useState(true);
-
-  // Notifications state
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+
+  const gridColumns = store?.theme_config?.gridColumns ?? 2;
 
   useEffect(() => {
     const timer = setTimeout(() => setShowGroupTooltip(false), 9000);
     return () => clearTimeout(timer);
   }, []);
 
-  // Load dismissed IDs from localStorage
   useEffect(() => {
     if (store?.id) {
       const stored = localStorage.getItem(`dismissed_notifications_${store.id}`);
@@ -404,25 +406,22 @@ const AgentStorefront = () => {
     }
   }, [store?.id]);
 
-  // Fetch notifications
   const fetchNotifications = useCallback(async () => {
     if (!store?.id) return;
     const now = new Date().toISOString();
-    const { data, error } = await supabase
-      .from("agent_notifications")
-      .select("id, message, created_at")
-      .eq("agent_store_id", store.id)
-      .eq("is_active", true)
+    const { data, error } = await (supabase
+      .from('agent_notifications' as any)
+      .select('id, message, created_at')
+      .eq('agent_store_id', store.id)
+      .eq('is_active', true)
       .or(`expires_at.is.null,expires_at.gt.${now}`)
-      .order("created_at", { ascending: false });
+      .order('created_at', { ascending: false })) as any;
+
     if (!error && data) {
       const active = data as Notification[];
       setNotifications(active);
-      // Open modal only if there are undismissed notifications and modal not already open
       const undismissed = active.filter(n => !dismissedIds.includes(n.id));
-      if (undismissed.length > 0 && !modalOpen) {
-        setModalOpen(true);
-      }
+      if (undismissed.length > 0 && !modalOpen) setModalOpen(true);
     }
   }, [store?.id, dismissedIds, modalOpen]);
 
@@ -434,7 +433,6 @@ const AgentStorefront = () => {
     const newDismissed = [...dismissedIds, id];
     setDismissedIds(newDismissed);
     localStorage.setItem(`dismissed_notifications_${store?.id}`, JSON.stringify(newDismissed));
-    // Close modal if no undismissed notifications left
     const remaining = notifications.filter(n => !newDismissed.includes(n.id));
     if (remaining.length === 0) setModalOpen(false);
   };
@@ -449,7 +447,6 @@ const AgentStorefront = () => {
 
   const undismissedNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
 
-  // Search orders (unchanged)
   const searchOrders = useCallback(async () => {
     if (!store || !searchQuery.trim()) return;
     setSearching(true);
@@ -476,7 +473,6 @@ const AgentStorefront = () => {
     setSearchPerformed(false);
   };
 
-  // Fetch store data (unchanged)
   useEffect(() => {
     const fetchStore = async () => {
       if (!storeName) {
@@ -507,7 +503,10 @@ const AgentStorefront = () => {
           primary_foreground: "#000000",
           background: "#0a0a0a",
           card_background: "#171717",
+          gridColumns: 2,
         };
+      } else if (matched.theme_config.gridColumns === undefined) {
+        matched.theme_config.gridColumns = 2;
       }
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
@@ -526,6 +525,24 @@ const AgentStorefront = () => {
     };
     fetchStore();
   }, [storeName]);
+
+  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const whatsappLink = `https://wa.me/${store?.whatsapp_number?.replace(/[^0-9]/g, "")}`;
+  const groupLink = store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
+  const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
+  const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
+
+  const getStatusIcon = (status: string) => {
+    if (status === "completed" || status === "paid") return <CheckCircle className="h-4 w-4 text-green-400" />;
+    if (status === "pending") return <Clock className="h-4 w-4 text-yellow-400" />;
+    return <XCircle className="h-4 w-4 text-red-400" />;
+  };
+
+  const getStatusText = (status: string) => {
+    if (status === "completed" || status === "paid") return "Payment Completed";
+    if (status === "pending") return "Pending";
+    return status;
+  };
 
   if (loading) {
     return (
@@ -546,24 +563,6 @@ const AgentStorefront = () => {
     );
   }
 
-  const filteredPackages = packages.filter((p) => p.network === networkFilter);
-  const whatsappLink = `https://wa.me/${store.whatsapp_number.replace(/[^0-9]/g, "")}`;
-  const groupLink = store.show_whatsapp_group_icon && store.whatsapp_group ? store.whatsapp_group : null;
-  const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
-  const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
-
-  const getStatusIcon = (status: string) => {
-    if (status === "completed" || status === "paid") return <CheckCircle className="h-4 w-4 text-green-400" />;
-    if (status === "pending") return <Clock className="h-4 w-4 text-yellow-400" />;
-    return <XCircle className="h-4 w-4 text-red-400" />;
-  };
-
-  const getStatusText = (status: string) => {
-    if (status === "completed" || status === "paid") return "Payment Completed";
-    if (status === "pending") return "Pending";
-    return status;
-  };
-
   const { theme_config } = store;
   const primaryGradient = `linear-gradient(135deg, ${theme_config.primary}20, ${theme_config.primary}05)`;
 
@@ -576,7 +575,6 @@ const AgentStorefront = () => {
         '--primary-foreground': theme_config.primary_foreground,
       } as React.CSSProperties}
     >
-      {/* Notification Modal (centered popup) */}
       {modalOpen && undismissedNotifications.length > 0 && (
         <NotificationModal
           notifications={undismissedNotifications}
@@ -778,7 +776,12 @@ const AgentStorefront = () => {
       </div>
 
       <div className="container pb-20">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div
+          className="grid gap-4"
+          style={{
+            gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+          }}
+        >
           {filteredPackages.map((pkg) => {
             const price = getPrice(pkg);
             return (
@@ -814,6 +817,7 @@ const AgentStorefront = () => {
             );
           })}
         </div>
+
         {filteredPackages.length === 0 && (
           <p className="text-center text-muted-foreground py-12">No packages available for this network.</p>
         )}
@@ -841,7 +845,6 @@ const AgentStorefront = () => {
         </div>
       </footer>
 
-      {/* FLOATING WHATSAPP GROUP ICON WITH TEMPORARY TEXT (9 seconds) */}
       {groupLink && (
         <div className="fixed bottom-6 right-6 z-50">
           <a

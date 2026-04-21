@@ -21,6 +21,7 @@ import {
   Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
   TrendingUp, Search, Palette, RotateCcw, Bell, Plus, Trash2, Calendar,
+  LayoutGrid, Minus, Plus as PlusIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -43,6 +44,7 @@ interface AgentStore {
     primary_foreground: string;
     background: string;
     card_background: string;
+    gridColumns: number;
   };
 }
 
@@ -95,6 +97,7 @@ const DEFAULT_THEME = {
   primary_foreground: "#000000",
   background: "#0a0a0a",
   card_background: "#171717",
+  gridColumns: 2,
 };
 
 const AgentDashboard = () => {
@@ -137,7 +140,6 @@ const AgentDashboard = () => {
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
   const [savingTheme, setSavingTheme] = useState(false);
 
-  // Notification states
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [newNotificationMsg, setNewNotificationMsg] = useState("");
   const [newNotificationExpiry, setNewNotificationExpiry] = useState("");
@@ -181,12 +183,16 @@ const AgentDashboard = () => {
 
       if (storeData) {
         if (storeData.theme_config) {
-          setThemeColors(storeData.theme_config);
+          setThemeColors({
+            ...DEFAULT_THEME,
+            ...storeData.theme_config,
+          });
         } else {
           await supabase
             .from("agent_stores")
             .update({ theme_config: DEFAULT_THEME } as any)
             .eq("id", storeData.id);
+          setThemeColors(DEFAULT_THEME);
         }
 
         setStoreForm({
@@ -231,16 +237,19 @@ const AgentDashboard = () => {
     }
   }, [orders, packages]);
 
-  // Fetch notifications when store is loaded
+  // ======================== NOTIFICATIONS (with type assertions) ========================
   const fetchNotifications = async () => {
     if (!store?.id) return;
     setLoadingNotifications(true);
-    const { data, error } = await supabase
-      .from("agent_notifications")
-      .select("*")
-      .eq("agent_store_id", store.id)
-      .order("created_at", { ascending: false });
-    if (!error && data) setNotifications(data as Notification[]);
+    // Use 'as any' because agent_notifications is not in generated types
+    const { data, error } = await (supabase
+      .from('agent_notifications' as any)
+      .select('*')
+      .eq('agent_store_id', store.id)
+      .order('created_at', { ascending: false })) as any;
+    if (!error && data) {
+      setNotifications(data as Notification[]);
+    }
     setLoadingNotifications(false);
   };
 
@@ -255,12 +264,14 @@ const AgentDashboard = () => {
     }
     setSendingNotification(true);
     const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
-    const { error } = await supabase.from("agent_notifications").insert({
-      agent_store_id: store.id,
-      message: newNotificationMsg.trim(),
-      is_active: true,
-      expires_at,
-    });
+    const { error } = await (supabase
+      .from('agent_notifications' as any)
+      .insert({
+        agent_store_id: store.id,
+        message: newNotificationMsg.trim(),
+        is_active: true,
+        expires_at,
+      })) as any;
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -273,19 +284,23 @@ const AgentDashboard = () => {
   };
 
   const toggleNotificationActive = async (id: string, currentActive: boolean) => {
-    const { error } = await supabase
-      .from("agent_notifications")
+    const { error } = await (supabase
+      .from('agent_notifications' as any)
       .update({ is_active: !currentActive })
-      .eq("id", id);
+      .eq('id', id)) as any;
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
 
   const deleteNotification = async (id: string) => {
-    const { error } = await supabase.from("agent_notifications").delete().eq("id", id);
+    const { error } = await (supabase
+      .from('agent_notifications' as any)
+      .delete()
+      .eq('id', id)) as any;
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
+  // =====================================================================================
 
   const saveThemeColors = async () => {
     if (!store) return;
@@ -295,15 +310,20 @@ const AgentDashboard = () => {
       .update({ theme_config: themeColors } as any)
       .eq("id", store.id);
     if (error) {
-      toast({ title: "Error saving colours", description: error.message, variant: "destructive" });
+      toast({ title: "Error saving theme", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Store colours updated!", description: "Your storefront will now use these colours." });
+      toast({ title: "Store theme updated!", description: "Your storefront will now use these colours and column layout." });
     }
     setSavingTheme(false);
   };
 
   const resetToDefault = () => {
     setThemeColors(DEFAULT_THEME);
+  };
+
+  const changeColumns = (delta: number) => {
+    const newVal = Math.min(6, Math.max(1, (themeColors.gridColumns || 2) + delta));
+    setThemeColors({ ...themeColors, gridColumns: newVal });
   };
 
   if (authLoading || loading) {
@@ -578,7 +598,7 @@ const AgentDashboard = () => {
             <TabsTrigger value="settings" className="flex-1 min-w-[100px]"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
           </TabsList>
 
-          {/* OVERVIEW TAB */}
+          {/* OVERVIEW TAB (unchanged) */}
           <TabsContent value="overview" className="space-y-6 mt-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="border-border">
@@ -687,7 +707,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* BUY DATA TAB */}
+          {/* BUY DATA TAB (unchanged) */}
           <TabsContent value="buy" className="space-y-4 mt-6">
             <div className="flex gap-2 flex-wrap">
               {["mtn", "airteltigo", "telecel"].map((net) => (
@@ -711,7 +731,7 @@ const AgentDashboard = () => {
             </div>
           </TabsContent>
 
-          {/* STORE PRICES TAB */}
+          {/* STORE PRICES TAB (unchanged) */}
           <TabsContent value="store" className="space-y-4 mt-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex gap-2 flex-wrap">
@@ -749,7 +769,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* WITHDRAW TAB */}
+          {/* WITHDRAW TAB (unchanged) */}
           <TabsContent value="withdraw" className="space-y-6 mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6 text-center space-y-2"><TrendingUp className="h-10 w-10 text-primary mx-auto" /><p className="text-muted-foreground text-sm">Total Profit (from sales)</p><p className="font-display text-3xl font-bold text-green-400">GH₵ {profitStats.totalProfit.toFixed(2)}</p></CardContent></Card>
@@ -814,12 +834,14 @@ const AgentDashboard = () => {
             )}
           </TabsContent>
 
-          {/* APPEARANCE TAB */}
+          {/* APPEARANCE TAB – with stepper for columns */}
           <TabsContent value="appearance" className="mt-6">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="font-display">Customise Your Storefront Colours</CardTitle>
-                <p className="text-sm text-muted-foreground">Choose colours that match your brand. Your public store will update immediately.</p>
+                <CardTitle className="font-display">Customise Your Storefront</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Choose colours that match your brand and set how many products appear per row.
+                </p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -852,19 +874,86 @@ const AgentDashboard = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Layout Control – columns with stepper */}
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-md font-semibold flex items-center gap-2 mb-3">
+                    <LayoutGrid className="h-5 w-5 text-primary" />
+                    Product Grid Layout
+                  </h3>
+                  <div className="max-w-xs">
+                    <Label className="mb-2 block">Columns per row</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10"
+                        onClick={() => changeColumns(-1)}
+                        disabled={themeColors.gridColumns <= 1}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={6}
+                        value={themeColors.gridColumns}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          if (!isNaN(val) && val >= 1 && val <= 6) {
+                            setThemeColors({ ...themeColors, gridColumns: val });
+                          }
+                        }}
+                        className="w-20 text-center"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10"
+                        onClick={() => changeColumns(1)}
+                        disabled={themeColors.gridColumns >= 6}
+                      >
+                        <PlusIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">How many products appear side by side (1–6).</p>
+                  </div>
+                </div>
+
+                {/* Preview (simplified) */}
                 <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
                   <p className="text-sm font-medium">Preview</p>
                   <div className="rounded-md p-4" style={{ backgroundColor: themeColors.background }}>
                     <div className="rounded-md p-3" style={{ backgroundColor: themeColors.card_background }}>
-                      <div className="inline-block px-3 py-1 rounded-md text-sm" style={{ backgroundColor: themeColors.primary, color: themeColors.primary_foreground }}>Button Example</div>
-                      <p className="text-sm mt-2" style={{ color: themeColors.primary }}>Accent text colour</p>
+                      <div
+                        className="grid gap-3"
+                        style={{
+                          gridTemplateColumns: `repeat(${Math.min(themeColors.gridColumns, 4)}, minmax(0, 1fr))`,
+                        }}
+                      >
+                        {Array.from({ length: Math.min(themeColors.gridColumns * 2, 8) }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="h-16 rounded-md flex items-center justify-center text-xs"
+                            style={{ backgroundColor: themeColors.primary, color: themeColors.primary_foreground }}
+                          >
+                            Product {i + 1}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-center mt-2 text-muted-foreground">
+                        {themeColors.gridColumns} columns
+                      </p>
                     </div>
                   </div>
                 </div>
+
                 <div className="flex gap-3">
                   <Button variant="hero" onClick={saveThemeColors} disabled={savingTheme} className="flex-1">
                     {savingTheme ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                    Save Colours
+                    Save
                   </Button>
                   <Button variant="outline" onClick={resetToDefault} className="flex-1">
                     <RotateCcw className="h-4 w-4 mr-1" />
@@ -875,7 +964,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* NOTIFICATIONS TAB - NEW */}
+          {/* NOTIFICATIONS TAB (unchanged) */}
           <TabsContent value="notifications" className="mt-6 space-y-6">
             <Card className="border-border">
               <CardHeader>
@@ -884,7 +973,7 @@ const AgentDashboard = () => {
                   Send Notification to Storefront
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Create announcements that appear at the top of your store page. Customers can dismiss them.
+                  Create announcements that popup on your store page for customers to see.
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -958,7 +1047,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* SETTINGS TAB - unchanged */}
+          {/* SETTINGS TAB (unchanged) */}
           <TabsContent value="settings" className="mt-6">
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
@@ -977,7 +1066,6 @@ const AgentDashboard = () => {
                       <div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div>
                       <div className="space-y-2"><Label>Support Number</Label><Input value={storeForm.support_number} onChange={(e) => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div>
 
-                      {/* WhatsApp Group Link with toggle */}
                       <div className="space-y-2 md:col-span-2">
                         <div className="flex items-center justify-between gap-4">
                           <Label>WhatsApp Group Link (Optional)</Label>
@@ -1032,7 +1120,7 @@ const AgentDashboard = () => {
         </Tabs>
       </div>
 
-      {/* Buy Data Dialog */}
+      {/* Buy Data Dialog (unchanged) */}
       <Dialog open={buyDialogOpen} onOpenChange={(v) => { if (!v) setBuyDialogOpen(false); }}>
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display text-xl">Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</DialogTitle><DialogDescription>Purchase data at agent price</DialogDescription></DialogHeader>

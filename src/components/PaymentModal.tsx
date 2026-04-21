@@ -77,7 +77,7 @@ export const PaymentModal = ({
         }
     };
 
-    const PAYSTACK_CHARGE_PERCENT = 1.95;
+    const PAYSTACK_CHARGE_PERCENT = 1.98;
     const totalWithFee = AGENT_REGISTRATION_FEE + (AGENT_REGISTRATION_FEE * PAYSTACK_CHARGE_PERCENT / 100);
 
     return (
