@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; 
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -107,6 +107,83 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // --- NEW: Auto‑retry orders with fulfillment_status = "pending" ---
+  useEffect(() => {
+    const autoRetryPendingOrders = async () => {
+      // Fetch only orders that are pending and not already being retried
+      const { data: pendingOrders, error } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("fulfillment_status", "pending");
+
+      if (error) {
+        console.error("Auto‑retry fetch error:", error);
+        return;
+      }
+
+      for (const order of pendingOrders || []) {
+        if (!retryingOrders.has(order.id)) {
+          // Call the existing retryOrder function (defined below)
+          await retryOrder(order.id);
+        }
+      }
+    };
+
+    const interval = setInterval(autoRetryPendingOrders, 30000); // every 30 seconds
+    return () => clearInterval(interval);
+  }, [retryingOrders]); // re‑run if retryingOrders changes
+
+  // --- NEW: Send email on withdrawal request (realtime insert) ---
+  useEffect(() => {
+    const channel = supabase
+      .channel("withdrawal-inserts")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "withdrawal_requests" },
+        async (payload) => {
+          const newWithdrawal = payload.new as WithdrawalRequest;
+          // Fetch agent details
+          const { data: agent, error } = await supabase
+            .from("agent_stores")
+            .select("store_name, whatsapp_number, momo_name, momo_number, momo_network")
+            .eq("id", newWithdrawal.agent_store_id)
+            .single();
+
+          if (error || !agent) {
+            console.error("Could not fetch agent for withdrawal email:", error);
+            return;
+          }
+
+          // Prepare email data
+          const contact = agent.whatsapp_number || agent.momo_number || "No contact provided";
+          const momoName = agent.momo_name || "Not set";
+          const amount = newWithdrawal.amount;
+
+          // Invoke edge function to send email
+          try {
+            const { error: emailError } = await supabase.functions.invoke("send-withdrawal-notification", {
+              body: {
+                to: "georgeagyemangsakyi27@gmail.com",
+                agentName: agent.store_name,
+                contact,
+                momoName,
+                amount,
+              },
+            });
+            if (emailError) throw emailError;
+            console.log("Withdrawal notification email sent");
+          } catch (err) {
+            console.error("Failed to send withdrawal email:", err);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handlePriceChange = (id: string, field: "price" | "agent_price", value: string) => {
     setEditedPrices((prev) => ({ ...prev, [id]: { ...prev[id], [field]: parseFloat(value) || 0 } }));
@@ -242,7 +319,7 @@ const AdminDashboard = () => {
       const agent = agents.find((a) => a.id === agentStoreId);
       if (!agent) throw new Error("Agent not found");
       const newBalance = Math.max(0, Number(agent.wallet_balance) - amount);
-      
+
       const { error: walletErr } = await supabase.from("agent_stores")
         .update({ wallet_balance: newBalance }).eq("id", agentStoreId);
       if (walletErr) throw walletErr;
