@@ -131,7 +131,7 @@ const AgentDashboard = () => {
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
   const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
-  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("paystack");
+  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet"); // Changed default to wallet
   const [buyLoading, setBuyLoading] = useState(false);
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -424,7 +424,7 @@ const AgentDashboard = () => {
     setBuyPkg(pkg);
     setBuyPhone("");
     setBuyStep("phone");
-    setBuyPaymentMethod("paystack");
+    setBuyPaymentMethod("wallet"); // Ensure wallet is default when opening dialog
     setBuyDialogOpen(true);
   };
 
@@ -598,7 +598,7 @@ const AgentDashboard = () => {
             <TabsTrigger value="settings" className="flex-1 min-w-[100px]"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
           </TabsList>
 
-          {/* OVERVIEW TAB (unchanged) */}
+          {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-6 mt-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="border-border">
@@ -707,8 +707,23 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* BUY DATA TAB (unchanged) */}
+          {/* BUY DATA TAB */}
           <TabsContent value="buy" className="space-y-4 mt-6">
+            {/* Display Wallet Balance Card */}
+            {store && (
+              <Card className="border-border bg-secondary/30">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Wallet Balance:</span>
+                  </div>
+                  <span className="font-display text-xl font-bold text-primary">
+                    GH₵ {store.wallet_balance?.toFixed(2) ?? '0.00'}
+                  </span>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex gap-2 flex-wrap">
               {["mtn", "airteltigo", "telecel"].map((net) => (
                 <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
@@ -731,7 +746,7 @@ const AgentDashboard = () => {
             </div>
           </TabsContent>
 
-          {/* STORE PRICES TAB (unchanged) */}
+          {/* STORE PRICES TAB */}
           <TabsContent value="store" className="space-y-4 mt-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex gap-2 flex-wrap">
@@ -769,7 +784,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* WITHDRAW TAB (unchanged) */}
+          {/* WITHDRAW TAB */}
           <TabsContent value="withdraw" className="space-y-6 mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6 text-center space-y-2"><TrendingUp className="h-10 w-10 text-primary mx-auto" /><p className="text-muted-foreground text-sm">Total Profit (from sales)</p><p className="font-display text-3xl font-bold text-green-400">GH₵ {profitStats.totalProfit.toFixed(2)}</p></CardContent></Card>
@@ -834,7 +849,7 @@ const AgentDashboard = () => {
             )}
           </TabsContent>
 
-          {/* APPEARANCE TAB – with stepper for columns */}
+          {/* APPEARANCE TAB */}
           <TabsContent value="appearance" className="mt-6">
             <Card className="border-border">
               <CardHeader>
@@ -964,7 +979,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* NOTIFICATIONS TAB (unchanged) */}
+          {/* NOTIFICATIONS TAB */}
           <TabsContent value="notifications" className="mt-6 space-y-6">
             <Card className="border-border">
               <CardHeader>
@@ -1047,7 +1062,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* SETTINGS TAB (unchanged) */}
+          {/* SETTINGS TAB */}
           <TabsContent value="settings" className="mt-6">
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
@@ -1120,7 +1135,7 @@ const AgentDashboard = () => {
         </Tabs>
       </div>
 
-      {/* Buy Data Dialog (unchanged) */}
+      {/* Buy Data Dialog */}
       <Dialog open={buyDialogOpen} onOpenChange={(v) => { if (!v) setBuyDialogOpen(false); }}>
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display text-xl">Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</DialogTitle><DialogDescription>Purchase data at agent price</DialogDescription></DialogHeader>
@@ -1137,7 +1152,23 @@ const AgentDashboard = () => {
                 <div className="border-t border-border my-1" />
                 <div className="flex justify-between text-base font-bold"><span className="text-foreground">Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div>
               </div>
-              <div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={(v) => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Paystack (+ charges)</span></SelectItem></SelectContent></Select></div>
+              <div className="space-y-2">
+                <Label>Payment Method</Label>
+                <Select value={buyPaymentMethod} onValueChange={(v) => setBuyPaymentMethod(v as "paystack" | "wallet")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {/* Wallet as first option (default) */}
+                    <SelectItem value="wallet">
+                      <span className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4" /> Wallet (Balance: GH₵ {store?.wallet_balance?.toFixed(2) ?? '0.00'})
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="paystack">
+                      <span className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Paystack (+ charges)</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Processing...</> : "Confirm Purchase"}</Button></div>
             </div>
           )}
