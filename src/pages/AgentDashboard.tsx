@@ -621,7 +621,7 @@ const AgentDashboard = () => {
               </Card>
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">Revenue</p>
+                  <p className="text-muted-foreground text-sm">Revenue (Total sales made)</p>
                   <p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵ {profitStats.totalRevenue.toFixed(2)}</p>
                 </CardContent>
               </Card>
@@ -632,7 +632,7 @@ const AgentDashboard = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Profit</p>
+                      <p className="text-sm text-muted-foreground">Total Profit made from the start of the  business</p>
                       <p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {profitStats.totalProfit.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground mt-1">(Selling Price - Base Price)</p>
                     </div>
