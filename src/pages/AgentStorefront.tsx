@@ -26,6 +26,12 @@ interface AgentStore {
     background: string;
     card_background: string;
     gridColumns?: number;
+    // New customizable colors
+    gb_text_color?: string;
+    price_text_color?: string;
+    button_text_color?: string;
+    button_bg_color?: string;
+    button_border_color?: string;
   };
 }
 
@@ -95,8 +101,18 @@ const getStoreNameFromSubdomain = (): string | null => {
   return null;
 };
 
+// Network-specific label colors
+const getNetworkLabelColor = (network: string) => {
+  const defaultColors: Record<string, string> = {
+    mtn: "#fbbf24",
+    airteltigo: "#60a5fa",
+    telecel: "#f87171",
+  };
+  return defaultColors[network] || "#ffffff";
+};
+
 // ============================================================
-// ORDER TRACKING CARD – full working implementation
+// ORDER TRACKING CARD – unchanged
 // ============================================================
 const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: AgentStore; toast: any }): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -246,8 +262,8 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
             return (
               <div key={step.step} className="flex flex-col items-center flex-1">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep ? "bg-green-600/20 text-green-400" :
-                    step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
-                      "bg-muted text-muted-foreground"
+                  step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
+                    "bg-muted text-muted-foreground"
                   }`}>
                   {icon}
                 </div>
@@ -297,7 +313,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
 };
 
 // ============================================================
-// NOTIFICATION MODAL – full working implementation
+// NOTIFICATION MODAL – unchanged
 // ============================================================
 const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor }: {
   notifications: Notification[];
@@ -305,7 +321,7 @@ const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor 
   onCloseAll: () => void;
   primaryColor: string;
 }): JSX.Element => {
-  if (notifications.length === 0) return null as any; // or return <></>
+  if (notifications.length === 0) return null as any;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -392,7 +408,22 @@ const AgentStorefront = () => {
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const gridColumns = store?.theme_config?.gridColumns ?? 2;
+  // Default theme with new customizable colors
+  const defaultTheme = {
+    primary: "#a78bfa",
+    primary_foreground: "#ffffff",
+    background: "#0f0f0f",
+    card_background: "linear-gradient(135deg, #2d1b69 0%, #1a0a3e 100%)",
+    gridColumns: 2,
+    gb_text_color: "#ffffff",
+    price_text_color: "#ffffff",
+    button_text_color: "#ffffff",
+    button_bg_color: "rgba(255,255,255,0.1)",
+    button_border_color: "rgba(255,255,255,0.2)",
+  };
+
+  const theme = store?.theme_config || defaultTheme;
+  const gridColumns = theme.gridColumns || 2;
 
   useEffect(() => {
     const timer = setTimeout(() => setShowGroupTooltip(false), 9000);
@@ -497,17 +528,11 @@ const AgentStorefront = () => {
         return;
       }
 
-      if (!matched.theme_config) {
-        matched.theme_config = {
-          primary: "#38bdf8",
-          primary_foreground: "#000000",
-          background: "#0a0a0a",
-          card_background: "#171717",
-          gridColumns: 2,
-        };
-      } else if (matched.theme_config.gridColumns === undefined) {
-        matched.theme_config.gridColumns = 2;
-      }
+      // Merge with defaults
+      matched.theme_config = {
+        ...defaultTheme,
+        ...(matched.theme_config || {}),
+      };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
 
@@ -564,15 +589,46 @@ const AgentStorefront = () => {
   }
 
   const { theme_config } = store;
-  const primaryGradient = `linear-gradient(135deg, ${theme_config.primary}20, ${theme_config.primary}05)`;
+  const primaryColor = theme_config?.primary || defaultTheme.primary;
+  const primaryForeground = theme_config?.primary_foreground || defaultTheme.primary_foreground;
+  const backgroundColor = theme_config?.background || defaultTheme.background;
+  const cardBackground = theme_config?.card_background || defaultTheme.card_background;
+
+  // New customizable colors
+  const gbTextColor = theme_config?.gb_text_color || defaultTheme.gb_text_color;
+  const priceTextColor = theme_config?.price_text_color || defaultTheme.price_text_color;
+  const buttonTextColor = theme_config?.button_text_color || defaultTheme.button_text_color;
+  const buttonBgColor = theme_config?.button_bg_color || defaultTheme.button_bg_color;
+  const buttonBorderColor = theme_config?.button_border_color || defaultTheme.button_border_color;
+
+  // Helper to determine font size classes based on grid columns
+  const getGbFontSize = () => {
+    if (gridColumns >= 5) return "text-xl sm:text-2xl";
+    if (gridColumns >= 3) return "text-2xl sm:text-3xl";
+    return "text-3xl sm:text-4xl";
+  };
+
+  const getPriceFontSize = () => {
+    if (gridColumns >= 5) return "text-sm sm:text-base";
+    if (gridColumns >= 3) return "text-base sm:text-lg";
+    return "text-lg sm:text-xl";
+  };
+
+  const getButtonSize = () => {
+    return gridColumns >= 4 ? "xs" : "sm";
+  };
+
+  const getPadding = () => {
+    if (gridColumns >= 5) return "p-2 sm:p-3";
+    if (gridColumns >= 3) return "p-3";
+    return "p-4";
+  };
 
   return (
     <div
       className="min-h-screen relative"
       style={{
-        backgroundColor: theme_config.background,
-        '--primary': theme_config.primary,
-        '--primary-foreground': theme_config.primary_foreground,
+        backgroundColor: backgroundColor,
       } as React.CSSProperties}
     >
       {modalOpen && undismissedNotifications.length > 0 && (
@@ -580,7 +636,7 @@ const AgentStorefront = () => {
           notifications={undismissedNotifications}
           onDismiss={dismissNotification}
           onCloseAll={closeAllNotifications}
-          primaryColor={theme_config.primary}
+          primaryColor={primaryColor}
         />
       )}
 
@@ -589,9 +645,9 @@ const AgentStorefront = () => {
           <div className="flex items-center gap-2">
             <div
               className="h-8 w-8 rounded-lg flex items-center justify-center"
-              style={{ background: `linear-gradient(135deg, ${theme_config.primary}, ${theme_config.primary}cc)` }}
+              style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
             >
-              <Zap className="h-5 w-5 text-primary-foreground" />
+              <Zap className="h-5 w-5" style={{ color: primaryForeground }} />
             </div>
             <span className="font-display text-lg font-bold">{store.store_name}</span>
           </div>
@@ -617,33 +673,33 @@ const AgentStorefront = () => {
       </header>
 
       <section className="relative overflow-hidden py-16 md:py-20">
-        <div className="absolute inset-0" style={{ background: primaryGradient }} />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}05)` }} />
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full blur-[120px]"
-          style={{ background: `${theme_config.primary}30` }}
+          style={{ background: `${primaryColor}30` }}
         />
         <div className="container relative text-center space-y-6">
           <div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium"
             style={{
-              borderColor: `${theme_config.primary}50`,
-              background: `${theme_config.primary}10`,
-              color: theme_config.primary,
+              borderColor: `${primaryColor}50`,
+              background: `${primaryColor}10`,
+              color: primaryColor,
             }}
           >
             <Wifi className="h-4 w-4" /> Fast & Reliable Data Delivery
           </div>
           <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
             Cheap Data Bundles<br />
-            <span style={{ color: theme_config.primary }}>Instant Delivery</span>
+            <span style={{ color: primaryColor }}>Instant Delivery</span>
           </h1>
           <p className="text-muted-foreground max-w-lg mx-auto text-lg">
             Get the best data deals from <span className="text-foreground font-semibold">{store.store_name}</span>. Select your network and package below.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground pt-2">
-            <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-primary" /> Trusted Seller</span>
-            <span className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> &lt;60min Delivery</span>
-            <span className="flex items-center gap-2"><Star className="h-4 w-4 text-primary" /> 24/7 Support</span>
+            <span className="flex items-center gap-2"><Shield className="h-4 w-4" style={{ color: primaryColor }} /> Trusted Seller</span>
+            <span className="flex items-center gap-2"><Clock className="h-4 w-4" style={{ color: primaryColor }} /> &lt;60min Delivery</span>
+            <span className="flex items-center gap-2"><Star className="h-4 w-4" style={{ color: primaryColor }} /> 24/7 Support</span>
           </div>
         </div>
       </section>
@@ -653,15 +709,15 @@ const AgentStorefront = () => {
         <Card
           className="border"
           style={{
-            borderColor: `${theme_config.primary}30`,
-            backgroundColor: `${theme_config.primary}08`,
+            borderColor: `${primaryColor}30`,
+            backgroundColor: `${primaryColor}08`,
           }}
         >
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
               <div className="flex-1">
                 <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2 mb-2">
-                  <Package className="h-5 w-5 text-primary" />
+                  <Package className="h-5 w-5" style={{ color: primaryColor }} />
                   Track Your Order
                 </h2>
                 <p className="text-sm text-muted-foreground">
@@ -754,6 +810,7 @@ const AgentStorefront = () => {
         </Card>
       </div>
 
+      {/* Network Filter Buttons */}
       <div className="container pb-6">
         <div className="flex gap-2 justify-center">
           {["mtn", "airteltigo", "telecel"].map((net) => (
@@ -765,7 +822,7 @@ const AgentStorefront = () => {
               onClick={() => setNetworkFilter(net)}
               style={
                 networkFilter === net
-                  ? { backgroundColor: theme_config.primary, color: theme_config.primary_foreground }
+                  ? { backgroundColor: primaryColor, color: primaryForeground }
                   : {}
               }
             >
@@ -775,43 +832,71 @@ const AgentStorefront = () => {
         </div>
       </div>
 
+      {/* Packages Grid - Responsive & Fully Customizable Colors */}
       <div className="container pb-20">
         <div
-          className="grid gap-4"
+          className="grid gap-3 sm:gap-4"
           style={{
             gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
           }}
         >
           {filteredPackages.map((pkg) => {
             const price = getPrice(pkg);
+            const networkLabelColor = getNetworkLabelColor(networkFilter);
+            const gbFontClass = getGbFontSize();
+            const priceFontClass = getPriceFontSize();
+            const buttonSize = getButtonSize();
+            const paddingClass = getPadding();
+
             return (
-              <Card key={pkg.id} className="group border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 overflow-hidden">
-                <CardContent className="p-0">
-                  <div
-                    className="h-1.5"
-                    style={{ background: `linear-gradient(90deg, ${theme_config.primary}, ${theme_config.primary}cc)` }}
-                  />
-                  <div className="p-4 text-center space-y-3">
-                    <div
-                      className="h-10 w-10 rounded-full flex items-center justify-center mx-auto group-hover:bg-opacity-20 transition-colors"
-                      style={{ backgroundColor: `${theme_config.primary}20` }}
-                    >
-                      <Wifi className="h-5 w-5" style={{ color: theme_config.primary }} />
-                    </div>
-                    <p className="font-display text-2xl font-bold text-foreground">{pkg.size_gb}GB</p>
-                    <p className="text-xl font-bold" style={{ color: theme_config.primary }}>
-                      GH₵ {Number(price).toFixed(2)}
-                    </p>
-                    <Button
-                      variant="hero"
-                      size="sm"
-                      className="w-full"
-                      style={{ backgroundColor: theme_config.primary, color: theme_config.primary_foreground }}
-                      onClick={() => setPaymentPkg(pkg)}
-                    >
-                      Buy Now
-                    </Button>
-                  </div>
+              <Card
+                key={pkg.id}
+                className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group w-full"
+                style={{
+                  background: cardBackground,
+                }}
+              >
+                <CardContent className={`${paddingClass} text-center space-y-1 sm:space-y-2 w-full`}>
+                  {/* GB Size */}
+                  <p
+                    className={`${gbFontClass} font-bold break-words`}
+                    style={{ color: gbTextColor }}
+                  >
+                    {pkg.size_gb}GB
+                  </p>
+
+                  {/* Network Name */}
+                  <p
+                    className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words"
+                    style={{ color: networkLabelColor }}
+                  >
+                    {formatNetworkName(networkFilter)}
+                  </p>
+
+                  {/* Price */}
+                  <p
+                    className={`${priceFontClass} font-bold break-words`}
+                    style={{ color: priceTextColor }}
+                  >
+                    GHC{Number(price).toFixed(2)}
+                  </p>
+
+                  {/* Buy Now Button */}
+                  <Button
+                    variant="secondary"
+                    size={buttonSize === "xs" ? "sm" : buttonSize}
+                    className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap"
+                    style={{
+                      backgroundColor: buttonBgColor,
+                      color: buttonTextColor,
+                      borderColor: buttonBorderColor,
+                      borderWidth: '1px',
+                      borderStyle: 'solid',
+                    }}
+                    onClick={() => setPaymentPkg(pkg)}
+                  >
+                    Buy Now
+                  </Button>
                 </CardContent>
               </Card>
             );
@@ -840,7 +925,7 @@ const AgentStorefront = () => {
             </a>
           </div>
           <p className="text-sm text-muted-foreground">
-            Powered by <span className="font-display font-bold"><span className="text-foreground">DATA PLUG</span> <span style={{ color: theme_config.primary }}>GH</span></span>
+            Powered by <span className="font-display font-bold"><span className="text-foreground">DATA PLUG</span> <span style={{ color: primaryColor }}>GH</span></span>
           </p>
         </div>
       </footer>

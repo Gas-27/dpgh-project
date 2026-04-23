@@ -34,9 +34,9 @@ interface Order {
 }
 
 const networkConfig: Record<Network, { label: string; color: string }> = {
-  mtn: { label: "MTN", color: "text-mtn" },
-  airteltigo: { label: "AirtelTigo", color: "text-telecel" },
-  telecel: { label: "Telecel", color: "text-telecel" },
+  mtn: { label: "MTN", color: "text-yellow-400" },
+  airteltigo: { label: "AirtelTigo", color: "text-blue-400" },
+  telecel: { label: "Telecel", color: "text-red-400" },
 };
 
 const formatNetworkName = (network: string) => {
@@ -79,7 +79,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
     } else {
       extraNote = "Please check your messages for delivery confirmation.";
     }
-  } 
+  }
   else if (elapsedMinutes >= 60) {
     currentStep = 3;
     if (order.network === "mtn") {
@@ -111,7 +111,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  
+
   // Email support (dataplugstore@gmail.com) with pre‑filled details
   const emailSubject = encodeURIComponent("Order Support Request");
   const emailBody = encodeURIComponent(
@@ -161,9 +161,9 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
           )}
         </div>
         {showReportButton && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
             asChild
           >
@@ -199,16 +199,14 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
             }
             return (
               <div key={step.step} className="flex flex-col items-center flex-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  step.step < currentStep ? "bg-green-600/20 text-green-400" :
-                  step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
-                  "bg-muted text-muted-foreground"
-                }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep ? "bg-green-600/20 text-green-400" :
+                    step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
+                      "bg-muted text-muted-foreground"
+                  }`}>
                   {icon}
                 </div>
-                <span className={`text-xs text-center mt-1 ${
-                  step.step === currentStep ? "text-primary font-medium" : "text-muted-foreground"
-                }`}>
+                <span className={`text-xs text-center mt-1 ${step.step === currentStep ? "text-primary font-medium" : "text-muted-foreground"
+                  }`}>
                   {step.name}
                 </span>
               </div>
@@ -216,7 +214,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
           })}
         </div>
         <div className="absolute top-4 left-0 w-full h-0.5 bg-muted -z-10">
-          <div 
+          <div
             className="h-full bg-primary transition-all duration-500"
             style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
           />
@@ -238,9 +236,9 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
       </div>
 
       {showSupportButton && (
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           className="w-full"
           asChild
         >
@@ -255,7 +253,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
 };
 
 // ============================================================
-// MAIN PACKAGES COMPONENT (unchanged)
+// MAIN PACKAGES COMPONENT
 // ============================================================
 const Packages = () => {
   const [searchParams] = useSearchParams();
@@ -455,8 +453,8 @@ const Packages = () => {
                                     order.status === "completed" || order.status === "paid"
                                       ? "bg-green-600/20 text-green-400 border-green-600/30"
                                       : order.status === "pending"
-                                      ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                      : "bg-red-600/20 text-red-400 border-red-600/30"
+                                        ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                                        : "bg-red-600/20 text-red-400 border-red-600/30"
                                   }
                                 >
                                   {getStatusText(order.status)}
@@ -477,6 +475,7 @@ const Packages = () => {
           </Card>
         </div>
 
+        {/* Network Filter Buttons */}
         <div className="flex justify-center gap-3 mb-8">
           {(Object.keys(networkConfig) as Network[]).map((net) => (
             <Button
@@ -490,26 +489,42 @@ const Packages = () => {
           ))}
         </div>
 
+        {/* Packages Grid - Styled like the image */}
         {loading ? (
           <div className="text-center text-muted-foreground">Loading packages...</div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filtered.map((pkg) => (
-              <Card key={pkg.id} className="border-border transition-colors group hover:border-primary/50">
-                <CardContent className="p-4 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
-                    <Wifi className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-display text-2xl font-bold">{pkg.size_gb}GB</p>
-                    <p className={`text-xs font-semibold ${networkConfig[selectedNetwork].color}`}>
-                      {networkConfig[selectedNetwork].label}
-                    </p>
-                  </div>
-                  <p className="font-display text-lg font-bold text-primary">
-                    GH₵ {Number(pkg.price).toFixed(2)}
+              <Card
+                key={pkg.id}
+                className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
+                style={{
+                  background: "linear-gradient(135deg, #2d1b69 0%, #1a0a3e 100%)",
+                }}
+              >
+                <CardContent className="p-4 text-center space-y-2">
+                  {/* GB Size */}
+                  <p className="text-3xl md:text-4xl font-bold text-white">
+                    {pkg.size_gb}GB
                   </p>
-                  <Button variant="hero" size="sm" className="w-full" onClick={() => handleBuyNow(pkg)}>
+
+                  {/* Network Name */}
+                  <p className={`text-sm font-semibold uppercase tracking-wide ${networkConfig[selectedNetwork].color}`}>
+                    {networkConfig[selectedNetwork].label}
+                  </p>
+
+                  {/* Price */}
+                  <p className="text-xl font-bold text-white">
+                    GHC{Number(pkg.price).toFixed(2)}
+                  </p>
+
+                  {/* Buy Now Button */}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full mt-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium"
+                    onClick={() => handleBuyNow(pkg)}
+                  >
                     Buy Now
                   </Button>
                 </CardContent>

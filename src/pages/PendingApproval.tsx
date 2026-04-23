@@ -73,7 +73,7 @@ const PendingApproval = () => {
           <div className="text-center">
             <h1 className="font-display text-2xl font-bold mb-2">Pending Approval</h1>
             <p className="text-muted-foreground">
-              Pay to get your own site to sell data and also you get to customize your agent store with a colurs and design of yout choice .PLus you also get cheaper prices as well.
+              Pay to get your own site to sell data and also you get to customize your agent store with a colurs and design of your choice .Plus you also get cheaper prices as well.
             </p>
           </div>
 
@@ -90,7 +90,7 @@ const PendingApproval = () => {
                   To complete your store approval, please make a payment of:
                 </p>
                 <div className="text-center">
-                  <span className="text-3xl font-bold text-primary">GHC 20.00</span>
+                  <span className="text-3xl font-bold text-primary">GHC 25.00</span>
                 </div>
               </div>
 
