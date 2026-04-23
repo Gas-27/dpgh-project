@@ -428,9 +428,123 @@ const AgentDashboard = () => {
     setBuyDialogOpen(true);
   };
 
+
+
+
+
+  // const handleBuyConfirm = async () => {
+  //   if (!store || !buyPkg) return;
+  //   setBuyLoading(true);
+
+  //   const agentPrice = Number(buyPkg.agent_price);
+
+  //   if (buyPaymentMethod === "wallet") {
+  //     if (Number(store.wallet_balance) < agentPrice) {
+  //       toast({ title: "Insufficient balance", description: "Top up your wallet to continue.", variant: "destructive" });
+  //       setBuyLoading(false);
+  //       return;
+  //     }
+
+  //     const { error: walletErr } = await supabase.from("agent_stores").update({ wallet_balance: Number(store.wallet_balance) - agentPrice }).eq("id", store.id);
+  //     if (walletErr) {
+  //       toast({ title: "Error", description: walletErr.message, variant: "destructive" });
+  //       setBuyLoading(false);
+  //       return;
+  //     }
+
+  //     const { data: orderData, error: orderErr } = await supabase.from("orders").insert({
+  //       customer_number: buyPhone.trim(),
+  //       network: buyPkg.network,
+  //       size_gb: buyPkg.size_gb,
+  //       amount: agentPrice,
+  //       package_id: buyPkg.id,
+  //       agent_store_id: store.id,
+  //       status: "paid",
+  //       fulfillment_status: "pending",
+  //       payment_method: "wallet",
+  //     }).select("id").single();
+
+  //     if (orderErr) {
+  //       toast({ title: "Order error", description: orderErr.message, variant: "destructive" });
+  //       setBuyLoading(false);
+  //       return;
+  //     }
+
+  //     await supabase.functions.invoke("fulfill-order", { body: { order_id: orderData.id } });
+  //     setStore({ ...store, wallet_balance: Number(store.wallet_balance) - agentPrice });
+  //     toast({ title: "Order placed!", description: "Your data is being processed." });
+  //     setBuyDialogOpen(false);
+
+  //     const { data: newOrders } = await supabase.from("orders").select("*").eq("agent_store_id", store.id).order("created_at", { ascending: false }).limit(100);
+  //     setOrders((newOrders as Order[]) ?? []);
+  //   } else {
+  //     try {
+  //       const userEmail = user?.email || `agent-${store.id}@datapluggh.com`;
+  //       const PAYSTACK_CHARGE_PERCENT = 1.95;
+  //       const total = Math.round((agentPrice + (agentPrice * PAYSTACK_CHARGE_PERCENT / 100)) * 100) / 100;
+  //       const callbackUrl = `${window.location.origin}/agent?payment=verifying`;
+  //       const { data, error } = await supabase.functions.invoke("initialize-payment", {
+  //         body: {
+  //           email: userEmail,
+  //           amount: total,
+  //           phone: buyPhone.trim(),
+  //           callback_url: callbackUrl,
+  //           metadata: {
+  //             package_id: buyPkg.id,
+  //             network: buyPkg.network,
+  //             package_name: `${buyPkg.size_gb}GB`,
+  //             agent_store_id: store.id,
+  //             payment_method: "paystack",
+  //             use_agent_price: true,
+  //           },
+  //         },
+  //       });
+  //       if (error) throw error;
+  //       if (data?.authorization_url) {
+  //         window.location.href = data.authorization_url;
+  //       } else {
+  //         throw new Error(data?.error || "Failed to initialize payment");
+  //       }
+  //     } catch (err: any) {
+  //       toast({ title: "Payment Error", description: err.message, variant: "destructive" });
+  //     }
+  //   }
+  //   setBuyLoading(false);
+  // };
+
+
   const handleBuyConfirm = async () => {
     if (!store || !buyPkg) return;
     setBuyLoading(true);
+
+    // === RATE LIMIT CHECK ===
+    const FORTY_FIVE_MINUTES_MS = 45 * 60 * 1000;
+    const cutoffTime = new Date(Date.now() - FORTY_FIVE_MINUTES_MS).toISOString();
+
+    const { data: recentOrders, error: recentOrderError } = await supabase
+      .from("orders")
+      .select("created_at")
+      .eq("customer_number", buyPhone.trim())
+      .eq("agent_store_id", store.id)
+      .gte("created_at", cutoffTime)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (recentOrders && recentOrders.length > 0) {
+      const lastOrderTime = new Date(recentOrders[0].created_at);
+      const now = new Date();
+      const elapsedMinutes = Math.floor((now.getTime() - lastOrderTime.getTime()) / (60 * 1000));
+      const remainingMinutes = 45 - elapsedMinutes;
+
+      toast({
+        title: "Rate limit exceeded",
+        description: `You have already purchased data for ${buyPhone.trim()} within the last 45 minutes. Please wait ${remainingMinutes} minute(s) before trying again.`,
+        variant: "destructive",
+      });
+      setBuyLoading(false);
+      return;
+    }
+    // === END RATE LIMIT CHECK ===
 
     const agentPrice = Number(buyPkg.agent_price);
 
@@ -507,6 +621,8 @@ const AgentDashboard = () => {
     }
     setBuyLoading(false);
   };
+
+
 
   const handleWithdraw = async () => {
     if (!store) return;
