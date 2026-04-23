@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { order_id } = await req.json();
+    const { order_id, paystack_reference } = await req.json();
 
     if (!order_id) {
       return new Response(JSON.stringify({ error: "Missing order_id" }), {
@@ -39,22 +39,61 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch the order
-    const { data: order, error: orderErr } = await supabase
+    // 🔴 CRITICAL: Check if this order has already been fulfilled
+    const { data: existingOrder } = await supabase
       .from("orders")
-      .select("*")
+      .select("id, fulfillment_status, status")
       .eq("id", order_id)
       .single();
 
-    if (orderErr || !order) {
+    if (!existingOrder) {
       return new Response(JSON.stringify({ error: "Order not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Clean phone number - remove +233 or 233 prefix
-    let phone = order.customer_number.replace(/[^0-9]/g, "");
+    // 🔴 CRITICAL: Don't re-fulfill already completed/failed orders
+    if (existingOrder.fulfillment_status === "completed") {
+      console.log(`Order ${order_id} already fulfilled - skipping`);
+      return new Response(JSON.stringify({ success: true, message: "Already fulfilled", skipped: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (existingOrder.fulfillment_status === "failed") {
+      console.log(`Order ${order_id} previously failed - will retry`);
+    }
+
+    // 🔴 If paystack_reference is provided, check for duplicate orders
+    if (paystack_reference) {
+      const { data: duplicateOrders } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("paystack_reference", paystack_reference)
+        .neq("id", order_id); // Exclude the current order
+
+      if (duplicateOrders && duplicateOrders.length > 0) {
+        console.log(`Duplicate order detected for reference ${paystack_reference} - marking order ${order_id} as duplicate`);
+
+        // Mark this as a duplicate order
+        await supabase
+          .from("orders")
+          .update({
+            fulfillment_status: "duplicate",
+            status: "duplicate",
+            api_response: `Duplicate of order ${duplicateOrders[0].id}`
+          })
+          .eq("id", order_id);
+
+        return new Response(JSON.stringify({ success: false, message: "Duplicate order detected", skipped: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Clean phone number
+    let phone = existingOrder.customer_number.replace(/[^0-9]/g, "");
     if (phone.startsWith("233")) {
       phone = "0" + phone.slice(3);
     }
@@ -62,10 +101,10 @@ Deno.serve(async (req) => {
       phone = "0" + phone;
     }
 
-    const network = NETWORK_MAP[order.network] || order.network.toUpperCase();
+    const network = NETWORK_MAP[existingOrder.network] || existingOrder.network.toUpperCase();
     const apiUrl = `https://backend.mycledanet.com/${dataApiKey}/order`;
 
-    console.log(`Fulfilling order ${order_id}: phone=${phone}, size=${order.size_gb}, network=${network}`);
+    console.log(`Fulfilling order ${order_id}: phone=${phone}, size=${existingOrder.size_gb}, network=${network}`);
 
     const apiRes = await fetch(apiUrl, {
       method: "POST",
@@ -75,7 +114,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         phone,
-        size: Number(order.size_gb),
+        size: Number(existingOrder.size_gb),
         network,
       }),
     });

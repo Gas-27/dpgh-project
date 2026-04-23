@@ -23,6 +23,7 @@ interface PaymentDialogProps {
   price: number;
   packageId: string;
   agentStoreId?: string;
+  onValidatePhone?: (phone: string) => Promise<void>;   // optional validation
 }
 
 const PAYSTACK_CHARGE_PERCENT = 1.98;
@@ -44,19 +45,21 @@ const PaymentDialog = ({
   price,
   packageId,
   agentStoreId,
+  onValidatePhone,
 }: PaymentDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"phone" | "confirm">("phone");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [validating, setValidating] = useState(false);
   const { toast } = useToast();
 
   const { charge, total } = calculateTotal(price);
 
   const requiresAuth = !agentStoreId;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (requiresAuth && !user) {
       toast({
         title: "Login Required",
@@ -77,7 +80,27 @@ const PaymentDialog = ({
       return;
     }
 
-    setStep("confirm");
+    // If a validation function is provided, run it before proceeding
+    if (onValidatePhone) {
+      setValidating(true);
+      try {
+        await onValidatePhone(phone.trim());
+        // Validation passed – move to confirm
+        setStep("confirm");
+      } catch (error: any) {
+        // Validation failed – show error and stay on phone step
+        toast({
+          title: "Unable to continue",
+          description: error.message || "A recent order is still being processed for this number.",
+          variant: "destructive",
+        });
+      } finally {
+        setValidating(false);
+      }
+    } else {
+      // No validation needed
+      setStep("confirm");
+    }
   };
 
   const handlePay = async () => {
@@ -171,8 +194,16 @@ const PaymentDialog = ({
               variant="hero"
               className="w-full"
               onClick={handleContinue}
+              disabled={validating}
             >
-              Continue
+              {validating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  Checking…
+                </>
+              ) : (
+                "Continue"
+              )}
             </Button>
           </div>
         ) : (
@@ -216,11 +247,10 @@ const PaymentDialog = ({
               </div>
             </div>
 
-            {/* 🔥 PULSING WARNING */}
-            <div className="flex items-center gap-2 text-xs text-red-600 paystack-warning ">
+            {/* Pulsing warning */}
+            <div className="flex items-center gap-2 text-xs text-red-600 paystack-warning">
               <ShieldCheck className="h-4 w-4 flex-shrink-0" />
-              ⚠️🚨 Confirm the phone number is correct before proceeding. Do not place multiple orders for the same number unless the previous one is delivered.
-              🚨⚠️
+              ⚠️🚨 Confirm the phone number is correct before proceeding. Do not place multiple orders for the same number unless the previous one is delivered. 🚨⚠️
             </div>
             <div className="flex gap-3">
               <Button

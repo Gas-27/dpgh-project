@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Check if order already exists for this reference
+    // 1) Fast check – does order already exist?
     const { data: existing } = await supabase
       .from("orders")
       .select("id")
@@ -68,12 +68,16 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existing) {
-      return new Response(JSON.stringify({ success: true, message: "Payment confirmed! Your data bundle is being processed.", order_id: existing.id }), {
+      return new Response(JSON.stringify({
+        success: true,
+        message: "Payment already processed – your data is on the way!",
+        order_id: existing.id,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Create order
+    // 2) Build the new order
     const orderInsert: Record<string, unknown> = {
       customer_number: phone,
       package_id: packageId,
@@ -88,13 +92,39 @@ Deno.serve(async (req) => {
       orderInsert.agent_store_id = agentStoreId;
     }
 
-    const { data: order, error: insertErr } = await supabase
-      .from("orders")
-      .insert(orderInsert)
-      .select("id")
-      .single();
+    let orderId = "";
 
-    if (insertErr) {
+    // 3) Insert with race‑condition protection
+    try {
+      const { data: order, error: insertErr } = await supabase
+        .from("orders")
+        .insert(orderInsert)
+        .select("id")
+        .single();
+
+      if (insertErr) throw insertErr;
+      orderId = order.id;
+    } catch (insertErr: any) {
+      // If unique violation (23505), another request already inserted it
+      if (insertErr.code === "23505") {
+        const { data: actualOrder } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("paystack_reference", reference)
+          .single();
+
+        if (actualOrder) {
+          return new Response(JSON.stringify({
+            success: true,
+            message: "Payment already processed – your data is on the way!",
+            order_id: actualOrder.id,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // Any other error
       console.error("Order insert error:", insertErr);
       return new Response(JSON.stringify({ error: "Failed to create order", details: insertErr.message }), {
         status: 500,
@@ -102,7 +132,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Try to fulfill the order via the data API - but always tell user success
+    // 4) Fulfill the order (non‑blocking)
     try {
       const fulfillUrl = `${supabaseUrl}/functions/v1/fulfill-order`;
       await fetch(fulfillUrl, {
@@ -111,18 +141,16 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
         },
-        body: JSON.stringify({ order_id: order.id }),
+        body: JSON.stringify({ order_id: orderId }),
       });
     } catch (fulfillErr) {
-      // Log but don't fail - admin will see it in dashboard
       console.error("Fulfillment attempt error (admin will retry):", fulfillErr);
     }
 
-    // Always return success to the user - admin handles failures
     return new Response(JSON.stringify({
       success: true,
       message: "Payment confirmed! Your data bundle is being processed.",
-      order_id: order.id,
+      order_id: orderId,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
