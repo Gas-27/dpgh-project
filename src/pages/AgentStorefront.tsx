@@ -925,7 +925,7 @@ const AgentStorefront = () => {
             </a>
           </div>
           <p className="text-sm text-muted-foreground">
-            Powered by <span className="font-display font-bold"><span className="text-foreground">DATA PLUG</span> <span style={{ color: primaryColor }}>GH</span></span>
+            Powered by <span className="font-display font-bold"><span className="text-foreground">ZYTRIX</span> <span style={{ color: primaryColor }}>TECH</span></span>
           </p>
         </div>
       </footer>
