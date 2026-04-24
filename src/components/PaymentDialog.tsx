@@ -268,7 +268,7 @@ const PaymentDialog = ({
 
             <div className="flex items-center gap-2 text-xs text-red-600 paystack-warning">
               <ShieldCheck className="h-4 w-4 flex-shrink-0" />
-              ⚠️ Confirm the phone number. You cannot buy again for the same number within {LOCK_MINUTES} minutes. ⚠️
+              ⚠️ Confirm the phone number. You cannot buy again for the same number unless after  {LOCK_MINUTES} minutes. Network providers rules,this is to prevent order from being seen as duplicate making network provider deliver the order only once . ⚠️
             </div>
 
             <div className="flex gap-3">
