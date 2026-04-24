@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -23,11 +23,11 @@ interface PaymentDialogProps {
   price: number;
   packageId: string;
   agentStoreId?: string;
-  onValidatePhone?: (phone: string) => Promise<void>;   // optional validation
 }
 
 const PAYSTACK_CHARGE_PERCENT = 1.98;
 const PAYSTACK_FLAT_FEE = 0;
+const LOCK_MINUTES = 45;
 
 function calculateTotal(price: number) {
   const charge = (price * PAYSTACK_CHARGE_PERCENT) / 100 + PAYSTACK_FLAT_FEE;
@@ -35,6 +35,11 @@ function calculateTotal(price: number) {
     charge: Math.round(charge * 100) / 100,
     total: Math.round((price + charge) * 100) / 100,
   };
+}
+
+// Normalize phone: remove spaces, dashes, ensure consistent format
+function normalizePhone(phone: string): string {
+  return phone.replace(/[\s\-\(\)]/g, '');
 }
 
 const PaymentDialog = ({
@@ -45,19 +50,45 @@ const PaymentDialog = ({
   price,
   packageId,
   agentStoreId,
-  onValidatePhone,
 }: PaymentDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<"phone" | "confirm">("phone");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [validating, setValidating] = useState(false);
+  const [checking, setChecking] = useState(false);
   const { toast } = useToast();
 
   const { charge, total } = calculateTotal(price);
-
   const requiresAuth = !agentStoreId;
+
+  // Check if there's a recent purchase in localStorage
+  const checkRecentPurchase = (phoneNumber: string): boolean => {
+    const normalized = normalizePhone(phoneNumber);
+    const lastPurchaseStr = localStorage.getItem(`last_purchase_${normalized}`);
+    if (!lastPurchaseStr) return false;
+
+    const lastPurchaseTime = parseInt(lastPurchaseStr, 10);
+    const now = Date.now();
+    const minutesSince = (now - lastPurchaseTime) / 1000 / 60;
+
+    if (minutesSince < LOCK_MINUTES) {
+      const remainingMinutes = Math.ceil(LOCK_MINUTES - minutesSince);
+      toast({
+        title: "Purchase Blocked",
+        description: `You cannot make another purchase for ${phoneNumber} within ${LOCK_MINUTES} minutes. Please wait ${remainingMinutes} more minute(s).`,
+        variant: "destructive",
+      });
+      return true; // blocked
+    }
+    return false; // allowed
+  };
+
+  // Store the purchase timestamp after successful payment
+  const storePurchaseTime = (phoneNumber: string) => {
+    const normalized = normalizePhone(phoneNumber);
+    localStorage.setItem(`last_purchase_${normalized}`, Date.now().toString());
+  };
 
   const handleContinue = async () => {
     if (requiresAuth && !user) {
@@ -71,7 +102,8 @@ const PaymentDialog = ({
       return;
     }
 
-    if (phone.trim().length < 10) {
+    const rawPhone = phone.trim();
+    if (rawPhone.length < 9) {
       toast({
         title: "Invalid number",
         description: "Please enter a valid phone number",
@@ -80,25 +112,12 @@ const PaymentDialog = ({
       return;
     }
 
-    // If a validation function is provided, run it before proceeding
-    if (onValidatePhone) {
-      setValidating(true);
-      try {
-        await onValidatePhone(phone.trim());
-        // Validation passed – move to confirm
-        setStep("confirm");
-      } catch (error: any) {
-        // Validation failed – show error and stay on phone step
-        toast({
-          title: "Unable to continue",
-          description: error.message || "A recent order is still being processed for this number.",
-          variant: "destructive",
-        });
-      } finally {
-        setValidating(false);
-      }
-    } else {
-      // No validation needed
+    setChecking(true);
+    // Check localStorage for recent purchase
+    const isBlocked = checkRecentPurchase(rawPhone);
+    setChecking(false);
+
+    if (!isBlocked) {
       setStep("confirm");
     }
   };
@@ -106,9 +125,10 @@ const PaymentDialog = ({
   const handlePay = async () => {
     setLoading(true);
     try {
+      const normalizedPhone = normalizePhone(phone.trim());
       const userEmail =
         user?.email ||
-        `${phone.replace(/[^0-9]/g, "")}@datapluggh.com`;
+        `${normalizedPhone.replace(/[^0-9]/g, "")}@datapluggh.com`;
 
       const returnPath = agentStoreId
         ? window.location.pathname
@@ -122,7 +142,7 @@ const PaymentDialog = ({
           body: {
             email: userEmail,
             amount: total,
-            phone: phone.trim(),
+            phone: normalizedPhone,
             callback_url: callbackUrl,
             metadata: {
               package_id: packageId,
@@ -137,6 +157,9 @@ const PaymentDialog = ({
       if (error) throw error;
 
       if (data?.authorization_url) {
+        // Store the timestamp before redirecting to Paystack
+        // (or you can store after payment confirmation, but before is fine to block multiple clicks)
+        storePurchaseTime(normalizedPhone);
         window.location.href = data.authorization_url;
       } else {
         throw new Error(data?.error || "Failed to initialize payment");
@@ -194,12 +217,12 @@ const PaymentDialog = ({
               variant="hero"
               className="w-full"
               onClick={handleContinue}
-              disabled={validating}
+              disabled={checking}
             >
-              {validating ? (
+              {checking ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  Checking…
+                  Checking...
                 </>
               ) : (
                 "Continue"
@@ -218,9 +241,7 @@ const PaymentDialog = ({
 
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Phone</span>
-                <span className="font-semibold text-foreground">
-                  {phone}
-                </span>
+                <span className="font-semibold text-foreground">{phone}</span>
               </div>
 
               <div className="border-t border-border my-1" />
@@ -241,17 +262,15 @@ const PaymentDialog = ({
 
               <div className="flex justify-between text-base font-bold">
                 <span>Total</span>
-                <span className="text-primary">
-                  GH₵ {total.toFixed(2)}
-                </span>
+                <span className="text-primary">GH₵ {total.toFixed(2)}</span>
               </div>
             </div>
 
-            {/* Pulsing warning */}
             <div className="flex items-center gap-2 text-xs text-red-600 paystack-warning">
               <ShieldCheck className="h-4 w-4 flex-shrink-0" />
-              ⚠️🚨 Confirm the phone number is correct before proceeding. Do not place multiple orders for the same number unless the previous one is delivered. 🚨⚠️
+              ⚠️ Confirm the phone number. You cannot buy again for the same number within {LOCK_MINUTES} minutes. ⚠️
             </div>
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
