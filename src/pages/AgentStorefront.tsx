@@ -100,7 +100,6 @@ const getStoreNameFromSubdomain = (): string | null => {
   return null;
 };
 
-// Helper to create a "slug" from any string (consistent with subdomain generation)
 const slugify = (name: string) =>
   name
     .toLowerCase()
@@ -117,8 +116,27 @@ const getNetworkLabelColor = (network: string) => {
   return defaultColors[network] || "#ffffff";
 };
 
+// ---------- PHONE FORMATTING HELPERS ----------
+const formatDisplayPhone = (phone: string): string => {
+  if (!phone) return phone;
+  const cleaned = phone.trim();
+  if (cleaned.startsWith('+')) return cleaned;
+  if (cleaned.startsWith('233')) return '+' + cleaned;
+  if (cleaned.startsWith('0')) return '+233' + cleaned.slice(1);
+  return cleaned;
+};
+
+const getInternationalDigits = (phone: string): string => {
+  if (!phone) return '';
+  const cleaned = phone.replace(/[^0-9]/g, '');
+  if (cleaned.startsWith('233')) return cleaned;
+  if (cleaned.startsWith('0')) return '233' + cleaned.slice(1);
+  return cleaned;
+};
+// -----------------------------------------------
+
 // ============================================================
-// ORDER TRACKING CARD – unchanged
+// ORDER TRACKING CARD
 // ============================================================
 const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: AgentStore; toast: any }): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -184,11 +202,11 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
   const orderDate = new Date(order.created_at).toLocaleString();
   const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${order.size_gb}GB\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
-  const whatsappNumber = store.whatsapp_number.replace(/[^0-9]/g, "");
+  const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
     `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
-  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+  const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
   const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
   const showReportButton = currentStep === 4 && elapsedMinutes >= 150 && elapsedMinutes < 3030;
@@ -319,7 +337,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
 };
 
 // ============================================================
-// NOTIFICATION MODAL – unchanged
+// NOTIFICATION MODAL
 // ============================================================
 const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor }: {
   notifications: Notification[];
@@ -517,10 +535,7 @@ const AgentStorefront = () => {
         return;
       }
 
-      // Normalize the incoming store name (subdomain or URL param)
       const normalized = storeName.toLowerCase().trim();
-
-      // Fetch all approved stores
       const { data: stores } = await supabase
         .from("agent_stores")
         .select("*")
@@ -532,27 +547,9 @@ const AgentStorefront = () => {
         return;
       }
 
-      // 1. Try exact slug match
-      let matched = (stores as any[]).find((s: any) => {
-        const slug = slugify(s.store_name);
-        return slug === normalized;
-      });
-
-      // 2. If not found, try matching store_name directly (case-insensitive)
-      if (!matched) {
-        matched = (stores as any[]).find(
-          (s: any) => s.store_name.toLowerCase().trim() === normalized
-        );
-      }
-
-      // 3. If still not found, try matching with 'slugify' on both after removing extra hyphens
-      if (!matched) {
-        matched = (stores as any[]).find((s: any) => {
-          const storeSlug = slugify(s.store_name);
-          // Remove all hyphens and compare
-          return storeSlug.replace(/-/g, '') === normalized.replace(/-/g, '');
-        });
-      }
+      let matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
+      if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
+      if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, '') === normalized.replace(/-/g, ''));
 
       if (!matched) {
         setNotFound(true);
@@ -560,10 +557,7 @@ const AgentStorefront = () => {
         return;
       }
 
-      matched.theme_config = {
-        ...defaultTheme,
-        ...(matched.theme_config || {}),
-      };
+      matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
 
@@ -583,10 +577,15 @@ const AgentStorefront = () => {
   }, [storeName]);
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
-  const whatsappLink = `https://wa.me/${store?.whatsapp_number?.replace(/[^0-9]/g, "")}`;
-  const groupLink = store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
+
+  // ✅ Fixed: WhatsApp number formatted for wa.me (international digits)
+  const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number) : "";
+  const whatsappLink = store
+    ? `https://wa.me/${getInternationalDigits(store.whatsapp_number)}`
+    : "#";
+  const groupLink = store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
 
   const getStatusIcon = (status: string) => {
     if (status === "completed" || status === "paid") return <CheckCircle className="h-4 w-4 text-green-400" />;
@@ -624,7 +623,6 @@ const AgentStorefront = () => {
   const primaryForeground = theme_config?.primary_foreground || defaultTheme.primary_foreground;
   const backgroundColor = theme_config?.background || defaultTheme.background;
   const cardBackground = theme_config?.card_background || defaultTheme.card_background;
-
   const gbTextColor = theme_config?.gb_text_color || defaultTheme.gb_text_color;
   const priceTextColor = theme_config?.price_text_color || defaultTheme.price_text_color;
   const buttonTextColor = theme_config?.button_text_color || defaultTheme.button_text_color;
@@ -928,7 +926,7 @@ const AgentStorefront = () => {
                 className="h-4 w-4"
                 style={{ filter: 'invert(0.5)' }}
               />
-              {store.whatsapp_number}
+              {displayWhatsApp}
             </a>
             <a href={`tel:${store.support_number}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
               <Phone className="h-4 w-4" /> {store.support_number}
