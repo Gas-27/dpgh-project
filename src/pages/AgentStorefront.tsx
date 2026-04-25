@@ -76,16 +76,9 @@ const formatNetworkName = (network: string) => {
 const copyToClipboard = async (text: string, toast: any) => {
   try {
     await navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: "Contact information copied to clipboard.",
-    });
+    toast({ title: "Copied!", description: "Contact information copied to clipboard." });
   } catch (err) {
-    toast({
-      title: "Failed to copy",
-      description: "Please copy manually.",
-      variant: "destructive",
-    });
+    toast({ title: "Failed to copy", description: "Please copy manually.", variant: "destructive" });
   }
 };
 
@@ -93,9 +86,7 @@ const getStoreNameFromSubdomain = (): string | null => {
   const hostname = window.location.hostname;
   if (hostname.endsWith('.datastores.shop')) {
     const parts = hostname.split('.');
-    if (parts.length >= 3) {
-      return parts[0].toLowerCase().trim();
-    }
+    if (parts.length >= 3) return parts[0].toLowerCase().trim();
   }
   return null;
 };
@@ -143,9 +134,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
   const orderCreatedAt = new Date(order.created_at);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -159,42 +148,26 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
   if (elapsedMinutes >= 150) {
     currentStep = 4;
     statusMessage = "Your data bundle has been delivered successfully.";
-    if (order.network === "mtn") {
-      extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
-    } else if (order.network === "airteltigo") {
-      extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
-    } else if (order.network === "telecel") {
-      extraNote = "Please check your Telecel messages for delivery confirmation.";
-    } else {
-      extraNote = "Please check your messages for delivery confirmation.";
-    }
-  }
-  else if (elapsedMinutes >= 60) {
+    if (order.network === "mtn") extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
+    else if (order.network === "airteltigo") extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+    else if (order.network === "telecel") extraNote = "Please check your Telecel messages for delivery confirmation.";
+    else extraNote = "Please check your messages for delivery confirmation.";
+  } else if (elapsedMinutes >= 60) {
     currentStep = 3;
-    if (order.network === "mtn") {
-      statusMessage = "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
-    } else if (order.network === "airteltigo") {
-      statusMessage = "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
-    } else if (order.network === "telecel") {
-      statusMessage = "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
-    } else {
-      statusMessage = "Please be expecting your data any moment from now. Check your messages for delivery confirmation.";
-    }
+    if (order.network === "mtn") statusMessage = "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
+    else if (order.network === "airteltigo") statusMessage = "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
+    else if (order.network === "telecel") statusMessage = "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
+    else statusMessage = "Please be expecting your data any moment from now. Check your messages for delivery confirmation.";
     extraNote = "The order has left our system and is now with the network you bought the data from. All delays from now are from them.";
-  }
-  else if (elapsedMinutes >= 12) {
+  } else if (elapsedMinutes >= 12) {
     currentStep = 3;
     statusMessage = `Waiting for validation from ${formatNetworkName(order.network)}...`;
-    if (elapsedMinutes >= 15) {
-      statusMessage = "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
-    }
-  }
-  else if (elapsedMinutes >= 9) {
+    if (elapsedMinutes >= 15) statusMessage = "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
+  } else if (elapsedMinutes >= 9) {
     currentStep = 2;
     statusMessage = `Order sent to ${formatNetworkName(order.network)} for validation`;
     extraNote = "Now waiting for validation from the network to deliver your data. All delay now is from the network you bought the data from.";
-  }
-  else {
+  } else {
     currentStep = 1;
     statusMessage = "Order being processed...";
   }
@@ -242,20 +215,11 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
           )}
         </div>
         {showReportButton && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
-            asChild
-          >
+          <Button variant="outline" size="sm" className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10" asChild>
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              <img
-                src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-                alt="WhatsApp"
-                className="h-4 w-4 mr-2"
-                style={{ filter: 'invert(1)' }}
-              />
-              Report: Delivered but not received
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg" alt="WhatsApp" className="h-4 w-4 mr-2" style={{ filter: 'invert(1)' }} />
+              Only Report: if it shows Delivered here<br />
+              but you did not received it
             </a>
           </Button>
         )}
@@ -276,23 +240,15 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
         <div className="flex items-center justify-between">
           {steps.map((step) => {
             let icon;
-            if (step.step < currentStep) {
-              icon = <Check className="h-4 w-4 text-green-400" />;
-            } else if (step.step === currentStep) {
-              icon = <Loader2 className="h-4 w-4 text-primary animate-spin" />;
-            } else {
-              icon = <Clock className="h-4 w-4 text-muted-foreground" />;
-            }
+            if (step.step < currentStep) icon = <Check className="h-4 w-4 text-green-400" />;
+            else if (step.step === currentStep) icon = <Loader2 className="h-4 w-4 text-primary animate-spin" />;
+            else icon = <Clock className="h-4 w-4 text-muted-foreground" />;
             return (
               <div key={step.step} className="flex flex-col items-center flex-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep ? "bg-green-600/20 text-green-400" :
-                  step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
-                    "bg-muted text-muted-foreground"
-                  }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep ? "bg-green-600/20 text-green-400" : step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" : "bg-muted text-muted-foreground"}`}>
                   {icon}
                 </div>
-                <span className={`text-xs text-center mt-1 ${step.step === currentStep ? "text-primary font-medium" : "text-muted-foreground"
-                  }`}>
+                <span className={`text-xs text-center mt-1 ${step.step === currentStep ? "text-primary font-medium" : "text-muted-foreground"}`}>
                   {step.name}
                 </span>
               </div>
@@ -300,10 +256,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
           })}
         </div>
         <div className="absolute top-4 left-0 w-full h-0.5 bg-muted -z-10">
-          <div
-            className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
-          />
+          <div className="h-full bg-primary transition-all duration-500" style={{ width: `${((currentStep - 1) / 3) * 100}%` }} />
         </div>
       </div>
 
@@ -322,12 +275,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
       </div>
 
       {showSupportButton && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => copyToClipboard(contactMessage, toast)}
-        >
+        <Button variant="outline" size="sm" className="w-full" onClick={() => copyToClipboard(contactMessage, toast)}>
           <Copy className="h-4 w-4 mr-2" />
           Contact Support ({store.support_number})
         </Button>
@@ -339,14 +287,8 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
 // ============================================================
 // NOTIFICATION MODAL
 // ============================================================
-const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor }: {
-  notifications: Notification[];
-  onDismiss: (id: string) => void;
-  onCloseAll: () => void;
-  primaryColor: string;
-}): JSX.Element => {
+const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor }: { notifications: Notification[]; onDismiss: (id: string) => void; onCloseAll: () => void; primaryColor: string }): JSX.Element => {
   if (notifications.length === 0) return null as any;
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative max-w-md w-full mx-4 bg-card rounded-2xl shadow-2xl border overflow-hidden animate-in zoom-in-95 duration-200">
@@ -357,47 +299,25 @@ const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor 
           </div>
           <h3 className="text-xl font-display font-bold text-foreground">Announcement</h3>
           <p className="text-sm text-muted-foreground mt-1">Important information from the store</p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 h-8 w-8 rounded-full"
-            onClick={onCloseAll}
-          >
+          <Button variant="ghost" size="icon" className="absolute top-4 right-4 h-8 w-8 rounded-full" onClick={onCloseAll}>
             <X className="h-4 w-4" />
           </Button>
         </div>
-
         <div className="px-6 pb-6 space-y-4">
           {notifications.map((notif) => (
-            <div
-              key={notif.id}
-              className="p-4 rounded-lg border bg-secondary/20"
-              style={{ borderColor: `${primaryColor}30` }}
-            >
+            <div key={notif.id} className="p-4 rounded-lg border bg-secondary/20" style={{ borderColor: `${primaryColor}30` }}>
               <div className="flex items-start gap-3">
                 <Bell className="h-5 w-5 mt-0.5 shrink-0" style={{ color: primaryColor }} />
                 <p className="text-foreground text-sm flex-1">{notif.message}</p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 shrink-0 hover:bg-destructive/10"
-                  onClick={() => onDismiss(notif.id)}
-                >
+                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:bg-destructive/10" onClick={() => onDismiss(notif.id)}>
                   <X className="h-3 w-3" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2 pl-8">
-                {new Date(notif.created_at).toLocaleString()}
-              </p>
+              <p className="text-xs text-muted-foreground mt-2 pl-8">{new Date(notif.created_at).toLocaleString()}</p>
             </div>
           ))}
           {notifications.length > 1 && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-2"
-              onClick={onCloseAll}
-            >
+            <Button variant="outline" size="sm" className="w-full mt-2" onClick={onCloseAll}>
               Dismiss All
             </Button>
           )}
@@ -448,16 +368,21 @@ const AgentStorefront = () => {
   const theme = store?.theme_config || defaultTheme;
   const gridColumns = theme.gridColumns || 2;
 
-  useEffect(() => {
-    const timer = setTimeout(() => setShowGroupTooltip(false), 9000);
-    return () => clearTimeout(timer);
-  }, []);
+  useEffect(() => { const timer = setTimeout(() => setShowGroupTooltip(false), 9000); return () => clearTimeout(timer); }, []);
+  useEffect(() => { if (store?.id) { const stored = localStorage.getItem(`dismissed_notifications_${store.id}`); if (stored) setDismissedIds(JSON.parse(stored)); } }, [store?.id]);
 
   useEffect(() => {
-    if (store?.id) {
-      const stored = localStorage.getItem(`dismissed_notifications_${store.id}`);
-      if (stored) setDismissedIds(JSON.parse(stored));
-    }
+    if (!store?.id) return;
+    const fetchRecent = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
+        .eq("agent_store_id", store.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (data) setOrders(data as Order[]);
+    };
+    fetchRecent();
   }, [store?.id]);
 
   const fetchNotifications = useCallback(async () => {
@@ -470,7 +395,6 @@ const AgentStorefront = () => {
       .eq('is_active', true)
       .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('created_at', { ascending: false })) as any;
-
     if (!error && data) {
       const active = data as Notification[];
       setNotifications(active);
@@ -479,9 +403,7 @@ const AgentStorefront = () => {
     }
   }, [store?.id, dismissedIds, modalOpen]);
 
-  useEffect(() => {
-    if (store?.id) fetchNotifications();
-  }, [store?.id, fetchNotifications]);
+  useEffect(() => { if (store?.id) fetchNotifications(); }, [store?.id, fetchNotifications]);
 
   const dismissNotification = (id: string) => {
     const newDismissed = [...dismissedIds, id];
@@ -502,74 +424,68 @@ const AgentStorefront = () => {
   const undismissedNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
 
   const searchOrders = useCallback(async () => {
-    if (!store || !searchQuery.trim()) return;
+    if (!searchQuery.trim()) return;
     setSearching(true);
     setSearchPerformed(true);
     const trimmedQuery = searchQuery.trim();
     let query = supabase
       .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
-      .eq("agent_store_id", store.id);
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at");
+
     if (trimmedQuery.length === 36 && trimmedQuery.includes("-")) {
       query = query.eq("id", trimmedQuery);
     } else {
       query = query.ilike("customer_number", `%${trimmedQuery}%`);
     }
+
     const { data, error } = await query.order("created_at", { ascending: false });
-    if (!error && data) setOrders(data as Order[]);
-    else setOrders([]);
+    if (!error && data) {
+      setOrders(data as Order[]);
+    } else {
+      setOrders([]);
+      if (error) {
+        console.error("Order search error:", error);
+        toast({ title: "Search failed", description: error.message, variant: "destructive" });
+      }
+    }
     setSearching(false);
-  }, [store, searchQuery]);
+  }, [searchQuery, toast]);
 
   const clearSearch = () => {
     setSearchQuery("");
     setOrders([]);
     setSearchPerformed(false);
+    if (store?.id) {
+      supabase
+        .from("orders")
+        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
+        .eq("agent_store_id", store.id)
+        .order("created_at", { ascending: false })
+        .limit(5)
+        .then(({ data }) => { if (data) setOrders(data as Order[]); });
+    }
   };
 
   useEffect(() => {
     const fetchStore = async () => {
-      if (!storeName) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-
+      if (!storeName) { setNotFound(true); setLoading(false); return; }
       const normalized = storeName.toLowerCase().trim();
-      const { data: stores } = await supabase
-        .from("agent_stores")
-        .select("*")
-        .eq("approved", true) as any;
-
-      if (!stores || stores.length === 0) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-
+      const { data: stores } = await supabase.from("agent_stores").select("*").eq("approved", true) as any;
+      if (!stores || stores.length === 0) { setNotFound(true); setLoading(false); return; }
       let matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
       if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
       if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, '') === normalized.replace(/-/g, ''));
-
-      if (!matched) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-
+      if (!matched) { setNotFound(true); setLoading(false); return; }
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
-
       const [pkgRes, priceRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
       ]);
       setPackages(pkgRes.data ?? []);
       const priceMap: Record<string, number> = {};
-      (priceRes.data ?? []).forEach((p: AgentPrice) => {
-        priceMap[p.package_id] = p.sell_price;
-      });
+      (priceRes.data ?? []).forEach((p: AgentPrice) => { priceMap[p.package_id] = p.sell_price; });
       setAgentPrices(priceMap);
       setLoading(false);
     };
@@ -580,11 +496,8 @@ const AgentStorefront = () => {
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
-  // ✅ Fixed: WhatsApp number formatted for wa.me (international digits)
   const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number) : "";
-  const whatsappLink = store
-    ? `https://wa.me/${getInternationalDigits(store.whatsapp_number)}`
-    : "#";
+  const whatsappLink = store ? `https://wa.me/${getInternationalDigits(store.whatsapp_number)}` : "#";
   const groupLink = store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
 
   const getStatusIcon = (status: string) => {
@@ -592,31 +505,14 @@ const AgentStorefront = () => {
     if (status === "pending") return <Clock className="h-4 w-4 text-yellow-400" />;
     return <XCircle className="h-4 w-4 text-red-400" />;
   };
-
   const getStatusText = (status: string) => {
     if (status === "completed" || status === "paid") return "Payment Completed";
     if (status === "pending") return "Pending";
     return status;
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Zap className="h-10 w-10 text-primary animate-pulse" />
-      </div>
-    );
-  }
-
-  if (notFound || !store) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Zap className="h-12 w-12 text-muted-foreground mx-auto" />
-          <h1 className="font-display text-2xl font-bold">Store Not Found</h1>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Zap className="h-10 w-10 text-primary animate-pulse" /></div>;
+  if (notFound || !store) return <div className="min-h-screen flex items-center justify-center"><div className="text-center"><Zap className="h-12 w-12 text-muted-foreground mx-auto" /><h1 className="font-display text-2xl font-bold">Store Not Found</h1></div></div>;
 
   const { theme_config } = store;
   const primaryColor = theme_config?.primary || defaultTheme.primary;
@@ -629,67 +525,30 @@ const AgentStorefront = () => {
   const buttonBgColor = theme_config?.button_bg_color || defaultTheme.button_bg_color;
   const buttonBorderColor = theme_config?.button_border_color || defaultTheme.button_border_color;
 
-  const getGbFontSize = () => {
-    if (gridColumns >= 5) return "text-xl sm:text-2xl";
-    if (gridColumns >= 3) return "text-2xl sm:text-3xl";
-    return "text-3xl sm:text-4xl";
-  };
-
-  const getPriceFontSize = () => {
-    if (gridColumns >= 5) return "text-sm sm:text-base";
-    if (gridColumns >= 3) return "text-base sm:text-lg";
-    return "text-lg sm:text-xl";
-  };
-
-  const getButtonSize = () => {
-    return gridColumns >= 4 ? "xs" : "sm";
-  };
-
-  const getPadding = () => {
-    if (gridColumns >= 5) return "p-2 sm:p-3";
-    if (gridColumns >= 3) return "p-3";
-    return "p-4";
-  };
+  const getGbFontSize = () => { if (gridColumns >= 5) return "text-xl sm:text-2xl"; if (gridColumns >= 3) return "text-2xl sm:text-3xl"; return "text-3xl sm:text-4xl"; };
+  const getPriceFontSize = () => { if (gridColumns >= 5) return "text-sm sm:text-base"; if (gridColumns >= 3) return "text-base sm:text-lg"; return "text-lg sm:text-xl"; };
+  const getButtonSize = () => { return gridColumns >= 4 ? "xs" : "sm"; };
+  const getPadding = () => { if (gridColumns >= 5) return "p-2 sm:p-3"; if (gridColumns >= 3) return "p-3"; return "p-4"; };
 
   return (
-    <div
-      className="min-h-screen relative"
-      style={{ backgroundColor: backgroundColor } as React.CSSProperties}
-    >
+    <div className="min-h-screen relative" style={{ backgroundColor: backgroundColor } as React.CSSProperties}>
       {modalOpen && undismissedNotifications.length > 0 && (
-        <NotificationModal
-          notifications={undismissedNotifications}
-          onDismiss={dismissNotification}
-          onCloseAll={closeAllNotifications}
-          primaryColor={primaryColor}
-        />
+        <NotificationModal notifications={undismissedNotifications} onDismiss={dismissNotification} onCloseAll={closeAllNotifications} primaryColor={primaryColor} />
       )}
 
       <header className="border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
-            <div
-              className="h-8 w-8 rounded-lg flex items-center justify-center"
-              style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
-            >
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}>
               <Zap className="h-5 w-5" style={{ color: primaryForeground }} />
             </div>
             <span className="font-display text-lg font-bold">{store.store_name}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href={`tel:${store.support_number}`}>
-                <Phone className="h-4 w-4 mr-1" /> Call
-              </a>
-            </Button>
+            <Button variant="outline" size="sm" asChild><a href={`tel:${store.support_number}`}><Phone className="h-4 w-4 mr-1" /> Call</a></Button>
             <Button variant="hero" size="sm" asChild>
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                <img
-                  src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-                  alt="WhatsApp"
-                  className="h-4 w-4 mr-1"
-                  style={{ filter: 'invert(1)' }}
-                />
+                <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg" alt="WhatsApp" className="h-4 w-4 mr-1" style={{ filter: 'invert(1)' }} />
                 WhatsApp
               </a>
             </Button>
@@ -699,24 +558,13 @@ const AgentStorefront = () => {
 
       <section className="relative overflow-hidden py-16 md:py-20">
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}05)` }} />
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full blur-[120px]"
-          style={{ background: `${primaryColor}30` }}
-        />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full blur-[120px]" style={{ background: `${primaryColor}30` }} />
         <div className="container relative text-center space-y-6">
-          <div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium"
-            style={{
-              borderColor: `${primaryColor}50`,
-              background: `${primaryColor}10`,
-              color: primaryColor,
-            }}
-          >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium" style={{ borderColor: `${primaryColor}50`, background: `${primaryColor}10`, color: primaryColor }}>
             <Wifi className="h-4 w-4" /> Fast & Reliable Data Delivery
           </div>
           <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-            Cheap Data Bundles<br />
-            <span style={{ color: primaryColor }}>Instant Delivery</span>
+            Cheap Data Bundles<br /><span style={{ color: primaryColor }}>Instant Delivery</span>
           </h1>
           <p className="text-muted-foreground max-w-lg mx-auto text-lg">
             Get the best data deals from <span className="text-foreground font-semibold">{store.store_name}</span>. Select your network and package below.
@@ -731,13 +579,7 @@ const AgentStorefront = () => {
 
       {/* Order Tracking Section */}
       <div className="container pb-10">
-        <Card
-          className="border"
-          style={{
-            borderColor: `${primaryColor}30`,
-            backgroundColor: `${primaryColor}08`,
-          }}
-        >
+        <Card className="border" style={{ borderColor: `${primaryColor}30`, backgroundColor: `${primaryColor}08` }}>
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
               <div className="flex-1">
@@ -745,92 +587,75 @@ const AgentStorefront = () => {
                   <Package className="h-5 w-5" style={{ color: primaryColor }} />
                   Track Your Order
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  Enter your phone number or order ID to check the status of your purchase.
-                </p>
+                <p className="text-sm text-muted-foreground">Enter your phone number or order ID to check the status of your purchase.</p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                 <div className="flex-1 min-w-[200px]">
-                  <Input
-                    placeholder="Phone number or Order ID"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && searchOrders()}
-                    className="bg-background"
-                  />
+                  <Input placeholder="Phone number or Order ID" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchOrders()} className="bg-background" />
                 </div>
                 <Button variant="hero" onClick={searchOrders} disabled={searching}>
-                  {searching ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                  ) : (
-                    <Search className="h-4 w-4 mr-1" />
-                  )}
+                  {searching ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" /> : <Search className="h-4 w-4 mr-1" />}
                   Search
                 </Button>
                 {searchPerformed && (
-                  <Button variant="outline" onClick={clearSearch} disabled={searching}>
-                    <X className="h-4 w-4 mr-1" />
-                    Clear
-                  </Button>
+                  <Button variant="outline" onClick={clearSearch} disabled={searching}><X className="h-4 w-4 mr-1" /> Clear</Button>
                 )}
               </div>
             </div>
 
-            {searchPerformed && (
-              <div className="mt-6">
-                {searching ? (
-                  <div className="text-center py-8">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-3" />
-                    <p className="text-muted-foreground">Searching for your order...</p>
-                  </div>
-                ) : orders.length === 0 ? (
-                  <div className="text-center py-8 border border-border rounded-lg bg-background/50">
-                    <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground">No orders found for "{searchQuery}".</p>
-                    <p className="text-xs text-muted-foreground mt-1">Please check your phone number or order ID and try again.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-foreground">Found {orders.length} order(s):</p>
-                    <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
-                      {orders.map((order) => (
-                        <div key={order.id} className="flex flex-col p-4 border border-border rounded-lg bg-background/50 hover:bg-background transition-colors">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/50">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant="outline" className="font-mono text-xs">{order.id.slice(0, 8)}...</Badge>
-                                <span className="text-sm font-medium text-foreground">{order.customer_number}</span>
-                              </div>
-                              <div className="flex items-center gap-3 text-sm">
-                                <span className="uppercase text-muted-foreground">{order.network}</span>
-                                <span className="font-display font-bold">{order.size_gb}GB</span>
-                                <span className="text-primary">GH₵ {Number(order.amount).toFixed(2)}</span>
-                              </div>
-                              <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
+            <div className="mt-6">
+              {orders.length > 0 ? (
+                <div>
+                  <p className="text-sm font-medium text-foreground">{searchPerformed ? `Found ${orders.length} order(s)` : "Recent orders"}:</p>
+                  <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
+                    {orders.map((order) => (
+                      <div key={order.id} className="flex flex-col p-4 border border-border rounded-lg bg-background/50 hover:bg-background transition-colors">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/50">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="font-mono text-xs">{order.id.slice(0, 8)}...</Badge>
+                              <span className="text-sm font-medium text-foreground">{order.customer_number}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(order.status)}
-                              <Badge className={
-                                order.status === "completed" || order.status === "paid"
-                                  ? "bg-green-600/20 text-green-400 border-green-600/30"
-                                  : order.status === "pending"
-                                    ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                    : "bg-red-600/20 text-red-400 border-red-600/30"
-                              }>
-                                {getStatusText(order.status)}
-                              </Badge>
+                            <div className="flex items-center gap-3 text-sm">
+                              <span className="uppercase text-muted-foreground">{order.network}</span>
+                              <span className="font-display font-bold">{order.size_gb}GB</span>
+                              <span className="text-primary">GH₵ {Number(order.amount).toFixed(2)}</span>
                             </div>
+                            <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
                           </div>
-                          <div className="pt-3">
-                            <OrderTrackingCard order={order} store={store} toast={toast} />
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(order.status)}
+                            <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : order.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
+                              {getStatusText(order.status)}
+                            </Badge>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                        <div className="pt-3">
+                          <OrderTrackingCard order={order} store={store} toast={toast} />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              ) : searching ? (
+                <div className="text-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-3" />
+                  <p className="text-muted-foreground">Searching for your order...</p>
+                </div>
+              ) : searchPerformed ? (
+                <div className="text-center py-8 border border-border rounded-lg bg-background/50">
+                  <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">No orders found for "{searchQuery}".</p>
+                  <p className="text-xs text-muted-foreground mt-1">Please check your phone number or order ID and try again.</p>
+                </div>
+              ) : (
+                <div className="text-center py-8 border border-border rounded-lg bg-background/50">
+                  <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-muted-foreground">No orders yet.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Once a customer places an order, it will appear here automatically.</p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -839,18 +664,8 @@ const AgentStorefront = () => {
       <div className="container pb-6">
         <div className="flex gap-2 justify-center">
           {["mtn", "airteltigo", "telecel"].map((net) => (
-            <Button
-              key={net}
-              variant={networkFilter === net ? "hero" : "outline"}
-              size="sm"
-              className="min-w-[100px]"
-              onClick={() => setNetworkFilter(net)}
-              style={
-                networkFilter === net
-                  ? { backgroundColor: primaryColor, color: primaryForeground }
-                  : {}
-              }
-            >
+            <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" className="min-w-[100px]" onClick={() => setNetworkFilter(net)}
+              style={networkFilter === net ? { backgroundColor: primaryColor, color: primaryForeground } : {}}>
               {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
             </Button>
           ))}
@@ -859,10 +674,7 @@ const AgentStorefront = () => {
 
       {/* Packages Grid */}
       <div className="container pb-20">
-        <div
-          className="grid gap-3 sm:gap-4"
-          style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}
-        >
+        <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
           {filteredPackages.map((pkg) => {
             const price = getPrice(pkg);
             const networkLabelColor = getNetworkLabelColor(networkFilter);
@@ -870,39 +682,16 @@ const AgentStorefront = () => {
             const priceFontClass = getPriceFontSize();
             const buttonSize = getButtonSize();
             const paddingClass = getPadding();
-
             return (
-              <Card
-                key={pkg.id}
-                className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group w-full"
-                style={{ background: cardBackground }}
-              >
+              <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group w-full" style={{ background: cardBackground }}>
                 <CardContent className={`${paddingClass} text-center space-y-1 sm:space-y-2 w-full`}>
-                  <p className={`${gbFontClass} font-bold break-words`} style={{ color: gbTextColor }}>
-                    {pkg.size_gb}GB
-                  </p>
-                  <p
-                    className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words"
-                    style={{ color: networkLabelColor }}
-                  >
-                    {formatNetworkName(networkFilter)}
-                  </p>
-                  <p className={`${priceFontClass} font-bold break-words`} style={{ color: priceTextColor }}>
-                    GHC{Number(price).toFixed(2)}
-                  </p>
-                  <Button
-                    variant="secondary"
-                    size={buttonSize === "xs" ? "sm" : buttonSize}
+                  <p className={`${gbFontClass} font-bold break-words`} style={{ color: gbTextColor }}>{pkg.size_gb}GB</p>
+                  <p className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words" style={{ color: networkLabelColor }}>{formatNetworkName(networkFilter)}</p>
+                  <p className={`${priceFontClass} font-bold break-words`} style={{ color: priceTextColor }}>GHC{Number(price).toFixed(2)}</p>
+                  <Button variant="secondary" size={buttonSize === "xs" ? "sm" : buttonSize}
                     className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap"
-                    style={{
-                      backgroundColor: buttonBgColor,
-                      color: buttonTextColor,
-                      borderColor: buttonBorderColor,
-                      borderWidth: '1px',
-                      borderStyle: 'solid',
-                    }}
-                    onClick={() => setPaymentPkg(pkg)}
-                  >
+                    style={{ backgroundColor: buttonBgColor, color: buttonTextColor, borderColor: buttonBorderColor, borderWidth: '1px', borderStyle: 'solid' }}
+                    onClick={() => setPaymentPkg(pkg)}>
                     Buy Now
                   </Button>
                 </CardContent>
@@ -910,22 +699,14 @@ const AgentStorefront = () => {
             );
           })}
         </div>
-
-        {filteredPackages.length === 0 && (
-          <p className="text-center text-muted-foreground py-12">No packages available for this network.</p>
-        )}
+        {filteredPackages.length === 0 && <p className="text-center text-muted-foreground py-12">No packages available for this network.</p>}
       </div>
 
       <footer className="border-t border-border py-8 bg-card/50">
         <div className="container text-center space-y-3">
           <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-foreground transition-colors">
-              <img
-                src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-                alt="WhatsApp"
-                className="h-4 w-4"
-                style={{ filter: 'invert(0.5)' }}
-              />
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg" alt="WhatsApp" className="h-4 w-4" style={{ filter: 'invert(0.5)' }} />
               {displayWhatsApp}
             </a>
             <a href={`tel:${store.support_number}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
@@ -940,22 +721,10 @@ const AgentStorefront = () => {
 
       {groupLink && (
         <div className="fixed bottom-6 right-6 z-50">
-          <a
-            href={groupLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-[#25D366] hover:bg-[#20B859] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105"
-            style={{ padding: showGroupTooltip ? '0.75rem 1.5rem' : '0.75rem' }}
-          >
-            <img
-              src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-              alt="WhatsApp"
-              className="h-6 w-6"
-              style={{ filter: 'brightness(0) invert(1)' }}
-            />
-            {showGroupTooltip && (
-              <span className="font-medium text-sm whitespace-nowrap">Join WhatsApp Group</span>
-            )}
+          <a href={groupLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-[#25D366] hover:bg-[#20B859] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105"
+            style={{ padding: showGroupTooltip ? '0.75rem 1.5rem' : '0.75rem' }}>
+            <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg" alt="WhatsApp" className="h-6 w-6" style={{ filter: 'brightness(0) invert(1)' }} />
+            {showGroupTooltip && <span className="font-medium text-sm whitespace-nowrap">Join WhatsApp Group</span>}
           </a>
         </div>
       )}

@@ -169,7 +169,8 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
           >
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="h-4 w-4 mr-2" />
-              Report: Delivered but not received
+              Only Report: if it shows Delivered<br /> here
+              but you did not received it
             </a>
           </Button>
         )}
@@ -200,8 +201,8 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
             return (
               <div key={step.step} className="flex flex-col items-center flex-1">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep ? "bg-green-600/20 text-green-400" :
-                    step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
-                      "bg-muted text-muted-foreground"
+                  step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
+                    "bg-muted text-muted-foreground"
                   }`}>
                   {icon}
                 </div>
