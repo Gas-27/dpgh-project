@@ -345,7 +345,9 @@ const AgentDashboard = () => {
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
-  const storeUrl = `${window.location.origin}/store/${storeSlug}`;
+
+  // ✅ New subdomain store URL
+  const storeUrl = `https://${storeSlug}.datastores.shop`;
 
   const copyStoreLink = () => {
     navigator.clipboard.writeText(storeUrl);
@@ -427,91 +429,6 @@ const AgentDashboard = () => {
     setBuyPaymentMethod("wallet"); // Ensure wallet is default when opening dialog
     setBuyDialogOpen(true);
   };
-
-
-
-
-
-  // const handleBuyConfirm = async () => {
-  //   if (!store || !buyPkg) return;
-  //   setBuyLoading(true);
-
-  //   const agentPrice = Number(buyPkg.agent_price);
-
-  //   if (buyPaymentMethod === "wallet") {
-  //     if (Number(store.wallet_balance) < agentPrice) {
-  //       toast({ title: "Insufficient balance", description: "Top up your wallet to continue.", variant: "destructive" });
-  //       setBuyLoading(false);
-  //       return;
-  //     }
-
-  //     const { error: walletErr } = await supabase.from("agent_stores").update({ wallet_balance: Number(store.wallet_balance) - agentPrice }).eq("id", store.id);
-  //     if (walletErr) {
-  //       toast({ title: "Error", description: walletErr.message, variant: "destructive" });
-  //       setBuyLoading(false);
-  //       return;
-  //     }
-
-  //     const { data: orderData, error: orderErr } = await supabase.from("orders").insert({
-  //       customer_number: buyPhone.trim(),
-  //       network: buyPkg.network,
-  //       size_gb: buyPkg.size_gb,
-  //       amount: agentPrice,
-  //       package_id: buyPkg.id,
-  //       agent_store_id: store.id,
-  //       status: "paid",
-  //       fulfillment_status: "pending",
-  //       payment_method: "wallet",
-  //     }).select("id").single();
-
-  //     if (orderErr) {
-  //       toast({ title: "Order error", description: orderErr.message, variant: "destructive" });
-  //       setBuyLoading(false);
-  //       return;
-  //     }
-
-  //     await supabase.functions.invoke("fulfill-order", { body: { order_id: orderData.id } });
-  //     setStore({ ...store, wallet_balance: Number(store.wallet_balance) - agentPrice });
-  //     toast({ title: "Order placed!", description: "Your data is being processed." });
-  //     setBuyDialogOpen(false);
-
-  //     const { data: newOrders } = await supabase.from("orders").select("*").eq("agent_store_id", store.id).order("created_at", { ascending: false }).limit(100);
-  //     setOrders((newOrders as Order[]) ?? []);
-  //   } else {
-  //     try {
-  //       const userEmail = user?.email || `agent-${store.id}@datapluggh.com`;
-  //       const PAYSTACK_CHARGE_PERCENT = 1.95;
-  //       const total = Math.round((agentPrice + (agentPrice * PAYSTACK_CHARGE_PERCENT / 100)) * 100) / 100;
-  //       const callbackUrl = `${window.location.origin}/agent?payment=verifying`;
-  //       const { data, error } = await supabase.functions.invoke("initialize-payment", {
-  //         body: {
-  //           email: userEmail,
-  //           amount: total,
-  //           phone: buyPhone.trim(),
-  //           callback_url: callbackUrl,
-  //           metadata: {
-  //             package_id: buyPkg.id,
-  //             network: buyPkg.network,
-  //             package_name: `${buyPkg.size_gb}GB`,
-  //             agent_store_id: store.id,
-  //             payment_method: "paystack",
-  //             use_agent_price: true,
-  //           },
-  //         },
-  //       });
-  //       if (error) throw error;
-  //       if (data?.authorization_url) {
-  //         window.location.href = data.authorization_url;
-  //       } else {
-  //         throw new Error(data?.error || "Failed to initialize payment");
-  //       }
-  //     } catch (err: any) {
-  //       toast({ title: "Payment Error", description: err.message, variant: "destructive" });
-  //     }
-  //   }
-  //   setBuyLoading(false);
-  // };
-
 
   const handleBuyConfirm = async () => {
     if (!store || !buyPkg) return;
@@ -622,8 +539,6 @@ const AgentDashboard = () => {
     setBuyLoading(false);
   };
 
-
-
   const handleWithdraw = async () => {
     if (!store) return;
 
@@ -697,7 +612,11 @@ const AgentDashboard = () => {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={copyStoreLink}><Copy className="h-4 w-4 mr-1" /> Copy Link</Button>
-                <Button variant="hero" size="sm" asChild><Link to={`/store/${storeSlug}`} target="_blank"><ExternalLink className="h-4 w-4 mr-1" /> Visit Store</Link></Button>
+                <Button variant="hero" size="sm" asChild>
+                  <a href={storeUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-1" /> Visit Store
+                  </a>
+                </Button>
               </div>
             </CardContent>
           </Card>
