@@ -218,7 +218,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
           <Button variant="outline" size="sm" className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10" asChild>
             <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
               <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg" alt="WhatsApp" className="h-4 w-4 mr-2" style={{ filter: 'invert(1)' }} />
-              Only Report: if it shows Delivered here<br />
+              Only Report: if it shows Delivered <br />here
               but you did not received it
             </a>
           </Button>
