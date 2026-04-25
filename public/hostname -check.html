@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Hostname Detective</title>
+</head>
+
+<body>
+    <h1 id="host"></h1>
+    <hr />
+    <h2>Full URL: <span id="url"></span></h2>
+    <script>
+        document.getElementById('host').textContent = 'Hostname = ' + window.location.hostname;
+        document.getElementById('url').textContent = window.location.href;
+    </script>
+</body>
+
+</html>

@@ -26,7 +26,6 @@ interface AgentStore {
     background: string;
     card_background: string;
     gridColumns?: number;
-    // New customizable colors
     gb_text_color?: string;
     price_text_color?: string;
     button_text_color?: string;
@@ -95,13 +94,20 @@ const getStoreNameFromSubdomain = (): string | null => {
   if (hostname.endsWith('.datastores.shop')) {
     const parts = hostname.split('.');
     if (parts.length >= 3) {
-      return parts[0];
+      return parts[0].toLowerCase().trim();
     }
   }
   return null;
 };
 
-// Network-specific label colors
+// Helper to create a "slug" from any string (consistent with subdomain generation)
+const slugify = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
+
 const getNetworkLabelColor = (network: string) => {
   const defaultColors: Record<string, string> = {
     mtn: "#fbbf24",
@@ -408,7 +414,6 @@ const AgentStorefront = () => {
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Default theme with new customizable colors
   const defaultTheme = {
     primary: "#a78bfa",
     primary_foreground: "#ffffff",
@@ -512,15 +517,42 @@ const AgentStorefront = () => {
         return;
       }
 
+      // Normalize the incoming store name (subdomain or URL param)
+      const normalized = storeName.toLowerCase().trim();
+
+      // Fetch all approved stores
       const { data: stores } = await supabase
         .from("agent_stores")
         .select("*")
         .eq("approved", true) as any;
 
-      const matched = (stores ?? []).find((s: any) => {
-        const slug = s.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-        return slug === storeName;
+      if (!stores || stores.length === 0) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      // 1. Try exact slug match
+      let matched = (stores as any[]).find((s: any) => {
+        const slug = slugify(s.store_name);
+        return slug === normalized;
       });
+
+      // 2. If not found, try matching store_name directly (case-insensitive)
+      if (!matched) {
+        matched = (stores as any[]).find(
+          (s: any) => s.store_name.toLowerCase().trim() === normalized
+        );
+      }
+
+      // 3. If still not found, try matching with 'slugify' on both after removing extra hyphens
+      if (!matched) {
+        matched = (stores as any[]).find((s: any) => {
+          const storeSlug = slugify(s.store_name);
+          // Remove all hyphens and compare
+          return storeSlug.replace(/-/g, '') === normalized.replace(/-/g, '');
+        });
+      }
 
       if (!matched) {
         setNotFound(true);
@@ -528,7 +560,6 @@ const AgentStorefront = () => {
         return;
       }
 
-      // Merge with defaults
       matched.theme_config = {
         ...defaultTheme,
         ...(matched.theme_config || {}),
@@ -594,14 +625,12 @@ const AgentStorefront = () => {
   const backgroundColor = theme_config?.background || defaultTheme.background;
   const cardBackground = theme_config?.card_background || defaultTheme.card_background;
 
-  // New customizable colors
   const gbTextColor = theme_config?.gb_text_color || defaultTheme.gb_text_color;
   const priceTextColor = theme_config?.price_text_color || defaultTheme.price_text_color;
   const buttonTextColor = theme_config?.button_text_color || defaultTheme.button_text_color;
   const buttonBgColor = theme_config?.button_bg_color || defaultTheme.button_bg_color;
   const buttonBorderColor = theme_config?.button_border_color || defaultTheme.button_border_color;
 
-  // Helper to determine font size classes based on grid columns
   const getGbFontSize = () => {
     if (gridColumns >= 5) return "text-xl sm:text-2xl";
     if (gridColumns >= 3) return "text-2xl sm:text-3xl";
@@ -627,9 +656,7 @@ const AgentStorefront = () => {
   return (
     <div
       className="min-h-screen relative"
-      style={{
-        backgroundColor: backgroundColor,
-      } as React.CSSProperties}
+      style={{ backgroundColor: backgroundColor } as React.CSSProperties}
     >
       {modalOpen && undismissedNotifications.length > 0 && (
         <NotificationModal
@@ -832,13 +859,11 @@ const AgentStorefront = () => {
         </div>
       </div>
 
-      {/* Packages Grid - Responsive & Fully Customizable Colors */}
+      {/* Packages Grid */}
       <div className="container pb-20">
         <div
           className="grid gap-3 sm:gap-4"
-          style={{
-            gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
-          }}
+          style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}
         >
           {filteredPackages.map((pkg) => {
             const price = getPrice(pkg);
@@ -852,36 +877,21 @@ const AgentStorefront = () => {
               <Card
                 key={pkg.id}
                 className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group w-full"
-                style={{
-                  background: cardBackground,
-                }}
+                style={{ background: cardBackground }}
               >
                 <CardContent className={`${paddingClass} text-center space-y-1 sm:space-y-2 w-full`}>
-                  {/* GB Size */}
-                  <p
-                    className={`${gbFontClass} font-bold break-words`}
-                    style={{ color: gbTextColor }}
-                  >
+                  <p className={`${gbFontClass} font-bold break-words`} style={{ color: gbTextColor }}>
                     {pkg.size_gb}GB
                   </p>
-
-                  {/* Network Name */}
                   <p
                     className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words"
                     style={{ color: networkLabelColor }}
                   >
                     {formatNetworkName(networkFilter)}
                   </p>
-
-                  {/* Price */}
-                  <p
-                    className={`${priceFontClass} font-bold break-words`}
-                    style={{ color: priceTextColor }}
-                  >
+                  <p className={`${priceFontClass} font-bold break-words`} style={{ color: priceTextColor }}>
                     GHC{Number(price).toFixed(2)}
                   </p>
-
-                  {/* Buy Now Button */}
                   <Button
                     variant="secondary"
                     size={buttonSize === "xs" ? "sm" : buttonSize}
@@ -937,9 +947,7 @@ const AgentStorefront = () => {
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 bg-[#25D366] hover:bg-[#20B859] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105"
-            style={{
-              padding: showGroupTooltip ? '0.75rem 1.5rem' : '0.75rem',
-            }}
+            style={{ padding: showGroupTooltip ? '0.75rem 1.5rem' : '0.75rem' }}
           >
             <img
               src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
@@ -948,9 +956,7 @@ const AgentStorefront = () => {
               style={{ filter: 'brightness(0) invert(1)' }}
             />
             {showGroupTooltip && (
-              <span className="font-medium text-sm whitespace-nowrap">
-                Join WhatsApp Group
-              </span>
+              <span className="font-medium text-sm whitespace-nowrap">Join WhatsApp Group</span>
             )}
           </a>
         </div>
