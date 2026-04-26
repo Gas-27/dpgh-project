@@ -371,19 +371,7 @@ const AgentStorefront = () => {
   useEffect(() => { const timer = setTimeout(() => setShowGroupTooltip(false), 9000); return () => clearTimeout(timer); }, []);
   useEffect(() => { if (store?.id) { const stored = localStorage.getItem(`dismissed_notifications_${store.id}`); if (stored) setDismissedIds(JSON.parse(stored)); } }, [store?.id]);
 
-  useEffect(() => {
-    if (!store?.id) return;
-    const fetchRecent = async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
-        .eq("agent_store_id", store.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (data) setOrders(data as Order[]);
-    };
-    fetchRecent();
-  }, [store?.id]);
+  // ❌ Removed auto-load of recent orders
 
   const fetchNotifications = useCallback(async () => {
     if (!store?.id) return;
@@ -455,15 +443,7 @@ const AgentStorefront = () => {
     setSearchQuery("");
     setOrders([]);
     setSearchPerformed(false);
-    if (store?.id) {
-      supabase
-        .from("orders")
-        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
-        .eq("agent_store_id", store.id)
-        .order("created_at", { ascending: false })
-        .limit(5)
-        .then(({ data }) => { if (data) setOrders(data as Order[]); });
-    }
+    // ❌ Removed reloading of recent orders
   };
 
   useEffect(() => {
@@ -577,7 +557,7 @@ const AgentStorefront = () => {
         </div>
       </section>
 
-      {/* Order Tracking Section */}
+      {/* Order Tracking Section – SEARCH ONLY */}
       <div className="container pb-10">
         <Card className="border" style={{ borderColor: `${primaryColor}30`, backgroundColor: `${primaryColor}08` }}>
           <CardContent className="p-6">
@@ -606,7 +586,7 @@ const AgentStorefront = () => {
             <div className="mt-6">
               {orders.length > 0 ? (
                 <div>
-                  <p className="text-sm font-medium text-foreground">{searchPerformed ? `Found ${orders.length} order(s)` : "Recent orders"}:</p>
+                  <p className="text-sm font-medium text-foreground">Found {orders.length} order(s):</p>
                   <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
                     {orders.map((order) => (
                       <div key={order.id} className="flex flex-col p-4 border border-border rounded-lg bg-background/50 hover:bg-background transition-colors">
@@ -651,8 +631,7 @@ const AgentStorefront = () => {
               ) : (
                 <div className="text-center py-8 border border-border rounded-lg bg-background/50">
                   <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">No orders yet.</p>
-                  <p className="text-xs text-muted-foreground mt-1">Once a customer places an order, it will appear here automatically.</p>
+                  <p className="text-muted-foreground">Enter a phone number or order ID and click Search.</p>
                 </div>
               )}
             </div>
