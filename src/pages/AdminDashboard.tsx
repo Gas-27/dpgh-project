@@ -108,10 +108,9 @@ const AdminDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // --- NEW: Auto‑retry orders with fulfillment_status = "pending" ---
+  // --- Auto‑retry orders with fulfillment_status = "pending" ---
   useEffect(() => {
     const autoRetryPendingOrders = async () => {
-      // Fetch only orders that are pending and not already being retried
       const { data: pendingOrders, error } = await supabase
         .from("orders")
         .select("id")
@@ -124,17 +123,16 @@ const AdminDashboard = () => {
 
       for (const order of pendingOrders || []) {
         if (!retryingOrders.has(order.id)) {
-          // Call the existing retryOrder function (defined below)
           await retryOrder(order.id);
         }
       }
     };
 
-    const interval = setInterval(autoRetryPendingOrders, 30000); // every 30 seconds
+    const interval = setInterval(autoRetryPendingOrders, 30000);
     return () => clearInterval(interval);
-  }, [retryingOrders]); // re‑run if retryingOrders changes
+  }, [retryingOrders]);
 
-  // --- NEW: Send email on withdrawal request (realtime insert) ---
+  // 🚀 UPDATED: Send email on withdrawal request with ALL details (store name, amount, contact, momo name, wallet balance)
   useEffect(() => {
     const channel = supabase
       .channel("withdrawal-inserts")
@@ -143,10 +141,18 @@ const AdminDashboard = () => {
         { event: "INSERT", schema: "public", table: "withdrawal_requests" },
         async (payload) => {
           const newWithdrawal = payload.new as WithdrawalRequest;
-          // Fetch agent details
+
+          // Show toast in admin dashboard
+          toast({
+            title: "💰 New Withdrawal Request!",
+            description: `GH₵ ${newWithdrawal.amount.toFixed(2)} – waiting for processing.`,
+            variant: "default",
+          });
+
+          // Fetch complete agent details including wallet_balance
           const { data: agent, error } = await supabase
             .from("agent_stores")
-            .select("store_name, whatsapp_number, momo_name, momo_number, momo_network")
+            .select("store_name, whatsapp_number, momo_name, momo_number, momo_network, wallet_balance")
             .eq("id", newWithdrawal.agent_store_id)
             .single();
 
@@ -155,20 +161,22 @@ const AdminDashboard = () => {
             return;
           }
 
-          // Prepare email data
           const contact = agent.whatsapp_number || agent.momo_number || "No contact provided";
           const momoName = agent.momo_name || "Not set";
           const amount = newWithdrawal.amount;
+          const storeName = agent.store_name;
+          const walletBalance = agent.wallet_balance;
 
-          // Invoke edge function to send email
+          // Invoke edge function with all details
           try {
             const { error: emailError } = await supabase.functions.invoke("send-withdrawal-notification", {
               body: {
                 to: "georgeagyemangsakyi27@gmail.com",
-                agentName: agent.store_name,
+                storeName,
+                amount,
                 contact,
                 momoName,
-                amount,
+                walletBalance,
               },
             });
             if (emailError) throw emailError;
@@ -183,7 +191,7 @@ const AdminDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [toast]);
 
   const handlePriceChange = (id: string, field: "price" | "agent_price", value: string) => {
     setEditedPrices((prev) => ({ ...prev, [id]: { ...prev[id], [field]: parseFloat(value) || 0 } }));
@@ -254,7 +262,6 @@ const AdminDashboard = () => {
     for (const order of failedOrders) { await retryOrder(order.id); }
   };
 
-  // Topup search
   const searchTopupRef = () => {
     const found = agents.find((a) => a.topup_reference === topupSearch.trim());
     if (found) {
@@ -292,7 +299,6 @@ const AdminDashboard = () => {
     await fetchData();
   };
 
-  // Send notification
   const sendNotification = async () => {
     if (!notifTitle.trim() || !notifMessage.trim()) {
       toast({ title: "Fill title and message", variant: "destructive" });
@@ -311,11 +317,9 @@ const AdminDashboard = () => {
     setSendingNotif(false);
   };
 
-  // Process withdrawal
   const processWithdrawal = async (withdrawalId: string, agentStoreId: string, amount: number) => {
     setProcessingWithdrawals((prev) => new Set(prev).add(withdrawalId));
     try {
-      // Deduct from agent wallet
       const agent = agents.find((a) => a.id === agentStoreId);
       if (!agent) throw new Error("Agent not found");
       const newBalance = Math.max(0, Number(agent.wallet_balance) - amount);
@@ -343,22 +347,18 @@ const AdminDashboard = () => {
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
 
-  // Filter agents by store name
   const filteredAgents = agents.filter((agent) =>
     agent.store_name.toLowerCase().includes(agentSearchTerm.toLowerCase())
   );
 
-  // Filter users by full name
   const filteredUsers = users.filter((user) =>
     (user.full_name?.toLowerCase() || "").includes(userSearchTerm.toLowerCase())
   );
 
-  // Filter orders by customer phone number
   const filteredOrders = orders.filter((order) =>
     order.customer_number.toLowerCase().includes(orderSearchTerm.toLowerCase())
   );
 
-  // Filter withdrawals by agent store name (case-insensitive)
   const filteredWithdrawals = withdrawals.filter((withdrawal) => {
     const agent = agents.find((a) => a.id === withdrawal.agent_store_id);
     return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
@@ -406,7 +406,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1" /> Notify</TabsTrigger>
           </TabsList>
 
-          {/* PRICES TAB */}
+          {/* PRICES TAB (unchanged) */}
           <TabsContent value="prices" className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex gap-2">
@@ -465,7 +465,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* ORDERS TAB */}
+          {/* ORDERS TAB (unchanged) */}
           <TabsContent value="orders" className="space-y-4">
             {failedCount > 0 && (
               <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
@@ -477,7 +477,6 @@ const AdminDashboard = () => {
                 </Button>
               </div>
             )}
-            {/* Search input for orders by phone number */}
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -545,9 +544,8 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* AGENTS TAB */}
+          {/* AGENTS TAB (unchanged) */}
           <TabsContent value="agents" className="space-y-4">
-            {/* Search input for agent store name */}
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -601,7 +599,7 @@ const AdminDashboard = () => {
             )}
           </TabsContent>
 
-          {/* TOPUP TAB */}
+          {/* TOPUP TAB (unchanged) */}
           <TabsContent value="topup" className="space-y-6">
             <Card className="border-border">
               <CardHeader>
@@ -647,7 +645,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* WITHDRAWALS TAB */}
+          {/* WITHDRAWALS TAB (unchanged) */}
           <TabsContent value="withdrawals" className="space-y-4">
             {pendingWithdrawals.length > 0 && (
               <div className="p-4 rounded-lg border border-yellow-600/30 bg-yellow-600/5">
@@ -656,7 +654,6 @@ const AdminDashboard = () => {
                 </p>
               </div>
             )}
-            {/* Search input for withdrawals by agent store name */}
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -721,9 +718,8 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* USERS TAB */}
+          {/* USERS TAB (unchanged) */}
           <TabsContent value="users" className="space-y-4">
-            {/* Search input for user name */}
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -763,7 +759,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* NOTIFICATIONS TAB */}
+          {/* NOTIFICATIONS TAB (unchanged) */}
           <TabsContent value="notifications" className="space-y-6">
             <Card className="border-border">
               <CardHeader>
@@ -802,7 +798,7 @@ const AdminDashboard = () => {
         </Tabs>
       </div>
 
-      {/* Add Package Dialog */}
+      {/* Add Package Dialog (unchanged) */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader>
