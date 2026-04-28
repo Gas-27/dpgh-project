@@ -1,35 +1,36 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";   // 🆕 import the auth hook
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, KeyRound, Mail, CheckCircle2, AlertCircle, ShieldAlert } from "lucide-react";
+import { Loader2, KeyRound, Mail, CheckCircle2, AlertCircle, ShieldAlert, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const ResetPassword = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { isAdmin } = useAuth();   // 🆕 admin check
+    const { isAdmin } = useAuth();
 
-    // ====== Token detection (for users from email) ======
+    // Token states
     const [hasToken, setHasToken] = useState(false);
     const [tokenError, setTokenError] = useState("");
 
-    // New password fields (when token is valid)
+    // Password fields
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);   // 👈 toggle visibility
     const [updating, setUpdating] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    // Admin email‑sending fields
+    // Admin email states
     const [email, setEmail] = useState("");
     const [sending, setSending] = useState(false);
     const [emailSent, setEmailSent] = useState(false);
 
-    // 1. On page load, check for tokens in URL hash → set session
+    // 1. Check for tokens in URL hash
     useEffect(() => {
         const hash = window.location.hash;
         if (hash) {
@@ -49,7 +50,7 @@ const ResetPassword = () => {
         }
     }, []);
 
-    // 2. Update password (when user arrived via reset link)
+    // 2. Update password
     const handlePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (password !== confirmPassword) {
@@ -96,7 +97,7 @@ const ResetPassword = () => {
 
     // ====== Render ======
 
-    // Step for user with valid token (set new password)
+    // SET NEW PASSWORD (with show/hide toggle)
     if (hasToken && !success) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4">
@@ -110,12 +111,50 @@ const ResetPassword = () => {
                         <form onSubmit={handlePasswordSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label>New Password</Label>
-                                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 6 characters" required autoFocus />
+                                <div className="relative">
+                                    <Input
+                                        type={showPassword ? "text" : "password"}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="Min. 6 characters"
+                                        required
+                                        autoFocus
+                                        className="pr-10"  // make room for the eye icon
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                                        tabIndex={-1}
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
                             </div>
+
                             <div className="space-y-2">
                                 <Label>Confirm Password</Label>
-                                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter password" required />
+                                <div className="relative">
+                                    <Input
+                                        type={showPassword ? "text" : "password"}
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        placeholder="Re-enter password"
+                                        required
+                                        className="pr-10"
+                                    />
+                                    {/* Same toggle as above – we reuse the showPassword state */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                                        tabIndex={-1}
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
                             </div>
+
                             <Button type="submit" variant="hero" className="w-full" disabled={updating}>
                                 {updating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                                 Update Password
@@ -127,7 +166,7 @@ const ResetPassword = () => {
         );
     }
 
-    // Success after password update
+    // SUCCESS
     if (success) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4">
@@ -142,7 +181,7 @@ const ResetPassword = () => {
         );
     }
 
-    // Invalid token error
+    // TOKEN ERROR
     if (tokenError) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4">
@@ -157,8 +196,7 @@ const ResetPassword = () => {
         );
     }
 
-    // ====== Default view (no token) ======
-    // ADMIN: show email sending form
+    // ADMIN EMAIL FORM
     if (isAdmin) {
         if (emailSent) {
             return (
@@ -202,7 +240,7 @@ const ResetPassword = () => {
         );
     }
 
-    // NOT ADMIN: no token → tell them to contact admin
+    // NON-ADMIN / NO TOKEN
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
             <Card className="w-full max-w-md">
