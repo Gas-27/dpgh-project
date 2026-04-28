@@ -14,52 +14,47 @@ const ResetPassword = () => {
     const { toast } = useToast();
     const { isAdmin, loading: authLoading } = useAuth();
 
-    // Token states
-    const [hasToken, setHasToken] = useState(false);
+    // True when the URL contains an access_token (user arrived via reset link)
+    const [isResetMode, setIsResetMode] = useState(false);
     const [tokenError, setTokenError] = useState("");
-    const [checkingToken, setCheckingToken] = useState(true);
 
-    // Password fields
+    // Password fields (visible only in reset mode)
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [updating, setUpdating] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    // Admin email states
+    // Admin email fields (visible only for admin, no token)
     const [email, setEmail] = useState("");
     const [sending, setSending] = useState(false);
     const [emailSent, setEmailSent] = useState(false);
 
-    // 1. Check for token in URL hash
+    // 1. Check URL for an access token (from a reset link)
     useEffect(() => {
         const hash = window.location.hash;
-        if (hash) {
-            const params = new URLSearchParams(hash.substring(1));
-            const access_token = params.get("access_token");
-            const refresh_token = params.get("refresh_token");
+        // Supabase sends tokens in the fragment: #access_token=...&refresh_token=...
+        const params = new URLSearchParams(hash.substring(1));
+        const access_token = params.get("access_token");
+        const refresh_token = params.get("refresh_token");
 
-            if (access_token) {
-                supabase.auth
-                    .setSession({ access_token, refresh_token: refresh_token ?? undefined })
-                    .then(({ error }) => {
-                        if (error) {
-                            setTokenError(error.message);
-                        } else {
-                            setHasToken(true);
-                        }
-                        setCheckingToken(false);
-                    });
-            } else {
-                setTokenError("Missing access token.");
-                setCheckingToken(false);
-            }
-        } else {
-            setCheckingToken(false);
+        if (access_token) {
+            // Activate the session so the user can update their password
+            supabase.auth
+                .setSession({ access_token, refresh_token: refresh_token ?? undefined })
+                .then(({ error }) => {
+                    if (error) {
+                        setTokenError(error.message);
+                        setIsResetMode(false); // invalid token → show error later
+                    } else {
+                        setIsResetMode(true);  // success → show “Set New Password” form
+                    }
+                });
         }
+        // If no token, isResetMode stays false – we’ll show the regular page (admin or denied)
     }, []);
 
-    // 2. Update password (user from reset link)
+    // 2. Update password (called from the “Set New Password” form)
     const handlePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (password !== confirmPassword) {
@@ -85,7 +80,7 @@ const ResetPassword = () => {
         setUpdating(false);
     };
 
-    // 3. Admin sends reset email
+    // 3. Admin sends a reset email (only admins see this form)
     const handleSendEmail = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email.trim()) return;
@@ -106,8 +101,8 @@ const ResetPassword = () => {
 
     // ====== Render ======
 
-    // Still loading auth or token check
-    if (authLoading || checkingToken) {
+    // Still loading auth state
+    if (authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -115,30 +110,22 @@ const ResetPassword = () => {
         );
     }
 
-    // ================================================================
-    // STRICT RULE: only these cases are allowed:
-    //   - Valid token (hasToken = true) → user can reset their own password
-    //   - No token but admin → admin can send reset emails
-    //   - Everything else → ACCESS DENIED
-    // ================================================================
-    if (!hasToken && !isAdmin) {
-        return (
-            <div className="min-h-screen flex items-center justify-center p-4">
-                <Card className="w-full max-w-md">
-                    <CardHeader className="text-center">
-                        <AlertCircle className="h-10 w-10 text-yellow-500 mx-auto mb-2" />
-                        <CardTitle>Access Denied</CardTitle>
-                        <CardDescription>
-                            Please contact your administrator to reset your password.
-                        </CardDescription>
-                    </CardHeader>
-                </Card>
-            </div>
-        );
-    }
+    // ---------- USER WITH A VALID RESET LINK ----------
+    if (isResetMode) {
+        if (success) {
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <Card className="w-full max-w-md">
+                        <CardHeader className="text-center">
+                            <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
+                            <CardTitle>Password Updated!</CardTitle>
+                            <CardDescription>Redirecting to login page...</CardDescription>
+                        </CardHeader>
+                    </Card>
+                </div>
+            );
+        }
 
-    // ---- USER: SET NEW PASSWORD (after clicking email link) ----
-    if (hasToken && !success) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4">
                 <Card className="w-full max-w-md">
@@ -205,22 +192,7 @@ const ResetPassword = () => {
         );
     }
 
-    // ---- USER: Password updated successfully ----
-    if (success) {
-        return (
-            <div className="min-h-screen flex items-center justify-center p-4">
-                <Card className="w-full max-w-md">
-                    <CardHeader className="text-center">
-                        <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
-                        <CardTitle>Password Updated!</CardTitle>
-                        <CardDescription>Redirecting to login page...</CardDescription>
-                    </CardHeader>
-                </Card>
-            </div>
-        );
-    }
-
-    // ---- USER: Invalid token ----
+    // ---------- INVALID TOKEN ERROR ----------
     if (tokenError) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4">
@@ -235,8 +207,9 @@ const ResetPassword = () => {
         );
     }
 
-    // ---- ADMIN: Send reset email (only admins reach here) ----
+    // ---------- NO TOKEN: decide based on role ----------
     if (isAdmin) {
+        // Admin sending form
         if (emailSent) {
             return (
                 <div className="min-h-screen flex items-center justify-center p-4">
@@ -279,8 +252,20 @@ const ResetPassword = () => {
         );
     }
 
-    // This line should never be reached, but as a fallback
-    return null;
+    // Not reset mode, not admin → block
+    return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+            <Card className="w-full max-w-md">
+                <CardHeader className="text-center">
+                    <AlertCircle className="h-10 w-10 text-yellow-500 mx-auto mb-2" />
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>
+                        Please contact your administrator to reset your password.
+                    </CardDescription>
+                </CardHeader>
+            </Card>
+        </div>
+    );
 };
 
 export default ResetPassword;

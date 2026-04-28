@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Zap, User, Store } from "lucide-react";
+import { Zap, User, Store, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Signup = () => {
@@ -14,6 +14,7 @@ const Signup = () => {
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<"user" | "agent">("user");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);   // 👈 toggle visibility
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -59,11 +60,10 @@ const Signup = () => {
             <button
               type="button"
               onClick={() => setRole("user")}
-              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                role === "user"
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${role === "user"
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:border-muted-foreground"
-              }`}
+                }`}
             >
               <User className="h-6 w-6" />
               <span className="text-sm font-semibold">User</span>
@@ -72,11 +72,10 @@ const Signup = () => {
             <button
               type="button"
               onClick={() => setRole("agent")}
-              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                role === "agent"
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${role === "agent"
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:border-muted-foreground"
-              }`}
+                }`}
             >
               <Store className="h-6 w-6" />
               <span className="text-sm font-semibold">Agent</span>
@@ -95,7 +94,26 @@ const Signup = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <Button type="submit" variant="hero" className="w-full" disabled={loading}>
               {loading ? "Creating account..." : `Sign Up as ${role === "agent" ? "Agent" : "User"}`}
