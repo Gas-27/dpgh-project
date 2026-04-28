@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, MailWarning,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -66,7 +66,7 @@ const AdminDashboard = () => {
   const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
   const [processingWithdrawals, setProcessingWithdrawals] = useState<Set<string>>(new Set());
 
-  // Search states for Agents, Users, Orders, and Withdrawals
+  // Search states
   const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [orderSearchTerm, setOrderSearchTerm] = useState("");
@@ -83,6 +83,9 @@ const AdminDashboard = () => {
   const [notifMessage, setNotifMessage] = useState("");
   const [notifTarget, setNotifTarget] = useState("all");
   const [sendingNotif, setSendingNotif] = useState(false);
+
+  // 🆕 Polling state for fallback withdrawal detection
+  const [lastCheckedAt, setLastCheckedAt] = useState(new Date());
 
   const fetchData = async () => {
     setDataLoading(true);
@@ -132,7 +135,79 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, [retryingOrders]);
 
-  // 🚀 UPDATED: Send email on withdrawal request with ALL details (store name, amount, contact, momo name, wallet balance)
+  // Helper function to process a withdrawal (show toast + send email)
+  const processWithdrawalNotification = async (withdrawal: WithdrawalRequest) => {
+    // Show toast
+    toast({
+      title: "💰 New Withdrawal Request!",
+      description: `GH₵ ${withdrawal.amount.toFixed(2)} – waiting for processing.`,
+      variant: "default",
+    });
+
+    // Fetch agent details including wallet_balance
+    const { data: agent, error } = await supabase
+      .from("agent_stores")
+      .select("store_name, whatsapp_number, momo_name, momo_number, momo_network, wallet_balance")
+      .eq("id", withdrawal.agent_store_id)
+      .single();
+
+    if (error || !agent) {
+      console.error("Could not fetch agent for withdrawal email:", error);
+      return;
+    }
+
+    const contact = agent.whatsapp_number || agent.momo_number || "No contact provided";
+    const momoName = agent.momo_name || "Not set";
+    const amount = withdrawal.amount;
+    const storeName = agent.store_name;
+    const walletBalance = agent.wallet_balance;
+
+    try {
+      const { error: emailError } = await supabase.functions.invoke("send-withdrawal-notification", {
+        body: {
+          to: "georgeagyemangsakyi27@gmail.com",
+          storeName,
+          amount,
+          contact,
+          momoName,
+          walletBalance,
+        },
+      });
+      if (emailError) throw emailError;
+      console.log("Withdrawal notification email sent for withdrawal", withdrawal.id);
+    } catch (err) {
+      console.error("Failed to send withdrawal email:", err);
+    }
+  };
+
+  // 🆕 POLLING FALLBACK – checks for new withdrawals every 10 seconds
+  useEffect(() => {
+    const pollForNewWithdrawals = async () => {
+      const { data: newWithdrawals, error } = await supabase
+        .from("withdrawal_requests")
+        .select("*")
+        .gt("created_at", lastCheckedAt.toISOString())
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Polling error:", error);
+        return;
+      }
+
+      if (newWithdrawals && newWithdrawals.length > 0) {
+        console.log(`🔄 Polling found ${newWithdrawals.length} new withdrawal(s)`);
+        for (const withdrawal of newWithdrawals) {
+          await processWithdrawalNotification(withdrawal);
+        }
+      }
+      setLastCheckedAt(new Date());
+    };
+
+    const interval = setInterval(pollForNewWithdrawals, 10000); // every 10 seconds
+    return () => clearInterval(interval);
+  }, [lastCheckedAt]);
+
+  // 🚀 REALTIME LISTENER – instant notifications (kept as primary)
   useEffect(() => {
     const channel = supabase
       .channel("withdrawal-inserts")
@@ -141,49 +216,8 @@ const AdminDashboard = () => {
         { event: "INSERT", schema: "public", table: "withdrawal_requests" },
         async (payload) => {
           const newWithdrawal = payload.new as WithdrawalRequest;
-
-          // Show toast in admin dashboard
-          toast({
-            title: "💰 New Withdrawal Request!",
-            description: `GH₵ ${newWithdrawal.amount.toFixed(2)} – waiting for processing.`,
-            variant: "default",
-          });
-
-          // Fetch complete agent details including wallet_balance
-          const { data: agent, error } = await supabase
-            .from("agent_stores")
-            .select("store_name, whatsapp_number, momo_name, momo_number, momo_network, wallet_balance")
-            .eq("id", newWithdrawal.agent_store_id)
-            .single();
-
-          if (error || !agent) {
-            console.error("Could not fetch agent for withdrawal email:", error);
-            return;
-          }
-
-          const contact = agent.whatsapp_number || agent.momo_number || "No contact provided";
-          const momoName = agent.momo_name || "Not set";
-          const amount = newWithdrawal.amount;
-          const storeName = agent.store_name;
-          const walletBalance = agent.wallet_balance;
-
-          // Invoke edge function with all details
-          try {
-            const { error: emailError } = await supabase.functions.invoke("send-withdrawal-notification", {
-              body: {
-                to: "georgeagyemangsakyi27@gmail.com",
-                storeName,
-                amount,
-                contact,
-                momoName,
-                walletBalance,
-              },
-            });
-            if (emailError) throw emailError;
-            console.log("Withdrawal notification email sent");
-          } catch (err) {
-            console.error("Failed to send withdrawal email:", err);
-          }
+          console.log("⚡ Realtime detected new withdrawal:", newWithdrawal.id);
+          await processWithdrawalNotification(newWithdrawal);
         }
       )
       .subscribe();
@@ -191,7 +225,21 @@ const AdminDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, []); // No dependency on toast because toast is stable
+
+  // 🧪 Manual test function (click button in Withdrawals tab)
+  const sendTestNotification = async () => {
+    const testWithdrawal: WithdrawalRequest = {
+      id: "test-123",
+      agent_store_id: agents[0]?.id || "test-agent",
+      amount: 25.00,
+      status: "pending",
+      created_at: new Date().toISOString(),
+      processed_at: null,
+    };
+    toast({ title: "Test", description: "Sending test email...", variant: "default" });
+    await processWithdrawalNotification(testWithdrawal);
+  };
 
   const handlePriceChange = (id: string, field: "price" | "agent_price", value: string) => {
     setEditedPrices((prev) => ({ ...prev, [id]: { ...prev[id], [field]: parseFloat(value) || 0 } }));
@@ -645,8 +693,23 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* WITHDRAWALS TAB (unchanged) */}
+          {/* WITHDRAWALS TAB – added test button */}
           <TabsContent value="withdrawals" className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="relative max-w-sm flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by agent store name..."
+                  value={withdrawalSearchTerm}
+                  onChange={(e) => setWithdrawalSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              {/* 🧪 Test button – only visible to help debug */}
+              <Button variant="outline" size="sm" onClick={sendTestNotification}>
+                <MailWarning className="h-4 w-4 mr-1" /> Test Email
+              </Button>
+            </div>
             {pendingWithdrawals.length > 0 && (
               <div className="p-4 rounded-lg border border-yellow-600/30 bg-yellow-600/5">
                 <p className="text-sm text-foreground">
@@ -654,15 +717,6 @@ const AdminDashboard = () => {
                 </p>
               </div>
             )}
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by agent store name..."
-                value={withdrawalSearchTerm}
-                onChange={(e) => setWithdrawalSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
             <Card className="border-border">
               <Table>
                 <TableHeader>
