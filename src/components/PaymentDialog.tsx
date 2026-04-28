@@ -280,7 +280,7 @@ const PaymentDialog = ({
                     <p className="font-semibold">Please confirm:</p>
                     <p>
                       The contact <span className="font-bold">{phone}</span> is correct and
-                      it belongs to the <span className="font-bold">{network.toUpperCase()}</span> network.
+                      it belongs to  <span className="font-bold">{network.toUpperCase()}</span> network.
                     </p>
                     <p className="text-xs mt-1 font-medium">
                       ⚠️ Network providers rule:You cannot make another
