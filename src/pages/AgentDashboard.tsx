@@ -21,7 +21,7 @@ import {
   Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
   TrendingUp, Search, Palette, RotateCcw, Bell, Plus, Trash2, Calendar,
-  LayoutGrid, Minus, Plus as PlusIcon,
+  LayoutGrid, Minus, Plus as PlusIcon, Coins,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -131,7 +131,7 @@ const AgentDashboard = () => {
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
   const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
-  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet"); // Changed default to wallet
+  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
   const [buyLoading, setBuyLoading] = useState(false);
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -237,11 +237,10 @@ const AgentDashboard = () => {
     }
   }, [orders, packages]);
 
-  // ======================== NOTIFICATIONS (with type assertions) ========================
+  // ======================== NOTIFICATIONS ========================
   const fetchNotifications = async () => {
     if (!store?.id) return;
     setLoadingNotifications(true);
-    // Use 'as any' because agent_notifications is not in generated types
     const { data, error } = await (supabase
       .from('agent_notifications' as any)
       .select('*')
@@ -300,7 +299,7 @@ const AgentDashboard = () => {
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
-  // =====================================================================================
+  // =================================================================
 
   const saveThemeColors = async () => {
     if (!store) return;
@@ -345,8 +344,6 @@ const AgentDashboard = () => {
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
-
-  // ✅ New subdomain store URL
   const storeUrl = `https://${storeSlug}.datastores.shop`;
 
   const copyStoreLink = () => {
@@ -359,6 +356,11 @@ const AgentDashboard = () => {
       navigator.clipboard.writeText(store.topup_reference);
       toast({ title: "Reference copied!" });
     }
+  };
+
+  const copyPhoneNumber = (phone: string) => {
+    navigator.clipboard.writeText(phone);
+    toast({ title: "Phone number copied!", description: phone });
   };
 
   const handlePriceChange = (pkgId: string, value: string) => {
@@ -426,7 +428,7 @@ const AgentDashboard = () => {
     setBuyPkg(pkg);
     setBuyPhone("");
     setBuyStep("phone");
-    setBuyPaymentMethod("wallet"); // Ensure wallet is default when opening dialog
+    setBuyPaymentMethod("wallet");
     setBuyDialogOpen(true);
   };
 
@@ -434,7 +436,7 @@ const AgentDashboard = () => {
     if (!store || !buyPkg) return;
     setBuyLoading(true);
 
-    // === RATE LIMIT CHECK ===
+    // RATE LIMIT CHECK
     const FORTY_FIVE_MINUTES_MS = 45 * 60 * 1000;
     const cutoffTime = new Date(Date.now() - FORTY_FIVE_MINUTES_MS).toISOString();
 
@@ -461,7 +463,6 @@ const AgentDashboard = () => {
       setBuyLoading(false);
       return;
     }
-    // === END RATE LIMIT CHECK ===
 
     const agentPrice = Number(buyPkg.agent_price);
 
@@ -628,12 +629,13 @@ const AgentDashboard = () => {
             <TabsTrigger value="buy" className="flex-1 min-w-[100px]"><ShoppingCart className="h-4 w-4 mr-1" /> Buy Data</TabsTrigger>
             <TabsTrigger value="store" className="flex-1 min-w-[100px]"><Store className="h-4 w-4 mr-1" /> Store Prices</TabsTrigger>
             <TabsTrigger value="withdraw" className="flex-1 min-w-[100px]"><ArrowDownToLine className="h-4 w-4 mr-1" /> Withdraw</TabsTrigger>
+            <TabsTrigger value="topup" className="flex-1 min-w-[100px]"><Coins className="h-4 w-4 mr-1" /> Top Up</TabsTrigger>
             <TabsTrigger value="appearance" className="flex-1 min-w-[100px]"><Palette className="h-4 w-4 mr-1" /> Appearance</TabsTrigger>
             <TabsTrigger value="notifications" className="flex-1 min-w-[100px]"><Bell className="h-4 w-4 mr-1" /> Notifications</TabsTrigger>
             <TabsTrigger value="settings" className="flex-1 min-w-[100px]"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
           </TabsList>
 
-          {/* OVERVIEW TAB */}
+          {/* OVERVIEW TAB (exactly as before) */}
           <TabsContent value="overview" className="space-y-6 mt-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="border-border">
@@ -742,9 +744,8 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* BUY DATA TAB */}
+          {/* BUY DATA TAB (unchanged) */}
           <TabsContent value="buy" className="space-y-4 mt-6">
-            {/* Display Wallet Balance Card */}
             {store && (
               <Card className="border-border bg-secondary/30">
                 <CardContent className="p-4 flex items-center justify-between">
@@ -781,7 +782,7 @@ const AgentDashboard = () => {
             </div>
           </TabsContent>
 
-          {/* STORE PRICES TAB */}
+          {/* STORE PRICES TAB (unchanged) */}
           <TabsContent value="store" className="space-y-4 mt-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex gap-2 flex-wrap">
@@ -819,7 +820,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* WITHDRAW TAB */}
+          {/* WITHDRAW TAB (unchanged) */}
           <TabsContent value="withdraw" className="space-y-6 mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6 text-center space-y-2"><TrendingUp className="h-10 w-10 text-primary mx-auto" /><p className="text-muted-foreground text-sm">Total Profit (from sales)</p><p className="font-display text-3xl font-bold text-green-400">GH₵ {profitStats.totalProfit.toFixed(2)}</p></CardContent></Card>
@@ -884,7 +885,75 @@ const AgentDashboard = () => {
             )}
           </TabsContent>
 
-          {/* APPEARANCE TAB */}
+          {/* ==================== TOP UP TAB (with copy button for phone) ==================== */}
+          <TabsContent value="topup" className="mt-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Coins className="h-5 w-5 text-primary" />
+                  Top Up Your Wallet
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Add money to your wallet using MoMo. After top‑up, your balance will be updated by the admin and you can buy data directly without Paystack charges.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="rounded-lg bg-primary/5 border border-primary/30 p-4 text-center">
+                  <p className="text-sm text-muted-foreground">Current Wallet Balance</p>
+                  <p className="font-display text-3xl font-bold text-primary">GH₵ {store?.wallet_balance?.toFixed(2) ?? '0.00'}</p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Follow these steps to top up:</h3>
+                  <ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground">
+                    <li>Dial <span className="font-mono font-bold text-foreground">*170#</span> on your MTN mobile money registered phone.</li>
+                    <li>Select option <span className="font-bold text-foreground">1</span> (Transfer Money).</li>
+                    <li>Select option <span className="font-bold text-foreground">1</span> (MoMo User).</li>
+                    <li>
+                      Enter the recipient number:
+                      <div className="inline-flex items-center ml-2 gap-1">
+                        <span className="font-mono font-bold text-foreground">0599449202</span>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyPhoneNumber("0599449202")}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <span className="ml-1">(GEORGE AGYEMANG SAKYI)</span>
+                    </li>
+                    <li>Enter the amount you want to add.</li>
+                    <li>
+                      Use your agent store <strong>top‑up reference</strong> as the transaction reference:
+                      <div className="mt-2 p-3 bg-secondary/50 rounded-lg border border-border font-mono font-bold text-center text-primary text-xl">
+                        {store?.topup_reference ?? "N/A"}
+                        <Button variant="ghost" size="sm" className="ml-2 h-8" onClick={copyRef}>
+                          <Copy className="h-3 w-3" /> Copy
+                        </Button>
+                      </div>
+                    </li>
+                    <li>Enter your MoMo PIN to confirm the transaction.</li>
+                    <li>
+                      After successful payment, copy the <strong>transaction ID</strong> from the confirmation message and send it to:
+                      <div className="mt-2 flex flex-wrap gap-3">
+                        <Button variant="outline" size="sm" asChild>
+                          <a href="https://wa.me/233200511211" target="_blank" rel="noopener noreferrer">📱 WhatsApp 0200511211</a>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href="tel:0599449202">📞 Call 0599449202</a>
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">If your wallet is not credited after 5 minutes, please call the number above.</p>
+                    </li>
+                  </ol>
+                </div>
+
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-sm">
+                  <p className="font-semibold text-yellow-400">⚠️ Important</p>
+                  <p className="text-muted-foreground">Once you send the transaction ID, the admin will verify and credit your wallet. Your balance will then be available for buying data instantly without any Paystack charges.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* APPEARANCE TAB (unchanged) */}
           <TabsContent value="appearance" className="mt-6">
             <Card className="border-border">
               <CardHeader>
@@ -925,7 +994,6 @@ const AgentDashboard = () => {
                   </div>
                 </div>
 
-                {/* Layout Control – columns with stepper */}
                 <div className="border-t border-border pt-4">
                   <h3 className="text-md font-semibold flex items-center gap-2 mb-3">
                     <LayoutGrid className="h-5 w-5 text-primary" />
@@ -972,7 +1040,6 @@ const AgentDashboard = () => {
                   </div>
                 </div>
 
-                {/* Preview (simplified) */}
                 <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/20">
                   <p className="text-sm font-medium">Preview</p>
                   <div className="rounded-md p-4" style={{ backgroundColor: themeColors.background }}>
@@ -1014,7 +1081,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* NOTIFICATIONS TAB */}
+          {/* NOTIFICATIONS TAB (unchanged) */}
           <TabsContent value="notifications" className="mt-6 space-y-6">
             <Card className="border-border">
               <CardHeader>
@@ -1097,7 +1164,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* SETTINGS TAB */}
+          {/* SETTINGS TAB (unchanged) */}
           <TabsContent value="settings" className="mt-6">
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
@@ -1170,7 +1237,7 @@ const AgentDashboard = () => {
         </Tabs>
       </div>
 
-      {/* Buy Data Dialog */}
+      {/* Buy Data Dialog (unchanged) */}
       <Dialog open={buyDialogOpen} onOpenChange={(v) => { if (!v) setBuyDialogOpen(false); }}>
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display text-xl">Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</DialogTitle><DialogDescription>Purchase data at agent price</DialogDescription></DialogHeader>
@@ -1192,7 +1259,6 @@ const AgentDashboard = () => {
                 <Select value={buyPaymentMethod} onValueChange={(v) => setBuyPaymentMethod(v as "paystack" | "wallet")}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {/* Wallet as first option (default) */}
                     <SelectItem value="wallet">
                       <span className="flex items-center gap-2">
                         <Wallet className="h-4 w-4" /> Wallet (Balance: GH₵ {store?.wallet_balance?.toFixed(2) ?? '0.00'})
