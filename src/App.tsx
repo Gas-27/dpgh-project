@@ -8,6 +8,7 @@ import AuthGuard from "@/components/AuthGuard";
 import { AuthProvider } from "@/hooks/useAuth";
 import { useEffect } from "react";
 
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
@@ -77,6 +78,7 @@ const App = () => {
                   <Route path="/pending-approval" element={<PendingApproval />} />
                   {/* Old paths – redirect to subdomain */}
                   <Route path="/agent/:storeName" element={<RedirectToAgentSubdomain />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/store/:storeName" element={<RedirectToStoreSubdomain />} />
                   <Route path="/agent-registration-callback" element={<AgentRegistrationCallback />} />
                   <Route
