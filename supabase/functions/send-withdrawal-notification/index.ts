@@ -1,36 +1,57 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers":
+        "authorization, x-client-info, apikey, content-type",
+};
 
-serve(async (req: Request) => {
+serve(async (req) => {
+    if (req.method === "OPTIONS") {
+        return new Response("ok", { headers: corsHeaders });
+    }
+
     try {
-        const { storeName, amount, contact, momoName, walletBalance } = await req.json();
+        const {
+            to,
+            agentName,
+            momoName,
+            amount,
+            currentBalance,
+            remainingBalance,
+        } = await req.json();
 
-        const emailHtml = `
-      <h2>💰 New Withdrawal Request</h2>
-      <table style="border-collapse: collapse; width: 100%;">
-        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Store Name</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${storeName}</td></tr>
-        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Withdrawal Amount</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong style="color: #e67e22;">GH₵ ${amount.toFixed(2)}</strong></td></tr>
-        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Current Wallet Balance</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">GH₵ ${walletBalance.toFixed(2)}</td></tr>
-        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>MoMo Name</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${momoName}</td></tr>
-        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Contact (WhatsApp/MoMo)</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">${contact}</td></tr>
-      </table>
-      <p style="margin-top: 20px;">Log into the admin dashboard to process this withdrawal.</p>
+        const subject = `Withdrawal Request - ${agentName}`;
+        const body = `
+      Agent: ${agentName}
+      MoMo Name: ${momoName}
+      Requested Amount: GH₵ ${amount}
+      Current Wallet Balance: GH₵ ${currentBalance}
+      Balance After Approval: GH₵ ${remainingBalance}
     `;
 
-        const { error } = await resend.emails.send({
-            from: "onboarding@resend.dev",
-            to: ["georgeagyemangsakyi27@gmail.com"],
-            subject: `Withdrawal request from ${storeName} – GH₵ ${amount.toFixed(2)}`,
-            html: emailHtml,
+        // Use Supabase's built-in email (requires SMTP settings)
+        const supabaseAdmin = createClient(
+            Deno.env.get("SUPABASE_URL")!,
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+
+        const { error } = await supabaseAdmin.auth.admin.sendEmailNotification({
+            email: to,
+            subject,
+            content: body,
         });
 
         if (error) throw error;
-        return new Response(JSON.stringify({ success: true }), { status: 200 });
-    } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        console.error(errorMessage);
-        return new Response(JSON.stringify({ error: errorMessage }), { status: 500 });
+
+        return new Response(JSON.stringify({ success: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    } catch (err) {
+        return new Response(JSON.stringify({ error: (err as Error).message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
     }
 });
