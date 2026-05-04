@@ -132,7 +132,7 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, [retryingOrders]);
 
-  // Withdrawal email listener (unchanged)
+  // Withdrawal email listener (UPDATED with detailed balance info)
   useEffect(() => {
     const channel = supabase
       .channel("withdrawal-inserts")
@@ -141,12 +141,18 @@ const AdminDashboard = () => {
         { event: "INSERT", schema: "public", table: "withdrawal_requests" },
         async (payload) => {
           const newWithdrawal = payload.new as WithdrawalRequest;
+          // Fetch agent details INCLUDING wallet_balance
           const { data: agent } = await supabase
             .from("agent_stores")
-            .select("store_name, whatsapp_number, momo_name, momo_number, momo_network")
+            .select("store_name, whatsapp_number, momo_name, momo_number, momo_network, wallet_balance")
             .eq("id", newWithdrawal.agent_store_id)
             .single();
           if (!agent) return;
+
+          const currentBalance = Number(agent.wallet_balance);
+          const requestedAmount = Number(newWithdrawal.amount);
+          const remainingBalance = currentBalance - requestedAmount;
+
           try {
             await supabase.functions.invoke("send-withdrawal-notification", {
               body: {
@@ -154,7 +160,9 @@ const AdminDashboard = () => {
                 agentName: agent.store_name,
                 contact: agent.whatsapp_number || agent.momo_number || "No contact",
                 momoName: agent.momo_name || "Not set",
-                amount: newWithdrawal.amount,
+                amount: requestedAmount,
+                currentBalance: currentBalance.toFixed(2),
+                remainingBalance: remainingBalance.toFixed(2),
               },
             });
           } catch (err) {
@@ -212,6 +220,7 @@ const AdminDashboard = () => {
     toast({ title: approved ? "Agent approved!" : "Agent suspended" });
   };
 
+  // ==================== RETRY ORDER (FIXED) ====================
   const retryOrder = async (orderId: string) => {
     if (retryingOrders.has(orderId)) return;
     setRetryingOrders((prev) => new Set(prev).add(orderId));
@@ -225,8 +234,9 @@ const AdminDashboard = () => {
         toast({ title: "Order not found" });
         return;
       }
-      if (currentOrder.fulfillment_status === "completed" || currentOrder.fulfillment_status === "failed") {
-        toast({ title: "Order already processed", description: `Status: ${currentOrder.fulfillment_status}` });
+      // 🔥 Only block COMPLETED orders – FAILED ones CAN be retried
+      if (currentOrder.fulfillment_status === "completed") {
+        toast({ title: "Order already completed", description: "This order has already been fulfilled." });
         return;
       }
       if (currentOrder.status !== "paid") {
