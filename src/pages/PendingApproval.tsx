@@ -1,60 +1,40 @@
-// import { Zap, Clock } from "lucide-react";
-// import { Button } from "@/components/ui/button";
-// import { Card, CardContent } from "@/components/ui/card";
-// import { Link } from "react-router-dom";
-
-// const PendingApproval = () => {
-//   return (
-//     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-//       <Card className="w-full max-w-md border-border text-center">
-//         <CardContent className="p-8 space-y-6">
-//           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-//             <Clock className="h-10 w-10 text-primary" />
-//           </div>
-//           <div>
-//             <h1 className="font-display text-2xl font-bold mb-2">Pending Approval</h1>
-//             <p className="text-muted-foreground">
-//               Your agent account is being reviewed by our team. You'll be notified once your store is approved.
-//             </p>
-//           </div>
-//           <Button variant="outline" asChild>
-//             <Link to="/">Back to Home</Link>
-//           </Button>
-//         </CardContent>
-//       </Card>
-//     </div>
-//   );
-// };
-
-// export default PendingApproval;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import { Zap, Clock, CreditCard, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Link } from "react-router-dom";
-import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const PendingApproval = () => {
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Auto-check for approval every 5 seconds
+  useEffect(() => {
+    if (!user) return;
+
+    const checkApproval = async () => {
+      const { data } = await supabase
+        .from("agent_stores")
+        .select("approved")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (data?.approved) {
+        // Approved! Redirect to agent dashboard immediately
+        navigate("/agent", { replace: true });
+      }
+    };
+
+    // Check immediately
+    checkApproval();
+
+    // Then check every 5 seconds
+    const interval = setInterval(checkApproval, 5000);
+    return () => clearInterval(interval);
+  }, [user, navigate]);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText("0599449202");
@@ -73,7 +53,7 @@ const PendingApproval = () => {
           <div className="text-center">
             <h1 className="font-display text-2xl font-bold mb-2">Pending Approval</h1>
             <p className="text-muted-foreground">
-              Pay to get your own site to sell data and also you get to customize your agent store with a colurs and design of your choice .Plus you also get cheaper prices as well.
+              Pay to get your own site to sell data and also you get to customize your agent store with colours and design of your choice. Plus you also get cheaper prices as well.
             </p>
           </div>
 
@@ -127,8 +107,8 @@ const PendingApproval = () => {
 
             <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
               <p className="text-xs text-green-800 dark:text-green-400">
-                ✅ After payment, your store will be  approved within 1 hour.
-                After payment send a screenshot of payment to 0200511211 on whats app.Please tap on the return to Home button once store is approved  then tap on menu you will see dashboard then tap on it.
+                ✅ After payment, your store will be approved within 1 hour.
+                After payment send a screenshot of payment to 0200511211 on WhatsApp. Once approved, you will be automatically redirected to your dashboard.
               </p>
             </div>
           </div>
