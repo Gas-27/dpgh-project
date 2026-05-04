@@ -62,7 +62,6 @@ const PaymentDialog = ({
   const phoneInputRef = useRef<HTMLInputElement>(null);
 
   const { charge, total } = calculateTotal(price);
-  const requiresAuth = !agentStoreId;
 
   const isPhoneValid = (value: string) => /^\d{10}$/.test(value);
 
@@ -73,7 +72,6 @@ const PaymentDialog = ({
     }
   };
 
-  // Scroll the continue button into view when keyboard opens
   const handlePhoneFocus = () => {
     setTimeout(() => {
       continueButtonRef.current?.scrollIntoView({
@@ -83,6 +81,7 @@ const PaymentDialog = ({
     }, 300);
   };
 
+  // Local storage check – prevent repeated purchases for same number within lock period
   const checkRecentPurchase = (phoneNumber: string): boolean => {
     const normalized = normalizePhone(phoneNumber);
     const lastPurchaseStr = localStorage.getItem(`last_purchase_${normalized}`);
@@ -109,6 +108,7 @@ const PaymentDialog = ({
     localStorage.setItem(`last_purchase_${normalized}`, Date.now().toString());
   };
 
+  // ✅ No authentication required – anyone can continue
   const handleContinue = async () => {
     if (!isPhoneValid(phone)) {
       toast({
@@ -116,17 +116,6 @@ const PaymentDialog = ({
         description: "Phone number must be exactly 10 digits.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (requiresAuth && !user) {
-      toast({
-        title: "Login Required",
-        description: "Please create an account or log in to purchase data.",
-        variant: "destructive",
-      });
-      onOpenChange(false);
-      navigate("/login");
       return;
     }
 

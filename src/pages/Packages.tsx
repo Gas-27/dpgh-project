@@ -258,7 +258,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
 // ============================================================
 const Packages = () => {
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user } = useAuth();   // kept for potential future use, but no longer required
   const navigate = useNavigate();
   const { toast } = useToast();
   const [packages, setPackages] = useState<DataPackage[]>([]);
@@ -298,16 +298,9 @@ const Packages = () => {
     [packages, selectedNetwork]
   );
 
+  // 🔥 ** CHANGED: No login required anymore **
   const handleBuyNow = (pkg: DataPackage) => {
-    if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please create an account or log in to purchase data.",
-        variant: "destructive",
-      });
-      navigate("/login");
-      return;
-    }
+    // Directly open the payment dialog – even for guest users
     setPaymentPkg(pkg);
   };
 
