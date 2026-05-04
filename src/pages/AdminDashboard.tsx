@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, MailWarning,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -66,7 +66,7 @@ const AdminDashboard = () => {
   const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
   const [processingWithdrawals, setProcessingWithdrawals] = useState<Set<string>>(new Set());
 
-  // Search states
+  // Search states for Agents, Users, Orders, and Withdrawals
   const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [orderSearchTerm, setOrderSearchTerm] = useState("");
@@ -83,9 +83,6 @@ const AdminDashboard = () => {
   const [notifMessage, setNotifMessage] = useState("");
   const [notifTarget, setNotifTarget] = useState("all");
   const [sendingNotif, setSendingNotif] = useState(false);
-
-  // 🆕 Polling state for fallback withdrawal detection
-  const [lastCheckedAt, setLastCheckedAt] = useState(new Date());
 
   const fetchData = async () => {
     setDataLoading(true);
@@ -111,103 +108,31 @@ const AdminDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // --- Auto‑retry orders with fulfillment_status = "pending" ---
+  // Auto‑retry pending orders (PAID + PENDING only)
   useEffect(() => {
     const autoRetryPendingOrders = async () => {
-      const { data: pendingOrders, error } = await supabase
+      const { data: pendingOrders } = await supabase
         .from("orders")
         .select("id")
-        .eq("fulfillment_status", "pending");
-
-      if (error) {
-        console.error("Auto‑retry fetch error:", error);
-        return;
-      }
-
-      for (const order of pendingOrders || []) {
-        if (!retryingOrders.has(order.id)) {
-          await retryOrder(order.id);
-        }
+        .eq("fulfillment_status", "pending")
+        .eq("status", "paid");
+      if (!pendingOrders?.length) return;
+      for (const order of pendingOrders) {
+        if (retryingOrders.has(order.id)) continue;
+        const { data: fresh } = await supabase
+          .from("orders")
+          .select("fulfillment_status")
+          .eq("id", order.id)
+          .single();
+        if (fresh?.fulfillment_status !== "pending") continue;
+        await retryOrder(order.id);
       }
     };
-
     const interval = setInterval(autoRetryPendingOrders, 30000);
     return () => clearInterval(interval);
   }, [retryingOrders]);
 
-  // Helper function to process a withdrawal (show toast + send email)
-  const processWithdrawalNotification = async (withdrawal: WithdrawalRequest) => {
-    // Show toast
-    toast({
-      title: "💰 New Withdrawal Request!",
-      description: `GH₵ ${withdrawal.amount.toFixed(2)} – waiting for processing.`,
-      variant: "default",
-    });
-
-    // Fetch agent details including wallet_balance
-    const { data: agent, error } = await supabase
-      .from("agent_stores")
-      .select("store_name, whatsapp_number, momo_name, momo_number, momo_network, wallet_balance")
-      .eq("id", withdrawal.agent_store_id)
-      .single();
-
-    if (error || !agent) {
-      console.error("Could not fetch agent for withdrawal email:", error);
-      return;
-    }
-
-    const contact = agent.whatsapp_number || agent.momo_number || "No contact provided";
-    const momoName = agent.momo_name || "Not set";
-    const amount = withdrawal.amount;
-    const storeName = agent.store_name;
-    const walletBalance = agent.wallet_balance;
-
-    try {
-      const { error: emailError } = await supabase.functions.invoke("send-withdrawal-notification", {
-        body: {
-          to: "georgeagyemangsakyi27@gmail.com",
-          storeName,
-          amount,
-          contact,
-          momoName,
-          walletBalance,
-        },
-      });
-      if (emailError) throw emailError;
-      console.log("Withdrawal notification email sent for withdrawal", withdrawal.id);
-    } catch (err) {
-      console.error("Failed to send withdrawal email:", err);
-    }
-  };
-
-  // 🆕 POLLING FALLBACK – checks for new withdrawals every 10 seconds
-  useEffect(() => {
-    const pollForNewWithdrawals = async () => {
-      const { data: newWithdrawals, error } = await supabase
-        .from("withdrawal_requests")
-        .select("*")
-        .gt("created_at", lastCheckedAt.toISOString())
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("Polling error:", error);
-        return;
-      }
-
-      if (newWithdrawals && newWithdrawals.length > 0) {
-        console.log(`🔄 Polling found ${newWithdrawals.length} new withdrawal(s)`);
-        for (const withdrawal of newWithdrawals) {
-          await processWithdrawalNotification(withdrawal);
-        }
-      }
-      setLastCheckedAt(new Date());
-    };
-
-    const interval = setInterval(pollForNewWithdrawals, 10000); // every 10 seconds
-    return () => clearInterval(interval);
-  }, [lastCheckedAt]);
-
-  // 🚀 REALTIME LISTENER – instant notifications (kept as primary)
+  // Withdrawal email listener (unchanged)
   useEffect(() => {
     const channel = supabase
       .channel("withdrawal-inserts")
@@ -216,30 +141,30 @@ const AdminDashboard = () => {
         { event: "INSERT", schema: "public", table: "withdrawal_requests" },
         async (payload) => {
           const newWithdrawal = payload.new as WithdrawalRequest;
-          console.log("⚡ Realtime detected new withdrawal:", newWithdrawal.id);
-          await processWithdrawalNotification(newWithdrawal);
+          const { data: agent } = await supabase
+            .from("agent_stores")
+            .select("store_name, whatsapp_number, momo_name, momo_number, momo_network")
+            .eq("id", newWithdrawal.agent_store_id)
+            .single();
+          if (!agent) return;
+          try {
+            await supabase.functions.invoke("send-withdrawal-notification", {
+              body: {
+                to: "georgeagyemangsakyi27@gmail.com",
+                agentName: agent.store_name,
+                contact: agent.whatsapp_number || agent.momo_number || "No contact",
+                momoName: agent.momo_name || "Not set",
+                amount: newWithdrawal.amount,
+              },
+            });
+          } catch (err) {
+            console.error("Failed to send withdrawal email:", err);
+          }
         }
       )
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []); // No dependency on toast because toast is stable
-
-  // 🧪 Manual test function (click button in Withdrawals tab)
-  const sendTestNotification = async () => {
-    const testWithdrawal: WithdrawalRequest = {
-      id: "test-123",
-      agent_store_id: agents[0]?.id || "test-agent",
-      amount: 25.00,
-      status: "pending",
-      created_at: new Date().toISOString(),
-      processed_at: null,
-    };
-    toast({ title: "Test", description: "Sending test email...", variant: "default" });
-    await processWithdrawalNotification(testWithdrawal);
-  };
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const handlePriceChange = (id: string, field: "price" | "agent_price", value: string) => {
     setEditedPrices((prev) => ({ ...prev, [id]: { ...prev[id], [field]: parseFloat(value) || 0 } }));
@@ -288,8 +213,26 @@ const AdminDashboard = () => {
   };
 
   const retryOrder = async (orderId: string) => {
+    if (retryingOrders.has(orderId)) return;
     setRetryingOrders((prev) => new Set(prev).add(orderId));
     try {
+      const { data: currentOrder } = await supabase
+        .from("orders")
+        .select("fulfillment_status, status")
+        .eq("id", orderId)
+        .single();
+      if (!currentOrder) {
+        toast({ title: "Order not found" });
+        return;
+      }
+      if (currentOrder.fulfillment_status === "completed" || currentOrder.fulfillment_status === "failed") {
+        toast({ title: "Order already processed", description: `Status: ${currentOrder.fulfillment_status}` });
+        return;
+      }
+      if (currentOrder.status !== "paid") {
+        toast({ title: "Order not paid yet", variant: "destructive" });
+        return;
+      }
       const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: orderId } });
       if (error) throw error;
       if (data?.success) {
@@ -310,6 +253,7 @@ const AdminDashboard = () => {
     for (const order of failedOrders) { await retryOrder(order.id); }
   };
 
+  // Topup
   const searchTopupRef = () => {
     const found = agents.find((a) => a.topup_reference === topupSearch.trim());
     if (found) {
@@ -336,10 +280,7 @@ const AdminDashboard = () => {
       return;
     }
 
-    await supabase.from("wallet_topups").insert({
-      agent_store_id: topupAgent.id, amount,
-    });
-
+    await supabase.from("wallet_topups").insert({ agent_store_id: topupAgent.id, amount });
     setTopupAgent({ ...topupAgent, wallet_balance: newBalance });
     setTopupAmount("");
     toast({ title: "Wallet credited!", description: `GH₵ ${amount.toFixed(2)} added to ${topupAgent.store_name}` });
@@ -365,12 +306,15 @@ const AdminDashboard = () => {
     setSendingNotif(false);
   };
 
+  // 🔥 PROCESS WITHDRAWAL – allows negative balance
   const processWithdrawal = async (withdrawalId: string, agentStoreId: string, amount: number) => {
     setProcessingWithdrawals((prev) => new Set(prev).add(withdrawalId));
     try {
       const agent = agents.find((a) => a.id === agentStoreId);
       if (!agent) throw new Error("Agent not found");
-      const newBalance = Math.max(0, Number(agent.wallet_balance) - amount);
+
+      // Direct subtraction – no Math.max, allowing negative
+      const newBalance = Number(agent.wallet_balance) - amount;
 
       const { error: walletErr } = await supabase.from("agent_stores")
         .update({ wallet_balance: newBalance }).eq("id", agentStoreId);
@@ -381,7 +325,7 @@ const AdminDashboard = () => {
         .eq("id", withdrawalId);
       if (statusErr) throw statusErr;
 
-      toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted from agent wallet.` });
+      toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted. New balance: GH₵ ${newBalance.toFixed(2)}.` });
       await fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -398,15 +342,12 @@ const AdminDashboard = () => {
   const filteredAgents = agents.filter((agent) =>
     agent.store_name.toLowerCase().includes(agentSearchTerm.toLowerCase())
   );
-
   const filteredUsers = users.filter((user) =>
     (user.full_name?.toLowerCase() || "").includes(userSearchTerm.toLowerCase())
   );
-
   const filteredOrders = orders.filter((order) =>
     order.customer_number.toLowerCase().includes(orderSearchTerm.toLowerCase())
   );
-
   const filteredWithdrawals = withdrawals.filter((withdrawal) => {
     const agent = agents.find((a) => a.id === withdrawal.agent_store_id);
     return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
@@ -513,7 +454,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* ORDERS TAB (unchanged) */}
+          {/* ORDERS TAB */}
           <TabsContent value="orders" className="space-y-4">
             {failedCount > 0 && (
               <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
@@ -592,7 +533,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* AGENTS TAB (unchanged) */}
+          {/* AGENTS TAB */}
           <TabsContent value="agents" className="space-y-4">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -647,7 +588,7 @@ const AdminDashboard = () => {
             )}
           </TabsContent>
 
-          {/* TOPUP TAB (unchanged) */}
+          {/* TOPUP TAB */}
           <TabsContent value="topup" className="space-y-6">
             <Card className="border-border">
               <CardHeader>
@@ -693,23 +634,8 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* WITHDRAWALS TAB – added test button */}
+          {/* WITHDRAWALS TAB */}
           <TabsContent value="withdrawals" className="space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="relative max-w-sm flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by agent store name..."
-                  value={withdrawalSearchTerm}
-                  onChange={(e) => setWithdrawalSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              {/* 🧪 Test button – only visible to help debug */}
-              <Button variant="outline" size="sm" onClick={sendTestNotification}>
-                <MailWarning className="h-4 w-4 mr-1" /> Test Email
-              </Button>
-            </div>
             {pendingWithdrawals.length > 0 && (
               <div className="p-4 rounded-lg border border-yellow-600/30 bg-yellow-600/5">
                 <p className="text-sm text-foreground">
@@ -717,6 +643,15 @@ const AdminDashboard = () => {
                 </p>
               </div>
             )}
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by agent store name..."
+                value={withdrawalSearchTerm}
+                onChange={(e) => setWithdrawalSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <Card className="border-border">
               <Table>
                 <TableHeader>
@@ -772,7 +707,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* USERS TAB (unchanged) */}
+          {/* USERS TAB */}
           <TabsContent value="users" className="space-y-4">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -813,7 +748,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* NOTIFICATIONS TAB (unchanged) */}
+          {/* NOTIFICATIONS TAB */}
           <TabsContent value="notifications" className="space-y-6">
             <Card className="border-border">
               <CardHeader>
@@ -852,7 +787,7 @@ const AdminDashboard = () => {
         </Tabs>
       </div>
 
-      {/* Add Package Dialog (unchanged) */}
+      {/* Add Package Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader>
