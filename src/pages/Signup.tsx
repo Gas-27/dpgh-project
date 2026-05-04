@@ -5,27 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Zap, User, Store, Eye, EyeOff } from "lucide-react";
+import { Zap, Store, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<"user" | "agent">("user");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);   // 👈 toggle visibility
+  const [showPassword, setShowPassword] = useState(false);   // toggle visibility
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    // Always register as agent
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, role },
+        data: { full_name: fullName, role: "agent" },
       },
     });
     setLoading(false);
@@ -33,11 +33,7 @@ const Signup = () => {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Account created!", description: "Welcome to Data Plug STORE!" });
-      if (role === "agent") {
-        navigate("/agent-onboarding");
-      } else {
-        navigate("/");
-      }
+      navigate("/agent-onboarding");
     }
   };
 
@@ -51,38 +47,10 @@ const Signup = () => {
               DATA PLUG <span className="text-primary">STORE</span>
             </span>
           </div>
-          <CardTitle className="font-display">Create Account</CardTitle>
-          <CardDescription>Choose your account type to get started</CardDescription>
+          <CardTitle className="font-display">Become an Agent</CardTitle>
+          <CardDescription>Create your agent account to start selling data</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Role Selection */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <button
-              type="button"
-              onClick={() => setRole("user")}
-              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${role === "user"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-muted-foreground"
-                }`}
-            >
-              <User className="h-6 w-6" />
-              <span className="text-sm font-semibold">User</span>
-              <span className="text-xs text-center">Buy data bundles</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("agent")}
-              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${role === "agent"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-muted-foreground"
-                }`}
-            >
-              <Store className="h-6 w-6" />
-              <span className="text-sm font-semibold">Agent</span>
-              <span className="text-xs text-center">Sell & earn profit ,You also get prices more cheaper than normal user</span>
-            </button>
-          </div>
-
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
@@ -116,7 +84,7 @@ const Signup = () => {
               </div>
             </div>
             <Button type="submit" variant="hero" className="w-full" disabled={loading}>
-              {loading ? "Creating account..." : `Sign Up as ${role === "agent" ? "Agent" : "User"}`}
+              {loading ? "Creating account..." : "Sign Up as Agent"}
             </Button>
           </form>
           <p className="text-center text-sm text-muted-foreground mt-4">
