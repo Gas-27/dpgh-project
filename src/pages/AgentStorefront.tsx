@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
-import { Zap, Phone, Wifi, Shield, Clock, Star, Search, Package, CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, RotateCcw } from "lucide-react";
+import { Zap, Phone, Wifi, Shield, Clock, Star, Search, Package, CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // ============================================================
-// INTERFACES
+// INTERFACES (same as before)
 // ============================================================
 interface AgentStore {
   id: string;
@@ -41,11 +41,6 @@ interface DataPackage {
   price: number;
 }
 
-interface AgentPrice {
-  package_id: string;
-  sell_price: number;
-}
-
 interface Order {
   id: string;
   customer_number: string;
@@ -64,7 +59,7 @@ interface Notification {
 }
 
 // ============================================================
-// HELPER FUNCTIONS
+// HELPER FUNCTIONS (unchanged)
 // ============================================================
 const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
@@ -125,7 +120,7 @@ const getInternationalDigits = (phone: string): string => {
 };
 
 // ============================================================
-// ORDER TRACKING CARD (unchanged)
+// ORDER TRACKING CARD (unchanged – identical to previous)
 // ============================================================
 const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: AgentStore; toast: any }): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -325,7 +320,7 @@ const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor 
 };
 
 // ============================================================
-// MAIN AGENT STOREFRONT COMPONENT (with robust price refresh)
+// MAIN AGENT STOREFRONT COMPONENT (with background auto-refresh)
 // ============================================================
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
@@ -450,8 +445,8 @@ const AgentStorefront = () => {
     setSearchPerformed(false);
   };
 
-  // ========== PRICE REFRESH FUNCTION (manual + automatic) ==========
-  const refreshPrices = async () => {
+  // ========== BACKGROUND PRICE REFRESH (no manual button) ==========
+  const refreshPrices = useCallback(async () => {
     if (!store?.id) return;
     try {
       const { data: freshPrices, error } = await supabase
@@ -462,13 +457,11 @@ const AgentStorefront = () => {
       const newPriceMap: Record<string, number> = {};
       (freshPrices ?? []).forEach((p: any) => { newPriceMap[p.package_id] = p.sell_price; });
       setAgentPrices(newPriceMap);
-      console.log("Prices refreshed:", newPriceMap);
-      toast({ title: "Prices refreshed", description: "Latest selling prices loaded." });
+      console.log("[Price Refresh] Updated prices:", newPriceMap);
     } catch (err: any) {
-      console.error("Price refresh error:", err);
-      toast({ title: "Error refreshing prices", description: err.message, variant: "destructive" });
+      console.error("[Price Refresh] Error:", err.message);
     }
-  };
+  }, [store?.id]);
 
   // Initial fetch of store, packages, and agent prices
   useEffect(() => {
@@ -490,19 +483,19 @@ const AgentStorefront = () => {
       ]);
       setPackages(pkgRes.data ?? []);
       const priceMap: Record<string, number> = {};
-      (priceRes.data ?? []).forEach((p: AgentPrice) => { priceMap[p.package_id] = p.sell_price; });
+      (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
       setAgentPrices(priceMap);
       setLoading(false);
     };
     fetchStore();
   }, [storeName]);
 
-  // Real‑time subscription for price changes (any change on agent_package_prices)
+  // Real‑time subscription for price changes (background)
   useEffect(() => {
     if (!store?.id) return;
 
     const priceChannel = supabase
-      .channel(`price-changes-${store.id}`) // unique channel name
+      .channel(`price-changes-${store.id}`)
       .on(
         'postgres_changes',
         {
@@ -512,29 +505,28 @@ const AgentStorefront = () => {
           filter: `agent_store_id=eq.${store.id}`,
         },
         (payload) => {
-          console.log("Real-time price change detected:", payload);
-          refreshPrices(); // automatically refresh when any price update occurs
-          toast({ title: "Prices updated", description: "The store owner has updated the prices." });
+          console.log("[Realtime] Price change detected:", payload);
+          refreshPrices(); // silent auto-update
         }
       )
       .subscribe((status) => {
-        console.log("Price channel status:", status);
+        console.log("[Realtime] Price channel status:", status);
       });
 
     return () => {
       supabase.removeChannel(priceChannel);
     };
-  }, [store?.id]);
+  }, [store?.id, refreshPrices]);
 
-  // Polling fallback: refresh prices every 30 seconds (in case real-time fails)
+  // Polling fallback (every 30 seconds) – background refresh
   useEffect(() => {
     if (!store?.id) return;
     const interval = setInterval(() => {
-      console.log("Polling for price updates...");
+      console.log("[Polling] Refreshing prices...");
       refreshPrices();
     }, 30000);
     return () => clearInterval(interval);
-  }, [store?.id]);
+  }, [store?.id, refreshPrices]);
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
@@ -660,7 +652,6 @@ const AgentStorefront = () => {
         </div>
       </div>
 
-      {/* Conditional Content */}
       {activeCategory === "data" ? (
         <>
           {/* Order Tracking Section */}
@@ -747,17 +738,14 @@ const AgentStorefront = () => {
             </Card>
           </div>
 
-          {/* Network Filter Buttons + Refresh Prices Button */}
+          {/* Network Filter Buttons (no refresh button) */}
           <div className="container pb-6">
-            <div className="flex flex-wrap gap-2 justify-center items-center">
+            <div className="flex gap-2 justify-center">
               {["mtn", "airteltigo", "telecel"].map((net) => (
                 <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" className="min-w-[100px]" onClick={() => setNetworkFilter(net)}>
                   {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
                 </Button>
               ))}
-              <Button variant="outline" size="sm" onClick={refreshPrices} className="gap-1">
-                <RotateCcw className="h-4 w-4" /> Refresh Prices
-              </Button>
             </div>
           </div>
 
