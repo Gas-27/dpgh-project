@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate, Link } from "react-router-dom";
@@ -110,7 +110,6 @@ const DEFAULT_THEME = {
   gridColumns: 2,
 };
 
-// Menu items configuration
 const menuItems = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
@@ -250,7 +249,7 @@ const AgentDashboard = () => {
 
   useEffect(() => { if (user) fetchAllData(); }, [user]);
 
-  // Real-time subscriptions
+  // Real-time subscriptions for auto-refresh
   useEffect(() => {
     if (!store?.id) return;
     const storeChannel = supabase
@@ -287,7 +286,7 @@ const AgentDashboard = () => {
     };
   }, [store?.id]);
 
-  // Polling fallback
+  // Polling fallback (every 10 seconds)
   useEffect(() => {
     if (!store?.id) return;
     const interval = setInterval(() => fetchAllData(), 10000);
@@ -369,12 +368,10 @@ const AgentDashboard = () => {
     setSavingHeadline(false);
   };
 
-  // Price handlers
+  // Price handlers – FIXED: re-fetch after save
   const handlePriceChange = (pkgId: string, value: string) => {
     setEditedPrices((prev) => ({ ...prev, [pkgId]: parseFloat(value) }));
   };
-
-  // ==================== FIXED savePrices FUNCTION ====================
   const savePrices = async () => {
     if (!store) return;
     setSavingPrices(true);
@@ -414,7 +411,7 @@ const AgentDashboard = () => {
         }
       }
 
-      // **CRITICAL**: After all updates, fetch fresh prices from database
+      // CRITICAL: Re-fetch fresh prices from database
       const { data: freshPrices, error: fetchError } = await supabase
         .from("agent_package_prices")
         .select("package_id, sell_price")
@@ -432,7 +429,6 @@ const AgentDashboard = () => {
       setSavingPrices(false);
     }
   };
-  // ================================================================
 
   // Store info handlers
   const saveStoreInfo = async () => {
