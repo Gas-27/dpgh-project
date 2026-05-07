@@ -48,7 +48,7 @@ interface AgentStore {
   approved: boolean;
   wallet_balance: number;
   topup_reference: string;
-  store_headline?: string; // new field
+  store_headline?: string;
   theme_config?: {
     primary: string;
     primary_foreground: string;
@@ -138,7 +138,7 @@ const AgentDashboard = () => {
   const [orderSearch, setOrderSearch] = useState("");
   const [storeForm, setStoreForm] = useState({
     store_name: "", whatsapp_number: "", support_number: "", whatsapp_group: "",
-    show_whatsapp_group_icon: true, // default true
+    show_whatsapp_group_icon: true,
     momo_number: "", momo_name: "", momo_network: "",
   });
   const [savingStore, setSavingStore] = useState(false);
@@ -199,12 +199,10 @@ const AgentDashboard = () => {
       .eq("user_id", user.id)
       .maybeSingle() as any;
     if (storeData) {
-      // Ensure show_whatsapp_group_icon defaults to true
       if (storeData.show_whatsapp_group_icon === undefined || storeData.show_whatsapp_group_icon === null) {
         storeData.show_whatsapp_group_icon = true;
         await supabase.from("agent_stores").update({ show_whatsapp_group_icon: true }).eq("id", storeData.id);
       }
-      // Ensure store_headline default
       if (!storeData.store_headline) {
         storeData.store_headline = `Get the best data deals from ${storeData.store_name}. Select your network and package below`;
         await supabase.from("agent_stores").update({ store_headline: storeData.store_headline }).eq("id", storeData.id);
@@ -375,35 +373,66 @@ const AgentDashboard = () => {
   const handlePriceChange = (pkgId: string, value: string) => {
     setEditedPrices((prev) => ({ ...prev, [pkgId]: parseFloat(value) }));
   };
+
+  // ==================== FIXED savePrices FUNCTION ====================
   const savePrices = async () => {
     if (!store) return;
     setSavingPrices(true);
-    for (const [pkgId, sellPrice] of Object.entries(editedPrices)) {
-      const pkg = packages.find(p => p.id === pkgId);
-      if (!pkg) continue;
-      if (isNaN(sellPrice) || sellPrice <= 0) {
-        toast({ title: "Validation error", description: `Price for ${pkg.size_gb}GB ${pkg.network} must be a valid positive number.`, variant: "destructive" });
-        setSavingPrices(false); return;
+    try {
+      // Validate all edited prices first
+      for (const [pkgId, sellPrice] of Object.entries(editedPrices)) {
+        const pkg = packages.find(p => p.id === pkgId);
+        if (!pkg) continue;
+        if (isNaN(sellPrice) || sellPrice <= 0) {
+          toast({ title: "Validation error", description: `Price for ${pkg.size_gb}GB ${pkg.network} must be a valid positive number.`, variant: "destructive" });
+          setSavingPrices(false);
+          return;
+        }
+        if (sellPrice < pkg.agent_price) {
+          toast({ title: "Validation error", description: `Price for ${pkg.size_gb}GB ${pkg.network} cannot be below GH₵ ${pkg.agent_price.toFixed(2)}.`, variant: "destructive" });
+          setSavingPrices(false);
+          return;
+        }
       }
-      if (sellPrice < pkg.agent_price) {
-        toast({ title: "Validation error", description: `Price for ${pkg.size_gb}GB ${pkg.network} cannot be below GH₵ ${pkg.agent_price.toFixed(2)}.`, variant: "destructive" });
-        setSavingPrices(false); return;
+
+      // Perform updates
+      for (const [pkgId, sellPrice] of Object.entries(editedPrices)) {
+        const numericPrice = Number(sellPrice);
+        const existing = agentPrices[pkgId];
+        if (existing !== undefined) {
+          const { error } = await supabase
+            .from("agent_package_prices")
+            .update({ sell_price: numericPrice })
+            .eq("agent_store_id", store.id)
+            .eq("package_id", pkgId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("agent_package_prices")
+            .insert({ agent_store_id: store.id, package_id: pkgId, sell_price: numericPrice });
+          if (error) throw error;
+        }
       }
+
+      // **CRITICAL**: After all updates, fetch fresh prices from database
+      const { data: freshPrices, error: fetchError } = await supabase
+        .from("agent_package_prices")
+        .select("package_id, sell_price")
+        .eq("agent_store_id", store.id);
+      if (fetchError) throw fetchError;
+
+      const newPriceMap: Record<string, number> = {};
+      (freshPrices ?? []).forEach((p: any) => { newPriceMap[p.package_id] = p.sell_price; });
+      setAgentPrices(newPriceMap);
+      setEditedPrices({});
+      toast({ title: "Prices saved!", description: "New selling prices are now active." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingPrices(false);
     }
-    for (const [pkgId, sellPrice] of Object.entries(editedPrices)) {
-      const numericPrice = Number(sellPrice);
-      const existing = agentPrices[pkgId];
-      if (existing !== undefined) {
-        await supabase.from("agent_package_prices").update({ sell_price: numericPrice }).eq("agent_store_id", store.id).eq("package_id", pkgId);
-      } else {
-        await supabase.from("agent_package_prices").insert({ agent_store_id: store.id, package_id: pkgId, sell_price: numericPrice });
-      }
-      setAgentPrices((prev) => ({ ...prev, [pkgId]: numericPrice }));
-    }
-    setEditedPrices({});
-    setSavingPrices(false);
-    toast({ title: "Prices saved!" });
   };
+  // ================================================================
 
   // Store info handlers
   const saveStoreInfo = async () => {
@@ -555,7 +584,6 @@ const AgentDashboard = () => {
       <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
-            {/* Pulsing MENU trigger that opens the sidebar */}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <div className="flex items-center gap-2 cursor-pointer group">
@@ -724,7 +752,6 @@ const AgentDashboard = () => {
             <Card className="border-border">
               <CardHeader><CardTitle className="font-display">Customise Your Storefront</CardTitle><p className="text-sm text-muted-foreground">Choose colours that match your brand and set how many products appear per row. You can also change the main headline that customers see.</p></CardHeader>
               <CardContent className="space-y-6">
-                {/* Store Headline */}
                 <div className="space-y-2">
                   <Label>Store Headline (shown on your storefront)</Label>
                   <Textarea
