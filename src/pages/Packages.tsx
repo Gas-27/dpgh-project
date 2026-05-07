@@ -198,10 +198,10 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
             return (
               <div key={step.step} className="flex flex-col items-center flex-1">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep
-                    ? "bg-green-600/20 text-green-400"
-                    : step.step === currentStep
-                      ? "bg-primary/20 text-primary border border-primary/50"
-                      : "bg-muted text-muted-foreground"
+                  ? "bg-green-600/20 text-green-400"
+                  : step.step === currentStep
+                    ? "bg-primary/20 text-primary border border-primary/50"
+                    : "bg-muted text-muted-foreground"
                   }`}>
                   {icon}
                 </div>
@@ -369,7 +369,7 @@ const Packages = () => {
             className="font-semibold"
           >
             <Wifi className="h-4 w-4 mr-2" />
-            Data
+            Data Bundles
           </Button>
           <Button
             variant={activeCategory === "afa" ? "hero" : "outline"}
