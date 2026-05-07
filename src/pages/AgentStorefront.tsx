@@ -125,7 +125,7 @@ const getInternationalDigits = (phone: string): string => {
 };
 
 // ============================================================
-// ORDER TRACKING CARD (identical to original)
+// ORDER TRACKING CARD (unchanged)
 // ============================================================
 const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: AgentStore; toast: any }): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -282,7 +282,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
 };
 
 // ============================================================
-// NOTIFICATION MODAL
+// NOTIFICATION MODAL (unchanged)
 // ============================================================
 const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor }: { notifications: Notification[]; onDismiss: (id: string) => void; onCloseAll: () => void; primaryColor: string }): JSX.Element => {
   if (notifications.length === 0) return null as any;
@@ -325,7 +325,7 @@ const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor 
 };
 
 // ============================================================
-// MAIN AGENT STOREFRONT COMPONENT (with price auto‑refresh)
+// MAIN AGENT STOREFRONT COMPONENT (with robust price refresh)
 // ============================================================
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
@@ -450,21 +450,24 @@ const AgentStorefront = () => {
     setSearchPerformed(false);
   };
 
-  // ✅ Function to refresh prices manually
+  // ========== PRICE REFRESH FUNCTION (manual + automatic) ==========
   const refreshPrices = async () => {
     if (!store?.id) return;
-    const { data: freshPrices, error } = await supabase
-      .from("agent_package_prices")
-      .select("package_id, sell_price")
-      .eq("agent_store_id", store.id);
-    if (error) {
-      toast({ title: "Error refreshing prices", description: error.message, variant: "destructive" });
-      return;
+    try {
+      const { data: freshPrices, error } = await supabase
+        .from("agent_package_prices")
+        .select("package_id, sell_price")
+        .eq("agent_store_id", store.id);
+      if (error) throw error;
+      const newPriceMap: Record<string, number> = {};
+      (freshPrices ?? []).forEach((p: any) => { newPriceMap[p.package_id] = p.sell_price; });
+      setAgentPrices(newPriceMap);
+      console.log("Prices refreshed:", newPriceMap);
+      toast({ title: "Prices refreshed", description: "Latest selling prices loaded." });
+    } catch (err: any) {
+      console.error("Price refresh error:", err);
+      toast({ title: "Error refreshing prices", description: err.message, variant: "destructive" });
     }
-    const newPriceMap: Record<string, number> = {};
-    (freshPrices ?? []).forEach((p: any) => { newPriceMap[p.package_id] = p.sell_price; });
-    setAgentPrices(newPriceMap);
-    toast({ title: "Prices refreshed", description: "Latest selling prices loaded." });
   };
 
   // Initial fetch of store, packages, and agent prices
@@ -494,31 +497,43 @@ const AgentStorefront = () => {
     fetchStore();
   }, [storeName]);
 
-  // ✅ REAL‑TIME SUBSCRIPTION: listen for price changes (INSERT, UPDATE, DELETE)
+  // Real‑time subscription for price changes (any change on agent_package_prices)
   useEffect(() => {
     if (!store?.id) return;
 
     const priceChannel = supabase
-      .channel('agent-price-changes')
+      .channel(`price-changes-${store.id}`) // unique channel name
       .on(
         'postgres_changes',
         {
-          event: '*', // any change
+          event: '*',
           schema: 'public',
           table: 'agent_package_prices',
           filter: `agent_store_id=eq.${store.id}`,
         },
-        () => {
-          console.log('Price changed, refreshing...');
+        (payload) => {
+          console.log("Real-time price change detected:", payload);
           refreshPrices(); // automatically refresh when any price update occurs
           toast({ title: "Prices updated", description: "The store owner has updated the prices." });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Price channel status:", status);
+      });
 
     return () => {
       supabase.removeChannel(priceChannel);
     };
+  }, [store?.id]);
+
+  // Polling fallback: refresh prices every 30 seconds (in case real-time fails)
+  useEffect(() => {
+    if (!store?.id) return;
+    const interval = setInterval(() => {
+      console.log("Polling for price updates...");
+      refreshPrices();
+    }, 30000);
+    return () => clearInterval(interval);
   }, [store?.id]);
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
@@ -645,7 +660,7 @@ const AgentStorefront = () => {
         </div>
       </div>
 
-      {/* Conditional Content: Data or Coming Soon */}
+      {/* Conditional Content */}
       {activeCategory === "data" ? (
         <>
           {/* Order Tracking Section */}
