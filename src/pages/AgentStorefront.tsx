@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
-import { Zap, Phone, Wifi, Shield, Clock, Star, Search, Package, CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket } from "lucide-react";
+import { Zap, Phone, Wifi, Shield, Clock, Star, Search, Package, CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // ============================================================
-// INTERFACES (unchanged)
+// INTERFACES
 // ============================================================
 interface AgentStore {
   id: string;
@@ -64,7 +64,7 @@ interface Notification {
 }
 
 // ============================================================
-// HELPER FUNCTIONS (unchanged)
+// HELPER FUNCTIONS
 // ============================================================
 const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
@@ -125,7 +125,7 @@ const getInternationalDigits = (phone: string): string => {
 };
 
 // ============================================================
-// ORDER TRACKING CARD (identical to Packages version)
+// ORDER TRACKING CARD (identical to original)
 // ============================================================
 const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: AgentStore; toast: any }): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -282,7 +282,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
 };
 
 // ============================================================
-// NOTIFICATION MODAL (unchanged)
+// NOTIFICATION MODAL
 // ============================================================
 const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor }: { notifications: Notification[]; onDismiss: (id: string) => void; onCloseAll: () => void; primaryColor: string }): JSX.Element => {
   if (notifications.length === 0) return null as any;
@@ -325,7 +325,7 @@ const NotificationModal = ({ notifications, onDismiss, onCloseAll, primaryColor 
 };
 
 // ============================================================
-// MAIN AGENT STOREFRONT COMPONENT (with identical layout to Packages)
+// MAIN AGENT STOREFRONT COMPONENT (with price auto‑refresh)
 // ============================================================
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
@@ -450,6 +450,24 @@ const AgentStorefront = () => {
     setSearchPerformed(false);
   };
 
+  // ✅ Function to refresh prices manually
+  const refreshPrices = async () => {
+    if (!store?.id) return;
+    const { data: freshPrices, error } = await supabase
+      .from("agent_package_prices")
+      .select("package_id, sell_price")
+      .eq("agent_store_id", store.id);
+    if (error) {
+      toast({ title: "Error refreshing prices", description: error.message, variant: "destructive" });
+      return;
+    }
+    const newPriceMap: Record<string, number> = {};
+    (freshPrices ?? []).forEach((p: any) => { newPriceMap[p.package_id] = p.sell_price; });
+    setAgentPrices(newPriceMap);
+    toast({ title: "Prices refreshed", description: "Latest selling prices loaded." });
+  };
+
+  // Initial fetch of store, packages, and agent prices
   useEffect(() => {
     const fetchStore = async () => {
       if (!storeName) { setNotFound(true); setLoading(false); return; }
@@ -475,6 +493,33 @@ const AgentStorefront = () => {
     };
     fetchStore();
   }, [storeName]);
+
+  // ✅ REAL‑TIME SUBSCRIPTION: listen for price changes (INSERT, UPDATE, DELETE)
+  useEffect(() => {
+    if (!store?.id) return;
+
+    const priceChannel = supabase
+      .channel('agent-price-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // any change
+          schema: 'public',
+          table: 'agent_package_prices',
+          filter: `agent_store_id=eq.${store.id}`,
+        },
+        () => {
+          console.log('Price changed, refreshing...');
+          refreshPrices(); // automatically refresh when any price update occurs
+          toast({ title: "Prices updated", description: "The store owner has updated the prices." });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(priceChannel);
+    };
+  }, [store?.id]);
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
@@ -562,7 +607,7 @@ const AgentStorefront = () => {
         </div>
       </section>
 
-      {/* Category Buttons – exactly as in Packages page */}
+      {/* Category Buttons */}
       <div className="container pb-8">
         <div className="flex flex-wrap justify-center gap-3">
           <Button
@@ -603,7 +648,7 @@ const AgentStorefront = () => {
       {/* Conditional Content: Data or Coming Soon */}
       {activeCategory === "data" ? (
         <>
-          {/* Order Tracking Card (identical to Packages page) */}
+          {/* Order Tracking Section */}
           <div className="container pb-10">
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="p-6">
@@ -687,14 +732,17 @@ const AgentStorefront = () => {
             </Card>
           </div>
 
-          {/* Network Filter Buttons */}
+          {/* Network Filter Buttons + Refresh Prices Button */}
           <div className="container pb-6">
-            <div className="flex gap-2 justify-center">
+            <div className="flex flex-wrap gap-2 justify-center items-center">
               {["mtn", "airteltigo", "telecel"].map((net) => (
                 <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" className="min-w-[100px]" onClick={() => setNetworkFilter(net)}>
                   {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
                 </Button>
               ))}
+              <Button variant="outline" size="sm" onClick={refreshPrices} className="gap-1">
+                <RotateCcw className="h-4 w-4" /> Refresh Prices
+              </Button>
             </div>
           </div>
 
