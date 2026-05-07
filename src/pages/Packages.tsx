@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Wifi, Search, Package, CheckCircle, Clock, XCircle, X, Loader2, Check, Mail, MessageCircle } from "lucide-react";
+import { Wifi, Search, Package, CheckCircle, Clock, XCircle, X, Loader2, Check, Mail, MessageCircle, Rocket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Network = "mtn" | "airteltigo" | "telecel";
@@ -47,7 +47,7 @@ const formatNetworkName = (network: string) => {
 };
 
 // ============================================================
-// ORDER TRACKING CARD – STEP TIMELINE
+// ORDER TRACKING CARD – STEP TIMELINE (unchanged)
 // ============================================================
 const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -112,15 +112,13 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
 
   const orderDate = new Date(order.created_at).toLocaleString();
 
-  // Email support (dataplugstore@gmail.com) with pre‑filled details
   const emailSubject = encodeURIComponent("Order Support Request");
   const emailBody = encodeURIComponent(
     `Hello,\n\nI need assistance with my order.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease help resolve this issue.\n\nThank you.`
   );
   const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${emailSubject}&body=${emailBody}`;
 
-  // WhatsApp report link (for "Delivered but not received")
-  const whatsappNumber = "233200511211"; // Change to your actual WhatsApp number
+  const whatsappNumber = "233200511211";
   const whatsappMessage = encodeURIComponent(
     `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
@@ -129,7 +127,6 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
   const showReportButton = currentStep === 4 && elapsedMinutes >= 150 && elapsedMinutes < 3030;
 
-  // Delivered step UI
   if (currentStep === 4) {
     return (
       <div className="space-y-4">
@@ -200,9 +197,11 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
             }
             return (
               <div key={step.step} className="flex flex-col items-center flex-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep ? "bg-green-600/20 text-green-400" :
-                  step.step === currentStep ? "bg-primary/20 text-primary border border-primary/50" :
-                    "bg-muted text-muted-foreground"
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step.step < currentStep
+                    ? "bg-green-600/20 text-green-400"
+                    : step.step === currentStep
+                      ? "bg-primary/20 text-primary border border-primary/50"
+                      : "bg-muted text-muted-foreground"
                   }`}>
                   {icon}
                 </div>
@@ -237,12 +236,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
       </div>
 
       {showSupportButton && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          asChild
-        >
+        <Button variant="outline" size="sm" className="w-full" asChild>
           <a href={mailtoLink}>
             <Mail className="h-4 w-4 mr-2" />
             Contact Support (dataplugstore@gmail.com)
@@ -254,11 +248,11 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
 };
 
 // ============================================================
-// MAIN PACKAGES COMPONENT
+// MAIN PACKAGES COMPONENT (with category tabs)
 // ============================================================
 const Packages = () => {
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();   // kept for potential future use, but no longer required
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [packages, setPackages] = useState<DataPackage[]>([]);
@@ -272,6 +266,7 @@ const Packages = () => {
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services">("data");
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -298,9 +293,7 @@ const Packages = () => {
     [packages, selectedNetwork]
   );
 
-  // 🔥 ** CHANGED: No login required anymore **
   const handleBuyNow = (pkg: DataPackage) => {
-    // Directly open the payment dialog – even for guest users
     setPaymentPkg(pkg);
   };
 
@@ -344,187 +337,229 @@ const Packages = () => {
     return status;
   };
 
+  const renderComingSoon = () => (
+    <div className="text-center py-16">
+      <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10 mb-6">
+        <Rocket className="h-12 w-12 text-primary" />
+      </div>
+      <h2 className="text-2xl font-bold text-foreground mb-2">Coming Soon!</h2>
+      <p className="text-muted-foreground max-w-md mx-auto">
+        We're working hard to bring you this feature. Stay tuned for exciting updates!
+      </p>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <NotificationPopup />
       <Navbar />
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">
-          Data <span className="text-primary">Packages</span>
+          Our <span className="text-primary">Products</span>
         </h1>
         <p className="text-muted-foreground text-center mb-8">
-          Choose your network and select a data bundle
+          Choose a category and get connected instantly
         </p>
 
-        {/* Order Tracking Section */}
-        <div className="max-w-4xl mx-auto mb-12">
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-                <div className="flex-1">
-                  <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2 mb-2">
-                    <Package className="h-5 w-5 text-primary" />
-                    Track Your Order
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Enter your phone number or order ID to check the status of your purchase.
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                  <div className="flex-1 min-w-[200px]">
-                    <Input
-                      placeholder="Phone number or Order ID"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && searchOrders()}
-                      className="bg-background"
-                    />
-                  </div>
-                  <Button variant="hero" onClick={searchOrders} disabled={searching}>
-                    {searching ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                    ) : (
-                      <Search className="h-4 w-4 mr-1" />
-                    )}
-                    Search
-                  </Button>
-                  {searchPerformed && (
-                    <Button variant="outline" onClick={clearSearch} disabled={searching}>
-                      <X className="h-4 w-4 mr-1" />
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              </div>
+        {/* Category Buttons */}
+        <div className="flex flex-wrap justify-center gap-3 mb-12">
+          <Button
+            variant={activeCategory === "data" ? "hero" : "outline"}
+            onClick={() => setActiveCategory("data")}
+            className="font-semibold"
+          >
+            <Wifi className="h-4 w-4 mr-2" />
+            Data
+          </Button>
+          <Button
+            variant={activeCategory === "afa" ? "hero" : "outline"}
+            onClick={() => setActiveCategory("afa")}
+            className="font-semibold"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            AFA Bundles
+          </Button>
+          <Button
+            variant={activeCategory === "vouchers" ? "hero" : "outline"}
+            onClick={() => setActiveCategory("vouchers")}
+            className="font-semibold"
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Vouchers
+          </Button>
+          <Button
+            variant={activeCategory === "services" ? "hero" : "outline"}
+            onClick={() => setActiveCategory("services")}
+            className="font-semibold"
+          >
+            <Rocket className="h-4 w-4 mr-2" />
+            Internet Services
+          </Button>
+        </div>
 
-              {searchPerformed && (
-                <div className="mt-6">
-                  {searching ? (
-                    <div className="text-center py-8">
-                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-3" />
-                      <p className="text-muted-foreground">Searching for your order...</p>
-                    </div>
-                  ) : orders.length === 0 ? (
-                    <div className="text-center py-8 border border-border rounded-lg bg-background/50">
-                      <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground">No orders found for "{searchQuery}".</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Please check your phone number or order ID and try again.
+        {/* Conditional Content */}
+        {activeCategory === "data" ? (
+          <>
+            {/* Order Tracking Section (only visible for Data) */}
+            <div className="max-w-4xl mx-auto mb-12">
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+                    <div className="flex-1">
+                      <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2 mb-2">
+                        <Package className="h-5 w-5 text-primary" />
+                        Track Your Order
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        Enter your phone number or order ID to check the status of your purchase.
                       </p>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium text-foreground">Found {orders.length} order(s):</p>
-                      <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
-                        {orders.map((order) => (
-                          <div
-                            key={order.id}
-                            className="flex flex-col p-4 border border-border rounded-lg bg-background/50 hover:bg-background transition-colors"
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/50">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="outline" className="font-mono text-xs">
-                                    {order.id.slice(0, 8)}...
-                                  </Badge>
-                                  <span className="text-sm font-medium text-foreground">
-                                    {order.customer_number}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm">
-                                  <span className="uppercase text-muted-foreground">{order.network}</span>
-                                  <span className="font-display font-bold">{order.size_gb}GB</span>
-                                  <span className="text-primary">GH₵ {Number(order.amount).toFixed(2)}</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(order.created_at).toLocaleString()}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {getStatusIcon(order.status)}
-                                <Badge
-                                  className={
-                                    order.status === "completed" || order.status === "paid"
-                                      ? "bg-green-600/20 text-green-400 border-green-600/30"
-                                      : order.status === "pending"
-                                        ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                        : "bg-red-600/20 text-red-400 border-red-600/30"
-                                  }
-                                >
-                                  {getStatusText(order.status)}
-                                </Badge>
-                              </div>
-                            </div>
-                            <div className="pt-3">
-                              <OrderTrackingCard order={order} toast={toast} />
-                            </div>
-                          </div>
-                        ))}
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                      <div className="flex-1 min-w-[200px]">
+                        <Input
+                          placeholder="Phone number or Order ID"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && searchOrders()}
+                          className="bg-background"
+                        />
                       </div>
+                      <Button variant="hero" onClick={searchOrders} disabled={searching}>
+                        {searching ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                        ) : (
+                          <Search className="h-4 w-4 mr-1" />
+                        )}
+                        Search
+                      </Button>
+                      {searchPerformed && (
+                        <Button variant="outline" onClick={clearSearch} disabled={searching}>
+                          <X className="h-4 w-4 mr-1" />
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {searchPerformed && (
+                    <div className="mt-6">
+                      {searching ? (
+                        <div className="text-center py-8">
+                          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-3" />
+                          <p className="text-muted-foreground">Searching for your order...</p>
+                        </div>
+                      ) : orders.length === 0 ? (
+                        <div className="text-center py-8 border border-border rounded-lg bg-background/50">
+                          <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-muted-foreground">No orders found for "{searchQuery}".</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Please check your phone number or order ID and try again.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <p className="text-sm font-medium text-foreground">Found {orders.length} order(s):</p>
+                          <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
+                            {orders.map((order) => (
+                              <div
+                                key={order.id}
+                                className="flex flex-col p-4 border border-border rounded-lg bg-background/50 hover:bg-background transition-colors"
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/50">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <Badge variant="outline" className="font-mono text-xs">
+                                        {order.id.slice(0, 8)}...
+                                      </Badge>
+                                      <span className="text-sm font-medium text-foreground">
+                                        {order.customer_number}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm">
+                                      <span className="uppercase text-muted-foreground">{order.network}</span>
+                                      <span className="font-display font-bold">{order.size_gb}GB</span>
+                                      <span className="text-primary">GH₵ {Number(order.amount).toFixed(2)}</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(order.created_at).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {getStatusIcon(order.status)}
+                                    <Badge
+                                      className={
+                                        order.status === "completed" || order.status === "paid"
+                                          ? "bg-green-600/20 text-green-400 border-green-600/30"
+                                          : order.status === "pending"
+                                            ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                                            : "bg-red-600/20 text-red-400 border-red-600/30"
+                                      }
+                                    >
+                                      {getStatusText(order.status)}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div className="pt-3">
+                                  <OrderTrackingCard order={order} toast={toast} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Network Filter Buttons */}
-        <div className="flex justify-center gap-3 mb-8">
-          {(Object.keys(networkConfig) as Network[]).map((net) => (
-            <Button
-              key={net}
-              variant={selectedNetwork === net ? "hero" : "outline"}
-              onClick={() => setSelectedNetwork(net)}
-              className="font-semibold"
-            >
-              {networkConfig[net].label}
-            </Button>
-          ))}
-        </div>
-
-        {/* Packages Grid - Styled like the image */}
-        {loading ? (
-          <div className="text-center text-muted-foreground">Loading packages...</div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filtered.map((pkg) => (
-              <Card
-                key={pkg.id}
-                className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
-                style={{
-                  background: "linear-gradient(135deg, #2d1b69 0%, #1a0a3e 100%)",
-                }}
-              >
-                <CardContent className="p-4 text-center space-y-2">
-                  {/* GB Size */}
-                  <p className="text-3xl md:text-4xl font-bold text-white">
-                    {pkg.size_gb}GB
-                  </p>
-
-                  {/* Network Name */}
-                  <p className={`text-sm font-semibold uppercase tracking-wide ${networkConfig[selectedNetwork].color}`}>
-                    {networkConfig[selectedNetwork].label}
-                  </p>
-
-                  {/* Price */}
-                  <p className="text-xl font-bold text-white">
-                    GHC{Number(pkg.price).toFixed(2)}
-                  </p>
-
-                  {/* Buy Now Button */}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full mt-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium"
-                    onClick={() => handleBuyNow(pkg)}
-                  >
-                    Buy Now
-                  </Button>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+            </div>
+
+            {/* Network Filter Buttons */}
+            <div className="flex justify-center gap-3 mb-8">
+              {(Object.keys(networkConfig) as Network[]).map((net) => (
+                <Button
+                  key={net}
+                  variant={selectedNetwork === net ? "hero" : "outline"}
+                  onClick={() => setSelectedNetwork(net)}
+                  className="font-semibold"
+                >
+                  {networkConfig[net].label}
+                </Button>
+              ))}
+            </div>
+
+            {/* Packages Grid */}
+            {loading ? (
+              <div className="text-center text-muted-foreground">Loading packages...</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {filtered.map((pkg) => (
+                  <Card
+                    key={pkg.id}
+                    className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
+                    style={{ background: "linear-gradient(135deg, #2d1b69 0%, #1a0a3e 100%)" }}
+                  >
+                    <CardContent className="p-4 text-center space-y-2">
+                      <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
+                      <p className={`text-sm font-semibold uppercase tracking-wide ${networkConfig[selectedNetwork].color}`}>
+                        {networkConfig[selectedNetwork].label}
+                      </p>
+                      <p className="text-xl font-bold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="w-full mt-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium"
+                        onClick={() => handleBuyNow(pkg)}
+                      >
+                        Buy Now
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          renderComingSoon()
         )}
       </div>
 

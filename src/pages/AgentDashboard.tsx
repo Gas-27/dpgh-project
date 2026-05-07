@@ -21,10 +21,18 @@ import {
   Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
   TrendingUp, Search, Palette, RotateCcw, Bell, Plus, Trash2, Calendar,
-  LayoutGrid, Minus, Plus as PlusIcon, Coins,
+  LayoutGrid, Minus, Plus as PlusIcon, Coins, Menu,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 
 // ---------- INTERFACES ----------
 interface AgentStore {
@@ -40,6 +48,7 @@ interface AgentStore {
   approved: boolean;
   wallet_balance: number;
   topup_reference: string;
+  store_headline?: string; // new field
   theme_config?: {
     primary: string;
     primary_foreground: string;
@@ -101,6 +110,18 @@ const DEFAULT_THEME = {
   gridColumns: 2,
 };
 
+// Menu items configuration
+const menuItems = [
+  { id: "overview", label: "Overview", icon: BarChart3 },
+  { id: "buy", label: "Buy Data", icon: ShoppingCart },
+  { id: "store", label: "Store Prices", icon: Store },
+  { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
+  { id: "topup", label: "Top Up", icon: Coins },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "settings", label: "Settings", icon: Settings },
+];
+
 const AgentDashboard = () => {
   const { user, isAgent, isAdmin, loading: authLoading, signOut } = useAuth();
   const { toast } = useToast();
@@ -117,7 +138,7 @@ const AgentDashboard = () => {
   const [orderSearch, setOrderSearch] = useState("");
   const [storeForm, setStoreForm] = useState({
     store_name: "", whatsapp_number: "", support_number: "", whatsapp_group: "",
-    show_whatsapp_group_icon: false,
+    show_whatsapp_group_icon: true, // default true
     momo_number: "", momo_name: "", momo_network: "",
   });
   const [savingStore, setSavingStore] = useState(false);
@@ -140,6 +161,8 @@ const AgentDashboard = () => {
 
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
   const [savingTheme, setSavingTheme] = useState(false);
+  const [storeHeadline, setStoreHeadline] = useState("");
+  const [savingHeadline, setSavingHeadline] = useState(false);
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [newNotificationMsg, setNewNotificationMsg] = useState("");
@@ -147,91 +170,131 @@ const AgentDashboard = () => {
   const [sendingNotification, setSendingNotification] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
 
   const calculateProfitStats = (ordersList: Order[], packagesList: DataPackage[]) => {
     let totalRevenue = 0;
     let totalCost = 0;
-
     ordersList.forEach(order => {
       if (order.status === "completed" || order.status === "paid") {
         totalRevenue += Number(order.amount);
         const pkg = packagesList.find(p => p.id === order.package_id);
-        if (pkg) {
-          totalCost += pkg.agent_price;
-        }
+        if (pkg) totalCost += pkg.agent_price;
       }
     });
-
     const totalProfit = totalRevenue - totalCost;
-    // ✅ wallet_balance can now be negative after a withdrawal is processed,
-    // so availableForWithdrawal will correctly show a negative amount if the agent overspent
     const availableForWithdrawal = store?.wallet_balance || 0;
-
-    return {
-      totalRevenue,
-      totalCost,
-      totalProfit,
-      availableForWithdrawal,
-    };
+    return { totalRevenue, totalCost, totalProfit, availableForWithdrawal };
   };
 
-  // Fetch store data
-  useEffect(() => {
+  // Fetch all data
+  const fetchAllData = async () => {
     if (!user) return;
-    const fetchData = async () => {
-      const { data: storeData } = await supabase
-        .from("agent_stores").select("*").eq("user_id", user.id).maybeSingle() as any;
-      setStore(storeData as AgentStore | null);
-
-      if (storeData) {
-        if (storeData.theme_config) {
-          setThemeColors({
-            ...DEFAULT_THEME,
-            ...storeData.theme_config,
-          });
-        } else {
-          await supabase
-            .from("agent_stores")
-            .update({ theme_config: DEFAULT_THEME } as any)
-            .eq("id", storeData.id);
-          setThemeColors(DEFAULT_THEME);
-        }
-
-        setStoreForm({
-          store_name: storeData.store_name, whatsapp_number: storeData.whatsapp_number,
-          support_number: storeData.support_number, whatsapp_group: storeData.whatsapp_group || "",
-          show_whatsapp_group_icon: storeData.show_whatsapp_group_icon ?? false,
-          momo_number: storeData.momo_number, momo_name: storeData.momo_name, momo_network: storeData.momo_network,
-        });
-
-        const [pkgRes, priceRes, orderRes, withdrawRes] = await Promise.all([
-          supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", storeData.id),
-          supabase.from("orders").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }).limit(100),
-          supabase.from("withdrawal_requests").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }),
-        ]);
-
-        const packagesData = pkgRes.data ?? [];
-        setPackages(packagesData);
-
-        const priceMap: Record<string, number> = {};
-        (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-        setAgentPrices(priceMap);
-
-        const ordersData = (orderRes.data as Order[]) ?? [];
-        setOrders(ordersData);
-        setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
-        const stats = calculateProfitStats(ordersData, packagesData);
-        setProfitStats(stats);
-      } else {
-        const { data: pkgData } = await supabase.from("data_packages").select("*").eq("active", true).order("size_gb");
-        setPackages(pkgData ?? []);
+    const { data: storeData } = await supabase
+      .from("agent_stores")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle() as any;
+    if (storeData) {
+      // Ensure show_whatsapp_group_icon defaults to true
+      if (storeData.show_whatsapp_group_icon === undefined || storeData.show_whatsapp_group_icon === null) {
+        storeData.show_whatsapp_group_icon = true;
+        await supabase.from("agent_stores").update({ show_whatsapp_group_icon: true }).eq("id", storeData.id);
       }
-      setLoading(false);
+      // Ensure store_headline default
+      if (!storeData.store_headline) {
+        storeData.store_headline = `Get the best data deals from ${storeData.store_name}. Select your network and package below`;
+        await supabase.from("agent_stores").update({ store_headline: storeData.store_headline }).eq("id", storeData.id);
+      }
+      setStore(storeData as AgentStore);
+      setStoreHeadline(storeData.store_headline || "");
+      if (storeData.theme_config) {
+        setThemeColors({ ...DEFAULT_THEME, ...storeData.theme_config });
+      } else {
+        await supabase.from("agent_stores").update({ theme_config: DEFAULT_THEME } as any).eq("id", storeData.id);
+        setThemeColors(DEFAULT_THEME);
+      }
+      setStoreForm({
+        store_name: storeData.store_name,
+        whatsapp_number: storeData.whatsapp_number,
+        support_number: storeData.support_number,
+        whatsapp_group: storeData.whatsapp_group || "",
+        show_whatsapp_group_icon: storeData.show_whatsapp_group_icon ?? true,
+        momo_number: storeData.momo_number,
+        momo_name: storeData.momo_name,
+        momo_network: storeData.momo_network,
+      });
+      const [pkgRes, priceRes, orderRes, withdrawRes] = await Promise.all([
+        supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
+        supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", storeData.id),
+        supabase.from("orders").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }).limit(100),
+        supabase.from("withdrawal_requests").select("*").eq("agent_store_id", storeData.id).order("created_at", { ascending: false }),
+      ]);
+      const packagesData = pkgRes.data ?? [];
+      setPackages(packagesData);
+      const priceMap: Record<string, number> = {};
+      (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+      setAgentPrices(priceMap);
+      const ordersData = (orderRes.data as Order[]) ?? [];
+      setOrders(ordersData);
+      setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
+      const stats = calculateProfitStats(ordersData, packagesData);
+      setProfitStats(stats);
+    } else {
+      const { data: pkgData } = await supabase.from("data_packages").select("*").eq("active", true).order("size_gb");
+      setPackages(pkgData ?? []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { if (user) fetchAllData(); }, [user]);
+
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!store?.id) return;
+    const storeChannel = supabase
+      .channel('agent-store-changes')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'agent_stores', filter: `id=eq.${store.id}` }, (payload) => {
+        fetchAllData();
+        if (payload.new?.wallet_balance !== payload.old?.wallet_balance) {
+          toast({ title: "Wallet updated!", description: `New balance: GH₵ ${payload.new?.wallet_balance?.toFixed(2)}` });
+        }
+      })
+      .subscribe();
+    const withdrawalChannel = supabase
+      .channel('withdrawal-changes')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'withdrawal_requests', filter: `agent_store_id=eq.${store.id}` }, (payload) => {
+        const newStatus = payload.new?.status;
+        const oldStatus = payload.old?.status;
+        if (newStatus === 'completed' && oldStatus !== 'completed') {
+          fetchAllData();
+          toast({ title: "Withdrawal approved!", description: "Your withdrawal has been completed." });
+        } else if (newStatus !== oldStatus) fetchAllData();
+      })
+      .subscribe();
+    const priceChannel = supabase
+      .channel('agent-price-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agent_package_prices', filter: `agent_store_id=eq.${store.id}` }, () => {
+        fetchAllData();
+        toast({ title: "Prices updated", description: "Your selling prices have been refreshed." });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(storeChannel);
+      supabase.removeChannel(withdrawalChannel);
+      supabase.removeChannel(priceChannel);
     };
-    fetchData();
-  }, [user]);
+  }, [store?.id]);
+
+  // Polling fallback
+  useEffect(() => {
+    if (!store?.id) return;
+    const interval = setInterval(() => fetchAllData(), 10000);
+    return () => clearInterval(interval);
+  }, [store?.id]);
 
   useEffect(() => {
     if (orders.length > 0 && packages.length > 0) {
@@ -240,24 +303,15 @@ const AgentDashboard = () => {
     }
   }, [orders, packages]);
 
-  // ======================== NOTIFICATIONS ========================
+  // Notifications
   const fetchNotifications = async () => {
     if (!store?.id) return;
     setLoadingNotifications(true);
-    const { data, error } = await (supabase
-      .from('agent_notifications' as any)
-      .select('*')
-      .eq('agent_store_id', store.id)
-      .order('created_at', { ascending: false })) as any;
-    if (!error && data) {
-      setNotifications(data as Notification[]);
-    }
+    const { data, error } = await (supabase.from('agent_notifications' as any).select('*').eq('agent_store_id', store.id).order('created_at', { ascending: false })) as any;
+    if (!error && data) setNotifications(data as Notification[]);
     setLoadingNotifications(false);
   };
-
-  useEffect(() => {
-    if (store?.id) fetchNotifications();
-  }, [store]);
+  useEffect(() => { if (store?.id) fetchNotifications(); }, [store]);
 
   const createNotification = async () => {
     if (!store || !newNotificationMsg.trim()) {
@@ -266,18 +320,10 @@ const AgentDashboard = () => {
     }
     setSendingNotification(true);
     const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
-    const { error } = await (supabase
-      .from('agent_notifications' as any)
-      .insert({
-        agent_store_id: store.id,
-        message: newNotificationMsg.trim(),
-        is_active: true,
-        expires_at,
-      })) as any;
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Notification sent!", description: "Customers will see it on the storefront." });
+    const { error } = await (supabase.from('agent_notifications' as any).insert({ agent_store_id: store.id, message: newNotificationMsg.trim(), is_active: true, expires_at })) as any;
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else {
+      toast({ title: "Notification sent!" });
       setNewNotificationMsg("");
       setNewNotificationExpiry("");
       fetchNotifications();
@@ -286,72 +332,49 @@ const AgentDashboard = () => {
   };
 
   const toggleNotificationActive = async (id: string, currentActive: boolean) => {
-    const { error } = await (supabase
-      .from('agent_notifications' as any)
-      .update({ is_active: !currentActive })
-      .eq('id', id)) as any;
+    const { error } = await (supabase.from('agent_notifications' as any).update({ is_active: !currentActive }).eq('id', id)) as any;
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
 
   const deleteNotification = async (id: string) => {
-    const { error } = await (supabase
-      .from('agent_notifications' as any)
-      .delete()
-      .eq('id', id)) as any;
+    const { error } = await (supabase.from('agent_notifications' as any).delete().eq('id', id)) as any;
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
 
-  // Theme
+  // Theme handlers
   const saveThemeColors = async () => {
     if (!store) return;
     setSavingTheme(true);
-    const { error } = await supabase
-      .from("agent_stores")
-      .update({ theme_config: themeColors } as any)
-      .eq("id", store.id);
-    if (error) {
-      toast({ title: "Error saving theme", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Store theme updated!", description: "Your storefront will now use these colours and column layout." });
-    }
+    const { error } = await supabase.from("agent_stores").update({ theme_config: themeColors } as any).eq("id", store.id);
+    if (error) toast({ title: "Error saving theme", description: error.message, variant: "destructive" });
+    else toast({ title: "Store theme updated!" });
     setSavingTheme(false);
   };
-
   const resetToDefault = () => setThemeColors(DEFAULT_THEME);
   const changeColumns = (delta: number) => {
     const newVal = Math.min(6, Math.max(1, (themeColors.gridColumns || 2) + delta));
     setThemeColors({ ...themeColors, gridColumns: newVal });
   };
 
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Zap className="h-10 w-10 text-primary animate-pulse" />
-          <p className="text-muted-foreground font-display">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  // Store Headline handler
+  const saveStoreHeadline = async () => {
+    if (!store) return;
+    setSavingHeadline(true);
+    const { error } = await supabase.from("agent_stores").update({ store_headline: storeHeadline }).eq("id", store.id);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else {
+      toast({ title: "Store headline updated!" });
+      setStore({ ...store, store_headline: storeHeadline });
+    }
+    setSavingHeadline(false);
+  };
 
-  if (!user) return <Navigate to="/login" replace />;
-  if (!isAdmin) {
-    if (!store) return <Navigate to="/agent-onboarding" replace />;
-    if (!store.approved) return <Navigate to="/pending-approval" replace />;
-  }
-
-  const filteredPackages = packages.filter((p) => p.network === networkFilter);
-  const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
-  const storeUrl = `https://${storeSlug}.datastores.shop`;
-
-  const copyStoreLink = () => { navigator.clipboard.writeText(storeUrl); toast({ title: "Link copied!", description: storeUrl }); };
-  const copyRef = () => { if (store?.topup_reference) { navigator.clipboard.writeText(store.topup_reference); toast({ title: "Reference copied!" }); } };
-  const copyPhoneNumber = (phone: string) => { navigator.clipboard.writeText(phone); toast({ title: "Phone number copied!", description: phone }); };
-
-  const handlePriceChange = (pkgId: string, value: string) => { setEditedPrices((prev) => ({ ...prev, [pkgId]: parseFloat(value) })); };
-
+  // Price handlers
+  const handlePriceChange = (pkgId: string, value: string) => {
+    setEditedPrices((prev) => ({ ...prev, [pkgId]: parseFloat(value) }));
+  };
   const savePrices = async () => {
     if (!store) return;
     setSavingPrices(true);
@@ -382,18 +405,22 @@ const AgentDashboard = () => {
     toast({ title: "Prices saved!" });
   };
 
+  // Store info handlers
   const saveStoreInfo = async () => {
     if (!store) return;
     setSavingStore(true);
     const { error } = await supabase.from("agent_stores").update({
-      store_name: storeForm.store_name, whatsapp_number: storeForm.whatsapp_number,
-      support_number: storeForm.support_number, whatsapp_group: storeForm.whatsapp_group || null,
+      store_name: storeForm.store_name,
+      whatsapp_number: storeForm.whatsapp_number,
+      support_number: storeForm.support_number,
+      whatsapp_group: storeForm.whatsapp_group || null,
       show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon,
-      momo_number: storeForm.momo_number, momo_name: storeForm.momo_name, momo_network: storeForm.momo_network,
+      momo_number: storeForm.momo_number,
+      momo_name: storeForm.momo_name,
+      momo_network: storeForm.momo_network,
     }).eq("id", store.id);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else {
       setStore({ ...store, ...storeForm, whatsapp_group: storeForm.whatsapp_group || null });
       setEditingStore(false);
       toast({ title: "Store info updated!" });
@@ -401,6 +428,7 @@ const AgentDashboard = () => {
     setSavingStore(false);
   };
 
+  // Buy data handlers
   const openBuyDialog = (pkg: DataPackage) => {
     setBuyPkg(pkg);
     setBuyPhone("");
@@ -408,22 +436,12 @@ const AgentDashboard = () => {
     setBuyPaymentMethod("wallet");
     setBuyDialogOpen(true);
   };
-
   const handleBuyConfirm = async () => {
     if (!store || !buyPkg) return;
     setBuyLoading(true);
-
-    // Rate limit check (45 minutes)
     const FORTY_FIVE_MINUTES_MS = 45 * 60 * 1000;
     const cutoffTime = new Date(Date.now() - FORTY_FIVE_MINUTES_MS).toISOString();
-    const { data: recentOrders } = await supabase
-      .from("orders")
-      .select("created_at")
-      .eq("customer_number", buyPhone.trim())
-      .eq("agent_store_id", store.id)
-      .gte("created_at", cutoffTime)
-      .order("created_at", { ascending: false })
-      .limit(1);
+    const { data: recentOrders } = await supabase.from("orders").select("created_at").eq("customer_number", buyPhone.trim()).eq("agent_store_id", store.id).gte("created_at", cutoffTime).order("created_at", { ascending: false }).limit(1);
     if (recentOrders && recentOrders.length > 0) {
       const lastOrderTime = new Date(recentOrders[0].created_at);
       const elapsed = Math.floor((Date.now() - lastOrderTime.getTime()) / 60000);
@@ -431,7 +449,6 @@ const AgentDashboard = () => {
       setBuyLoading(false);
       return;
     }
-
     const agentPrice = Number(buyPkg.agent_price);
     if (buyPaymentMethod === "wallet") {
       if (Number(store.wallet_balance) < agentPrice) {
@@ -441,7 +458,6 @@ const AgentDashboard = () => {
       }
       const { error: walletErr } = await supabase.from("agent_stores").update({ wallet_balance: Number(store.wallet_balance) - agentPrice }).eq("id", store.id);
       if (walletErr) { toast({ title: "Error", description: walletErr.message, variant: "destructive" }); setBuyLoading(false); return; }
-
       const { data: orderData, error: orderErr } = await supabase.from("orders").insert({
         customer_number: buyPhone.trim(),
         network: buyPkg.network,
@@ -453,9 +469,7 @@ const AgentDashboard = () => {
         fulfillment_status: "pending",
         payment_method: "wallet",
       }).select("id").single();
-
       if (orderErr) { toast({ title: "Order error", description: orderErr.message, variant: "destructive" }); setBuyLoading(false); return; }
-
       await supabase.functions.invoke("fulfill-order", { body: { order_id: orderData.id } });
       setStore({ ...store, wallet_balance: Number(store.wallet_balance) - agentPrice });
       toast({ title: "Order placed!", description: "Your data is being processed." });
@@ -479,6 +493,7 @@ const AgentDashboard = () => {
     setBuyLoading(false);
   };
 
+  // Withdraw handler
   const handleWithdraw = async () => {
     if (!store) return;
     if (hasPendingWithdrawal) {
@@ -487,14 +502,13 @@ const AgentDashboard = () => {
     }
     const amount = parseFloat(withdrawAmount);
     if (!amount || amount < 10) { toast({ title: "Minimum withdrawal is GH₵ 10.00", variant: "destructive" }); return; }
-    // ✅ wallet_balance can be negative later, but the initial request still requires sufficient funds
     if (amount > profitStats.availableForWithdrawal) {
       toast({ title: "Insufficient balance", description: `Your available balance for withdrawal is GH₵ ${profitStats.availableForWithdrawal.toFixed(2)}`, variant: "destructive" });
       return;
     }
     setWithdrawLoading(true);
     const { error } = await supabase.from("withdrawal_requests").insert({ agent_store_id: store.id, amount });
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else {
       toast({ title: "Withdrawal request placed!", description: "You will receive payment within 24 hours." });
       setWithdrawAmount("");
@@ -503,6 +517,30 @@ const AgentDashboard = () => {
     }
     setWithdrawLoading(false);
   };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Zap className="h-10 w-10 text-primary animate-pulse" />
+          <p className="text-muted-foreground font-display">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isAdmin) {
+    if (!store) return <Navigate to="/agent-onboarding" replace />;
+    if (!store.approved) return <Navigate to="/pending-approval" replace />;
+  }
+
+  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
+  const storeUrl = `https://${storeSlug}.datastores.shop`;
+
+  const copyStoreLink = () => { navigator.clipboard.writeText(storeUrl); toast({ title: "Link copied!", description: storeUrl }); };
+  const copyRef = () => { if (store?.topup_reference) { navigator.clipboard.writeText(store.topup_reference); toast({ title: "Reference copied!" }); } };
+  const copyPhoneNumber = (phone: string) => { navigator.clipboard.writeText(phone); toast({ title: "Phone number copied!", description: phone }); };
 
   const totalOrders = orders.length;
   const pendingOrders = orders.filter((o) => o.status === "pending").length;
@@ -516,14 +554,50 @@ const AgentDashboard = () => {
       <NotificationPopup />
       <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Store className="h-6 w-6 text-primary" />
-            <span className="font-display text-lg font-bold">{store?.store_name ?? "Agent Dashboard"}</span>
+          <div className="flex items-center gap-4">
+            {/* Pulsing MENU trigger that opens the sidebar */}
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <div className="flex items-center gap-2 cursor-pointer group">
+                  <Menu className="h-5 w-5 text-primary" />
+                  <span className="font-display text-lg font-bold text-primary animate-pulse">MENU</span>
+                </div>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-4 bg-card border-r border-border">
+                <SheetHeader className="mb-6">
+                  <SheetTitle className="flex items-center gap-2">
+                    <Store className="h-5 w-5 text-primary" />
+                    Menu
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-2">
+                  {menuItems.map((item) => (
+                    <SheetClose asChild key={item.id}>
+                      <button
+                        onClick={() => setActiveTab(item.id)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full"
+                      >
+                        <item.icon className="h-5 w-5 text-primary" />
+                        <span className="font-medium">{item.label}</span>
+                      </button>
+                    </SheetClose>
+                  ))}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
           <div className="flex items-center gap-3">
-            {isAdmin && (<Button variant="ghost" size="sm" asChild><Link to="/admin">Admin</Link></Button>)}
-            <Button variant="ghost" size="sm" asChild><Link to="/">Home</Link></Button>
-            <Button variant="outline" size="sm" onClick={signOut}><LogOut className="h-4 w-4 mr-1" /> Sign Out</Button>
+            {isAdmin && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/admin">Admin</Link>
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/">Home</Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-1" /> Sign Out
+            </Button>
           </div>
         </div>
       </nav>
@@ -544,19 +618,9 @@ const AgentDashboard = () => {
           </Card>
         )}
 
-        <Tabs defaultValue="overview">
-          <TabsList className="flex flex-wrap justify-center gap-2 h-auto p-2 bg-transparent">
-            <TabsTrigger value="overview" className="flex-1 min-w-[100px]"><BarChart3 className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
-            <TabsTrigger value="buy" className="flex-1 min-w-[100px]"><ShoppingCart className="h-4 w-4 mr-1" /> Buy Data</TabsTrigger>
-            <TabsTrigger value="store" className="flex-1 min-w-[100px]"><Store className="h-4 w-4 mr-1" /> Store Prices</TabsTrigger>
-            <TabsTrigger value="withdraw" className="flex-1 min-w-[100px]"><ArrowDownToLine className="h-4 w-4 mr-1" /> Withdraw</TabsTrigger>
-            <TabsTrigger value="topup" className="flex-1 min-w-[100px]"><Coins className="h-4 w-4 mr-1" /> Top Up</TabsTrigger>
-            <TabsTrigger value="appearance" className="flex-1 min-w-[100px]"><Palette className="h-4 w-4 mr-1" /> Appearance</TabsTrigger>
-            <TabsTrigger value="notifications" className="flex-1 min-w-[100px]"><Bell className="h-4 w-4 mr-1" /> Notifications</TabsTrigger>
-            <TabsTrigger value="settings" className="flex-1 min-w-[100px]"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6 mt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="hidden" />
+          <TabsContent value="overview" className="space-y-6 mt-0">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Store Status</p><Badge className="mt-2 bg-green-600/20 text-green-400 border-green-600/30">Active</Badge></CardContent></Card>
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Total Orders</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
@@ -580,24 +644,24 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="buy" className="space-y-4 mt-6">
+          <TabsContent value="buy" className="space-y-4 mt-0">
             {store && (<Card className="border-border bg-secondary/30"><CardContent className="p-4 flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GH₵ {store.wallet_balance?.toFixed(2) ?? '0.00'}</span></CardContent></Card>)}
             <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel"].map((net) => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}</Button>))}</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">{filteredPackages.map((pkg) => (<Card key={pkg.id} className="border-border hover:border-primary/50 transition-all"><CardContent className="p-4 text-center space-y-3"><div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><Wifi className="h-5 w-5 text-primary" /></div><p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p><p className="text-lg font-bold text-primary">GH₵ {Number(pkg.agent_price).toFixed(2)}</p><p className="text-xs text-muted-foreground">Agent Price</p><Button variant="hero" size="sm" className="w-full" onClick={() => openBuyDialog(pkg)}>Buy Now</Button></CardContent></Card>))}</div>
           </TabsContent>
 
-          <TabsContent value="store" className="space-y-4 mt-6">
+          <TabsContent value="store" className="space-y-4 mt-0">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel"].map((net) => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}</Button>))}</div>
               {Object.keys(editedPrices).length > 0 && (<Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}><Save className="h-4 w-4 mr-1" /> {savingPrices ? "Saving..." : "Save Prices"}</Button>)}
             </div>
             <p className="text-sm text-muted-foreground">Set your sell prices. Your profit = Selling Price - Base Price.</p>
             <Card className="border-border">
-              <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Base Price (Your Cost)</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Your Profit</TableHead></TableRow></TableHeader><TableBody>{filteredPackages.map((pkg) => { const currentSellPrice = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = currentSellPrice - pkg.agent_price; return (<TableRow key={pkg.id}><TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price} onChange={(e) => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div>
+              <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Base Price (Your Cost)</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Your Profit</TableHead></TableRow></TableHeader><TableBody>{filteredPackages.map((pkg) => { const currentSellPrice = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = currentSellPrice - pkg.agent_price; return (<TableRow key={pkg.id}><TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={currentSellPrice} onChange={(e) => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div>
             </Card>
           </TabsContent>
 
-          <TabsContent value="withdraw" className="space-y-6 mt-6">
+          <TabsContent value="withdraw" className="space-y-6 mt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6 text-center space-y-2"><TrendingUp className="h-10 w-10 text-primary mx-auto" /><p className="text-muted-foreground text-sm">Total Profit (from sales)</p><p className="font-display text-3xl font-bold text-green-400">GH₵ {profitStats.totalProfit.toFixed(2)}</p></CardContent></Card>
               <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6 text-center space-y-2"><ArrowDownToLine className="h-10 w-10 text-yellow-400 mx-auto" /><p className="text-muted-foreground text-sm">Available for Withdrawal</p><p className="font-display text-3xl font-bold text-yellow-400">GH₵ {profitStats.availableForWithdrawal.toFixed(2)}</p><p className="text-xs text-muted-foreground">(Profit + Wallet Top-ups)</p></CardContent></Card>
@@ -630,12 +694,14 @@ const AgentDashboard = () => {
             )}
           </TabsContent>
 
-          {/* TOP UP TAB */}
-          <TabsContent value="topup" className="mt-6">
+          <TabsContent value="topup" className="mt-0">
             <Card className="border-border">
               <CardHeader><CardTitle className="font-display flex items-center gap-2"><Coins className="h-5 w-5 text-primary" /> Top Up Your Wallet</CardTitle><p className="text-sm text-muted-foreground">Add money to your wallet using MoMo. After top‑up, your balance will be updated by the admin and you can buy data directly without Paystack charges.</p></CardHeader>
               <CardContent className="space-y-6">
-                <div className="rounded-lg bg-primary/5 border border-primary/30 p-4 text-center"><p className="text-sm text-muted-foreground">Current Wallet Balance</p><p className="font-display text-3xl font-bold text-primary">GH₵ {store?.wallet_balance?.toFixed(2) ?? '0.00'}</p></div>
+                <div className="rounded-lg bg-primary/5 border border-primary/30 p-4 text-center">
+                  <p className="text-sm text-muted-foreground">Current Wallet Balance</p>
+                  <p className="font-display text-3xl font-bold text-primary">GH₵ {store?.wallet_balance?.toFixed(2) ?? '0.00'}</p>
+                </div>
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg">Follow these steps to top up:</h3>
                   <ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground">
@@ -654,10 +720,25 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="appearance" className="mt-6">
+          <TabsContent value="appearance" className="mt-0">
             <Card className="border-border">
-              <CardHeader><CardTitle className="font-display">Customise Your Storefront</CardTitle><p className="text-sm text-muted-foreground">Choose colours that match your brand and set how many products appear per row.</p></CardHeader>
+              <CardHeader><CardTitle className="font-display">Customise Your Storefront</CardTitle><p className="text-sm text-muted-foreground">Choose colours that match your brand and set how many products appear per row. You can also change the main headline that customers see.</p></CardHeader>
               <CardContent className="space-y-6">
+                {/* Store Headline */}
+                <div className="space-y-2">
+                  <Label>Store Headline (shown on your storefront)</Label>
+                  <Textarea
+                    value={storeHeadline}
+                    onChange={(e) => setStoreHeadline(e.target.value)}
+                    rows={3}
+                    placeholder="Get the best data deals from ..."
+                  />
+                  <Button variant="outline" size="sm" onClick={saveStoreHeadline} disabled={savingHeadline} className="mt-2">
+                    {savingHeadline ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                    Save Headline
+                  </Button>
+                </div>
+                <div className="border-t border-border pt-4" />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2"><Label>Primary Colour (buttons, accents)</Label><div className="flex gap-2 items-center"><Input type="color" value={themeColors.primary} onChange={(e) => setThemeColors({ ...themeColors, primary: e.target.value })} className="w-16 h-10 p-1" /><Input type="text" value={themeColors.primary} onChange={(e) => setThemeColors({ ...themeColors, primary: e.target.value })} className="flex-1" placeholder="#38bdf8" /></div></div>
                   <div className="space-y-2"><Label>Text Colour on Primary</Label><div className="flex gap-2 items-center"><Input type="color" value={themeColors.primary_foreground} onChange={(e) => setThemeColors({ ...themeColors, primary_foreground: e.target.value })} className="w-16 h-10 p-1" /><Input type="text" value={themeColors.primary_foreground} onChange={(e) => setThemeColors({ ...themeColors, primary_foreground: e.target.value })} className="flex-1" placeholder="#000000" /></div></div>
@@ -671,7 +752,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="notifications" className="mt-6 space-y-6">
+          <TabsContent value="notifications" className="mt-0 space-y-6">
             <Card className="border-border">
               <CardHeader><CardTitle className="font-display flex items-center gap-2"><Bell className="h-5 w-5" /> Send Notification to Storefront</CardTitle><p className="text-sm text-muted-foreground">Create announcements that popup on your store page for customers to see.</p></CardHeader>
               <CardContent className="space-y-4">
@@ -690,7 +771,7 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="settings" className="mt-6">
+          <TabsContent value="settings" className="mt-0">
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between"><CardTitle className="font-display">Store Information</CardTitle>{!editingStore && (<Button variant="outline" size="sm" onClick={() => setEditingStore(true)}><Edit2 className="h-4 w-4 mr-1" /> Edit</Button>)}</CardHeader>
               <CardContent className="space-y-4">
@@ -702,7 +783,7 @@ const AgentDashboard = () => {
                       <div className="space-y-2"><Label>Support Number</Label><Input value={storeForm.support_number} onChange={(e) => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div>
                       <div className="space-y-2 md:col-span-2">
                         <div className="flex items-center justify-between gap-4"><Label>WhatsApp Group Link (Optional)</Label><div className="flex items-center gap-2"><Label htmlFor="show-group-icon" className="text-sm text-muted-foreground cursor-pointer">Show join icon on storefront</Label><Switch id="show-group-icon" checked={storeForm.show_whatsapp_group_icon} onCheckedChange={(checked) => setStoreForm({ ...storeForm, show_whatsapp_group_icon: checked })} /></div></div>
-                        <Input value={storeForm.whatsapp_group} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="https://chat.whatsapp.com/..." />
+                        <Input value={storeForm.whatsapp_group} onChange={(e) => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Paste your WhatsApp group or channel link here" />
                         <p className="text-xs text-muted-foreground">{storeForm.show_whatsapp_group_icon ? "✅ A WhatsApp join icon will appear on your storefront." : "❌ The join icon will be hidden. Only the link (if provided) may be used elsewhere."}</p>
                       </div>
                       <div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={(e) => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div>
@@ -730,8 +811,7 @@ const AgentDashboard = () => {
         </Tabs>
       </div>
 
-      {/* Buy Data Dialog */}
-      <Dialog open={buyDialogOpen} onOpenChange={(v) => { if (!v) setBuyDialogOpen(false); }}>
+      <Dialog open={buyDialogOpen} onOpenChange={(v) => !v && setBuyDialogOpen(false)}>
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display text-xl">Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</DialogTitle><DialogDescription>Purchase data at agent price</DialogDescription></DialogHeader>
           {buyStep === "phone" ? (
