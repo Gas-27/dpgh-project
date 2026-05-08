@@ -138,14 +138,15 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
   let statusMessage = "";
   let extraNote = null;
 
-  if (elapsedMinutes >= 150) {
-    currentStep = 4;
-    statusMessage = "Your data bundle has been delivered successfully.";
-    if (order.network === "mtn") extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
-    else if (order.network === "airteltigo") extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
-    else if (order.network === "telecel") extraNote = "Please check your Telecel messages for delivery confirmation.";
-    else extraNote = "Please check your messages for delivery confirmation.";
-  } else if (elapsedMinutes >= 60) {
+  // if (elapsedMinutes >= 150) {
+  //   currentStep = 4;
+  //   statusMessage = "Your data bundle has been delivered successfully.";
+  //   if (order.network === "mtn") extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
+  //   else if (order.network === "airteltigo") extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+  //   else if (order.network === "telecel") extraNote = "Please check your Telecel messages for delivery confirmation.";
+  //   else extraNote = "Please check your messages for delivery confirmation.";
+  // } else 
+  if (elapsedMinutes >= 60) {
     currentStep = 3;
     if (order.network === "mtn") statusMessage = "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
     else if (order.network === "airteltigo") statusMessage = "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
@@ -223,7 +224,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
     { name: "Order Placed", step: 1 },
     { name: "Sent to Network", step: 2 },
     { name: "Network Validation", step: 3 },
-    { name: "Delivered", step: 4 },
+    // { name: "Delivered", step: 4 },
   ];
 
   return (
