@@ -177,12 +177,10 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
 
   const steps = [
     { name: "Order Placed", step: 1 },
-    { name: "Sent to Network", step: 2 },
+    { name: "Sent 2 Network", step: 2 },
     { name: "Network Validation", step: 3 },
+  //{ name: "Delivered", step: 4 },
 
-//{ name: "Delivered", step: 4 },
-=======
-   // { name: "Delivered", step: 4 },
 
   ];
 
