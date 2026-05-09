@@ -47,7 +47,7 @@ const formatNetworkName = (network: string) => {
 };
 
 // ============================================================
-// ORDER TRACKING CARD – STEP TIMELINE (Delivered step removed, stays on Network Validation)
+// ORDER TRACKING CARD – STEP TIMELINE (Delivered step removed, no email support button, no "16 hours" text)
 // ============================================================
 const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -100,21 +100,13 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
 
   const orderDate = new Date(order.created_at).toLocaleString();
 
-  const emailSubject = encodeURIComponent("Order Support Request");
-  const emailBody = encodeURIComponent(
-    `Hello,\n\nI need assistance with my order.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease help resolve this issue.\n\nThank you.`
-  );
-  const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${emailSubject}&body=${emailBody}`;
-
   const whatsappNumber = "233200511211";
   const whatsappMessage = encodeURIComponent(
     `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 
-  // Support button appears after 2.2 hours (132 min) if still not delivered (but since we never mark delivered, condition adjusted)
-  const showSupportButton = elapsedMinutes >= 132 && currentStep === 3;
-  // Report button appears after 16 hours (960 min) still on validation
+  // Report button appears after a long delay (no fixed time mentioned to the user)
   const showReportButton = currentStep === 3 && elapsedMinutes >= 960;
 
   // The timeline steps – Delivered step is COMMENTED OUT
@@ -176,21 +168,8 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
             Estimated time remaining: {Math.max(0, Math.ceil(8 - elapsedMinutes))} minute(s)
           </p>
         )}
-        {currentStep === 3 && elapsedMinutes < 960 && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Network validation can take up to 16 hours. We'll update this page automatically.
-          </p>
-        )}
+        {/* Removed the helper text that mentioned "16 hours" */}
       </div>
-
-      {showSupportButton && (
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <a href={mailtoLink}>
-            <Mail className="h-4 w-4 mr-2" />
-            Contact Support (dataplugstore@gmail.com)
-          </a>
-        </Button>
-      )}
 
       {showReportButton && (
         <Button
@@ -201,7 +180,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
         >
           <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
             <MessageCircle className="h-4 w-4 mr-2" />
-            Only Report: if you have not received the data after 16 hours
+            Only Report: if you have not <br></br>received the data while it shows delivered
           </a>
         </Button>
       )}
