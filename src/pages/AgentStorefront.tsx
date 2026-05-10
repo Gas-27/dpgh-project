@@ -224,7 +224,7 @@ const OrderTrackingCard = ({ order, store, toast }: { order: Order; store: Agent
     { name: "Order Placed", step: 1 },
     { name: "Sent to Network", step: 2 },
     { name: "Network Validation", step: 3 },
-    // { name: "Delivered", step: 4 },
+     { name: "Delivered", step: 4 },
   ];
 
   return (

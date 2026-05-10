@@ -47,7 +47,7 @@ const formatNetworkName = (network: string) => {
 };
 
 // ============================================================
-// ORDER TRACKING CARD – STEP TIMELINE (Delivered step removed, no email support button, no "16 hours" text)
+// ORDER TRACKING CARD – STEP TIMELINE (unchanged)
 // ============================================================
 const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -67,8 +67,20 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   let statusMessage = "";
   let extraNote = null;
 
-  // No "Delivered" step – stays on Network Validation (step 3) after 9+ minutes
-  if (elapsedMinutes >= 60) {
+  if (elapsedMinutes >= 150) {
+    currentStep = 4;
+    statusMessage = "Your data bundle has been delivered successfully.";
+    if (order.network === "mtn") {
+      extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
+    } else if (order.network === "airteltigo") {
+      extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+    } else if (order.network === "telecel") {
+      extraNote = "Please check your Telecel messages for delivery confirmation.";
+    } else {
+      extraNote = "Please check your messages for delivery confirmation.";
+    }
+  }
+  else if (elapsedMinutes >= 60) {
     currentStep = 3;
     if (order.network === "mtn") {
       statusMessage = "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
@@ -85,7 +97,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
     currentStep = 3;
     statusMessage = `Waiting for validation from ${formatNetworkName(order.network)}...`;
     if (elapsedMinutes >= 15) {
-      statusMessage = "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered after a long delay.";
+      statusMessage = "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
     }
   }
   else if (elapsedMinutes >= 9) {
@@ -100,21 +112,76 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
 
   const orderDate = new Date(order.created_at).toLocaleString();
 
+  const emailSubject = encodeURIComponent("Order Support Request");
+  const emailBody = encodeURIComponent(
+    `Hello,\n\nI need assistance with my order.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease help resolve this issue.\n\nThank you.`
+  );
+  const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${emailSubject}&body=${emailBody}`;
+
   const whatsappNumber = "233200511211";
   const whatsappMessage = encodeURIComponent(
     `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 
-  // Report button appears after a long delay (no fixed time mentioned to the user)
-  const showReportButton = currentStep === 3 && elapsedMinutes >= 960;
+  const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
+  const showReportButton = currentStep === 4 && elapsedMinutes >= 150 && elapsedMinutes < 3030;
 
-  // The timeline steps – Delivered step is COMMENTED OUT
+  if (currentStep === 4) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground">Delivery Status</span>
+          <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
+            <CheckCircle className="h-3 w-3 mr-1" /> Delivered
+          </Badge>
+        </div>
+        <div className="relative">
+          <div className="flex items-center justify-between">
+            {["Order Placed", "Sent to Network", "Network Validation", "Delivered"].map((step, idx) => (
+              <div key={idx} className="flex flex-col items-center flex-1">
+                <div className="w-8 h-8 rounded-full bg-green-600/20 text-green-400 flex items-center justify-center">
+                  <Check className="h-4 w-4" />
+                </div>
+                <span className="text-xs text-center mt-1 text-muted-foreground">{step}</span>
+              </div>
+            ))}
+          </div>
+          <div className="absolute top-4 left-0 w-full h-0.5 bg-green-600/30 -z-10" />
+        </div>
+        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+          <p className="text-sm text-foreground font-medium">{statusMessage}</p>
+          {extraNote && (
+            <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">
+              {extraNote}
+            </p>
+          )}
+        </div>
+        {showReportButton && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
+            asChild
+          >
+            <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Only Report: if it shows Delivered<br /> here
+              but you did not received it
+            </a>
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   const steps = [
     { name: "Order Placed", step: 1 },
     { name: "Sent 2 Network", step: 2 },
     { name: "Network Validation", step: 3 },
-    // { name: "Delivered", step: 4 },   // <--- COMMENTED: Network Validation remains the final step
+  { name: "Delivered", step: 4 },
+
+
   ];
 
   return (
@@ -151,7 +218,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
         <div className="absolute top-4 left-0 w-full h-0.5 bg-muted -z-10">
           <div
             className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+            style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
           />
         </div>
       </div>
@@ -168,19 +235,13 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
             Estimated time remaining: {Math.max(0, Math.ceil(8 - elapsedMinutes))} minute(s)
           </p>
         )}
-        {/* Removed the helper text that mentioned "16 hours" */}
       </div>
 
-      {showReportButton && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
-          asChild
-        >
-          <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Only Report: if you have not <br></br>received the data while it shows delivered
+      {showSupportButton && (
+        <Button variant="outline" size="sm" className="w-full" asChild>
+          <a href={mailtoLink}>
+            <Mail className="h-4 w-4 mr-2" />
+            Contact Support (dataplugstore@gmail.com)
           </a>
         </Button>
       )}
