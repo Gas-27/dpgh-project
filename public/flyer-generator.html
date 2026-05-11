@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Flyer Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f1f5f9;
+            font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .preview-container {
+            width: 100%;
+            max-width: 380px;
+            margin: 0 auto 24px auto;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            background: white;
+        }
+
+        .flyer {
+            background: white;
+            width: 100%;
+            aspect-ratio: 9 / 16;
+            overflow-y: auto;
+            border-radius: 24px;
+            padding: 16px 12px;
+            font-size: 9px;
+            line-height: 1.3;
+            font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+            scrollbar-width: thin;
+        }
+
+        .network-title {
+            font-size: 13px;
+            font-weight: 800;
+            margin: 12px 0 6px 0;
+            padding-bottom: 2px;
+            border-bottom: 1.5px solid #e2e8f0;
+        }
+
+        .price-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            font-size: 8px;
+        }
+
+        .price-table th,
+        .price-table td {
+            border: 1px solid #cbd5e1;
+            padding: 5px 2px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .price-table th {
+            background-color: #f8fafc;
+            font-weight: 700;
+        }
+
+        .network-name-cell {
+            font-weight: 800;
+        }
+
+        .buy-btn {
+            display: inline-block;
+            background-color: #2563eb;
+            color: white;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 7px;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .header-title {
+            font-size: 15px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .subhead {
+            text-align: center;
+            font-size: 8px;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .networks-badge {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            font-weight: 800;
+            font-size: 10px;
+            margin-bottom: 12px;
+        }
+
+        .store-line {
+            text-align: center;
+            font-size: 8px;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 5px 0;
+            margin: 8px 0;
+            color: #334155;
+        }
+
+        .contact-block {
+            text-align: center;
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 1px solid #cbd5e1;
+        }
+
+        .phone-number {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f172a;
+            background: #f1f5f9;
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 30px;
+            margin: 6px 0;
+        }
+
+        .controls {
+            background: white;
+            max-width: 480px;
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 28px;
+            padding: 18px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .color-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .color-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8fafc;
+            padding: 4px 12px;
+            border-radius: 40px;
+        }
+
+        button {
+            background: #0f172a;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #1e293b;
+        }
+
+        .share-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .whatsapp-btn {
+            background: #25D366;
+        }
+
+        .facebook-btn {
+            background: #1877F2;
+        }
+
+        .twitter-btn {
+            background: #1DA1F2;
+        }
+
+        textarea {
+            width: 100%;
+            border-radius: 20px;
+            border: 1px solid #cbd5e1;
+            padding: 10px;
+            font-size: 12px;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="preview-container">
+        <div class="flyer" id="flyer"></div>
+    </div>
+
+    <div class="controls">
+        <div class="color-row">
+            <div class="color-item"><label>MTN 🟡</label><input type="color" id="mtnColor" value="#fbbf24"></div>
+            <div class="color-item"><label>Airtel 🔵</label><input type="color" id="airtelColor" value="#3b82f6"></div>
+            <div class="color-item"><label>Telecel 🔴</label><input type="color" id="telecelColor" value="#ef4444">
+            </div>
+            <div class="color-item"><label>Button</label><input type="color" id="btnColor" value="#2563eb"></div>
+        </div>
+        <button id="downloadBtn">⬇️ Download PNG (9:16)</button>
+        <textarea id="shareText"
+            rows="2">🚀 Get the best data deals! Instant delivery, 24/7 support. MTN • AirtelTigo • Telecel</textarea>
+        <div class="share-buttons">
+            <button id="waShare" class="whatsapp-btn">📱 WhatsApp</button>
+            <button id="fbShare" class="facebook-btn">📘 Facebook</button>
+            <button id="twShare" class="twitter-btn">🐦 Twitter</button>
+        </div>
+    </div>
+
+    <script>
+        // ---------- READ URL PARAMETERS ----------
+        const urlParams = new URLSearchParams(window.location.search);
+        const STORE_NAME = urlParams.get('store') || 'Demo Store';
+        const STORE_URL = urlParams.get('url') || 'demo.datastores.shop';
+        const SUPPORT_NUMBER = urlParams.get('support') || '0200511211';
+        const WHATSAPP_NUMBER = urlParams.get('wa') || '0200511211';
+
+        // ---------- PRICE DATA (replace with your actual prices) ----------
+        const mtnPrices = {
+            1: 4.10, 2: 8.49, 3: 12.50, 4: 16.99, 5: 20.50,
+            6: 24.99, 8: 32.99, 10: 39.99, 15: 59.10, 20: 79.00,
+            25: 99.90, 30: 119.99, 40: 155.99, 50: 199.00, 100: 365.00
+        };
+        const airtelPrices = {
+            1: 3.99, 2: 8.00, 3: 12.00, 4: 15.50, 5: 20.00,
+            6: 23.50, 7: 27.00, 8: 32.50, 9: 35.00, 10: 36.00,
+            15: 45.00, 20: 56.00, 25: 60.00, 30: 68.00, 40: 85.00
+        };
+        const telecelPrices = {
+            2: 9.40, 3: 13.80, 5: 21.50, 10: 37.40, 11: 42.00,
+            15: 55.99, 16: 63.00, 20: 75.00, 22: 84.00, 25: 90.00,
+            30: 200.00, 33: 120.00, 40: 148.00, 44: 159.00, 50: 380.00
+        };
+
+        const mtnSizes = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 25, 30, 40, 50, 100];
+        const airtelSizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40];
+        const telecelSizes = [2, 3, 5, 10, 11, 15, 16, 20, 22, 25, 30, 33, 40, 44, 50];
+
+        function chunk(arr, size) {
+            const result = [];
+            for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size));
+            return result;
+        }
+
+        function renderPriceTable(title, sizes, priceMap, networkKey, colorHex, btnColor) {
+            const rows = chunk(sizes, 5);
+            let html = `<div style="margin-bottom: 14px;"><div class="network-title" style="color:${colorHex};">${title}</div>`;
+            for (let row of rows) {
+                html += `<table class="price-table"><thead><tr><th>Size</th>`;
+                for (let s of row) html += `<th>${s}GB</th>`;
+                html += `</tr></thead><tbody>`;
+                // network name row
+                html += `<tr><td class="network-name-cell" style="color:${colorHex};">${networkKey}</td>`;
+                for (let s of row) {
+                    let price = priceMap[s] ? `GHC${priceMap[s].toFixed(2)}` : '-';
+                    html += `<td style="color:${colorHex};">${price}</td>`;
+                }
+                html += `</tr>`;
+                // buy row
+                html += `<tr><td>Buy Now</td>`;
+                for (let s of row) {
+                    html += `<td><span class="buy-btn" style="background:${btnColor};">Buy Now</span></td>`;
+                }
+                html += `</tr></tbody></table>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        function renderFlyer() {
+            const mtnColor = document.getElementById('mtnColor').value;
+            const airtelColor = document.getElementById('airtelColor').value;
+            const telecelColor = document.getElementById('telecelColor').value;
+            const btnColor = document.getElementById('btnColor').value;
+
+            let html = `
+            <div class="header-title"># DATA BUNDLES – ALL NETWORKS</div>
+            <div class="subhead">Affordable. Instant. Reliable.</div>
+            <div class="networks-badge">
+                <span style="color:${mtnColor};">MTN</span>
+                <span style="color:${airtelColor};">AirtelTigo</span>
+                <span style="color:${telecelColor};">Telecel</span>
+            </div>
+            <div class="store-line">${STORE_NAME} | ${STORE_URL}</div>
+        `;
+            html += renderPriceTable("MTN DATA BUNDLES", mtnSizes, mtnPrices, "MTN", mtnColor, btnColor);
+            html += renderPriceTable("AIRTELTIGO DATA BUNDLES", airtelSizes, airtelPrices, "AIRTELTIGO", airtelColor, btnColor);
+            html += renderPriceTable("TELECEL DATA BUNDLES", telecelSizes, telecelPrices, "TELECEL", telecelColor, btnColor);
+
+            html += `
+            <div class="contact-block">
+                <div style="font-weight:700; font-size:10px;">NEED HELP OR HAVE QUESTIONS?</div>
+                <div>Contact us directly on WhatsApp or Call.</div>
+                <div class="phone-number">${SUPPORT_NUMBER || WHATSAPP_NUMBER}</div>
+                <div style="margin-top:8px; font-size:7px; color:#475569;">
+                    <strong>Join channel – get updates & free giveaways</strong><br>
+                    Stay updated with the latest bundles, promos & offers.
+                </div>
+            </div>
+        `;
+            document.getElementById('flyer').innerHTML = html;
+        }
+
+        async function downloadFlyer() {
+            const flyerDiv = document.getElementById('flyer');
+            const originalOverflow = flyerDiv.style.overflowY;
+            flyerDiv.style.overflowY = 'hidden';
+            try {
+                const canvas = await html2canvas(flyerDiv, { scale: 2.5, backgroundColor: '#ffffff', logging: false });
+                const link = document.createElement('a');
+                link.download = 'data-flyer.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            } finally {
+                flyerDiv.style.overflowY = originalOverflow;
+            }
+        }
+
+        function shareToWhatsApp() {
+            const text = document.getElementById('shareText').value;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        }
+        function shareToFacebook() {
+            const text = document.getElementById('shareText').value;
+            window.open(`https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(text)}`, '_blank');
+        }
+        function shareToTwitter() {
+            const text = document.getElementById('shareText').value;
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        document.getElementById('downloadBtn').addEventListener('click', downloadFlyer);
+        document.getElementById('waShare').addEventListener('click', shareToWhatsApp);
+        document.getElementById('fbShare').addEventListener('click', shareToFacebook);
+        document.getElementById('twShare').addEventListener('click', shareToTwitter);
+        document.querySelectorAll('input[type="color"]').forEach(el => el.addEventListener('input', renderFlyer));
+
+        renderFlyer();
+    </script>
+</body>
+
+</html>
