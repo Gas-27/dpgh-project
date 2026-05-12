@@ -604,7 +604,7 @@ const AgentDashboard = () => {
               </button>
               {manualOpen && (
                 <div className="px-4 pb-4 space-y-3">
-                  <p className="text-sm text-muted-foreground">Tap any section to expand its guide.</p>
+                  <p className="text-sm text-muted-foreground">Tap any section to expand its guide.Tap on the MENU above to see these section </p>
                   {MANUAL_SECTIONS.map((sec, i) => (
                     <div key={i} className="border border-border rounded-lg overflow-hidden">
                       <button onClick={() => setOpenManualSection(openManualSection === i ? null : i)} className="w-full flex items-center justify-between p-3 text-left bg-card hover:bg-secondary/50 transition-colors">
