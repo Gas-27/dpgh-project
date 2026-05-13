@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -45,8 +45,36 @@ const Login = () => {
       return;
     }
 
-    toast({ title: "Welcome back!", description: "Redirecting to dashboard..." });
-    navigate("/");
+    const userId = data.user?.id;
+    if (!userId) {
+      toast({ title: "Error", description: "User ID not found", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    // Fetch roles from user_roles table (same as useAuth)
+    const { data: rolesData, error: rolesError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+
+    let redirectTo = "/"; // default home
+    if (!rolesError && rolesData) {
+      const roles = rolesData.map(r => r.role);
+      if (roles.includes("admin")) {
+        redirectTo = "/admin";
+      } else if (roles.includes("agent")) {
+        redirectTo = "/agent";
+      } else {
+        redirectTo = "/";
+      }
+    } else {
+      console.warn("Could not fetch roles, redirecting to home", rolesError);
+    }
+
+    toast({ title: "Welcome back!", description: "Redirecting..." });
+    navigate(redirectTo, { replace: true });
+    setLoading(false);
   };
 
   const handleForgotPassword = async () => {
@@ -72,6 +100,27 @@ const Login = () => {
     }
     setSendingReset(false);
   };
+
+  // If already logged in, redirect based on roles
+  useEffect(() => {
+    const checkAndRedirect = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id);
+        let route = "/";
+        if (rolesData) {
+          const roles = rolesData.map(r => r.role);
+          if (roles.includes("admin")) route = "/admin";
+          else if (roles.includes("agent")) route = "/agent";
+        }
+        navigate(route, { replace: true });
+      }
+    };
+    checkAndRedirect();
+  }, [navigate]);
 
   return (
     <>
@@ -148,7 +197,6 @@ const Login = () => {
         </Card>
       </div>
 
-      {/* Forgot Password Dialog */}
       <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

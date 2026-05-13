@@ -45,6 +45,68 @@ Deno.serve(async (req) => {
 
     const txData = verifyData.data;
     const metadata = txData.metadata || {};
+    const paymentType = metadata.type; // "spin_wheel" or undefined
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // ==========================
+    // SPIN WHEEL PAYMENT HANDLER
+    // ==========================
+    if (paymentType === "spin_wheel") {
+      // 1) Check if this reference was already used
+      const { data: existing } = await supabase
+        .from("spin_wheel_payments")
+        .select("id")
+        .eq("reference", reference)
+        .maybeSingle();
+
+      if (existing) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: "Payment already redeemed – spins already granted.",
+          grant_spins: false,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 2) Record the payment (prevents reuse)
+      const userId = metadata.userId || null;
+      const phone = metadata.phone || "";
+      const { error: insertErr } = await supabase
+        .from("spin_wheel_payments")
+        .insert({
+          reference,
+          user_id: userId,
+          phone,
+          amount: txData.amount / 100,
+          used_at: new Date().toISOString(),
+        });
+
+      if (insertErr) {
+        console.error("Failed to record spin payment:", insertErr);
+        return new Response(JSON.stringify({ error: "Internal error recording payment" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 3) Return success – frontend will grant 2 spins
+      return new Response(JSON.stringify({
+        success: true,
+        grant_spins: true,
+        spins: 2,
+        message: "Payment confirmed! You have 2 spins now.",
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // =====================================
+    // REGULAR DATA PACKAGE PURCHASE HANDLER
+    // =====================================
     const phone = metadata.phone || "";
     const packageId = metadata.package_id || "";
     const network = metadata.network || "";
@@ -55,10 +117,6 @@ Deno.serve(async (req) => {
     const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
     const amount = txData.amount / 100; // Convert from pesewas
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // 1) Fast check – does order already exist?
     const { data: existing } = await supabase

@@ -128,9 +128,9 @@ Customisation:
 • Save Colours to remember your choices. Reset to restore defaults.
 
 Sharing:
-• Edit the share message — your store link is included automatically.
 • "Download PNG" saves the full-resolution image to your device.
-• "Share Flyer" opens the native share sheet to send directly to WhatsApp or anywhere. On desktop it copies the text and downloads the image.` },
+• "Preview as Image" opens the flyer in a new tab – from there you can long‑press / right‑click and save or share.
+• "Share Flyer" uses the native share sheet to send the image directly to WhatsApp (on mobile) or downloads the image and opens WhatsApp (on desktop).` },
   {
     icon: "💸", title: "Withdraw", content: `Cash out your wallet balance to your MoMo account.
 
@@ -190,6 +190,10 @@ Managing: Toggle Active/Inactive to show or hide without deleting. Bin icon to d
 • Top-Up Reference – your unique code for wallet top-ups (read-only).
 
 Note: The Support Number shown here is what appears in the contact footer of your generated flyer.` },
+  {
+    icon: "📜", title: "Rules", content: `Before making an order, make sure you are not owing airtime, MoMo, or bundles.
+You cannot make an order for the same number when the first order has not been delivered (either from our site or other sites) – this can override your previous order.
+Before bringing a report from a customer to the admin, make sure to ask them the questions above before reporting.` },
 ];
 
 // ==================== MAIN COMPONENT ====================
@@ -269,7 +273,7 @@ const AgentDashboard = () => {
     return () => { clearTimeout(t); window.removeEventListener("resize", recalcScale); };
   }, [activeTab, recalcScale]);
 
-  // ─── total profit from ALL DB orders (live) ───────────────────────────────
+  // ─── total profit from ALL DB orders ────────────────────────────────────
   const fetchTotalProfit = async () => {
     if (!store?.id) return;
     const { data, error } = await supabase
@@ -365,29 +369,23 @@ const AgentDashboard = () => {
 
   useEffect(() => { if (user) fetchAllData(); }, [user]);
 
-  // Realtime subscriptions (no polling)
+  // Realtime subscriptions (toasts removed for wallet and price updates)
   useEffect(() => {
     if (!store?.id) return;
     const c1 = supabase.channel("agent-store-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "agent_stores", filter: `id=eq.${store.id}` }, (p) => {
-        fetchAllData();
-        if ((p.new as any).wallet_balance !== (p.old as any).wallet_balance)
-          toast({ title: "Wallet updated!", description: `New balance: GH₵ ${(p.new as any).wallet_balance?.toFixed(2)}` });
-      }).subscribe();
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "agent_stores", filter: `id=eq.${store.id}` }, () => fetchAllData())
+      .subscribe();
     const c2 = supabase.channel("withdrawal-changes")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "withdrawal_requests", filter: `agent_store_id=eq.${store.id}` }, (p) => {
         if ((p.new as any).status === "completed" && (p.old as any).status !== "completed") { fetchAllData(); toast({ title: "Withdrawal approved!" }); }
         else if ((p.new as any).status !== (p.old as any).status) fetchAllData();
       }).subscribe();
     const c3 = supabase.channel("agent-price-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "agent_package_prices", filter: `agent_store_id=eq.${store.id}` }, () => {
-        fetchAllData();
-        toast({ title: "Prices updated by admin" });
-      }).subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "agent_package_prices", filter: `agent_store_id=eq.${store.id}` }, () => fetchAllData())
+      .subscribe();
     const c4 = supabase.channel("order-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` }, () => {
-        fetchAllData();
-      }).subscribe();
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` }, () => fetchAllData())
+      .subscribe();
     return () => {
       supabase.removeChannel(c1);
       supabase.removeChannel(c2);
@@ -443,7 +441,7 @@ const AgentDashboard = () => {
     setSavingHeadline(false);
   };
 
-  // Price handling with markup (now based on BASE PRICE)
+  // Price handling with markup
   const handlePriceChange = (id: string, v: string) => setEditedPrices(p => ({ ...p, [id]: parseFloat(v) }));
   const savePrices = async () => {
     if (!store) return; setSavingPrices(true);
@@ -465,7 +463,6 @@ const AgentDashboard = () => {
     finally { setSavingPrices(false); }
   };
 
-  // Markup logic: based on BASE PRICE (agent_price)
   const applyMarkup = () => {
     const percent = parseFloat(markupPercent);
     if (isNaN(percent)) {
@@ -477,11 +474,9 @@ const AgentDashboard = () => {
     const currentNetworkPackages = packages.filter(p => p.network === networkFilter);
     let appliedCount = 0;
     for (const pkg of currentNetworkPackages) {
-      // Use the BASE PRICE (agent_price) as the basis
       const basePrice = pkg.agent_price;
       let newPrice = basePrice * multiplier;
       newPrice = Math.round(newPrice * 100) / 100;
-      // Ensure it's not below base price
       if (newPrice < basePrice) newPrice = basePrice;
       newEdited[pkg.id] = newPrice;
       appliedCount++;
@@ -558,7 +553,7 @@ const AgentDashboard = () => {
     setWithdrawLoading(false);
   };
 
-  // ─── FLYER ────────────────────────────────────────────────────────────────
+  // ==================== FLYER FUNCTIONS ====================
   const getFlyerPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const getMtnPkgs = () => MTN_SIZES.map(s => { const p = packages.find(x => x.network === "mtn" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
   const getAirtelPkgs = () => AIRTEL_SIZES.map(s => { const p = packages.find(x => x.network === "airteltigo" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
@@ -598,40 +593,74 @@ const AgentDashboard = () => {
     finally { setGeneratingFlyer(false); }
   };
 
+  const previewAsImage = async () => {
+    setGeneratingFlyer(true);
+    try {
+      const dataUrl = await generatePng();
+      const win = window.open();
+      if (win) {
+        win.document.write(`<html><head><title>Flyer Preview</title></head><body style="margin:0; display:flex; justify-content:center; align-items:center; background:#000;"><img src="${dataUrl}" style="max-width:100%; height:auto; box-shadow:0 4px 20px rgba(0,0,0,0.5);" /></body></html>`);
+        win.document.close();
+      } else {
+        toast({ title: "Pop‑up blocked", description: "Please allow pop‑ups for this site.", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Preview failed", description: e.message, variant: "destructive" });
+    }
+    setGeneratingFlyer(false);
+  };
+
+  // ─── IMPROVED SHARE FUNCTION – shares image directly via Web Share API ───
   const shareFlyer = async () => {
     setGeneratingFlyer(true);
-    let dataUrl: string | null = null;
     try {
-      dataUrl = await generatePng();
-    } catch (e: any) {
-      toast({ title: "Could not generate flyer", description: e.message, variant: "destructive" });
-      setGeneratingFlyer(false); return;
-    }
-    const triggerDownload = () => {
-      try { const a = document.createElement("a"); a.download = "flyer.png"; a.href = dataUrl!; a.click(); } catch { }
-    };
-    try {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
+      const dataUrl = await generatePng();
+      const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], "flyer.png", { type: "image/png" });
+
+      // 1. Try to share the image file (mobile browsers that support file sharing)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ title: `${store?.store_name} – Data Bundles`, text: shareText, files: [file] });
-        toast({ title: "Shared!" });
-        setGeneratingFlyer(false); return;
+        await navigator.share({
+          title: `${store?.store_name} – Data Bundles`,
+          text: shareText,
+          files: [file],
+        });
+        toast({ title: "Shared!", description: "Image and text sent via WhatsApp." });
+        setGeneratingFlyer(false);
+        return;
       }
-    } catch (e: any) { if (e.name === "AbortError") { setGeneratingFlyer(false); return; } }
-    try {
-      if (typeof navigator.share === "function") {
-        await navigator.share({ title: `${store?.store_name} – Data Bundles`, text: shareText });
-        triggerDownload();
-        toast({ title: "Text shared!", description: "Flyer image saved to your device." });
-        setGeneratingFlyer(false); return;
+
+      // 2. If share is available but cannot share files, share text and download image
+      if (navigator.share) {
+        await navigator.share({
+          title: `${store?.store_name} – Data Bundles`,
+          text: shareText,
+        });
+        // Also download the image for the user
+        const a = document.createElement("a");
+        a.download = "flyer.png";
+        a.href = dataUrl;
+        a.click();
+        toast({ title: "Text shared!", description: "Image saved to your device. Attach it in WhatsApp." });
+        setGeneratingFlyer(false);
+        return;
       }
-    } catch (e: any) { if (e.name === "AbortError") { setGeneratingFlyer(false); return; } }
-    try { await navigator.clipboard.writeText(shareText); } catch { }
-    triggerDownload();
-    toast({ title: "Share text copied & image downloaded!", description: "Paste the text and attach the flyer image." });
-    setGeneratingFlyer(false);
+
+      // 3. Desktop fallback: download image + open WhatsApp with text
+      const a = document.createElement("a");
+      a.download = "flyer.png";
+      a.href = dataUrl;
+      a.click();
+      const encodedText = encodeURIComponent(shareText);
+      window.open(`https://wa.me/?text=${encodedText}`, "_blank");
+      toast({ title: "Image downloaded & WhatsApp opened", description: "Attach the image to complete the share." });
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        toast({ title: "Sharing failed", description: err.message, variant: "destructive" });
+      }
+    } finally {
+      setGeneratingFlyer(false);
+    }
   };
 
   const copyPhoneNumber = (p: string) => { navigator.clipboard.writeText(p); toast({ title: "Copied!", description: p }); };
@@ -797,8 +826,8 @@ const AgentDashboard = () => {
               {Object.keys(editedPrices).length > 0 && <Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}><Save className="h-4 w-4 mr-1" />{savingPrices ? "Saving..." : "Save Prices"}</Button>}
             </div>
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-              <p className="font-semibold">💡 Markup Explanation</p>
-              <p className="text-xs text-muted-foreground">Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
+              <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>💡 Markup Explanation(Remember to click save after applying markup</p>
+              <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network base on the percentage you want all the prices to be increase by  .Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
             </div>
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
             <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
@@ -818,7 +847,26 @@ const AgentDashboard = () => {
                     <div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => saveFlyerColors(flyerColors)}><Save className="h-3 w-3 mr-1" /> Save</Button><Button variant="ghost" size="sm" onClick={() => saveFlyerColors(DEFAULT_FLYER_COLORS)}><RotateCcw className="h-3 w-3 mr-1" /> Reset</Button></div>
                   </div>
                   <div className="space-y-1"><Label className="text-sm font-medium">Share Message <span className="text-muted-foreground font-normal text-xs">(editable)</span></Label><Textarea value={shareText} onChange={e => setShareText(e.target.value)} rows={4} className="text-sm font-mono" /></div>
-                  <div className="flex gap-3 flex-wrap"><Button variant="outline" onClick={downloadFlyer} disabled={generatingFlyer} className="gap-2 flex-1 sm:flex-none">{generatingFlyer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Download PNG</Button><Button variant="hero" onClick={shareFlyer} disabled={generatingFlyer} className="gap-2 flex-1 sm:flex-none">{generatingFlyer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Share Flyer</Button></div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button variant="outline" onClick={downloadFlyer} disabled={generatingFlyer} className="gap-2 flex-1 sm:flex-none">
+                      {generatingFlyer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Download PNG
+                    </Button>
+                    <Button variant="hero" onClick={previewAsImage} disabled={generatingFlyer} className="gap-2 flex-1 sm:flex-none">
+                      {generatingFlyer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image className="h-4 w-4" />} Preview as Image
+                    </Button>
+                    <Button variant="secondary" onClick={shareFlyer} disabled={generatingFlyer} className="gap-2 flex-1 sm:flex-none">
+                      {generatingFlyer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Share Flyer
+                    </Button>
+                  </div>
+                  <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 text-sm">
+                    <p className="font-semibold flex items-center gap-1"><Image className="h-4 w-4" /> How to save & share</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      📱 <strong>Mobile:</strong> Tap "Share Flyer" to send the image directly via WhatsApp (native share sheet).<br />
+                      💻 <strong>Desktop:</strong> The image will be downloaded, then WhatsApp opens with your message – attach the downloaded image manually.<br />
+                      💾 <strong>Download PNG:</strong> Saves the image to your device.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
               <div ref={flyerContainerRef} className="w-full overflow-hidden rounded-lg border border-border" style={{ aspectRatio: `${FLYER_W} / ${FLYER_H}`, position: "relative", background: "#000" }}>

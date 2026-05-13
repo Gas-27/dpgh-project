@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -49,6 +49,27 @@ interface WithdrawalRequest {
   created_at: string; processed_at: string | null;
 }
 
+interface TopupRecord {
+  id: string;
+  agent_store_id: string;
+  amount: number;
+  created_at: string;
+  agent_stores: {
+    store_name: string;
+    topup_reference: string;
+    wallet_balance: number;
+    momo_name: string;
+  } | null;
+}
+
+// Types for spin wheel configuration
+interface SpinSegment {
+  type: "gb" | "message";
+  value: number | string;
+  label: string;
+  weight: number;
+}
+
 const AdminDashboard = () => {
   const { signOut } = useAuth();
   const { toast } = useToast();
@@ -57,6 +78,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
+  const [topupHistory, setTopupHistory] = useState<TopupRecord[]>([]);
   const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number }>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [saving, setSaving] = useState(false);
@@ -66,7 +88,7 @@ const AdminDashboard = () => {
   const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
   const [processingWithdrawals, setProcessingWithdrawals] = useState<Set<string>>(new Set());
 
-  // Search states for Agents, Users, Orders, and Withdrawals
+  // Search states
   const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [orderSearchTerm, setOrderSearchTerm] = useState("");
@@ -84,20 +106,36 @@ const AdminDashboard = () => {
   const [notifTarget, setNotifTarget] = useState("all");
   const [sendingNotif, setSendingNotif] = useState(false);
 
+  // Spin wheel configuration state
+  const [spinConfig, setSpinConfig] = useState<{
+    enabled: boolean;
+    default_network: string;
+    payment_required: boolean;
+    payment_amount: number;
+    segments: SpinSegment[];
+  } | null>(null);
+  const [spinSaving, setSpinSaving] = useState(false);
+
   const fetchData = async () => {
     setDataLoading(true);
-    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes] = await Promise.all([
+    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes, topupRes] = await Promise.all([
       supabase.from("data_packages").select("*").order("size_gb"),
       supabase.from("agent_stores").select("*").order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("*"),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("withdrawal_requests").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("wallet_topups")
+        .select("id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )")
+        .order("created_at", { ascending: false })
+        .limit(100),
     ]);
     setPackages(pkgRes.data ?? []);
     setAgents((agentRes.data as AgentStore[]) ?? []);
     setOrders((ordersRes.data as Order[]) ?? []);
     setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
+    setTopupHistory((topupRes.data as any[]) ?? []);
 
     const rolesMap: Record<string, string> = {};
     (rolesRes.data ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
@@ -106,9 +144,73 @@ const AdminDashboard = () => {
     setDataLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const fetchSpinConfig = async () => {
+    const { data, error } = await supabase.from("spin_config").select("*").single();
+    if (!error && data) {
+      setSpinConfig({
+        enabled: data.enabled ?? true,
+        default_network: data.default_network ?? "mtn",
+        payment_required: data.payment_required ?? true,
+        payment_amount: data.payment_amount ?? 2,
+        segments: data.segments as SpinSegment[] || [
+          { type: "gb", value: 1, label: "1 GB", weight: 40 },
+          { type: "gb", value: 2, label: "2 GB", weight: 35 },
+          { type: "gb", value: 10, label: "10 GB", weight: 5 },
+          { type: "message", value: "", label: "Better luck next time!", weight: 20 },
+          { type: "message", value: "", label: "Almost there!", weight: 0 },
+          { type: "message", value: "", label: "Keep spinning!", weight: 0 },
+          { type: "message", value: "", label: "You can do it!", weight: 0 },
+          { type: "message", value: "", label: "Nice try!", weight: 0 },
+          { type: "message", value: "", label: "Try again!", weight: 0 },
+        ],
+      });
+    } else {
+      setSpinConfig({
+        enabled: true,
+        default_network: "mtn",
+        payment_required: true,
+        payment_amount: 2,
+        segments: [
+          { type: "gb", value: 1, label: "1 GB", weight: 40 },
+          { type: "gb", value: 2, label: "2 GB", weight: 35 },
+          { type: "gb", value: 10, label: "10 GB", weight: 5 },
+          { type: "message", value: "", label: "Better luck next time!", weight: 20 },
+          { type: "message", value: "", label: "Almost there!", weight: 0 },
+          { type: "message", value: "", label: "Keep spinning!", weight: 0 },
+          { type: "message", value: "", label: "You can do it!", weight: 0 },
+          { type: "message", value: "", label: "Nice try!", weight: 0 },
+          { type: "message", value: "", label: "Try again!", weight: 0 },
+        ],
+      });
+    }
+  };
 
-  // Auto‑retry pending orders (PAID + PENDING only)
+  const saveSpinConfig = async () => {
+    if (!spinConfig) return;
+    setSpinSaving(true);
+    const { error } = await supabase.from("spin_config").update({
+      enabled: spinConfig.enabled,
+      default_network: spinConfig.default_network,
+      payment_required: spinConfig.payment_required,
+      payment_amount: spinConfig.payment_amount,
+      segments: spinConfig.segments,
+      updated_at: new Date().toISOString(),
+    }).eq("id", true);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Spin configuration saved!" });
+      await fetchSpinConfig();
+    }
+    setSpinSaving(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+    fetchSpinConfig();
+  }, []);
+
+  // Auto‑retry pending orders
   useEffect(() => {
     const autoRetryPendingOrders = async () => {
       const { data: pendingOrders } = await supabase
@@ -132,7 +234,7 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, [retryingOrders]);
 
-  // Withdrawal email listener (UPDATED with detailed balance info)
+  // Withdrawal email listener
   useEffect(() => {
     const channel = supabase
       .channel("withdrawal-inserts")
@@ -141,7 +243,6 @@ const AdminDashboard = () => {
         { event: "INSERT", schema: "public", table: "withdrawal_requests" },
         async (payload) => {
           const newWithdrawal = payload.new as WithdrawalRequest;
-          // Fetch agent details INCLUDING wallet_balance
           const { data: agent } = await supabase
             .from("agent_stores")
             .select("store_name, whatsapp_number, momo_name, momo_number, momo_network, wallet_balance")
@@ -220,7 +321,6 @@ const AdminDashboard = () => {
     toast({ title: approved ? "Agent approved!" : "Agent suspended" });
   };
 
-  // ==================== RETRY ORDER (FIXED) ====================
   const retryOrder = async (orderId: string) => {
     if (retryingOrders.has(orderId)) return;
     setRetryingOrders((prev) => new Set(prev).add(orderId));
@@ -230,26 +330,16 @@ const AdminDashboard = () => {
         .select("fulfillment_status, status")
         .eq("id", orderId)
         .single();
-      if (!currentOrder) {
-        toast({ title: "Order not found" });
+      if (!currentOrder) { toast({ title: "Order not found" }); return; }
+      if (currentOrder.fulfillment_status === "completed" || currentOrder.fulfillment_status === "failed") {
+        toast({ title: "Order already processed", description: `Status: ${currentOrder.fulfillment_status}` });
         return;
       }
-      // 🔥 Only block COMPLETED orders – FAILED ones CAN be retried
-      if (currentOrder.fulfillment_status === "completed") {
-        toast({ title: "Order already completed", description: "This order has already been fulfilled." });
-        return;
-      }
-      if (currentOrder.status !== "paid") {
-        toast({ title: "Order not paid yet", variant: "destructive" });
-        return;
-      }
+      if (currentOrder.status !== "paid") { toast({ title: "Order not paid yet", variant: "destructive" }); return; }
       const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: orderId } });
       if (error) throw error;
-      if (data?.success) {
-        toast({ title: "Order fulfilled successfully!" });
-      } else {
-        toast({ title: "Fulfillment failed", description: data?.message || "Check API balance", variant: "destructive" });
-      }
+      if (data?.success) toast({ title: "Order fulfilled successfully!" });
+      else toast({ title: "Fulfillment failed", description: data?.message || "Check API balance", variant: "destructive" });
       await fetchData();
     } catch (err: any) {
       toast({ title: "Retry failed", description: err.message, variant: "destructive" });
@@ -263,15 +353,10 @@ const AdminDashboard = () => {
     for (const order of failedOrders) { await retryOrder(order.id); }
   };
 
-  // Topup
   const searchTopupRef = () => {
     const found = agents.find((a) => a.topup_reference === topupSearch.trim());
-    if (found) {
-      setTopupAgent(found);
-    } else {
-      setTopupAgent(null);
-      toast({ title: "Not found", description: "No agent with that reference code.", variant: "destructive" });
-    }
+    if (found) setTopupAgent(found);
+    else { setTopupAgent(null); toast({ title: "Not found", description: "No agent with that reference code.", variant: "destructive" }); }
   };
 
   const creditWallet = async () => {
@@ -279,17 +364,9 @@ const AdminDashboard = () => {
     const amount = parseFloat(topupAmount);
     if (!amount || amount <= 0) { toast({ title: "Enter a valid amount", variant: "destructive" }); return; }
     setTopupLoading(true);
-
     const newBalance = Number(topupAgent.wallet_balance) + amount;
-    const { error: updateErr } = await supabase.from("agent_stores")
-      .update({ wallet_balance: newBalance }).eq("id", topupAgent.id);
-
-    if (updateErr) {
-      toast({ title: "Error", description: updateErr.message, variant: "destructive" });
-      setTopupLoading(false);
-      return;
-    }
-
+    const { error: updateErr } = await supabase.from("agent_stores").update({ wallet_balance: newBalance }).eq("id", topupAgent.id);
+    if (updateErr) { toast({ title: "Error", description: updateErr.message, variant: "destructive" }); setTopupLoading(false); return; }
     await supabase.from("wallet_topups").insert({ agent_store_id: topupAgent.id, amount });
     setTopupAgent({ ...topupAgent, wallet_balance: newBalance });
     setTopupAmount("");
@@ -299,42 +376,22 @@ const AdminDashboard = () => {
   };
 
   const sendNotification = async () => {
-    if (!notifTitle.trim() || !notifMessage.trim()) {
-      toast({ title: "Fill title and message", variant: "destructive" });
-      return;
-    }
+    if (!notifTitle.trim() || !notifMessage.trim()) { toast({ title: "Fill title and message", variant: "destructive" }); return; }
     setSendingNotif(true);
-    const { error } = await supabase.from("notifications").insert({
-      title: notifTitle.trim(), message: notifMessage.trim(), target_role: notifTarget,
-    });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Notification sent!" });
-      setNotifTitle(""); setNotifMessage(""); setNotifTarget("all");
-    }
+    const { error } = await supabase.from("notifications").insert({ title: notifTitle.trim(), message: notifMessage.trim(), target_role: notifTarget });
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else { toast({ title: "Notification sent!" }); setNotifTitle(""); setNotifMessage(""); setNotifTarget("all"); }
     setSendingNotif(false);
   };
 
-  // 🔥 PROCESS WITHDRAWAL – allows negative balance
   const processWithdrawal = async (withdrawalId: string, agentStoreId: string, amount: number) => {
     setProcessingWithdrawals((prev) => new Set(prev).add(withdrawalId));
     try {
       const agent = agents.find((a) => a.id === agentStoreId);
       if (!agent) throw new Error("Agent not found");
-
-      // Direct subtraction – no Math.max, allowing negative
       const newBalance = Number(agent.wallet_balance) - amount;
-
-      const { error: walletErr } = await supabase.from("agent_stores")
-        .update({ wallet_balance: newBalance }).eq("id", agentStoreId);
-      if (walletErr) throw walletErr;
-
-      const { error: statusErr } = await supabase.from("withdrawal_requests")
-        .update({ status: "completed", processed_at: new Date().toISOString() })
-        .eq("id", withdrawalId);
-      if (statusErr) throw statusErr;
-
+      await supabase.from("agent_stores").update({ wallet_balance: newBalance }).eq("id", agentStoreId);
+      await supabase.from("withdrawal_requests").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", withdrawalId);
       toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted. New balance: GH₵ ${newBalance.toFixed(2)}.` });
       await fetchData();
     } catch (err: any) {
@@ -344,20 +401,27 @@ const AdminDashboard = () => {
     }
   };
 
+  // Simplified admin promotion – only use user_roles table
+  const makeAdmin = async (user: UserProfile) => {
+    const { error } = await supabase
+      .from("user_roles")
+      .upsert({ user_id: user.id, role: "admin" });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Admin role assigned", description: `${user.full_name || user.id} is now an admin.` });
+      await fetchData();
+    }
+  };
+
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const storeSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
 
-  const filteredAgents = agents.filter((agent) =>
-    agent.store_name.toLowerCase().includes(agentSearchTerm.toLowerCase())
-  );
-  const filteredUsers = users.filter((user) =>
-    (user.full_name?.toLowerCase() || "").includes(userSearchTerm.toLowerCase())
-  );
-  const filteredOrders = orders.filter((order) =>
-    order.customer_number.toLowerCase().includes(orderSearchTerm.toLowerCase())
-  );
+  const filteredAgents = agents.filter((agent) => agent.store_name.toLowerCase().includes(agentSearchTerm.toLowerCase()));
+  const filteredUsers = users.filter((user) => (user.full_name?.toLowerCase() || "").includes(userSearchTerm.toLowerCase()));
+  const filteredOrders = orders.filter((order) => order.customer_number.toLowerCase().includes(orderSearchTerm.toLowerCase()));
   const filteredWithdrawals = withdrawals.filter((withdrawal) => {
     const agent = agents.find((a) => a.id === withdrawal.agent_store_id);
     return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
@@ -403,9 +467,10 @@ const AdminDashboard = () => {
             </TabsTrigger>
             <TabsTrigger value="users"><Users className="h-4 w-4 mr-1" /> Users</TabsTrigger>
             <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1" /> Notify</TabsTrigger>
+            <TabsTrigger value="spinwheel"><Gift className="h-4 w-4 mr-1" /> Spin Wheel</TabsTrigger>
           </TabsList>
 
-          {/* PRICES TAB (unchanged) */}
+          {/* Prices Tab */}
           <TabsContent value="prices" className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex gap-2">
@@ -416,47 +481,23 @@ const AdminDashboard = () => {
                 ))}
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-1" /> Add Package
-                </Button>
+                <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add Package</Button>
                 {Object.keys(editedPrices).length > 0 && (
-                  <Button variant="hero" size="sm" onClick={savePrices} disabled={saving}>
-                    <Save className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save Changes"}
-                  </Button>
+                  <Button variant="hero" size="sm" onClick={savePrices} disabled={saving}><Save className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save Changes"}</Button>
                 )}
               </div>
             </div>
             <Card className="border-border">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Size</TableHead>
-                    <TableHead>User Price (GH₵)</TableHead>
-                    <TableHead>Agent Price (GH₵)</TableHead>
-                    <TableHead>Active</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead>Size</TableHead><TableHead>User Price (GH₵)</TableHead><TableHead>Agent Price (GH₵)</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {filteredPackages.map((pkg) => (
                     <TableRow key={pkg.id}>
                       <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
-                      <TableCell>
-                        <Input type="number" step="0.01" defaultValue={pkg.price}
-                          onChange={(e) => handlePriceChange(pkg.id, "price", e.target.value)} className="w-24 h-8" />
-                      </TableCell>
-                      <TableCell>
-                        <Input type="number" step="0.01" defaultValue={pkg.agent_price}
-                          onChange={(e) => handlePriceChange(pkg.id, "agent_price", e.target.value)} className="w-24 h-8" />
-                      </TableCell>
-                      <TableCell>
-                        <Switch checked={pkg.active} onCheckedChange={(checked) => toggleActive(pkg.id, checked)} />
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => deletePackage(pkg.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+                      <TableCell><Input type="number" step="0.01" defaultValue={pkg.price} onChange={(e) => handlePriceChange(pkg.id, "price", e.target.value)} className="w-24 h-8" /></TableCell>
+                      <TableCell><Input type="number" step="0.01" defaultValue={pkg.agent_price} onChange={(e) => handlePriceChange(pkg.id, "agent_price", e.target.value)} className="w-24 h-8" /></TableCell>
+                      <TableCell><Switch checked={pkg.active} onCheckedChange={(checked) => toggleActive(pkg.id, checked)} /></TableCell>
+                      <TableCell><Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => deletePackage(pkg.id)}><Trash2 className="h-4 w-4" /></Button></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -464,70 +505,30 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* ORDERS TAB */}
+          {/* Orders Tab */}
           <TabsContent value="orders" className="space-y-4">
             {failedCount > 0 && (
               <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
-                <p className="text-sm text-foreground">
-                  <span className="font-bold text-destructive">{failedCount} failed</span> order(s) — payment received but data not fulfilled. Top up API balance and retry.
-                </p>
-                <Button variant="destructive" size="sm" onClick={retryAllFailed}>
-                  <RefreshCw className="h-4 w-4 mr-1" /> Retry All Failed
-                </Button>
+                <p className="text-sm text-foreground"><span className="font-bold text-destructive">{failedCount} failed</span> order(s) — payment received but data not fulfilled. Top up API balance and retry.</p>
+                <Button variant="destructive" size="sm" onClick={retryAllFailed}><RefreshCw className="h-4 w-4 mr-1" /> Retry All Failed</Button>
               </div>
             )}
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by phone number..."
-                value={orderSearchTerm}
-                onChange={(e) => setOrderSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by phone number..." value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="pl-10" /></div>
             <Card className="border-border">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Network</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Fulfillment</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {filteredOrders.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow>
-                  ) : (
+                  {filteredOrders.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
                     filteredOrders.map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {order.created_at ? new Date(order.created_at).toLocaleString() : "—"}
-                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
                         <TableCell className="font-medium">{order.customer_number}</TableCell>
                         <TableCell className="uppercase text-sm">{order.network}</TableCell>
                         <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
                         <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {order.payment_method === "wallet" ? "Wallet" : "Paystack"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>
-                            {order.fulfillment_status}
-                          </Badge>
-                        </TableCell>
+                        <TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell>
+                        <TableCell><Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge></TableCell>
+                        <TableCell><Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge></TableCell>
                         <TableCell>
                           {order.fulfillment_status !== "completed" && (
                             <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
@@ -537,26 +538,16 @@ const AdminDashboard = () => {
                         </TableCell>
                       </TableRow>
                     ))
-                  )}
+                  }
                 </TableBody>
               </Table>
             </Card>
           </TabsContent>
 
-          {/* AGENTS TAB */}
+          {/* Agents Tab */}
           <TabsContent value="agents" className="space-y-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by store name..."
-                value={agentSearchTerm}
-                onChange={(e) => setAgentSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            {filteredAgents.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No agents match your search.</p>
-            ) : (
+            <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by store name..." value={agentSearchTerm} onChange={(e) => setAgentSearchTerm(e.target.value)} className="pl-10" /></div>
+            {filteredAgents.length === 0 ? <p className="text-muted-foreground text-center py-8">No agents match your search.</p> :
               filteredAgents.map((agent) => (
                 <Card key={agent.id} className="border-border">
                   <CardContent className="p-6">
@@ -568,57 +559,31 @@ const AdminDashboard = () => {
                         <p className="text-sm text-muted-foreground">Support: {agent.support_number}</p>
                         <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} • {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
                         <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(agent.wallet_balance).toFixed(2)}</span></p>
-                        {agent.approved && (
-                          <Link to={`/store/${storeSlug(agent.store_name)}`} className="text-xs text-primary hover:underline flex items-center gap-1">
-                            <Eye className="h-3 w-3" /> View Store
-                          </Link>
-                        )}
+                        {agent.approved && <Link to={`/store/${storeSlug(agent.store_name)}`} className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</Link>}
                       </div>
                       <div className="flex items-center gap-2">
                         {agent.approved ? (
-                          <>
-                            <Badge className="bg-green-600/20 text-green-400 border-green-600/30">Approved</Badge>
-                            <Button variant="outline" size="sm" onClick={() => toggleApproval(agent.id, false)}>
-                              <X className="h-4 w-4 mr-1" /> Suspend
-                            </Button>
-                          </>
+                          <><Badge className="bg-green-600/20 text-green-400 border-green-600/30">Approved</Badge><Button variant="outline" size="sm" onClick={() => toggleApproval(agent.id, false)}><X className="h-4 w-4 mr-1" /> Suspend</Button></>
                         ) : (
-                          <>
-                            <Badge variant="secondary">Pending</Badge>
-                            <Button variant="hero" size="sm" onClick={() => toggleApproval(agent.id, true)}>
-                              <Check className="h-4 w-4 mr-1" /> Approve
-                            </Button>
-                          </>
+                          <><Badge variant="secondary">Pending</Badge><Button variant="hero" size="sm" onClick={() => toggleApproval(agent.id, true)}><Check className="h-4 w-4 mr-1" /> Approve</Button></>
                         )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))
-            )}
+            }
           </TabsContent>
 
-          {/* TOPUP TAB */}
+          {/* Topup Tab */}
           <TabsContent value="topup" className="space-y-6">
             <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="font-display text-lg flex items-center gap-2">
-                  <Wallet className="h-5 w-5 text-primary" /> Credit Agent Wallet
-                </CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /> Credit Agent Wallet</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Enter 4-digit Topup Reference" value={topupSearch}
-                      onChange={(e) => setTopupSearch(e.target.value)} className="pl-10" maxLength={4}
-                      onKeyDown={(e) => e.key === "Enter" && searchTopupRef()} />
-                  </div>
-                  <Button variant="hero" onClick={searchTopupRef}>
-                    <Search className="h-4 w-4 mr-1" /> Search
-                  </Button>
+                  <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Enter 4-digit Topup Reference" value={topupSearch} onChange={(e) => setTopupSearch(e.target.value)} className="pl-10" maxLength={4} onKeyDown={(e) => e.key === "Enter" && searchTopupRef()} /></div>
+                  <Button variant="hero" onClick={searchTopupRef}><Search className="h-4 w-4 mr-1" /> Search</Button>
                 </div>
-
                 {topupAgent && (
                   <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 space-y-4">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -628,82 +593,78 @@ const AdminDashboard = () => {
                       <div><p className="text-muted-foreground">Balance</p><p className="font-bold text-green-400">GH₵ {Number(topupAgent.wallet_balance).toFixed(2)}</p></div>
                     </div>
                     <div className="flex gap-2 items-end">
-                      <div className="flex-1 space-y-1">
-                        <Label>Amount to Credit (GH₵)</Label>
-                        <Input type="number" step="0.01" placeholder="e.g. 50.00" value={topupAmount}
-                          onChange={(e) => setTopupAmount(e.target.value)} />
-                      </div>
-                      <Button variant="hero" onClick={creditWallet} disabled={topupLoading}>
-                        {topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Wallet className="h-4 w-4 mr-1" />}
-                        Credit
-                      </Button>
+                      <div className="flex-1 space-y-1"><Label>Amount to Credit (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 50.00" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} /></div>
+                      <Button variant="hero" onClick={creditWallet} disabled={topupLoading}>{topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Wallet className="h-4 w-4 mr-1" />} Credit</Button>
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Top‑up History (with MoMo name) */}
+            <Card className="border-border">
+              <CardHeader><CardTitle className="font-display text-lg">Top‑up History</CardTitle></CardHeader>
+              <CardContent>
+                {topupHistory.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No top‑ups recorded yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Store</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>MoMo Name</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Store Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {topupHistory.map((t) => (
+                        <TableRow key={t.id}>
+                          <TableCell className="text-sm">{new Date(t.created_at).toLocaleString()}</TableCell>
+                          <TableCell className="font-medium">{t.agent_stores?.store_name ?? "—"}</TableCell>
+                          <TableCell className="text-primary">{t.agent_stores?.topup_reference ?? "—"}</TableCell>
+                          <TableCell>{t.agent_stores?.momo_name ?? "—"}</TableCell>
+                          <TableCell>GH₵ {Number(t.amount).toFixed(2)}</TableCell>
+                          <TableCell>GH₵ {t.agent_stores?.wallet_balance?.toFixed(2) ?? "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          {/* WITHDRAWALS TAB */}
+          {/* Withdrawals Tab */}
           <TabsContent value="withdrawals" className="space-y-4">
             {pendingWithdrawals.length > 0 && (
               <div className="p-4 rounded-lg border border-yellow-600/30 bg-yellow-600/5">
-                <p className="text-sm text-foreground">
-                  <span className="font-bold text-yellow-400">{pendingWithdrawals.length} pending</span> withdrawal request(s) awaiting processing.
-                </p>
+                <p className="text-sm text-foreground"><span className="font-bold text-yellow-400">{pendingWithdrawals.length} pending</span> withdrawal request(s) awaiting processing.</p>
               </div>
             )}
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by agent store name..."
-                value={withdrawalSearchTerm}
-                onChange={(e) => setWithdrawalSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by agent store name..." value={withdrawalSearchTerm} onChange={(e) => setWithdrawalSearchTerm(e.target.value)} className="pl-10" /></div>
             <Card className="border-border">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Agent</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Wallet Balance</TableHead>
-                    <TableHead>MoMo Name</TableHead>
-                    <TableHead>MoMo Number</TableHead>
-                    <TableHead>Network</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Agent</TableHead><TableHead>Amount</TableHead><TableHead>Wallet Balance</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {filteredWithdrawals.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow>
-                  ) : (
+                  {filteredWithdrawals.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
                     filteredWithdrawals.map((w) => {
                       const agent = agents.find((a) => a.id === w.agent_store_id);
                       return (
                         <TableRow key={w.id}>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {new Date(w.created_at).toLocaleString()}
-                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{new Date(w.created_at).toLocaleString()}</TableCell>
                           <TableCell className="font-medium">{agent?.store_name ?? "—"}</TableCell>
                           <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
                           <TableCell className="font-bold text-green-400">GH₵ {Number(agent?.wallet_balance ?? 0).toFixed(2)}</TableCell>
                           <TableCell>{agent?.momo_name ?? "—"}</TableCell>
                           <TableCell className="font-mono">{agent?.momo_number ?? "—"}</TableCell>
                           <TableCell className="uppercase text-sm">{agent?.momo_network ?? "—"}</TableCell>
-                          <TableCell>
-                            <Badge className={
-                              w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30"
-                                : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                            }>{w.status}</Badge>
-                          </TableCell>
+                          <TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{w.status}</Badge></TableCell>
                           <TableCell>
                             {w.status === "pending" && (
-                              <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount))}
-                                disabled={processingWithdrawals.has(w.id)}>
+                              <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount))} disabled={processingWithdrawals.has(w.id)}>
                                 {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
                               </Button>
                             )}
@@ -711,45 +672,31 @@ const AdminDashboard = () => {
                         </TableRow>
                       );
                     })
-                  )}
+                  }
                 </TableBody>
               </Table>
             </Card>
           </TabsContent>
 
-          {/* USERS TAB */}
+          {/* Users Tab – Fixed without admin_permissions */}
           <TabsContent value="users" className="space-y-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name..."
-                value={userSearchTerm}
-                onChange={(e) => setUserSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name..." value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} className="pl-10" /></div>
             <Card className="border-border">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Role</TableHead><TableHead>Joined</TableHead><TableHead></TableHead></TableRow></TableHeader>
                 <TableBody>
                   {filteredUsers.map((u) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{u.phone || "—"}</TableCell>
+                      <TableCell><Badge variant={u.role === "admin" ? "default" : u.role === "agent" ? "secondary" : "outline"}>{u.role}</Badge></TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
                       <TableCell>
-                        <Badge variant={u.role === "admin" ? "default" : u.role === "agent" ? "secondary" : "outline"}>
-                          {u.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
+                        {u.role !== "admin" && (
+                          <Button variant="outline" size="sm" onClick={() => makeAdmin(u)}>
+                            <ShieldAlert className="h-4 w-4 mr-1" /> Make Admin
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -758,39 +705,232 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* NOTIFICATIONS TAB */}
+          {/* Notifications Tab */}
           <TabsContent value="notifications" className="space-y-6">
+            <Card className="border-border">
+              <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Bell className="h-5 w-5 text-primary" /> Send Notification</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2"><Label>Target Audience</Label><Select value={notifTarget} onValueChange={setNotifTarget}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Users & Agents</SelectItem><SelectItem value="user">Users Only</SelectItem><SelectItem value="agent">Agents Only</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2"><Label>Title</Label><Input placeholder="Notification title" value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Message</Label><Textarea placeholder="Write your message here..." value={notifMessage} onChange={(e) => setNotifMessage(e.target.value)} rows={4} /></div>
+                <Button variant="hero" onClick={sendNotification} disabled={sendingNotif}>{sendingNotif ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />} Send Notification</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ============= SPIN WHEEL TAB ============= */}
+          <TabsContent value="spinwheel" className="space-y-6">
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display text-lg flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-primary" /> Send Notification
+                  <Gift className="h-5 w-5 text-primary" /> Spin Wheel Configuration
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                {/* Enable/Disable */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Enable Spin Wheel</Label>
+                    <p className="text-sm text-muted-foreground">When disabled, the spin button will not appear on the Packages page.</p>
+                  </div>
+                  <Switch
+                    checked={spinConfig?.enabled || false}
+                    onCheckedChange={(checked) => setSpinConfig(prev => prev ? { ...prev, enabled: checked } : null)}
+                  />
+                </div>
+
+                {/* Payment Required & Amount */}
+                <div className="space-y-4 border p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-base">Require Payment</Label>
+                      <p className="text-sm text-muted-foreground">If OFF, spins are free (no Paystack).</p>
+                    </div>
+                    <Switch
+                      checked={spinConfig?.payment_required ?? true}
+                      onCheckedChange={(checked) => setSpinConfig(prev => prev ? { ...prev, payment_required: checked } : null)}
+                    />
+                  </div>
+                  {spinConfig?.payment_required && (
+                    <div className="flex items-center gap-4">
+                      <Label>Payment Amount (GHS)</Label>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        className="w-28"
+                        value={spinConfig?.payment_amount ?? 2}
+                        onChange={(e) => setSpinConfig(prev => prev ? { ...prev, payment_amount: parseFloat(e.target.value) || 2 } : null)}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Default Network */}
                 <div className="space-y-2">
-                  <Label>Target Audience</Label>
-                  <Select value={notifTarget} onValueChange={setNotifTarget}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Label>Default Network (shown big and bold on wheel)</Label>
+                  <Select
+                    value={spinConfig?.default_network || "mtn"}
+                    onValueChange={(val) => setSpinConfig(prev => prev ? { ...prev, default_network: val } : null)}
+                  >
+                    <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Users & Agents</SelectItem>
-                      <SelectItem value="user">Users Only</SelectItem>
-                      <SelectItem value="agent">Agents Only</SelectItem>
+                      <SelectItem value="mtn">MTN</SelectItem>
+                      <SelectItem value="airteltigo">AirtelTigo</SelectItem>
+                      <SelectItem value="telecel">Telecel</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input placeholder="Notification title" value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} />
+
+                {/* Segments Editor */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Wheel Segments</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!spinConfig) return;
+                          if (spinConfig.segments.length >= 12) {
+                            toast({ title: "Max 12 segments", variant: "destructive" });
+                            return;
+                          }
+                          setSpinConfig({
+                            ...spinConfig,
+                            segments: [...spinConfig.segments, { type: "message", value: "", label: "New", weight: 1 }]
+                          });
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Add
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!spinConfig) return;
+                          if (spinConfig.segments.length <= 2) {
+                            toast({ title: "Minimum 2 segments", variant: "destructive" });
+                            return;
+                          }
+                          setSpinConfig({
+                            ...spinConfig,
+                            segments: spinConfig.segments.slice(0, -1)
+                          });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" /> Remove Last
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Each segment’s label, type, and weight. Higher weight = higher chance. (Min 2, Max 12)</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {spinConfig?.segments.map((seg, idx) => (
+                      <Card key={idx} className="p-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Badge variant="outline">Slot {idx + 1}</Badge>
+                            <Select
+                              value={seg.type}
+                              onValueChange={(val) => {
+                                const newSegments = [...spinConfig.segments];
+                                newSegments[idx] = { ...newSegments[idx], type: val as "gb" | "message" };
+                                setSpinConfig({ ...spinConfig, segments: newSegments });
+                              }}
+                            >
+                              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="gb">GB Prize</SelectItem>
+                                <SelectItem value="message">Message</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {seg.type === "gb" ? (
+                            <>
+                              <Input
+                                type="number"
+                                placeholder="GB value"
+                                value={seg.value}
+                                onChange={(e) => {
+                                  const newSegments = [...spinConfig.segments];
+                                  newSegments[idx] = { ...newSegments[idx], value: parseFloat(e.target.value) || 0 };
+                                  setSpinConfig({ ...spinConfig, segments: newSegments });
+                                }}
+                              />
+                              <Input
+                                placeholder="Label (e.g., 1 GB)"
+                                value={seg.label}
+                                onChange={(e) => {
+                                  const newSegments = [...spinConfig.segments];
+                                  newSegments[idx] = { ...newSegments[idx], label: e.target.value };
+                                  setSpinConfig({ ...spinConfig, segments: newSegments });
+                                }}
+                              />
+                            </>
+                          ) : (
+                            <Input
+                              placeholder="Motivational message"
+                              value={seg.label}
+                              onChange={(e) => {
+                                const newSegments = [...spinConfig.segments];
+                                newSegments[idx] = { ...newSegments[idx], label: e.target.value };
+                                setSpinConfig({ ...spinConfig, segments: newSegments });
+                              }}
+                            />
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs">Weight</Label>
+                            <Input
+                              type="number"
+                              className="w-24"
+                              value={seg.weight}
+                              onChange={(e) => {
+                                const newSegments = [...spinConfig.segments];
+                                newSegments[idx] = { ...newSegments[idx], weight: parseFloat(e.target.value) || 0 };
+                                setSpinConfig({ ...spinConfig, segments: newSegments });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Message</Label>
-                  <Textarea placeholder="Write your message here..." value={notifMessage}
-                    onChange={(e) => setNotifMessage(e.target.value)} rows={4} />
-                </div>
-                <Button variant="hero" onClick={sendNotification} disabled={sendingNotif}>
-                  {sendingNotif ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-                  Send Notification
+
+                <Button onClick={saveSpinConfig} disabled={spinSaving}>
+                  {spinSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                  Save Spin Configuration
                 </Button>
+
+                {/* Wheel Preview */}
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium mb-2">Wheel Preview ({spinConfig?.segments.length || 0} segments)</p>
+                  <div className="w-48 h-48 relative mx-auto">
+                    <svg viewBox="0 0 100 100" className="w-full h-full">
+                      {spinConfig?.segments.map((_, i) => {
+                        const count = spinConfig.segments.length;
+                        const start = (i * 360) / count;
+                        const end = ((i + 1) * 360) / count;
+                        const x1 = 50 + 40 * Math.cos((start * Math.PI) / 180);
+                        const y1 = 50 + 40 * Math.sin((start * Math.PI) / 180);
+                        const x2 = 50 + 40 * Math.cos((end * Math.PI) / 180);
+                        const y2 = 50 + 40 * Math.sin((end * Math.PI) / 180);
+                        const largeArc = end - start <= 180 ? 0 : 1;
+                        const d = `M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                        const textAngle = start + (end - start) / 2;
+                        const tx = 50 + 25 * Math.cos((textAngle * Math.PI) / 180);
+                        const ty = 50 + 25 * Math.sin((textAngle * Math.PI) / 180);
+                        const colors = ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff", "#ff9f40", "#8e5ea2", "#3cba9f", "#e8c3b9"];
+                        return (
+                          <g key={i}>
+                            <path d={d} fill={colors[i % colors.length]} stroke="white" strokeWidth="0.5" />
+                            <text x={tx} y={ty} textAnchor="middle" dominantBaseline="middle" fontSize="4" fill="white" fontWeight="bold">{i + 1}</text>
+                          </g>
+                        );
+                      })}
+                      <circle cx="50" cy="50" r="8" fill="white" stroke="#333" strokeWidth="1" />
+                    </svg>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -800,37 +940,13 @@ const AdminDashboard = () => {
       {/* Add Package Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-md border-border bg-card">
-          <DialogHeader>
-            <DialogTitle className="font-display">Add New Package</DialogTitle>
-            <DialogDescription>Create a new data package.</DialogDescription>
-          </DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">Add New Package</DialogTitle><DialogDescription>Create a new data package.</DialogDescription></DialogHeader>
           <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label>Network</Label>
-              <Select value={newPkg.network} onValueChange={(v) => setNewPkg((p) => ({ ...p, network: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mtn">MTN</SelectItem>
-                  <SelectItem value="airteltigo">AirtelTigo</SelectItem>
-                  <SelectItem value="telecel">Telecel</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Size (GB)</Label>
-              <Input type="number" placeholder="e.g. 5" value={newPkg.size_gb} onChange={(e) => setNewPkg((p) => ({ ...p, size_gb: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>User Price (GH₵)</Label>
-              <Input type="number" step="0.01" placeholder="e.g. 15.00" value={newPkg.price} onChange={(e) => setNewPkg((p) => ({ ...p, price: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Agent Price (GH₵)</Label>
-              <Input type="number" step="0.01" placeholder="e.g. 12.00" value={newPkg.agent_price} onChange={(e) => setNewPkg((p) => ({ ...p, agent_price: e.target.value }))} />
-            </div>
-            <Button variant="hero" className="w-full" onClick={addPackage}>
-              <Plus className="h-4 w-4 mr-1" /> Add Package
-            </Button>
+            <div className="space-y-2"><Label>Network</Label><Select value={newPkg.network} onValueChange={(v) => setNewPkg((p) => ({ ...p, network: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="mtn">MTN</SelectItem><SelectItem value="airteltigo">AirtelTigo</SelectItem><SelectItem value="telecel">Telecel</SelectItem></SelectContent></Select></div>
+            <div className="space-y-2"><Label>Size (GB)</Label><Input type="number" placeholder="e.g. 5" value={newPkg.size_gb} onChange={(e) => setNewPkg((p) => ({ ...p, size_gb: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>User Price (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 15.00" value={newPkg.price} onChange={(e) => setNewPkg((p) => ({ ...p, price: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Agent Price (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 12.00" value={newPkg.agent_price} onChange={(e) => setNewPkg((p) => ({ ...p, agent_price: e.target.value }))} /></div>
+            <Button variant="hero" className="w-full" onClick={addPackage}><Plus className="h-4 w-4 mr-1" /> Add Package</Button>
           </div>
         </DialogContent>
       </Dialog>

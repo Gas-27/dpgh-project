@@ -1,12 +1,28 @@
 import { Zap, Menu, X, LayoutDashboard, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, isAdmin, isAgent, signOut, getDashboardRoute, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Get the correct dashboard route (with fallback)
+  const dashboardRoute = getDashboardRoute() || "/dashboard";
+
+  // Helper to get the button label based on role
+  const getDashboardLabel = () => {
+    if (isAdmin) return "Admin Dashboard";
+    if (isAgent) return "Agent Dashboard";
+    return "Dashboard";
+  };
+
+  // Handle dashboard click – navigate programmatically (optional, Link already works)
+  const handleDashboardClick = () => {
+    navigate(dashboardRoute);
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
@@ -33,9 +49,9 @@ const Navbar = () => {
           ) : user ? (
             <>
               <Button variant="hero" size="sm" asChild>
-                <Link to={getDashboardRoute()}>
+                <Link to={dashboardRoute}>
                   <LayoutDashboard className="h-4 w-4 mr-1" />
-                  {isAdmin ? "Admin Dashboard" : isAgent ? "Agent Dashboard" : "Dashboard"}
+                  {getDashboardLabel()}
                 </Link>
               </Button>
               <Button variant="outline" size="sm" onClick={signOut}>Sign Out</Button>
@@ -71,8 +87,9 @@ const Navbar = () => {
             ) : user ? (
               <>
                 <Button variant="hero" size="sm" className="flex-1" asChild>
-                  <Link to={getDashboardRoute()} onClick={() => setMobileOpen(false)}>
-                    <LayoutDashboard className="h-4 w-4 mr-1" /> Dashboard
+                  <Link to={dashboardRoute} onClick={() => setMobileOpen(false)}>
+                    <LayoutDashboard className="h-4 w-4 mr-1" />
+                    {getDashboardLabel()}
                   </Link>
                 </Button>
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => { void signOut(); setMobileOpen(false); }}>Sign Out</Button>
