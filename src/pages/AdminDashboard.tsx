@@ -772,6 +772,92 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
+          {/* ========== FIXED WITHDRAWALS TAB ========== */}
+          {canSee("withdrawals") && (
+            <TabsContent value="withdrawals" className="space-y-4">
+              {pendingWithdrawals.length > 0 && (
+                <div className="p-4 rounded-lg border border-yellow-600/30 bg-yellow-600/5">
+                  <p className="text-sm text-foreground"><span className="font-bold text-yellow-400">{pendingWithdrawals.length} pending</span> withdrawal request(s) awaiting processing.</p>
+                </div>
+              )}
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by agent store name..."
+                  value={withdrawalSearchTerm}
+                  onChange={(e) => setWithdrawalSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Card className="border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Wallet Balance</TableHead>
+                      <TableHead>MoMo Name</TableHead>
+                      <TableHead>MoMo Number</TableHead>
+                      <TableHead>Network</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredWithdrawals.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                          No withdrawals match your search.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredWithdrawals.map((w) => {
+                        const agent = agents.find((a) => a.id === w.agent_store_id);
+                        return (
+                          <TableRow key={w.id}>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {new Date(w.created_at).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="font-medium">{agent?.store_name ?? "—"}</TableCell>
+                            <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
+                            <TableCell className="font-bold text-green-400">
+                              GH₵ {Number(agent?.wallet_balance ?? 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell>{agent?.momo_name ?? "—"}</TableCell>
+                            <TableCell className="font-mono">{agent?.momo_number ?? "—"}</TableCell>
+                            <TableCell className="uppercase text-sm">{agent?.momo_network ?? "—"}</TableCell>
+                            <TableCell>
+                              <Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
+                                {w.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {w.status === "pending" && (
+                                <Button
+                                  variant="hero"
+                                  size="sm"
+                                  onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount))}
+                                  disabled={processingWithdrawals.has(w.id)}
+                                >
+                                  {processingWithdrawals.has(w.id) ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>
+                                  )}
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
+            </TabsContent>
+          )}
+
           {/* ========== USERS TAB ========== */}
           {canSee("users") && (
             <TabsContent value="users" className="space-y-4">
@@ -844,13 +930,12 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
-          {/* ========== SPIN WHEEL TAB (FIXED INPUTS & SAVE) ========== */}
+          {/* ========== SPIN WHEEL TAB ========== */}
           {canSee("spinwheel") && spinConfig && (
             <TabsContent value="spinwheel" className="space-y-6">
               <Card className="border-border">
                 <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Gift className="h-5 w-5 text-primary" /> Spin Wheel Configuration</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Enable/Disable */}
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-base">Enable Spin Wheel</Label>
@@ -859,7 +944,6 @@ const AdminDashboard = () => {
                     <Switch checked={spinConfig.enabled} onCheckedChange={(checked) => setSpinConfig({ ...spinConfig, enabled: checked })} />
                   </div>
 
-                  {/* Payment Required & Amount */}
                   <div className="space-y-4 border p-4 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
@@ -882,7 +966,6 @@ const AdminDashboard = () => {
                     )}
                   </div>
 
-                  {/* Default Network */}
                   <div className="space-y-2">
                     <Label>Default Network (shown big and bold on wheel)</Label>
                     <Select value={spinConfig.default_network} onValueChange={(val) => setSpinConfig({ ...spinConfig, default_network: val })}>
@@ -895,7 +978,6 @@ const AdminDashboard = () => {
                     </Select>
                   </div>
 
-                  {/* Segments Editor */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Label>Wheel Segments (9 slots)</Label>
@@ -982,7 +1064,6 @@ const AdminDashboard = () => {
                     Save Spin Configuration
                   </Button>
 
-                  {/* Wheel Preview */}
                   <div className="border-t pt-4">
                     <p className="text-sm font-medium mb-2">Wheel Preview ({spinConfig.segments.length} segments)</p>
                     <div className="w-48 h-48 relative mx-auto">
