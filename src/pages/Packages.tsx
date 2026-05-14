@@ -1002,7 +1002,7 @@ const Packages = () => {
       <SpinWheelPopup open={showSpinWheel} onOpenChange={setShowSpinWheel} config={spinConfig} />
 
       {!showSpinWheel && (
-        <a href="https://whatsapp.com/channel/0029Vb6Yd9ALo4hZ2ikWCV1z" target="_blank" rel="noopener noreferrer"
+        <a href="https://whatsapp.com/channel/0029VbCBiBmCsU9XSl2ozc3R" target="_blank" rel="noopener noreferrer"
           style={{ position: "fixed", bottom: "20px", right: "20px", zIndex: 1000, display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#25D366", borderRadius: "30px", padding: "10px 15px", boxShadow: "0 4px 6px rgba(0,0,0,0.3)", cursor: "pointer", transition: "transform 0.2s" }}
           onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.05)")} onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}>
           <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style={{ width: "35px", height: "35px" }} />
