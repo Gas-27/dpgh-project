@@ -473,31 +473,45 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     phaseRef.current = "idle";
     setPhase("idle");
 
-    const newCount = spinCount - 1;
-    setSpinCount(newCount);
-    if (!paymentRequired) {
-      if (newCount === 0) {
-        localStorage.setItem(getSpinCooldownKey(phone), String(Date.now() + SPIN_COOLDOWN_MS));
-        localStorage.removeItem(getSpinCountKey(phone));
-      } else {
-        localStorage.setItem(getSpinCountKey(phone), String(newCount));
-      }
-    }
-
     const seg = segs[winner];
+
     if (seg.type === "extra_spin") {
+      // extra spin – normal logic, spins increase
+      const newCount = spinCount; // keep current, then add 1
+      setSpinCount(newCount + 1);
+      if (!paymentRequired) {
+        localStorage.setItem(getSpinCountKey(phone), String(newCount + 1));
+      }
       sounds.win();
-      const extra = newCount + 1;
-      setSpinCount(extra);
-      if (!paymentRequired) localStorage.setItem(getSpinCountKey(phone), String(extra));
       setResultMsg("🎁 Extra Spin! +1 added!");
       toast({ title: "Extra spin!", description: "You earned an extra spin!" });
     } else if (seg.type === "gb" && Number(seg.value) > 0) {
+      // GB prize – FORFEIT ALL REMAINING SPINS
       sounds.win();
       setSuccessGb(Number(seg.value));
       setResultMsg(`🎉 You won ${seg.value}GB!`);
+
+      // Set spin count to 0 immediately
+      setSpinCount(0);
+      if (!paymentRequired) {
+        localStorage.removeItem(getSpinCountKey(phone));
+        // Start cooldown so no free spins until next window
+        localStorage.setItem(getSpinCooldownKey(phone), String(Date.now() + SPIN_COOLDOWN_MS));
+      }
+      // Do NOT decrement; just wipe remaining spins
     } else {
+      // Message / no win – normal decrement
       sounds.noWin();
+      const newCount = spinCount - 1;
+      setSpinCount(newCount);
+      if (!paymentRequired) {
+        if (newCount === 0) {
+          localStorage.setItem(getSpinCooldownKey(phone), String(Date.now() + SPIN_COOLDOWN_MS));
+          localStorage.removeItem(getSpinCountKey(phone));
+        } else {
+          localStorage.setItem(getSpinCountKey(phone), String(newCount));
+        }
+      }
       setResultMsg(seg.label || "Better luck next time!");
     }
   }, [spinCount, paymentRequired, phone, segs, draw, toast, getSegmentUnderPointer]);
@@ -752,15 +766,10 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
                 </Button>
               )}
               {isIdle && successGb > 0 && (
-                <>
-                  <Button onClick={handleClaim} disabled={claimLoading} className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-black">
-                    {claimLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Trophy className="mr-2 h-4 w-4" />}
-                    Claim {successGb}GB!
-                  </Button>
-                  {spinCount > 0 && (
-                    <Button onClick={handleSpin} className="flex-1 bg-pink-600 hover:bg-pink-700 font-bold">🎲 Again</Button>
-                  )}
-                </>
+                <Button onClick={handleClaim} disabled={claimLoading} className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-black">
+                  {claimLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Trophy className="mr-2 h-4 w-4" />}
+                  Claim {successGb}GB!
+                </Button>
               )}
               {isIdle && successGb === 0 && spinCount > 0 && (
                 <Button onClick={handleSpin} disabled={!paymentRequired && cooldownMs > 0} className="flex-1 bg-gradient-to-r from-pink-600 to-purple-700 hover:from-pink-700 hover:to-purple-800 font-black text-lg">
@@ -787,14 +796,6 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
                 <p className="font-mono bg-white/10 rounded px-2 py-1.5 text-white text-center text-sm tracking-wider">{phone}</p>
                 <p className="text-purple-300">Delivery typically takes 30–150 minutes. You'll receive an SMS when it's done.</p>
               </div>
-              {spinCount > 0 && (
-                <Button
-                  onClick={() => { setShowWinBanner(false); setResultMsg(""); setWinningIdx(null); setWonGbForBanner(0); }}
-                  className="w-full bg-pink-600 hover:bg-pink-700 font-bold"
-                >
-                  🎲 Spin Again ({spinCount} left)
-                </Button>
-              )}
               <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full border-white/20 text-white hover:bg-white/10 text-sm">
                 ✕ Close &amp; Track My Order
               </Button>
@@ -1013,4 +1014,4 @@ const Packages = () => {
   );
 };
 
-export default Packages; 
+export default Packages;
