@@ -171,8 +171,32 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   }
 
   const d = new Date(order.created_at).toLocaleString();
-  const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${encodeURIComponent("Order Support")}&body=${encodeURIComponent(`Order ID: ${order.id}\nDate: ${d}\nNumber: ${order.customer_number}\nNetwork: ${order.network}\nSize: ${order.size_gb}GB`)}`;
-  const waLink = `https://wa.me/233200511211?text=${encodeURIComponent(`Hi, my order shows Delivered but I haven't received data.\nOrder ID: ${order.id}\nDate: ${d}\nNumber: ${order.customer_number}`)}`;
+
+  // Build detailed report message exactly as requested
+  const getDetailedReportMessage = (): string => {
+    const orderDate = new Date(order.created_at).toLocaleString();
+    const networkName = formatNetworkName(order.network);
+    const amountFormatted = `GH₵ ${Number(order.amount).toFixed(2)}`;
+    const orderStatus = `${order.status} / ${order.fulfillment_status}`;
+
+    return `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.
+
+Order Details:
+- Order Date: ${orderDate}
+- Network: ${networkName}
+- Data: ${order.size_gb}GB
+- Amount: ${amountFormatted}
+- Customer Number: ${order.customer_number}
+- Order Status: ${orderStatus}
+- Order ID: ${order.id}
+
+Please investigate and assist. Thank you.`;
+  };
+
+  const reportMessage = getDetailedReportMessage();
+  const waLink = `https://wa.me/233200511211?text=${encodeURIComponent(reportMessage)}`;
+  const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${encodeURIComponent("Order Support - Delivered but not received")}&body=${encodeURIComponent(reportMessage)}`;
+
   const labels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
 
   if (step === 4) return (
@@ -198,7 +222,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
       </div>
       {elapsed >= 150 && elapsed < 3030 && (
         <Button variant="outline" size="sm" className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10" asChild>
-          <a href={waLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4 mr-2" />Only Report: If it Shows Delivered <br></br>but you have  not received it </a>
+          <a href={waLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4 mr-2" />Only Report: If it Shows Delivered <br></br>but you have not received it</a>
         </Button>
       )}
     </div>
@@ -989,4 +1013,4 @@ const Packages = () => {
   );
 };
 
-export default Packages;
+export default Packages; 
