@@ -255,7 +255,7 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
 };
 
 // ============================================================
-// SPIN WHEEL POPUP (same as before – fully functional)
+// SPIN WHEEL POPUP – same logic, wheel enlarged
 // ============================================================
 interface SpinSegment {
   type: "gb" | "message" | "extra_spin";
@@ -560,8 +560,9 @@ const SpinWheelPopup = ({ open, onOpenChange, config, onSpinComplete }: SpinWhee
             </div>
           )}
 
+          {/* WHEEL CONTAINER – ENLARGED from w-80 h-80 to w-96 h-96 */}
           <div className="relative flex justify-center">
-            <div className="relative w-80 h-80">
+            <div className="relative w-96 h-96">
               <svg
                 viewBox="0 0 100 100"
                 className="w-full h-full"
@@ -1040,45 +1041,47 @@ const Packages = () => {
         }}
       />
 
-      {/* Floating WhatsApp Button */}
-      <a
-        href="https://whatsapp.com/channel/0029Vb6Yd9ALo4hZ2ikWCV1z"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          zIndex: 1000,
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          backgroundColor: "#25D366",
-          borderRadius: "30px",
-          padding: "10px 15px",
-          boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
-          cursor: "pointer",
-          transition: "transform 0.2s",
-        }}
-        onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-        onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      >
-        <img
-          src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
-          alt="Join WhatsApp Channel"
-          style={{ width: "35px", height: "35px" }}
-        />
-        <span
+      {/* Floating WhatsApp Button – HIDDEN when spin wheel is open */}
+      {!showSpinWheel && (
+        <a
+          href="https://whatsapp.com/channel/0029Vb6Yd9ALo4hZ2ikWCV1z"
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
-            color: "white",
-            fontWeight: "bold",
-            fontSize: "14px",
-            whiteSpace: "nowrap",
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            backgroundColor: "#25D366",
+            borderRadius: "30px",
+            padding: "10px 15px",
+            boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
+            cursor: "pointer",
+            transition: "transform 0.2s",
           }}
+          onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+          onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
-          Join channel – get updates & free giveaways
-        </span>
-      </a>
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+            alt="Join WhatsApp Channel"
+            style={{ width: "35px", height: "35px" }}
+          />
+          <span
+            style={{
+              color: "white",
+              fontWeight: "bold",
+              fontSize: "14px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Join channel – get updates & free giveaways
+          </span>
+        </a>
+      )}
     </div>
   );
 };
