@@ -36,7 +36,7 @@ const Index = () => {
 
       {/* Floating WhatsApp Button */}
       <a
-        href="https://whatsapp.com/channel/0029Vb6Yd9ALo4hZ2ikWCV1z"
+        href="https://whatsapp.com/channel/0029VbCBiBmCsU9XSl2ozc3R"
         target="_blank"
         style={{
           position: "fixed",
