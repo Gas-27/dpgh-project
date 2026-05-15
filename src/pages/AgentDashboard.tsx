@@ -30,6 +30,9 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
 } from "@/components/ui/sheet";
 import { toPng } from "html-to-image";
+import SubagentCreationDialog from "@/components/SubagentCreationDialog";
+import SubagentPricingManager from "@/components/SubagentPricingManager";
+import * as subagentService from "@/services/subagentService";
 
 // ==================== INTERFACES ====================
 interface AgentStore {
@@ -63,6 +66,7 @@ const menuItems = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
   { id: "store", label: "Store Prices", icon: Store },
+  { id: "subagents", label: "Subagents", icon: Store },
   { id: "flyer", label: "Flyer Generator", icon: Image },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
   { id: "topup", label: "Top Up", icon: Coins },
@@ -244,6 +248,12 @@ const AgentDashboard = () => {
   const [manualOpen, setManualOpen] = useState(false);
   const [openManualSection, setOpenManualSection] = useState<number | null>(null);
   const [markupPercent, setMarkupPercent] = useState("");
+
+  // Subagents
+  const [subagents, setSubagents] = useState<any[]>([]);
+  const [loadingSubagents, setLoadingSubagents] = useState(false);
+  const [subagentCreationDialogOpen, setSubagentCreationDialogOpen] = useState(false);
+  const [selectedSubagent, setSelectedSubagent] = useState<any | null>(null);
 
   // Flyer
   const flyerRef = useRef<HTMLDivElement>(null);
@@ -907,6 +917,84 @@ const AgentDashboard = () => {
           {/* ============================= TOP UP ============================= */}
           <TabsContent value="topup" className="mt-0">
             <Card className="border-border"><CardHeader><CardTitle className="font-display flex items-center gap-2"><Coins className="h-5 w-5 text-primary" /> Top Up Your Wallet</CardTitle></CardHeader><CardContent className="space-y-6"><div className="rounded-lg bg-primary/5 border border-primary/30 p-4 text-center"><p className="text-sm text-muted-foreground">Current Wallet Balance</p><p className="font-display text-3xl font-bold text-primary">GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"}</p></div><div className="space-y-4"><h3 className="font-semibold text-lg">Steps to top up:</h3><ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground"><li>Dial <span className="font-mono font-bold text-foreground">*170#</span> on your MTN MoMo phone.</li><li>Select <b>1</b> (Transfer Money) → <b>1</b> (MoMo User).</li><li>Recipient: <span className="font-mono font-bold text-foreground">0599449202</span> <Button variant="ghost" size="sm" className="h-6 w-6 p-0 ml-1" onClick={() => copyPhoneNumber("0599449202")}><Copy className="h-3 w-3" /></Button></li><li>Enter the amount.</li><li>Reference: <div className="mt-2 p-3 bg-secondary/50 rounded-lg border border-border font-mono font-bold text-center text-primary text-xl">{store?.topup_reference ?? "N/A"}<Button variant="ghost" size="sm" className="ml-2 h-8" onClick={copyRef}><Copy className="h-3 w-3" /> Copy</Button></div></li><li>Send transaction ID to: <div className="mt-2 flex flex-wrap gap-3"><Button variant="outline" size="sm" asChild><a href="https://wa.me/233200511211" target="_blank" rel="noopener noreferrer">📱 WhatsApp 0200511211</a></Button><Button variant="outline" size="sm" asChild><a href="tel:0599449202">📞 Call 0599449202</a></Button></div></li></ol></div><div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-sm"><p className="font-semibold text-yellow-400">⚠️ Important</p><p className="text-muted-foreground">Admin credits your wallet after verifying the transaction ID.</p></div></CardContent></Card>
+          </TabsContent>
+
+          {/* ============================= SUBAGENTS ============================= */}
+          <TabsContent value="subagents" className="space-y-6 mt-0">
+            <Card className="border-border">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="font-display flex items-center gap-2"><Store className="h-5 w-5 text-primary" /> Manage Subagents</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-2">Create and manage subagent stores. Set their base prices and monitor their performance.</p>
+                  </div>
+                  <Button onClick={() => setSubagentCreationDialogOpen(true)} className="gap-2">
+                    <Plus className="h-4 w-4" /> New Subagent
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingSubagents ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    Loading subagents...
+                  </div>
+                ) : subagents.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No subagents yet. Create your first subagent to get started.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {subagents.map(subagent => (
+                      <Card key={subagent.id} className="border-border hover:border-primary/50 transition-colors">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <p className="font-semibold text-lg">{subagent.store_name}</p>
+                              <p className="text-sm text-muted-foreground">{subagent.whatsapp_number}</p>
+                            </div>
+                            <Badge variant={subagent.approved ? "default" : "secondary"}>
+                              {subagent.approved ? "Approved" : "Pending"}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-sm mb-4">
+                            <div>
+                              <p className="text-muted-foreground">Wallet Balance</p>
+                              <p className="font-bold">GH₵ {(subagent.wallet_balance || 0).toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Topup Ref</p>
+                              <p className="font-mono text-xs">{subagent.topup_reference}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Created</p>
+                              <p className="text-xs">{new Date(subagent.created_at).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedSubagent(subagent)}
+                            className="w-full"
+                          >
+                            Manage Pricing
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Pricing Manager */}
+            {selectedSubagent && (
+              <SubagentPricingManager
+                subagentStoreId={selectedSubagent.id}
+                subagentStoreName={selectedSubagent.store_name}
+                agentStoreId={store?.id || ""}
+              />
+            )}
           </TabsContent>
 
           {/* ============================= APPEARANCE ============================= */}

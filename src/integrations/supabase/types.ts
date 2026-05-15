@@ -356,6 +356,266 @@ export type Database = {
           },
         ]
       }
+      subagent_stores: {
+        Row: {
+          id: string
+          user_id: string
+          parent_agent_store_id: string
+          store_name: string
+          whatsapp_number: string
+          support_number: string
+          whatsapp_group: string | null
+          show_whatsapp_group_icon: boolean
+          momo_name: string
+          momo_network: string
+          momo_number: string
+          approved: boolean | null
+          wallet_balance: number
+          topup_reference: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          parent_agent_store_id: string
+          store_name: string
+          whatsapp_number: string
+          support_number: string
+          whatsapp_group?: string | null
+          show_whatsapp_group_icon?: boolean
+          momo_name: string
+          momo_network: string
+          momo_number: string
+          approved?: boolean | null
+          wallet_balance?: number
+          topup_reference?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          parent_agent_store_id?: string
+          store_name?: string
+          whatsapp_number?: string
+          support_number?: string
+          whatsapp_group?: string | null
+          show_whatsapp_group_icon?: boolean
+          momo_name?: string
+          momo_network?: string
+          momo_number?: string
+          approved?: boolean | null
+          wallet_balance?: number
+          topup_reference?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subagent_stores_parent_agent_fkey"
+            columns: ["parent_agent_store_id"]
+            isOneToOne: false
+            referencedRelation: "agent_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subagent_package_prices: {
+        Row: {
+          id: string
+          subagent_store_id: string
+          package_id: string
+          base_cost: number
+          sell_price: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          subagent_store_id: string
+          package_id: string
+          base_cost: number
+          sell_price: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          subagent_store_id?: string
+          package_id?: string
+          base_cost?: number
+          sell_price?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subagent_package_prices_subagent_fkey"
+            columns: ["subagent_store_id"]
+            isOneToOne: false
+            referencedRelation: "subagent_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subagent_package_prices_package_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "data_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subagent_orders: {
+        Row: {
+          id: string
+          subagent_store_id: string
+          parent_agent_store_id: string
+          customer_number: string
+          network: string
+          package_id: string
+          size_gb: number
+          customer_amount: number
+          agent_cost: number
+          admin_base_price: number
+          profit: number
+          payment_method: string
+          paystack_reference: string | null
+          status: string
+          fulfillment_status: string
+          api_response: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          subagent_store_id: string
+          parent_agent_store_id: string
+          customer_number: string
+          network: string
+          package_id: string
+          size_gb: number
+          customer_amount: number
+          agent_cost: number
+          admin_base_price: number
+          payment_method?: string
+          paystack_reference?: string | null
+          status?: string
+          fulfillment_status?: string
+          api_response?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          subagent_store_id?: string
+          parent_agent_store_id?: string
+          customer_number?: string
+          network?: string
+          package_id?: string
+          size_gb?: number
+          customer_amount?: number
+          agent_cost?: number
+          admin_base_price?: number
+          payment_method?: string
+          paystack_reference?: string | null
+          status?: string
+          fulfillment_status?: string
+          api_response?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subagent_orders_store_fkey"
+            columns: ["subagent_store_id"]
+            isOneToOne: false
+            referencedRelation: "subagent_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subagent_orders_agent_fkey"
+            columns: ["parent_agent_store_id"]
+            isOneToOne: false
+            referencedRelation: "agent_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subagent_orders_package_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "data_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subagent_withdrawal_requests: {
+        Row: {
+          id: string
+          subagent_store_id: string
+          amount: number
+          status: string
+          created_at: string | null
+          processed_at: string | null
+        }
+        Insert: {
+          id?: string
+          subagent_store_id: string
+          amount: number
+          status?: string
+          created_at?: string | null
+          processed_at?: string | null
+        }
+        Update: {
+          id?: string
+          subagent_store_id?: string
+          amount?: number
+          status?: string
+          created_at?: string | null
+          processed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subagent_withdrawal_requests_store_fkey"
+            columns: ["subagent_store_id"]
+            isOneToOne: false
+            referencedRelation: "subagent_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subagent_wallet_topups: {
+        Row: {
+          id: string
+          subagent_store_id: string
+          admin_id: string | null
+          amount: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          subagent_store_id: string
+          admin_id?: string | null
+          amount: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          subagent_store_id?: string
+          admin_id?: string | null
+          amount?: number
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subagent_wallet_topups_store_fkey"
+            columns: ["subagent_store_id"]
+            isOneToOne: false
+            referencedRelation: "subagent_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -370,7 +630,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "agent" | "user"
+      app_role: "admin" | "agent" | "subagent" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -498,7 +758,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "agent", "user"],
+      app_role: ["admin", "agent", "subagent", "user"],
     },
   },
 } as const

@@ -19,6 +19,8 @@ const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AgentDashboard = lazy(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazy(() => import("./pages/AgentStorefront"));
+const SubagentDashboard = lazy(() => import("./pages/SubagentDashboard"));
+const SubagentStorefront = lazy(() => import("./pages/SubagentStorefront"));
 const AgentRegistrationCallback = lazy(() => import("./pages/AgentRegistrationCallback"));
 
 const queryClient = new QueryClient();
@@ -94,6 +96,14 @@ const App = () => {
                     element={
                       <AuthGuard requiredRole="agent">
                         <AgentDashboard />
+                      </AuthGuard>
+                    }
+                  />
+                  <Route
+                    path="/subagent"
+                    element={
+                      <AuthGuard requiredRole="subagent">
+                        <SubagentDashboard />
                       </AuthGuard>
                     }
                   />
