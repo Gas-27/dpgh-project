@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface SubagentPricesManagerProps {
   agentStoreId: string;
   packages: any[];
-  agentPrices: Record<string, number>;
+  agentPrices?: Record<string, number>;
 }
 
 export default function SubagentPricesManager({ agentStoreId, packages, agentPrices }: SubagentPricesManagerProps) {
@@ -39,7 +39,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
     
     filteredPackages.forEach(pkg => {
-      const basePrice = pkg.agent_price;
+      const basePrice = pkg.price;
       const newPrice = basePrice * (1 + markup);
       setEditedPrices(prev => ({
         ...prev,
@@ -57,13 +57,14 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     try {
       setSavingPrices(true);
 
-      // Validate that no price is below base price
+      // Validate that no price is below base price (admin's base price)
       for (const [packageId, price] of Object.entries(editedPrices)) {
-        const basePrice = agentPrices[packageId] || 0;
+        const pkg = packages.find(p => p.id === packageId);
+        const basePrice = pkg?.price || 0;
         if (price < basePrice) {
           toast({
             title: "Invalid Price",
-            description: `Subagent price cannot be below base price (GH₵ ${basePrice.toFixed(2)})`,
+            description: `Subagent price cannot be below admin's base price (GH₵ ${basePrice.toFixed(2)})`,
             variant: "destructive"
           });
           setSavingPrices(false);
@@ -140,7 +141,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
         </p>
       </div>
 
-      <p className="text-sm text-muted-foreground">Subagent profit = Their Selling Price - Your Base Price. Use markup to increase all subagent prices by a % (based on base price).</p>
+      <p className="text-sm text-muted-foreground">Subagent profit = Their Selling Price - Admin's Base Price. Use markup to increase all subagent prices by a % (based on admin's base price).</p>
 
       <Card className="border-border">
         <div className="overflow-x-auto">
@@ -155,8 +156,8 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
             </TableHeader>
             <TableBody>
               {filteredPackages.map(pkg => {
-                const basePrice = agentPrices[pkg.id] ?? pkg.price ?? 0;
-                const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price;
+                const basePrice = pkg.price;
+                const cur = editedPrices[pkg.id] ?? pkg.price;
                 const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
                 return (
                   <TableRow key={pkg.id}>
