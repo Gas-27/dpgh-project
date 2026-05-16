@@ -258,7 +258,7 @@ const OrderTrackingCard = ({
                 className="h-4 w-4 mr-2"
                 style={{ filter: "invert(1)" }}
               />
-              Report: Shows Delivered but data not received
+              Tap on this Report only :  if it  Shows <br></br>Delivered but data  has not been  received
             </a>
           </Button>
         )}
@@ -827,14 +827,14 @@ const AgentStorefront = () => {
                       <Package className="h-5 w-5 text-primary" /> Track Your Order
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Enter your phone number (spaces are ignored) or order ID to check your
+                      Enter your phone number  or order ID to check your
                       purchase status.
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                     <div className="flex-1 min-w-[200px]">
                       <Input
-                        placeholder="059 944 9202 or Order ID"
+                        placeholder="Phone number or Order ID"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && searchOrders()}
@@ -927,7 +927,7 @@ const AgentStorefront = () => {
                         No orders found for "{searchQuery}".
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Try the number without spaces, or check your order ID.
+                        Check the contact well, or check your order ID.
                       </p>
                     </div>
                   ) : (

@@ -221,7 +221,7 @@ Please investigate and assist. Thank you.`;
       {/* Report button now appears after 200 minutes (changed from 90) */}
       {elapsed >= 200 && elapsed < 3030 && (
         <Button variant="outline" size="sm" className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10" asChild>
-          <a href={waLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4 mr-2" />Only tap on this Report: If it Shows Delivered <br></br>but you have not received it</a>
+          <a href={waLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4 mr-2" />Only tap on this Report: If it Shows <br></br>Delivered but you have not received it</a>
         </Button>
       )}
     </div>
