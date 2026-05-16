@@ -5,27 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Zap, Store, Eye, EyeOff } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Zap, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [userType, setUserType] = useState<"agent" | "customer">("agent");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);   // toggle visibility
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Always register as agent
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, role: "agent" },
+        data: { full_name: fullName, role: userType },
       },
     });
     setLoading(false);
@@ -33,7 +34,7 @@ const Signup = () => {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Account created!", description: "Welcome to Data Plug STORE!" });
-      navigate("/agent-onboarding");
+      navigate(userType === "agent" ? "/agent-onboarding" : "/packages");
     }
   };
 
@@ -47,11 +48,23 @@ const Signup = () => {
               DATA PLUG <span className="text-primary">STORE</span>
             </span>
           </div>
-          <CardTitle className="font-display">Become an Agent</CardTitle>
-          <CardDescription>Create your agent account to start selling data</CardDescription>
+          <CardTitle className="font-display">Create Account</CardTitle>
+          <CardDescription>Sign up to get started with Data Plug STORE</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="userType">Account Type</Label>
+              <Select value={userType} onValueChange={(value) => setUserType(value as "agent" | "customer")}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="agent">Become an Agent</SelectItem>
+                  <SelectItem value="customer">Customer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
               <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" required />
@@ -84,7 +97,7 @@ const Signup = () => {
               </div>
             </div>
             <Button type="submit" variant="hero" className="w-full" disabled={loading}>
-              {loading ? "Creating account..." : "Sign Up as Agent"}
+              {loading ? "Creating account..." : "Sign Up"}
             </Button>
           </form>
           <p className="text-center text-sm text-muted-foreground mt-4">
