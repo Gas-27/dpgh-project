@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
-  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image
+  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -63,6 +63,9 @@ const SubagentDashboard = () => {
   const [storeForm, setStoreForm] = useState<Partial<SubagentStore>>({});
   const [saving, setSaving] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [packages, setPackages] = useState<any[]>([]);
+  const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
+  const [savingPrices, setSavingPrices] = useState(false);
 
   useEffect(() => {
     if (!isSubagent) return;
@@ -103,11 +106,57 @@ const SubagentDashboard = () => {
         .eq("subagent_store_id", store.id)
         .order("created_at", { ascending: false });
       setWithdrawals(withdrawList || []);
+
+      // Fetch packages
+      const { data: pkgList } = await supabase
+        .from("data_packages")
+        .select("*")
+        .eq("active", true)
+        .order("size_gb");
+      setPackages(pkgList || []);
+
+      // Fetch subagent prices
+      const { data: pricesList } = await supabase
+        .from("agent_package_prices")
+        .select("package_id, sell_price")
+        .eq("agent_store_id", store.agent_store_id);
+      
+      if (pricesList) {
+        const priceMap: Record<string, number> = {};
+        pricesList.forEach((p: any) => {
+          priceMap[p.package_id] = p.sell_price;
+        });
+        setSubagentPrices(priceMap);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ title: "Error", description: "Failed to load dashboard", variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePrices = async () => {
+    try {
+      setSavingPrices(true);
+      const updates = Object.entries(subagentPrices).map(([packageId, price]) => ({
+        agent_store_id: subagentStore?.agent_store_id,
+        package_id: packageId,
+        sell_price: price,
+      }));
+
+      for (const update of updates) {
+        await supabase
+          .from("agent_package_prices")
+          .upsert(update, { onConflict: "agent_store_id,package_id" });
+      }
+
+      toast({ title: "Success", description: "Prices saved successfully" });
+    } catch (error) {
+      console.error("Error saving prices:", error);
+      toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
+    } finally {
+      setSavingPrices(false);
     }
   };
 
@@ -191,9 +240,13 @@ const SubagentDashboard = () => {
 
   const menuItems = [
     { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "buy", label: "Buy Data", icon: ShoppingCart },
+    { id: "store", label: "Store Prices", icon: Store },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "flyer", label: "Flyer Generator", icon: Image },
+    { id: "appearance", label: "Appearance", icon: Palette },
+    { id: "notifications", label: "Notifications", icon: Bell },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -324,6 +377,19 @@ const SubagentDashboard = () => {
             </Card>
           </TabsContent>
 
+          {/* BUY DATA */}
+          <TabsContent value="buy" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Buy Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Purchase data bundles to resell in your store. Contact support for bulk ordering.</p>
+                <Button className="mt-4">Coming Soon</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* ORDERS */}
           <TabsContent value="orders" className="mt-0 space-y-6">
             <Card className="border-border">
@@ -416,6 +482,112 @@ const SubagentDashboard = () => {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* STORE PRICES */}
+          <TabsContent value="store" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Set Your Store Prices</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-6">Set your selling prices for data packages. These are the prices customers will see on your store.</p>
+                <div className="space-y-3">
+                  {packages.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">Loading packages...</p>
+                  ) : (
+                    packages.map(pkg => (
+                      <div key={pkg.id} className="flex items-end gap-4 p-3 border border-border rounded-lg">
+                        <div className="flex-1">
+                          <Label className="text-sm font-semibold">{pkg.network.toUpperCase()} - {pkg.size_gb}GB</Label>
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Price (GH₵)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              defaultValue={subagentPrices[pkg.id] || ""}
+                              onChange={(e) => {
+                                setSubagentPrices(prev => ({
+                                  ...prev,
+                                  [pkg.id]: parseFloat(e.target.value) || 0
+                                }));
+                              }}
+                              placeholder="0.00"
+                              className="w-24"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <Button onClick={handleSavePrices} disabled={savingPrices} className="w-full mt-4">
+                  {savingPrices ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save Prices
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* APPEARANCE */}
+          <TabsContent value="appearance" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Store Appearance</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                  <p className="text-sm text-blue-400">Store appearance settings are the same as your store information. Edit your store name and contact details in the Settings tab.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-semibold mb-2 block">Store Name</Label>
+                    <p className="text-foreground">{subagentStore?.store_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold mb-2 block">WhatsApp Number</Label>
+                    <p className="text-foreground">{subagentStore?.whatsapp_number}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* NOTIFICATIONS */}
+          <TabsContent value="notifications" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Notification Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                    <div>
+                      <p className="font-semibold text-sm">New Orders</p>
+                      <p className="text-xs text-muted-foreground">Get notified when customers place orders</p>
+                    </div>
+                    <input type="checkbox" defaultChecked className="w-5 h-5" />
+                  </div>
+                  <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                    <div>
+                      <p className="font-semibold text-sm">Order Completed</p>
+                      <p className="text-xs text-muted-foreground">Get notified when orders are completed</p>
+                    </div>
+                    <input type="checkbox" defaultChecked className="w-5 h-5" />
+                  </div>
+                  <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                    <div>
+                      <p className="font-semibold text-sm">Withdrawal Updates</p>
+                      <p className="text-xs text-muted-foreground">Get notified about withdrawal requests</p>
+                    </div>
+                    <input type="checkbox" defaultChecked className="w-5 h-5" />
+                  </div>
+                </div>
+                <Button className="w-full">Save Notification Settings</Button>
               </CardContent>
             </Card>
           </TabsContent>

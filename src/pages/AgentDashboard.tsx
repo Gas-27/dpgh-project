@@ -1008,11 +1008,11 @@ const AgentDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-6">Set custom minimum prices for each of your subagents. Subagents can only sell at or above these prices.</p>
+                <p className="text-sm text-muted-foreground mb-6">Set the selling prices for your subagents. These prices apply to all your subagents.</p>
                 <SubagentPricesManager
                   agentStoreId={store?.id || ""}
                   packages={packages}
-                  subagents={subagents}
+                  agentPrices={agentPrices}
                 />
               </CardContent>
             </Card>
