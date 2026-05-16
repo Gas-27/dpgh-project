@@ -141,16 +141,43 @@ const sounds = {
   noWin: () => { playTone(220, "sawtooth", 0.28, 0.22); playTone(180, "sawtooth", 0.22, 0.18, 0.18); },
 };
 
-// ────────────────────────────────────────────── Order Tracking Card (UPDATED: delivered at 200 minutes) ──
+// ────────────────────────────────────────────── Order Tracking Card (UPDATED: delivered at 300 minutes) ──
 const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toast: any; onReportClick: (order: Order) => void }) => {
   const [now, setNow] = useState(new Date());
+  const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
+  
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
+
+  // Fetch complaint status for this order
+  useEffect(() => {
+    const fetchComplaintStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("complaints")
+          .select("status")
+          .eq("order_id", order.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!error && data) {
+          setComplaintStatus(data.status);
+        }
+      } catch (e) {
+        // No complaint found, that's okay
+      }
+    };
+
+    fetchComplaintStatus();
+    const interval = setInterval(fetchComplaintStatus, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
+  }, [order.id]);
 
   const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 60000;
   let step = 1, msg = "", note: string | null = null;
 
-  // 🔁 CHANGED: delivery threshold from 90 minutes to 200 minutes
-  if (elapsed >= 200) {
+  // 🔁 CHANGED: delivery threshold from 90 minutes to 300 minutes
+  if (elapsed >= 300) {
     step = 4; msg = "Your data bundle has been delivered successfully.";
     note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
       : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
@@ -219,8 +246,8 @@ Please investigate and assist. Thank you.`;
         <p className="text-sm font-medium">{msg}</p>
         {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-600/20">{note}</p>}
       </div>
-      {/* Report button now appears after 200 minutes (changed from 90) */}
-      {elapsed >= 200 && elapsed < 3030 && (
+      {/* Report button now appears after 300 minutes */}
+      {elapsed >= 300 && elapsed < 3030 && !complaintStatus && (
         <Button 
           variant="outline" 
           size="sm" 
@@ -230,6 +257,26 @@ Please investigate and assist. Thank you.`;
           <MessageCircle className="h-4 w-4 mr-2" />
           Only tap on this Report: If it Shows <br />Delivered but you have not received it
         </Button>
+      )}
+      
+      {/* Show status message if complaint submitted */}
+      {complaintStatus && complaintStatus !== "resolved" && (
+        <div className="p-3 rounded-lg bg-blue-600/10 border border-blue-600/30">
+          <p className="text-sm font-medium text-blue-400">
+            ✓ Report has been sent to network providers
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. We are working on it for you.
+          </p>
+        </div>
+      )}
+      
+      {complaintStatus === "resolved" && (
+        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+          <p className="text-sm font-medium text-green-400">
+            ✓ Your complaint has been resolved
+          </p>
+        </div>
       )}
     </div>
   );
