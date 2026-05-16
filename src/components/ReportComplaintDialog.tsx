@@ -49,7 +49,7 @@ Status: Delivered (Not Received)
 Order ID: ${order.id}
 
 ⚠️ Issue: Data shows delivered but not received.
-Please assist with redelivery or refund.`;
+Please investigate and assist. Thank You.`;
 
   const handleSendComplaint = async () => {
     try {
@@ -64,7 +64,7 @@ Please assist with redelivery or refund.`;
         customer_number: order.customer_number,
         complaint_title: "Delivered but Data Not Received",
         complaint_details: complaintDetails,
-        status: "pending",
+        status: "in-progress",
       });
 
       if (error) throw error;

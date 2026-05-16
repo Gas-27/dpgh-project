@@ -50,6 +50,9 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
   const [searchTerm, setSearchTerm] = useState("");
   const [complaintType, setComplaintType] = useState<"storefront" | "agent">("storefront");
   const [tableError, setTableError] = useState(false);
+  const [selectedComplaints, setSelectedComplaints] = useState<Set<string>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -119,6 +122,59 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
     }
   };
 
+  const bulkUpdateStatus = async (newStatus: string) => {
+    try {
+      setBulkUpdating(true);
+      const complaintIds = Array.from(selectedComplaints);
+      
+      if (complaintIds.length === 0) {
+        toast({ title: "Error", description: "No complaints selected", variant: "destructive" });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("complaints")
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .in("id", complaintIds);
+
+      if (error) throw error;
+      
+      setComplaints((prev) =>
+        prev.map((c) => (selectedComplaints.has(c.id) ? { ...c, status: newStatus as any } : c))
+      );
+      
+      setSelectedComplaints(new Set());
+      setSelectAll(false);
+      toast({ title: "Success", description: `${complaintIds.length} complaint(s) marked as ${newStatus}` });
+    } catch (error) {
+      console.error("Error bulk updating:", error);
+      toast({ title: "Error", description: "Failed to update complaints", variant: "destructive" });
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      const pendingIds = new Set(filteredComplaints.filter(c => c.status === "in-progress").map(c => c.id));
+      setSelectedComplaints(pendingIds);
+    } else {
+      setSelectedComplaints(new Set());
+    }
+  };
+
+  const handleSelectComplaint = (complaintId: string, checked: boolean) => {
+    const newSelected = new Set(selectedComplaints);
+    if (checked) {
+      newSelected.add(complaintId);
+    } else {
+      newSelected.delete(complaintId);
+    }
+    setSelectedComplaints(newSelected);
+    setSelectAll(newSelected.size === filteredComplaints.filter(c => c.status === "in-progress").length && newSelected.size > 0);
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "resolved":
@@ -126,7 +182,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
       case "in-progress":
         return <Clock className="h-4 w-4 text-yellow-400" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-red-400" />;
+        return <AlertCircle className="h-4 w-4 text-yellow-400" />;
     }
   };
 
@@ -183,9 +239,32 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
             <Card><CardContent className="py-8 text-center text-muted-foreground">No complaints found</CardContent></Card>
           ) : (
             <div className="overflow-x-auto">
+              <div className="mb-4 flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  disabled={selectedComplaints.size === 0 || bulkUpdating}
+                  onClick={() => bulkUpdateStatus("resolved")}
+                >
+                  Resolve Selected ({selectedComplaints.size})
+                </Button>
+                {selectedComplaints.size > 0 && (
+                  <Button size="sm" variant="ghost" onClick={() => { setSelectedComplaints(new Set()); setSelectAll(false); }}>
+                    Clear Selection
+                  </Button>
+                )}
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectAll}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="rounded border"
+                      />
+                    </TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Store</TableHead>
@@ -198,6 +277,15 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
                 <TableBody>
                   {filteredComplaints.map((complaint) => (
                     <TableRow key={complaint.id}>
+                      <TableCell className="w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedComplaints.has(complaint.id)}
+                          onChange={(e) => handleSelectComplaint(complaint.id, e.target.checked)}
+                          disabled={complaint.status === "resolved"}
+                          className="rounded border"
+                        />
+                      </TableCell>
                       <TableCell>
                         <div>
                           <p className="font-semibold text-sm">{complaint.complaint_title}</p>

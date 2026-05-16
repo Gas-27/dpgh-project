@@ -669,7 +669,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     if (!isValidPhone(phone)) { toast({ title: "Invalid phone", description: "Enter 10 digits", variant: "destructive" }); return; }
     setPaymentLoading(true);
     try {
-      const res = await supabase.functions.invoke("initiate-payment", {
+      const res = await supabase.functions.invoke("initialize-payment", {
         body: { amount: config!.payment_amount, email: `player_${phone}@spin.dataplug.store`, phone, callback_url: `${window.location.origin}/packages`, metadata: { type: "spin_wheel", phone, network: selectedNetwork } },
       });
       if (res.error) throw new Error(res.error.message);
