@@ -126,9 +126,10 @@ export default function SubagentRegistrationForm({
         description: "Your subagent account has been created. Redirecting to your dashboard...",
       });
 
-      // Wait a moment before redirecting
+      // Redirect to subagent store subdomain
       setTimeout(() => {
-        navigate("/subagent");
+        const storeName = formData.storeName.toLowerCase().replace(/\s+/g, "-");
+        window.location.href = `https://${storeName}.datastores.shop`;
       }, 2000);
     } catch (error: any) {
       console.error("Registration error:", error);
