@@ -49,6 +49,7 @@ export const ComplaintsManager = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [complaintType, setComplaintType] = useState<"storefront" | "agent">("storefront");
+  const [tableError, setTableError] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export const ComplaintsManager = () => {
   const fetchComplaints = async () => {
     try {
       setLoading(true);
+      setTableError(false);
       const { data, error } = await supabase
         .from("complaints")
         .select(
@@ -68,7 +70,13 @@ export const ComplaintsManager = () => {
         )
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes("Could not find the table")) {
+          setTableError(true);
+          return;
+        }
+        throw error;
+      }
       setComplaints((data as Complaint[]) || []);
     } catch (error) {
       console.error("Error fetching complaints:", error);
@@ -128,13 +136,28 @@ export const ComplaintsManager = () => {
 
   return (
     <div className="space-y-6">
-      <Tabs value={complaintType} onValueChange={(v: any) => setComplaintType(v)}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="storefront">Storefront Complaints</TabsTrigger>
-          <TabsTrigger value="agent">Agent Store Complaints</TabsTrigger>
-        </TabsList>
+      {tableError && (
+        <Card className="border-red-600/30 bg-red-600/10">
+          <CardContent className="pt-6">
+            <p className="text-red-400">Complaints table not yet created in Supabase. Please run the migration SQL code provided.</p>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value={complaintType} className="space-y-4 mt-4">
+      {loading && !tableError && (
+        <Card className="border-border">
+          <CardContent className="py-8 text-center text-muted-foreground">Loading complaints...</CardContent>
+        </Card>
+      )}
+
+      {!tableError && !loading && (
+        <Tabs value={complaintType} onValueChange={(v: any) => setComplaintType(v)}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="storefront">Storefront Complaints</TabsTrigger>
+            <TabsTrigger value="agent">Agent Store Complaints</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={complaintType} className="space-y-4 mt-4">
           <div className="flex gap-2 items-center">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -222,7 +245,8 @@ export const ComplaintsManager = () => {
             </div>
           )}
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      )}
     </div>
   );
 };
