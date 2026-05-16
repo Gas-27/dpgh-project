@@ -37,7 +37,7 @@ interface AgentStore {
   whatsapp_group: string | null; show_whatsapp_group_icon: boolean;
   momo_number: string; momo_name: string; momo_network: string; approved: boolean;
   wallet_balance: number; topup_reference: string; store_headline: string;
-  tutorial_video_url: string | null;
+  tutorial_video_url: string | null; allow_subagent_registration?: boolean;
   theme_config: { primary: string; primary_foreground: string; background: string; card_background: string; gridColumns: number; };
 }
 interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; active: boolean; }
@@ -63,6 +63,7 @@ const menuItems = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
   { id: "store", label: "Store Prices", icon: Store },
+  { id: "subagents", label: "Subagents", icon: Users },
   { id: "flyer", label: "Flyer Generator", icon: Image },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
   { id: "topup", label: "Top Up", icon: Coins },
@@ -915,6 +916,68 @@ const AgentDashboard = () => {
               <Card className="border-border"><CardHeader><CardTitle className="font-display">Customise Your Storefront</CardTitle></CardHeader><CardContent className="space-y-5"><div className="space-y-2"><Label>Store Headline</Label><Textarea value={storeHeadline} onChange={e => setStoreHeadline(e.target.value)} rows={2} placeholder="Get the best data deals from ..." /><Button variant="outline" size="sm" onClick={saveStoreHeadline} disabled={savingHeadline}>{savingHeadline ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Save Headline</Button></div><div className="border-t border-border pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">{[{ label: "Primary Colour", key: "primary" }, { label: "Text on Primary", key: "primary_foreground" }, { label: "Page Background", key: "background" }, { label: "Card Background", key: "card_background" }].map(({ label, key }) => (<div key={key} className="space-y-1"><Label className="text-sm">{label}</Label><div className="flex gap-2 items-center"><Input type="color" value={(themeColors as any)[key]} onChange={e => setThemeColors({ ...themeColors, [key]: e.target.value })} className="w-12 h-9 p-1 cursor-pointer" /><Input type="text" value={(themeColors as any)[key]} onChange={e => setThemeColors({ ...themeColors, [key]: e.target.value })} className="flex-1 font-mono text-sm" /></div></div>))}</div><div className="border-t border-border pt-4"><Label className="mb-2 block font-semibold flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-primary" /> Grid Columns</Label><div className="flex items-center gap-2 max-w-xs"><Button type="button" variant="outline" size="icon" className="h-9 w-9" onClick={() => changeColumns(-1)} disabled={themeColors.gridColumns <= 1}><Minus className="h-4 w-4" /></Button><Input type="number" min={1} max={6} value={themeColors.gridColumns} onChange={e => { const v = parseInt(e.target.value); if (!isNaN(v) && v >= 1 && v <= 6) setThemeColors({ ...themeColors, gridColumns: v }); }} className="w-20 text-center" /><Button type="button" variant="outline" size="icon" className="h-9 w-9" onClick={() => changeColumns(1)} disabled={themeColors.gridColumns >= 6}><PlusIcon className="h-4 w-4" /></Button><span className="text-sm text-muted-foreground ml-2">columns per row</span></div></div><div className="flex gap-3 pt-2"><Button variant="hero" onClick={saveThemeColors} disabled={savingTheme} className="flex-1">{savingTheme ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Save Theme</Button><Button variant="outline" onClick={resetToDefault} className="flex-1"><RotateCcw className="h-4 w-4 mr-1" />Reset</Button></div></CardContent></Card>
               <Card className="border-border"><CardHeader><CardTitle className="font-display text-base">Live Preview</CardTitle><p className="text-xs text-muted-foreground">This is exactly how your public store will look.</p></CardHeader><CardContent><div className="rounded-xl overflow-hidden border border-border" style={{ backgroundColor: themeColors.background, minHeight: 320 }}><div className="p-4" style={{ backgroundColor: themeColors.background }}><div className="text-center mb-3"><p className="font-bold text-sm" style={{ color: themeColors.primary }}>{store?.store_name || "Your Store Name"}</p><p className="text-xs mt-1" style={{ color: `${themeColors.primary}99` }}>{storeHeadline || "Your store headline"}</p></div><div className="grid gap-2 mt-3" style={{ gridTemplateColumns: `repeat(${Math.min(themeColors.gridColumns, 4)}, minmax(0, 1fr))` }}>{Array.from({ length: Math.min(themeColors.gridColumns * 2, 8) }).map((_, i) => (<div key={i} className="rounded-lg p-2 text-center text-xs" style={{ backgroundColor: themeColors.card_background, border: `1px solid ${themeColors.primary}30` }}><div className="font-bold text-white text-sm">{[1, 2, 3, 4, 5, 6, 8, 10][i] || i + 1}GB</div><div className="text-xs mt-1" style={{ color: `${themeColors.primary}cc` }}>MTN</div><div className="text-xs" style={{ color: "#ccc" }}>GH₵ {(4 + i * 3).toFixed(2)}</div><div className="mt-1 rounded text-xs py-0.5 font-bold" style={{ backgroundColor: themeColors.primary, color: themeColors.primary_foreground }}>Buy</div></div>))}</div></div></div><p className="text-xs text-muted-foreground mt-2 text-center">{themeColors.gridColumns} column{themeColors.gridColumns !== 1 ? "s" : ""} per row • Changes apply live after saving</p></CardContent></Card>
             </div>
+          </TabsContent>
+
+          {/* ============================= SUBAGENTS ============================= */}
+          <TabsContent value="subagents" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Users className="h-5 w-5" /> Manage Subagents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className="font-semibold text-blue-400 mb-2">Allow Subagent Registration</p>
+                      <p className="text-sm text-muted-foreground mb-4">When enabled, a "Become a Subagent" button will appear on your storefront, allowing users to register as subagents under your store.</p>
+                    </div>
+                    <Switch 
+                      checked={store?.allow_subagent_registration || false}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          const { error } = await supabase
+                            .from('agent_stores')
+                            .update({ allow_subagent_registration: checked })
+                            .eq('id', store?.id);
+                          if (error) throw error;
+                          setStore(prev => prev ? { ...prev, allow_subagent_registration: checked } : null);
+                          toast({ title: checked ? "✅ Subagent registration enabled" : "❌ Subagent registration disabled" });
+                        } catch (error) {
+                          console.error('Error updating subagent setting:', error);
+                          toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="rounded-lg border border-border p-4">
+                  <h4 className="font-semibold mb-3">Subagent Pricing</h4>
+                  <p className="text-sm text-muted-foreground mb-4">Set minimum prices for subagents. They can only sell at or above these prices.</p>
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                    {packages.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center">No packages available</p>
+                    ) : (
+                      packages.map(pkg => (
+                        <div key={pkg.id} className="flex items-center justify-between gap-3 p-3 bg-card rounded-lg border border-border">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">{pkg.network.toUpperCase()} - {pkg.size_gb}GB</p>
+                            <p className="text-xs text-muted-foreground">Agent price: GH₵{Number(pkg.agent_price).toFixed(2)}</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-sm font-semibold text-primary">GH₵{Number(pkg.agent_price).toFixed(2)}</span>
+                            <span className="text-xs text-muted-foreground">min</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-4">Subagents will set their own selling prices during registration. Prices are validated to ensure they meet the minimum agent price.</p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ============================= NOTIFICATIONS ============================= */}

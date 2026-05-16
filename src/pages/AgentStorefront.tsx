@@ -4,9 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
+import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket,
@@ -23,6 +26,7 @@ interface AgentStore {
   support_number: string;
   whatsapp_group?: string | null;
   show_whatsapp_group_icon?: boolean;
+  allow_subagent_registration?: boolean;
   theme_config?: {
     primary: string;
     primary_foreground: string;
@@ -1022,6 +1026,29 @@ const AgentStorefront = () => {
         </>
       ) : (
         <div className="container pb-20">{renderComingSoon()}</div>
+      )}
+
+      {/* Subagent Registration Section */}
+      {store.allow_subagent_registration && (
+        <section className="py-16 md:py-20 border-t border-border">
+          <div className="container max-w-2xl mx-auto space-y-8">
+            <div className="space-y-4">
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground text-center">
+                Become a <span style={{ color: primaryColor }}>Subagent</span>
+              </h2>
+              <p className="text-center text-muted-foreground max-w-lg mx-auto">
+                Want to sell data and earn commissions? Join our network of subagents and start earning with {store.store_name} today.
+              </p>
+            </div>
+
+            <SubagentRegistrationForm
+              agentStoreId={store.id}
+              agentStoreName={store.store_name}
+              primaryColor={primaryColor}
+              primaryForeground={primaryForeground}
+            />
+          </div>
+        </section>
       )}
 
       {/* Footer */}

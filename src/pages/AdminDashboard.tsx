@@ -57,7 +57,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "topup" | "withdrawals" | "users" | "notifications" | "spinwheel";
+type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "spinwheel";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -66,6 +66,7 @@ const AdminDashboard = () => {
   // ======================== State ========================
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [agents, setAgents] = useState<AgentStore[]>([]);
+  const [subagents, setSubagents] = useState<any[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
@@ -592,6 +593,7 @@ const AdminDashboard = () => {
               </TabsTrigger>
             )}
             {canSee("agents") && <TabsTrigger value="agents">Agents ({agents.filter((a) => !a.approved).length})</TabsTrigger>}
+            {canSee("subagents") && <TabsTrigger value="subagents"><Users className="h-4 w-4 mr-1" /> Subagents ({subagents.filter((s) => !s.approved).length})</TabsTrigger>}
             {canSee("topup") && <TabsTrigger value="topup"><Wallet className="h-4 w-4 mr-1" /> Topup</TabsTrigger>}
             {canSee("withdrawals") && (
               <TabsTrigger value="withdrawals">
@@ -712,6 +714,48 @@ const AdminDashboard = () => {
                   </Card>
                 ))
               }
+            </TabsContent>
+          )}
+
+          {/* SUBAGENTS TAB */}
+          {canSee("subagents") && (
+            <TabsContent value="subagents" className="space-y-4">
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> Subagent Management</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Manage all subagents in the system. Review registrations and approve/suspend accounts.</p>
+                  <div className="relative max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search by store name..." className="pl-10" />
+                  </div>
+                  
+                  {subagents.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No subagents yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {subagents.map((subagent) => (
+                        <div key={subagent.id} className="border border-border rounded-lg p-4 space-y-2">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-semibold">{subagent.store_name}</h4>
+                              <p className="text-xs text-muted-foreground">Under: {subagent.agent_stores?.store_name}</p>
+                              <p className="text-xs text-muted-foreground">WhatsApp: {subagent.whatsapp_number}</p>
+                              <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(subagent.wallet_balance).toFixed(2)}</span></p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={subagent.approved ? "default" : "secondary"}>
+                                {subagent.approved ? "✅ Approved" : "⏳ Pending"}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           )}
 

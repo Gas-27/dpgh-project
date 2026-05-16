@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate, Link } from "react-router-dom";
@@ -10,42 +10,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import {
-  Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
-  LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
-  TrendingUp, Search, Bell, Plus, Trash2, LayoutGrid, Coins, Menu,
-  ChevronDown, ChevronUp, BookOpen,
+  Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
+  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import NotificationPopup from "@/components/NotificationPopup";
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 
 interface SubagentStore {
   id: string;
   store_name: string;
   whatsapp_number: string;
   support_number: string;
-  whatsapp_group: string | null;
   momo_number: string;
   momo_name: string;
   momo_network: string;
-  approved: boolean;
   wallet_balance: number;
+  approved: boolean;
   agent_store_id: string;
-}
-
-interface DataPackage {
-  id: string;
-  network: string;
-  size_gb: number;
-  price: number;
-  agent_price: number;
-  active: boolean;
+  created_at: string;
 }
 
 interface Order {
@@ -56,9 +38,7 @@ interface Order {
   amount: number;
   status: string;
   fulfillment_status: string;
-  payment_method: string;
   created_at: string;
-  package_id: string;
 }
 
 interface WithdrawalRequest {
@@ -68,712 +48,442 @@ interface WithdrawalRequest {
   created_at: string;
 }
 
-interface ProfitStats {
-  totalRevenue: number;
-  totalCost: number;
-  totalProfit: number;
-  availableForWithdrawal: number;
-}
-
-const DEFAULT_THEME = {
-  primary: "#38bdf8",
-  primary_foreground: "#000000",
-  background: "#0a0a0a",
-  card_background: "#171717",
-  gridColumns: 2,
-};
-
-const ORDERS_PAGE_SIZE = 100;
-
-const menuItems = [
-  { id: "overview", label: "Overview", icon: BarChart3 },
-  { id: "buy", label: "Buy Data", icon: ShoppingCart },
-  { id: "store", label: "Store Prices", icon: Store },
-  { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
-  { id: "topup", label: "Top Up", icon: Coins },
-  { id: "settings", label: "Settings", icon: Settings },
-];
-
-export function SubagentDashboard() {
-  const { user, isSubagent, signOut } = useAuth();
+const SubagentDashboard = () => {
+  const { signOut, user, isSubagent } = useAuth();
   const { toast } = useToast();
 
-  // Redirect non-subagents
-  if (!isSubagent) {
-    return <Navigate to="/" />;
-  }
-
-  const [activeTab, setActiveTab] = useState("overview");
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
-  const [packages, setPackages] = useState<DataPackage[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
-  const [profitStats, setProfitStats] = useState<ProfitStats>({
-    totalRevenue: 0,
-    totalCost: 0,
-    totalProfit: 0,
-    availableForWithdrawal: 0,
-  });
   const [loading, setLoading] = useState(true);
-  const [prices, setPrices] = useState<{ [key: string]: number }>({});
-  const [selectedNetwork, setSelectedNetwork] = useState("mtn");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [ordersOffset, setOrdersOffset] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [editingStore, setEditingStore] = useState(false);
+  const [storeForm, setStoreForm] = useState<Partial<SubagentStore>>({});
+  const [saving, setSaving] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
-  // Fetch subagent store
   useEffect(() => {
-    const fetchSubagentStore = async () => {
-      if (!user) return;
+    if (!isSubagent) return;
+    fetchData();
+  }, [isSubagent, user?.id]);
 
-      const { data, error } = await supabase
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      if (!user?.id) return;
+
+      // Fetch subagent store
+      const { data: store, error: storeErr } = await supabase
         .from("subagent_stores")
         .select("*")
         .eq("user_id", user.id)
         .single();
 
-      if (error) {
-        console.error("Failed to fetch subagent store:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load your subagent store",
-          variant: "destructive",
-        });
-        return;
-      }
+      if (storeErr) throw storeErr;
+      setSubagentStore(store);
+      setStoreForm(store);
 
-      setSubagentStore(data);
-    };
+      if (!store?.id) return;
 
-    fetchSubagentStore();
-  }, [user, toast]);
-
-  // Fetch packages and prices
-  useEffect(() => {
-    const fetchPackagesAndPrices = async () => {
-      if (!user || !subagentStore) return;
-
-      // Fetch packages
-      const { data: packagesData, error: packagesError } = await supabase
-        .from("data_packages")
-        .select("*")
-        .eq("active", true);
-
-      if (packagesError) {
-        console.error("Failed to fetch packages:", packagesError);
-        return;
-      }
-
-      setPackages(packagesData || []);
-
-      // Fetch subagent prices
-      const { data: pricesData, error: pricesError } = await supabase
-        .from("subagent_package_prices")
-        .select("*")
-        .eq("subagent_store_id", subagentStore.id);
-
-      if (pricesError) {
-        console.error("Failed to fetch prices:", pricesError);
-        return;
-      }
-
-      const pricesMap: { [key: string]: number } = {};
-      (pricesData || []).forEach((price) => {
-        pricesMap[price.package_id] = price.sell_price;
-      });
-      setPrices(pricesMap);
-    };
-
-    fetchPackagesAndPrices();
-  }, [user, subagentStore]);
-
-  // Fetch orders
-  useEffect(() => {
-    const fetchOrders = async () => {
-      if (!subagentStore) return;
-
-      let query = supabase
+      // Fetch orders
+      const { data: ordersList } = await supabase
         .from("orders")
         .select("*")
-        .eq("subagent_store_id", subagentStore.id)
-        .order("created_at", { ascending: false });
+        .eq("subagent_store_id", store.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setOrders(ordersList || []);
 
-      if (searchQuery) {
-        query = query.or(
-          `customer_number.ilike.%${searchQuery}%,id.ilike.%${searchQuery}%`
-        );
-      }
-
-      const { data, error } = await query
-        .range(ordersOffset, ordersOffset + ORDERS_PAGE_SIZE - 1);
-
-      if (error) {
-        console.error("Failed to fetch orders:", error);
-        return;
-      }
-
-      if (ordersOffset === 0) {
-        setOrders(data || []);
-      } else {
-        setOrders((prev) => [...prev, ...(data || [])]);
-      }
-
-      // Calculate stats
-      const totalRevenue = (data || []).reduce(
-        (sum, order) => sum + (order.status === "completed" ? order.amount : 0),
-        0
-      );
-
-      const totalCost = (data || []).reduce((sum, order) => {
-        const pkg = packages.find((p) => p.id === order.package_id);
-        return sum + (order.status === "completed" ? (pkg?.agent_price || 0) : 0);
-      }, 0);
-
-      setProfitStats({
-        totalRevenue,
-        totalCost,
-        totalProfit: totalRevenue - totalCost,
-        availableForWithdrawal: subagentStore.wallet_balance,
-      });
-
-      setLoading(false);
-    };
-
-    fetchOrders();
-  }, [subagentStore, searchQuery, ordersOffset, packages]);
-
-  // Fetch withdrawals
-  useEffect(() => {
-    const fetchWithdrawals = async () => {
-      if (!subagentStore) return;
-
-      const { data, error } = await supabase
+      // Fetch withdrawal requests
+      const { data: withdrawList } = await supabase
         .from("withdrawal_requests")
         .select("*")
-        .eq("subagent_store_id", subagentStore.id)
+        .eq("subagent_store_id", store.id)
         .order("created_at", { ascending: false });
+      setWithdrawals(withdrawList || []);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast({ title: "Error", description: "Failed to load dashboard", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      if (error) {
-        console.error("Failed to fetch withdrawals:", error);
+  const handleSaveStore = async () => {
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from("subagent_stores")
+        .update({
+          store_name: storeForm.store_name,
+          whatsapp_number: storeForm.whatsapp_number,
+          support_number: storeForm.support_number,
+        })
+        .eq("id", subagentStore?.id);
+
+      if (error) throw error;
+      setSubagentStore(prev => prev ? { ...prev, ...storeForm } : null);
+      setEditingStore(false);
+      toast({ title: "✅ Store updated successfully" });
+    } catch (error) {
+      console.error("Error saving store:", error);
+      toast({ title: "Error", description: "Failed to save changes", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRequestWithdrawal = async () => {
+    if (!withdrawAmount || !subagentStore) return;
+    try {
+      const amount = parseFloat(withdrawAmount);
+      if (amount > (subagentStore.wallet_balance || 0)) {
+        toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
         return;
       }
 
-      setWithdrawals(data || []);
-    };
-
-    fetchWithdrawals();
-  }, [subagentStore]);
-
-  const handleWithdraw = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!subagentStore || !withdrawAmount) {
-      toast({
-        title: "Error",
-        description: "Please enter an amount",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const amount = parseFloat(withdrawAmount);
-
-    if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid amount",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (amount < 10) {
-      toast({
-        title: "Error",
-        description: "Minimum withdrawal is GH₵ 10.00",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (amount > subagentStore.wallet_balance) {
-      toast({
-        title: "Error",
-        description: "Insufficient balance",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsWithdrawing(true);
-
-    try {
       const { error } = await supabase
         .from("withdrawal_requests")
         .insert({
           subagent_store_id: subagentStore.id,
           amount,
-          status: "pending",
+          status: "pending"
         });
 
       if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Withdrawal request submitted successfully",
-      });
-
+      toast({ title: "✅ Withdrawal request submitted" });
       setWithdrawAmount("");
+      fetchData();
     } catch (error) {
-      console.error("Withdrawal error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to process withdrawal",
-        variant: "destructive",
-      });
-    } finally {
-      setIsWithdrawing(false);
+      console.error("Error requesting withdrawal:", error);
+      toast({ title: "Error", description: "Failed to submit withdrawal request", variant: "destructive" });
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
+  if (!isSubagent) {
+    return <Navigate to="/" />;
+  }
 
-  if (loading && !subagentStore) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-black">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!subagentStore) {
-    return <Navigate to="/subagent/setup" />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="border-border w-96">
+          <CardContent className="pt-6 text-center space-y-4">
+            <p className="text-muted-foreground">No subagent store found. Please complete your registration.</p>
+            <Button variant="hero" asChild>
+              <Link to="/">Go Home</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  const networkPackages = packages.filter((p) => p.network === selectedNetwork);
+  const menuItems = [
+    { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "orders", label: "Orders", icon: ShoppingCart },
+    { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
+    { id: "settings", label: "Settings", icon: Settings },
+  ];
+
+  const totalRevenue = orders.reduce((sum, order) => sum + (order.status === "completed" ? order.amount : 0), 0);
+  const pendingOrders = orders.filter(o => o.status !== "completed").length;
+  const storeUrl = `${window.location.origin}/subagent/${subagentStore.id}`;
+
+  const copyStoreLink = async () => {
+    await navigator.clipboard.writeText(storeUrl);
+    toast({ title: "✅ Store link copied!" });
+  };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Mobile Header */}
-      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <div className="md:hidden flex items-center justify-between p-4 bg-gray-900 border-b border-gray-800">
-          <h1 className="font-bold text-cyan-400">{subagentStore.store_name}</h1>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="w-5 h-5" />
+    <div className="min-h-screen bg-background">
+      {/* NAV */}
+      <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="container flex h-16 items-center justify-between">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <div className="flex items-center gap-2 cursor-pointer">
+                <Menu className="h-5 w-5 text-primary" />
+                <span className="font-display text-lg font-bold text-primary">MENU</span>
+              </div>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-4 bg-card border-r border-border">
+              <SheetHeader className="mb-6">
+                <SheetTitle className="flex items-center gap-2">
+                  <Store className="h-5 w-5 text-primary" /> Menu
+                </SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-2">
+                {menuItems.map(item => (
+                  <SheetClose asChild key={item.id}>
+                    <button
+                      onClick={() => setActiveTab(item.id)}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full"
+                    >
+                      <item.icon className="h-5 w-5 text-primary" />
+                      <span className="font-medium">{item.label}</span>
+                    </button>
+                  </SheetClose>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/">Home</Link>
             </Button>
-          </SheetTrigger>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-1" /> Sign Out
+            </Button>
+          </div>
         </div>
-        <SheetContent side="left" className="w-64 bg-gray-900">
-          <SheetHeader>
-            <SheetTitle className="text-cyan-400">Menu</SheetTitle>
-          </SheetHeader>
-          <div className="space-y-2 mt-4">
-            {menuItems.map((item) => (
-              <SheetClose key={item.id} asChild>
-                <Button
-                  variant={activeTab === item.id ? "default" : "ghost"}
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab(item.id)}
-                >
-                  <item.icon className="w-4 h-4 mr-2" />
-                  {item.label}
-                </Button>
-              </SheetClose>
-            ))}
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-red-400 hover:text-red-300"
-              onClick={handleSignOut}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+      </nav>
 
-      <div className="flex">
-        {/* Desktop Sidebar */}
-        <div className="hidden md:flex flex-col w-64 bg-gray-900 min-h-screen border-r border-gray-800 p-6">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-cyan-400">
-              {subagentStore.store_name}
-            </h1>
-            <p className="text-sm text-gray-400 mt-2">Subagent Dashboard</p>
-          </div>
-
-          <nav className="space-y-2 flex-1">
-            {menuItems.map((item) => (
-              <Button
-                key={item.id}
-                variant={activeTab === item.id ? "default" : "ghost"}
-                className="w-full justify-start"
-                onClick={() => setActiveTab(item.id)}
-              >
-                <item.icon className="w-4 h-4 mr-2" />
-                {item.label}
+      <div className="container py-8 space-y-6">
+        {/* Store Link Card */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Your Subagent Store</p>
+              <p className="text-xs text-muted-foreground">{storeUrl}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={copyStoreLink}>
+                <Copy className="h-4 w-4 mr-1" /> Copy Link
               </Button>
-            ))}
-          </nav>
+              <Button variant="hero" size="sm" asChild>
+                <a href={storeUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-1" /> Visit Store
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Button
-            variant="destructive"
-            className="w-full"
-            onClick={handleSignOut}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="hidden" />
 
-        {/* Main Content */}
-        <div className="flex-1">
-          {/* Top Stats Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-gray-900 border-b border-gray-800">
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400">
-                  Total Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-cyan-400">
-                  GH₵{profitStats.totalRevenue.toFixed(2)}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400">
-                  Total Profit
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-400">
-                  GH₵{profitStats.totalProfit.toFixed(2)}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400">
-                  Wallet Balance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-400">
-                  GH₵{subagentStore.wallet_balance.toFixed(2)}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400">
-                  Total Orders
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-400">
-                  {orders.length}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Tabs Content */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="p-6">
-            {/* Overview Tab */}
-            <TabsContent value="overview" className="space-y-6">
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">Recent Orders</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <Input
-                      placeholder="Search by phone number or order ID..."
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setOrdersOffset(0);
-                      }}
-                      className="bg-gray-700 border-gray-600 text-white"
-                    />
+          {/* OVERVIEW */}
+          <TabsContent value="overview" className="mt-0 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Wallet Balance</p>
+                    <p className="text-3xl font-bold text-primary mt-2">GH₵{(subagentStore?.wallet_balance || 0).toFixed(2)}</p>
                   </div>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Total Revenue</p>
+                    <p className="text-3xl font-bold text-green-500 mt-2">GH₵{totalRevenue.toFixed(2)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Pending Orders</p>
+                    <p className="text-3xl font-bold text-orange-500 mt-2">{pendingOrders}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Store Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Approval Status</span>
+                  <Badge variant={subagentStore.approved ? "default" : "secondary"}>
+                    {subagentStore.approved ? "✅ Approved" : "⏳ Pending Approval"}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Member Since</span>
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(subagentStore.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ORDERS */}
+          <TabsContent value="orders" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Recent Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {orders.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No orders yet</p>
+                ) : (
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-gray-700">
-                          <TableHead>Phone</TableHead>
+                        <TableRow>
+                          <TableHead>Customer</TableHead>
                           <TableHead>Network</TableHead>
-                          <TableHead>Size</TableHead>
+                          <TableHead>Data</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Date</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {orders.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center text-gray-400">
-                              No orders yet
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          orders.map((order) => (
-                            <TableRow key={order.id} className="border-gray-700">
-                              <TableCell>{order.customer_number}</TableCell>
-                              <TableCell className="uppercase">{order.network}</TableCell>
-                              <TableCell>{order.size_gb}GB</TableCell>
-                              <TableCell>GH₵{order.amount.toFixed(2)}</TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={
-                                    order.status === "completed"
-                                      ? "default"
-                                      : "secondary"
-                                  }
-                                >
-                                  {order.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {new Date(order.created_at).toLocaleDateString()}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {orders.length >= ORDERS_PAGE_SIZE && (
-                    <Button
-                      variant="outline"
-                      className="mt-4"
-                      onClick={() =>
-                        setOrdersOffset((prev) => prev + ORDERS_PAGE_SIZE)
-                      }
-                    >
-                      Load More Orders
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Store Prices Tab */}
-            <TabsContent value="store" className="space-y-6">
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">Manage Store Prices</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    {["mtn", "airteltigo", "telecel"].map((network) => (
-                      <Button
-                        key={network}
-                        variant={
-                          selectedNetwork === network ? "default" : "outline"
-                        }
-                        className="capitalize"
-                        onClick={() => setSelectedNetwork(network)}
-                      >
-                        {network === "airteltigo" ? "AirtelTigo" : network.toUpperCase()}
-                      </Button>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {networkPackages.map((pkg) => (
-                      <div key={pkg.id} className="border border-gray-700 rounded-lg p-4">
-                        <div className="flex justify-between mb-2">
-                          <span className="font-medium">{pkg.size_gb}GB</span>
-                          <span className="text-xs text-gray-400">
-                            Base: GH₵{pkg.agent_price.toFixed(2)}
-                          </span>
-                        </div>
-                        <Input
-                          type="number"
-                          placeholder="Enter selling price"
-                          value={prices[pkg.id] || ""}
-                          onChange={(e) =>
-                            setPrices({
-                              ...prices,
-                              [pkg.id]: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className="bg-gray-700 border-gray-600 text-white"
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <Button className="mt-6 w-full">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Prices
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Withdraw Tab */}
-            <TabsContent value="withdraw" className="space-y-6">
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">Withdraw Funds</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label className="text-gray-300">MoMo Account</Label>
-                    <div className="mt-2 p-3 bg-gray-700 rounded border border-gray-600">
-                      <p className="text-sm">
-                        {subagentStore.momo_name} ({subagentStore.momo_network})
-                      </p>
-                      <p className="text-sm font-mono mt-1">
-                        {subagentStore.momo_number}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-gray-300">Available Balance</Label>
-                    <p className="text-2xl font-bold text-yellow-400 mt-2">
-                      GH₵{subagentStore.wallet_balance.toFixed(2)}
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleWithdraw} className="space-y-4">
-                    <div>
-                      <Label htmlFor="amount" className="text-gray-300">
-                        Amount (Minimum: GH₵ 10.00)
-                      </Label>
-                      <Input
-                        id="amount"
-                        type="number"
-                        placeholder="Enter amount"
-                        value={withdrawAmount}
-                        onChange={(e) => setWithdrawAmount(e.target.value)}
-                        min="10"
-                        step="0.01"
-                        className="mt-2 bg-gray-700 border-gray-600 text-white"
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={isWithdrawing}
-                      className="w-full"
-                    >
-                      {isWithdrawing && (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      )}
-                      Request Withdrawal
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">Withdrawal History</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {withdrawals.length === 0 ? (
-                    <p className="text-gray-400">No withdrawal requests yet</p>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-gray-700">
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Date</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {withdrawals.map((w) => (
-                          <TableRow key={w.id} className="border-gray-700">
-                            <TableCell>GH₵{w.amount.toFixed(2)}</TableCell>
+                        {orders.slice(0, 10).map(order => (
+                          <TableRow key={order.id}>
+                            <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                            <TableCell>{order.network.toUpperCase()}</TableCell>
+                            <TableCell>{order.size_gb}GB</TableCell>
+                            <TableCell className="font-semibold">GH₵{order.amount.toFixed(2)}</TableCell>
                             <TableCell>
-                              <Badge
-                                variant={
-                                  w.status === "completed"
-                                    ? "default"
-                                    : "secondary"
-                                }
-                              >
-                                {w.status}
+                              <Badge variant={order.fulfillment_status === "delivered" ? "default" : "secondary"}>
+                                {order.fulfillment_status}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              {new Date(w.created_at).toLocaleDateString()}
+                            <TableCell className="text-sm text-muted-foreground">
+                              {new Date(order.created_at).toLocaleDateString()}
                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Settings Tab */}
-            <TabsContent value="settings" className="space-y-6">
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">Store Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label className="text-gray-300">Store Name</Label>
-                    <p className="mt-2 text-white">{subagentStore.store_name}</p>
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                  <div>
-                    <Label className="text-gray-300">WhatsApp Number</Label>
-                    <p className="mt-2 text-white">{subagentStore.whatsapp_number}</p>
-                  </div>
+          {/* WITHDRAW */}
+          <TabsContent value="withdraw" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Request Withdrawal</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                  <p className="text-sm text-blue-400">Available Balance: <span className="font-bold">GH₵{(subagentStore?.wallet_balance || 0).toFixed(2)}</span></p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount to Withdraw</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={withdrawAmount}
+                    onChange={e => setWithdrawAmount(e.target.value)}
+                  />
+                </div>
+                <Button className="w-full" onClick={handleRequestWithdrawal}>
+                  Request Withdrawal
+                </Button>
+              </CardContent>
+            </Card>
 
-                  <div>
-                    <Label className="text-gray-300">Support Number</Label>
-                    <p className="mt-2 text-white">{subagentStore.support_number}</p>
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Withdrawal History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {withdrawals.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No withdrawals yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {withdrawals.map(w => (
+                      <div key={w.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
+                        <div>
+                          <p className="font-medium">GH₵{w.amount.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <Badge variant={w.status === "completed" ? "default" : "secondary"}>{w.status}</Badge>
+                      </div>
+                    ))}
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                  <div>
-                    <Label className="text-gray-300">MoMo Details</Label>
-                    <p className="mt-2 text-white">
-                      {subagentStore.momo_number} ({subagentStore.momo_name})
-                    </p>
+          {/* SETTINGS */}
+          <TabsContent value="settings" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Store Information</CardTitle>
+                {!editingStore && (
+                  <Button variant="outline" size="sm" onClick={() => setEditingStore(true)}>
+                    <Edit2 className="h-4 w-4 mr-1" /> Edit
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {editingStore ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Store Name</Label>
+                      <Input
+                        value={storeForm.store_name || ""}
+                        onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>WhatsApp Number</Label>
+                      <Input
+                        value={storeForm.whatsapp_number || ""}
+                        onChange={e => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Support Number</Label>
+                      <Input
+                        value={storeForm.support_number || ""}
+                        onChange={e => setStoreForm({ ...storeForm, support_number: e.target.value })}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setEditingStore(false)}>Cancel</Button>
+                      <Button variant="hero" onClick={handleSaveStore} disabled={saving}>
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                        Save Changes
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Store Name</p>
+                      <p className="font-medium">{subagentStore.store_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">WhatsApp Number</p>
+                      <p className="font-medium flex items-center gap-2">{subagentStore.whatsapp_number} <Phone className="h-4 w-4" /></p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Support Number</p>
+                      <p className="font-medium">{subagentStore.support_number}</p>
+                    </div>
                   </div>
-
-                  <div>
-                    <Label className="text-gray-300">Approved Status</Label>
-                    <Badge
-                      className="mt-2"
-                      variant={subagentStore.approved ? "default" : "secondary"}
-                    >
-                      {subagentStore.approved ? "Approved" : "Pending Approval"}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <NotificationPopup />
     </div>
   );
-}
+};
 
 export default SubagentDashboard;
