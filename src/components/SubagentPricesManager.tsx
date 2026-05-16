@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Percent, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SubagentPricesManagerProps {
   agentStoreId: string;
@@ -19,10 +19,6 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
   const [savingPrices, setSavingPrices] = useState(false);
   const { toast } = useToast();
-  const supabase = createClient(
-    process.env.REACT_APP_SUPABASE_URL || "",
-    process.env.REACT_APP_SUPABASE_ANON_KEY || ""
-  );
 
   const filteredPackages = packages.filter(p => p.network === networkFilter);
 
