@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
+import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -220,8 +221,17 @@ Please investigate and assist. Thank you.`;
       </div>
       {/* Report button now appears after 200 minutes (changed from 90) */}
       {elapsed >= 200 && elapsed < 3030 && (
-        <Button variant="outline" size="sm" className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10" asChild>
-          <a href={waLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4 mr-2" />Only tap on this Report: If it Shows <br></br>Delivered but you have not received it</a>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
+          onClick={() => {
+            setReportOrder(order);
+            setReportDialogOpen(true);
+          }}
+        >
+          <MessageCircle className="h-4 w-4 mr-2" />
+          Only tap on this Report: If it Shows <br />Delivered but you have not received it
         </Button>
       )}
     </div>
@@ -816,6 +826,8 @@ const Packages = () => {
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
   } | null>(null);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportOrder, setReportOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments").single()
@@ -1005,6 +1017,15 @@ const Packages = () => {
       <PaymentVerifier />
 
       <SpinWheelPopup open={showSpinWheel} onOpenChange={setShowSpinWheel} config={spinConfig} />
+
+      {reportOrder && (
+        <ReportComplaintDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          order={reportOrder}
+          complaintType="storefront"
+        />
+      )}
 
       {!showSpinWheel && (
         <a href="https://whatsapp.com/channel/0029VbCBiBmCsU9XSl2ozc3R" target="_blank" rel="noopener noreferrer"

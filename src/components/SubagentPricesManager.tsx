@@ -56,6 +56,20 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
   const savePrices = async () => {
     try {
       setSavingPrices(true);
+
+      // Validate that no price is below base price
+      for (const [packageId, price] of Object.entries(editedPrices)) {
+        const basePrice = agentPrices[packageId] || 0;
+        if (price < basePrice) {
+          toast({
+            title: "Invalid Price",
+            description: `Subagent price cannot be below base price (GH₵ ${basePrice.toFixed(2)})`,
+            variant: "destructive"
+          });
+          setSavingPrices(false);
+          return;
+        }
+      }
       
       for (const [packageId, price] of Object.entries(editedPrices)) {
         const { error } = await supabase
@@ -140,19 +154,27 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
             </TableHeader>
             <TableBody>
               {filteredPackages.map(pkg => {
+                const basePrice = agentPrices[pkg.id] ?? pkg.price ?? 0;
                 const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price;
+                const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
                 return (
                   <TableRow key={pkg.id}>
                     <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
-                    <TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell>
+                    <TableCell className="text-muted-foreground">GH₵ {Number(basePrice).toFixed(2)}</TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={cur}
-                        onChange={e => handlePriceChange(pkg.id, e.target.value)}
-                        className="w-24 h-8"
-                      />
+                      <div className="space-y-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={basePrice}
+                          value={cur}
+                          onChange={e => handlePriceChange(pkg.id, e.target.value)}
+                          className={`w-24 h-8 ${isInvalid ? "border-red-500" : ""}`}
+                        />
+                        {isInvalid && (
+                          <p className="text-xs text-red-500">Min: GH₵ {basePrice.toFixed(2)}</p>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
