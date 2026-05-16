@@ -1028,7 +1028,7 @@ const AgentDashboard = () => {
 
           {/* ============================= COMPLAINTS ============================= */}
           <TabsContent value="complaints" className="mt-0 space-y-6">
-            <ComplaintsManager />
+            <ComplaintsManager isAgent={true} agentStoreId={store?.id} />
           </TabsContent>
 
           {/* ============================= SETTINGS ============================= */}

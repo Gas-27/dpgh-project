@@ -44,7 +44,7 @@ interface Complaint {
   };
 }
 
-export const ComplaintsManager = () => {
+export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?: boolean; agentStoreId?: string } = {}) => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -60,7 +60,7 @@ export const ComplaintsManager = () => {
     try {
       setLoading(true);
       setTableError(false);
-      const { data, error } = await supabase
+      let query = supabase
         .from("complaints")
         .select(
           `*,
@@ -69,6 +69,13 @@ export const ComplaintsManager = () => {
            subagent_stores(store_name, whatsapp_number)`
         )
         .order("created_at", { ascending: false });
+
+      // If viewing as agent, only show complaints from their store
+      if (isAgent && agentStoreId) {
+        query = query.eq("agent_store_id", agentStoreId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         if (error.message?.includes("Could not find the table")) {

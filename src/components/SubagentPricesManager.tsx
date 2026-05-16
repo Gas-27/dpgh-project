@@ -150,6 +150,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                 <TableHead>Size</TableHead>
                 <TableHead>Base Price (Your Cost)</TableHead>
                 <TableHead>Subagent Base Price</TableHead>
+                <TableHead>Your Profit</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -175,6 +176,9 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                           <p className="text-xs text-red-500">Min: GH₵ {basePrice.toFixed(2)}</p>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell className="font-semibold text-green-400">
+                      GH₵ {(cur - basePrice).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 );

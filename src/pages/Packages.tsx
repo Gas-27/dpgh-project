@@ -142,7 +142,7 @@ const sounds = {
 };
 
 // ────────────────────────────────────────────── Order Tracking Card (UPDATED: delivered at 200 minutes) ──
-const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
+const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toast: any; onReportClick: (order: Order) => void }) => {
   const [now, setNow] = useState(new Date());
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
 
@@ -225,10 +225,7 @@ Please investigate and assist. Thank you.`;
           variant="outline" 
           size="sm" 
           className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
-          onClick={() => {
-            setReportOrder(order);
-            setReportDialogOpen(true);
-          }}
+          onClick={() => onReportClick(order)}
         >
           <MessageCircle className="h-4 w-4 mr-2" />
           Only tap on this Report: If it Shows <br />Delivered but you have not received it
@@ -974,7 +971,14 @@ const Packages = () => {
                                   </div>
                                 </div>
                                 <div className="pt-3">
-                                  <OrderTrackingCard order={order} toast={toast} />
+                                  <OrderTrackingCard 
+                                    order={order} 
+                                    toast={toast} 
+                                    onReportClick={(o) => {
+                                      setReportOrder(o);
+                                      setReportDialogOpen(true);
+                                    }}
+                                  />
                                 </div>
                               </div>
                             ))}
