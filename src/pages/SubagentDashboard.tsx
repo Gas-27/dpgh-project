@@ -554,22 +554,32 @@ const SubagentDashboard = () => {
 
           {/* STORE PRICES */}
           <TabsContent value="store" className="space-y-4 mt-0">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}</Button>))}</div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Markup:</span>
-                <Input type="number" placeholder="+10" value={markupPercent} onChange={e => setMarkupPercent(e.target.value)} className="w-20 h-8 text-sm" />
-                <Button variant="outline" size="sm" onClick={applyMarkup}><Percent className="h-3 w-3 mr-1" /> Apply</Button>
-              </div>
-              {Object.keys(editedPrices).length > 0 && <Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}><Save className="h-4 w-4 mr-1" />{savingPrices ? "Saving..." : "Save Prices"}</Button>}
-            </div>
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-              <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>💡 Markup Explanation(Remember to click save after applying markup</p>
-              <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by .Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
-            </div>
-            <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
-            <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Agent Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
-              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? subagentPrices[pkg.id] ?? pkg.price; const profit = cur - (subagentPrices[pkg.id] || pkg.price || 0); return (<TableRow key={pkg.id}><TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(subagentPrices[pkg.id] || pkg.price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
+            {packages.length === 0 ? (
+              <Card className="border-border">
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground">Loading packages...</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}</Button>))}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Markup:</span>
+                    <Input type="number" placeholder="+10" value={markupPercent} onChange={e => setMarkupPercent(e.target.value)} className="w-20 h-8 text-sm" />
+                    <Button variant="outline" size="sm" onClick={applyMarkup}><Percent className="h-3 w-3 mr-1" /> Apply</Button>
+                  </div>
+                  {Object.keys(editedPrices).length > 0 && <Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}><Save className="h-4 w-4 mr-1" />{savingPrices ? "Saving..." : "Save Prices"}</Button>}
+                </div>
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>💡 Markup Explanation(Remember to click save after applying markup</p>
+                  <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by .Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
+                </div>
+                <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
+                <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Agent Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
+                  <TableBody>{filteredPackages.length > 0 ? filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? subagentPrices[pkg.id] ?? pkg.price; const profit = cur - (subagentPrices[pkg.id] || pkg.price || 0); return (<TableRow key={pkg.id}><TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(subagentPrices[pkg.id] || pkg.price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell></TableRow>); }) : <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-4">No packages for {networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</TableCell></TableRow>}</TableBody></Table></div></Card>
+              </>
+            )}
           </TabsContent>
 
           {/* APPEARANCE */}

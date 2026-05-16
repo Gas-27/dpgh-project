@@ -11,10 +11,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import ComplaintsManager from "@/components/ComplaintsManager";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -57,7 +58,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "spinwheel";
+type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "spinwheel" | "complaints";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -238,7 +239,7 @@ const AdminDashboard = () => {
     if (!error && data) {
       setCurrentUserSections(data.sections as Section[]);
     } else {
-      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "spinwheel"]);
+      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints"]);
     }
   };
 
@@ -604,6 +605,7 @@ const AdminDashboard = () => {
             {canSee("users") && <TabsTrigger value="users"><Users className="h-4 w-4 mr-1" /> Users</TabsTrigger>}
             {canSee("notifications") && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1" /> Notify</TabsTrigger>}
             {canSee("spinwheel") && <TabsTrigger value="spinwheel"><Gift className="h-4 w-4 mr-1" /> Spin Wheel</TabsTrigger>}
+            {canSee("complaints") && <TabsTrigger value="complaints"><AlertCircle className="h-4 w-4 mr-1" /> Complaints</TabsTrigger>}
           </TabsList>
 
           {/* PRICES TAB */}
@@ -900,7 +902,7 @@ const AdminDashboard = () => {
                           {u.role !== "admin" ? (
                             <Button variant="outline" size="sm" onClick={() => {
                               setSelectedUserForAdmin(u);
-                              setNewAdminSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "notifications", "spinwheel"]);
+                              setNewAdminSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints"]);
                               setMakeAdminDialogOpen(true);
                             }}>
                               <ShieldAlert className="h-4 w-4 mr-1" /> Make Admin
@@ -1091,6 +1093,13 @@ const AdminDashboard = () => {
               </Card>
             </TabsContent>
           )}
+
+          {/* COMPLAINTS TAB */}
+          {canSee("complaints") && (
+            <TabsContent value="complaints" className="space-y-6">
+              <ComplaintsManager />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
@@ -1112,7 +1121,7 @@ const AdminDashboard = () => {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>Admin Permissions for {selectedUserForPermissions?.full_name || selectedUserForPermissions?.id}</DialogTitle><DialogDescription>Select which sections this admin can access.</DialogDescription></DialogHeader>
           <div className="space-y-3">
-            {(["prices", "orders", "agents", "topup", "withdrawals", "users", "notifications", "spinwheel"] as Section[]).map(section => (
+            {(["prices", "orders", "agents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints"] as Section[]).map(section => (
               <div key={section} className="flex items-center gap-2">
                 <Switch checked={userSections.includes(section)} onCheckedChange={() => setUserSections(prev => prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section])} id={`perm-${section}`} />
                 <Label htmlFor={`perm-${section}`} className="capitalize">{section}</Label>

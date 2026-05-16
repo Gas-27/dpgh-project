@@ -22,12 +22,13 @@ import {
   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
   TrendingUp, Search, Palette, RotateCcw, Bell, Plus, Trash2, Calendar,
   LayoutGrid, Minus, Plus as PlusIcon, Coins, Menu, Image, Download, Share2,
-  ChevronDown, ChevronUp, BookOpen, Percent, Users,
+  ChevronDown, ChevronUp, BookOpen, Percent, Users, AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
 import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
+import ComplaintsManager from "@/components/ComplaintsManager";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
 } from "@/components/ui/sheet";
@@ -72,6 +73,7 @@ const menuItems = [
   { id: "topup", label: "Top Up", icon: Coins },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "complaints", label: "Complaints", icon: AlertCircle },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -1022,6 +1024,11 @@ const AgentDashboard = () => {
           <TabsContent value="notifications" className="mt-0 space-y-6">
             <Card className="border-border"><CardHeader><CardTitle className="font-display flex items-center gap-2"><Bell className="h-5 w-5" /> Send Notification to Storefront</CardTitle></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Message</Label><Textarea placeholder="e.g., 🎉 Special offer: 20% off all bundles this weekend!" value={newNotificationMsg} onChange={e => setNewNotificationMsg(e.target.value)} rows={3} /></div><div className="space-y-2"><Label>Expiry (optional)</Label><Input type="datetime-local" value={newNotificationExpiry} onChange={e => setNewNotificationExpiry(e.target.value)} /><p className="text-xs text-muted-foreground">Leave empty for no expiry.</p></div><Button variant="hero" onClick={createNotification} disabled={sendingNotification}>{sendingNotification ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}Send Notification</Button></CardContent></Card>
             <Card className="border-border"><CardHeader><CardTitle className="font-display">Active &amp; Past Notifications</CardTitle></CardHeader><CardContent>{loadingNotifications ? (<div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>) : notifications.length === 0 ? (<p className="text-center text-muted-foreground py-8">No notifications yet.</p>) : (<div className="space-y-4">{notifications.map(n => (<div key={n.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-border rounded-lg bg-card"><div className="flex-1"><p className="font-medium">{n.message}</p><div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1"><span>Created: {new Date(n.created_at).toLocaleString()}</span>{n.expires_at && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Expires: {new Date(n.expires_at).toLocaleString()}</span>}</div></div><div className="flex gap-2"><Badge variant={n.is_active ? "default" : "secondary"} className="cursor-pointer" onClick={() => toggleNotificationActive(n.id, n.is_active)}>{n.is_active ? "Active" : "Inactive"}</Badge><Button variant="ghost" size="icon" onClick={() => deleteNotification(n.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></div>))}</div>)}</CardContent></Card>
+          </TabsContent>
+
+          {/* ============================= COMPLAINTS ============================= */}
+          <TabsContent value="complaints" className="mt-0 space-y-6">
+            <ComplaintsManager />
           </TabsContent>
 
           {/* ============================= SETTINGS ============================= */}
