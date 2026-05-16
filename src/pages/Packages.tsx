@@ -667,16 +667,40 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
   // ── Payment & free spins ──
   const handlePay = async () => {
     if (!isValidPhone(phone)) { toast({ title: "Invalid phone", description: "Enter 10 digits", variant: "destructive" }); return; }
+    if (!config?.payment_amount) { toast({ title: "Invalid amount", description: "Payment amount not set", variant: "destructive" }); return; }
+    
     setPaymentLoading(true);
     try {
+      const payloadBody = {
+        amount: config.payment_amount,
+        email: `player_${phone}@spin.dataplug.store`,
+        phone: phone,
+        callback_url: `${window.location.origin}/packages`,
+        metadata: { 
+          type: "spin_wheel", 
+          phone: phone, 
+          network: selectedNetwork || "mtn"
+        }
+      };
+      
+      console.log("[v0] Payment payload:", payloadBody);
+      
       const res = await supabase.functions.invoke("initialize-payment", {
-        body: { amount: config!.payment_amount, email: `player_${phone}@spin.dataplug.store`, phone, callback_url: `${window.location.origin}/packages`, metadata: { type: "spin_wheel", phone, network: selectedNetwork } },
+        body: payloadBody,
       });
+      
+      console.log("[v0] Payment response:", res);
+      
       if (res.error) throw new Error(res.error.message);
+      if (!res.data?.authorization_url) throw new Error("No authorization URL in response");
+      
       sessionStorage.setItem("pending_spin_payment", res.data.reference);
       sessionStorage.setItem("pending_spin_phone", phone);
       window.location.href = res.data.authorization_url;
-    } catch (e: any) { toast({ title: "Payment error", description: e.message, variant: "destructive" }); }
+    } catch (e: any) { 
+      console.error("[v0] Payment error:", e);
+      toast({ title: "Payment error", description: e.message, variant: "destructive" }); 
+    }
     finally { setPaymentLoading(false); }
   };
 
