@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
-  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette
+  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -65,6 +65,9 @@ const SubagentDashboard = () => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [packages, setPackages] = useState<any[]>([]);
   const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
+  const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
+  const [markupPercent, setMarkupPercent] = useState("");
+  const [networkFilter, setNetworkFilter] = useState("mtn");
   const [savingPrices, setSavingPrices] = useState(false);
 
   useEffect(() => {
@@ -208,6 +211,69 @@ const SubagentDashboard = () => {
     } catch (error) {
       console.error("Error requesting withdrawal:", error);
       toast({ title: "Error", description: "Failed to submit withdrawal request", variant: "destructive" });
+    }
+  };
+
+  const filteredPackages = packages.filter(p => p.network === networkFilter);
+
+  const handlePriceChange = (packageId: string, value: string) => {
+    setEditedPrices(prev => ({
+      ...prev,
+      [packageId]: parseFloat(value) || 0
+    }));
+  };
+
+  const applyMarkup = () => {
+    if (!markupPercent) {
+      toast({ title: "Error", description: "Enter a markup percentage", variant: "destructive" });
+      return;
+    }
+
+    const markup = parseFloat(markupPercent) / 100;
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    
+    filteredPackages.forEach(pkg => {
+      const basePrice = subagentPrices[pkg.id] || pkg.price || 0;
+      const newPrice = basePrice * (1 + markup);
+      setEditedPrices(prev => ({
+        ...prev,
+        [pkg.id]: parseFloat(newPrice.toFixed(2))
+      }));
+    });
+
+    toast({
+      title: `Markup applied to ${networkName} packages`,
+      description: `All prices increased by ${markupPercent}%`
+    });
+  };
+
+  const savePrices = async () => {
+    try {
+      setSavingPrices(true);
+      
+      for (const [packageId, price] of Object.entries(editedPrices)) {
+        const { error } = await supabase
+          .from("subagent_package_prices")
+          .upsert(
+            {
+              subagent_store_id: subagentStore?.id,
+              package_id: packageId,
+              sell_price: price
+            },
+            { onConflict: "subagent_store_id,package_id" }
+          );
+
+        if (error) throw error;
+      }
+
+      setEditedPrices({});
+      setMarkupPercent("");
+      toast({ title: "Success", description: "Prices saved successfully" });
+    } catch (error) {
+      console.error("Error saving prices:", error);
+      toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
+    } finally {
+      setSavingPrices(false);
     }
   };
 
@@ -487,50 +553,23 @@ const SubagentDashboard = () => {
           </TabsContent>
 
           {/* STORE PRICES */}
-          <TabsContent value="store" className="mt-0 space-y-6">
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle>Set Your Store Prices</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-6">Set your selling prices for data packages. These are the prices customers will see on your store.</p>
-                <div className="space-y-3">
-                  {packages.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Loading packages...</p>
-                  ) : (
-                    packages.map(pkg => (
-                      <div key={pkg.id} className="flex items-end gap-4 p-3 border border-border rounded-lg">
-                        <div className="flex-1">
-                          <Label className="text-sm font-semibold">{pkg.network.toUpperCase()} - {pkg.size_gb}GB</Label>
-                        </div>
-                        <div className="flex items-end gap-2">
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Price (GH₵)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              defaultValue={subagentPrices[pkg.id] || ""}
-                              onChange={(e) => {
-                                setSubagentPrices(prev => ({
-                                  ...prev,
-                                  [pkg.id]: parseFloat(e.target.value) || 0
-                                }));
-                              }}
-                              placeholder="0.00"
-                              className="w-24"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <Button onClick={handleSavePrices} disabled={savingPrices} className="w-full mt-4">
-                  {savingPrices ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  Save Prices
-                </Button>
-              </CardContent>
-            </Card>
+          <TabsContent value="store" className="space-y-4 mt-0">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}</Button>))}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Markup:</span>
+                <Input type="number" placeholder="+10" value={markupPercent} onChange={e => setMarkupPercent(e.target.value)} className="w-20 h-8 text-sm" />
+                <Button variant="outline" size="sm" onClick={applyMarkup}><Percent className="h-3 w-3 mr-1" /> Apply</Button>
+              </div>
+              {Object.keys(editedPrices).length > 0 && <Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}><Save className="h-4 w-4 mr-1" />{savingPrices ? "Saving..." : "Save Prices"}</Button>}
+            </div>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
+              <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>💡 Markup Explanation(Remember to click save after applying markup</p>
+              <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by .Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
+            </div>
+            <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
+            <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Agent Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
+              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? subagentPrices[pkg.id] ?? pkg.price; const profit = cur - (subagentPrices[pkg.id] || pkg.price || 0); return (<TableRow key={pkg.id}><TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(subagentPrices[pkg.id] || pkg.price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
           </TabsContent>
 
           {/* APPEARANCE */}

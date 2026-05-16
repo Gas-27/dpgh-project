@@ -1008,7 +1008,7 @@ const AgentDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-6">Set the selling prices for your subagents. These prices apply to all your subagents.</p>
+                <p className="text-sm text-muted-foreground mb-6">Set the base selling prices for subagents. These are the prices subagents will see and use as their starting point to set their own store prices. All subagents use these same prices.</p>
                 <SubagentPricesManager
                   agentStoreId={store?.id || ""}
                   packages={packages}
