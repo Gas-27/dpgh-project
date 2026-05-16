@@ -21,11 +21,14 @@ Deno.serve(async (req) => {
 
     const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!PAYSTACK_SECRET_KEY) {
-      return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+      console.error("[Payment] PAYSTACK_SECRET_KEY is not set in Edge Function environment");
+      return new Response(JSON.stringify({ error: "Paystack API key not configured. Please set PAYSTACK_SECRET_KEY in Supabase Settings > Edge Functions > Secrets." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    
+    console.log("[Payment] Processing payment for", phone, "amount", amount);
 
     // Amount in pesewas (kobo equivalent for GHS)
     const amountInPesewas = Math.round(amount * 100);
@@ -49,13 +52,18 @@ Deno.serve(async (req) => {
     });
 
     const result = await paystackRes.json();
+    
+    console.log("[Payment] Paystack response:", result);
 
     if (!result.status) {
+      console.error("[Payment] Paystack error:", result.message);
       return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    
+    console.log("[Payment] Success, authorization_url:", result.data.authorization_url);
 
     return new Response(JSON.stringify({ authorization_url: result.data.authorization_url, reference: result.data.reference }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
