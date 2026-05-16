@@ -101,6 +101,165 @@ export type Database = {
         }
         Relationships: []
       }
+      subagent_stores: {
+        Row: {
+          id: string
+          user_id: string
+          agent_store_id: string
+          store_name: string
+          whatsapp_number: string
+          support_number: string
+          whatsapp_group: string | null
+          momo_number: string
+          momo_name: string
+          momo_network: string
+          wallet_balance: number
+          approved: boolean | null
+          allow_registration: boolean
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          agent_store_id: string
+          store_name: string
+          whatsapp_number: string
+          support_number: string
+          whatsapp_group?: string | null
+          momo_number: string
+          momo_name: string
+          momo_network: string
+          wallet_balance?: number
+          approved?: boolean | null
+          allow_registration?: boolean
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          agent_store_id?: string
+          store_name?: string
+          whatsapp_number?: string
+          support_number?: string
+          whatsapp_group?: string | null
+          momo_number?: string
+          momo_name?: string
+          momo_network?: string
+          wallet_balance?: number
+          approved?: boolean | null
+          allow_registration?: boolean
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subagent_stores_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subagent_stores_agent_store_id_fkey"
+            columns: ["agent_store_id"]
+            isOneToOne: false
+            referencedRelation: "agent_stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subagent_package_prices: {
+        Row: {
+          id: string
+          subagent_store_id: string
+          package_id: string
+          agent_minimum_price: number
+          sell_price: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          subagent_store_id: string
+          package_id: string
+          agent_minimum_price: number
+          sell_price: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          subagent_store_id?: string
+          package_id?: string
+          agent_minimum_price?: number
+          sell_price?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subagent_package_prices_subagent_store_id_fkey"
+            columns: ["subagent_store_id"]
+            isOneToOne: false
+            referencedRelation: "subagent_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subagent_package_prices_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "data_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_stores: {
+        Row: {
+          approved: boolean | null
+          created_at: string | null
+          id: string
+          momo_name: string
+          momo_network: string
+          momo_number: string
+          store_name: string
+          support_number: string
+          topup_reference: string | null
+          user_id: string
+          wallet_balance: number
+          whatsapp_group: string | null
+          whatsapp_number: string
+        }
+        Insert: {
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          momo_name: string
+          momo_network: string
+          momo_number: string
+          store_name: string
+          support_number: string
+          topup_reference?: string | null
+          user_id: string
+          wallet_balance?: number
+          whatsapp_group?: string | null
+          whatsapp_number: string
+        }
+        Update: {
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          momo_name?: string
+          momo_network?: string
+          momo_number?: string
+          store_name?: string
+          support_number?: string
+          topup_reference?: string | null
+          user_id?: string
+          wallet_balance?: number
+          whatsapp_group?: string | null
+          whatsapp_number?: string
+        }
+        Relationships: []
+      }
       data_packages: {
         Row: {
           active: boolean | null
@@ -370,7 +529,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "agent" | "user"
+      app_role: "admin" | "agent" | "user" | "subagent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -498,7 +657,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "agent", "user"],
+      app_role: ["admin", "agent", "user", "subagent"],
     },
   },
 } as const

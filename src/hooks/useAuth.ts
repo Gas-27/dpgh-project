@@ -2,7 +2,7 @@ import { createContext, createElement, useCallback, useContext, useEffect, useMe
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-export type AppRole = "admin" | "agent" | "user";
+export type AppRole = "admin" | "agent" | "user" | "subagent";
 
 interface AuthContextValue {
   user: User | null;
@@ -11,6 +11,7 @@ interface AuthContextValue {
   hasRole: (role: AppRole) => boolean;
   isAdmin: boolean;
   isAgent: boolean;
+  isSubagent: boolean;
   signOut: () => Promise<void>;
   getDashboardRoute: () => string;
 }
@@ -95,10 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasRole = useCallback((role: AppRole) => roles.includes(role), [roles]);
   const isAdmin = roles.includes("admin");
   const isAgent = roles.includes("agent");
+  const isSubagent = roles.includes("subagent");
 
   const getDashboardRoute = useCallback(() => {
     if (roles.includes("admin")) return "/admin";
     if (roles.includes("agent")) return "/agent";
+    if (roles.includes("subagent")) return "/subagent";
     return "/";
   }, [roles]);
 
@@ -110,10 +113,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasRole,
       isAdmin,
       isAgent,
+      isSubagent,
       signOut,
       getDashboardRoute,
     }),
-    [user, roles, loading, hasRole, isAdmin, isAgent, signOut, getDashboardRoute],
+    [user, roles, loading, hasRole, isAdmin, isAgent, isSubagent, signOut, getDashboardRoute],
   );
 
   return createElement(AuthContext.Provider, { value }, children);
