@@ -63,7 +63,7 @@ const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
   const { toast } = useToast();
 
-  // ======================== Existing state ========================
+  // ======================== State ========================
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [agents, setAgents] = useState<AgentStore[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -94,7 +94,7 @@ const AdminDashboard = () => {
   const [notifTarget, setNotifTarget] = useState("all");
   const [sendingNotif, setSendingNotif] = useState(false);
 
-  // ======================== Spin wheel state ========================
+  // Spin wheel state
   const [spinConfig, setSpinConfig] = useState<{
     id: number;
     enabled: boolean;
@@ -105,21 +105,26 @@ const AdminDashboard = () => {
   } | null>(null);
   const [spinSaving, setSpinSaving] = useState(false);
 
-  // ======================== Admin permissions state ========================
+  // Admin permissions state
   const [currentUserSections, setCurrentUserSections] = useState<Section[]>([]);
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
   const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<UserProfile | null>(null);
   const [userSections, setUserSections] = useState<Section[]>([]);
   const [savingPermissions, setSavingPermissions] = useState(false);
-
   const [makeAdminDialogOpen, setMakeAdminDialogOpen] = useState(false);
   const [selectedUserForAdmin, setSelectedUserForAdmin] = useState<UserProfile | null>(null);
   const [newAdminSections, setNewAdminSections] = useState<Section[]>([]);
   const [makingAdmin, setMakingAdmin] = useState(false);
 
-  // ======================== Data fetching ========================
+  // ======================== Data fetching (initial) ========================
   const fetchData = async () => {
     setDataLoading(true);
+    await refreshData();
+    setDataLoading(false);
+  };
+
+  // Silent background refresh (no loading state)
+  const refreshData = async () => {
     const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes, topupRes] = await Promise.all([
       supabase.from("data_packages").select("*").order("size_gb"),
       supabase.from("agent_stores").select("*").order("created_at", { ascending: false }),
@@ -143,7 +148,6 @@ const AdminDashboard = () => {
     (rolesRes.data ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
     const userList = (profilesRes.data ?? []).map((p: any) => ({ ...p, role: rolesMap[p.id] || "user" }));
     setUsers(userList);
-    setDataLoading(false);
   };
 
   // ======================== Spin wheel config ========================
@@ -157,7 +161,6 @@ const AdminDashboard = () => {
     if (data) {
       setSpinConfig(data);
     } else {
-      // Fallback default (should not happen after SQL fix)
       setSpinConfig({
         id: 1,
         enabled: true,
@@ -182,7 +185,6 @@ const AdminDashboard = () => {
   const saveSpinConfig = async () => {
     if (!spinConfig) return;
     setSpinSaving(true);
-    // Remove the id field from the update object
     const { id, ...updateData } = spinConfig;
     const { error } = await supabase
       .from("spin_config")
@@ -195,18 +197,16 @@ const AdminDashboard = () => {
         updated_at: new Date().toISOString(),
       })
       .eq("id", 1);
-
     if (error) {
       console.error("Spin save error:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Spin configuration saved!" });
-      await fetchSpinConfig(); // refresh
+      await fetchSpinConfig();
     }
     setSpinSaving(false);
   };
 
-  // Helper to safely update numeric fields in spin config
   const updateSpinConfigNumber = (field: "payment_amount", value: string) => {
     const num = value === "" ? 0 : parseFloat(value);
     setSpinConfig(prev => prev ? { ...prev, [field]: isNaN(num) ? 0 : num } : null);
@@ -268,6 +268,7 @@ const AdminDashboard = () => {
     } else {
       toast({ title: "Permissions saved", description: `Updated access for ${selectedUserForPermissions.full_name || selectedUserForPermissions.id}` });
       setPermissionsDialogOpen(false);
+      await refreshData(); // silent refresh
     }
     setSavingPermissions(false);
   };
@@ -292,7 +293,7 @@ const AdminDashboard = () => {
       setMakeAdminDialogOpen(false);
       setSelectedUserForAdmin(null);
       setNewAdminSections([]);
-      await fetchData();
+      await refreshData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -314,7 +315,7 @@ const AdminDashboard = () => {
         .eq("user_id", user.id);
       if (permError) throw permError;
       toast({ title: "Admin removed", description: `${user.full_name || user.id} is no longer an admin.` });
-      await fetchData();
+      await refreshData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -398,11 +399,12 @@ const AdminDashboard = () => {
 
   const savePrices = async () => {
     setSaving(true);
-    for (const [id, changes] of Object.entries(editedPrices)) {
+    const updates = Object.entries(editedPrices);
+    for (const [id, changes] of updates) {
       await supabase.from("data_packages").update(changes).eq("id", id);
     }
     setEditedPrices({});
-    await fetchData();
+    await refreshData(); // silent refresh
     setSaving(false);
     toast({ title: "Prices updated!" });
   };
@@ -428,14 +430,14 @@ const AdminDashboard = () => {
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     setAddDialogOpen(false);
     setNewPkg({ network: "mtn", size_gb: "", price: "", agent_price: "" });
-    await fetchData();
+    await refreshData();
     toast({ title: "Package added!" });
   };
 
   // ======================== Agents ========================
   const toggleApproval = async (agentId: string, approved: boolean) => {
     await supabase.from("agent_stores").update({ approved }).eq("id", agentId);
-    await fetchData();
+    setAgents((prev) => prev.map((a) => (a.id === agentId ? { ...a, approved } : a)));
     toast({ title: approved ? "Agent approved!" : "Agent suspended" });
   };
 
@@ -457,9 +459,13 @@ const AdminDashboard = () => {
       if (currentOrder.status !== "paid") { toast({ title: "Order not paid yet", variant: "destructive" }); return; }
       const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: orderId } });
       if (error) throw error;
-      if (data?.success) toast({ title: "Order fulfilled successfully!" });
-      else toast({ title: "Fulfillment failed", description: data?.message || "Check API balance", variant: "destructive" });
-      await fetchData();
+      if (data?.success) {
+        toast({ title: "Order fulfilled successfully!" });
+        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed" } : o));
+      } else {
+        toast({ title: "Fulfillment failed", description: data?.message || "Check API balance", variant: "destructive" });
+        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed" } : o));
+      }
     } catch (err: any) {
       toast({ title: "Retry failed", description: err.message, variant: "destructive" });
     } finally {
@@ -487,12 +493,19 @@ const AdminDashboard = () => {
     const newBalance = Number(topupAgent.wallet_balance) + amount;
     const { error: updateErr } = await supabase.from("agent_stores").update({ wallet_balance: newBalance }).eq("id", topupAgent.id);
     if (updateErr) { toast({ title: "Error", description: updateErr.message, variant: "destructive" }); setTopupLoading(false); return; }
-    await supabase.from("wallet_topups").insert({ agent_store_id: topupAgent.id, amount });
+    const { data: newTopup, error: insertErr } = await supabase
+      .from("wallet_topups")
+      .insert({ agent_store_id: topupAgent.id, amount })
+      .select("id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )")
+      .single();
+    if (!insertErr && newTopup) {
+      setTopupHistory((prev) => [newTopup as any, ...prev]);
+    }
+    setAgents((prev) => prev.map((a) => a.id === topupAgent.id ? { ...a, wallet_balance: newBalance } : a));
     setTopupAgent({ ...topupAgent, wallet_balance: newBalance });
     setTopupAmount("");
     toast({ title: "Wallet credited!", description: `GH₵ ${amount.toFixed(2)} added to ${topupAgent.store_name}` });
     setTopupLoading(false);
-    await fetchData();
   };
 
   // ======================== Notifications ========================
@@ -519,8 +532,9 @@ const AdminDashboard = () => {
       const newBalance = Number(agent.wallet_balance) - amount;
       await supabase.from("agent_stores").update({ wallet_balance: newBalance }).eq("id", agentStoreId);
       await supabase.from("withdrawal_requests").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", withdrawalId);
+      setAgents((prev) => prev.map((a) => a.id === agentStoreId ? { ...a, wallet_balance: newBalance } : a));
+      setWithdrawals((prev) => prev.map((w) => w.id === withdrawalId ? { ...w, status: "completed", processed_at: new Date().toISOString() } : w));
       toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted. New balance: GH₵ ${newBalance.toFixed(2)}.` });
-      await fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -590,7 +604,7 @@ const AdminDashboard = () => {
             {canSee("spinwheel") && <TabsTrigger value="spinwheel"><Gift className="h-4 w-4 mr-1" /> Spin Wheel</TabsTrigger>}
           </TabsList>
 
-          {/* ========== PRICES TAB ========== */}
+          {/* PRICES TAB */}
           {canSee("prices") && (
             <TabsContent value="prices" className="space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
@@ -627,7 +641,7 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
-          {/* ========== ORDERS TAB ========== */}
+          {/* ORDERS TAB */}
           {canSee("orders") && (
             <TabsContent value="orders" className="space-y-4">
               {failedCount > 0 && (
@@ -668,7 +682,7 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
-          {/* ========== AGENTS TAB ========== */}
+          {/* AGENTS TAB */}
           {canSee("agents") && (
             <TabsContent value="agents" className="space-y-4">
               <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by store name..." value={agentSearchTerm} onChange={(e) => setAgentSearchTerm(e.target.value)} className="pl-10" /></div>
@@ -701,7 +715,7 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
-          {/* ========== TOPUP TAB ========== */}
+          {/* TOPUP TAB */}
           {canSee("topup") && (
             <TabsContent value="topup" className="space-y-6">
               <Card className="border-border">
@@ -710,13 +724,7 @@ const AdminDashboard = () => {
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Enter Topup Reference (5+ digits)"
-                        value={topupSearch}
-                        onChange={(e) => setTopupSearch(e.target.value)}
-                        className="pl-10"
-                        onKeyDown={(e) => e.key === "Enter" && searchTopupRef()}
-                      />
+                      <Input placeholder="Enter Topup Reference (5+ digits)" value={topupSearch} onChange={(e) => setTopupSearch(e.target.value)} className="pl-10" onKeyDown={(e) => e.key === "Enter" && searchTopupRef()} />
                     </div>
                     <Button variant="hero" onClick={searchTopupRef}><Search className="h-4 w-4 mr-1" /> Search</Button>
                   </div>
@@ -772,7 +780,7 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
-          {/* ========== FIXED WITHDRAWALS TAB ========== */}
+          {/* WITHDRAWALS TAB */}
           {canSee("withdrawals") && (
             <TabsContent value="withdrawals" className="space-y-4">
               {pendingWithdrawals.length > 0 && (
@@ -780,85 +788,42 @@ const AdminDashboard = () => {
                   <p className="text-sm text-foreground"><span className="font-bold text-yellow-400">{pendingWithdrawals.length} pending</span> withdrawal request(s) awaiting processing.</p>
                 </div>
               )}
-              <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by agent store name..."
-                  value={withdrawalSearchTerm}
-                  onChange={(e) => setWithdrawalSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+              <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by agent store name..." value={withdrawalSearchTerm} onChange={(e) => setWithdrawalSearchTerm(e.target.value)} className="pl-10" /></div>
               <Card className="border-border">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Agent</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Wallet Balance</TableHead>
-                      <TableHead>MoMo Name</TableHead>
-                      <TableHead>MoMo Number</TableHead>
-                      <TableHead>Network</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Agent</TableHead><TableHead>Amount</TableHead><TableHead>Wallet Balance</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {filteredWithdrawals.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                          No withdrawals match your search.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
+                    {filteredWithdrawals.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
                       filteredWithdrawals.map((w) => {
                         const agent = agents.find((a) => a.id === w.agent_store_id);
                         return (
                           <TableRow key={w.id}>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {new Date(w.created_at).toLocaleString()}
-                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{new Date(w.created_at).toLocaleString()}</TableCell>
                             <TableCell className="font-medium">{agent?.store_name ?? "—"}</TableCell>
                             <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
-                            <TableCell className="font-bold text-green-400">
-                              GH₵ {Number(agent?.wallet_balance ?? 0).toFixed(2)}
-                            </TableCell>
+                            <TableCell className="font-bold text-green-400">GH₵ {Number(agent?.wallet_balance ?? 0).toFixed(2)}</TableCell>
                             <TableCell>{agent?.momo_name ?? "—"}</TableCell>
                             <TableCell className="font-mono">{agent?.momo_number ?? "—"}</TableCell>
                             <TableCell className="uppercase text-sm">{agent?.momo_network ?? "—"}</TableCell>
-                            <TableCell>
-                              <Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
-                                {w.status}
-                              </Badge>
-                            </TableCell>
+                            <TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{w.status}</Badge></TableCell>
                             <TableCell>
                               {w.status === "pending" && (
-                                <Button
-                                  variant="hero"
-                                  size="sm"
-                                  onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount))}
-                                  disabled={processingWithdrawals.has(w.id)}
-                                >
-                                  {processingWithdrawals.has(w.id) ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>
-                                  )}
+                                <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount))} disabled={processingWithdrawals.has(w.id)}>
+                                  {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
                                 </Button>
                               )}
                             </TableCell>
                           </TableRow>
                         );
                       })
-                    )}
+                    }
                   </TableBody>
                 </Table>
               </Card>
             </TabsContent>
           )}
 
-          {/* ========== USERS TAB ========== */}
+          {/* USERS TAB */}
           {canSee("users") && (
             <TabsContent value="users" className="space-y-4">
               <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name..." value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} className="pl-10" /></div>
@@ -904,7 +869,7 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
-          {/* ========== NOTIFICATIONS TAB ========== */}
+          {/* NOTIFICATIONS TAB */}
           {canSee("notifications") && (
             <TabsContent value="notifications" className="space-y-6">
               <Card className="border-border">
@@ -930,7 +895,7 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
-          {/* ========== SPIN WHEEL TAB ========== */}
+          {/* SPIN WHEEL TAB */}
           {canSee("spinwheel") && spinConfig && (
             <TabsContent value="spinwheel" className="space-y-6">
               <Card className="border-border">
@@ -955,13 +920,7 @@ const AdminDashboard = () => {
                     {spinConfig.payment_required && (
                       <div className="flex items-center gap-4">
                         <Label>Payment Amount (GHS)</Label>
-                        <Input
-                          type="number"
-                          step="0.5"
-                          className="w-28"
-                          value={spinConfig.payment_amount}
-                          onChange={(e) => updateSpinConfigNumber("payment_amount", e.target.value)}
-                        />
+                        <Input type="number" step="0.5" className="w-28" value={spinConfig.payment_amount} onChange={(e) => updateSpinConfigNumber("payment_amount", e.target.value)} />
                       </div>
                     )}
                   </div>
@@ -987,10 +946,7 @@ const AdminDashboard = () => {
                             toast({ title: "Max 12 segments", variant: "destructive" });
                             return;
                           }
-                          setSpinConfig({
-                            ...spinConfig,
-                            segments: [...spinConfig.segments, { type: "message", value: "", label: "New", weight: 1 }]
-                          });
+                          setSpinConfig({ ...spinConfig, segments: [...spinConfig.segments, { type: "message", value: "", label: "New", weight: 1 }] });
                         }}>
                           <Plus className="h-4 w-4 mr-1" /> Add
                         </Button>
@@ -999,10 +955,7 @@ const AdminDashboard = () => {
                             toast({ title: "Minimum 2 segments", variant: "destructive" });
                             return;
                           }
-                          setSpinConfig({
-                            ...spinConfig,
-                            segments: spinConfig.segments.slice(0, -1)
-                          });
+                          setSpinConfig({ ...spinConfig, segments: spinConfig.segments.slice(0, -1) });
                         }}>
                           <Trash2 className="h-4 w-4 mr-1" /> Remove Last
                         </Button>
@@ -1025,33 +978,15 @@ const AdminDashboard = () => {
                             </div>
                             {seg.type === "gb" ? (
                               <>
-                                <Input
-                                  type="number"
-                                  placeholder="GB value"
-                                  value={seg.value}
-                                  onChange={(e) => updateSpinSegment(idx, "value", e.target.value)}
-                                />
-                                <Input
-                                  placeholder="Label (e.g., 1 GB)"
-                                  value={seg.label}
-                                  onChange={(e) => updateSpinSegment(idx, "label", e.target.value)}
-                                />
+                                <Input type="number" placeholder="GB value" value={seg.value} onChange={(e) => updateSpinSegment(idx, "value", e.target.value)} />
+                                <Input placeholder="Label (e.g., 1 GB)" value={seg.label} onChange={(e) => updateSpinSegment(idx, "label", e.target.value)} />
                               </>
                             ) : (
-                              <Input
-                                placeholder="Motivational message"
-                                value={seg.label}
-                                onChange={(e) => updateSpinSegment(idx, "label", e.target.value)}
-                              />
+                              <Input placeholder="Motivational message" value={seg.label} onChange={(e) => updateSpinSegment(idx, "label", e.target.value)} />
                             )}
                             <div className="flex items-center gap-2">
                               <Label className="text-xs">Weight</Label>
-                              <Input
-                                type="number"
-                                className="w-24"
-                                value={seg.weight}
-                                onChange={(e) => updateSpinSegment(idx, "weight", e.target.value)}
-                              />
+                              <Input type="number" className="w-24" value={seg.weight} onChange={(e) => updateSpinSegment(idx, "weight", e.target.value)} />
                             </div>
                           </div>
                         </Card>
@@ -1100,7 +1035,7 @@ const AdminDashboard = () => {
         </Tabs>
       </div>
 
-      {/* Add Package Dialog */}
+      {/* Dialogs (unchanged) */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display">Add New Package</DialogTitle><DialogDescription>Create a new data package.</DialogDescription></DialogHeader>
@@ -1114,7 +1049,6 @@ const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Admin Permissions Dialog */}
       <Dialog open={permissionsDialogOpen} onOpenChange={setPermissionsDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>Admin Permissions for {selectedUserForPermissions?.full_name || selectedUserForPermissions?.id}</DialogTitle><DialogDescription>Select which sections this admin can access.</DialogDescription></DialogHeader>
@@ -1136,7 +1070,6 @@ const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Make Admin Dialog */}
       <Dialog open={makeAdminDialogOpen} onOpenChange={setMakeAdminDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>Make Admin: {selectedUserForAdmin?.full_name || selectedUserForAdmin?.id}</DialogTitle><DialogDescription>Select which sections this new admin can access.</DialogDescription></DialogHeader>

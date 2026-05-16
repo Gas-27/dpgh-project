@@ -140,7 +140,7 @@ const sounds = {
   noWin: () => { playTone(220, "sawtooth", 0.28, 0.22); playTone(180, "sawtooth", 0.22, 0.18, 0.18); },
 };
 
-// ────────────────────────────────────────────── Order Tracking Card ──
+// ────────────────────────────────────────────── Order Tracking Card (UPDATED: delivered at 200 minutes) ──
 const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   const [now, setNow] = useState(new Date());
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
@@ -148,7 +148,8 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
   const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 60000;
   let step = 1, msg = "", note: string | null = null;
 
-  if (elapsed >= 150) {
+  // 🔁 CHANGED: delivery threshold from 90 minutes to 200 minutes
+  if (elapsed >= 200) {
     step = 4; msg = "Your data bundle has been delivered successfully.";
     note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
       : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
@@ -170,9 +171,6 @@ const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
     msg = "Order being processed…";
   }
 
-  const d = new Date(order.created_at).toLocaleString();
-
-  // Build detailed report message exactly as requested
   const getDetailedReportMessage = (): string => {
     const orderDate = new Date(order.created_at).toLocaleString();
     const networkName = formatNetworkName(order.network);
@@ -220,9 +218,10 @@ Please investigate and assist. Thank you.`;
         <p className="text-sm font-medium">{msg}</p>
         {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-600/20">{note}</p>}
       </div>
-      {elapsed >= 150 && elapsed < 3030 && (
+      {/* Report button now appears after 200 minutes (changed from 90) */}
+      {elapsed >= 200 && elapsed < 3030 && (
         <Button variant="outline" size="sm" className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10" asChild>
-          <a href={waLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4 mr-2" />Only Report: If it Shows Delivered <br></br>but you have not received it</a>
+          <a href={waLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4 mr-2" />Only tap on this Report: If it Shows Delivered <br></br>but you have not received it</a>
         </Button>
       )}
     </div>
@@ -261,7 +260,7 @@ Please investigate and assist. Thank you.`;
   );
 };
 
-// ─────────────────────────────────────────────── Spin Wheel Popup ──
+// ─────────────────────────────────────────────── Spin Wheel Popup (unchanged) ──
 interface SpinWheelPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -450,9 +449,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     let bestIdx = 0, bestDist = Infinity;
     for (let i = 0; i < segs.length; i++) {
       const segCenter = segStarts[i] + segAngles[i] / 2;
-      // current canvas angle of this segment's centre
       const canvasAngle = ((segCenter + finalAngle) % 360 + 360) % 360;
-      // distance to 270° (top)
       const dist = Math.min(Math.abs(canvasAngle - 270), 360 - Math.abs(canvasAngle - 270));
       if (dist < bestDist) {
         bestDist = dist;
@@ -464,7 +461,6 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
 
   // ── Finalise spin ──
   const finaliseSpin = useCallback(() => {
-    // Determine winner by the segment under the pointer
     const winner = getSegmentUnderPointer(angleRef.current);
     winIdxRef.current = winner;
     setWinningIdx(winner);
@@ -476,8 +472,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     const seg = segs[winner];
 
     if (seg.type === "extra_spin") {
-      // extra spin – normal logic, spins increase
-      const newCount = spinCount; // keep current, then add 1
+      const newCount = spinCount;
       setSpinCount(newCount + 1);
       if (!paymentRequired) {
         localStorage.setItem(getSpinCountKey(phone), String(newCount + 1));
@@ -486,21 +481,16 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
       setResultMsg("🎁 Extra Spin! +1 added!");
       toast({ title: "Extra spin!", description: "You earned an extra spin!" });
     } else if (seg.type === "gb" && Number(seg.value) > 0) {
-      // GB prize – FORFEIT ALL REMAINING SPINS
       sounds.win();
       setSuccessGb(Number(seg.value));
       setResultMsg(`🎉 You won ${seg.value}GB!`);
 
-      // Set spin count to 0 immediately
       setSpinCount(0);
       if (!paymentRequired) {
         localStorage.removeItem(getSpinCountKey(phone));
-        // Start cooldown so no free spins until next window
         localStorage.setItem(getSpinCooldownKey(phone), String(Date.now() + SPIN_COOLDOWN_MS));
       }
-      // Do NOT decrement; just wipe remaining spins
     } else {
-      // Message / no win – normal decrement
       sounds.noWin();
       const newCount = spinCount - 1;
       setSpinCount(newCount);
@@ -569,18 +559,16 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
   const handleStop = useCallback(() => {
     if (phaseRef.current !== "freewheeling") return;
 
-    // Randomly choose winning segment (still using weights)
     const total = segs.reduce((s, sg) => s + (sg.weight || 1), 0);
     let r = Math.random() * total;
     let chosenIdx = 0;
     for (let i = 0; i < segs.length; i++) { r -= segs[i].weight || 1; if (r < 0) { chosenIdx = i; break; } }
 
-    // Compute target rotation so that the centre of the chosen segment is exactly at 270°
     const segCentre = segStarts[chosenIdx] + segAngles[chosenIdx] / 2;
     const targetMod = ((270 - segCentre) % 360 + 360) % 360;
     const currentMod = ((angleRef.current % 360) + 360) % 360;
     const delta = ((targetMod - currentMod) % 360 + 360) % 360;
-    const extraTurns = 360 * 2.5; // at least 2.5 full rotations for drama
+    const extraTurns = 360 * 2.5;
     targetRef.current = angleRef.current + delta + extraTurns;
     winIdxRef.current = chosenIdx;
 
@@ -807,7 +795,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
   );
 };
 
-// ─────────────────────────────────────────────────── Packages Page ──
+// ─────────────────────────────────────────────────── Packages Page (UPDATED: phone search strips spaces) ──
 const Packages = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -854,9 +842,17 @@ const Packages = () => {
   const searchOrders = async () => {
     if (!searchQuery.trim()) return;
     setSearching(true); setSearchPerformed(true);
-    const q = searchQuery.trim();
+    let q = searchQuery.trim();
+    // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
+    q = q.replace(/\s/g, "");
     let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,created_at");
-    query = q.length === 36 && q.includes("-") ? query.eq("id", q) : query.ilike("customer_number", `%${q}%`);
+    // If query is a UUID (contains hyphens), search by ID; otherwise search by phone number (without spaces)
+    if (q.length === 36 && q.includes("-")) {
+      query = query.eq("id", q);
+    } else {
+      // Normalise stored numbers (they have no spaces) – we can do ilike with the cleaned query
+      query = query.ilike("customer_number", `%${q}%`);
+    }
     const { data, error } = await query.order("created_at", { ascending: false });
     setOrders(!error && data ? data as Order[] : []);
     setSearching(false);
@@ -916,7 +912,13 @@ const Packages = () => {
                       <p className="text-sm text-muted-foreground">Enter your phone number or order ID to check your purchase status.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                      <Input placeholder="Phone number or Order ID" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchOrders()} className="bg-background min-w-[200px]" />
+                      <Input
+                        placeholder="Phone number or Order ID"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && searchOrders()}
+                        className="bg-background min-w-[200px]"
+                      />
                       <Button variant="hero" onClick={searchOrders} disabled={searching}>
                         {searching ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" /> : <Search className="h-4 w-4 mr-1" />}Search
                       </Button>
@@ -959,7 +961,9 @@ const Packages = () => {
                                     </Badge>
                                   </div>
                                 </div>
-                                <div className="pt-3"><OrderTrackingCard order={order} toast={toast} /></div>
+                                <div className="pt-3">
+                                  <OrderTrackingCard order={order} toast={toast} />
+                                </div>
                               </div>
                             ))}
                           </div>
