@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
+import SubagentsList from "@/components/SubagentsList";
+import SubagentPricesManager from "@/components/SubagentPricesManager";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
 } from "@/components/ui/sheet";
@@ -64,6 +66,7 @@ const menuItems = [
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
   { id: "store", label: "Store Prices", icon: Store },
   { id: "subagents", label: "Subagents", icon: Users },
+  { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
   { id: "flyer", label: "Flyer Generator", icon: Image },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
   { id: "topup", label: "Top Up", icon: Coins },
@@ -211,6 +214,7 @@ const AgentDashboard = () => {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
+  const [subagents, setSubagents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [savingPrices, setSavingPrices] = useState(false);
@@ -319,12 +323,13 @@ const AgentDashboard = () => {
         momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
       });
 
-      const [pkgR, priceR, orderR, orderCountR, wdR] = await Promise.all([
+      const [pkgR, priceR, orderR, orderCountR, wdR, subagentR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, ORDERS_PAGE_SIZE - 1),
         supabase.from("orders").select("id", { count: "exact", head: true }).eq("agent_store_id", sd.id),
         supabase.from("withdrawal_requests").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
       ]);
 
       const pkgs = pkgR.data ?? [];
@@ -338,6 +343,8 @@ const AgentDashboard = () => {
       setOrdersTotal(orderCountR.count ?? 0);
       const wd = (wdR.data as WithdrawalRequest[]) ?? [];
       setWithdrawals(wd);
+      const subags = subagentR.data ?? [];
+      setSubagents(subags);
       setProfitStats(prev => ({ ...prev, availableForWithdrawal: sd.wallet_balance ?? 0 }));
 
       const slug = sd.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -920,18 +927,40 @@ const AgentDashboard = () => {
 
           {/* ============================= SUBAGENTS ============================= */}
           <TabsContent value="subagents" className="mt-0 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-2">Total Subagents</p>
+                  <p className="text-3xl font-bold">{subagents.length}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-2">Total Profit from Subagents</p>
+                  <p className="text-3xl font-bold text-green-400">GH₵{subagents.reduce((sum, s) => sum + (Number(s.wallet_balance) || 0), 0).toFixed(2)}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-2">Total Orders from Subagents</p>
+                  <p className="text-3xl font-bold text-blue-400">0</p>
+                  <p className="text-xs text-muted-foreground mt-1">Coming soon</p>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="font-display flex items-center gap-2">
-                  <Users className="h-5 w-5" /> Manage Subagents
+                  <Users className="h-5 w-5" /> Your Subagents
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 space-y-3">
+              <CardContent>
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-3">
                     <div className="flex-1">
                       <p className="font-semibold text-blue-400 mb-2">Allow Subagent Registration</p>
-                      <p className="text-sm text-muted-foreground mb-4">When enabled, a "Become a Subagent" button will appear on your storefront, allowing users to register as subagents under your store.</p>
+                      <p className="text-sm text-muted-foreground mb-4">When enabled, a "Become a Subagent" button will appear on your storefront.</p>
                     </div>
                     <Switch 
                       checked={store?.allow_subagent_registration || false}
@@ -943,7 +972,7 @@ const AgentDashboard = () => {
                             .eq('id', store?.id);
                           if (error) throw error;
                           setStore(prev => prev ? { ...prev, allow_subagent_registration: checked } : null);
-                          toast({ title: checked ? "✅ Subagent registration enabled" : "❌ Subagent registration disabled" });
+                          toast({ title: checked ? "Registration enabled" : "Registration disabled" });
                         } catch (error) {
                           console.error('Error updating subagent setting:', error);
                           toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
@@ -952,30 +981,39 @@ const AgentDashboard = () => {
                     />
                   </div>
                 </div>
-                
-                <div className="rounded-lg border border-border p-4">
-                  <h4 className="font-semibold mb-3">Subagent Pricing</h4>
-                  <p className="text-sm text-muted-foreground mb-4">Set minimum prices for subagents. They can only sell at or above these prices.</p>
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {packages.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4 text-center">No packages available</p>
-                    ) : (
-                      packages.map(pkg => (
-                        <div key={pkg.id} className="flex items-center justify-between gap-3 p-3 bg-card rounded-lg border border-border">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm">{pkg.network.toUpperCase()} - {pkg.size_gb}GB</p>
-                            <p className="text-xs text-muted-foreground">Agent price: GH₵{Number(pkg.agent_price).toFixed(2)}</p>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="text-sm font-semibold text-primary">GH₵{Number(pkg.agent_price).toFixed(2)}</span>
-                            <span className="text-xs text-muted-foreground">min</span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-4">Subagents will set their own selling prices during registration. Prices are validated to ensure they meet the minimum agent price.</p>
-                </div>
+
+                <SubagentsList
+                  agentStoreId={store?.id || ""}
+                  subagents={subagents}
+                  onSuspend={async (id: string) => {
+                    const { error } = await supabase
+                      .from("subagent_stores")
+                      .update({ approved: false })
+                      .eq("id", id);
+                    if (!error) {
+                      setSubagents(prev => prev.filter(s => s.id !== id));
+                    }
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ============================= SUBAGENT PRICES ============================= */}
+          <TabsContent value="subagent-prices" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" /> Set Subagent Pricing
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-6">Set custom minimum prices for each of your subagents. Subagents can only sell at or above these prices.</p>
+                <SubagentPricesManager
+                  agentStoreId={store?.id || ""}
+                  packages={packages}
+                  subagents={subagents}
+                />
               </CardContent>
             </Card>
           </TabsContent>

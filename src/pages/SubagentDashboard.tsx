@@ -11,10 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
-  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu
+  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import FlyerGenerator from "@/components/FlyerGenerator";
 
 interface SubagentStore {
   id: string;
@@ -192,6 +193,7 @@ const SubagentDashboard = () => {
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
+    { id: "flyer", label: "Flyer Generator", icon: Image },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -416,6 +418,18 @@ const SubagentDashboard = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* FLYER GENERATOR */}
+          <TabsContent value="flyer" className="mt-0 space-y-6">
+            {subagentStore && (
+              <FlyerGenerator
+                storeName={subagentStore.store_name}
+                storeId={subagentStore.id}
+                whatsappNumber={subagentStore.whatsapp_number}
+                supportNumber={subagentStore.support_number}
+              />
+            )}
           </TabsContent>
 
           {/* SETTINGS */}
