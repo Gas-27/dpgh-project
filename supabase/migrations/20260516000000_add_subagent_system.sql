@@ -17,7 +17,7 @@ CREATE TABLE public.subagent_stores (
   momo_name text NOT NULL,
   momo_network text NOT NULL CHECK (momo_network IN ('mtn', 'airteltigo', 'telecel')),
   wallet_balance numeric DEFAULT 0,
-  approved boolean DEFAULT false,
+  approved boolean DEFAULT true,
   allow_registration boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT now()
 );

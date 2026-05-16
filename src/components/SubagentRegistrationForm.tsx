@@ -101,7 +101,7 @@ export default function SubagentRegistrationForm({
       if (authError) throw authError;
       if (!authData.user?.id) throw new Error("Failed to create user account");
 
-      // Create subagent store
+      // Create subagent store (auto-approved)
       const { data: storeData, error: storeError } = await supabase
         .from("subagent_stores")
         .insert({
@@ -114,7 +114,7 @@ export default function SubagentRegistrationForm({
           momo_number: formData.momoNumber,
           momo_network: formData.momoNetwork,
           wallet_balance: 0,
-          approved: false,
+          approved: true,
         })
         .select()
         .single();

@@ -238,7 +238,7 @@ const AdminDashboard = () => {
     if (!error && data) {
       setCurrentUserSections(data.sections as Section[]);
     } else {
-      setCurrentUserSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "notifications", "spinwheel"]);
+      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "spinwheel"]);
     }
   };
 
@@ -720,42 +720,57 @@ const AdminDashboard = () => {
           {/* SUBAGENTS TAB */}
           {canSee("subagents") && (
             <TabsContent value="subagents" className="space-y-4">
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> Subagent Management</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Manage all subagents in the system. Review registrations and approve/suspend accounts.</p>
-                  <div className="relative max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search by store name..." className="pl-10" />
-                  </div>
-                  
-                  {subagents.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">No subagents yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {subagents.map((subagent) => (
-                        <div key={subagent.id} className="border border-border rounded-lg p-4 space-y-2">
-                          <div className="flex items-start justify-between">
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search by store name..." className="pl-10" />
+              </div>
+              
+              {subagents.length === 0 ? (
+                <Card className="border-border">
+                  <CardContent className="py-12">
+                    <p className="text-center text-muted-foreground">No subagents yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                subagents.map((subagent) => (
+                  <Card key={subagent.id} className="border-border bg-card/50">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-6">
+                        <div className="flex-1 space-y-3">
+                          <h3 className="font-display font-bold text-lg text-foreground">{subagent.store_name}</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                             <div>
-                              <h4 className="font-semibold">{subagent.store_name}</h4>
-                              <p className="text-xs text-muted-foreground">Under: {subagent.agent_stores?.store_name}</p>
-                              <p className="text-xs text-muted-foreground">WhatsApp: {subagent.whatsapp_number}</p>
-                              <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(subagent.wallet_balance).toFixed(2)}</span></p>
+                              <p className="text-muted-foreground text-xs">Parent Agent</p>
+                              <p className="font-semibold text-foreground">{subagent.agent_stores?.store_name || 'N/A'}</p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={subagent.approved ? "default" : "secondary"}>
-                                {subagent.approved ? "✅ Approved" : "⏳ Pending"}
-                              </Badge>
+                            <div>
+                              <p className="text-muted-foreground text-xs">Revenue Earned</p>
+                              <p className="font-bold text-green-400">GH₵ {Number(subagent.wallet_balance).toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground text-xs">WhatsApp</p>
+                              <p className="font-semibold text-foreground">{subagent.whatsapp_number}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground text-xs">Support</p>
+                              <p className="font-semibold text-foreground">{subagent.support_number}</p>
+                            </div>
+                            <div className="md:col-span-2">
+                              <p className="text-muted-foreground text-xs mb-1">MoMo Account</p>
+                              <p className="font-semibold text-foreground">{subagent.momo_name} • {subagent.momo_number} ({subagent.momo_network.toUpperCase()})</p>
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        <div className="flex-shrink-0">
+                          <Badge className="bg-green-600/20 text-green-400 border-green-600/30 font-semibold">
+                            Active
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </TabsContent>
           )}
 
