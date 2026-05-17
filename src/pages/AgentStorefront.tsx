@@ -431,7 +431,7 @@ const AgentStorefront = () => {
   const { toast } = useToast();
   const { user, hasRole } = useAuth();
 
-  // If on agent.datastore.shop subdomain and user is a subagent, show SubagentDashboard
+  // If on agent.datastores.shop subdomain and user is a subagent, show SubagentDashboard
   if (subdomainStoreName === "agent" && user && hasRole("subagent")) {
     return <SubagentDashboard />;
   }
