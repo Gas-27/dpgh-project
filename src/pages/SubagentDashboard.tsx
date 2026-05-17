@@ -521,9 +521,6 @@ const SubagentDashboard = () => {
   );
 
   const copyStoreLink = async () => {
-    console.log("[v0] subagentStore:", subagentStore);
-    console.log("[v0] store_name:", subagentStore?.store_name);
-    console.log("[v0] storeUrl:", storeUrl);
     if (!storeUrl) {
       toast({ title: "Error", description: "Store URL not available", variant: "destructive" });
       return;

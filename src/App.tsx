@@ -63,9 +63,6 @@ const App = () => {
                            hostname === `www.${DOMAINS.SUBAGENT_STORE}` ||
                            hostname.endsWith(`.${DOMAINS.SUBAGENT_STORE}`);
 
-  // Debug log to check domain detection
-  console.log("[v0] Domain check:", { hostname, isSubagentDomain, isAgentSubdomain, expectedSubagentDomain: DOMAINS.SUBAGENT_STORE });
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
