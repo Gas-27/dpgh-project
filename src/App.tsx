@@ -59,7 +59,12 @@ const App = () => {
   // Determine if we are on a subdomain of datastores.shop or agentsstore.shop
   const hostname = window.location.hostname;
   const isAgentSubdomain = hostname.endsWith(`.${DOMAINS.AGENT_STORE}`) && hostname !== DOMAINS.AGENT_STORE;
-  const isSubagentDomain = hostname === DOMAINS.SUBAGENT_STORE;
+  const isSubagentDomain = hostname === DOMAINS.SUBAGENT_STORE || 
+                           hostname === `www.${DOMAINS.SUBAGENT_STORE}` ||
+                           hostname.endsWith(`.${DOMAINS.SUBAGENT_STORE}`);
+
+  // Debug log to check domain detection
+  console.log("[v0] Domain check:", { hostname, isSubagentDomain, isAgentSubdomain, expectedSubagentDomain: DOMAINS.SUBAGENT_STORE });
 
   return (
     <QueryClientProvider client={queryClient}>
