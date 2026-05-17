@@ -140,7 +140,7 @@ const SubagentLogin = () => {
               </div>
             </div>
             <CardTitle className="font-display text-2xl font-bold">Agent Login</CardTitle>
-            <CardDescription>Sign in to your Agent Dashboard</CardDescription>
+            <CardDescription>Sign in to your account</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -198,18 +198,6 @@ const SubagentLogin = () => {
                 Sign In
               </Button>
             </form>
-
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              Want to become an agent?{" "}
-              <a 
-                href="https://datastores.shop" 
-                className="text-emerald-500 hover:underline font-medium"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Visit an agent store
-              </a>
-            </div>
           </CardContent>
         </Card>
       </div>

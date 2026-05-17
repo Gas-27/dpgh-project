@@ -11,11 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
-  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent
+  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent,
+  ChevronUp, ChevronDown, BookOpen, Search, TrendingUp
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import FlyerGenerator from "@/components/FlyerGenerator";
+import { DOMAINS } from "@/config/domains";
 
 interface SubagentStore {
   id: string;
@@ -49,6 +51,18 @@ interface WithdrawalRequest {
   created_at: string;
 }
 
+// Instruction manual sections
+const MANUAL_SECTIONS = [
+  { icon: "📊", title: "Overview", content: `Your dashboard home. See wallet balance, total revenue, pending orders, and store status at a glance.\n\n• Wallet Balance – funds available to withdraw\n• Total Revenue – sum of all completed orders\n• Pending Orders – orders awaiting fulfillment` },
+  { icon: "🛒", title: "Buy Data", content: `Purchase data bundles at your agent's base price to resell in your store.\n\n• Select network (MTN, AirtelTigo, Telecel)\n• Choose package size\n• Enter customer number\n• Confirm purchase` },
+  { icon: "💰", title: "Store Prices", content: `Set your selling prices for each data package.\n\n• Base Price = price your agent gives you\n• Your Selling Price = what customers pay\n• Profit = Selling Price - Base Price\n\nUse markup to increase all prices by a percentage.` },
+  { icon: "📦", title: "Orders", content: `View all customer orders.\n\n• Track order status (pending, completed, failed)\n• See customer details and amounts\n• Monitor your sales history` },
+  { icon: "💸", title: "Withdraw", content: `Cash out your wallet balance to your MoMo account.\n\n• Minimum withdrawal: GH₵ 10.00\n• Only one pending withdrawal at a time\n• Processed within 24 hours` },
+  { icon: "🎨", title: "Flyer Generator", content: `Create promotional flyers for your store.\n\n• Customize colors and design\n• Add your store name and contact\n• Download or share to WhatsApp` },
+  { icon: "🎨", title: "Appearance", content: `Customize your store appearance.\n\n• Change primary color\n• Update store banner\n• Modify theme settings` },
+  { icon: "⚙️", title: "Settings", content: `Manage your store information.\n\n• Store Name\n• WhatsApp Number\n• Support Number` },
+];
+
 const SubagentDashboard = () => {
   const { signOut, user, isSubagent } = useAuth();
   const { toast } = useToast();
@@ -63,12 +77,17 @@ const SubagentDashboard = () => {
   const [storeForm, setStoreForm] = useState<Partial<SubagentStore>>({});
   const [saving, setSaving] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [packages, setPackages] = useState<any[]>([]);
+  const [basePrices, setBasePrices] = useState<Record<string, number>>({});
   const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
   const [markupPercent, setMarkupPercent] = useState("");
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [savingPrices, setSavingPrices] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [openManualSection, setOpenManualSection] = useState<number | null>(null);
+  const [orderSearch, setOrderSearch] = useState("");
 
   useEffect(() => {
     if (!isSubagent) return;
@@ -118,15 +137,29 @@ const SubagentDashboard = () => {
         .order("size_gb");
       setPackages(pkgList || []);
 
-      // Fetch subagent prices
-      const { data: pricesList } = await supabase
+      // Fetch base prices from parent agent
+      const { data: agentPricesList } = await supabase
         .from("agent_package_prices")
         .select("package_id, sell_price")
         .eq("agent_store_id", store.agent_store_id);
       
-      if (pricesList) {
+      if (agentPricesList) {
         const priceMap: Record<string, number> = {};
-        pricesList.forEach((p: any) => {
+        agentPricesList.forEach((p: any) => {
+          priceMap[p.package_id] = p.sell_price;
+        });
+        setBasePrices(priceMap);
+      }
+
+      // Fetch subagent's own selling prices
+      const { data: subagentPricesList } = await supabase
+        .from("subagent_package_prices")
+        .select("package_id, sell_price")
+        .eq("subagent_store_id", store.id);
+      
+      if (subagentPricesList) {
+        const priceMap: Record<string, number> = {};
+        subagentPricesList.forEach((p: any) => {
           priceMap[p.package_id] = p.sell_price;
         });
         setSubagentPrices(priceMap);
@@ -189,13 +222,29 @@ const SubagentDashboard = () => {
 
   const handleRequestWithdrawal = async () => {
     if (!withdrawAmount || !subagentStore) return;
-    try {
-      const amount = parseFloat(withdrawAmount);
-      if (amount > (subagentStore.wallet_balance || 0)) {
-        toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
-        return;
-      }
+    
+    const amount = parseFloat(withdrawAmount);
+    
+    // Validate minimum withdrawal
+    if (amount < 10) {
+      toast({ title: "Error", description: "Minimum withdrawal is GH₵ 10.00", variant: "destructive" });
+      return;
+    }
+    
+    // Check for pending withdrawal
+    const hasPending = withdrawals.some(w => w.status === "pending");
+    if (hasPending) {
+      toast({ title: "Error", description: "You already have a pending withdrawal. Please wait until it completes.", variant: "destructive" });
+      return;
+    }
+    
+    if (amount > (subagentStore.wallet_balance || 0)) {
+      toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
+      return;
+    }
 
+    try {
+      setWithdrawLoading(true);
       const { error } = await supabase
         .from("withdrawal_requests")
         .insert({
@@ -205,12 +254,14 @@ const SubagentDashboard = () => {
         });
 
       if (error) throw error;
-      toast({ title: "✅ Withdrawal request submitted" });
+      toast({ title: "Success", description: "Withdrawal request submitted successfully" });
       setWithdrawAmount("");
       fetchData();
     } catch (error) {
       console.error("Error requesting withdrawal:", error);
       toast({ title: "Error", description: "Failed to submit withdrawal request", variant: "destructive" });
+    } finally {
+      setWithdrawLoading(false);
     }
   };
 
@@ -233,7 +284,7 @@ const SubagentDashboard = () => {
     const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
     
     filteredPackages.forEach(pkg => {
-      const basePrice = subagentPrices[pkg.id] || pkg.price || 0;
+      const basePrice = basePrices[pkg.id] || pkg.price || 0;
       const newPrice = basePrice * (1 + markup);
       setEditedPrices(prev => ({
         ...prev,
@@ -253,7 +304,7 @@ const SubagentDashboard = () => {
 
       // Validate that no price is below agent's base price
       for (const [packageId, price] of Object.entries(editedPrices)) {
-        const basePrice = subagentPrices[packageId] || 0;
+        const basePrice = basePrices[packageId] || 0;
         if (price < basePrice) {
           toast({
             title: "Invalid Price",
@@ -280,9 +331,12 @@ const SubagentDashboard = () => {
         if (error) throw error;
       }
 
+      // Update local state
+      setSubagentPrices(prev => ({ ...prev, ...editedPrices }));
       setEditedPrices({});
       setMarkupPercent("");
       toast({ title: "Success", description: "Prices saved successfully" });
+      fetchData(); // Refresh data
     } catch (error) {
       console.error("Error saving prices:", error);
       toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
@@ -332,7 +386,14 @@ const SubagentDashboard = () => {
 
   const totalRevenue = orders.reduce((sum, order) => sum + (order.status === "completed" ? order.amount : 0), 0);
   const pendingOrders = orders.filter(o => o.status !== "completed").length;
-  const storeUrl = `${window.location.origin}/subagent/${subagentStore.id}`;
+  const totalOrders = orders.length;
+  const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
+  const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
+  const storeUrl = DOMAINS.getSubagentStoreUrl(subagentStore.store_name);
+  const filteredOrders = orders.filter(o => 
+    o.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+    o.id?.toLowerCase().includes(orderSearch.toLowerCase())
+  );
 
   const copyStoreLink = async () => {
     await navigator.clipboard.writeText(storeUrl);
@@ -409,65 +470,179 @@ const SubagentDashboard = () => {
 
           {/* OVERVIEW */}
           <TabsContent value="overview" className="mt-0 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-border">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Wallet Balance</p>
-                    <p className="text-3xl font-bold text-primary mt-2">GH₵{(subagentStore?.wallet_balance || 0).toFixed(2)}</p>
+            {/* Instruction Manual Dropdown */}
+            <Card className="border-primary/30 bg-primary/5">
+              <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-display font-bold text-foreground">Dashboard Instruction Manual</p>
+                    <p className="text-xs text-muted-foreground">Tap to {manualOpen ? "hide" : "view"} a full guide on how every section works</p>
                   </div>
+                </div>
+                {manualOpen ? <ChevronUp className="h-5 w-5 text-primary" /> : <ChevronDown className="h-5 w-5 text-primary" />}
+              </button>
+              {manualOpen && (
+                <div className="px-4 pb-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">Tap any section to expand its guide. Tap on the MENU above to see these sections.</p>
+                  {MANUAL_SECTIONS.map((sec, i) => (
+                    <div key={i} className="border border-border rounded-lg overflow-hidden">
+                      <button onClick={() => setOpenManualSection(openManualSection === i ? null : i)} className="w-full flex items-center justify-between p-3 text-left bg-card hover:bg-secondary/50 transition-colors">
+                        <span className="font-semibold text-foreground flex items-center gap-2"><span>{sec.icon}</span> {sec.title}</span>
+                        {openManualSection === i ? <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                      </button>
+                      {openManualSection === i && (
+                        <div className="p-3 bg-background border-t border-border">
+                          <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{sec.content}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="border-border">
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground text-sm">Store Status</p>
+                  <Badge className="mt-2 bg-green-600/20 text-green-400 border-green-600/30">
+                    {subagentStore.approved ? "Active" : "Pending"}
+                  </Badge>
                 </CardContent>
               </Card>
               <Card className="border-border">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Total Revenue</p>
-                    <p className="text-3xl font-bold text-green-500 mt-2">GH₵{totalRevenue.toFixed(2)}</p>
-                  </div>
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground text-sm">Total Orders</p>
+                  <p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Pending Orders</p>
-                    <p className="text-3xl font-bold text-orange-500 mt-2">{pendingOrders}</p>
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground text-sm">Pending</p>
+                  <p className="font-display text-2xl font-bold mt-1 text-primary">{pendingOrders}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground text-sm">Revenue</p>
+                  <p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵ {totalRevenue.toFixed(2)}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Wallet & Profit Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="border-green-500/30 bg-green-500/5">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Wallet Balance</p>
+                      <p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}</p>
+                    </div>
+                    <Wallet className="h-8 w-8 text-green-400 opacity-50" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-yellow-500/30 bg-yellow-500/5">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Available for Withdrawal</p>
+                      <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(subagentStore?.wallet_balance ?? 0).toFixed(2)}</p>
+                      {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
+                    </div>
+                    <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
+            {/* Orders Table */}
             <Card className="border-border">
-              <CardHeader>
-                <CardTitle>Store Status</CardTitle>
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <CardTitle className="font-display text-lg">Recent Orders</CardTitle>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search by number..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)} className="pl-9" />
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Approval Status</span>
-                  <Badge variant={subagentStore.approved ? "default" : "secondary"}>
-                    {subagentStore.approved ? "✅ Approved" : "⏳ Pending Approval"}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Member Since</span>
-                  <span className="text-sm text-muted-foreground">
-                    {new Date(subagentStore.created_at).toLocaleDateString()}
-                  </span>
-                </div>
+              <CardContent>
+                {filteredOrders.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No orders found.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Number</TableHead>
+                          <TableHead>Network</TableHead>
+                          <TableHead>Size</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredOrders.slice(0, 10).map(order => (
+                          <TableRow key={order.id}>
+                            <TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                            <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                            <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                            <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                            <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
+                            <TableCell>
+                              <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
+                                {order.status === "paid" ? "completed" : order.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* BUY DATA */}
           <TabsContent value="buy" className="mt-0 space-y-6">
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle>Buy Data</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Purchase data bundles to resell in your store. Contact support for bulk ordering.</p>
-                <Button className="mt-4">Coming Soon</Button>
+            <Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
+              <CardContent className="p-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Wallet Balance:</span>
+                  </div>
+                  <span className="font-display text-xl font-bold text-primary">GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}</span>
+                </div>
+                {hasPendingWithdrawal && <p className="text-xs text-orange-400">GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal.</p>}
               </CardContent>
             </Card>
+            <div className="flex gap-2 flex-wrap">
+              {["mtn", "airteltigo", "telecel"].map(net => (
+                <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
+                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {filteredPackages.map(pkg => {
+                const basePrice = basePrices[pkg.id] || pkg.price || 0;
+                return (
+                  <Card key={pkg.id} className="border-border transition-all hover:border-primary/50">
+                    <CardContent className="p-4 text-center space-y-3">
+                      <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p>
+                      <p className="text-lg font-bold text-primary">GH₵ {Number(basePrice).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">Agent Base Price</p>
+                      <Button variant="hero" size="sm" className="w-full">Buy Now</Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </TabsContent>
 
           {/* ORDERS */}
@@ -521,24 +696,51 @@ const SubagentDashboard = () => {
           <TabsContent value="withdraw" className="mt-0 space-y-6">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle>Request Withdrawal</CardTitle>
+                <CardTitle className="font-display text-lg">Request Withdrawal</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {hasPendingWithdrawal && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                    <p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes before requesting another.</p>
+                  </div>
+                )}
+                <div className="rounded-xl border border-border bg-secondary/50 p-4">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">MoMo Name</p>
+                      <p className="font-bold">{subagentStore?.momo_name || "Not set"}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">MoMo Number</p>
+                      <p className="font-bold">{subagentStore?.momo_number || "Not set"}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Network</p>
+                      <p className="font-bold">{subagentStore?.momo_network?.toUpperCase() || "Not set"}</p>
+                    </div>
+                  </div>
+                </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                  <p className="text-sm text-blue-400">Available Balance: <span className="font-bold">GH₵{(subagentStore?.wallet_balance || 0).toFixed(2)}</span></p>
+                  <p className="text-sm text-blue-400">Available Balance: <span className="font-bold">GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}</span></p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Amount to Withdraw</Label>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={withdrawAmount}
-                    onChange={e => setWithdrawAmount(e.target.value)}
-                  />
+                <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 space-y-1">
+                    <Label>Amount (GH₵)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g. 10.00"
+                      value={withdrawAmount}
+                      onChange={e => setWithdrawAmount(e.target.value)}
+                      disabled={hasPendingWithdrawal}
+                    />
+                  </div>
+                  <Button variant="hero" onClick={handleRequestWithdrawal} disabled={withdrawLoading || hasPendingWithdrawal}>
+                    {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                    Withdraw
+                  </Button>
                 </div>
-                <Button className="w-full" onClick={handleRequestWithdrawal}>
-                  Request Withdrawal
-                </Button>
               </CardContent>
             </Card>
 
@@ -628,8 +830,8 @@ const SubagentDashboard = () => {
                       <TableBody>
                         {filteredPackages.length > 0 ? (
                           filteredPackages.map(pkg => {
-                            const basePrice = subagentPrices[pkg.id] || pkg.price || 0;
-                            const cur = editedPrices[pkg.id] ?? subagentPrices[pkg.id] ?? pkg.price;
+                            const basePrice = basePrices[pkg.id] || pkg.price || 0;
+                            const cur = editedPrices[pkg.id] ?? subagentPrices[pkg.id] ?? basePrice;
                             const profit = cur - basePrice;
                             const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
                             return (
