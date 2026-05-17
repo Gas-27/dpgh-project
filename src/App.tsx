@@ -116,6 +116,14 @@ const App = () => {
                       </AuthGuard>
                     }
                   />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <AuthGuard requiredRole="subagent">
+                        <SubagentDashboard />
+                      </AuthGuard>
+                    }
+                  />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               )}
