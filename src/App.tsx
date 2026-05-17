@@ -23,6 +23,7 @@ const AgentStorefront = lazy(() => import("./pages/AgentStorefront"));
 const AgentRegistrationCallback = lazy(() => import("./pages/AgentRegistrationCallback"));
 const SubagentDashboard = lazy(() => import("./pages/SubagentDashboard"));
 const SubagentLogin = lazy(() => import("./pages/SubagentLogin"));
+const SubagentStorefront = lazy(() => import("./pages/SubagentStorefront"));
 
 const queryClient = new QueryClient();
 
@@ -82,7 +83,7 @@ const App = () => {
                       </AuthGuard>
                     }
                   />
-                  <Route path="/:storeName" element={<AgentStorefront />} />
+                  <Route path="/:storeName" element={<SubagentStorefront />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               ) : isAgentSubdomain ? (

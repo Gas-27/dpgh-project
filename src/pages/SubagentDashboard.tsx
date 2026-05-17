@@ -302,6 +302,11 @@ const SubagentDashboard = () => {
   };
 
   const savePrices = async () => {
+    if (!subagentStore?.id) {
+      toast({ title: "Error", description: "Store not found", variant: "destructive" });
+      return;
+    }
+    
     try {
       setSavingPrices(true);
 
@@ -319,19 +324,28 @@ const SubagentDashboard = () => {
         }
       }
       
+      // Save each price - use delete + insert to avoid upsert issues
       for (const [packageId, price] of Object.entries(editedPrices)) {
+        // First try to delete existing
+        await supabase
+          .from("subagent_package_prices")
+          .delete()
+          .eq("subagent_store_id", subagentStore.id)
+          .eq("package_id", packageId);
+        
+        // Then insert new
         const { error } = await supabase
           .from("subagent_package_prices")
-          .upsert(
-            {
-              subagent_store_id: subagentStore?.id,
-              package_id: packageId,
-              sell_price: price
-            },
-            { onConflict: "subagent_store_id,package_id" }
-          );
+          .insert({
+            subagent_store_id: subagentStore.id,
+            package_id: packageId,
+            sell_price: price
+          });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error saving price:", error);
+          throw error;
+        }
       }
 
       // Update local state

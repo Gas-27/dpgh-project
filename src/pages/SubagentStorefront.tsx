@@ -75,7 +75,7 @@ const getInternationalDigits = (phone: string): string => {
 };
 
 export function SubagentStorefront() {
-  const { storeId } = useParams();
+  const { storeName: urlStoreName } = useParams();
   const { toast } = useToast();
 
   const [store, setStore] = useState<SubagentStore | null>(null);
@@ -83,35 +83,50 @@ export function SubagentStorefront() {
   const [subagentPrices, setSubagentPrices] = useState<SubagentPrice[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState("mtn");
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<DataPackage | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
-  // Fetch subagent store
+  // Fetch subagent store by name
   useEffect(() => {
     const fetchStore = async () => {
-      if (!storeId) return;
-
-      const { data, error } = await supabase
-        .from("subagent_stores")
-        .select("*")
-        .eq("id", storeId)
-        .single();
-
-      if (error || !data) {
-        toast({
-          title: "Error",
-          description: "Store not found",
-          variant: "destructive",
-        });
+      if (!urlStoreName) {
+        setNotFound(true);
+        setLoading(false);
         return;
       }
 
-      setStore(data);
+      const normalized = urlStoreName.toLowerCase().trim();
+
+      // Fetch all subagent stores
+      const { data: stores, error } = await supabase
+        .from("subagent_stores")
+        .select("*");
+
+      if (error || !stores || stores.length === 0) {
+        console.error("Error fetching stores:", error);
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      // Find matching store by name
+      let matched = stores.find((s: any) => slugify(s.store_name) === normalized);
+      if (!matched) matched = stores.find((s: any) => s.store_name.toLowerCase().trim() === normalized);
+      if (!matched) matched = stores.find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
+
+      if (!matched) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      setStore(matched);
     };
 
     fetchStore();
-  }, [storeId, toast]);
+  }, [urlStoreName]);
 
   // Fetch packages
   useEffect(() => {
@@ -170,6 +185,18 @@ export function SubagentStorefront() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
         <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
+        <h1 className="text-3xl font-bold mb-4">Store Not Found</h1>
+        <p className="text-gray-400 mb-6">The store you&apos;re looking for doesn&apos;t exist.</p>
+        <Button onClick={() => window.location.href = "https://agentsstore.shop"}>
+          Go to AgentsStore
+        </Button>
       </div>
     );
   }
