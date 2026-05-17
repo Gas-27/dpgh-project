@@ -20,6 +20,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AgentDashboard = lazy(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazy(() => import("./pages/AgentStorefront"));
 const AgentRegistrationCallback = lazy(() => import("./pages/AgentRegistrationCallback"));
+const SubagentDashboard = lazy(() => import("./pages/SubagentDashboard"));
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,14 @@ const App = () => {
                     element={
                       <AuthGuard requiredRole="agent">
                         <AgentDashboard />
+                      </AuthGuard>
+                    }
+                  />
+                  <Route
+                    path="/subagent-dashboard"
+                    element={
+                      <AuthGuard requiredRole="subagent">
+                        <SubagentDashboard />
                       </AuthGuard>
                     }
                   />
