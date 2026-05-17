@@ -135,34 +135,58 @@ export function SubagentStorefront() {
   useEffect(() => {
     const fetchStore = async () => {
       if (!urlStoreName) {
+        console.log("[v0] No URL store name provided");
         setNotFound(true);
         setLoading(false);
         return;
       }
 
       const normalized = urlStoreName.toLowerCase().trim();
+      console.log("[v0] Looking for subagent store:", normalized);
 
       const { data: stores, error } = await supabase
         .from("subagent_stores")
         .select("*");
 
-      if (error || !stores || stores.length === 0) {
+      console.log("[v0] Subagent stores fetched:", stores?.length, "error:", error);
+      
+      if (error) {
+        console.log("[v0] Database error:", error);
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+      
+      if (!stores || stores.length === 0) {
+        console.log("[v0] No subagent stores found in database");
         setNotFound(true);
         setLoading(false);
         return;
       }
 
-      // Find matching store
-      let matched = stores.find((s: any) => slugify(s.store_name || "") === normalized);
-      if (!matched) matched = stores.find((s: any) => (s.store_name || "").toLowerCase().trim() === normalized);
-      if (!matched) matched = stores.find((s: any) => (s.store_name || "").toLowerCase().replace(/\s+/g, "-") === normalized);
-      if (!matched) matched = stores.find((s: any) => slugify(s.store_name || "").replace(/-/g, "") === normalized.replace(/-/g, ""));
+      // Log all store names for debugging
+      console.log("[v0] Available stores:", stores.map((s: any) => ({ 
+        id: s.id, 
+        store_name: s.store_name, 
+        slug: slugify(s.store_name || "")
+      })));
+
+      // Find matching store - try multiple strategies
+      let matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalized);
+      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
+      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/\s+/g, "-") === normalized);
+      if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
+      // Also try matching by ID as fallback
+      if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
 
       if (!matched) {
+        console.log("[v0] No matching store found for:", normalized);
         setNotFound(true);
         setLoading(false);
         return;
       }
+
+      console.log("[v0] Matched store:", matched.store_name, "ID:", matched.id);
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
