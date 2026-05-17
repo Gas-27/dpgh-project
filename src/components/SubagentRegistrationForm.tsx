@@ -121,16 +121,31 @@ export default function SubagentRegistrationForm({
 
       if (storeError) throw storeError;
 
+      // Create user_role entry so the user is recognized as a subagent
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: authData.user.id,
+          role: "subagent",
+        });
+
+      if (roleError) console.error("[v0] Error creating user role:", roleError);
+
+      console.log("[v0] Subagent store created:", storeData);
+
+      // Store the subagent store ID in sessionStorage for the dashboard
+      sessionStorage.setItem("newSubagentStoreId", storeData.id);
+      sessionStorage.setItem("newSubagentEmail", formData.email);
+
       toast({
         title: "✅ Registration Successful!",
         description: "Your subagent account has been created. Redirecting to your dashboard...",
       });
 
-      // Redirect to subagent store subdomain
+      // Redirect to subagent dashboard using React Router
       setTimeout(() => {
-        const storeName = formData.storeName.toLowerCase().replace(/\s+/g, "-");
-        window.location.href = `https://${storeName}.datastores.shop`;
-      }, 2000);
+        navigate("/subagent-dashboard");
+      }, 1500);
     } catch (error: any) {
       console.error("Registration error:", error);
       toast({
