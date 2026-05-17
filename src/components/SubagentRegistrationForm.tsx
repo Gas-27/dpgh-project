@@ -131,9 +131,13 @@ export default function SubagentRegistrationForm({
           role: "subagent",
         });
 
-      if (roleError) console.error("[v0] Error creating user role:", roleError);
+      if (roleError) {
+        console.error("[v0] Error creating user role:", roleError);
+        throw new Error("Failed to create user role: " + roleError.message);
+      }
 
       console.log("[v0] Subagent store created:", storeData);
+      console.log("[v0] User role created for subagent");
 
       // Store the subagent store ID in sessionStorage for the dashboard
       sessionStorage.setItem("newSubagentStoreId", storeData.id);
@@ -147,11 +151,12 @@ export default function SubagentRegistrationForm({
       // Close the modal first
       if (onClose) onClose();
 
-      // Wait for modal to close, then redirect
+      // Wait for modal to close and auth to fully update, then redirect
       setTimeout(() => {
         console.log("[v0] Redirecting to /subagent-dashboard");
-        navigate("/subagent-dashboard", { replace: true });
-      }, 300);
+        // Force a page reload to ensure roles are refreshed
+        window.location.href = "/subagent-dashboard";
+      }, 500);
     } catch (error: any) {
       console.error("Registration error:", error);
       toast({
