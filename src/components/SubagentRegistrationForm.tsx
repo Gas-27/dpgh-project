@@ -14,6 +14,7 @@ interface SubagentRegistrationFormProps {
   agentStoreName: string;
   primaryColor: string;
   primaryForeground: string;
+  onClose?: () => void;
 }
 
 export default function SubagentRegistrationForm({
@@ -21,6 +22,7 @@ export default function SubagentRegistrationForm({
   agentStoreName,
   primaryColor,
   primaryForeground,
+  onClose,
 }: SubagentRegistrationFormProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -142,8 +144,14 @@ export default function SubagentRegistrationForm({
         description: "Your subagent account has been created.",
       });
 
-      // Redirect to subagent dashboard immediately
-      navigate("/subagent-dashboard", { replace: true });
+      // Close the modal first
+      if (onClose) onClose();
+
+      // Wait for modal to close, then redirect
+      setTimeout(() => {
+        console.log("[v0] Redirecting to /subagent-dashboard");
+        navigate("/subagent-dashboard", { replace: true });
+      }, 300);
     } catch (error: any) {
       console.error("Registration error:", error);
       toast({

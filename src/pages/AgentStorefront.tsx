@@ -435,6 +435,7 @@ const AgentStorefront = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
+  const [showSubagentForm, setShowSubagentForm] = useState(false);
 
   // ── Order tracking ──
   const [searchQuery, setSearchQuery] = useState("");
@@ -790,7 +791,7 @@ const AgentStorefront = () => {
 
       {/* Category tabs */}
       <div className="container pb-8">
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="flex flex-wrap justify-center gap-3 items-center">
           {(["data", "afa", "vouchers", "services"] as const).map((cat) => {
             const icons: Record<string, React.ReactNode> = {
               data: <Wifi className="h-4 w-4 mr-2" />,
@@ -816,6 +817,14 @@ const AgentStorefront = () => {
               </Button>
             );
           })}
+          <div className="h-6 w-px bg-border"></div>
+          <Button
+            variant="outline"
+            onClick={() => setShowSubagentForm(!showSubagentForm)}
+            className="font-semibold"
+          >
+            Become a Subagent
+          </Button>
         </div>
       </div>
 
@@ -1028,27 +1037,32 @@ const AgentStorefront = () => {
         <div className="container pb-20">{renderComingSoon()}</div>
       )}
 
-      {/* Subagent Registration Section */}
-      {store.allow_subagent_registration && (
-        <section className="py-16 md:py-20 border-t border-border">
-          <div className="container max-w-2xl mx-auto space-y-8">
-            <div className="space-y-4">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground text-center">
+      {/* Subagent Registration Modal */}
+      {showSubagentForm && store?.allow_subagent_registration && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-background border-b border-border p-4 md:p-6 flex items-center justify-between">
+              <h2 className="font-display text-2xl font-bold text-foreground">
                 Become a <span style={{ color: primaryColor }}>Subagent</span>
               </h2>
-              <p className="text-center text-muted-foreground max-w-lg mx-auto">
-                Want to sell data and earn commissions? Join our network of subagents and start earning with {store.store_name} today.
-              </p>
+              <button
+                onClick={() => setShowSubagentForm(false)}
+                className="text-muted-foreground hover:text-foreground text-2xl leading-none"
+              >
+                ×
+              </button>
             </div>
-
-            <SubagentRegistrationForm
-              agentStoreId={store.id}
-              agentStoreName={store.store_name}
-              primaryColor={primaryColor}
-              primaryForeground={primaryForeground}
-            />
+            <div className="p-4 md:p-6">
+              <SubagentRegistrationForm
+                agentStoreId={store.id}
+                agentStoreName={store.store_name}
+                primaryColor={primaryColor}
+                primaryForeground={primaryForeground}
+                onClose={() => setShowSubagentForm(false)}
+              />
+            </div>
           </div>
-        </section>
+        </div>
       )}
 
       {/* Footer */}
