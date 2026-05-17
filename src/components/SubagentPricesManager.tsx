@@ -74,6 +74,9 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       
       // Use delete then insert instead of upsert to avoid constraint issues
       for (const [packageId, price] of Object.entries(editedPrices)) {
+        const pkg = packages.find(p => p.id === packageId);
+        const basePrice = pkg?.price || 0;
+        
         // First delete existing
         await supabase
           .from("agent_package_prices")
@@ -81,13 +84,14 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
           .eq("agent_store_id", agentStoreId)
           .eq("package_id", packageId);
         
-        // Then insert new
+        // Then insert new with all required fields
         const { error } = await supabase
           .from("agent_package_prices")
           .insert({
             agent_store_id: agentStoreId,
             package_id: packageId,
-            sell_price: price
+            sell_price: price,
+            agent_minimum_price: basePrice // Required field - use admin's base price
           });
 
         if (error) throw error;

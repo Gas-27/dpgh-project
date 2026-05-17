@@ -19,8 +19,9 @@ interface ReportComplaintDialogProps {
     fulfillment_status: string;
     status: string;
   };
-  complaintType: "storefront" | "agent";
+  complaintType: "storefront" | "agent" | "subagent";
   agentStoreId?: string;
+  subagentStoreId?: string;
 }
 
 const formatNetworkName = (n: string) =>
@@ -32,6 +33,7 @@ export default function ReportComplaintDialog({
   order,
   complaintType,
   agentStoreId,
+  subagentStoreId,
 }: ReportComplaintDialogProps) {
   const [step, setStep] = useState<"form" | "sent" | "response">("form");
   const [sending, setSending] = useState(false);
@@ -60,7 +62,7 @@ Please investigate and assist. Thank You.`;
         complaint_type: complaintType,
         order_id: order.id,
         agent_store_id: complaintType === "agent" ? agentStoreId : null,
-        subagent_store_id: null,
+        subagent_store_id: complaintType === "subagent" ? subagentStoreId : null,
         customer_number: order.customer_number,
         complaint_title: "Delivered but Data Not Received",
         complaint_details: complaintDetails,

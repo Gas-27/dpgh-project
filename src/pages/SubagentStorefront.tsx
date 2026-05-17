@@ -10,9 +10,10 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import {
   Zap, Phone, Wifi, Clock, Search, Package,
   CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
-  MessageCircle, Users,
+  MessageCircle, Users, AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 
 interface SubagentStore {
   id: string;
@@ -98,6 +99,154 @@ const defaultTheme = {
   gridColumns: 2,
 };
 
+// Order Tracking Card Component
+const SubagentOrderTrackingCard = ({
+  order,
+  store,
+  onReportClick,
+}: {
+  order: Order;
+  store: SubagentStore;
+  onReportClick: (order: Order) => void;
+}): JSX.Element => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Fetch complaint status for this order
+  useEffect(() => {
+    const fetchComplaintStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("complaints")
+          .select("status")
+          .eq("order_id", order.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!error && data) {
+          setComplaintStatus(data.status);
+        }
+      } catch (e) {
+        // No complaint found
+      }
+    };
+
+    fetchComplaintStatus();
+    const interval = setInterval(fetchComplaintStatus, 5000);
+    return () => clearInterval(interval);
+  }, [order.id]);
+
+  const elapsedMs = currentTime.getTime() - new Date(order.created_at).getTime();
+  const elapsedMinutes = elapsedMs / 60_000;
+
+  // Step logic - Delivery (step 4) only after 200 minutes
+  let currentStep = 1;
+  let statusMessage = "";
+  let extraNote: string | null = null;
+
+  if (elapsedMinutes >= 200) {
+    currentStep = 4;
+    statusMessage = "Your data bundle has been delivered successfully.";
+  } else if (elapsedMinutes >= 60) {
+    currentStep = 3;
+    statusMessage = "Your order is being processed and will be delivered shortly.";
+    extraNote = "Most orders complete within 3-4 hours. If delivery takes longer, please wait patiently.";
+  } else if (elapsedMinutes >= 5) {
+    currentStep = 2;
+    statusMessage = "Payment confirmed. Processing your data bundle...";
+  } else {
+    currentStep = 1;
+    statusMessage = "Order received. Verifying payment...";
+  }
+
+  const steps = [
+    { label: "Order Placed", icon: Package },
+    { label: "Payment Confirmed", icon: CheckCircle },
+    { label: "Processing", icon: Clock },
+    { label: "Delivered", icon: Rocket },
+  ];
+
+  const showReportButton = currentStep === 4;
+  const theme = store.theme_config || defaultTheme;
+  const primaryColor = theme.primary || defaultTheme.primary;
+
+  return (
+    <div className="space-y-4 mt-3 p-4 rounded-lg border border-border bg-background/50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 overflow-x-auto pb-2">
+          {steps.map((step, idx) => {
+            const Icon = step.icon;
+            const isActive = idx + 1 <= currentStep;
+            return (
+              <div key={idx} className="flex flex-col items-center gap-1 min-w-[60px]">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    isActive ? "text-white" : "bg-secondary text-muted-foreground"
+                  }`}
+                  style={isActive ? { backgroundColor: primaryColor } : {}}
+                >
+                  <Icon className="h-4 w-4" />
+                </div>
+                <span className={`text-[10px] text-center ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                  {step.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+        <p className="text-sm text-foreground font-medium">{statusMessage}</p>
+        {extraNote && (
+          <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">
+            {extraNote}
+          </p>
+        )}
+      </div>
+
+      {/* Report button - only if no complaint submitted yet */}
+      {showReportButton && !complaintStatus && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
+          onClick={() => onReportClick(order)}
+        >
+          <AlertTriangle className="h-4 w-4 mr-2" />
+          Only tap on this Report: If it Shows <br />Delivered but you have not received it
+        </Button>
+      )}
+
+      {/* Show status message if complaint submitted */}
+      {complaintStatus && complaintStatus !== "resolved" && (
+        <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+          <p className="text-sm font-medium text-yellow-400 flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" /> Report has been sent to the seller
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. The seller is working on it for you.
+          </p>
+        </div>
+      )}
+
+      {complaintStatus === "resolved" && (
+        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+          <p className="text-sm font-medium text-green-400 flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" /> Your complaint has been resolved
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export function SubagentStorefront() {
   const { storeName: urlStoreName } = useParams();
   const { toast } = useToast();
@@ -122,6 +271,10 @@ export function SubagentStorefront() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+
+  // Report complaint dialog
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportOrder, setReportOrder] = useState<Order | null>(null);
 
   // Theme
   const theme = store?.theme_config || defaultTheme;
@@ -397,15 +550,26 @@ export function SubagentStorefront() {
                   <p className="text-sm text-muted-foreground text-center py-4">No orders found</p>
                 ) : (
                   orders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border">
-                      <div>
-                        <p className="font-mono text-sm">{order.customer_number}</p>
-                        <p className="text-xs text-muted-foreground">{order.size_gb}GB {formatNetworkName(order.network)} - GH₵{Number(order.amount).toFixed(2)}</p>
+                    <div key={order.id} className="p-3 rounded-lg bg-background/50 border border-border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-mono text-sm">{order.customer_number}</p>
+                          <p className="text-xs text-muted-foreground">{order.size_gb}GB {formatNetworkName(order.network)} - GH₵{Number(order.amount).toFixed(2)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(order.status)}
+                          <span className="text-xs">{getStatusText(order.status)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(order.status)}
-                        <span className="text-xs">{getStatusText(order.status)}</span>
-                      </div>
+                      {/* Order Tracking Card */}
+                      <SubagentOrderTrackingCard
+                        order={order}
+                        store={store}
+                        onReportClick={(o) => {
+                          setReportOrder(o);
+                          setReportDialogOpen(true);
+                        }}
+                      />
                     </div>
                   ))
                 )}
@@ -507,6 +671,17 @@ export function SubagentStorefront() {
       )}
 
       <PaymentVerifier storeId={store.id} isSubagent={true} />
+
+      {/* Report Complaint Dialog */}
+      {reportOrder && (
+        <ReportComplaintDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          order={reportOrder}
+          complaintType="subagent"
+          subagentStoreId={store.id}
+        />
+      )}
     </div>
   );
 }

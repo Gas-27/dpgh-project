@@ -86,6 +86,14 @@ const AdminDashboard = () => {
   const [orderSearchTerm, setOrderSearchTerm] = useState("");
   const [withdrawalSearchTerm, setWithdrawalSearchTerm] = useState("");
 
+  // Agent-specific pricing state
+  const [agentPriceDialogOpen, setAgentPriceDialogOpen] = useState(false);
+  const [selectedAgentForPricing, setSelectedAgentForPricing] = useState<AgentStore | null>(null);
+  const [agentCustomPrices, setAgentCustomPrices] = useState<Record<string, number>>({});
+  const [loadingAgentPrices, setLoadingAgentPrices] = useState(false);
+  const [savingAgentPrices, setSavingAgentPrices] = useState(false);
+  const [agentPriceNetworkFilter, setAgentPriceNetworkFilter] = useState("mtn");
+
   const [topupSearch, setTopupSearch] = useState("");
   const [topupAgent, setTopupAgent] = useState<AgentStore | null>(null);
   const [topupAmount, setTopupAmount] = useState("");
@@ -467,6 +475,95 @@ const AdminDashboard = () => {
     toast({ title: approved ? "Agent approved!" : "Agent suspended" });
   };
 
+  // ======================== Agent-Specific Pricing ========================
+  const openAgentPricingDialog = async (agent: AgentStore) => {
+    setSelectedAgentForPricing(agent);
+    setAgentPriceDialogOpen(true);
+    setLoadingAgentPrices(true);
+    setAgentCustomPrices({});
+    
+    // Load existing custom prices for this agent
+    const { data, error } = await supabase
+      .from("agent_custom_base_prices")
+      .select("*")
+      .eq("agent_store_id", agent.id);
+    
+    if (!error && data) {
+      const priceMap: Record<string, number> = {};
+      data.forEach((row: any) => {
+        priceMap[row.package_id] = row.custom_base_price;
+      });
+      setAgentCustomPrices(priceMap);
+    }
+    setLoadingAgentPrices(false);
+  };
+
+  const handleAgentPriceChange = (packageId: string, value: string) => {
+    setAgentCustomPrices(prev => ({
+      ...prev,
+      [packageId]: parseFloat(value) || 0
+    }));
+  };
+
+  const saveAgentCustomPrices = async () => {
+    if (!selectedAgentForPricing) return;
+    setSavingAgentPrices(true);
+    
+    try {
+      // Delete existing custom prices for this agent
+      await supabase
+        .from("agent_custom_base_prices")
+        .delete()
+        .eq("agent_store_id", selectedAgentForPricing.id);
+      
+      // Insert new custom prices
+      const insertData = Object.entries(agentCustomPrices)
+        .filter(([_, price]) => price > 0)
+        .map(([packageId, price]) => ({
+          agent_store_id: selectedAgentForPricing.id,
+          package_id: packageId,
+          custom_base_price: price
+        }));
+      
+      if (insertData.length > 0) {
+        const { error } = await supabase
+          .from("agent_custom_base_prices")
+          .insert(insertData);
+        
+        if (error) throw error;
+      }
+      
+      toast({ title: "Success", description: `Custom prices saved for ${selectedAgentForPricing.store_name}` });
+      setAgentPriceDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving agent custom prices:", error);
+      toast({ title: "Error", description: "Failed to save custom prices", variant: "destructive" });
+    } finally {
+      setSavingAgentPrices(false);
+    }
+  };
+
+  const resetAgentToDefaultPrices = async () => {
+    if (!selectedAgentForPricing) return;
+    if (!confirm(`Reset ${selectedAgentForPricing.store_name} to default prices? This will remove all custom prices.`)) return;
+    
+    setSavingAgentPrices(true);
+    try {
+      await supabase
+        .from("agent_custom_base_prices")
+        .delete()
+        .eq("agent_store_id", selectedAgentForPricing.id);
+      
+      setAgentCustomPrices({});
+      toast({ title: "Success", description: "Agent reset to default prices" });
+      setAgentPriceDialogOpen(false);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to reset prices", variant: "destructive" });
+    } finally {
+      setSavingAgentPrices(false);
+    }
+  };
+
   // ======================== Orders ========================
   const retryOrder = async (orderId: string) => {
     if (retryingOrders.has(orderId)) return;
@@ -728,12 +825,17 @@ const AdminDashboard = () => {
                           <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(agent.wallet_balance).toFixed(2)}</span></p>
                           {agent.approved && <Link to={`/store/${storeSlug(agent.store_name)}`} className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</Link>}
                         </div>
-                        <div className="flex items-center gap-2">
-                          {agent.approved ? (
-                            <><Badge className="bg-green-600/20 text-green-400 border-green-600/30">Approved</Badge><Button variant="outline" size="sm" onClick={() => toggleApproval(agent.id, false)}><X className="h-4 w-4 mr-1" /> Suspend</Button></>
-                          ) : (
-                            <><Badge variant="secondary">Pending</Badge><Button variant="hero" size="sm" onClick={() => toggleApproval(agent.id, true)}><Check className="h-4 w-4 mr-1" /> Approve</Button></>
-                          )}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            {agent.approved ? (
+                              <><Badge className="bg-green-600/20 text-green-400 border-green-600/30">Approved</Badge><Button variant="outline" size="sm" onClick={() => toggleApproval(agent.id, false)}><X className="h-4 w-4 mr-1" /> Suspend</Button></>
+                            ) : (
+                              <><Badge variant="secondary">Pending</Badge><Button variant="hero" size="sm" onClick={() => toggleApproval(agent.id, true)}><Check className="h-4 w-4 mr-1" /> Approve</Button></>
+                            )}
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => openAgentPricingDialog(agent)}>
+                            <Wallet className="h-4 w-4 mr-1" /> Edit Base Prices
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -1146,6 +1248,90 @@ const AdminDashboard = () => {
             <div className="space-y-2"><Label>Agent Price (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 12.00" value={newPkg.agent_price} onChange={(e) => setNewPkg((p) => ({ ...p, agent_price: e.target.value }))} /></div>
             <Button variant="hero" className="w-full" onClick={addPackage}><Plus className="h-4 w-4 mr-1" /> Add Package</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Agent-Specific Base Prices Dialog */}
+      <Dialog open={agentPriceDialogOpen} onOpenChange={setAgentPriceDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="font-display">Edit Base Prices for {selectedAgentForPricing?.store_name}</DialogTitle>
+            <DialogDescription>
+              Set custom base prices for this agent. These prices will override the default agent prices.
+              Leave a field empty or at 0 to use the default price.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingAgentPrices ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <div className="flex gap-2 flex-wrap">
+                {["mtn", "airteltigo", "telecel"].map((net) => (
+                  <Button
+                    key={net}
+                    variant={agentPriceNetworkFilter === net ? "hero" : "outline"}
+                    size="sm"
+                    onClick={() => setAgentPriceNetworkFilter(net)}
+                  >
+                    {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                  </Button>
+                ))}
+              </div>
+              
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
+                <p className="text-blue-400">
+                  <strong>How it works:</strong> Default Price = What all agents pay. Custom Price = What only this agent pays.
+                  If you set a custom price, this agent will be charged that amount instead of the default.
+                </p>
+              </div>
+              
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Default Price (GH₵)</TableHead>
+                    <TableHead>Custom Price (GH₵)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {packages
+                    .filter(pkg => pkg.network === agentPriceNetworkFilter)
+                    .map((pkg) => (
+                      <TableRow key={pkg.id}>
+                        <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                        <TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder={`Default: ${pkg.agent_price}`}
+                            value={agentCustomPrices[pkg.id] || ""}
+                            onChange={(e) => handleAgentPriceChange(pkg.id, e.target.value)}
+                            className="w-28 h-8"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+              
+              <div className="flex justify-between gap-3 pt-4 border-t border-border">
+                <Button variant="outline" onClick={resetAgentToDefaultPrices} disabled={savingAgentPrices}>
+                  <Trash2 className="h-4 w-4 mr-1" /> Reset to Defaults
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setAgentPriceDialogOpen(false)}>Cancel</Button>
+                  <Button variant="hero" onClick={saveAgentCustomPrices} disabled={savingAgentPrices}>
+                    {savingAgentPrices ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                    Save Prices
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
