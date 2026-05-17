@@ -164,9 +164,9 @@ export default function SubagentRegistrationForm({
 
       // Wait for modal to close and auth to fully update, then redirect
       setTimeout(() => {
-        console.log("[v0] Redirecting to /subagent-dashboard");
-        // Force a page reload to ensure roles are refreshed
-        window.location.href = "/subagent-dashboard";
+        console.log("[v0] Redirecting to agent.datastore.shop");
+        // Redirect to subagent dashboard at agent.datastore.shop subdomain
+        window.location.href = "https://agent.datastore.shop";
       }, 500);
     } catch (error: any) {
       console.error("Registration error:", error);

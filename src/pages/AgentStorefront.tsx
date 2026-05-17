@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
+import SubagentDashboard from "@/pages/SubagentDashboard";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket,
@@ -427,6 +429,12 @@ const AgentStorefront = () => {
   const storeName = subdomainStoreName || paramStoreName;
 
   const { toast } = useToast();
+  const { user, hasRole } = useAuth();
+
+  // If on agent.datastore.shop subdomain and user is a subagent, show SubagentDashboard
+  if (subdomainStoreName === "agent" && user && hasRole("subagent")) {
+    return <SubagentDashboard />;
+  }
 
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
