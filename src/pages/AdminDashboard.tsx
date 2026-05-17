@@ -127,7 +127,7 @@ const AdminDashboard = () => {
 
   // Silent background refresh (no loading state)
   const refreshData = async () => {
-    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes, topupRes] = await Promise.all([
+    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes, topupRes, subagentRes] = await Promise.all([
       supabase.from("data_packages").select("*").order("size_gb"),
       supabase.from("agent_stores").select("*").order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
@@ -139,12 +139,14 @@ const AdminDashboard = () => {
         .select("id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )")
         .order("created_at", { ascending: false })
         .limit(100),
+      supabase.from("subagent_stores").select("*").order("created_at", { ascending: false }),
     ]);
     setPackages(pkgRes.data ?? []);
     setAgents((agentRes.data as AgentStore[]) ?? []);
     setOrders((ordersRes.data as Order[]) ?? []);
     setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
     setTopupHistory((topupRes.data as any[]) ?? []);
+    setSubagents((subagentRes.data ?? []));
 
     const rolesMap: Record<string, string> = {};
     (rolesRes.data ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
@@ -583,29 +585,29 @@ const AdminDashboard = () => {
         </div>
       </nav>
 
-      <div className="container py-8 space-y-8">
+      <div className="container py-4 md:py-8 space-y-4 md:space-y-8 px-2 md:px-4">
         <Tabs defaultValue="prices">
-          <TabsList className="mb-6 flex-wrap">
-            {canSee("prices") && <TabsTrigger value="prices">Prices</TabsTrigger>}
+          <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
+            {canSee("prices") && <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>}
             {canSee("orders") && (
-              <TabsTrigger value="orders">
-                <ShoppingCart className="h-4 w-4 mr-1" /> Orders
-                {failedCount > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1.5 py-0">{failedCount}</Badge>}
+              <TabsTrigger value="orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
+                <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" /> Orders
+                {failedCount > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{failedCount}</Badge>}
               </TabsTrigger>
             )}
-            {canSee("agents") && <TabsTrigger value="agents">Agents ({agents.filter((a) => !a.approved).length})</TabsTrigger>}
-            {canSee("subagents") && <TabsTrigger value="subagents"><Users className="h-4 w-4 mr-1" /> Subagents ({subagents.filter((s) => !s.approved).length})</TabsTrigger>}
-            {canSee("topup") && <TabsTrigger value="topup"><Wallet className="h-4 w-4 mr-1" /> Topup</TabsTrigger>}
+            {canSee("agents") && <TabsTrigger value="agents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Agents ({agents.filter((a) => !a.approved).length})</TabsTrigger>}
+            {canSee("subagents") && <TabsTrigger value="subagents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Subagents ({subagents.filter((s) => !s.approved).length})</TabsTrigger>}
+            {canSee("topup") && <TabsTrigger value="topup" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Wallet className="h-3 w-3 md:h-4 md:w-4" /> Topup</TabsTrigger>}
             {canSee("withdrawals") && (
-              <TabsTrigger value="withdrawals">
-                <ArrowDownToLine className="h-4 w-4 mr-1" /> Withdrawals
-                {pendingWithdrawals.length > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1.5 py-0">{pendingWithdrawals.length}</Badge>}
+              <TabsTrigger value="withdrawals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
+                <ArrowDownToLine className="h-3 w-3 md:h-4 md:w-4" /> Withdrawals
+                {pendingWithdrawals.length > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingWithdrawals.length}</Badge>}
               </TabsTrigger>
             )}
-            {canSee("users") && <TabsTrigger value="users"><Users className="h-4 w-4 mr-1" /> Users</TabsTrigger>}
-            {canSee("notifications") && <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1" /> Notify</TabsTrigger>}
-            {canSee("spinwheel") && <TabsTrigger value="spinwheel"><Gift className="h-4 w-4 mr-1" /> Spin Wheel</TabsTrigger>}
-            {canSee("complaints") && <TabsTrigger value="complaints"><AlertCircle className="h-4 w-4 mr-1" /> Complaints</TabsTrigger>}
+            {canSee("users") && <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>}
+            {canSee("notifications") && <TabsTrigger value="notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Notify</TabsTrigger>}
+            {canSee("spinwheel") && <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>}
+            {canSee("complaints") && <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>}
           </TabsList>
 
           {/* PRICES TAB */}
@@ -736,30 +738,30 @@ const AdminDashboard = () => {
               ) : (
                 subagents.map((subagent) => (
                   <Card key={subagent.id} className="border-border bg-card/50">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between gap-6">
-                        <div className="flex-1 space-y-3">
-                          <h3 className="font-display font-bold text-lg text-foreground">{subagent.store_name}</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                            <div>
+                    <CardContent className="p-3 md:p-6">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
+                        <div className="flex-1 space-y-2 md:space-y-3 min-w-0">
+                          <h3 className="font-display font-bold text-base md:text-lg text-foreground truncate">{subagent.store_name}</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-2 gap-2 md:gap-3 text-xs md:text-sm">
+                            <div className="min-w-0">
                               <p className="text-muted-foreground text-xs">Parent Agent</p>
-                              <p className="font-semibold text-foreground">{subagent.agent_stores?.store_name || 'N/A'}</p>
+                              <p className="font-semibold text-foreground truncate">{subagent.agent_stores?.store_name || 'N/A'}</p>
                             </div>
-                            <div>
-                              <p className="text-muted-foreground text-xs">Revenue Earned</p>
+                            <div className="min-w-0">
+                              <p className="text-muted-foreground text-xs">Revenue</p>
                               <p className="font-bold text-green-400">GH₵ {Number(subagent.wallet_balance).toFixed(2)}</p>
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-muted-foreground text-xs">WhatsApp</p>
                               <p className="font-semibold text-foreground">{subagent.whatsapp_number}</p>
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-muted-foreground text-xs">Support</p>
                               <p className="font-semibold text-foreground">{subagent.support_number}</p>
                             </div>
-                            <div className="md:col-span-2">
+                            <div className="col-span-2 md:col-span-2 min-w-0">
                               <p className="text-muted-foreground text-xs mb-1">MoMo Account</p>
-                              <p className="font-semibold text-foreground">{subagent.momo_name} • {subagent.momo_number} ({subagent.momo_network.toUpperCase()})</p>
+                              <p className="font-semibold text-foreground truncate">{subagent.momo_name} • {subagent.momo_number} ({subagent.momo_network.toUpperCase()})</p>
                             </div>
                           </div>
                         </div>

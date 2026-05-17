@@ -139,13 +139,11 @@ export default function SubagentRegistrationForm({
 
       toast({
         title: "✅ Registration Successful!",
-        description: "Your subagent account has been created. Redirecting to your dashboard...",
+        description: "Your subagent account has been created.",
       });
 
-      // Redirect to subagent dashboard using React Router
-      setTimeout(() => {
-        navigate("/subagent-dashboard");
-      }, 1500);
+      // Redirect to subagent dashboard immediately
+      navigate("/subagent-dashboard", { replace: true });
     } catch (error: any) {
       console.error("Registration error:", error);
       toast({
