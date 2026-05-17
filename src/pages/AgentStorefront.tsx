@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -86,7 +87,7 @@ const copyToClipboard = async (text: string, toast: any) => {
 
 const getStoreNameFromSubdomain = (): string | null => {
   const hostname = window.location.hostname;
-  if (hostname.endsWith(".datastores.shop")) {
+  if (hostname.endsWith(`.${DOMAINS.AGENT_STORE}`)) {
     const parts = hostname.split(".");
     if (parts.length >= 3) return parts[0].toLowerCase().trim();
   }

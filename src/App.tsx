@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AuthGuard from "@/components/AuthGuard";
 import { AuthProvider } from "@/hooks/useAuth";
+import { DOMAINS } from "@/config/domains";
 import { useEffect } from "react";
 
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -35,7 +36,7 @@ const RedirectToStoreSubdomain = () => {
   const { storeName } = useParams<{ storeName: string }>();
   useEffect(() => {
     if (storeName) {
-      window.location.href = `https://${storeName}.datastores.shop`;
+      window.location.href = DOMAINS.getAgentStoreUrl(storeName);
     }
   }, [storeName]);
   return <RouteLoader />;
@@ -46,16 +47,17 @@ const RedirectToAgentSubdomain = () => {
   const { storeName } = useParams<{ storeName: string }>();
   useEffect(() => {
     if (storeName) {
-      window.location.href = `https://${storeName}.datastores.shop`;
+      window.location.href = DOMAINS.getAgentStoreUrl(storeName);
     }
   }, [storeName]);
   return <RouteLoader />;
 };
 
 const App = () => {
-  // Determine if we are on a subdomain of datastores.shop
+  // Determine if we are on a subdomain of datastores.shop or agentsstore.shop
   const hostname = window.location.hostname;
-  const isSubdomain = hostname.endsWith(".datastores.shop") && hostname !== "datastores.shop";
+  const isAgentSubdomain = hostname.endsWith(`.${DOMAINS.AGENT_STORE}`) && hostname !== DOMAINS.AGENT_STORE;
+  const isSubagentDomain = hostname === DOMAINS.SUBAGENT_STORE;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -65,8 +67,8 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <Suspense fallback={<RouteLoader />}>
-              {isSubdomain ? (
-                // 🎯 On any subdomain, ALWAYS show the agent storefront
+              {isAgentSubdomain ? (
+                // 🎯 On any agent subdomain, show the agent storefront
                 <AgentStorefront />
               ) : (
                 // 🌐 On the main domain, use normal routes

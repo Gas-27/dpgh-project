@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate, Link } from "react-router-dom";
+import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -350,7 +351,7 @@ const AgentDashboard = () => {
       setProfitStats(prev => ({ ...prev, availableForWithdrawal: sd.wallet_balance ?? 0 }));
 
       const slug = sd.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-      const url = `https://${slug}.datastores.shop`;
+      const url = DOMAINS.getAgentStoreUrl(sd.store_name);
       setShareText(
         `🔥 Get the BEST data deals from *${sd.store_name}*!\n\n` +
         `📱 MTN • AirtelTigo • Telecel\n` +
@@ -688,7 +689,7 @@ const AgentDashboard = () => {
 
   const filteredPackages = packages.filter(p => p.network === networkFilter);
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
-  const storeUrl = `https://${storeSlug}.datastores.shop`;
+  const storeUrl = store ? DOMAINS.getAgentStoreUrl(store.store_name) : "";
   const storeName = store?.store_name || "DATA PLUG .STORE";
   const supportNum = store?.support_number || "";
 

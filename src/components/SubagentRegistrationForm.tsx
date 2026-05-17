@@ -1,13 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { DOMAINS } from "@/config/domains";
 import { Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 interface SubagentRegistrationFormProps {
   agentStoreId: string;
@@ -164,8 +164,8 @@ export default function SubagentRegistrationForm({
 
       // Wait for modal to close and auth to fully update, then redirect
       setTimeout(() => {
-        // Redirect to simple route-based dashboard instead of subdomain
-        window.location.href = "/subagent-dashboard";
+        // Redirect to agentsstore.shop domain for subagent dashboard
+        window.location.href = DOMAINS.getSubagentDashboardUrl();
       }, 500);
     } catch (error: any) {
       console.error("Registration error:", error);
