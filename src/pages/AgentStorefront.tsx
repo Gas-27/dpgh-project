@@ -1043,30 +1043,28 @@ const AgentStorefront = () => {
 
       {/* Subagent Registration Modal */}
       {showSubagentForm && store && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-background border-b border-border p-4 md:p-6 flex items-center justify-between">
-              <h2 className="font-display text-2xl font-bold text-foreground">
+        <section className="py-16 md:py-20 border-t border-border bg-card/30">
+          <div className="container max-w-2xl mx-auto space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">
                 Become an <span style={{ color: primaryColor }}>Agent</span>
               </h2>
               <button
                 onClick={() => setShowSubagentForm(false)}
-                className="text-muted-foreground hover:text-foreground text-2xl leading-none"
+                className="text-muted-foreground hover:text-foreground text-3xl leading-none"
               >
                 ×
               </button>
             </div>
-            <div className="p-4 md:p-6">
-              <SubagentRegistrationForm
-                agentStoreId={store.id}
-                agentStoreName={store.store_name}
-                primaryColor={primaryColor}
-                primaryForeground={primaryForeground}
-                onClose={() => setShowSubagentForm(false)}
-              />
-            </div>
+            <SubagentRegistrationForm
+              agentStoreId={store.id}
+              agentStoreName={store.store_name}
+              primaryColor={primaryColor}
+              primaryForeground={primaryForeground}
+              onClose={() => setShowSubagentForm(false)}
+            />
           </div>
-        </div>
+        </section>
       )}
 
       {/* Footer */}
