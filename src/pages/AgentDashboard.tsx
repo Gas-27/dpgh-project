@@ -1024,6 +1024,7 @@ const AgentDashboard = () => {
                   agentStoreId={store?.id || ""}
                   packages={packages}
                   agentPrices={agentPrices}
+                  onPricesSaved={fetchAllData}
                 />
               </CardContent>
             </Card>

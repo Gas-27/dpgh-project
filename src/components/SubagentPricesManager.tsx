@@ -11,9 +11,10 @@ interface SubagentPricesManagerProps {
   agentStoreId: string;
   packages: any[];
   agentPrices?: Record<string, number>;
+  onPricesSaved?: () => void;
 }
 
-export default function SubagentPricesManager({ agentStoreId, packages, agentPrices }: SubagentPricesManagerProps) {
+export default function SubagentPricesManager({ agentStoreId, packages, agentPrices, onPricesSaved }: SubagentPricesManagerProps) {
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [markupPercent, setMarkupPercent] = useState("");
   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
@@ -97,6 +98,9 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       setEditedPrices({});
       setMarkupPercent("");
       toast({ title: "Success", description: "Subagent base prices saved successfully" });
+      
+      // Refresh data to show saved prices
+      if (onPricesSaved) onPricesSaved();
     } catch (error) {
       console.error("Error saving prices:", error);
       toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
