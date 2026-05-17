@@ -306,12 +306,12 @@ export default function SubagentRegistrationForm({
                 Creating Account...
               </>
             ) : (
-              "Create Subagent Account"
+              "Create Agent Account"
             )}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            By signing up, you agree to become a subagent under {agentStoreName} and follow our terms and conditions.
+            By signing up, you agree to become an agent under {agentStoreName} and follow our terms and conditions.
           </p>
         </form>
       </CardContent>
