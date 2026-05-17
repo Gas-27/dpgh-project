@@ -452,15 +452,26 @@ const SubagentDashboard = () => {
   const totalOrders = orders.length;
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
-  const storeUrl = DOMAINS.getSubagentStoreUrl(subagentStore.store_name);
+  
+  // Use store_name, fallback to checking what's actually in the store object
+  const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
+  const storeUrl = storeName ? DOMAINS.getSubagentStoreUrl(storeName) : "";
+  
   const filteredOrders = orders.filter(o => 
     o.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) ||
     o.id?.toLowerCase().includes(orderSearch.toLowerCase())
   );
 
   const copyStoreLink = async () => {
+    console.log("[v0] subagentStore:", subagentStore);
+    console.log("[v0] store_name:", subagentStore?.store_name);
+    console.log("[v0] storeUrl:", storeUrl);
+    if (!storeUrl) {
+      toast({ title: "Error", description: "Store URL not available", variant: "destructive" });
+      return;
+    }
     await navigator.clipboard.writeText(storeUrl);
-    toast({ title: "✅ Store link copied!" });
+    toast({ title: "Store link copied!" });
   };
 
   return (
@@ -513,16 +524,25 @@ const SubagentDashboard = () => {
           <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
             <div>
               <p className="text-sm font-semibold text-foreground">Your Subagent Store</p>
-              <p className="text-xs text-muted-foreground">{storeUrl}</p>
+              <p className="text-xs text-muted-foreground">{storeUrl || "Store URL not available"}</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={copyStoreLink}>
+              <Button variant="outline" size="sm" onClick={copyStoreLink} disabled={!storeUrl}>
                 <Copy className="h-4 w-4 mr-1" /> Copy Link
               </Button>
-              <Button variant="hero" size="sm" asChild>
-                <a href={storeUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-1" /> Visit Store
-                </a>
+              <Button 
+                variant="hero" 
+                size="sm" 
+                onClick={() => {
+                  if (storeUrl) {
+                    window.open(storeUrl, "_blank");
+                  } else {
+                    toast({ title: "Error", description: "Store URL not available", variant: "destructive" });
+                  }
+                }}
+                disabled={!storeUrl}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" /> Visit Store
               </Button>
             </div>
           </CardContent>
@@ -713,7 +733,7 @@ const SubagentDashboard = () => {
                 <Card className="w-full max-w-md border-border">
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="font-display">Buy {buyingPkg.size_gb}GB {buyingPkg.network.toUpperCase()}</CardTitle>
-                    <button onClick={() => { setBuyingPkg(null); setBuyCustomerNumber(""); }} className="text-muted-foreground hover:text-foreground text-2xl">×</button>
+                    <button onClick={() => { setBuyingPkg(null); setBuyCustomerNumber(""); }} className="text-muted-foreground hover:text-foreground text-2xl">x</button>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 text-center">
@@ -728,10 +748,76 @@ const SubagentDashboard = () => {
                         onChange={e => setBuyCustomerNumber(e.target.value)}
                       />
                     </div>
-                    <Button variant="hero" className="w-full" onClick={handleBuyData} disabled={buyLoading || !buyCustomerNumber}>
-                      {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Confirm Purchase
-                    </Button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button 
+                        variant="outline" 
+                        className="w-full border-green-500 text-green-500 hover:bg-green-500/10" 
+                        onClick={handleBuyData} 
+                        disabled={buyLoading || !buyCustomerNumber || (basePrices[buyingPkg.id] || buyingPkg.price || 0) > (subagentStore?.wallet_balance || 0)}
+                      >
+                        {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
+                        Pay with Wallet
+                      </Button>
+                      <Button 
+                        variant="hero" 
+                        className="w-full" 
+                        onClick={() => {
+                          // Paystack payment
+                          const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
+                          if (!buyCustomerNumber) {
+                            toast({ title: "Error", description: "Enter customer phone number", variant: "destructive" });
+                            return;
+                          }
+                          // Open Paystack
+                          const handler = (window as any).PaystackPop?.setup({
+                            key: "pk_live_b917e70d1d1ccbefe2d58016dc4e975d4a0c36e1",
+                            email: user?.email || `${buyCustomerNumber}@dataplug.store`,
+                            amount: price * 100,
+                            currency: "GHS",
+                            ref: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            metadata: {
+                              subagent_store_id: subagentStore?.id,
+                              customer_number: buyCustomerNumber,
+                              network: buyingPkg.network,
+                              size_gb: buyingPkg.size_gb,
+                              package_id: buyingPkg.id,
+                            },
+                            callback: async (response: any) => {
+                              // Create order after successful payment
+                              try {
+                                await supabase.from("orders").insert({
+                                  subagent_store_id: subagentStore?.id,
+                                  customer_number: buyCustomerNumber,
+                                  network: buyingPkg.network,
+                                  size_gb: buyingPkg.size_gb,
+                                  amount: price,
+                                  status: "paid",
+                                  payment_reference: response.reference,
+                                  fulfillment_status: "pending"
+                                });
+                                toast({ title: "Success", description: "Payment successful! Order placed." });
+                                setBuyingPkg(null);
+                                setBuyCustomerNumber("");
+                                fetchData();
+                              } catch (err) {
+                                console.error("Order creation error:", err);
+                                toast({ title: "Error", description: "Payment received but order failed. Contact support.", variant: "destructive" });
+                              }
+                            },
+                            onClose: () => {
+                              toast({ title: "Payment cancelled", variant: "destructive" });
+                            },
+                          });
+                          handler?.openIframe();
+                        }}
+                        disabled={!buyCustomerNumber}
+                      >
+                        Pay with Paystack
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Wallet Balance: GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}
+                    </p>
                   </CardContent>
                 </Card>
               </div>
