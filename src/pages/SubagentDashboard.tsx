@@ -91,6 +91,11 @@ const SubagentDashboard = () => {
   const [buyingPkg, setBuyingPkg] = useState<any>(null);
   const [buyCustomerNumber, setBuyCustomerNumber] = useState("");
   const [buyLoading, setBuyLoading] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [newNotificationMsg, setNewNotificationMsg] = useState("");
+  const [newNotificationExpiry, setNewNotificationExpiry] = useState("");
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   useEffect(() => {
     if (!isSubagent) return;
@@ -173,6 +178,59 @@ const SubagentDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Notification functions
+  const fetchNotifications = async () => {
+    if (!subagentStore?.id) return;
+    setLoadingNotifications(true);
+    const { data, error } = await supabase
+      .from("subagent_notifications")
+      .select("*")
+      .eq("subagent_store_id", subagentStore.id)
+      .order("created_at", { ascending: false });
+    if (!error && data) setNotifications(data);
+    setLoadingNotifications(false);
+  };
+
+  useEffect(() => {
+    if (subagentStore?.id) fetchNotifications();
+  }, [subagentStore?.id]);
+
+  const createNotification = async () => {
+    if (!subagentStore || !newNotificationMsg.trim()) {
+      toast({ title: "Error", description: "Please enter a message", variant: "destructive" });
+      return;
+    }
+    setSendingNotification(true);
+    const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
+    const { error } = await supabase.from("subagent_notifications").insert({
+      subagent_store_id: subagentStore.id,
+      message: newNotificationMsg.trim(),
+      is_active: true,
+      expires_at
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Notification sent!" });
+      setNewNotificationMsg("");
+      setNewNotificationExpiry("");
+      fetchNotifications();
+    }
+    setSendingNotification(false);
+  };
+
+  const toggleNotificationActive = async (id: string, cur: boolean) => {
+    const { error } = await supabase.from("subagent_notifications").update({ is_active: !cur }).eq("id", id);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else fetchNotifications();
+  };
+
+  const deleteNotification = async (id: string) => {
+    const { error } = await supabase.from("subagent_notifications").delete().eq("id", id);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else fetchNotifications();
   };
 
   const handleSavePrices = async () => {
@@ -1083,33 +1141,88 @@ const SubagentDashboard = () => {
           <TabsContent value="notifications" className="mt-0 space-y-6">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle>Notification Settings</CardTitle>
+                <CardTitle className="font-display text-lg">Send Notification</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Send pop-up announcements that appear on your store page. Use this to announce promos, downtime, or new offers.
+                </p>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                    <div>
-                      <p className="font-semibold text-sm">New Orders</p>
-                      <p className="text-xs text-muted-foreground">Get notified when customers place orders</p>
-                    </div>
-                    <input type="checkbox" defaultChecked className="w-5 h-5" />
+                  <div className="space-y-1">
+                    <Label>Message</Label>
+                    <textarea
+                      className="w-full rounded-md border border-border bg-background p-3 text-sm min-h-[100px] resize-y focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Enter your announcement message..."
+                      value={newNotificationMsg}
+                      onChange={(e) => setNewNotificationMsg(e.target.value)}
+                    />
                   </div>
-                  <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                    <div>
-                      <p className="font-semibold text-sm">Order Completed</p>
-                      <p className="text-xs text-muted-foreground">Get notified when orders are completed</p>
-                    </div>
-                    <input type="checkbox" defaultChecked className="w-5 h-5" />
+                  <div className="space-y-1">
+                    <Label>Expiry Date (Optional)</Label>
+                    <Input
+                      type="datetime-local"
+                      value={newNotificationExpiry}
+                      onChange={(e) => setNewNotificationExpiry(e.target.value)}
+                      className="bg-background border-border"
+                    />
+                    <p className="text-xs text-muted-foreground">Leave empty for no expiry</p>
                   </div>
-                  <div className="flex items-center justify-between p-3 border border-border rounded-lg">
-                    <div>
-                      <p className="font-semibold text-sm">Withdrawal Updates</p>
-                      <p className="text-xs text-muted-foreground">Get notified about withdrawal requests</p>
-                    </div>
-                    <input type="checkbox" defaultChecked className="w-5 h-5" />
-                  </div>
+                  <Button variant="hero" onClick={createNotification} disabled={sendingNotification || !newNotificationMsg.trim()}>
+                    {sendingNotification ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Bell className="h-4 w-4 mr-2" />}
+                    Send Notification
+                  </Button>
                 </div>
-                <Button className="w-full">Save Notification Settings</Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display text-lg">Active Notifications</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingNotifications ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No notifications yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {notifications.map((n) => (
+                      <div key={n.id} className="p-4 rounded-lg border border-border bg-secondary/30">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="text-sm whitespace-pre-wrap">{n.message}</p>
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <span>{new Date(n.created_at).toLocaleDateString()}</span>
+                              {n.expires_at && <span>Expires: {new Date(n.expires_at).toLocaleDateString()}</span>}
+                              <Badge variant={n.is_active ? "default" : "secondary"}>
+                                {n.is_active ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleNotificationActive(n.id, n.is_active)}
+                            >
+                              {n.is_active ? "Deactivate" : "Activate"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-400"
+                              onClick={() => deleteNotification(n.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import {
-  Zap, Phone, Wifi, Shield, Clock, Search, Package,
-  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone,
+  Zap, Phone, Wifi, Clock, Search, Package,
+  CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
+  MessageCircle, Users,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,6 +20,7 @@ interface SubagentStore {
   whatsapp_number: string;
   support_number: string;
   whatsapp_group?: string | null;
+  show_whatsapp_group_icon?: boolean;
   theme_config?: {
     primary: string;
     primary_foreground: string;
@@ -27,6 +29,7 @@ interface SubagentStore {
     gridColumns?: number;
   };
   agent_store_id: string;
+  approved?: boolean;
 }
 
 interface DataPackage {
@@ -36,10 +39,21 @@ interface DataPackage {
   price: number;
 }
 
-interface SubagentPrice {
+interface Order {
   id: string;
-  package_id: string;
-  sell_price: number;
+  customer_number: string;
+  network: string;
+  size_gb: number;
+  amount: number;
+  status: string;
+  fulfillment_status: string;
+  created_at: string;
+}
+
+interface Notification {
+  id: string;
+  message: string;
+  created_at: string;
 }
 
 const formatNetworkName = (network: string) => {
@@ -49,13 +63,12 @@ const formatNetworkName = (network: string) => {
   return network;
 };
 
-// Slugify must match DOMAINS.getSubagentStoreUrl logic
 const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 
-const getNetworkLabelColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#60a5fa", telecel: "#f87171" };
-  return colors[network] || "#ffffff";
+const getNetworkColor = (network: string) => {
+  const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#ef4444", telecel: "#3b82f6" };
+  return colors[network] || "#22c55e";
 };
 
 const formatDisplayPhone = (phone: string): string => {
@@ -75,21 +88,50 @@ const getInternationalDigits = (phone: string): string => {
   return cleaned;
 };
 
+const stripSpaces = (s: string) => s.replace(/\s+/g, "");
+
+const defaultTheme = {
+  primary: "#22c55e",
+  primary_foreground: "#ffffff",
+  background: "#09090b",
+  card_background: "#18181b",
+  gridColumns: 2,
+};
+
 export function SubagentStorefront() {
   const { storeName: urlStoreName } = useParams();
   const { toast } = useToast();
 
   const [store, setStore] = useState<SubagentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
-  const [subagentPrices, setSubagentPrices] = useState<SubagentPrice[]>([]);
-  const [selectedNetwork, setSelectedNetwork] = useState("mtn");
+  const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
+  const [networkFilter, setNetworkFilter] = useState("mtn");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [selectedPackage, setSelectedPackage] = useState<DataPackage | null>(null);
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [customerPhone, setCustomerPhone] = useState("");
+  
+  // Order search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchPerformed, setSearchPerformed] = useState(false);
+  
+  // Notifications
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
-  // Fetch subagent store by name
+  // Theme
+  const theme = store?.theme_config || defaultTheme;
+  const primaryColor = theme.primary || defaultTheme.primary;
+  const primaryForeground = theme.primary_foreground || defaultTheme.primary_foreground;
+  const bgColor = theme.background || defaultTheme.background;
+  const cardBg = theme.card_background || defaultTheme.card_background;
+  const gridColumns = theme.gridColumns || 2;
+
+  // Fetch store by name
   useEffect(() => {
     const fetchStore = async () => {
       if (!urlStoreName) {
@@ -99,230 +141,305 @@ export function SubagentStorefront() {
       }
 
       const normalized = urlStoreName.toLowerCase().trim();
-      console.log("[v0] Looking for subagent store with URL name:", normalized);
 
-      // Fetch all subagent stores
       const { data: stores, error } = await supabase
         .from("subagent_stores")
         .select("*");
 
-      if (error) {
-        console.error("[v0] Error fetching stores:", error);
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-      
-      if (!stores || stores.length === 0) {
-        console.log("[v0] No subagent stores found in database");
+      if (error || !stores || stores.length === 0) {
         setNotFound(true);
         setLoading(false);
         return;
       }
 
-      console.log("[v0] Found stores:", stores.map((s: any) => ({ name: s.store_name, slug: slugify(s.store_name) })));
-
-      // Find matching store by name - try multiple matching strategies
-      let matched = stores.find((s: any) => slugify(s.store_name) === normalized);
-      if (!matched) matched = stores.find((s: any) => s.store_name.toLowerCase().trim() === normalized);
-      if (!matched) matched = stores.find((s: any) => s.store_name.toLowerCase().replace(/\s+/g, "-") === normalized);
-      if (!matched) matched = stores.find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
+      // Find matching store
+      let matched = stores.find((s: any) => slugify(s.store_name || "") === normalized);
+      if (!matched) matched = stores.find((s: any) => (s.store_name || "").toLowerCase().trim() === normalized);
+      if (!matched) matched = stores.find((s: any) => (s.store_name || "").toLowerCase().replace(/\s+/g, "-") === normalized);
+      if (!matched) matched = stores.find((s: any) => slugify(s.store_name || "").replace(/-/g, "") === normalized.replace(/-/g, ""));
 
       if (!matched) {
-        console.log("[v0] No matching store found for:", normalized);
         setNotFound(true);
         setLoading(false);
         return;
       }
 
-      console.log("[v0] Matched store:", matched.store_name);
+      matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
+      matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
+
+      // Fetch packages and prices
+      const [pkgRes, priceRes, agentPriceRes] = await Promise.all([
+        supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
+        supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
+        supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
+      ]);
+
+      setPackages(pkgRes.data || []);
+
+      // Use subagent prices if set, fallback to agent prices
+      const priceMap: Record<string, number> = {};
+      (agentPriceRes.data || []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+      (priceRes.data || []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+      setSubagentPrices(priceMap);
+      
+      setLoading(false);
     };
 
     fetchStore();
   }, [urlStoreName]);
 
-  // Fetch packages
+  // Notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!store?.id) return;
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from("subagent_notifications")
+      .select("id, message, created_at")
+      .eq("subagent_store_id", store.id)
+      .eq("is_active", true)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order("created_at", { ascending: false }) as any;
+    
+    if (data) {
+      setNotifications(data);
+      const undismissed = data.filter((n: any) => !dismissedIds.includes(n.id));
+      if (undismissed.length > 0 && !modalOpen) setModalOpen(true);
+    }
+  }, [store?.id, dismissedIds, modalOpen]);
+
   useEffect(() => {
-    const fetchPackages = async () => {
-      const { data, error } = await supabase
-        .from("data_packages")
-        .select("*")
-        .eq("active", true);
+    if (store?.id) {
+      fetchNotifications();
+      const saved = localStorage.getItem(`dismissed_subagent_notifications_${store.id}`);
+      if (saved) setDismissedIds(JSON.parse(saved));
+    }
+  }, [store?.id, fetchNotifications]);
 
-      if (error) {
-        console.error("Failed to fetch packages:", error);
-        return;
-      }
-
-      setPackages(data || []);
-    };
-
-    fetchPackages();
-  }, []);
-
-  // Fetch subagent prices
-  useEffect(() => {
-    const fetchPrices = async () => {
-      if (!store) return;
-
-      const { data, error } = await supabase
-        .from("subagent_package_prices")
-        .select("*")
-        .eq("subagent_store_id", store.id);
-
-      if (error) {
-        console.error("Failed to fetch prices:", error);
-        return;
-      }
-
-      setSubagentPrices(data || []);
-      setLoading(false);
-    };
-
-    fetchPrices();
-  }, [store]);
-
-  const handlePackageSelect = (pkg: DataPackage) => {
-    setSelectedPackage(pkg);
-    setPaymentDialogOpen(true);
+  const dismissNotification = (id: string) => {
+    const next = [...dismissedIds, id];
+    setDismissedIds(next);
+    localStorage.setItem(`dismissed_subagent_notifications_${store?.id}`, JSON.stringify(next));
+    if (notifications.filter((n) => !next.includes(n.id)).length === 0) setModalOpen(false);
   };
 
-  const getPriceForPackage = (packageId: string): number | null => {
-    const priceEntry = subagentPrices.find((p) => p.package_id === packageId);
-    return priceEntry ? priceEntry.sell_price : null;
+  const closeAllNotifications = () => {
+    const allIds = notifications.map((n) => n.id);
+    const next = [...dismissedIds, ...allIds];
+    setDismissedIds(next);
+    localStorage.setItem(`dismissed_subagent_notifications_${store?.id}`, JSON.stringify(next));
+    setModalOpen(false);
   };
 
-  const networkPackages = packages.filter((p) => p.network === selectedNetwork);
+  const undismissedNotifications = notifications.filter((n) => !dismissedIds.includes(n.id));
 
-  if (loading || !store) {
+  // Order search
+  const searchOrders = useCallback(async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchPerformed(true);
+
+    const raw = searchQuery.trim();
+    const noSpaces = stripSpaces(raw);
+
+    let query = supabase
+      .from("orders")
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
+      .eq("subagent_store_id", store?.id);
+
+    if (noSpaces.length === 36 && raw.includes("-")) {
+      query = query.eq("id", raw);
+    } else {
+      query = query.ilike("customer_number", `%${noSpaces}%`);
+    }
+
+    const { data, error } = await query.order("created_at", { ascending: false });
+    if (!error && data) {
+      setOrders(data as Order[]);
+    } else {
+      setOrders([]);
+    }
+    setSearching(false);
+  }, [searchQuery, store?.id]);
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setOrders([]);
+    setSearchPerformed(false);
+  };
+
+  // Helpers
+  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
+  const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
+
+  const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number || "") : "";
+  const whatsappLink = store ? `https://wa.me/${getInternationalDigits(store.whatsapp_number || "")}` : "#";
+  const groupLink = store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
+
+  const getStatusIcon = (status: string) => {
+    if (status === "completed" || status === "paid") return <CheckCircle className="h-4 w-4 text-green-400" />;
+    if (status === "pending") return <Clock className="h-4 w-4 text-yellow-400" />;
+    return <XCircle className="h-4 w-4 text-red-400" />;
+  };
+
+  const getStatusText = (status: string) => {
+    if (status === "completed" || status === "paid") return "Payment Completed";
+    if (status === "pending") return "Pending";
+    return status;
+  };
+
+  // Loading
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-black">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: bgColor }}>
+        <Zap className="h-10 w-10 animate-pulse" style={{ color: primaryColor }} />
       </div>
     );
   }
 
-  if (notFound) {
+  // Not found
+  if (notFound || !store) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-        <h1 className="text-3xl font-bold mb-4">Store Not Found</h1>
-        <p className="text-gray-400 mb-6">The store you&apos;re looking for doesn&apos;t exist.</p>
-        <Button onClick={() => window.location.href = "https://agentsstore.shop"}>
-          Go to AgentsStore
-        </Button>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: bgColor }}>
+        <div className="text-center text-white">
+          <Zap className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h1 className="text-2xl font-bold mb-2">Store Not Found</h1>
+          <p className="text-gray-400 mb-4">The store you are looking for does not exist.</p>
+          <Button onClick={() => window.location.href = "https://agentsstore.shop"} style={{ background: primaryColor, color: primaryForeground }}>
+            Go to AgentsStore
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-cyan-900 to-blue-900 border-b border-cyan-700 p-4 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-cyan-400">{store.store_name}</h1>
-              <p className="text-sm text-gray-300 mt-1">Premium Data Store</p>
+    <div className="min-h-screen font-sans" style={{ background: bgColor, color: "#fff" }}>
+      {/* Notification Modal */}
+      {modalOpen && undismissedNotifications.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="relative w-full max-w-md rounded-xl border border-border p-6 space-y-4" style={{ background: cardBg }}>
+            <button onClick={closeAllNotifications} className="absolute top-3 right-3 text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
+            <div className="flex items-center gap-2 text-lg font-bold" style={{ color: primaryColor }}>
+              <Megaphone className="h-5 w-5" /> Announcements
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const whatsappNumber = getInternationalDigits(store.whatsapp_number);
-                  window.open(
-                    `https://wa.me/${whatsappNumber}`,
-                    "_blank"
-                  );
-                }}
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                WhatsApp
-              </Button>
-              {store.whatsapp_group && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    window.open(store.whatsapp_group, "_blank");
-                  }}
-                >
-                  <Bell className="w-4 h-4 mr-2" />
-                  Updates
-                </Button>
-              )}
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {undismissedNotifications.map((n) => (
+                <div key={n.id} className="relative rounded-lg p-3 text-sm" style={{ background: `${primaryColor}15`, borderLeft: `3px solid ${primaryColor}` }}>
+                  <button onClick={() => dismissNotification(n.id)} className="absolute top-2 right-2 text-muted-foreground hover:text-white"><X className="h-4 w-4" /></button>
+                  <p className="pr-6 text-gray-200 whitespace-pre-wrap">{n.message}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                </div>
+              ))}
             </div>
+            <Button className="w-full" style={{ background: primaryColor, color: primaryForeground }} onClick={closeAllNotifications}>Dismiss All</Button>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto p-4 space-y-6">
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-border/50 backdrop-blur-md" style={{ background: `${cardBg}ee` }}>
+        <div className="mx-auto max-w-6xl flex items-center justify-between gap-3 px-4 py-3">
+          <h1 className="font-display text-xl font-bold truncate" style={{ color: primaryColor }}>{store.store_name}</h1>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {undismissedNotifications.length > 0 && (
+              <Button variant="ghost" size="icon" className="relative" onClick={() => setModalOpen(true)}>
+                <Bell className="h-5 w-5" style={{ color: primaryColor }} />
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full text-[10px] font-bold flex items-center justify-center" style={{ background: primaryColor, color: primaryForeground }}>{undismissedNotifications.length}</span>
+              </Button>
+            )}
+            {groupLink && (
+              <Button variant="ghost" size="icon" asChild>
+                <a href={groupLink} target="_blank" rel="noopener noreferrer"><Users className="h-5 w-5" style={{ color: primaryColor }} /></a>
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" asChild>
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-5 w-5" style={{ color: primaryColor }} /></a>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
+        {/* Order Search */}
+        <Card style={{ background: cardBg }} className="border-border">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search orders by phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && searchOrders()}
+                  className="pl-10 bg-background border-border"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={searchOrders} disabled={searching} style={{ background: primaryColor, color: primaryForeground }}>
+                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+                </Button>
+                {searchPerformed && <Button variant="outline" onClick={clearSearch}>Clear</Button>}
+              </div>
+            </div>
+            {searchPerformed && (
+              <div className="mt-4 space-y-2">
+                {orders.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No orders found</p>
+                ) : (
+                  orders.map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border">
+                      <div>
+                        <p className="font-mono text-sm">{order.customer_number}</p>
+                        <p className="text-xs text-muted-foreground">{order.size_gb}GB {formatNetworkName(order.network)} - GH₵{Number(order.amount).toFixed(2)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(order.status)}
+                        <span className="text-xs">{getStatusText(order.status)}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Network Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {["mtn", "airteltigo", "telecel"].map((network) => (
+          {["mtn", "airteltigo", "telecel"].map((net) => (
             <Button
-              key={network}
-              variant={selectedNetwork === network ? "default" : "outline"}
-              className="capitalize whitespace-nowrap"
-              onClick={() => setSelectedNetwork(network)}
-              style={
-                selectedNetwork === network
-                  ? {
-                      backgroundColor: getNetworkLabelColor(network),
-                      color: "#000",
-                      border: "none",
-                    }
-                  : {}
-              }
+              key={net}
+              variant={networkFilter === net ? "default" : "outline"}
+              size="sm"
+              onClick={() => setNetworkFilter(net)}
+              style={networkFilter === net ? { background: getNetworkColor(net), color: "#000" } : {}}
+              className="whitespace-nowrap"
             >
-              <Wifi className="w-4 h-4 mr-2" />
-              {formatNetworkName(network)}
+              <Wifi className="h-4 w-4 mr-1" />
+              {formatNetworkName(net)}
             </Button>
           ))}
         </div>
 
         {/* Packages Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {networkPackages.length === 0 ? (
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
+          {filteredPackages.length === 0 ? (
             <div className="col-span-full text-center py-12">
-              <Package className="w-12 h-12 mx-auto text-gray-600 mb-4" />
-              <p className="text-gray-400">No packages available for {formatNetworkName(selectedNetwork)}</p>
+              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No packages available</p>
             </div>
           ) : (
-            networkPackages.map((pkg) => {
-              const subagentPrice = getPriceForPackage(pkg.id);
+            filteredPackages.map((pkg) => {
+              const price = getPrice(pkg);
               return (
-                <Card
-                  key={pkg.id}
-                  className="bg-gray-900 border-gray-800 hover:border-cyan-600 transition-colors cursor-pointer"
-                  onClick={() => handlePackageSelect(pkg)}
-                >
-                  <CardContent className="p-6 space-y-4">
-                    <div>
-                      <div className="text-3xl font-bold text-cyan-400">
-                        {pkg.size_gb}
-                        <span className="text-lg text-gray-400">GB</span>
-                      </div>
-                      <Badge
-                        className="mt-2"
-                        style={{ backgroundColor: getNetworkLabelColor(pkg.network) }}
-                      >
-                        {formatNetworkName(pkg.network)}
-                      </Badge>
-                    </div>
-
-                    <div className="border-t border-gray-800 pt-4">
-                      <p className="text-sm text-gray-400">Price</p>
-                      <p className="text-2xl font-bold text-green-400">
-                        GH₵ {subagentPrice?.toFixed(2) || "N/A"}
-                      </p>
-                    </div>
-
-                    <Button className="w-full bg-cyan-600 hover:bg-cyan-700">
-                      Buy Now
-                    </Button>
+                <Card key={pkg.id} className="border-border hover:border-primary/50 transition-all cursor-pointer" style={{ background: cardBg }} onClick={() => { setPaymentPkg(pkg); setPaymentOpen(true); }}>
+                  <CardContent className="p-4 text-center space-y-2">
+                    <Badge style={{ background: getNetworkColor(pkg.network), color: "#000" }}>{formatNetworkName(pkg.network)}</Badge>
+                    <p className="text-2xl font-bold" style={{ color: primaryColor }}>{pkg.size_gb}<span className="text-base text-muted-foreground">GB</span></p>
+                    <p className="text-lg font-semibold text-green-400">GH₵ {Number(price).toFixed(2)}</p>
+                    <Button size="sm" className="w-full" style={{ background: primaryColor, color: primaryForeground }}>Buy Now</Button>
                   </CardContent>
                 </Card>
               );
@@ -330,63 +447,53 @@ export function SubagentStorefront() {
           )}
         </div>
 
-        {/* Support Section */}
-        <Card className="bg-gray-900 border-gray-800">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-semibold text-cyan-400 mb-4">Need Help?</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-start gap-3">
-                <Phone className="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0" />
+        {/* Support */}
+        <Card style={{ background: cardBg }} className="border-border">
+          <CardContent className="p-4">
+            <h3 className="font-semibold mb-3" style={{ color: primaryColor }}>Need Help?</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-3">
+                <Phone className="h-5 w-5 flex-shrink-0" style={{ color: primaryColor }} />
                 <div>
-                  <p className="text-sm text-gray-400">Support Number</p>
-                  <p
-                    className="font-mono text-white cursor-pointer hover:text-cyan-400"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(store.support_number);
-                      toast({ title: "Copied!", description: "Support number copied to clipboard." });
-                    }}
-                  >
-                    {formatDisplayPhone(store.support_number)}
-                    <Copy className="w-4 h-4 inline ml-2" />
+                  <p className="text-muted-foreground text-xs">Support</p>
+                  <p className="font-mono cursor-pointer hover:underline" onClick={() => { navigator.clipboard.writeText(store.support_number || ""); toast({ title: "Copied!" }); }}>
+                    {formatDisplayPhone(store.support_number || "")} <Copy className="h-3 w-3 inline" />
                   </p>
                 </div>
               </div>
-
-              <div className="flex items-start gap-3">
-                <Zap className="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0" />
+              <div className="flex items-center gap-3">
+                <MessageCircle className="h-5 w-5 flex-shrink-0" style={{ color: primaryColor }} />
                 <div>
-                  <p className="text-sm text-gray-400">WhatsApp</p>
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto text-white hover:text-cyan-400"
-                    onClick={() => {
-                      const whatsappNumber = getInternationalDigits(store.whatsapp_number);
-                      window.open(
-                        `https://wa.me/${whatsappNumber}?text=Hello, I need help with my data purchase.`,
-                        "_blank"
-                      );
-                    }}
-                  >
-                    Chat with us
-                  </Button>
+                  <p className="text-muted-foreground text-xs">WhatsApp</p>
+                  <a href={`${whatsappLink}?text=Hello, I need help with my order.`} target="_blank" rel="noopener noreferrer" className="hover:underline">{displayWhatsApp}</a>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+
+        {/* Footer */}
+        <footer className="text-center py-6 border-t border-border">
+          <p className="text-sm text-muted-foreground">
+            Powered by <span className="font-bold">ZYTRIX <span style={{ color: primaryColor }}>TECH</span></span>
+          </p>
+          <p className="text-sm text-muted-foreground pt-2">
+            Already an agent? <a href="https://agentsstore.shop/login" className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
+          </p>
+        </footer>
+      </main>
 
       {/* Payment Dialog */}
-      {selectedPackage && (
+      {paymentPkg && (
         <PaymentDialog
-          isOpen={paymentDialogOpen}
-          onOpenChange={setPaymentDialogOpen}
-          package={selectedPackage}
-          price={getPriceForPackage(selectedPackage.id) || selectedPackage.price}
+          isOpen={paymentOpen}
+          onOpenChange={setPaymentOpen}
+          package={paymentPkg}
+          price={selectedPaymentPrice}
           storeId={store.agent_store_id}
           subagentStoreId={store.id}
-          phoneNumber={phoneNumber}
-          onPhoneNumberChange={setPhoneNumber}
+          phoneNumber={customerPhone}
+          onPhoneNumberChange={setCustomerPhone}
           storeName={store.store_name}
         />
       )}
