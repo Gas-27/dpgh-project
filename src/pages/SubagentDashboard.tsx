@@ -121,15 +121,19 @@ const SubagentDashboard = () => {
         .eq("user_id", user.id)
         .single();
 
-      if (storeErr) throw storeErr;
+      if (storeErr) {
+        console.log("[v0] Error fetching subagent store:", storeErr);
+        throw storeErr;
+      }
+      console.log("[v0] Subagent store fetched:", store);
       setSubagentStore(store);
       setStoreForm(store);
       
-      // Set theme colors and headline from store
-      if (store.theme_config) {
+      // Set theme colors and headline from store (with null checks)
+      if (store?.theme_config && typeof store.theme_config === 'object') {
         setThemeColors({ ...DEFAULT_THEME, ...store.theme_config });
       }
-      if (store.store_headline) {
+      if (store?.store_headline) {
         setStoreHeadline(store.store_headline);
       }
 
