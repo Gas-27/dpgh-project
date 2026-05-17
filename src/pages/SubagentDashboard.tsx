@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent,
-  ChevronUp, ChevronDown, BookOpen, Search, TrendingUp
+  ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -50,6 +50,9 @@ interface WithdrawalRequest {
   status: string;
   created_at: string;
 }
+
+// Default theme
+const DEFAULT_THEME = { primary: "#38bdf8", primary_foreground: "#000000", background: "#0a0a0a", card_background: "#171717", gridColumns: 2 };
 
 // Instruction manual sections
 const MANUAL_SECTIONS = [
@@ -96,6 +99,10 @@ const SubagentDashboard = () => {
   const [newNotificationExpiry, setNewNotificationExpiry] = useState("");
   const [sendingNotification, setSendingNotification] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
+  const [savingTheme, setSavingTheme] = useState(false);
+  const [storeHeadline, setStoreHeadline] = useState("");
+  const [savingHeadline, setSavingHeadline] = useState(false);
 
   useEffect(() => {
     if (!isSubagent) return;
@@ -117,6 +124,14 @@ const SubagentDashboard = () => {
       if (storeErr) throw storeErr;
       setSubagentStore(store);
       setStoreForm(store);
+      
+      // Set theme colors and headline from store
+      if (store.theme_config) {
+        setThemeColors({ ...DEFAULT_THEME, ...store.theme_config });
+      }
+      if (store.store_headline) {
+        setStoreHeadline(store.store_headline);
+      }
 
       if (!store?.id) return;
 
@@ -324,6 +339,50 @@ const SubagentDashboard = () => {
     } finally {
       setWithdrawLoading(false);
     }
+  };
+
+  // Save theme colors
+  const saveThemeColors = async () => {
+    if (!subagentStore?.id) return;
+    try {
+      setSavingTheme(true);
+      const { error } = await supabase
+        .from("subagent_stores")
+        .update({ theme_config: themeColors })
+        .eq("id", subagentStore.id);
+      if (error) throw error;
+      toast({ title: "Theme saved!" });
+    } catch (error) {
+      console.error("Error saving theme:", error);
+      toast({ title: "Error", description: "Failed to save theme", variant: "destructive" });
+    } finally {
+      setSavingTheme(false);
+    }
+  };
+
+  // Save store headline
+  const saveStoreHeadline = async () => {
+    if (!subagentStore?.id) return;
+    try {
+      setSavingHeadline(true);
+      const { error } = await supabase
+        .from("subagent_stores")
+        .update({ store_headline: storeHeadline })
+        .eq("id", subagentStore.id);
+      if (error) throw error;
+      toast({ title: "Headline saved!" });
+    } catch (error) {
+      console.error("Error saving headline:", error);
+      toast({ title: "Error", description: "Failed to save headline", variant: "destructive" });
+    } finally {
+      setSavingHeadline(false);
+    }
+  };
+
+  // Change grid columns
+  const changeColumns = (delta: number) => {
+    const newVal = Math.max(1, Math.min(6, themeColors.gridColumns + delta));
+    setThemeColors({ ...themeColors, gridColumns: newVal });
   };
 
   const filteredPackages = packages.filter(p => p.network === networkFilter);
@@ -1111,27 +1170,157 @@ const SubagentDashboard = () => {
           </TabsContent>
 
           {/* APPEARANCE */}
-          <TabsContent value="appearance" className="mt-0 space-y-6">
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle>Store Appearance</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                  <p className="text-sm text-blue-400">Store appearance settings are the same as your store information. Edit your store name and contact details in the Settings tab.</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-semibold mb-2 block">Store Name</Label>
-                    <p className="text-foreground">{subagentStore?.store_name}</p>
+          <TabsContent value="appearance" className="mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display">Customise Your Storefront</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="space-y-2">
+                    <Label>Store Headline</Label>
+                    <textarea
+                      className="w-full rounded-md border border-border bg-background p-3 text-sm min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={storeHeadline}
+                      onChange={e => setStoreHeadline(e.target.value)}
+                      placeholder="Get the best data deals from ..."
+                    />
+                    <Button variant="outline" size="sm" onClick={saveStoreHeadline} disabled={savingHeadline}>
+                      {savingHeadline ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                      Save Headline
+                    </Button>
                   </div>
-                  <div>
-                    <Label className="text-sm font-semibold mb-2 block">WhatsApp Number</Label>
-                    <p className="text-foreground">{subagentStore?.whatsapp_number}</p>
+
+                  <div className="border-t border-border pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[
+                      { label: "Primary Colour", key: "primary" },
+                      { label: "Text on Primary", key: "primary_foreground" },
+                      { label: "Page Background", key: "background" },
+                      { label: "Card Background", key: "card_background" }
+                    ].map(({ label, key }) => (
+                      <div key={key} className="space-y-1">
+                        <Label className="text-sm">{label}</Label>
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            type="color"
+                            value={(themeColors as any)[key]}
+                            onChange={e => setThemeColors({ ...themeColors, [key]: e.target.value })}
+                            className="w-12 h-9 p-1 cursor-pointer"
+                          />
+                          <Input
+                            type="text"
+                            value={(themeColors as any)[key]}
+                            onChange={e => setThemeColors({ ...themeColors, [key]: e.target.value })}
+                            className="flex-1 font-mono text-sm"
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+
+                  <div className="border-t border-border pt-4">
+                    <Label className="mb-2 block font-semibold flex items-center gap-2">
+                      <LayoutGrid className="h-4 w-4 text-primary" /> Grid Columns
+                    </Label>
+                    <div className="flex items-center gap-2 max-w-xs">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => changeColumns(-1)}
+                        disabled={themeColors.gridColumns <= 1}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={6}
+                        value={themeColors.gridColumns}
+                        onChange={e => {
+                          const v = parseInt(e.target.value);
+                          if (!isNaN(v) && v >= 1 && v <= 6) setThemeColors({ ...themeColors, gridColumns: v });
+                        }}
+                        className="w-16 text-center font-bold"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => changeColumns(1)}
+                        disabled={themeColors.gridColumns >= 6}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Controls how many packages are shown per row on your storefront.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-border">
+                    <Button variant="hero" onClick={saveThemeColors} disabled={savingTheme}>
+                      {savingTheme ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                      Save Theme
+                    </Button>
+                    <Button variant="ghost" onClick={() => setThemeColors(DEFAULT_THEME)}>
+                      <RotateCcw className="h-4 w-4 mr-1" /> Reset
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display text-base">Live Preview</CardTitle>
+                  <p className="text-xs text-muted-foreground">This is exactly how your public store will look.</p>
+                </CardHeader>
+                <CardContent>
+                  <div
+                    className="rounded-xl overflow-hidden border border-border"
+                    style={{ backgroundColor: themeColors.background, minHeight: 320 }}
+                  >
+                    <div className="p-4" style={{ backgroundColor: themeColors.background }}>
+                      <div className="text-center mb-3">
+                        <p className="font-bold text-sm" style={{ color: themeColors.primary }}>
+                          {subagentStore?.store_name || "Your Store Name"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: `${themeColors.primary}99` }}>
+                          {storeHeadline || "Your store headline"}
+                        </p>
+                      </div>
+                      <div
+                        className="grid gap-2 mt-3"
+                        style={{ gridTemplateColumns: `repeat(${Math.min(themeColors.gridColumns, 4)}, minmax(0, 1fr))` }}
+                      >
+                        {Array.from({ length: Math.min(themeColors.gridColumns * 2, 8) }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="rounded-lg p-2 text-center text-xs"
+                            style={{ backgroundColor: themeColors.card_background, border: `1px solid ${themeColors.primary}30` }}
+                          >
+                            <div className="font-bold text-white text-sm">{[1, 2, 3, 4, 5, 6, 8, 10][i] || i + 1}GB</div>
+                            <div className="text-xs mt-1" style={{ color: `${themeColors.primary}cc` }}>MTN</div>
+                            <div className="text-xs" style={{ color: "#ccc" }}>GH₵ {(4 + i * 3).toFixed(2)}</div>
+                            <div
+                              className="mt-1 rounded text-xs py-0.5 font-bold"
+                              style={{ backgroundColor: themeColors.primary, color: themeColors.primary_foreground }}
+                            >
+                              Buy
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    {themeColors.gridColumns} column{themeColors.gridColumns !== 1 ? "s" : ""} per row - Changes apply live after saving
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* NOTIFICATIONS */}

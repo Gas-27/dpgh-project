@@ -16,13 +16,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 interface PaymentDialogProps {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   onOpenChange: (open: boolean) => void;
-  packageName: string;
-  network: string;
+  packageName?: string;
+  package?: { id: string; network: string; size_gb: number };
+  network?: string;
   price: number;
-  packageId: string;
+  packageId?: string;
   agentStoreId?: string;
+  subagentStoreId?: string;
+  storeId?: string;
+  phoneNumber?: string;
+  onPhoneNumberChange?: (phone: string) => void;
+  storeName?: string;
 }
 
 const PAYSTACK_CHARGE_PERCENT = 1.98;
@@ -43,12 +50,16 @@ function normalizePhone(phone: string): string {
 
 const PaymentDialog = ({
   open,
+  isOpen,
   onOpenChange,
   packageName,
-  network,
+  package: pkg,
+  network: networkProp,
   price,
   packageId,
   agentStoreId,
+  subagentStoreId,
+  storeId,
 }: PaymentDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -57,6 +68,13 @@ const PaymentDialog = ({
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
+
+  // Support both prop patterns
+  const isDialogOpen = open ?? isOpen ?? false;
+  const displayPackageName = packageName || (pkg ? `${pkg.size_gb}GB` : "");
+  const network = networkProp || pkg?.network || "";
+  const actualPackageId = packageId || pkg?.id || "";
+  const actualStoreId = agentStoreId || storeId || "";
 
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
@@ -135,7 +153,7 @@ const PaymentDialog = ({
       const userEmail =
         user?.email || `${normalizedPhone.replace(/[^0-9]/g, "")}@datapluggh.com`;
 
-      const returnPath = agentStoreId
+      const returnPath = actualStoreId
         ? window.location.pathname
         : "/packages";
 
@@ -150,10 +168,11 @@ const PaymentDialog = ({
             phone: normalizedPhone,
             callback_url: callbackUrl,
             metadata: {
-              package_id: packageId,
+              package_id: actualPackageId,
               network,
-              package_name: packageName,
-              agent_store_id: agentStoreId || null,
+              package_name: displayPackageName,
+              agent_store_id: actualStoreId || null,
+              subagent_store_id: subagentStoreId || null,
             },
           },
         }
@@ -197,7 +216,7 @@ const PaymentDialog = ({
   }, [open, step]);
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={isDialogOpen} onOpenChange={handleClose}>
       <DialogContent
         className="sm:max-w-md border-border bg-card p-0 overflow-hidden"
         style={{ zIndex: 99999 }}
@@ -206,7 +225,7 @@ const PaymentDialog = ({
           <div className="p-6">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">
-                Buy {packageName} {(network || "").toUpperCase()}
+                Buy {displayPackageName} {(network || "").toUpperCase()}
               </DialogTitle>
               <DialogDescription>
                 Enter the phone number to receive data
@@ -283,7 +302,7 @@ const PaymentDialog = ({
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Package</span>
                     <span className="font-semibold text-foreground">
-                      {packageName} {(network || "").toUpperCase()}
+                      {displayPackageName} {(network || "").toUpperCase()}
                     </span>
                   </div>
 

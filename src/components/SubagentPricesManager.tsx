@@ -72,17 +72,23 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
         }
       }
       
+      // Use delete then insert instead of upsert to avoid constraint issues
       for (const [packageId, price] of Object.entries(editedPrices)) {
+        // First delete existing
+        await supabase
+          .from("agent_package_prices")
+          .delete()
+          .eq("agent_store_id", agentStoreId)
+          .eq("package_id", packageId);
+        
+        // Then insert new
         const { error } = await supabase
           .from("agent_package_prices")
-          .upsert(
-            {
-              agent_store_id: agentStoreId,
-              package_id: packageId,
-              sell_price: price
-            },
-            { onConflict: "agent_store_id,package_id" }
-          );
+          .insert({
+            agent_store_id: agentStoreId,
+            package_id: packageId,
+            sell_price: price
+          });
 
         if (error) throw error;
       }

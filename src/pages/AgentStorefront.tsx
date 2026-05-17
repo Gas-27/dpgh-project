@@ -10,9 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
+import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
-  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket,
+  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -132,17 +133,45 @@ const OrderTrackingCard = ({
   order,
   store,
   toast,
+  onReportClick,
 }: {
   order: Order;
   store: AgentStore;
   toast: any;
+  onReportClick: (order: Order) => void;
 }): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Fetch complaint status for this order
+  useEffect(() => {
+    const fetchComplaintStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("complaints")
+          .select("status")
+          .eq("order_id", order.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!error && data) {
+          setComplaintStatus(data.status);
+        }
+      } catch (e) {
+        // No complaint found, that's okay
+      }
+    };
+
+    fetchComplaintStatus();
+    const interval = setInterval(fetchComplaintStatus, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
+  }, [order.id]);
 
   const elapsedMs = currentTime.getTime() - new Date(order.created_at).getTime();
   const elapsedMinutes = elapsedMs / 60_000;
@@ -248,23 +277,37 @@ const OrderTrackingCard = ({
           )}
         </div>
 
-        {showReportButton && (
+        {/* Report button - only if no complaint submitted yet */}
+        {showReportButton && !complaintStatus && (
           <Button
             variant="outline"
             size="sm"
             className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
-            asChild
+            onClick={() => onReportClick(order)}
           >
-            <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              <img
-                src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-                alt="WhatsApp"
-                className="h-4 w-4 mr-2"
-                style={{ filter: "invert(1)" }}
-              />
-              Tap on this Report only :  if it  Shows <br></br>Delivered but data  has not been  received
-            </a>
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Only tap on this Report: If it Shows <br />Delivered but you have not received it
           </Button>
+        )}
+
+        {/* Show status message if complaint submitted */}
+        {complaintStatus && complaintStatus !== "resolved" && (
+          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p className="text-sm font-medium text-yellow-400 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" /> Report has been sent to the agent
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. The agent is working on it for you.
+            </p>
+          </div>
+        )}
+
+        {complaintStatus === "resolved" && (
+          <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+            <p className="text-sm font-medium text-green-400 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" /> Your complaint has been resolved
+            </p>
+          </div>
         )}
       </div>
     );
@@ -450,6 +493,10 @@ const AgentStorefront = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // ── Report complaint dialog ──
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportOrder, setReportOrder] = useState<Order | null>(null);
 
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
@@ -976,7 +1023,15 @@ const AgentStorefront = () => {
                               </div>
                             </div>
                             <div className="pt-3">
-                              <OrderTrackingCard order={order} store={store} toast={toast} />
+                              <OrderTrackingCard
+                                order={order}
+                                store={store}
+                                toast={toast}
+                                onReportClick={(o) => {
+                                  setReportOrder(o);
+                                  setReportDialogOpen(true);
+                                }}
+                              />
                             </div>
                           </div>
                         ))}
@@ -1195,6 +1250,17 @@ const AgentStorefront = () => {
         />
       )}
       <PaymentVerifier />
+
+      {/* Report Complaint Dialog */}
+      {reportOrder && (
+        <ReportComplaintDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          order={reportOrder}
+          complaintType="agent"
+          agentStoreId={store?.id}
+        />
+      )}
     </div>
   );
 };
