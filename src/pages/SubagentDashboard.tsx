@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
 import { DOMAINS } from "@/config/domains";
 
@@ -31,6 +32,10 @@ interface SubagentStore {
   approved: boolean;
   agent_store_id: string;
   created_at: string;
+  theme_config?: any;
+  store_headline?: string;
+  whatsapp_group?: string;
+  show_whatsapp_group_icon?: boolean;
 }
 
 interface Order {
@@ -297,13 +302,15 @@ const SubagentDashboard = () => {
           store_name: storeForm.store_name,
           whatsapp_number: storeForm.whatsapp_number,
           support_number: storeForm.support_number,
+          whatsapp_group: storeForm.whatsapp_group || null,
+          show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon ?? true,
         })
         .eq("id", subagentStore?.id);
 
       if (error) throw error;
       setSubagentStore(prev => prev ? { ...prev, ...storeForm } : null);
       setEditingStore(false);
-      toast({ title: "✅ Store updated successfully" });
+      toast({ title: "Store updated successfully" });
     } catch (error) {
       console.error("Error saving store:", error);
       toast({ title: "Error", description: "Failed to save changes", variant: "destructive" });
@@ -1483,6 +1490,27 @@ const SubagentDashboard = () => {
                         onChange={e => setStoreForm({ ...storeForm, support_number: e.target.value })}
                       />
                     </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <Label>WhatsApp Group / Channel Link</Label>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="show-group-icon" className="text-sm text-muted-foreground cursor-pointer">Show join icon on storefront</Label>
+                          <Switch 
+                            id="show-group-icon" 
+                            checked={storeForm.show_whatsapp_group_icon ?? true} 
+                            onCheckedChange={c => setStoreForm({ ...storeForm, show_whatsapp_group_icon: c })} 
+                          />
+                        </div>
+                      </div>
+                      <Input 
+                        value={storeForm.whatsapp_group || ""} 
+                        onChange={e => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} 
+                        placeholder="Paste the WhatsApp link here" 
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {storeForm.show_whatsapp_group_icon !== false ? "A WhatsApp join icon will appear on your storefront." : "The join icon will be hidden."}
+                      </p>
+                    </div>
                     <div className="flex gap-2">
                       <Button variant="outline" onClick={() => setEditingStore(false)}>Cancel</Button>
                       <Button variant="hero" onClick={handleSaveStore} disabled={saving}>
@@ -1504,6 +1532,14 @@ const SubagentDashboard = () => {
                     <div>
                       <p className="text-sm text-muted-foreground">Support Number</p>
                       <p className="font-medium">{subagentStore.support_number}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">WhatsApp Group</p>
+                      <p className="font-medium">{subagentStore.whatsapp_group || "Not set"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Show Group Icon</p>
+                      <p className="font-medium">{subagentStore.show_whatsapp_group_icon !== false ? "Yes" : "No"}</p>
                     </div>
                   </div>
                 )}

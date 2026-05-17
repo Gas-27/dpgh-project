@@ -327,6 +327,9 @@ export function SubagentStorefront() {
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
+      console.log("[v0] Subagent store loaded:", matched);
+      console.log("[v0] Theme config:", matched.theme_config);
+      console.log("[v0] Store headline:", matched.store_headline);
       setStore(matched);
 
       // Fetch packages and prices
@@ -337,6 +340,9 @@ export function SubagentStorefront() {
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id),
       ]);
 
+      console.log("[v0] Subagent own prices:", subagentOwnPriceRes.data);
+      console.log("[v0] Agent subagent base prices:", agentSubagentBasePriceRes.data);
+
       setPackages(pkgRes.data || []);
 
       // Build price map with fallback: subagent's own prices -> agent's subagent base prices -> admin's base
@@ -345,12 +351,13 @@ export function SubagentStorefront() {
       (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
       // Then override with agent's subagent base prices if set
       (agentSubagentBasePriceRes.data || []).forEach((p: any) => { 
-        if (p.base_price) priceMap[p.package_id] = p.base_price; 
+        if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price); 
       });
       // Finally override with subagent's own prices if set
       (subagentOwnPriceRes.data || []).forEach((p: any) => { 
-        if (p.sell_price) priceMap[p.package_id] = p.sell_price; 
+        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
       });
+      console.log("[v0] Final price map:", priceMap);
       setSubagentPrices(priceMap);
       
       setLoading(false);
