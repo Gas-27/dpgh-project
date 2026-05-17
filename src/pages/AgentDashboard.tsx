@@ -326,16 +326,24 @@ const AgentDashboard = () => {
         momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
       });
 
-      const [pkgR, priceR, orderR, orderCountR, wdR, subagentR] = await Promise.all([
+      const [pkgR, priceR, orderR, orderCountR, wdR, subagentR, customBasePriceR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, ORDERS_PAGE_SIZE - 1),
         supabase.from("orders").select("id", { count: "exact", head: true }).eq("agent_store_id", sd.id),
         supabase.from("withdrawal_requests").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
       ]);
 
-      const pkgs = pkgR.data ?? [];
+      // Apply custom base prices set by admin - override agent_price with custom_base_price
+      const customPriceMap: Record<string, number> = {};
+      (customBasePriceR.data ?? []).forEach((p: any) => { customPriceMap[p.package_id] = p.custom_base_price; });
+      
+      const pkgs = (pkgR.data ?? []).map((pkg: any) => ({
+        ...pkg,
+        agent_price: customPriceMap[pkg.id] ?? pkg.agent_price, // Use custom base price if set by admin
+      }));
       setPackages(pkgs);
       const pm: Record<string, number> = {};
       (priceR.data ?? []).forEach((p: any) => { pm[p.package_id] = p.sell_price; });
