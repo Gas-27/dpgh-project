@@ -67,11 +67,29 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <Suspense fallback={<RouteLoader />}>
-              {isAgentSubdomain ? (
+              {isSubagentDomain ? (
+                // 🎯 agentsstore.shop - Subagent domain with separate routing
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/packages" element={<Packages />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <AuthGuard requiredRole="subagent">
+                        <SubagentDashboard />
+                      </AuthGuard>
+                    }
+                  />
+                  <Route path="/:storeName" element={<AgentStorefront />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              ) : isAgentSubdomain ? (
                 // 🎯 On any agent subdomain, show the agent storefront
                 <AgentStorefront />
               ) : (
-                // 🌐 On the main domain, use normal routes
+                // 🌐 On the main datastores.shop domain, use normal routes
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Login />} />

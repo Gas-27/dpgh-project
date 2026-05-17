@@ -154,6 +154,28 @@ const AdminDashboard = () => {
     setUsers(userList);
   };
 
+  // ======================== Delete Subagent ========================
+  const deleteSubagent = async (subagentId: string, subagentName: string) => {
+    if (!confirm(`Are you sure you want to delete subagent "${subagentName}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase.from("subagent_stores").delete().eq("id", subagentId);
+      
+      if (error) {
+        toast({ title: "Error", description: "Failed to delete subagent", variant: "destructive" });
+        return;
+      }
+      
+      toast({ title: "Success", description: `Subagent "${subagentName}" has been deleted` });
+      setSubagents(subagents.filter(s => s.id !== subagentId));
+    } catch (err) {
+      console.error("Delete subagent error:", err);
+      toast({ title: "Error", description: "Failed to delete subagent", variant: "destructive" });
+    }
+  };
+
   // ======================== Spin wheel config ========================
   const fetchSpinConfig = async () => {
     const { data, error } = await supabase.from("spin_config").select("*").eq("id", 1).maybeSingle();
@@ -765,10 +787,18 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 flex gap-2">
                           <Badge className="bg-green-600/20 text-green-400 border-green-600/30 font-semibold">
                             Active
                           </Badge>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteSubagent(subagent.id, subagent.store_name)}
+                            className="text-xs"
+                          >
+                            Delete
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
