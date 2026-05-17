@@ -432,6 +432,7 @@ const AgentStorefront = () => {
   const { user, hasRole } = useAuth();
 
   // If on agent.datastores.shop subdomain and user is a subagent, show SubagentDashboard
+  // This handles both agent.datastores.shop and agent.datastores.shop/{storeName}
   if (subdomainStoreName === "agent" && user && hasRole("subagent")) {
     return <SubagentDashboard />;
   }
@@ -831,7 +832,7 @@ const AgentStorefront = () => {
             onClick={() => setShowSubagentForm(!showSubagentForm)}
             className="font-semibold"
           >
-            Become a Subagent
+            Become an Agent
           </Button>
         </div>
       </div>
@@ -1051,7 +1052,7 @@ const AgentStorefront = () => {
           <div className="bg-background border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-background border-b border-border p-4 md:p-6 flex items-center justify-between">
               <h2 className="font-display text-2xl font-bold text-foreground">
-                Become a <span style={{ color: primaryColor }}>Subagent</span>
+                Become an <span style={{ color: primaryColor }}>Agent</span>
               </h2>
               <button
                 onClick={() => setShowSubagentForm(false)}
