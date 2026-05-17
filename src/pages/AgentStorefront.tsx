@@ -429,12 +429,27 @@ const AgentStorefront = () => {
   const storeName = subdomainStoreName || paramStoreName;
 
   const { toast } = useToast();
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, loading: authLoading } = useAuth();
 
   // If on agent.datastores.shop subdomain and user is a subagent, show SubagentDashboard
   // This handles both agent.datastores.shop and agent.datastores.shop/{storeName}
-  if (subdomainStoreName === "agent" && user && hasRole("subagent")) {
-    return <SubagentDashboard />;
+  if (subdomainStoreName === "agent") {
+    // Wait for auth to load
+    if (authLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // If user is a subagent, show their dashboard
+    if (user && hasRole("subagent")) {
+      return <SubagentDashboard />;
+    }
   }
 
   const [store, setStore] = useState<AgentStore | null>(null);
