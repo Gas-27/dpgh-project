@@ -88,6 +88,9 @@ const SubagentDashboard = () => {
   const [manualOpen, setManualOpen] = useState(false);
   const [openManualSection, setOpenManualSection] = useState<number | null>(null);
   const [orderSearch, setOrderSearch] = useState("");
+  const [buyingPkg, setBuyingPkg] = useState<any>(null);
+  const [buyCustomerNumber, setBuyCustomerNumber] = useState("");
+  const [buyLoading, setBuyLoading] = useState(false);
 
   useEffect(() => {
     if (!isSubagent) return;
@@ -342,6 +345,52 @@ const SubagentDashboard = () => {
       toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
     } finally {
       setSavingPrices(false);
+    }
+  };
+
+  const handleBuyData = async () => {
+    if (!buyingPkg || !buyCustomerNumber || !subagentStore) return;
+    
+    const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
+    
+    if (price > (subagentStore.wallet_balance || 0)) {
+      toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      setBuyLoading(true);
+      
+      // Create order
+      const { error: orderError } = await supabase.from("orders").insert({
+        subagent_store_id: subagentStore.id,
+        customer_number: buyCustomerNumber,
+        network: buyingPkg.network,
+        size_gb: buyingPkg.size_gb,
+        amount: price,
+        status: "pending",
+        fulfillment_status: "pending"
+      });
+      
+      if (orderError) throw orderError;
+      
+      // Deduct from wallet
+      const { error: walletError } = await supabase
+        .from("subagent_stores")
+        .update({ wallet_balance: (subagentStore.wallet_balance || 0) - price })
+        .eq("id", subagentStore.id);
+      
+      if (walletError) throw walletError;
+      
+      toast({ title: "Success", description: `${buyingPkg.size_gb}GB data purchased for ${buyCustomerNumber}` });
+      setBuyingPkg(null);
+      setBuyCustomerNumber("");
+      fetchData();
+    } catch (error) {
+      console.error("Error buying data:", error);
+      toast({ title: "Error", description: "Failed to purchase data", variant: "destructive" });
+    } finally {
+      setBuyLoading(false);
     }
   };
 
@@ -637,12 +686,42 @@ const SubagentDashboard = () => {
                       <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p>
                       <p className="text-lg font-bold text-primary">GH₵ {Number(basePrice).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Base Price</p>
-                      <Button variant="hero" size="sm" className="w-full">Buy Now</Button>
+                      <Button variant="hero" size="sm" className="w-full" onClick={() => setBuyingPkg(pkg)}>Buy Now</Button>
                     </CardContent>
                   </Card>
                 );
               })}
             </div>
+
+            {/* Buy Data Modal */}
+            {buyingPkg && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-md border-border">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="font-display">Buy {buyingPkg.size_gb}GB {buyingPkg.network.toUpperCase()}</CardTitle>
+                    <button onClick={() => { setBuyingPkg(null); setBuyCustomerNumber(""); }} className="text-muted-foreground hover:text-foreground text-2xl">×</button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 text-center">
+                      <p className="text-sm text-muted-foreground">Price</p>
+                      <p className="font-display text-2xl font-bold text-primary">GH₵ {Number(basePrices[buyingPkg.id] || buyingPkg.price || 0).toFixed(2)}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Customer Phone Number</Label>
+                      <Input
+                        placeholder="e.g. 0551234567"
+                        value={buyCustomerNumber}
+                        onChange={e => setBuyCustomerNumber(e.target.value)}
+                      />
+                    </div>
+                    <Button variant="hero" className="w-full" onClick={handleBuyData} disabled={buyLoading || !buyCustomerNumber}>
+                      {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Confirm Purchase
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
 
           {/* ORDERS */}
@@ -940,9 +1019,11 @@ const SubagentDashboard = () => {
             {subagentStore && (
               <FlyerGenerator
                 storeName={subagentStore.store_name}
-                storeId={subagentStore.id}
-                whatsappNumber={subagentStore.whatsapp_number}
-                supportNumber={subagentStore.support_number}
+                storeUrl={storeUrl}
+                whatsappNumber={subagentStore.whatsapp_number || ""}
+                supportNumber={subagentStore.support_number || ""}
+                packages={packages}
+                agentPrices={subagentPrices}
               />
             )}
           </TabsContent>

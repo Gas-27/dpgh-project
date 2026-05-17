@@ -313,6 +313,19 @@ export default function SubagentRegistrationForm({
           <p className="text-xs text-muted-foreground text-center">
             By signing up, you agree to become an agent under {agentStoreName} and follow our terms and conditions.
           </p>
+
+          <div className="text-center pt-4 border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              Already an agent?{" "}
+              <a 
+                href="https://agentsstore.shop/login" 
+                className="font-semibold hover:underline"
+                style={{ color: primaryColor }}
+              >
+                Sign in here
+              </a>
+            </p>
+          </div>
         </form>
       </CardContent>
     </Card>

@@ -510,12 +510,58 @@ const AgentStorefront = () => {
       if (!storeName) { setNotFound(true); setLoading(false); return; }
       const normalized = storeName.toLowerCase().trim();
       
+      // Check if we're on agentsstore.shop domain (subagent domain)
+      const isSubagentDomain = window.location.hostname === "agentsstore.shop" || 
+                               window.location.hostname === "www.agentsstore.shop" ||
+                               window.location.hostname.includes("localhost");
+      
+      // First try agent_stores
       const { data: stores } = await supabase.from("agent_stores").select("*").eq("approved", true) as any;
-      if (!stores || stores.length === 0) { setNotFound(true); setLoading(false); return; }
-
-      let matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
-      if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
-      if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
+      
+      let matched = null;
+      if (stores && stores.length > 0) {
+        matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
+        if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
+        if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
+      }
+      
+      // If on subagent domain and no agent store found, try subagent_stores
+      if (!matched && isSubagentDomain) {
+        const { data: subagentStores } = await supabase
+          .from("subagent_stores")
+          .select("*, agent_stores(store_name)")
+          .eq("approved", true) as any;
+        
+        if (subagentStores && subagentStores.length > 0) {
+          matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name) === normalized);
+          if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
+          if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
+          
+          if (matched) {
+            // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices
+            matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
+            matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
+            matched.is_subagent_store = true;
+            setStore(matched);
+            
+            const [pkgRes, subagentPriceRes, agentPriceRes] = await Promise.all([
+              supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
+              supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
+              supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
+            ]);
+            setPackages(pkgRes.data ?? []);
+            
+            // Use subagent prices if available, otherwise fall back to agent prices
+            const priceMap: Record<string, number> = {};
+            (agentPriceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+            (subagentPriceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+            setAgentPrices(priceMap);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+      
       if (!matched) { setNotFound(true); setLoading(false); return; }
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
@@ -1099,6 +1145,16 @@ const AgentStorefront = () => {
               <span className="text-foreground">ZYTRIX</span>{" "}
               <span style={{ color: primaryColor }}>TECH</span>
             </span>
+          </p>
+          <p className="text-sm text-muted-foreground pt-2">
+            Already an agent?{" "}
+            <a 
+              href="https://agentsstore.shop/login"
+              className="font-semibold hover:underline"
+              style={{ color: primaryColor }}
+            >
+              Login here
+            </a>
           </p>
         </div>
       </footer>
