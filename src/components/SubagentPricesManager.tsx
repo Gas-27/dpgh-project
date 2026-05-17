@@ -72,26 +72,23 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
         }
       }
       
-      // Use delete then insert instead of upsert to avoid constraint issues
+      // Save to subagent_package_prices table (NOT agent_package_prices)
+      // This is the base price agents set for their subagents
       for (const [packageId, price] of Object.entries(editedPrices)) {
-        const pkg = packages.find(p => p.id === packageId);
-        const basePrice = pkg?.price || 0;
-        
-        // First delete existing
+        // First delete existing entry for this agent + package
         await supabase
-          .from("agent_package_prices")
+          .from("subagent_package_prices")
           .delete()
           .eq("agent_store_id", agentStoreId)
           .eq("package_id", packageId);
         
-        // Then insert new with all required fields
+        // Then insert new price
         const { error } = await supabase
-          .from("agent_package_prices")
+          .from("subagent_package_prices")
           .insert({
             agent_store_id: agentStoreId,
             package_id: packageId,
-            sell_price: price,
-            agent_minimum_price: basePrice // Required field - use admin's base price
+            base_price: price
           });
 
         if (error) throw error;
@@ -99,7 +96,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
 
       setEditedPrices({});
       setMarkupPercent("");
-      toast({ title: "Success", description: "Prices saved for all subagents" });
+      toast({ title: "Success", description: "Subagent base prices saved successfully" });
     } catch (error) {
       console.error("Error saving prices:", error);
       toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });

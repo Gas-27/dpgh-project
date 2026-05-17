@@ -330,18 +330,27 @@ export function SubagentStorefront() {
       setStore(matched);
 
       // Fetch packages and prices
-      const [pkgRes, priceRes, agentPriceRes] = await Promise.all([
+      // Priority: 1. Subagent's own prices, 2. Agent's subagent base prices, 3. Admin's base prices
+      const [pkgRes, subagentOwnPriceRes, agentSubagentBasePriceRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
-        supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
+        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id),
       ]);
 
       setPackages(pkgRes.data || []);
 
-      // Use subagent prices if set, fallback to agent prices
+      // Build price map with fallback: subagent's own prices -> agent's subagent base prices -> admin's base
       const priceMap: Record<string, number> = {};
-      (agentPriceRes.data || []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-      (priceRes.data || []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+      // First set admin base prices
+      (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
+      // Then override with agent's subagent base prices if set
+      (agentSubagentBasePriceRes.data || []).forEach((p: any) => { 
+        if (p.base_price) priceMap[p.package_id] = p.base_price; 
+      });
+      // Finally override with subagent's own prices if set
+      (subagentOwnPriceRes.data || []).forEach((p: any) => { 
+        if (p.sell_price) priceMap[p.package_id] = p.sell_price; 
+      });
       setSubagentPrices(priceMap);
       
       setLoading(false);

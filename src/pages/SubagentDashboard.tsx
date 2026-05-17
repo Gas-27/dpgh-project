@@ -164,16 +164,28 @@ const SubagentDashboard = () => {
         .order("size_gb");
       setPackages(pkgList || []);
 
-      // Fetch base prices from parent agent
-      const { data: agentPricesList } = await supabase
-        .from("agent_package_prices")
-        .select("package_id, sell_price")
+      // Fetch base prices set by parent agent for subagents (from subagent_package_prices with agent_store_id)
+      const { data: agentSubagentPrices } = await supabase
+        .from("subagent_package_prices")
+        .select("package_id, base_price")
         .eq("agent_store_id", store.agent_store_id);
       
-      if (agentPricesList) {
+      if (agentSubagentPrices) {
         const priceMap: Record<string, number> = {};
-        agentPricesList.forEach((p: any) => {
-          priceMap[p.package_id] = p.sell_price;
+        // First set admin base prices from packages
+        (pkgList || []).forEach((p: any) => {
+          priceMap[p.id] = p.price;
+        });
+        // Then override with agent's subagent base prices
+        agentSubagentPrices.forEach((p: any) => {
+          if (p.base_price) priceMap[p.package_id] = p.base_price;
+        });
+        setBasePrices(priceMap);
+      } else {
+        // Fallback to admin base prices
+        const priceMap: Record<string, number> = {};
+        (pkgList || []).forEach((p: any) => {
+          priceMap[p.id] = p.price;
         });
         setBasePrices(priceMap);
       }
