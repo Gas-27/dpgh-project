@@ -112,6 +112,7 @@ Deno.serve(async (req) => {
     const network = metadata.network || "";
     const packageName = metadata.package_name || "";
     const agentStoreId = metadata.agent_store_id || null;
+    const subagentStoreId = metadata.subagent_store_id || null;
 
     // Extract size from package name (e.g. "5GB" -> 5)
     const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
@@ -148,6 +149,9 @@ Deno.serve(async (req) => {
     };
     if (agentStoreId) {
       orderInsert.agent_store_id = agentStoreId;
+    }
+    if (subagentStoreId) {
+      orderInsert.subagent_store_id = subagentStoreId;
     }
 
     let orderId = "";
