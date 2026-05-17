@@ -206,7 +206,7 @@ const PaymentDialog = ({
           <div className="p-6">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">
-                Buy {packageName} {network.toUpperCase()}
+                Buy {packageName} {(network || "").toUpperCase()}
               </DialogTitle>
               <DialogDescription>
                 Enter the phone number to receive data
@@ -269,7 +269,7 @@ const PaymentDialog = ({
                     <p className="font-semibold">Please confirm:</p>
                     <p>
                       The contact <span className="font-bold">{phone}</span> is correct and
-                      it belongs to  <span className="font-bold">{network.toUpperCase()}</span> network.
+                      it belongs to  <span className="font-bold">{(network || "").toUpperCase()}</span> network.
                     </p>
                     <p className="text-xs mt-1 font-medium">
                       ⚠️ Network providers rule:You cannot make another
@@ -283,7 +283,7 @@ const PaymentDialog = ({
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Package</span>
                     <span className="font-semibold text-foreground">
-                      {packageName} {network.toUpperCase()}
+                      {packageName} {(network || "").toUpperCase()}
                     </span>
                   </div>
 
