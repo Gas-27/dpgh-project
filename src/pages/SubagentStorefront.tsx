@@ -49,8 +49,9 @@ const formatNetworkName = (network: string) => {
   return network;
 };
 
+// Slugify must match DOMAINS.getSubagentStoreUrl logic
 const slugify = (name: string) =>
-  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/-+/g, "-");
+  name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 
 const getNetworkLabelColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#60a5fa", telecel: "#f87171" };
@@ -98,30 +99,43 @@ export function SubagentStorefront() {
       }
 
       const normalized = urlStoreName.toLowerCase().trim();
+      console.log("[v0] Looking for subagent store with URL name:", normalized);
 
       // Fetch all subagent stores
       const { data: stores, error } = await supabase
         .from("subagent_stores")
         .select("*");
 
-      if (error || !stores || stores.length === 0) {
-        console.error("Error fetching stores:", error);
+      if (error) {
+        console.error("[v0] Error fetching stores:", error);
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+      
+      if (!stores || stores.length === 0) {
+        console.log("[v0] No subagent stores found in database");
         setNotFound(true);
         setLoading(false);
         return;
       }
 
-      // Find matching store by name
+      console.log("[v0] Found stores:", stores.map((s: any) => ({ name: s.store_name, slug: slugify(s.store_name) })));
+
+      // Find matching store by name - try multiple matching strategies
       let matched = stores.find((s: any) => slugify(s.store_name) === normalized);
       if (!matched) matched = stores.find((s: any) => s.store_name.toLowerCase().trim() === normalized);
+      if (!matched) matched = stores.find((s: any) => s.store_name.toLowerCase().replace(/\s+/g, "-") === normalized);
       if (!matched) matched = stores.find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
 
       if (!matched) {
+        console.log("[v0] No matching store found for:", normalized);
         setNotFound(true);
         setLoading(false);
         return;
       }
 
+      console.log("[v0] Matched store:", matched.store_name);
       setStore(matched);
     };
 
