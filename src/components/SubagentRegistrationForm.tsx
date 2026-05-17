@@ -164,9 +164,8 @@ export default function SubagentRegistrationForm({
 
       // Wait for modal to close and auth to fully update, then redirect
       setTimeout(() => {
-        const storeName = formData.storeName.toLowerCase().replace(/\s+/g, "-");
-        // Redirect to agent subdomain - the AgentStorefront will detect they're a subagent and show dashboard
-        window.location.href = `https://agent.datastores.shop/${storeName}`;
+        // Redirect to simple route-based dashboard instead of subdomain
+        window.location.href = "/subagent-dashboard";
       }, 500);
     } catch (error: any) {
       console.error("Registration error:", error);

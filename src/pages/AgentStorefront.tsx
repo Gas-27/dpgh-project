@@ -10,8 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
-import SubagentDashboard from "@/pages/SubagentDashboard";
-import { useAuth } from "@/hooks/useAuth";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket,
@@ -429,28 +427,8 @@ const AgentStorefront = () => {
   const storeName = subdomainStoreName || paramStoreName;
 
   const { toast } = useToast();
-  const { user, hasRole, loading: authLoading } = useAuth();
 
-  // If on agent.datastores.shop subdomain and user is a subagent, show SubagentDashboard
-  // This handles both agent.datastores.shop and agent.datastores.shop/{storeName}
-  if (subdomainStoreName === "agent") {
-    // Wait for auth to load
-    if (authLoading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        </div>
-      );
-    }
-    
-    // If user is a subagent, show their dashboard
-    if (user && hasRole("subagent")) {
-      return <SubagentDashboard />;
-    }
-  }
+  // Simply render the storefront - subagent dashboard is on its own /subagent-dashboard route
 
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
