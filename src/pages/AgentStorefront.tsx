@@ -1042,28 +1042,30 @@ const AgentStorefront = () => {
 
       {/* Subagent Registration Modal */}
       {showSubagentForm && store && (
-        <section className="py-16 md:py-20 border-t border-border bg-card/30">
-          <div className="container max-w-2xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-background border border-border rounded-lg w-full max-w-2xl my-8">
+            <div className="sticky top-0 bg-background border-b border-border p-6 flex items-center justify-between rounded-t-lg">
+              <h2 className="font-display text-2xl font-bold text-foreground">
                 Become an <span style={{ color: primaryColor }}>Agent</span>
               </h2>
               <button
                 onClick={() => setShowSubagentForm(false)}
-                className="text-muted-foreground hover:text-foreground text-3xl leading-none"
+                className="text-muted-foreground hover:text-foreground text-3xl leading-none font-light"
               >
                 ×
               </button>
             </div>
-            <SubagentRegistrationForm
-              agentStoreId={store.id}
-              agentStoreName={store.store_name}
-              primaryColor={primaryColor}
-              primaryForeground={primaryForeground}
-              onClose={() => setShowSubagentForm(false)}
-            />
+            <div className="p-6 max-h-[70vh] overflow-y-auto">
+              <SubagentRegistrationForm
+                agentStoreId={store.id}
+                agentStoreName={store.store_name}
+                primaryColor={primaryColor}
+                primaryForeground={primaryForeground}
+                onClose={() => setShowSubagentForm(false)}
+              />
+            </div>
           </div>
-        </section>
+        </div>
       )}
 
       {/* Footer */}
