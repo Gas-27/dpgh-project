@@ -22,6 +22,7 @@ const AgentDashboard = lazy(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazy(() => import("./pages/AgentStorefront"));
 const AgentRegistrationCallback = lazy(() => import("./pages/AgentRegistrationCallback"));
 const SubagentDashboard = lazy(() => import("./pages/SubagentDashboard"));
+const SubagentLogin = lazy(() => import("./pages/SubagentLogin"));
 
 const queryClient = new QueryClient();
 
@@ -68,12 +69,11 @@ const App = () => {
           <AuthProvider>
             <Suspense fallback={<RouteLoader />}>
               {isSubagentDomain ? (
-                // 🎯 agentsstore.shop - Subagent domain with separate routing
+                // agentsstore.shop - Subagent domain with separate routing
                 <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/signup" element={<Signup />} />
-                  <Route path="/packages" element={<Packages />} />
+                  <Route path="/" element={<SubagentLogin />} />
+                  <Route path="/login" element={<SubagentLogin />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route
                     path="/dashboard"
                     element={

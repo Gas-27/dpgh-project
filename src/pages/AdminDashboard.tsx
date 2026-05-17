@@ -139,7 +139,7 @@ const AdminDashboard = () => {
         .select("id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )")
         .order("created_at", { ascending: false })
         .limit(100),
-      supabase.from("subagent_stores").select("*").order("created_at", { ascending: false }),
+      supabase.from("subagent_stores").select("*, agent_stores(store_name)").order("created_at", { ascending: false }),
     ]);
     setPackages(pkgRes.data ?? []);
     setAgents((agentRes.data as AgentStore[]) ?? []);

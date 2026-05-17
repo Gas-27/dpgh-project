@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Loader2, Mail, Lock, Eye, EyeOff, Store } from "lucide-react";
+import { DOMAINS } from "@/config/domains";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +16,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-const Login = () => {
+const SubagentLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
@@ -52,30 +53,34 @@ const Login = () => {
       return;
     }
 
-    // Fetch roles from user_roles table (same as useAuth)
+    // Fetch roles from user_roles table
     const { data: rolesData, error: rolesError } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
 
-    let redirectTo = "/"; // default home
-    if (!rolesError && rolesData) {
-      const roles = rolesData.map(r => r.role);
-      if (roles.includes("admin")) {
-        redirectTo = "/admin";
-      } else if (roles.includes("agent")) {
-        redirectTo = "/agent";
-      } else if (roles.includes("subagent")) {
-        redirectTo = "/subagent-dashboard";
-      } else {
-        redirectTo = "/";
-      }
-    } else {
-      console.warn("Could not fetch roles, redirecting to home", rolesError);
+    if (rolesError || !rolesData) {
+      toast({ title: "Error", description: "Could not verify account type", variant: "destructive" });
+      setLoading(false);
+      return;
     }
 
-    toast({ title: "Welcome back!", description: "Redirecting..." });
-    navigate(redirectTo, { replace: true });
+    const roles = rolesData.map(r => r.role);
+    
+    // Only allow subagent login on this page
+    if (!roles.includes("subagent")) {
+      toast({
+        title: "Access Denied",
+        description: "This login page is only for agents. Please use the main site to login.",
+        variant: "destructive",
+      });
+      await supabase.auth.signOut();
+      setLoading(false);
+      return;
+    }
+
+    toast({ title: "Welcome back!", description: "Redirecting to your dashboard..." });
+    navigate("/dashboard", { replace: true });
     setLoading(false);
   };
 
@@ -103,7 +108,7 @@ const Login = () => {
     setSendingReset(false);
   };
 
-  // If already logged in, redirect based on roles
+  // If already logged in as subagent, redirect to dashboard
   useEffect(() => {
     const checkAndRedirect = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -112,14 +117,13 @@ const Login = () => {
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id);
-        let route = "/";
+        
         if (rolesData) {
           const roles = rolesData.map(r => r.role);
-          if (roles.includes("admin")) route = "/admin";
-          else if (roles.includes("agent")) route = "/agent";
-          else if (roles.includes("subagent")) route = "/subagent-dashboard";
+          if (roles.includes("subagent")) {
+            navigate("/dashboard", { replace: true });
+          }
         }
-        navigate(route, { replace: true });
       }
     };
     checkAndRedirect();
@@ -127,11 +131,16 @@ const Login = () => {
 
   return (
     <>
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-emerald-500/5 px-4">
         <Card className="w-full max-w-md border-border shadow-xl">
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="font-display text-2xl font-bold">Welcome Back</CardTitle>
-            <CardDescription>Sign in to your DataPlug account</CardDescription>
+            <div className="flex justify-center mb-2">
+              <div className="p-3 rounded-full bg-emerald-500/10">
+                <Store className="h-8 w-8 text-emerald-500" />
+              </div>
+            </div>
+            <CardTitle className="font-display text-2xl font-bold">Agent Login</CardTitle>
+            <CardDescription>Sign in to your Agent Dashboard</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -158,7 +167,7 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setResetDialogOpen(true)}
-                    className="text-xs text-primary hover:underline focus:outline-none"
+                    className="text-xs text-emerald-500 hover:underline focus:outline-none"
                   >
                     Forgot password?
                   </button>
@@ -168,7 +177,7 @@ const Login = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    placeholder="********"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10"
@@ -184,17 +193,22 @@ const Login = () => {
                 </div>
               </div>
 
-              <Button type="submit" variant="hero" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 Sign In
               </Button>
             </form>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
-              <Link to="/signup" className="text-primary hover:underline font-medium">
-                Sign up
-              </Link>
+              Want to become an agent?{" "}
+              <a 
+                href="https://datastores.shop" 
+                className="text-emerald-500 hover:underline font-medium"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Visit an agent store
+              </a>
             </div>
           </CardContent>
         </Card>
@@ -221,8 +235,7 @@ const Login = () => {
               />
             </div>
             <Button
-              variant="hero"
-              className="w-full"
+              className="w-full bg-emerald-600 hover:bg-emerald-700"
               onClick={handleForgotPassword}
               disabled={sendingReset}
             >
@@ -236,4 +249,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default SubagentLogin;
