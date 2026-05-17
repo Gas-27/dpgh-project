@@ -123,21 +123,32 @@ export default function SubagentRegistrationForm({
 
       if (storeError) throw storeError;
 
-      // Create user_role entry so the user is recognized as a subagent
-      const { error: roleError } = await supabase
+      // Check if user already has subagent role
+      const { data: existingRole, error: checkError } = await supabase
         .from("user_roles")
-        .insert({
-          user_id: authData.user.id,
-          role: "subagent",
-        });
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .eq("role", "subagent")
+        .single();
 
-      if (roleError) {
-        console.error("[v0] Error creating user role:", roleError);
-        throw new Error("Failed to create user role: " + roleError.message);
+      // Only insert if role doesn't exist
+      if (!existingRole) {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({
+            user_id: authData.user.id,
+            role: "subagent",
+          });
+
+        if (roleError && roleError.code !== "PGRST116") {
+          // PGRST116 is "no rows found" which is expected if role doesn't exist
+          console.error("[v0] Error creating user role:", roleError);
+          throw new Error("Failed to create user role: " + roleError.message);
+        }
       }
 
       console.log("[v0] Subagent store created:", storeData);
-      console.log("[v0] User role created for subagent");
+      console.log("[v0] User role verified for subagent");
 
       // Store the subagent store ID in sessionStorage for the dashboard
       sessionStorage.setItem("newSubagentStoreId", storeData.id);
