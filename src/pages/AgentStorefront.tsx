@@ -1042,7 +1042,7 @@ const AgentStorefront = () => {
       )}
 
       {/* Subagent Registration Modal */}
-      {showSubagentForm && store?.allow_subagent_registration && (
+      {showSubagentForm && store && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-background border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-background border-b border-border p-4 md:p-6 flex items-center justify-between">
