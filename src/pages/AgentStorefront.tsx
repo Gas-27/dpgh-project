@@ -510,13 +510,6 @@ const AgentStorefront = () => {
       if (!storeName) { setNotFound(true); setLoading(false); return; }
       const normalized = storeName.toLowerCase().trim();
       
-      // If user is a subagent viewing from agent subdomain, show dashboard
-      if (subdomainStoreName === "agent" && user && hasRole("subagent")) {
-        console.log("[v0] Subagent viewing their own store, showing dashboard");
-        setLoading(false);
-        return;
-      }
-      
       const { data: stores } = await supabase.from("agent_stores").select("*").eq("approved", true) as any;
       if (!stores || stores.length === 0) { setNotFound(true); setLoading(false); return; }
 
@@ -540,7 +533,7 @@ const AgentStorefront = () => {
       setLoading(false);
     };
     fetchStore();
-  }, [storeName, subdomainStoreName, user, hasRole]);
+  }, [storeName, subdomainStoreName]);
 
   // ── Price polling (15 s) + realtime ──
   useEffect(() => {
