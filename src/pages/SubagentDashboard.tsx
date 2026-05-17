@@ -1140,9 +1140,11 @@ const SubagentDashboard = () => {
                         {filteredPackages.length > 0 ? (
                           filteredPackages.map(pkg => {
                             const basePrice = basePrices[pkg.id] || pkg.price || 0;
-                            const cur = editedPrices[pkg.id] ?? subagentPrices[pkg.id] ?? basePrice;
+                            const savedPrice = subagentPrices[pkg.id];
+                            const cur = editedPrices[pkg.id] ?? savedPrice ?? basePrice;
                             const profit = cur - basePrice;
                             const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
+                            const hasSavedPrice = savedPrice !== undefined;
                             return (
                               <TableRow key={pkg.id}>
                                 <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
@@ -1157,10 +1159,13 @@ const SubagentDashboard = () => {
                                       min={basePrice}
                                       value={cur} 
                                       onChange={e => handlePriceChange(pkg.id, e.target.value)} 
-                                      className={`w-24 h-8 ${isInvalid ? "border-red-500" : ""}`}
+                                      className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !editedPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />
                                     {isInvalid && (
                                       <p className="text-xs text-red-500">Min: GH₵ {basePrice.toFixed(2)}</p>
+                                    )}
+                                    {hasSavedPrice && !editedPrices[pkg.id] && (
+                                      <p className="text-xs text-green-500">Saved</p>
                                     )}
                                   </div>
                                 </TableCell>

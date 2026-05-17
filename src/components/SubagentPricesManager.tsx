@@ -18,10 +18,36 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [markupPercent, setMarkupPercent] = useState("");
   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
+  const [savedBasePrices, setSavedBasePrices] = useState<Record<string, number>>({});
   const [savingPrices, setSavingPrices] = useState(false);
+  const [loadingPrices, setLoadingPrices] = useState(true);
   const { toast } = useToast();
 
-  const filteredPackages = packages.filter(p => p.network === networkFilter);
+  // Fetch existing saved base prices for this agent's subagents
+  React.useEffect(() => {
+    const fetchSavedPrices = async () => {
+      if (!agentStoreId) return;
+      setLoadingPrices(true);
+      
+      const { data, error } = await supabase
+        .from("subagent_package_prices")
+        .select("package_id, base_price")
+        .eq("agent_store_id", agentStoreId);
+      
+      if (!error && data) {
+        const priceMap: Record<string, number> = {};
+        data.forEach((p: any) => {
+          if (p.base_price) priceMap[p.package_id] = p.base_price;
+        });
+        setSavedBasePrices(priceMap);
+      }
+      setLoadingPrices(false);
+    };
+    
+    fetchSavedPrices();
+  }, [agentStoreId]);
+
+  const filteredPackages = packages.filter(p => p.network === networkFilter && p.active !== false);
 
   const handlePriceChange = (packageId: string, value: string) => {
     setEditedPrices(prev => ({
@@ -95,6 +121,8 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
         if (error) throw error;
       }
 
+      // Update local saved prices state with the new values
+      setSavedBasePrices(prev => ({ ...prev, ...editedPrices }));
       setEditedPrices({});
       setMarkupPercent("");
       toast({ title: "Success", description: "Subagent base prices saved successfully" });
@@ -166,35 +194,48 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPackages.map(pkg => {
-                const basePrice = pkg.price;
-                const cur = editedPrices[pkg.id] ?? pkg.price;
-                const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
-                return (
-                  <TableRow key={pkg.id}>
-                    <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
-                    <TableCell className="text-muted-foreground">GH₵ {Number(basePrice).toFixed(2)}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min={basePrice}
-                          value={cur}
-                          onChange={e => handlePriceChange(pkg.id, e.target.value)}
-                          className={`w-24 h-8 ${isInvalid ? "border-red-500" : ""}`}
-                        />
-                        {isInvalid && (
-                          <p className="text-xs text-red-500">Min: GH₵ {basePrice.toFixed(2)}</p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-semibold text-green-400">
-                      GH₵ {(cur - basePrice).toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {loadingPrices ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    Loading prices...
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredPackages.map(pkg => {
+                  const basePrice = pkg.price;
+                  // Show: edited price > saved base price > default package price
+                  const displayPrice = editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? pkg.price;
+                  const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
+                  const hasSavedPrice = savedBasePrices[pkg.id] !== undefined;
+                  return (
+                    <TableRow key={pkg.id}>
+                      <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                      <TableCell className="text-muted-foreground">GH₵ {Number(basePrice).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min={basePrice}
+                            value={displayPrice}
+                            onChange={e => handlePriceChange(pkg.id, e.target.value)}
+                            className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !editedPrices[pkg.id] ? "border-green-500" : ""}`}
+                          />
+                          {isInvalid && (
+                            <p className="text-xs text-red-500">Min: GH₵ {basePrice.toFixed(2)}</p>
+                          )}
+                          {hasSavedPrice && !editedPrices[pkg.id] && (
+                            <p className="text-xs text-green-500">Saved</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-semibold text-green-400">
+                        GH₵ {(displayPrice - basePrice).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </div>
