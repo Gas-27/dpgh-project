@@ -1298,7 +1298,7 @@ const AdminDashboard = () => {
                 </TableHeader>
                 <TableBody>
                   {packages
-                    .filter(pkg => pkg.network === agentPriceNetworkFilter)
+                    .filter(pkg => pkg.network === agentPriceNetworkFilter && pkg.active)
                     .map((pkg) => (
                       <TableRow key={pkg.id}>
                         <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
