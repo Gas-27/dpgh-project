@@ -442,27 +442,33 @@ export function SubagentStorefront() {
       setStore(matched);
 
       // Fetch packages and prices
-      // Priority: 1. Subagent's own prices, 2. Agent's subagent base prices, 3. Admin's base prices
-      const [pkgRes, subagentOwnPriceRes, agentSubagentBasePriceRes] = await Promise.all([
+      // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
+      const [pkgRes, subagentOwnPriceRes, agentSellPriceRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
-        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id),
+        supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
       ]);
 
       setPackages(pkgRes.data || []);
 
-      // Build price map with fallback: subagent's own prices -> agent's subagent base prices -> admin's base
+      // Build price map with fallback: subagent's own prices -> agent's sell prices -> admin's base
       const priceMap: Record<string, number> = {};
       // First set admin base prices
       (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
-      // Then override with agent's subagent base prices if set
-      (agentSubagentBasePriceRes.data || []).forEach((p: any) => { 
-        if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price); 
+      // Then override with agent's sell prices if set
+      (agentSellPriceRes.data || []).forEach((p: any) => { 
+        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
       });
       // Finally override with subagent's own prices if set
       (subagentOwnPriceRes.data || []).forEach((p: any) => { 
         if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
       });
+      
+      console.log("[v0] SubagentStorefront - Admin base prices:", pkgRes.data?.map((p: any) => ({ id: p.id, price: p.price })));
+      console.log("[v0] SubagentStorefront - Agent sell prices:", agentSellPriceRes.data);
+      console.log("[v0] SubagentStorefront - Subagent own prices:", subagentOwnPriceRes.data);
+      console.log("[v0] SubagentStorefront - Final price map:", priceMap);
+      
       setSubagentPrices(priceMap);
       
       setLoading(false);
@@ -552,8 +558,17 @@ export function SubagentStorefront() {
 
   // Helpers
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
-  const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
+  const getPrice = (pkg: DataPackage) => {
+    const price = subagentPrices[pkg.id] ?? pkg.price;
+    console.log("[v0] getPrice for package", pkg.id, "- subagentPrices[pkg.id]:", subagentPrices[pkg.id], "- pkg.price:", pkg.price, "- final:", price);
+    return price;
+  };
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
+  
+  // Debug: log when payment dialog opens
+  if (paymentPkg && paymentOpen) {
+    console.log("[v0] Opening PaymentDialog with price:", selectedPaymentPrice, "for package:", paymentPkg.id, paymentPkg.size_gb + "GB");
+  }
 
   const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number || "") : "";
   const whatsappLink = store ? `https://wa.me/${getInternationalDigits(store.whatsapp_number || "")}` : "#";
