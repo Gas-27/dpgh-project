@@ -64,13 +64,8 @@ const formatNetworkName = (network: string) => {
   return network;
 };
 
-// Normalize store name for URL matching - removes all special chars, spaces, apostrophes, etc.
 const slugify = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
-
-// Even more aggressive normalization - removes EVERYTHING except letters and numbers
-const normalizeForMatch = (name: string) =>
-  name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const getNetworkColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#ef4444", telecel: "#3b82f6" };
@@ -405,9 +400,7 @@ export function SubagentStorefront() {
         return;
       }
 
-      // Normalize the URL store name - remove spaces, special chars, trailing dashes, etc.
-      const normalized = slugify(decodeURIComponent(urlStoreName).trim());
-      const ultraNormalized = normalizeForMatch(decodeURIComponent(urlStoreName));
+      const normalized = urlStoreName.toLowerCase().trim();
 
       const { data: stores, error } = await supabase
         .from("subagent_stores")
@@ -425,13 +418,11 @@ export function SubagentStorefront() {
         return;
       }
 
-      // Find matching store - try multiple strategies (most specific to least specific)
+      // Find matching store - try multiple strategies
       let matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalized);
       if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
       if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/\s+/g, "-") === normalized);
       if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
-      // Ultra normalized match - ignores ALL special characters including apostrophes, dots, spaces
-      if (!matched) matched = stores.find((s: any) => s.store_name && normalizeForMatch(s.store_name) === ultraNormalized);
       // Also try matching by ID as fallback
       if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
 

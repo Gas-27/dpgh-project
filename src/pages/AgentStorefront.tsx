@@ -97,10 +97,6 @@ const getStoreNameFromSubdomain = (): string | null => {
 const slugify = (name: string) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/-+/g, "-");
 
-// Ultra normalized - removes ALL special characters including apostrophes, dots, spaces
-const normalizeForMatch = (name: string) =>
-  name.toLowerCase().replace(/[^a-z0-9]/g, "");
-
 const getNetworkLabelColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#60a5fa", telecel: "#f87171" };
   return colors[network] || "#ffffff";
@@ -559,9 +555,7 @@ const AgentStorefront = () => {
   useEffect(() => {
     const fetchStore = async () => {
       if (!storeName) { setNotFound(true); setLoading(false); return; }
-      // Normalize the URL store name - handle spaces, special chars, trailing dashes, apostrophes, dots, etc.
-      const normalized = slugify(decodeURIComponent(storeName).trim());
-      const ultraNormalized = normalizeForMatch(decodeURIComponent(storeName));
+      const normalized = storeName.toLowerCase().trim();
       
       // Check if we're on agentsstore.shop domain (subagent domain)
       const isSubagentDomain = window.location.hostname === "agentsstore.shop" || 
@@ -576,8 +570,6 @@ const AgentStorefront = () => {
         matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
         if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
         if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
-        // Ultra normalized match - ignores ALL special characters
-        if (!matched) matched = (stores as any[]).find((s: any) => normalizeForMatch(s.store_name) === ultraNormalized);
       }
       
       // If on subagent domain and no agent store found, try subagent_stores
@@ -591,8 +583,6 @@ const AgentStorefront = () => {
           matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name) === normalized);
           if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
           if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
-          // Ultra normalized match
-          if (!matched) matched = (subagentStores as any[]).find((s: any) => normalizeForMatch(s.store_name) === ultraNormalized);
           
           if (matched) {
             // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices
@@ -1087,7 +1077,7 @@ const AgentStorefront = () => {
             </div>
           </div>
 
-          {/* ── Packages grid ─�� */}
+          {/* ── Packages grid ── */}
           <div className="container pb-20">
             <div
               className="grid gap-3 sm:gap-4"
