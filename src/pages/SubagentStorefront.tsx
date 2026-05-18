@@ -99,7 +99,10 @@ const defaultTheme = {
   gridColumns: 2,
 };
 
-// Order Tracking Card Component
+// ─────────────────────────────────────────────────────────────────────────────
+// ORDER TRACKING CARD (same as AgentStorefront)
+// Delivery (step 4) only appears after 200 minutes.
+// ─────────────────────────────────────────────────────────────────────────────
 const SubagentOrderTrackingCard = ({
   order,
   store,
@@ -133,7 +136,7 @@ const SubagentOrderTrackingCard = ({
           setComplaintStatus(data.status);
         }
       } catch (e) {
-        // No complaint found
+        // No complaint found, that's okay
       }
     };
 
@@ -153,95 +156,196 @@ const SubagentOrderTrackingCard = ({
   if (elapsedMinutes >= 200) {
     currentStep = 4;
     statusMessage = "Your data bundle has been delivered successfully.";
+    if (order.network === "mtn")
+      extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
+    else if (order.network === "airteltigo")
+      extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+    else if (order.network === "telecel")
+      extraNote = "Please check your Telecel messages for delivery confirmation.";
+    else extraNote = "Please check your messages for delivery confirmation.";
   } else if (elapsedMinutes >= 60) {
     currentStep = 3;
-    statusMessage = "Your order is being processed and will be delivered shortly.";
-    extraNote = "Most orders complete within 3-4 hours. If delivery takes longer, please wait patiently.";
-  } else if (elapsedMinutes >= 5) {
+    if (order.network === "mtn")
+      statusMessage = "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
+    else if (order.network === "airteltigo")
+      statusMessage = "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
+    else if (order.network === "telecel")
+      statusMessage = "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
+    else
+      statusMessage = "Please be expecting your data any moment from now. Check your messages for delivery confirmation.";
+    extraNote = "The order has left our system and is now with the network you bought the data from. All delays from now are from them.";
+  } else if (elapsedMinutes >= 15) {
+    currentStep = 3;
+    statusMessage = "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
+  } else if (elapsedMinutes >= 12) {
+    currentStep = 3;
+    statusMessage = `Waiting for validation from ${order.network?.toUpperCase()}...`;
+  } else if (elapsedMinutes >= 9) {
     currentStep = 2;
-    statusMessage = "Payment confirmed. Processing your data bundle...";
+    statusMessage = `Order sent to ${order.network?.toUpperCase()} for validation`;
+    extraNote = "Now waiting for validation from the network to deliver your data. All delay now is from the network you bought the data from.";
   } else {
     currentStep = 1;
-    statusMessage = "Order received. Verifying payment...";
+    statusMessage = "Order being processed...";
   }
 
-  const steps = [
-    { label: "Order Placed", icon: Package },
-    { label: "Payment Confirmed", icon: CheckCircle },
-    { label: "Processing", icon: Clock },
-    { label: "Delivered", icon: Rocket },
-  ];
+  const orderDate = new Date(order.created_at).toLocaleString();
+  const contactMessage = `Order from ${orderDate}\nNetwork: ${order.network?.toUpperCase()}\nData: ${order.size_gb}GB\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
-  const showReportButton = currentStep === 4;
+  const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
+  const whatsappMessage = encodeURIComponent(
+    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${order.network?.toUpperCase()}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
+  );
+  const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
+
+  // Support button: show after 132 min if still not delivered
+  const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
+  // Report button: show once delivered, within a reasonable window
+  const showReportButton = currentStep === 4 && elapsedMinutes >= 200 && elapsedMinutes < 3030;
+
+  const stepLabels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
   const theme = store.theme_config || defaultTheme;
   const primaryColor = theme.primary || defaultTheme.primary;
 
+  // Delivered state
+  if (currentStep === 4) {
+    return (
+      <div className="space-y-4 mt-3 p-4 rounded-lg border border-border bg-background/50">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground">Delivery Status</span>
+          <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
+            <CheckCircle className="h-3 w-3 mr-1" /> Delivered
+          </Badge>
+        </div>
+
+        <div className="relative">
+          <div className="flex items-center justify-between">
+            {stepLabels.map((label, idx) => (
+              <div key={idx} className="flex flex-col items-center flex-1">
+                <div className="w-8 h-8 rounded-full bg-green-600/20 text-green-400 flex items-center justify-center">
+                  <Check className="h-4 w-4" />
+                </div>
+                <span className="text-xs text-center mt-1 text-muted-foreground">{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="absolute top-4 left-0 w-full h-0.5 bg-green-600/30 -z-10" />
+        </div>
+
+        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+          <p className="text-sm text-foreground font-medium">{statusMessage}</p>
+          {extraNote && (
+            <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">
+              {extraNote}
+            </p>
+          )}
+        </div>
+
+        {/* Report button - only if no complaint submitted yet */}
+        {showReportButton && !complaintStatus && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
+            onClick={() => onReportClick(order)}
+          >
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Only tap on this Report: If it Shows <br />Delivered but you have not received it
+          </Button>
+        )}
+
+        {/* Show status message if complaint submitted */}
+        {complaintStatus && complaintStatus !== "resolved" && (
+          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+            <p className="text-sm font-medium text-yellow-400 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" /> Report has been sent to the agent
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. The agent is working on it for you.
+            </p>
+          </div>
+        )}
+
+        {complaintStatus === "resolved" && (
+          <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+            <p className="text-sm font-medium text-green-400 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" /> Your complaint has been resolved
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // In-progress state
   return (
     <div className="space-y-4 mt-3 p-4 rounded-lg border border-border bg-background/50">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 overflow-x-auto pb-2">
-          {steps.map((step, idx) => {
-            const Icon = step.icon;
-            const isActive = idx + 1 <= currentStep;
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          {stepLabels.map((label, idx) => {
+            const n = idx + 1;
+            let icon;
+            if (n < currentStep) icon = <Check className="h-4 w-4 text-green-400" />;
+            else if (n === currentStep)
+              icon = <Loader2 className="h-4 w-4 animate-spin" style={{ color: primaryColor }} />;
+            else icon = <Clock className="h-4 w-4 text-muted-foreground" />;
             return (
-              <div key={idx} className="flex flex-col items-center gap-1 min-w-[60px]">
+              <div key={n} className="flex flex-col items-center flex-1">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    isActive ? "text-white" : "bg-secondary text-muted-foreground"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${n < currentStep
+                    ? "bg-green-600/20 text-green-400"
+                    : n === currentStep
+                      ? "border"
+                      : "bg-muted text-muted-foreground"
                   }`}
-                  style={isActive ? { backgroundColor: primaryColor } : {}}
+                  style={n === currentStep ? { backgroundColor: `${primaryColor}20`, borderColor: `${primaryColor}50`, color: primaryColor } : {}}
                 >
-                  <Icon className="h-4 w-4" />
+                  {icon}
                 </div>
-                <span className={`text-[10px] text-center ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-                  {step.label}
+                <span
+                  className={`text-xs text-center mt-1 ${n === currentStep ? "font-medium" : "text-muted-foreground"}`}
+                  style={n === currentStep ? { color: primaryColor } : {}}
+                >
+                  {label}
                 </span>
               </div>
             );
           })}
         </div>
+        <div className="absolute top-4 left-0 w-full h-0.5 bg-muted -z-10">
+          <div
+            className="h-full transition-all duration-500"
+            style={{ width: `${((currentStep - 1) / 3) * 100}%`, backgroundColor: primaryColor }}
+          />
+        </div>
       </div>
 
-      <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+      <div className="p-3 rounded-lg border" style={{ backgroundColor: `${primaryColor}10`, borderColor: `${primaryColor}30` }}>
         <p className="text-sm text-foreground font-medium">{statusMessage}</p>
         {extraNote && (
-          <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">
+          <p className="text-xs text-muted-foreground mt-2 border-t pt-2" style={{ borderColor: `${primaryColor}20` }}>
             {extraNote}
+          </p>
+        )}
+        {currentStep === 1 && elapsedMinutes < 8 && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Estimated time remaining: {Math.max(0, Math.ceil(8 - elapsedMinutes))} minute(s)
           </p>
         )}
       </div>
 
-      {/* Report button - only if no complaint submitted yet */}
-      {showReportButton && !complaintStatus && (
+      {showSupportButton && (
         <Button
           variant="outline"
           size="sm"
-          className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
-          onClick={() => onReportClick(order)}
+          className="w-full"
+          asChild
         >
-          <AlertTriangle className="h-4 w-4 mr-2" />
-          Only tap on this Report: If it Shows <br />Delivered but you have not received it
+          <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Contact Support ({store.support_number})
+          </a>
         </Button>
-      )}
-
-      {/* Show status message if complaint submitted */}
-      {complaintStatus && complaintStatus !== "resolved" && (
-        <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-          <p className="text-sm font-medium text-yellow-400 flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" /> Report has been sent to the seller
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. The seller is working on it for you.
-          </p>
-        </div>
-      )}
-
-      {complaintStatus === "resolved" && (
-        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
-          <p className="text-sm font-medium text-green-400 flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" /> Your complaint has been resolved
-          </p>
-        </div>
       )}
     </div>
   );
@@ -275,6 +379,9 @@ export function SubagentStorefront() {
   // Report complaint dialog
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
+
+  // Become Agent modal
+  const [showBecomeAgentModal, setShowBecomeAgentModal] = useState(false);
 
   // Theme
   const theme = store?.theme_config || defaultTheme;
@@ -327,9 +434,6 @@ export function SubagentStorefront() {
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
-      console.log("[v0] Subagent store loaded:", matched);
-      console.log("[v0] Theme config:", matched.theme_config);
-      console.log("[v0] Store headline:", matched.store_headline);
       setStore(matched);
 
       // Fetch packages and prices
@@ -339,9 +443,6 @@ export function SubagentStorefront() {
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id),
       ]);
-
-      console.log("[v0] Subagent own prices:", subagentOwnPriceRes.data);
-      console.log("[v0] Agent subagent base prices:", agentSubagentBasePriceRes.data);
 
       setPackages(pkgRes.data || []);
 
@@ -357,7 +458,6 @@ export function SubagentStorefront() {
       (subagentOwnPriceRes.data || []).forEach((p: any) => { 
         if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
       });
-      console.log("[v0] Final price map:", priceMap);
       setSubagentPrices(priceMap);
       
       setLoading(false);
@@ -595,7 +695,7 @@ export function SubagentStorefront() {
         </Card>
 
         {/* Network Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex gap-2 overflow-x-auto pb-2 items-center">
           {["mtn", "airteltigo", "telecel"].map((net) => (
             <Button
               key={net}
@@ -609,6 +709,15 @@ export function SubagentStorefront() {
               {formatNetworkName(net)}
             </Button>
           ))}
+          <div className="h-6 w-px bg-border"></div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBecomeAgentModal(true)}
+            className="font-semibold whitespace-nowrap"
+          >
+            Become an Agent
+          </Button>
         </div>
 
         {/* Packages Grid */}
@@ -697,6 +806,87 @@ export function SubagentStorefront() {
           complaintType="subagent"
           subagentStoreId={store.id}
         />
+      )}
+
+      {/* Become an Agent Modal */}
+      {showBecomeAgentModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-background border border-border rounded-xl w-full max-w-lg my-8" style={{ background: cardBg }}>
+            <div className="sticky top-0 border-b border-border p-6 flex items-center justify-between rounded-t-xl" style={{ background: cardBg }}>
+              <h2 className="font-display text-xl font-bold text-foreground">
+                Become an <span style={{ color: primaryColor }}>Agent</span>
+              </h2>
+              <button
+                onClick={() => setShowBecomeAgentModal(false)}
+                className="text-muted-foreground hover:text-foreground text-2xl leading-none"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">How It Works</h3>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: primaryColor, color: primaryForeground }}>1</span>
+                    <span>Sign up as an agent on our platform</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: primaryColor, color: primaryForeground }}>2</span>
+                    <span>Get your own storefront with a unique link</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: primaryColor, color: primaryForeground }}>3</span>
+                    <span>Set your own prices and make profit on every sale</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: primaryColor, color: primaryForeground }}>4</span>
+                    <span>Track orders and manage your business from your dashboard</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">Benefits</h3>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
+                    <span>No capital required to start</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
+                    <span>Set your own profit margins</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
+                    <span>Automated order processing</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
+                    <span>Withdraw earnings anytime</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
+                    <span>Get subagents and earn from their sales too</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-4">
+                <Button
+                  className="w-full font-semibold"
+                  style={{ background: primaryColor, color: primaryForeground }}
+                  onClick={() => window.location.href = "https://agentsstore.shop/signup"}
+                >
+                  Sign Up as Agent Now
+                </Button>
+                <p className="text-xs text-center text-muted-foreground mt-3">
+                  Already have an account? <a href="https://agentsstore.shop/login" className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

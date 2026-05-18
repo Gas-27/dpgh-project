@@ -894,6 +894,15 @@ const AdminDashboard = () => {
                             Active
                           </Badge>
                           <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(`https://shop.agentsstore.shop/${encodeURIComponent(subagent.store_name)}`, "_blank")}
+                            className="text-xs"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Shop
+                          </Button>
+                          <Button
                             variant="destructive"
                             size="sm"
                             onClick={() => deleteSubagent(subagent.id, subagent.store_name)}
