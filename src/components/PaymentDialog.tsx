@@ -165,17 +165,11 @@ const PaymentDialog = ({
 
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
 
-      console.log("[v0] PaymentDialog handlePay - price prop:", price);
-      console.log("[v0] PaymentDialog handlePay - calculated total:", total);
-      console.log("[v0] PaymentDialog handlePay - subagentStoreId:", subagentStoreId);
-      console.log("[v0] PaymentDialog handlePay - actualStoreId (agent):", actualStoreId);
-
       const { data, error } = await supabase.functions.invoke(
         "initialize-payment",
         {
           body: {
             email: userEmail,
-            amount: total,
             phone: normalizedPhone,
             callback_url: callbackUrl,
             metadata: {
@@ -188,8 +182,6 @@ const PaymentDialog = ({
           },
         }
       );
-
-      console.log("[v0] PaymentDialog - initialize-payment response:", data);
 
       if (error) throw error;
 

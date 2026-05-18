@@ -10,7 +10,7 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import {
   Zap, Phone, Wifi, Clock, Search, Package,
   CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
-  MessageCircle, Users, AlertTriangle,
+  MessageCircle, Users, AlertTriangle, Check,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
@@ -464,11 +464,6 @@ export function SubagentStorefront() {
         if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
       });
       
-      console.log("[v0] SubagentStorefront - Admin base prices:", pkgRes.data?.map((p: any) => ({ id: p.id, price: p.price })));
-      console.log("[v0] SubagentStorefront - Agent sell prices:", agentSellPriceRes.data);
-      console.log("[v0] SubagentStorefront - Subagent own prices:", subagentOwnPriceRes.data);
-      console.log("[v0] SubagentStorefront - Final price map:", priceMap);
-      
       setSubagentPrices(priceMap);
       
       setLoading(false);
@@ -558,17 +553,8 @@ export function SubagentStorefront() {
 
   // Helpers
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
-  const getPrice = (pkg: DataPackage) => {
-    const price = subagentPrices[pkg.id] ?? pkg.price;
-    console.log("[v0] getPrice for package", pkg.id, "- subagentPrices[pkg.id]:", subagentPrices[pkg.id], "- pkg.price:", pkg.price, "- final:", price);
-    return price;
-  };
+  const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
-  
-  // Debug: log when payment dialog opens
-  if (paymentPkg && paymentOpen) {
-    console.log("[v0] Opening PaymentDialog with price:", selectedPaymentPrice, "for package:", paymentPkg.id, paymentPkg.size_gb + "GB");
-  }
 
   const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number || "") : "";
   const whatsappLink = store ? `https://wa.me/${getInternationalDigits(store.whatsapp_number || "")}` : "#";
