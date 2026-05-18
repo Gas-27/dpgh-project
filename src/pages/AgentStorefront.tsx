@@ -94,17 +94,16 @@ const getStoreNameFromSubdomain = (): string | null => {
   return null;
 };
 
-// Sanitize store name for URL matching - removes special characters, trims spaces
+// Sanitize store name for URL matching - removes apostrophes, periods, and spaces
 const slugify = (name: string) =>
   name
     .toLowerCase()
-    .trim()
-    .replace(/'/g, "")              // Remove apostrophes
-    .replace(/\./g, "")             // Remove periods
-    .replace(/[^a-z0-9\s-]/g, "")   // Remove all other special characters
-    .replace(/\s+/g, "-")           // Replace spaces with hyphens
-    .replace(/-+/g, "-")            // Replace multiple hyphens with single
-    .replace(/^-+|-+$/g, "");       // Remove leading/trailing hyphens
+    .trim()                           // Remove leading/trailing spaces
+    .replace(/'/g, "")                // Remove apostrophes (store'name -> storename)
+    .replace(/\./g, "")               // Remove periods (store.name -> storename)
+    .replace(/\s+/g, "-")             // Replace spaces with hyphens
+    .replace(/-+/g, "-")              // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
 
 const getNetworkLabelColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#60a5fa", telecel: "#f87171" };

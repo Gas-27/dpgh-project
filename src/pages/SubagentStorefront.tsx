@@ -64,20 +64,19 @@ const formatNetworkName = (network: string) => {
   return network;
 };
 
-// Sanitize store name for URL matching - removes special characters, trims spaces
+// Sanitize store name for URL matching - removes apostrophes, periods, and spaces
 const slugify = (name: string) =>
   name
     .toLowerCase()
-    .trim()
-    .replace(/'/g, "")              // Remove apostrophes
-    .replace(/\./g, "")             // Remove periods
-    .replace(/[^a-z0-9\s-]/g, "")   // Remove all other special characters
-    .replace(/\s+/g, "-")           // Replace spaces with hyphens
-    .replace(/-+/g, "-")            // Replace multiple hyphens with single
-    .replace(/^-+|-+$/g, "");       // Remove leading/trailing hyphens
+    .trim()                           // Remove leading/trailing spaces
+    .replace(/'/g, "")                // Remove apostrophes (store'name -> storename)
+    .replace(/\./g, "")               // Remove periods (store.name -> storename)
+    .replace(/\s+/g, "-")             // Replace spaces with hyphens
+    .replace(/-+/g, "-")              // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
 
 const getNetworkColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#ef4444", telecel: "#3b82f6" };
+  const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#3b82f6", telecel: "#ef4444" };
   return colors[network] || "#22c55e";
 };
 
