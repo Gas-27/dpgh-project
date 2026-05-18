@@ -32,17 +32,10 @@ interface PaymentDialogProps {
   storeName?: string;
 }
 
-const PAYSTACK_CHARGE_PERCENT = 1.98;
-const PAYSTACK_FLAT_FEE = 0;
 const LOCK_MINUTES = 35;
 
-function calculateTotal(price: number) {
-  const charge = (price * PAYSTACK_CHARGE_PERCENT) / 100 + PAYSTACK_FLAT_FEE;
-  return {
-    charge: Math.round(charge * 100) / 100,
-    total: Math.round((price + charge) * 100) / 100,
-  };
-}
+// No longer calculating charges - Paystack handles this automatically
+// Customer pays exactly the price shown
 
 function normalizePhone(phone: string): string {
   return phone.replace(/[\s\-\(\)]/g, "");
@@ -81,7 +74,8 @@ const PaymentDialog = ({
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
 
-  const { charge, total } = calculateTotal(price);
+  // Customer pays exactly the displayed price - no additional charges shown
+  const total = price;
 
   const isPhoneValid = (value: string) => /^\d{10}$/.test(value);
 
@@ -314,20 +308,6 @@ const PaymentDialog = ({
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Phone</span>
                     <span className="font-semibold text-foreground">{phone}</span>
-                  </div>
-
-                  <div className="border-t border-border my-1" />
-
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Data Price</span>
-                    <span>GH₵ {price.toFixed(2)}</span>
-                  </div>
-
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Paystack Charge ({PAYSTACK_CHARGE_PERCENT}%)
-                    </span>
-                    <span>GH₵ {charge.toFixed(2)}</span>
                   </div>
 
                   <div className="border-t border-border my-1" />

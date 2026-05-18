@@ -558,14 +558,6 @@ export function SubagentStorefront() {
   const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
-  // Calculate total with Paystack charges (same formula as PaymentDialog)
-  const PAYSTACK_CHARGE_PERCENT = 1.95;
-  const PAYSTACK_FLAT_FEE = 0.01;
-  const calculateTotal = (price: number) => {
-    const charge = (price * PAYSTACK_CHARGE_PERCENT) / 100 + PAYSTACK_FLAT_FEE;
-    return Math.round((price + charge) * 100) / 100;
-  };
-
   const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number || "") : "";
   const whatsappLink = store ? `https://wa.me/${getInternationalDigits(store.whatsapp_number || "")}` : "#";
   const groupLink = store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
@@ -746,13 +738,12 @@ export function SubagentStorefront() {
           ) : (
             filteredPackages.map((pkg) => {
               const price = getPrice(pkg);
-              const totalPrice = calculateTotal(price);
               return (
                 <Card key={pkg.id} className="border-border hover:border-primary/50 transition-all cursor-pointer" style={{ background: cardBg }} onClick={() => { setPaymentPkg(pkg); setPaymentOpen(true); }}>
                   <CardContent className="p-4 text-center space-y-2">
                     <Badge style={{ background: getNetworkColor(pkg.network), color: "#000" }}>{formatNetworkName(pkg.network)}</Badge>
                     <p className="text-2xl font-bold" style={{ color: primaryColor }}>{pkg.size_gb}<span className="text-base text-muted-foreground">GB</span></p>
-                    <p className="text-lg font-semibold text-green-400">GH₵ {Number(totalPrice).toFixed(2)}</p>
+                    <p className="text-lg font-semibold text-green-400">GH₵ {Number(price).toFixed(2)}</p>
                     <Button size="sm" className="w-full" style={{ background: primaryColor, color: primaryForeground }}>Buy Now</Button>
                   </CardContent>
                 </Card>
