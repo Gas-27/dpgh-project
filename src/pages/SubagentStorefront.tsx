@@ -64,8 +64,17 @@ const formatNetworkName = (network: string) => {
   return network;
 };
 
+// Sanitize store name for URL matching - removes special characters, trims spaces
 const slugify = (name: string) =>
-  name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+  name
+    .toLowerCase()
+    .trim()
+    .replace(/'/g, "")              // Remove apostrophes
+    .replace(/\./g, "")             // Remove periods
+    .replace(/[^a-z0-9\s-]/g, "")   // Remove all other special characters
+    .replace(/\s+/g, "-")           // Replace spaces with hyphens
+    .replace(/-+/g, "-")            // Replace multiple hyphens with single
+    .replace(/^-+|-+$/g, "");       // Remove leading/trailing hyphens
 
 const getNetworkColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#ef4444", telecel: "#3b82f6" };

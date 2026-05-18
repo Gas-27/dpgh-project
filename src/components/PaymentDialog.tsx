@@ -60,12 +60,14 @@ const PaymentDialog = ({
   agentStoreId,
   subagentStoreId,
   storeId,
+  phoneNumber,
+  onPhoneNumberChange,
 }: PaymentDialogProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState<"phone" | "confirm">("phone");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(phoneNumber || "");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
 
@@ -87,6 +89,9 @@ const PaymentDialog = ({
     const digitsOnly = e.target.value.replace(/\D/g, "");
     if (digitsOnly.length <= 10) {
       setPhone(digitsOnly);
+      if (onPhoneNumberChange) {
+        onPhoneNumberChange(digitsOnly);
+      }
     }
   };
 

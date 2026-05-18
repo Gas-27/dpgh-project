@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
+import { DOMAINS } from "@/config/domains";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -896,7 +897,7 @@ const AdminDashboard = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(`https://shop.agentsstore.shop/${encodeURIComponent(subagent.store_name)}`, "_blank")}
+                            onClick={() => window.open(DOMAINS.getSubagentStoreUrl(subagent.store_name), "_blank")}
                             className="text-xs"
                           >
                             <Eye className="h-3 w-3 mr-1" />

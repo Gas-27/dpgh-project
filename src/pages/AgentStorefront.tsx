@@ -94,8 +94,17 @@ const getStoreNameFromSubdomain = (): string | null => {
   return null;
 };
 
+// Sanitize store name for URL matching - removes special characters, trims spaces
 const slugify = (name: string) =>
-  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/-+/g, "-");
+  name
+    .toLowerCase()
+    .trim()
+    .replace(/'/g, "")              // Remove apostrophes
+    .replace(/\./g, "")             // Remove periods
+    .replace(/[^a-z0-9\s-]/g, "")   // Remove all other special characters
+    .replace(/\s+/g, "-")           // Replace spaces with hyphens
+    .replace(/-+/g, "-")            // Replace multiple hyphens with single
+    .replace(/^-+|-+$/g, "");       // Remove leading/trailing hyphens
 
 const getNetworkLabelColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#60a5fa", telecel: "#f87171" };
@@ -1077,7 +1086,7 @@ const AgentStorefront = () => {
             </div>
           </div>
 
-          {/* ── Packages grid ── */}
+          {/* ── Packages grid ─�� */}
           <div className="container pb-20">
             <div
               className="grid gap-3 sm:gap-4"
