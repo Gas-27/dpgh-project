@@ -388,9 +388,6 @@ export function SubagentStorefront() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
 
-  // Become Agent modal
-  const [showBecomeAgentModal, setShowBecomeAgentModal] = useState(false);
-
   // Theme
   const theme = store?.theme_config || defaultTheme;
   const primaryColor = theme.primary || defaultTheme.primary;
@@ -717,15 +714,6 @@ export function SubagentStorefront() {
               {formatNetworkName(net)}
             </Button>
           ))}
-          <div className="h-6 w-px bg-border"></div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowBecomeAgentModal(true)}
-            className="font-semibold whitespace-nowrap"
-          >
-            Become an Agent
-          </Button>
         </div>
 
         {/* Packages Grid */}
@@ -814,87 +802,6 @@ export function SubagentStorefront() {
           complaintType="subagent"
           subagentStoreId={store.id}
         />
-      )}
-
-      {/* Become an Agent Modal */}
-      {showBecomeAgentModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-background border border-border rounded-xl w-full max-w-lg my-8" style={{ background: cardBg }}>
-            <div className="sticky top-0 border-b border-border p-6 flex items-center justify-between rounded-t-xl" style={{ background: cardBg }}>
-              <h2 className="font-display text-xl font-bold text-foreground">
-                Become an <span style={{ color: primaryColor }}>Agent</span>
-              </h2>
-              <button
-                onClick={() => setShowBecomeAgentModal(false)}
-                className="text-muted-foreground hover:text-foreground text-2xl leading-none"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="space-y-3">
-                <h3 className="font-semibold text-foreground">How It Works</h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: primaryColor, color: primaryForeground }}>1</span>
-                    <span>Sign up as an agent on our platform</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: primaryColor, color: primaryForeground }}>2</span>
-                    <span>Get your own storefront with a unique link</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: primaryColor, color: primaryForeground }}>3</span>
-                    <span>Set your own prices and make profit on every sale</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: primaryColor, color: primaryForeground }}>4</span>
-                    <span>Track orders and manage your business from your dashboard</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="font-semibold text-foreground">Benefits</h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
-                    <span>No capital required to start</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
-                    <span>Set your own profit margins</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
-                    <span>Automated order processing</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
-                    <span>Withdraw earnings anytime</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
-                    <span>Get subagents and earn from their sales too</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="pt-4">
-                <Button
-                  className="w-full font-semibold"
-                  style={{ background: primaryColor, color: primaryForeground }}
-                  onClick={() => window.location.href = "https://agentsstore.shop/signup"}
-                >
-                  Sign Up as Agent Now
-                </Button>
-                <p className="text-xs text-center text-muted-foreground mt-3">
-                  Already have an account? <a href="https://agentsstore.shop/login" className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
