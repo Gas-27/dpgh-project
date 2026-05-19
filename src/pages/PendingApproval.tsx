@@ -18,7 +18,6 @@ interface AppSettings {
 }
 
 const PendingApproval = () => {
-  const [copied, setCopied] = useState(false);
   const [store, setStore] = useState<AgentStore | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -131,12 +130,6 @@ const PendingApproval = () => {
     const interval = setInterval(checkApproval, 5000);
     return () => clearInterval(interval);
   }, [user, store, navigate]);
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText("0599449202");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
   
   // Handle Paystack payment
   const handlePaystackPayment = async () => {
@@ -258,51 +251,6 @@ const PendingApproval = () => {
           <p className="text-xs text-center text-muted-foreground">
             Pay instantly with card or mobile money. Your store will be approved immediately after payment.
           </p>
-
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or pay manually</span>
-            </div>
-          </div>
-
-          {/* Manual Payment Instructions */}
-          <div className="space-y-4">
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Send payment via Mobile Money to:
-                </p>
-                <div className="flex items-center justify-between bg-background rounded-lg p-3 border">
-                  <div>
-                    <p className="font-mono font-medium">0599449202</p>
-                    <p className="text-xs text-muted-foreground">MTN Mobile Money</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={copyToClipboard}
-                    className="shrink-0"
-                  >
-                    {copied ? "Copied!" : "Copy"}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                <p className="text-xs text-amber-800 dark:text-amber-400 font-medium mb-1">
-                  Important:
-                </p>
-                <p className="text-xs text-amber-700 dark:text-amber-500">
-                  Use your store name: <span className="font-bold">{store.store_name}</span> as the payment reference.
-                  After payment send a screenshot to 0200511211 on WhatsApp.
-                </p>
-              </div>
-            </div>
-          </div>
 
           <Button variant="outline" asChild className="w-full">
             <Link to="/">Back to Home</Link>
