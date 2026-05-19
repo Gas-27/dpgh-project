@@ -17,7 +17,7 @@ interface SubagentPricesManagerProps {
 export default function SubagentPricesManager({ agentStoreId, packages, agentPrices, onPricesSaved }: SubagentPricesManagerProps) {
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [markupPercent, setMarkupPercent] = useState("");
-  const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
+  const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [savedBasePrices, setSavedBasePrices] = useState<Record<string, number>>({});
   const [savingPrices, setSavingPrices] = useState(false);
   const [loadingPrices, setLoadingPrices] = useState(true);
@@ -50,11 +50,10 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
   const filteredPackages = packages.filter(p => p.network === networkFilter && p.active !== false);
 
   const handlePriceChange = (packageId: string, value: string) => {
-    // Allow any input including empty - validation happens on save
-    const numValue = value === "" ? 0 : parseFloat(value);
+    // Allow empty string for clearing the box - store as string for display
     setEditedPrices(prev => ({
       ...prev,
-      [packageId]: isNaN(numValue) ? 0 : numValue
+      [packageId]: value === "" ? "" : (parseFloat(value) || value)
     }));
   };
 
@@ -87,9 +86,19 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       setSavingPrices(true);
 
       // Validate that no price is below base price (admin's base price)
-      for (const [packageId, price] of Object.entries(editedPrices)) {
+      for (const [packageId, priceVal] of Object.entries(editedPrices)) {
+        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         const pkg = packages.find(p => p.id === packageId);
         const basePrice = pkg?.price || 0;
+        if (isNaN(price) || price <= 0) {
+          toast({
+            title: "Invalid Price",
+            description: "Please enter a valid price",
+            variant: "destructive"
+          });
+          setSavingPrices(false);
+          return;
+        }
         if (price < basePrice) {
           toast({
             title: "Invalid Price",
@@ -103,7 +112,8 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       
       // Save to subagent_package_prices table (NOT agent_package_prices)
       // This is the base price agents set for their subagents
-      for (const [packageId, price] of Object.entries(editedPrices)) {
+      for (const [packageId, priceVal] of Object.entries(editedPrices)) {
+        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         // First delete existing entry for this agent + package
         await supabase
           .from("subagent_package_prices")
@@ -123,8 +133,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
         if (error) throw error;
       }
 
-      // Update local saved prices state with the new values
-      setSavedBasePrices(prev => ({ ...prev, ...editedPrices }));
+      // Update local saved prices state with the new values (convert to numbers)
+      const numericPrices: Record<string, number> = {};
+      Object.entries(editedPrices).forEach(([k, v]) => {
+        numericPrices[k] = typeof v === "string" ? parseFloat(v) : v;
+      });
+      setSavedBasePrices(prev => ({ ...prev, ...numericPrices }));
       setEditedPrices({});
       setMarkupPercent("");
       toast({ title: "Success", description: "Subagent base prices saved successfully" });

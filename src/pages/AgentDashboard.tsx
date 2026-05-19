@@ -256,7 +256,7 @@ const AgentDashboard = () => {
   const [loadingMoreOrders, setLoadingMoreOrders] = useState(false);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
-  const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
+  const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
   const [subagents, setSubagents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -549,17 +549,17 @@ const AgentDashboard = () => {
 
   // Price handling with markup
   const handlePriceChange = (id: string, v: string) => {
-    // Allow any input including empty - validation happens on save
-    const numValue = v === "" ? 0 : parseFloat(v);
-    setEditedPrices(p => ({ ...p, [id]: isNaN(numValue) ? 0 : numValue }));
+    // Allow empty string for clearing the box - store as string for display
+    setEditedPrices(p => ({ ...p, [id]: v === "" ? "" : (parseFloat(v) || v) }));
   };
   const savePrices = async () => {
     if (!store) return; setSavingPrices(true);
     try {
       for (const [id, sp] of Object.entries(editedPrices)) {
         const pkg = packages.find(p => p.id === id); if (!pkg) continue;
-        if (isNaN(sp) || sp <= 0) { toast({ title: "Invalid price", variant: "destructive" }); setSavingPrices(false); return; }
-        if (sp < pkg.agent_price) { toast({ title: "Price below cost", variant: "destructive" }); setSavingPrices(false); return; }
+        const numPrice = typeof sp === "string" ? parseFloat(sp) : sp;
+        if (isNaN(numPrice) || numPrice <= 0) { toast({ title: "Invalid price", variant: "destructive" }); setSavingPrices(false); return; }
+        if (numPrice < pkg.agent_price) { toast({ title: "Price below cost", variant: "destructive" }); setSavingPrices(false); return; }
       }
       for (const [id, sp] of Object.entries(editedPrices)) {
         if (agentPrices[id] !== undefined) await supabase.from("agent_package_prices").update({ sell_price: Number(sp) }).eq("agent_store_id", store.id).eq("package_id", id);

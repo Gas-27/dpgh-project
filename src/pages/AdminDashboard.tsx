@@ -43,7 +43,7 @@ interface Order {
   id: string; customer_number: string; network: string; size_gb: number; amount: number;
   status: string; fulfillment_status: string; api_response: string | null;
   paystack_reference: string | null; created_at: string | null; agent_store_id: string | null;
-  payment_method: string;
+  payment_method: string; subagent_store_id?: string | null;
 }
 interface WithdrawalRequest {
   id: string; agent_store_id: string; amount: number; status: string;
@@ -138,6 +138,10 @@ const AdminDashboard = () => {
   const [selectedUserForAdmin, setSelectedUserForAdmin] = useState<UserProfile | null>(null);
   const [newAdminSections, setNewAdminSections] = useState<Section[]>([]);
   const [makingAdmin, setMakingAdmin] = useState(false);
+  
+  // Source info dialog state
+  const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
+  const [sourceInfo, setSourceInfo] = useState<{ type: string; storeName: string; contact: string } | null>(null);
 
   // ======================== Data fetching (initial) ========================
   const fetchData = async () => {
@@ -800,16 +804,61 @@ const AdminDashboard = () => {
                     </p>
                     <Card className="border-border">
                       <Table>
-                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Source</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                          {paginated.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
-                            paginated.map((order) => (
+                          {paginated.length === 0 ? <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
+                            paginated.map((order) => {
+                              // Determine source
+                              const agentStore = order.agent_store_id ? agents.find(a => a.id === order.agent_store_id) : null;
+                              const subagentStore = order.subagent_store_id ? subagents.find(s => s.id === order.subagent_store_id) : null;
+                              let sourceType = "Main Site";
+                              let sourceLabel = "Direct";
+                              let sourceBadgeClass = "bg-blue-500/10 text-blue-400 border-blue-500/30";
+                              
+                              if (subagentStore) {
+                                sourceType = "Subagent";
+                                sourceLabel = subagentStore.store_name || "Subagent";
+                                sourceBadgeClass = "bg-purple-500/10 text-purple-400 border-purple-500/30";
+                              } else if (agentStore) {
+                                sourceType = "Agent";
+                                sourceLabel = agentStore.store_name || "Agent";
+                                sourceBadgeClass = "bg-green-500/10 text-green-400 border-green-500/30";
+                              }
+                              
+                              return (
                               <TableRow key={order.id}>
                                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
                                 <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-xs cursor-pointer hover:opacity-80 ${sourceBadgeClass}`}
+                                    onClick={() => {
+                                      if (subagentStore) {
+                                        // For subagent, get contact from parent agent
+                                        const parentAgent = agents.find(a => a.id === subagentStore.agent_store_id);
+                                        setSourceInfo({
+                                          type: "Subagent Store",
+                                          storeName: subagentStore.store_name || "Unknown",
+                                          contact: parentAgent?.whatsapp_number || parentAgent?.support_number || "N/A"
+                                        });
+                                        setSourceDialogOpen(true);
+                                      } else if (agentStore) {
+                                        setSourceInfo({
+                                          type: "Agent Store",
+                                          storeName: agentStore.store_name || "Unknown",
+                                          contact: agentStore.whatsapp_number || agentStore.support_number || "N/A"
+                                        });
+                                        setSourceDialogOpen(true);
+                                      }
+                                    }}
+                                  >
+                                    {sourceLabel.length > 12 ? sourceLabel.slice(0, 12) + "..." : sourceLabel}
+                                  </Badge>
+                                </TableCell>
                                 <TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell>
                                 <TableCell><Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge></TableCell>
                                 <TableCell><Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge></TableCell>
@@ -821,7 +870,8 @@ const AdminDashboard = () => {
                                   )}
                                 </TableCell>
                               </TableRow>
-                            ))
+                              );
+                            })
                           }
                         </TableBody>
                       </Table>
@@ -1540,6 +1590,35 @@ const AdminDashboard = () => {
               {makingAdmin ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ShieldAlert className="h-4 w-4 mr-1" />}
               Confirm Admin
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Source Info Dialog */}
+      <Dialog open={sourceDialogOpen} onOpenChange={setSourceDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Order Source Details</DialogTitle>
+            <DialogDescription>Information about where this order came from</DialogDescription>
+          </DialogHeader>
+          {sourceInfo && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground w-24">Type:</span>
+                <Badge variant="outline">{sourceInfo.type}</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground w-24">Store Name:</span>
+                <span className="font-medium">{sourceInfo.storeName}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground w-24">Contact:</span>
+                <a href={`tel:${sourceInfo.contact}`} className="text-primary hover:underline font-medium">{sourceInfo.contact}</a>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setSourceDialogOpen(false)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>

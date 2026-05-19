@@ -700,29 +700,31 @@ export function SubagentStorefront() {
                 {orders.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">No orders found</p>
                 ) : (
-                  orders.map((order) => (
-                    <div key={order.id} className="p-3 rounded-lg bg-background/50 border border-border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-mono text-sm">{order.customer_number}</p>
-                          <p className="text-xs text-muted-foreground">{order.size_gb}GB {formatNetworkName(order.network)} - GH₵{Number(order.amount).toFixed(2)}</p>
+                  <div className="max-h-[300px] overflow-y-auto space-y-3">
+                    {orders.map((order) => (
+                      <div key={order.id} className="p-3 rounded-lg bg-background/50 border border-border">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-mono text-sm">{order.customer_number}</p>
+                            <p className="text-xs text-muted-foreground">{order.size_gb}GB {formatNetworkName(order.network)} - GH₵{Number(order.amount).toFixed(2)}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(order.status)}
+                            <span className="text-xs">{getStatusText(order.status)}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(order.status)}
-                          <span className="text-xs">{getStatusText(order.status)}</span>
-                        </div>
+                        {/* Order Tracking Card */}
+                        <SubagentOrderTrackingCard
+                          order={order}
+                          store={store}
+                          onReportClick={(o) => {
+                            setReportOrder(o);
+                            setReportDialogOpen(true);
+                          }}
+                        />
                       </div>
-                      {/* Order Tracking Card */}
-                      <SubagentOrderTrackingCard
-                        order={order}
-                        store={store}
-                        onReportClick={(o) => {
-                          setReportOrder(o);
-                          setReportDialogOpen(true);
-                        }}
-                      />
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             )}

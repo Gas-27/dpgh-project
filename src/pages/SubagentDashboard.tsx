@@ -90,7 +90,7 @@ const SubagentDashboard = () => {
   const [packages, setPackages] = useState<any[]>([]);
   const [basePrices, setBasePrices] = useState<Record<string, number>>({});
   const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
-  const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
+  const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [markupPercent, setMarkupPercent] = useState("");
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [savingPrices, setSavingPrices] = useState(false);
@@ -412,11 +412,10 @@ const SubagentDashboard = () => {
   const filteredPackages = packages.filter(p => p.network === networkFilter);
 
   const handlePriceChange = (packageId: string, value: string) => {
-    // Allow any input including empty - validation happens on save
-    const numValue = value === "" ? 0 : parseFloat(value);
+    // Allow empty string for clearing the box - store as string for display
     setEditedPrices(prev => ({
       ...prev,
-      [packageId]: isNaN(numValue) ? 0 : numValue
+      [packageId]: value === "" ? "" : (parseFloat(value) || value)
     }));
   };
 
@@ -454,8 +453,18 @@ const SubagentDashboard = () => {
       setSavingPrices(true);
 
       // Validate that no price is below agent's base price
-      for (const [packageId, price] of Object.entries(editedPrices)) {
+      for (const [packageId, priceVal] of Object.entries(editedPrices)) {
+        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         const basePrice = basePrices[packageId] || 0;
+        if (isNaN(price) || price <= 0) {
+          toast({
+            title: "Invalid Price",
+            description: "Please enter a valid price",
+            variant: "destructive"
+          });
+          setSavingPrices(false);
+          return;
+        }
         if (price < basePrice) {
           toast({
             title: "Invalid Price",
@@ -468,7 +477,8 @@ const SubagentDashboard = () => {
       }
       
       // Save each price - use delete + insert to avoid upsert issues
-      for (const [packageId, price] of Object.entries(editedPrices)) {
+      for (const [packageId, priceVal] of Object.entries(editedPrices)) {
+        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         // First try to delete existing
         await supabase
           .from("subagent_package_prices")
