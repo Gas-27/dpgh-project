@@ -412,9 +412,18 @@ const SubagentDashboard = () => {
   const filteredPackages = packages.filter(p => p.network === networkFilter);
 
   const handlePriceChange = (packageId: string, value: string) => {
+    const pkg = packages.find(p => p.id === packageId);
+    const basePrice = basePrices[packageId] || pkg?.price || 0;
+    const numValue = parseFloat(value);
+    
+    // If value is empty or invalid, keep the current value (don't set to 0)
+    if (value === "" || isNaN(numValue)) {
+      return;
+    }
+    
     setEditedPrices(prev => ({
       ...prev,
-      [packageId]: parseFloat(value) || 0
+      [packageId]: Math.max(numValue, basePrice)
     }));
   };
 
@@ -730,7 +739,7 @@ const SubagentDashboard = () => {
             </Card>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
                   <p className="text-muted-foreground text-sm">Store Status</p>
@@ -747,12 +756,6 @@ const SubagentDashboard = () => {
               </Card>
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">Pending</p>
-                  <p className="font-display text-2xl font-bold mt-1 text-primary">{pendingOrders}</p>
-                </CardContent>
-              </Card>
-              <Card className="border-border">
-                <CardContent className="p-6 text-center">
                   <p className="text-muted-foreground text-sm">Revenue</p>
                   <p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵{totalRevenue.toFixed(2)}</p>
                 </CardContent>
@@ -765,32 +768,19 @@ const SubagentDashboard = () => {
               </Card>
             </div>
 
-            {/* Wallet & Profit Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="border-green-500/30 bg-green-500/5">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Wallet Balance</p>
-                      <p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}</p>
-                    </div>
-                    <Wallet className="h-8 w-8 text-green-400 opacity-50" />
+            {/* Available for Withdrawal Card */}
+            <Card className="border-yellow-500/30 bg-yellow-500/5">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Available for Withdrawal</p>
+                    <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {totalProfit.toFixed(2)}</p>
+                    {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
                   </div>
-                </CardContent>
-              </Card>
-              <Card className="border-yellow-500/30 bg-yellow-500/5">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Available for Withdrawal</p>
-                      <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(subagentStore?.wallet_balance ?? 0).toFixed(2)}</p>
-                      {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
-                    </div>
-                    <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Orders Table */}
             <Card className="border-border">
@@ -1060,7 +1050,7 @@ const SubagentDashboard = () => {
                   </div>
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                  <p className="text-sm text-blue-400">Available Balance: <span className="font-bold">GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}</span></p>
+                  <p className="text-sm text-blue-400">Available Balance: <span className="font-bold">GH₵ {totalProfit.toFixed(2)}</span></p>
                 </div>
                 <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
                 <div className="flex gap-2 items-end">

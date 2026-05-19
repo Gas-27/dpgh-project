@@ -257,6 +257,7 @@ const AgentDashboard = () => {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
+  const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
   const [subagents, setSubagents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [networkFilter, setNetworkFilter] = useState("mtn");
@@ -366,7 +367,7 @@ const AgentDashboard = () => {
         momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
       });
 
-      const [pkgR, priceR, orderR, orderCountR, wdR, subagentR, customBasePriceR] = await Promise.all([
+      const [pkgR, priceR, orderR, orderCountR, wdR, subagentR, customBasePriceR, subagentPriceR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, ORDERS_PAGE_SIZE - 1),
@@ -374,6 +375,7 @@ const AgentDashboard = () => {
         supabase.from("withdrawal_requests").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
+        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
       ]);
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
@@ -388,6 +390,9 @@ const AgentDashboard = () => {
       const pm: Record<string, number> = {};
       (priceR.data ?? []).forEach((p: any) => { pm[p.package_id] = p.sell_price; });
       setAgentPrices(pm);
+      const subPm: Record<string, number> = {};
+      (subagentPriceR.data ?? []).forEach((p: any) => { subPm[p.package_id] = p.base_price; });
+      setSubagentBasePrices(subPm);
       const os = (orderR.data as Order[]) ?? [];
       setOrders(os);
       setOrdersPage(1);
@@ -501,7 +506,13 @@ const AgentDashboard = () => {
   };
 
   // Price handling with markup
-  const handlePriceChange = (id: string, v: string) => setEditedPrices(p => ({ ...p, [id]: parseFloat(v) }));
+  const handlePriceChange = (id: string, v: string) => {
+    const pkg = packages.find(p => p.id === id);
+    const basePrice = pkg?.agent_price || 0;
+    const numValue = parseFloat(v);
+    if (v === "" || isNaN(numValue)) return;
+    setEditedPrices(p => ({ ...p, [id]: Math.max(numValue, basePrice) }));
+  };
   const savePrices = async () => {
     if (!store) return; setSavingPrices(true);
     try {
@@ -848,8 +859,17 @@ const AgentDashboard = () => {
               <CardContent>
                 {filteredOrders.length === 0 ? <p className="text-muted-foreground text-center py-4">No orders found.</p> : (
                   <>
-                    <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Number</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Sell Price</TableHead><TableHead>Base Cost</TableHead><TableHead>Profit</TableHead><TableHead>Method</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                      <TableBody>{filteredOrders.map(order => { const pkg = packages.find(p => p.id === order.package_id); const cost = pkg?.agent_price || 0; const profit = Number(order.amount) - cost; return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{order.size_gb}GB</TableCell><TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GH₵ {cost.toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GH₵ {profit.toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
+                    <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Number</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Sell Price</TableHead><TableHead>Base Cost</TableHead><TableHead>Profit</TableHead><TableHead>Method</TableHead><TableHead>Source</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                      <TableBody>{filteredOrders.map(order => { 
+                        const pkg = packages.find(p => p.id === order.package_id); 
+                        const cost = pkg?.agent_price || 0;
+                        // For subagent orders, the sell price shown should be the price the agent set for subagents (subagent_package_prices)
+                        // For direct orders, it's the order.amount (store selling price)
+                        const isSubagentOrder = !!order.subagent_store_id;
+                        const subagentBasePrice = subagentBasePrices[order.package_id] || Number(order.amount);
+                        const sellPrice = isSubagentOrder ? subagentBasePrice : Number(order.amount);
+                        const profit = sellPrice - cost;
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{order.size_gb}GB</TableCell><TableCell>GH₵ {sellPrice.toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GH₵ {cost.toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GH₵ {profit.toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">Subagent</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
                     {hasMoreOrders && !orderSearch && <div className="flex justify-center mt-4"><Button variant="outline" onClick={loadMoreOrders} disabled={loadingMoreOrders} className="gap-2">{loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{loadingMoreOrders ? "Loading..." : `Load More (${ordersTotal - orders.length} remaining)`}</Button></div>}
                   </>
                 )}

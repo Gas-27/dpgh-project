@@ -36,9 +36,9 @@ const DEFAULT_FLYER_COLORS = {
     buttonBg: "#2563eb",
 };
 
-// Flyer dimensions matching agent flyer
-const FLYER_W = 853;
-const FLYER_H = 1840;
+// Flyer dimensions - 1080x1920 (standard mobile portrait)
+const FLYER_W = 1080;
+const FLYER_H = 1920;
 
 const FlyerGenerator = ({
     storeName,
@@ -126,7 +126,40 @@ const FlyerGenerator = ({
         setGenerating(true);
         try {
             const dataUrl = await toPng(flyerRef.current, { quality: 1, pixelRatio: 2, width: FLYER_W, height: FLYER_H });
-            window.open(dataUrl, "_blank");
+            // Open in new window with full-screen display
+            const newWindow = window.open("", "_blank");
+            if (newWindow) {
+                newWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>${storeName} - Flyer</title>
+                        <style>
+                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                            body { 
+                                background: #000; 
+                                min-height: 100vh; 
+                                display: flex; 
+                                justify-content: center; 
+                                align-items: center;
+                                padding: 10px;
+                            }
+                            img { 
+                                max-width: 100%; 
+                                max-height: 100vh; 
+                                width: auto;
+                                height: auto;
+                                object-fit: contain;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <img src="${dataUrl}" alt="${storeName} Flyer" />
+                    </body>
+                    </html>
+                `);
+                newWindow.document.close();
+            }
         } catch (error) {
             toast({ title: "Error", description: "Could not generate preview.", variant: "destructive" });
         } finally {
