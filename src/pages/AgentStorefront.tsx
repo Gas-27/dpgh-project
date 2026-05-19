@@ -929,14 +929,18 @@ const AgentStorefront = () => {
               </Button>
             );
           })}
-          <div className="h-6 w-px bg-border"></div>
-          <Button
-            variant="outline"
-            onClick={() => setShowSubagentForm(!showSubagentForm)}
-            className="font-semibold"
-          >
-            Become an Agent
-          </Button>
+          {store?.allow_subagent_registration !== false && (
+            <>
+              <div className="h-6 w-px bg-border"></div>
+              <Button
+                variant="outline"
+                onClick={() => setShowSubagentForm(!showSubagentForm)}
+                className="font-semibold"
+              >
+                Become an Agent
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

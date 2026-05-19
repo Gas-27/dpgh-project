@@ -259,6 +259,8 @@ const AgentDashboard = () => {
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
   const [subagents, setSubagents] = useState<any[]>([]);
+  const [subagentOrdersCount, setSubagentOrdersCount] = useState(0);
+  const [subagentProfitForAgent, setSubagentProfitForAgent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [savingPrices, setSavingPrices] = useState(false);
@@ -281,6 +283,7 @@ const AgentDashboard = () => {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
+  const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string; source: string }[]>([]);
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
   const [savingTheme, setSavingTheme] = useState(false);
   const [storeHeadline, setStoreHeadline] = useState("");
@@ -328,6 +331,17 @@ const AgentDashboard = () => {
   const fetchTotalProfit = async () => {
     if (!store?.id) return;
     
+    // First, fetch the agent's custom base prices from admin (if any)
+    const { data: customBasePrices } = await supabase
+      .from("agent_custom_base_prices")
+      .select("package_id, custom_base_price")
+      .eq("agent_store_id", store.id);
+    
+    const agentCustomBasePriceMap: Record<string, number> = {};
+    (customBasePrices || []).forEach((p: any) => {
+      if (p.custom_base_price) agentCustomBasePriceMap[p.package_id] = p.custom_base_price;
+    });
+    
     // Fetch direct orders (orders from agent's storefront - NOT subagent orders)
     const { data: directOrders, error: directError } = await supabase
       .from("orders")
@@ -362,19 +376,24 @@ const AgentDashboard = () => {
     let directRevenue = 0, directCost = 0, subagentRevenue = 0, subagentProfit = 0;
     
     // Calculate profit from direct orders (agent keeps selling price - agent cost)
+    // Use agent's custom base price if set by admin, otherwise use default agent_price
     for (const order of directOrders || []) {
       directRevenue += Number(order.amount);
       const pkg = packages.find(p => p.id === order.package_id);
-      if (pkg) directCost += pkg.agent_price;
+      if (pkg) {
+        const agentCost = agentCustomBasePriceMap[order.package_id] || pkg.agent_price;
+        directCost += agentCost;
+      }
     }
     
     // Calculate profit from subagent orders
-    // Agent earns: subagent_base_price - agent_price for each order
+    // Agent earns: subagent_base_price - agent_cost for each order
     // subagent_base_price is what agent charged subagent (from subagent_package_prices table)
+    // agent_cost is either admin's custom price or default agent_price
     for (const order of subagentOrders) {
       const pkg = packages.find(p => p.id === order.package_id);
       if (pkg) {
-        const agentCost = pkg.agent_price || 0;
+        const agentCost = agentCustomBasePriceMap[order.package_id] || pkg.agent_price || 0;
         const subagentBasePrice = subagentBasePrices[order.package_id] || agentCost;
         subagentProfit += (subagentBasePrice - agentCost);
         subagentRevenue += subagentBasePrice; // Revenue from subagent perspective
@@ -385,7 +404,8 @@ const AgentDashboard = () => {
     const totalRevenue = directRevenue + subagentRevenue;
     const totalCost = directCost + (subagentOrders.length > 0 ? subagentOrders.reduce((sum, o) => {
       const pkg = packages.find(p => p.id === o.package_id);
-      return sum + (pkg?.agent_price || 0);
+      const agentCost = agentCustomBasePriceMap[o.package_id] || pkg?.agent_price || 0;
+      return sum + agentCost;
     }, 0) : 0);
     const combinedProfit = directProfit + subagentProfit;
     
@@ -395,6 +415,9 @@ const AgentDashboard = () => {
       totalProfit: combinedProfit,
       availableForWithdrawal: combinedProfit,
     });
+    
+    // Also store the subagent profit separately for display
+    setSubagentProfitForAgent(subagentProfit);
   };
 
   const fetchAllData = async () => {
@@ -445,11 +468,33 @@ const AgentDashboard = () => {
       setOrders(os);
       setOrdersPage(1);
       setOrdersTotal(orderCountR.count ?? 0);
-      const wd = (wdR.data as WithdrawalRequest[]) ?? [];
-      setWithdrawals(wd);
-      const subags = subagentR.data ?? [];
-      setSubagents(subags);
-      // Don't set availableForWithdrawal here - let fetchTotalProfit calculate it based on actual profit
+  const wd = (wdR.data as WithdrawalRequest[]) ?? [];
+    setWithdrawals(wd);
+    const subags = subagentR.data ?? [];
+    setSubagents(subags);
+    
+    // Fetch topup history
+    const { data: topups } = await supabase
+      .from("wallet_topups")
+      .select("id, amount, paystack_reference, created_at")
+      .eq("agent_store_id", sd.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setTopupHistory((topups || []).map(t => ({ ...t, source: t.paystack_reference ? "Paystack" : "Admin" })));
+    
+    // Fetch subagent orders count
+    const subagentIds = subags.map((s: any) => s.id);
+    if (subagentIds.length > 0) {
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .in("subagent_store_id", subagentIds);
+      setSubagentOrdersCount(count || 0);
+    } else {
+      setSubagentOrdersCount(0);
+    }
+    
+    // Don't set availableForWithdrawal here - let fetchTotalProfit calculate it based on actual profit
 
       const slug = sd.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       const url = DOMAINS.getAgentStoreUrl(sd.store_name);
@@ -481,18 +526,29 @@ const AgentDashboard = () => {
 
   useEffect(() => { if (user) fetchAllData(); }, [user]);
   
-  // Check for pending wallet topup
+  // Check for pending wallet topup from URL params or sessionStorage
   useEffect(() => {
-    const ref = sessionStorage.getItem("pending_wallet_topup");
-    if (!ref || !store?.id) return;
+    if (!store?.id) return;
+    
+    // Check URL params first (Paystack redirects back with reference in URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRef = urlParams.get("reference") || urlParams.get("trxref");
+    const sessionRef = sessionStorage.getItem("pending_wallet_topup");
+    const ref = urlRef || sessionRef;
+    
+    if (!ref) return;
+    
+    // Clear URL params
+    if (urlRef) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     
     supabase.functions.invoke("verify-payment", { body: { reference: ref } })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (data?.success && !data?.already_processed) {
           toast({ title: "Wallet topped up!", description: data.message });
           fetchAllData();
         } else if (data?.already_processed) {
-          // Already processed, just refresh
           fetchAllData();
         }
         sessionStorage.removeItem("pending_wallet_topup");
@@ -1183,6 +1239,43 @@ const AgentDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Top Up History */}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" /> Top Up History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {topupHistory.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">No top-up history yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Source</TableHead>
+                          <TableHead>Reference</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {topupHistory.map((t) => (
+                          <TableRow key={t.id}>
+                            <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
+                            <TableCell className="font-semibold text-green-400">GH₵ {Number(t.amount).toFixed(2)}</TableCell>
+                            <TableCell><Badge variant={t.source === "Paystack" ? "default" : "secondary"}>{t.source}</Badge></TableCell>
+                            <TableCell className="font-mono text-xs">{t.paystack_reference || "Admin credit"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ============================= APPEARANCE ============================= */}
@@ -1205,14 +1298,13 @@ const AgentDashboard = () => {
               <Card className="border-border">
                 <CardContent className="pt-6">
                   <p className="text-sm text-muted-foreground mb-2">Total Profit from Subagents</p>
-                  <p className="text-3xl font-bold text-green-400">GH₵{subagents.reduce((sum, s) => sum + (Number(s.wallet_balance) || 0), 0).toFixed(2)}</p>
+                  <p className="text-3xl font-bold text-green-400">GH₵{subagentProfitForAgent.toFixed(2)}</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
                 <CardContent className="pt-6">
                   <p className="text-sm text-muted-foreground mb-2">Total Orders from Subagents</p>
-                  <p className="text-3xl font-bold text-blue-400">0</p>
-                  <p className="text-xs text-muted-foreground mt-1">Coming soon</p>
+                  <p className="text-3xl font-bold text-blue-400">{subagentOrdersCount}</p>
                 </CardContent>
               </Card>
             </div>

@@ -109,6 +109,9 @@ const SubagentDashboard = () => {
   const [savingTheme, setSavingTheme] = useState(false);
   const [storeHeadline, setStoreHeadline] = useState("");
   const [savingHeadline, setSavingHeadline] = useState(false);
+  const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
 
   useEffect(() => {
     if (!isSubagent) return;
@@ -176,22 +179,35 @@ const SubagentDashboard = () => {
         .select("package_id, base_price")
         .eq("agent_store_id", store.agent_store_id);
       
+      // Also fetch any admin custom base prices for the parent agent
+      const { data: adminCustomPrices } = await supabase
+        .from("agent_custom_base_prices")
+        .select("package_id, custom_base_price")
+        .eq("agent_store_id", store.agent_store_id);
+      
+      // Build admin custom price map
+      const adminPriceMap: Record<string, number> = {};
+      (adminCustomPrices || []).forEach((p: any) => {
+        if (p.custom_base_price) adminPriceMap[p.package_id] = p.custom_base_price;
+      });
+      
       if (agentSubagentPrices) {
         const priceMap: Record<string, number> = {};
         // First set admin base prices from packages
         (pkgList || []).forEach((p: any) => {
-          priceMap[p.id] = p.price;
+          // Use admin custom base price if set for this agent, otherwise use default package price
+          priceMap[p.id] = adminPriceMap[p.id] || p.price;
         });
-        // Then override with agent's subagent base prices
+        // Then override with agent's subagent base prices (which should be >= admin's price for agent)
         agentSubagentPrices.forEach((p: any) => {
           if (p.base_price) priceMap[p.package_id] = p.base_price;
         });
         setBasePrices(priceMap);
       } else {
-        // Fallback to admin base prices
+        // Fallback to admin base prices (with custom overrides if any)
         const priceMap: Record<string, number> = {};
         (pkgList || []).forEach((p: any) => {
-          priceMap[p.id] = p.price;
+          priceMap[p.id] = adminPriceMap[p.id] || p.price;
         });
         setBasePrices(priceMap);
       }
@@ -209,6 +225,15 @@ const SubagentDashboard = () => {
         });
         setSubagentPrices(priceMap);
       }
+      
+      // Fetch topup history
+      const { data: topups } = await supabase
+        .from("subagent_wallet_topups")
+        .select("id, amount, paystack_reference, created_at")
+        .eq("subagent_store_id", store.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setTopupHistory(topups || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ title: "Error", description: "Failed to load dashboard", variant: "destructive" });
@@ -232,6 +257,36 @@ const SubagentDashboard = () => {
 
   useEffect(() => {
     if (subagentStore?.id) fetchNotifications();
+  }, [subagentStore?.id]);
+
+  // Check for pending wallet topup from URL params
+  useEffect(() => {
+    if (!subagentStore?.id) return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRef = urlParams.get("reference") || urlParams.get("trxref");
+    const sessionRef = sessionStorage.getItem("pending_subagent_wallet_topup");
+    const ref = urlRef || sessionRef;
+    
+    if (!ref) return;
+    
+    if (urlRef) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    supabase.functions.invoke("verify-payment", { body: { reference: ref } })
+      .then(({ data }) => {
+        if (data?.success && !data?.already_processed) {
+          toast({ title: "Wallet topped up!", description: data.message });
+          fetchData();
+        } else if (data?.already_processed) {
+          fetchData();
+        }
+        sessionStorage.removeItem("pending_subagent_wallet_topup");
+      })
+      .catch(() => {
+        sessionStorage.removeItem("pending_subagent_wallet_topup");
+      });
   }, [subagentStore?.id]);
 
   // Realtime subscriptions for instant updates
@@ -306,6 +361,46 @@ const SubagentDashboard = () => {
     const { error } = await supabase.from("subagent_notifications").delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
+  };
+  
+  // Paystack wallet top up
+  const handlePaystackTopup = async () => {
+    const amount = Number(paystackTopupAmount);
+    if (!amount || amount < 1) {
+      toast({ title: "Invalid amount", description: "Enter a valid amount", variant: "destructive" });
+      return;
+    }
+    if (!user?.email || !subagentStore?.id) {
+      toast({ title: "Error", description: "Please log in to top up", variant: "destructive" });
+      return;
+    }
+    
+    setTopupLoading(true);
+    try {
+      const res = await supabase.functions.invoke("initialize-payment", {
+        body: {
+          amount,
+          email: user.email,
+          phone: subagentStore.support_number || subagentStore.whatsapp_number || "0000000000",
+          callback_url: `${window.location.origin}/subagent`,
+          metadata: {
+            type: "subagent_wallet_topup",
+            subagent_store_id: subagentStore.id,
+            amount
+          }
+        }
+      });
+      
+      if (res.error) throw new Error(res.error.message);
+      if (!res.data?.authorization_url) throw new Error("No authorization URL");
+      
+      sessionStorage.setItem("pending_subagent_wallet_topup", res.data.reference);
+      window.location.href = res.data.authorization_url;
+    } catch (e: any) {
+      toast({ title: "Payment error", description: e.message, variant: "destructive" });
+    } finally {
+      setTopupLoading(false);
+    }
   };
 
   const handleSavePrices = async () => {
@@ -632,6 +727,7 @@ const SubagentDashboard = () => {
     { id: "store", label: "Store Prices", icon: Store },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
+    { id: "topup", label: "Top Up", icon: Wallet },
     { id: "flyer", label: "Flyer Generator", icon: Image },
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "notifications", label: "Notifications", icon: Bell },
@@ -1132,6 +1228,78 @@ const SubagentDashboard = () => {
                         <Badge variant={w.status === "completed" ? "default" : "secondary"}>{w.status}</Badge>
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TOP UP */}
+          <TabsContent value="topup" className="mt-0 space-y-6">
+            <Card className="border-green-500/30 bg-green-500/5">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2 text-green-400">
+                  <Wallet className="h-5 w-5" /> Top Up via Paystack
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Top up instantly with card or mobile money</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Label className="text-sm mb-1 block">Amount (GH₵)</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="Enter amount" 
+                      min="1"
+                      value={paystackTopupAmount}
+                      onChange={(e) => setPaystackTopupAmount(e.target.value)}
+                      className="text-lg"
+                    />
+                  </div>
+                  <Button 
+                    variant="hero" 
+                    className="self-end bg-green-600 hover:bg-green-700"
+                    disabled={!paystackTopupAmount || Number(paystackTopupAmount) < 1 || topupLoading}
+                    onClick={handlePaystackTopup}
+                  >
+                    {topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
+                    Pay Now
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">A small Paystack fee (1.98%) will be added to your payment.</p>
+              </CardContent>
+            </Card>
+
+            {/* Top Up History */}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" /> Top Up History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {topupHistory.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">No top-up history yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Reference</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {topupHistory.map((t) => (
+                          <TableRow key={t.id}>
+                            <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
+                            <TableCell className="font-semibold text-green-400">GH₵ {Number(t.amount).toFixed(2)}</TableCell>
+                            <TableCell className="font-mono text-xs">{t.paystack_reference || "N/A"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </CardContent>

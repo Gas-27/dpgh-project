@@ -137,6 +137,69 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Handle subagent_wallet_topup payments
+    if (metadata?.type === "subagent_wallet_topup") {
+      if (!requestedAmount || !email || !metadata?.subagent_store_id) {
+        return new Response(JSON.stringify({ error: "Missing required fields for subagent wallet topup" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+      if (!PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Add 1.98% Paystack fee
+      const baseAmount = Number(requestedAmount);
+      const feeAmount = baseAmount * 0.0198;
+      const totalWithFee = Math.round((baseAmount + feeAmount) * 100) / 100;
+      const amountInPesewas = Math.round(totalWithFee * 100);
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url,
+          metadata: {
+            ...metadata,
+            phone,
+            base_amount: baseAmount,
+            fee_amount: feeAmount,
+          },
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack error:", result);
+        return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: totalWithFee,
+        base_amount: baseAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Regular package payment - require package_id
     if (!email || !phone || !metadata?.package_id) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
