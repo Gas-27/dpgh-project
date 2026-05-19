@@ -871,52 +871,6 @@ const AdminDashboard = () => {
       </nav>
 
       <div className="container py-4 md:py-8 space-y-4 md:space-y-8 px-2 md:px-4">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          <Card className="border-border bg-primary/5">
-            <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground">Total Orders</p>
-              <p className="text-2xl font-bold text-primary">{totalCounts.orders}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-green-500/5">
-            <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground">Total Agents</p>
-              <p className="text-2xl font-bold text-green-500">{totalCounts.agents}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-blue-500/5">
-            <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground">Total Subagents</p>
-              <p className="text-2xl font-bold text-blue-500">{totalCounts.subagents}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-purple-500/5">
-            <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground">Total Users</p>
-              <p className="text-2xl font-bold text-purple-500">{totalCounts.users}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-orange-500/5">
-            <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground">Withdrawals</p>
-              <p className="text-2xl font-bold text-orange-500">{totalCounts.withdrawals}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-cyan-500/5">
-            <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground">Topups</p>
-              <p className="text-2xl font-bold text-cyan-500">{totalCounts.topups}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border bg-red-500/5">
-            <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground">Failed Orders</p>
-              <p className="text-2xl font-bold text-red-500">{failedCount}</p>
-            </CardContent>
-          </Card>
-        </div>
-        
         <Tabs defaultValue="prices">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
             {canSee("prices") && <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>}

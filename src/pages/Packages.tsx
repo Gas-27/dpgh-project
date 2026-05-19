@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Wifi, Search, Package, CheckCircle, Clock, XCircle, X,
-  Loader2, Check, Mail, MessageCircle, Rocket, Gift, Trophy,
+  Loader2, Check, Mail, MessageCircle, Rocket, Gift, Trophy, UserPlus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -1002,6 +1002,7 @@ const Packages = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services">("data");
   const [showSpinWheel, setShowSpinWheel] = useState(false);
+  const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
     chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
@@ -1087,6 +1088,9 @@ const Packages = () => {
               {catIcons[cat]}{catLabels[cat]}
             </Button>
           ))}
+          <Button variant="outline" onClick={() => setShowBecomeAgent(true)} className="font-semibold border-green-600/50 text-green-600 hover:bg-green-600/10 hover:text-green-600">
+            <UserPlus className="h-4 w-4 mr-2" />Become an Agent
+          </Button>
         {spinConfig?.enabled && !(spinConfig.auto_disable_enabled && (spinConfig.current_spin_orders ?? 0) >= (spinConfig.auto_disable_order_limit ?? 100)) && (
           <div className="flex flex-col items-center gap-1">
             <Button variant="hero" className="bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 font-bold shadow-lg" onClick={() => setShowSpinWheel(true)}>
@@ -1212,6 +1216,75 @@ const Packages = () => {
       <PaymentVerifier />
 
       <SpinWheelPopup open={showSpinWheel} onOpenChange={setShowSpinWheel} config={spinConfig} />
+      
+      {/* Become an Agent Modal */}
+      <Dialog open={showBecomeAgent} onOpenChange={setShowBecomeAgent}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl flex items-center gap-2">
+              <UserPlus className="h-6 w-6 text-primary" /> Become an Agent
+            </DialogTitle>
+            <DialogDescription>
+              Start your own data business today
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* How It Works */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">How It Works</h3>
+              <div className="space-y-2 text-sm">
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Sign up as an agent on the platform</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Get your own personalized storefront link</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Set your own selling prices and profit margins</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Sell data, airtime, utilities, result checker, digital products & more</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Manage your own subagents from your dashboard</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Set prices for your subagents</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Earn commissions from subagent sales</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Use the free flyer generator to promote your business</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Track orders, transactions, customers & earnings easily</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Withdraw your earnings anytime</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Enjoy instant automated order processing 24/7</p>
+              </div>
+            </div>
+            
+            <div className="border-t border-border" />
+            
+            {/* Benefits */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Benefits</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> No capital required to start</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Your own branded storefront</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Set your own profit margins</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Automated order processing</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Withdraw earnings anytime</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Manage subagents under you</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Earn from subagent sales too</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Full business dashboard included</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Run your business from your phone</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Multiple products & services</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Free flyer generator included</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> No experience needed</p>
+              </div>
+            </div>
+            
+            <div className="border-t border-border" />
+            
+            {/* CTA */}
+            <div className="space-y-3 text-center">
+              <Button variant="hero" size="lg" className="w-full" asChild>
+                <Link to="/signup">
+                  <UserPlus className="h-5 w-5 mr-2" /> Sign Up as Agent Now
+                </Link>
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Already have an account? <Link to="/login" className="text-primary hover:underline">Login here</Link>
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {reportOrder && (
         <ReportComplaintDialog
