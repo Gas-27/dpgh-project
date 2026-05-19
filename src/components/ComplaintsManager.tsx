@@ -48,7 +48,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [complaintType, setComplaintType] = useState<"storefront" | "agent">("storefront");
+  const [complaintType, setComplaintType] = useState<"storefront" | "agent">(isAgent ? "agent" : "storefront");
   const [tableError, setTableError] = useState(false);
   const [selectedComplaints, setSelectedComplaints] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
@@ -217,10 +217,18 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
 
       {!tableError && !loading && (
         <Tabs value={complaintType} onValueChange={(v: any) => setComplaintType(v)}>
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="storefront">Storefront Complaints</TabsTrigger>
-            <TabsTrigger value="agent">Agent Store Complaints</TabsTrigger>
-          </TabsList>
+          {!isAgent && (
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="storefront">Storefront Complaints</TabsTrigger>
+              <TabsTrigger value="agent">Agent Store Complaints</TabsTrigger>
+            </TabsList>
+          )}
+          {isAgent && (
+            <div className="mb-4">
+              <h3 className="font-display text-lg font-bold">Subagent Store Complaints</h3>
+              <p className="text-sm text-muted-foreground">View complaints from your subagent stores</p>
+            </div>
+          )}
 
           <TabsContent value={complaintType} className="space-y-4 mt-4">
           {isAgent && (

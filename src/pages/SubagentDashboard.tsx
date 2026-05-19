@@ -588,11 +588,12 @@ const SubagentDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  const totalRevenue = orders.reduce((sum, order) => sum + (order.status === "completed" ? order.amount : 0), 0);
+  const totalRevenue = orders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.amount) : 0), 0);
   const totalProfit = orders.reduce((sum, order) => {
-    if (order.status !== "completed") return sum;
+    if (order.status !== "completed" && order.status !== "paid") return sum;
     const baseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
-    return sum + (order.amount - baseCost);
+    // Profit = Selling Price - Base Cost
+    return sum + (Number(order.amount) - baseCost);
   }, 0);
   const pendingOrders = orders.filter(o => o.status !== "completed").length;
   const totalOrders = orders.length;
@@ -747,7 +748,7 @@ const SubagentDashboard = () => {
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
                   <p className="text-muted-foreground text-sm">Pending</p>
-                  <p className="font-display text-2xl font-bold mt-1 text-primary">0</p>
+                  <p className="font-display text-2xl font-bold mt-1 text-primary">{pendingOrders}</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
@@ -920,57 +921,47 @@ const SubagentDashboard = () => {
                       <Button 
                         variant="hero" 
                         className="w-full" 
-                        onClick={() => {
-                          // Paystack payment
+                        onClick={async () => {
+                          // Paystack payment via backend initialize-payment
                           const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
                           if (!buyCustomerNumber) {
                             toast({ title: "Error", description: "Enter customer phone number", variant: "destructive" });
                             return;
                           }
-                          // Open Paystack
-                          const handler = (window as any).PaystackPop?.setup({
-                            key: "pk_live_b917e70d1d1ccbefe2d58016dc4e975d4a0c36e1",
-                            email: user?.email || `${buyCustomerNumber}@dataplug.store`,
-                            amount: price * 100,
-                            currency: "GHS",
-                            ref: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                            metadata: {
-                              subagent_store_id: subagentStore?.id,
-                              customer_number: buyCustomerNumber,
-                              network: buyingPkg.network,
-                              size_gb: buyingPkg.size_gb,
-                              package_id: buyingPkg.id,
-                            },
-                            callback: async (response: any) => {
-                              // Create order after successful payment
-                              try {
-                                await supabase.from("orders").insert({
-                                  subagent_store_id: subagentStore?.id,
-                                  customer_number: buyCustomerNumber,
+                          setBuyLoading(true);
+                          try {
+                            const email = user?.email || `${buyCustomerNumber.replace(/^0/, "233")}@dataplug.store`;
+                            const { data, error } = await supabase.functions.invoke("initialize-payment", {
+                              body: {
+                                email,
+                                amount: price,
+                                phone: buyCustomerNumber.trim(),
+                                callback_url: `${window.location.origin}/subagent?payment=verifying`,
+                                metadata: {
+                                  package_id: buyingPkg.id,
                                   network: buyingPkg.network,
-                                  size_gb: buyingPkg.size_gb,
-                                  amount: price,
-                                  status: "paid",
-                                  payment_reference: response.reference,
-                                  fulfillment_status: "pending"
-                                });
-                                toast({ title: "Success", description: "Payment successful! Order placed." });
-                                setBuyingPkg(null);
-                                setBuyCustomerNumber("");
-                                fetchData();
-                              } catch (err) {
-                                console.error("Order creation error:", err);
-                                toast({ title: "Error", description: "Payment received but order failed. Contact support.", variant: "destructive" });
-                              }
-                            },
-                            onClose: () => {
-                              toast({ title: "Payment cancelled", variant: "destructive" });
-                            },
-                          });
-                          handler?.openIframe();
+                                  package_name: `${buyingPkg.size_gb}GB`,
+                                  subagent_store_id: subagentStore?.id,
+                                  agent_store_id: subagentStore?.agent_store_id,
+                                  payment_method: "paystack",
+                                  is_subagent_order: true,
+                                },
+                              },
+                            });
+                            if (error || !data?.authorization_url) {
+                              throw new Error(error?.message || data?.error || "Payment initialization failed");
+                            }
+                            window.location.href = data.authorization_url;
+                          } catch (err: any) {
+                            console.error("Paystack init error:", err);
+                            toast({ title: "Error", description: err.message || "Could not initialize payment", variant: "destructive" });
+                          } finally {
+                            setBuyLoading(false);
+                          }
                         }}
-                        disabled={!buyCustomerNumber}
+                        disabled={buyLoading || !buyCustomerNumber}
                       >
+                        {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                         Pay with Paystack
                       </Button>
                     </div>

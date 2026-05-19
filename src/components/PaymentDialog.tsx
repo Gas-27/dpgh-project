@@ -170,6 +170,7 @@ const PaymentDialog = ({
         {
           body: {
             email: userEmail,
+            amount: price,
             phone: normalizedPhone,
             callback_url: callbackUrl,
             metadata: {
