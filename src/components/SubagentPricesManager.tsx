@@ -67,7 +67,8 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
     
     filteredPackages.forEach(pkg => {
-      const basePrice = pkg.price;
+      // Use agent_price as the base (this already has admin's custom price if set)
+      const basePrice = pkg.agent_price || pkg.price;
       const newPrice = basePrice * (1 + markup);
       setEditedPrices(prev => ({
         ...prev,
@@ -85,11 +86,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     try {
       setSavingPrices(true);
 
-      // Validate that no price is below base price (admin's base price)
+      // Validate that no price is below base price (agent's cost price, which is already overridden with admin's custom price if set)
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         const pkg = packages.find(p => p.id === packageId);
-        const basePrice = pkg?.price || 0;
+        // Use agent_price as the base (this already has admin's custom price if set)
+        const basePrice = pkg?.agent_price || pkg?.price || 0;
         if (isNaN(price) || price <= 0) {
           toast({
             title: "Invalid Price",
@@ -102,7 +104,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
         if (price < basePrice) {
           toast({
             title: "Invalid Price",
-            description: `Subagent price cannot be below admin's base price (GH₵ ${basePrice.toFixed(2)})`,
+            description: `Subagent price cannot be below your cost price (GH₵ ${basePrice.toFixed(2)})`,
             variant: "destructive"
           });
           setSavingPrices(false);
@@ -196,7 +198,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
         </p>
       </div>
 
-      <p className="text-sm text-muted-foreground">Subagent profit = Their Selling Price - Admin's Base Price. Use markup to increase all subagent prices by a % (based on admin's base price).</p>
+      <p className="text-sm text-muted-foreground">Subagent profit = Their Selling Price - Your Cost Price. Use markup to increase all subagent prices by a % (based on your cost price).</p>
 
       <Card className="border-border">
         <div className="overflow-x-auto">
@@ -204,7 +206,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
             <TableHeader>
               <TableRow>
                 <TableHead>Size</TableHead>
-                <TableHead>Base Price (Your Cost)</TableHead>
+                <TableHead>Your Cost Price</TableHead>
                 <TableHead>Subagent Base Price</TableHead>
                 <TableHead>Your Profit</TableHead>
               </TableRow>
@@ -218,9 +220,10 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                 </TableRow>
               ) : (
                 filteredPackages.map(pkg => {
-                  const basePrice = pkg.price;
-                  // Show: edited price > saved base price > default package price
-                  const displayPrice = editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? pkg.price;
+                  // Use agent_price as the base (this already has admin's custom price if set)
+                  const basePrice = pkg.agent_price || pkg.price;
+                  // Show: edited price > saved base price > default to agent's cost + 10%
+                  const displayPrice = editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? (basePrice * 1.1);
                   const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
                   const hasSavedPrice = savedBasePrices[pkg.id] !== undefined;
                   return (

@@ -119,7 +119,10 @@ const AdminDashboard = () => {
   const [notifTitle, setNotifTitle] = useState("");
   const [notifMessage, setNotifMessage] = useState("");
   const [notifTarget, setNotifTarget] = useState("all");
+  const [notifExpiresAt, setNotifExpiresAt] = useState("");
   const [sendingNotif, setSendingNotif] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [deletingNotif, setDeletingNotif] = useState<string | null>(null);
 
   // Spin wheel state
   const [spinConfig, setSpinConfig] = useState<{
@@ -237,6 +240,29 @@ const AdminDashboard = () => {
       toast({ title: "Settings saved!" });
     }
     setSavingSettings(false);
+  };
+  
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    const { data } = await supabase
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setNotifications(data || []);
+  };
+  
+  // Delete notification
+  const deleteNotification = async (id: string) => {
+    setDeletingNotif(id);
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Notification deleted" });
+      fetchNotifications();
+    }
+    setDeletingNotif(null);
   };
 
   // ======================== Delete Subagent ========================
@@ -363,7 +389,7 @@ const AdminDashboard = () => {
     if (!error && data) {
       setCurrentUserSections(data.sections as Section[]);
     } else {
-      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints"]);
+      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints", "settings"]);
     }
   };
 
@@ -450,6 +476,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchData();
     fetchSpinConfig();
+    fetchNotifications();
     if (currentUser?.id) {
       fetchCurrentUserPermissions(currentUser.id);
     }
@@ -764,13 +791,24 @@ const AdminDashboard = () => {
     if (!notifTitle.trim() || !notifMessage.trim()) { toast({ title: "Fill title and message", variant: "destructive" }); return; }
     setSendingNotif(true);
     const effectiveTarget = notifTarget === "user" ? "all" : notifTarget;
-    const { error } = await supabase.from("notifications").insert({
+    const insertData: any = {
       title: notifTitle.trim(),
       message: notifMessage.trim(),
       target_role: effectiveTarget
-    });
+    };
+    if (notifExpiresAt) {
+      insertData.expires_at = new Date(notifExpiresAt).toISOString();
+    }
+    const { error } = await supabase.from("notifications").insert(insertData);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else { toast({ title: "Notification sent!" }); setNotifTitle(""); setNotifMessage(""); setNotifTarget("all"); }
+    else { 
+      toast({ title: "Notification sent!" }); 
+      setNotifTitle(""); 
+      setNotifMessage(""); 
+      setNotifTarget("all"); 
+      setNotifExpiresAt("");
+      fetchNotifications();
+    }
     setSendingNotif(false);
   };
 
@@ -833,6 +871,52 @@ const AdminDashboard = () => {
       </nav>
 
       <div className="container py-4 md:py-8 space-y-4 md:space-y-8 px-2 md:px-4">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <Card className="border-border bg-primary/5">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">Total Orders</p>
+              <p className="text-2xl font-bold text-primary">{totalCounts.orders}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border bg-green-500/5">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">Total Agents</p>
+              <p className="text-2xl font-bold text-green-500">{totalCounts.agents}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border bg-blue-500/5">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">Total Subagents</p>
+              <p className="text-2xl font-bold text-blue-500">{totalCounts.subagents}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border bg-purple-500/5">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">Total Users</p>
+              <p className="text-2xl font-bold text-purple-500">{totalCounts.users}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border bg-orange-500/5">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">Withdrawals</p>
+              <p className="text-2xl font-bold text-orange-500">{totalCounts.withdrawals}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border bg-cyan-500/5">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">Topups</p>
+              <p className="text-2xl font-bold text-cyan-500">{totalCounts.topups}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border bg-red-500/5">
+            <CardContent className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">Failed Orders</p>
+              <p className="text-2xl font-bold text-red-500">{failedCount}</p>
+            </CardContent>
+          </Card>
+        </div>
+        
         <Tabs defaultValue="prices">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
             {canSee("prices") && <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>}
@@ -1404,16 +1488,70 @@ const AdminDashboard = () => {
                     <Select value={notifTarget} onValueChange={setNotifTarget}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Users & Agents (including non‑logged‑in)</SelectItem>
-                        <SelectItem value="user">Users Only (also shown to non‑logged‑in visitors)</SelectItem>
+                        <SelectItem value="all">All Users & Agents (including non-logged-in)</SelectItem>
+                        <SelectItem value="user">Users Only (also shown to non-logged-in visitors)</SelectItem>
                         <SelectItem value="agent">Agents Only</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">Note: "User" target will also be visible to non‑logged‑in visitors.</p>
+                    <p className="text-xs text-muted-foreground">Note: "User" target will also be visible to non-logged-in visitors.</p>
                   </div>
                   <div className="space-y-2"><Label>Title</Label><Input placeholder="Notification title" value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} /></div>
                   <div className="space-y-2"><Label>Message</Label><Textarea placeholder="Write your message here..." value={notifMessage} onChange={(e) => setNotifMessage(e.target.value)} rows={4} /></div>
+                  <div className="space-y-2">
+                    <Label>Expires At (Optional)</Label>
+                    <Input type="datetime-local" value={notifExpiresAt} onChange={(e) => setNotifExpiresAt(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">Leave empty for no expiration. After this date/time, the notification will automatically be hidden.</p>
+                  </div>
                   <Button variant="hero" onClick={sendNotification} disabled={sendingNotif}>{sendingNotif ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />} Send Notification</Button>
+                </CardContent>
+              </Card>
+              
+              {/* Existing Notifications */}
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display text-lg flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-primary" /> Active Notifications ({notifications.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {notifications.length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">No notifications sent yet</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {notifications.map((notif) => (
+                        <div key={notif.id} className="border rounded-lg p-4 space-y-2 bg-muted/30">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold">{notif.title}</span>
+                                <Badge variant={notif.target === "all" ? "default" : notif.target === "agent" ? "secondary" : "outline"}>
+                                  {notif.target === "all" ? "All" : notif.target === "agent" ? "Agents" : "Users"}
+                                </Badge>
+                                {notif.expires_at && new Date(notif.expires_at) < new Date() && (
+                                  <Badge variant="destructive">Expired</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1 break-words">{notif.message}</p>
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                                <span>Created: {new Date(notif.created_at).toLocaleString()}</span>
+                                {notif.expires_at && (
+                                  <span>Expires: {new Date(notif.expires_at).toLocaleString()}</span>
+                                )}
+                              </div>
+                            </div>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => deleteNotification(notif.id)}
+                              disabled={deletingNotif === notif.id}
+                            >
+                              {deletingNotif === notif.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
