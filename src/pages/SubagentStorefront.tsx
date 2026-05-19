@@ -519,7 +519,7 @@ export function SubagentStorefront() {
 
   const undismissedNotifications = notifications.filter((n) => !dismissedIds.includes(n.id));
 
-  // Order search
+  // Order search - searches both subagent orders and parent agent orders
   const searchOrders = useCallback(async () => {
     if (!searchQuery.trim()) return;
     setSearching(true);
@@ -527,26 +527,52 @@ export function SubagentStorefront() {
 
     const raw = searchQuery.trim();
     const noSpaces = stripSpaces(raw);
+    
+    let allOrders: Order[] = [];
 
-    let query = supabase
+    // Search subagent orders first
+    let subagentQuery = supabase
       .from("orders")
       .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
       .eq("subagent_store_id", store?.id);
 
     if (noSpaces.length === 36 && raw.includes("-")) {
-      query = query.eq("id", raw);
+      subagentQuery = subagentQuery.eq("id", raw);
     } else {
-      query = query.ilike("customer_number", `%${noSpaces}%`);
+      subagentQuery = subagentQuery.ilike("customer_number", `%${noSpaces}%`);
     }
 
-    const { data, error } = await query.order("created_at", { ascending: false });
-    if (!error && data) {
-      setOrders(data as Order[]);
-    } else {
-      setOrders([]);
+    const { data: subagentData, error: subagentError } = await subagentQuery.order("created_at", { ascending: false });
+    if (!subagentError && subagentData) {
+      allOrders = [...(subagentData as Order[])];
     }
+    
+    // Also search parent agent's orders
+    if (store?.agent_store_id) {
+      let agentQuery = supabase
+        .from("orders")
+        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
+        .eq("agent_store_id", store.agent_store_id)
+        .is("subagent_store_id", null); // Only direct agent orders
+
+      if (noSpaces.length === 36 && raw.includes("-")) {
+        agentQuery = agentQuery.eq("id", raw);
+      } else {
+        agentQuery = agentQuery.ilike("customer_number", `%${noSpaces}%`);
+      }
+
+      const { data: agentData, error: agentError } = await agentQuery.order("created_at", { ascending: false });
+      if (!agentError && agentData) {
+        allOrders = [...allOrders, ...(agentData as Order[])];
+      }
+    }
+    
+    // Sort all orders by date descending
+    allOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    setOrders(allOrders);
     setSearching(false);
-  }, [searchQuery, store?.id]);
+  }, [searchQuery, store?.id, store?.agent_store_id]);
 
   const clearSearch = () => {
     setSearchQuery("");

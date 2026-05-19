@@ -412,18 +412,11 @@ const SubagentDashboard = () => {
   const filteredPackages = packages.filter(p => p.network === networkFilter);
 
   const handlePriceChange = (packageId: string, value: string) => {
-    const pkg = packages.find(p => p.id === packageId);
-    const basePrice = basePrices[packageId] || pkg?.price || 0;
-    const numValue = parseFloat(value);
-    
-    // If value is empty or invalid, keep the current value (don't set to 0)
-    if (value === "" || isNaN(numValue)) {
-      return;
-    }
-    
+    // Allow any input including empty - validation happens on save
+    const numValue = value === "" ? 0 : parseFloat(value);
     setEditedPrices(prev => ({
       ...prev,
-      [packageId]: Math.max(numValue, basePrice)
+      [packageId]: isNaN(numValue) ? 0 : numValue
     }));
   };
 

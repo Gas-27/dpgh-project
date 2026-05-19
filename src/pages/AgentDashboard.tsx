@@ -549,11 +549,9 @@ const AgentDashboard = () => {
 
   // Price handling with markup
   const handlePriceChange = (id: string, v: string) => {
-    const pkg = packages.find(p => p.id === id);
-    const basePrice = pkg?.agent_price || 0;
-    const numValue = parseFloat(v);
-    if (v === "" || isNaN(numValue)) return;
-    setEditedPrices(p => ({ ...p, [id]: Math.max(numValue, basePrice) }));
+    // Allow any input including empty - validation happens on save
+    const numValue = v === "" ? 0 : parseFloat(v);
+    setEditedPrices(p => ({ ...p, [id]: isNaN(numValue) ? 0 : numValue }));
   };
   const savePrices = async () => {
     if (!store) return; setSavingPrices(true);
