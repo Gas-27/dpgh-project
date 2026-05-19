@@ -438,7 +438,7 @@ export function SubagentStorefront() {
       }
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
-      matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
+      // Don't override show_whatsapp_group_icon - use database value directly
       setStore(matched);
 
       // Fetch packages and prices

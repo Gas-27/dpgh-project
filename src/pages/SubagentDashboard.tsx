@@ -47,6 +47,7 @@ interface Order {
   status: string;
   fulfillment_status: string;
   created_at: string;
+  package_id?: string;
 }
 
 interface WithdrawalRequest {
@@ -978,28 +979,38 @@ const SubagentDashboard = () => {
                           <TableHead>Customer</TableHead>
                           <TableHead>Network</TableHead>
                           <TableHead>Data</TableHead>
-                          <TableHead>Amount</TableHead>
+                          <TableHead>Selling Price</TableHead>
+                          <TableHead>Base Cost</TableHead>
+                          <TableHead>Profit</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Date</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {orders.slice(0, 10).map(order => (
-                          <TableRow key={order.id}>
-                            <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
-                            <TableCell>{order.network.toUpperCase()}</TableCell>
-                            <TableCell>{order.size_gb}GB</TableCell>
-                            <TableCell className="font-semibold">GH₵{order.amount.toFixed(2)}</TableCell>
-                            <TableCell>
-                              <Badge variant={order.fulfillment_status === "delivered" ? "default" : "secondary"}>
-                                {order.fulfillment_status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {orders.slice(0, 10).map(order => {
+                          const baseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+                          const profit = order.amount - baseCost;
+                          return (
+                            <TableRow key={order.id}>
+                              <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                              <TableCell>{order.network.toUpperCase()}</TableCell>
+                              <TableCell>{order.size_gb}GB</TableCell>
+                              <TableCell className="font-semibold">GH₵{order.amount.toFixed(2)}</TableCell>
+                              <TableCell className="text-muted-foreground">GH₵{baseCost.toFixed(2)}</TableCell>
+                              <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
+                                GH₵{profit.toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={order.fulfillment_status === "delivered" ? "default" : "secondary"}>
+                                  {order.fulfillment_status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {new Date(order.created_at).toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>

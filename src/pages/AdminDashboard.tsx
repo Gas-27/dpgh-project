@@ -86,6 +86,18 @@ const AdminDashboard = () => {
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [orderSearchTerm, setOrderSearchTerm] = useState("");
   const [withdrawalSearchTerm, setWithdrawalSearchTerm] = useState("");
+  const [subagentSearchTerm, setSubagentSearchTerm] = useState("");
+  const [topupSearchTerm, setTopupSearchTerm] = useState("");
+  const [complaintSearchTerm, setComplaintSearchTerm] = useState("");
+
+  // Pagination state
+  const [agentPage, setAgentPage] = useState(1);
+  const [subagentPage, setSubagentPage] = useState(1);
+  const [orderPage, setOrderPage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
+  const [withdrawalPage, setWithdrawalPage] = useState(1);
+  const [topupPage, setTopupPage] = useState(1);
+  const PAGE_SIZE = 100;
 
   // Agent-specific pricing state
   const [agentPriceDialogOpen, setAgentPriceDialogOpen] = useState(false);
@@ -851,72 +863,112 @@ const AdminDashboard = () => {
             <TabsContent value="subagents" className="space-y-4">
               <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search by store name..." className="pl-10" />
+                <Input 
+                  placeholder="Search by store name..." 
+                  className="pl-10" 
+                  value={subagentSearchTerm}
+                  onChange={(e) => setSubagentSearchTerm(e.target.value)}
+                />
               </div>
               
-              {subagents.length === 0 ? (
+              {(() => {
+                const filtered = subagents.filter(s => 
+                  s.store_name?.toLowerCase().includes(subagentSearchTerm.toLowerCase()) ||
+                  s.agent_stores?.store_name?.toLowerCase().includes(subagentSearchTerm.toLowerCase())
+                );
+                const paginated = filtered.slice((subagentPage - 1) * PAGE_SIZE, subagentPage * PAGE_SIZE);
+                const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+                
+                return filtered.length === 0 ? (
                 <Card className="border-border">
                   <CardContent className="py-12">
-                    <p className="text-center text-muted-foreground">No subagents yet.</p>
+                    <p className="text-center text-muted-foreground">No subagents match your search.</p>
                   </CardContent>
                 </Card>
               ) : (
-                subagents.map((subagent) => (
-                  <Card key={subagent.id} className="border-border bg-card/50">
-                    <CardContent className="p-3 md:p-6">
-                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
-                        <div className="flex-1 space-y-2 md:space-y-3 min-w-0">
-                          <h3 className="font-display font-bold text-base md:text-lg text-foreground truncate">{subagent.store_name}</h3>
-                          <div className="grid grid-cols-2 md:grid-cols-2 gap-2 md:gap-3 text-xs md:text-sm">
-                            <div className="min-w-0">
-                              <p className="text-muted-foreground text-xs">Parent Agent</p>
-                              <p className="font-semibold text-foreground truncate">{subagent.agent_stores?.store_name || 'N/A'}</p>
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-muted-foreground text-xs">Revenue</p>
-                              <p className="font-bold text-green-400">GH₵ {Number(subagent.wallet_balance).toFixed(2)}</p>
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-muted-foreground text-xs">WhatsApp</p>
-                              <p className="font-semibold text-foreground">{subagent.whatsapp_number}</p>
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-muted-foreground text-xs">Support</p>
-                              <p className="font-semibold text-foreground">{subagent.support_number}</p>
-                            </div>
-                            <div className="col-span-2 md:col-span-2 min-w-0">
-                              <p className="text-muted-foreground text-xs mb-1">MoMo Account</p>
-                              <p className="font-semibold text-foreground truncate">{subagent.momo_name} • {subagent.momo_number} ({subagent.momo_network.toUpperCase()})</p>
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Showing {(subagentPage - 1) * PAGE_SIZE + 1} - {Math.min(subagentPage * PAGE_SIZE, filtered.length)} of {filtered.length} subagents
+                  </p>
+                  {paginated.map((subagent) => (
+                    <Card key={subagent.id} className="border-border bg-card/50">
+                      <CardContent className="p-3 md:p-6">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
+                          <div className="flex-1 space-y-2 md:space-y-3 min-w-0">
+                            <h3 className="font-display font-bold text-base md:text-lg text-foreground truncate">{subagent.store_name}</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-2 gap-2 md:gap-3 text-xs md:text-sm">
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Parent Agent</p>
+                                <p className="font-semibold text-foreground truncate">{subagent.agent_stores?.store_name || 'N/A'}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Revenue</p>
+                                <p className="font-bold text-green-400">GH₵ {Number(subagent.wallet_balance).toFixed(2)}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">WhatsApp</p>
+                                <p className="font-semibold text-foreground">{subagent.whatsapp_number}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Support</p>
+                                <p className="font-semibold text-foreground">{subagent.support_number}</p>
+                              </div>
+                              <div className="col-span-2 md:col-span-2 min-w-0">
+                                <p className="text-muted-foreground text-xs mb-1">MoMo Account</p>
+                                <p className="font-semibold text-foreground truncate">{subagent.momo_name} • {subagent.momo_number} ({subagent.momo_network.toUpperCase()})</p>
+                              </div>
                             </div>
                           </div>
+                          <div className="flex-shrink-0 flex gap-2">
+                            <Badge className="bg-green-600/20 text-green-400 border-green-600/30 font-semibold">
+                              Active
+                            </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(DOMAINS.getSubagentStoreUrl(subagent.store_name), "_blank")}
+                              className="text-xs"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View Shop
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteSubagent(subagent.id, subagent.store_name)}
+                              className="text-xs"
+                            >
+                              Delete
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex-shrink-0 flex gap-2">
-                          <Badge className="bg-green-600/20 text-green-400 border-green-600/30 font-semibold">
-                            Active
-                          </Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(DOMAINS.getSubagentStoreUrl(subagent.store_name), "_blank")}
-                            className="text-xs"
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            View Shop
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => deleteSubagent(subagent.id, subagent.store_name)}
-                            className="text-xs"
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setSubagentPage(p => Math.max(1, p - 1))}
+                        disabled={subagentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm text-muted-foreground">Page {subagentPage} of {totalPages}</span>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setSubagentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={subagentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                </>
+              );
+              })()}
             </TabsContent>
           )}
 
