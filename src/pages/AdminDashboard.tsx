@@ -129,6 +129,15 @@ const AdminDashboard = () => {
     payment_required: boolean;
     payment_amount: number;
     segments: SpinSegment[];
+    // Prize probabilities (percentages)
+    chance_2gb: number;
+    chance_1gb: number;
+    chance_extra_spin: number;
+    // Auto-disable settings
+    auto_disable_enabled: boolean;
+    auto_disable_order_limit: number;
+    current_spin_orders: number;
+    display_spin_orders: number; // Admin can manipulate what users see
   } | null>(null);
   const [spinSaving, setSpinSaving] = useState(false);
 
@@ -232,42 +241,57 @@ const AdminDashboard = () => {
       toast({ title: "Error", description: "Failed to load spin config", variant: "destructive" });
       return;
     }
-    if (data) {
-      setSpinConfig(data);
-    } else {
-      setSpinConfig({
-        id: 1,
-        enabled: true,
-        default_network: "mtn",
-        payment_required: true,
-        payment_amount: 2,
-        segments: [
-          { type: "gb", value: 1, label: "1 GB", weight: 40 },
-          { type: "gb", value: 2, label: "2 GB", weight: 35 },
-          { type: "gb", value: 10, label: "10 GB", weight: 5 },
-          { type: "message", value: "", label: "Better luck next time!", weight: 20 },
-          { type: "message", value: "", label: "Almost there!", weight: 0 },
-          { type: "message", value: "", label: "Keep spinning!", weight: 0 },
-          { type: "message", value: "", label: "You can do it!", weight: 0 },
-          { type: "message", value: "", label: "Nice try!", weight: 0 },
-          { type: "message", value: "", label: "Try again!", weight: 0 },
-        ],
-      });
-    }
+  if (data) {
+    setSpinConfig({
+      ...data,
+      chance_2gb: data.chance_2gb ?? 4,
+      chance_1gb: data.chance_1gb ?? 9,
+      chance_extra_spin: data.chance_extra_spin ?? 12,
+      auto_disable_enabled: data.auto_disable_enabled ?? false,
+      auto_disable_order_limit: data.auto_disable_order_limit ?? 100,
+      current_spin_orders: data.current_spin_orders ?? 0,
+      display_spin_orders: data.display_spin_orders ?? 0,
+    });
+  } else {
+    setSpinConfig({
+      id: 1,
+      enabled: false,
+      default_network: "mtn",
+      payment_required: true,
+      payment_amount: 2,
+      segments: [],
+      chance_2gb: 4,
+      chance_1gb: 9,
+      chance_extra_spin: 12,
+      auto_disable_enabled: false,
+      auto_disable_order_limit: 100,
+      current_spin_orders: 0,
+      display_spin_orders: 0,
+    });
+  }
   };
 
   const saveSpinConfig = async () => {
     if (!spinConfig) return;
     setSpinSaving(true);
-    const { id, ...updateData } = spinConfig;
+    const updateData = {
+      enabled: spinConfig.enabled,
+      default_network: spinConfig.default_network,
+      payment_required: spinConfig.payment_required,
+      payment_amount: spinConfig.payment_amount,
+      segments: spinConfig.segments,
+      chance_2gb: spinConfig.chance_2gb,
+      chance_1gb: spinConfig.chance_1gb,
+      chance_extra_spin: spinConfig.chance_extra_spin,
+      auto_disable_enabled: spinConfig.auto_disable_enabled,
+      auto_disable_order_limit: spinConfig.auto_disable_order_limit,
+      current_spin_orders: spinConfig.current_spin_orders,
+      display_spin_orders: spinConfig.display_spin_orders,
+    };
     const { error } = await supabase
       .from("spin_config")
       .update({
-        enabled: updateData.enabled,
-        default_network: updateData.default_network,
-        payment_required: updateData.payment_required,
-        payment_amount: updateData.payment_amount,
-        segments: updateData.segments,
+        ...updateData,
         updated_at: new Date().toISOString(),
       })
       .eq("id", 1);
@@ -1463,6 +1487,118 @@ const AdminDashboard = () => {
                         </Card>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Prize Probability Controls */}
+                  <div className="space-y-4 border p-4 rounded-lg bg-purple-500/5">
+                    <div className="space-y-0.5">
+                      <Label className="text-base font-semibold">Prize Probabilities (% chance)</Label>
+                      <p className="text-sm text-muted-foreground">Set the chance of winning each prize. Remaining % goes to motivational messages.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>2GB Win Chance (%)</Label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          max="100" 
+                          value={spinConfig.chance_2gb} 
+                          onChange={(e) => setSpinConfig({ ...spinConfig, chance_2gb: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} 
+                        />
+                        <p className="text-xs text-muted-foreground">Default: 4%</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>1GB Win Chance (%)</Label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          max="100" 
+                          value={spinConfig.chance_1gb} 
+                          onChange={(e) => setSpinConfig({ ...spinConfig, chance_1gb: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} 
+                        />
+                        <p className="text-xs text-muted-foreground">Default: 9%</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Extra Spin Chance (%)</Label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          max="100" 
+                          value={spinConfig.chance_extra_spin} 
+                          onChange={(e) => setSpinConfig({ ...spinConfig, chance_extra_spin: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} 
+                        />
+                        <p className="text-xs text-muted-foreground">Default: 12%</p>
+                      </div>
+                    </div>
+                    <div className="bg-muted/50 rounded p-2 text-sm">
+                      <span className="font-medium">Current distribution:</span> 2GB: {spinConfig.chance_2gb}% | 1GB: {spinConfig.chance_1gb}% | Extra Spin: {spinConfig.chance_extra_spin}% | Motivational: {Math.max(0, 100 - spinConfig.chance_2gb - spinConfig.chance_1gb - spinConfig.chance_extra_spin)}%
+                    </div>
+                  </div>
+
+                  {/* Auto-Disable Settings */}
+                  <div className="space-y-4 border p-4 rounded-lg bg-orange-500/5">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-base font-semibold">Auto-Disable After X Orders</Label>
+                        <p className="text-sm text-muted-foreground">Automatically turn off spin wheel after a set number of spin orders are placed.</p>
+                      </div>
+                      <Switch 
+                        checked={spinConfig.auto_disable_enabled} 
+                        onCheckedChange={(checked) => setSpinConfig({ ...spinConfig, auto_disable_enabled: checked })} 
+                      />
+                    </div>
+                    
+                    {spinConfig.auto_disable_enabled && (
+                      <div className="space-y-4 pt-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Order Limit (auto-disable after)</Label>
+                            <Input 
+                              type="number" 
+                              min="1" 
+                              value={spinConfig.auto_disable_order_limit} 
+                              onChange={(e) => setSpinConfig({ ...spinConfig, auto_disable_order_limit: Math.max(1, Number(e.target.value) || 1) })} 
+                            />
+                            <p className="text-xs text-muted-foreground">Spin wheel disables when this many orders are placed</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Actual Spin Orders (real count)</Label>
+                            <Input 
+                              type="number" 
+                              min="0" 
+                              value={spinConfig.current_spin_orders} 
+                              onChange={(e) => setSpinConfig({ ...spinConfig, current_spin_orders: Math.max(0, Number(e.target.value) || 0) })} 
+                            />
+                            <p className="text-xs text-muted-foreground">Real number of spin orders placed</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Display Count (what users see)</Label>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            value={spinConfig.display_spin_orders} 
+                            onChange={(e) => setSpinConfig({ ...spinConfig, display_spin_orders: Math.max(0, Number(e.target.value) || 0) })} 
+                          />
+                          <p className="text-xs text-muted-foreground">You can manipulate what users see as the "current orders" count</p>
+                        </div>
+                        <div className="bg-muted/50 rounded p-3 space-y-1">
+                          <p className="text-sm"><span className="font-medium">Status:</span> {spinConfig.current_spin_orders} / {spinConfig.auto_disable_order_limit} orders</p>
+                          <p className="text-sm"><span className="font-medium">Users see:</span> {spinConfig.display_spin_orders} / {spinConfig.auto_disable_order_limit} orders</p>
+                          <p className="text-sm"><span className="font-medium">Remaining:</span> {Math.max(0, spinConfig.auto_disable_order_limit - spinConfig.current_spin_orders)} orders until auto-disable</p>
+                          {spinConfig.current_spin_orders >= spinConfig.auto_disable_order_limit && (
+                            <p className="text-sm text-destructive font-medium">Limit reached! Spin wheel will be disabled.</p>
+                          )}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setSpinConfig({ ...spinConfig, current_spin_orders: 0, display_spin_orders: 0 })}
+                        >
+                          Reset Order Counts
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <Button onClick={saveSpinConfig} disabled={spinSaving}>

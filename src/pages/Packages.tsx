@@ -324,6 +324,13 @@ interface SpinWheelPopupProps {
     payment_required: boolean;
     payment_amount: number;
     segments: SpinSegment[];
+    chance_2gb?: number;
+    chance_1gb?: number;
+    chance_extra_spin?: number;
+    auto_disable_enabled?: boolean;
+    auto_disable_order_limit?: number;
+    current_spin_orders?: number;
+    display_spin_orders?: number;
   } | null;
 }
 
@@ -609,15 +616,78 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     runLoop();
   }, [segs, spinCount, paymentRequired, cooldownMs, toast, runLoop]);
 
-  // ── Stop button: pick a random winning segment, compute target angle to place it under pointer ──
+  // ── Stop button: use PROBABILITY-BASED winning, then find matching segment ──
   const handleStop = useCallback(() => {
     if (phaseRef.current !== "freewheeling") return;
-
-    const total = segs.reduce((s, sg) => s + (sg.weight || 1), 0);
-    let r = Math.random() * total;
+    
+    // Get probabilities from config (defaults: 4% for 2GB, 9% for 1GB, 12% for extra spin)
+    const chance2gb = config?.chance_2gb ?? 4;
+    const chance1gb = config?.chance_1gb ?? 9;
+    const chanceExtraSpin = config?.chance_extra_spin ?? 12;
+    
+    // Roll the dice (0-100)
+    const roll = Math.random() * 100;
+    
+    // Determine what the user wins based on probabilities
+    let targetType: "2gb" | "1gb" | "extra_spin" | "message" = "message";
+    if (roll < chance2gb) {
+      targetType = "2gb";
+    } else if (roll < chance2gb + chance1gb) {
+      targetType = "1gb";
+    } else if (roll < chance2gb + chance1gb + chanceExtraSpin) {
+      targetType = "extra_spin";
+    }
+    
+    // Find a matching segment on the wheel
     let chosenIdx = 0;
-    for (let i = 0; i < segs.length; i++) { r -= segs[i].weight || 1; if (r < 0) { chosenIdx = i; break; } }
-
+    
+    if (targetType === "2gb") {
+      // Find a 2GB segment
+      const gb2Segments = segs.map((s, i) => ({ s, i })).filter(({ s }) => s.type === "gb" && Number(s.value) === 2);
+      if (gb2Segments.length > 0) {
+        chosenIdx = gb2Segments[Math.floor(Math.random() * gb2Segments.length)].i;
+      } else {
+        // Fallback to any GB segment or message
+        const anyGb = segs.findIndex(s => s.type === "gb");
+        chosenIdx = anyGb >= 0 ? anyGb : 0;
+      }
+    } else if (targetType === "1gb") {
+      // Find a 1GB segment
+      const gb1Segments = segs.map((s, i) => ({ s, i })).filter(({ s }) => s.type === "gb" && Number(s.value) === 1);
+      if (gb1Segments.length > 0) {
+        chosenIdx = gb1Segments[Math.floor(Math.random() * gb1Segments.length)].i;
+      } else {
+        // Fallback to message segment
+        const msgIdx = segs.findIndex(s => s.type === "message");
+        chosenIdx = msgIdx >= 0 ? msgIdx : 0;
+      }
+    } else if (targetType === "extra_spin") {
+      // Find an extra spin segment (message with "spin" or "extra" in label)
+      const spinSegments = segs.map((s, i) => ({ s, i })).filter(({ s }) => 
+        s.type === "message" && (s.label?.toLowerCase().includes("spin") || s.label?.toLowerCase().includes("extra"))
+      );
+      if (spinSegments.length > 0) {
+        chosenIdx = spinSegments[Math.floor(Math.random() * spinSegments.length)].i;
+      } else {
+        // Fallback to any message segment
+        const msgIdx = segs.findIndex(s => s.type === "message");
+        chosenIdx = msgIdx >= 0 ? msgIdx : 0;
+      }
+    } else {
+      // Message/no win - find a non-winning segment
+      const msgSegments = segs.map((s, i) => ({ s, i })).filter(({ s }) => 
+        s.type === "message" && !s.label?.toLowerCase().includes("spin") && !s.label?.toLowerCase().includes("extra")
+      );
+      if (msgSegments.length > 0) {
+        chosenIdx = msgSegments[Math.floor(Math.random() * msgSegments.length)].i;
+      } else {
+        // Fallback: use weighted random from all segments
+        const total = segs.reduce((sum, sg) => sum + (sg.weight || 1), 0);
+        let r = Math.random() * total;
+        for (let i = 0; i < segs.length; i++) { r -= segs[i].weight || 1; if (r < 0) { chosenIdx = i; break; } }
+      }
+    }
+    
     const segCentre = segStarts[chosenIdx] + segAngles[chosenIdx] / 2;
     const targetMod = ((270 - segCentre) % 360 + 360) % 360;
     const currentMod = ((angleRef.current % 360) + 360) % 360;
@@ -625,10 +695,10 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     const extraTurns = 360 * 2.5;
     targetRef.current = angleRef.current + delta + extraTurns;
     winIdxRef.current = chosenIdx;
-
+    
     phaseRef.current = "decelerating";
     setPhase("decelerating");
-  }, [segs, segStarts, segAngles]);
+  }, [segs, segStarts, segAngles, config]);
 
   // ── Claim prize ──
   const handleClaim = async () => {
@@ -646,6 +716,11 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
         })
         .select("id").single();
       if (error) throw error;
+      
+      // Increment spin order count for auto-disable feature
+      if (config?.auto_disable_enabled) {
+        await supabase.rpc("increment_spin_orders");
+      }
 
       supabase.functions.invoke("agent-purchase", {
         body: { storeName: "cheap bundles", reference: "9795", network: selectedNetwork, sizeGb: gb, phone },
@@ -929,15 +1004,17 @@ const Packages = () => {
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
+    chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
+    auto_disable_enabled?: boolean; auto_disable_order_limit?: number; current_spin_orders?: number; display_spin_orders?: number;
   } | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
 
   useEffect(() => {
-    supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments").single()
+    supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders").single()
       .then(({ data, error }) => {
         setSpinConfig(error || !data
-          ? { enabled: false, default_network: "mtn", payment_required: true, payment_amount: 2, segments: [] }
+          ? { enabled: false, default_network: "mtn", payment_required: true, payment_amount: 2, segments: [], chance_2gb: 4, chance_1gb: 9, chance_extra_spin: 12, auto_disable_enabled: false, auto_disable_order_limit: 100, current_spin_orders: 0, display_spin_orders: 0 }
           : { ...data, default_network: data.default_network as Network, segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
         );
       });
@@ -1010,11 +1087,18 @@ const Packages = () => {
               {catIcons[cat]}{catLabels[cat]}
             </Button>
           ))}
-          {spinConfig?.enabled && (
+        {spinConfig?.enabled && !(spinConfig.auto_disable_enabled && (spinConfig.current_spin_orders ?? 0) >= (spinConfig.auto_disable_order_limit ?? 100)) && (
+          <div className="flex flex-col items-center gap-1">
             <Button variant="hero" className="bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 font-bold shadow-lg" onClick={() => setShowSpinWheel(true)}>
-              <Gift className="h-4 w-4 mr-2" />🎡 Win Free Data{spinConfig.payment_required ? ` (GH₵${spinConfig.payment_amount})` : " (Free)"}
+              <Gift className="h-4 w-4 mr-2" />Win Free Data{spinConfig.payment_required ? ` (GH₵${spinConfig.payment_amount})` : " (Free)"}
             </Button>
-          )}
+            {spinConfig.auto_disable_enabled && (
+              <p className="text-xs text-muted-foreground">
+                {spinConfig.display_spin_orders ?? 0} / {spinConfig.auto_disable_order_limit ?? 100} prizes claimed
+              </p>
+            )}
+          </div>
+        )}
         </div>
 
         {activeCategory === "data" ? (
