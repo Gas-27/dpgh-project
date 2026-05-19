@@ -1183,7 +1183,6 @@ const AgentDashboard = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>n ID.</p></div></CardContent></Card>
           </TabsContent>
 
           {/* ============================= APPEARANCE ============================= */}
