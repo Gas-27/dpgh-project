@@ -53,6 +53,8 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
   const [selectedComplaints, setSelectedComplaints] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
   const { toast } = useToast();
 
   useEffect(() => {
@@ -221,6 +223,16 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
           </TabsList>
 
           <TabsContent value={complaintType} className="space-y-4 mt-4">
+          {isAgent && (
+            <Card className="border-yellow-500/30 bg-yellow-500/5">
+              <CardContent className="py-3 px-4">
+                <p className="text-sm text-yellow-400">
+                  <AlertCircle className="h-4 w-4 inline mr-2" />
+                  All complaints from your storefront and subagent stores are automatically forwarded to admin for resolution.
+                </p>
+              </CardContent>
+            </Card>
+          )}
           <div className="flex gap-2 items-center">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -238,44 +250,53 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
           ) : filteredComplaints.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">No complaints found</CardContent></Card>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="mb-4 flex gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  disabled={selectedComplaints.size === 0 || bulkUpdating}
-                  onClick={() => bulkUpdateStatus("resolved")}
-                >
-                  Resolve Selected ({selectedComplaints.size})
-                </Button>
-                {selectedComplaints.size > 0 && (
-                  <Button size="sm" variant="ghost" onClick={() => { setSelectedComplaints(new Set()); setSelectAll(false); }}>
-                    Clear Selection
-                  </Button>
-                )}
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <input
-                        type="checkbox"
-                        checked={selectAll}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        className="rounded border"
-                      />
-                    </TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Store</TableHead>
-                    <TableHead>Order Info</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredComplaints.map((complaint) => (
+            (() => {
+              const paginated = filteredComplaints.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+              const totalPages = Math.ceil(filteredComplaints.length / PAGE_SIZE);
+              
+              return (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Showing {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, filteredComplaints.length)} of {filteredComplaints.length} complaints
+                  </p>
+                  <div className="overflow-x-auto">
+                    <div className="mb-4 flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        disabled={selectedComplaints.size === 0 || bulkUpdating}
+                        onClick={() => bulkUpdateStatus("resolved")}
+                      >
+                        Resolve Selected ({selectedComplaints.size})
+                      </Button>
+                      {selectedComplaints.size > 0 && (
+                        <Button size="sm" variant="ghost" onClick={() => { setSelectedComplaints(new Set()); setSelectAll(false); }}>
+                          Clear Selection
+                        </Button>
+                      )}
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">
+                            <input
+                              type="checkbox"
+                              checked={selectAll}
+                              onChange={(e) => handleSelectAll(e.target.checked)}
+                              className="rounded border"
+                            />
+                          </TableHead>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Customer</TableHead>
+                          <TableHead>Store</TableHead>
+                          <TableHead>Order Info</TableHead>
+                          <TableHead>Date & Time</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginated.map((complaint) => (
                     <TableRow key={complaint.id}>
                       <TableCell className="w-12">
                         <input
@@ -296,7 +317,14 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
                       </TableCell>
                       <TableCell className="text-sm">{complaint.customer_number}</TableCell>
                       <TableCell className="text-sm">
-                        {complaint.agent_stores?.store_name || complaint.subagent_stores?.store_name || "N/A"}
+                        <div>
+                          <p className="font-medium">{complaint.agent_stores?.store_name || complaint.subagent_stores?.store_name || "N/A"}</p>
+                          {complaint.subagent_stores && (
+                            <p className="text-xs text-muted-foreground">
+                              Subagent: {complaint.subagent_stores.whatsapp_number}
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs">
                         {complaint.orders && (
@@ -304,11 +332,12 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
                             <p>{complaint.orders.network} - {complaint.orders.size_gb}GB</p>
                             <p>GH₵{complaint.orders.amount}</p>
                             <p className="text-muted-foreground">{complaint.orders.fulfillment_status}</p>
+                            <p className="text-muted-foreground text-xs">Order: {new Date(complaint.orders.created_at).toLocaleString()}</p>
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm">
-                        {new Date(complaint.created_at).toLocaleDateString()}
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {new Date(complaint.created_at).toLocaleString()}
                       </TableCell>
                       <TableCell>{getStatusBadge(complaint.status)}</TableCell>
                       <TableCell>
@@ -335,9 +364,19 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
                       </TableCell>
                     </TableRow>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-4">
+                      <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
+                      <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+                      <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+                    </div>
+                  )}
+                </>
+              );
+            })()
           )}
         </TabsContent>
         </Tabs>

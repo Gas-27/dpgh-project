@@ -789,34 +789,53 @@ const AdminDashboard = () => {
                 </div>
               )}
               <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by phone number..." value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="pl-10" /></div>
-              <Card className="border-border">
-                <Table>
-                  <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {filteredOrders.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
-                      filteredOrders.map((order) => (
-                        <TableRow key={order.id}>
-                          <TableCell className="text-sm text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
-                          <TableCell className="font-medium">{order.customer_number}</TableCell>
-                          <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                          <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
-                          <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
-                          <TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell>
-                          <TableCell><Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge></TableCell>
-                          <TableCell><Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge></TableCell>
-                          <TableCell>
-                            {order.fulfillment_status !== "completed" && (
-                              <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
-                                {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    }
-                  </TableBody>
-                </Table>
-              </Card>
+              {(() => {
+                const paginated = filteredOrders.slice((orderPage - 1) * PAGE_SIZE, orderPage * PAGE_SIZE);
+                const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
+                
+                return (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Showing {filteredOrders.length === 0 ? 0 : (orderPage - 1) * PAGE_SIZE + 1} - {Math.min(orderPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length} orders
+                    </p>
+                    <Card className="border-border">
+                      <Table>
+                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                          {paginated.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
+                            paginated.map((order) => (
+                              <TableRow key={order.id}>
+                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
+                                <TableCell className="font-medium">{order.customer_number}</TableCell>
+                                <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                                <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                                <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
+                                <TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell>
+                                <TableCell><Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge></TableCell>
+                                <TableCell><Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge></TableCell>
+                                <TableCell>
+                                  {order.fulfillment_status !== "completed" && (
+                                    <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
+                                      {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          }
+                        </TableBody>
+                      </Table>
+                    </Card>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-4">
+                        <Button variant="outline" size="sm" disabled={orderPage === 1} onClick={() => setOrderPage(p => p - 1)}>Previous</Button>
+                        <span className="text-sm text-muted-foreground">Page {orderPage} of {totalPages}</span>
+                        <Button variant="outline" size="sm" disabled={orderPage === totalPages} onClick={() => setOrderPage(p => p + 1)}>Next</Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </TabsContent>
           )}
 
@@ -824,37 +843,56 @@ const AdminDashboard = () => {
           {canSee("agents") && (
             <TabsContent value="agents" className="space-y-4">
               <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by store name..." value={agentSearchTerm} onChange={(e) => setAgentSearchTerm(e.target.value)} className="pl-10" /></div>
-              {filteredAgents.length === 0 ? <p className="text-muted-foreground text-center py-8">No agents match your search.</p> :
-                filteredAgents.map((agent) => (
-                  <Card key={agent.id} className="border-border">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between flex-wrap gap-4">
-                        <div className="space-y-1">
-                          <h3 className="font-display font-bold text-lg">{agent.store_name}</h3>
-                          <p className="text-sm text-muted-foreground">Ref: <span className="font-bold text-primary">{agent.topup_reference}</span></p>
-                          <p className="text-sm text-muted-foreground">WhatsApp: {agent.whatsapp_number}</p>
-                          <p className="text-sm text-muted-foreground">Support: {agent.support_number}</p>
-                          <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} • {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
-                          <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(agent.wallet_balance).toFixed(2)}</span></p>
-                          {agent.approved && <Link to={`/store/${storeSlug(agent.store_name)}`} className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</Link>}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2">
-                            {agent.approved ? (
-                              <><Badge className="bg-green-600/20 text-green-400 border-green-600/30">Approved</Badge><Button variant="outline" size="sm" onClick={() => toggleApproval(agent.id, false)}><X className="h-4 w-4 mr-1" /> Suspend</Button></>
-                            ) : (
-                              <><Badge variant="secondary">Pending</Badge><Button variant="hero" size="sm" onClick={() => toggleApproval(agent.id, true)}><Check className="h-4 w-4 mr-1" /> Approve</Button></>
-                            )}
+              {(() => {
+                const paginated = filteredAgents.slice((agentPage - 1) * PAGE_SIZE, agentPage * PAGE_SIZE);
+                const totalPages = Math.ceil(filteredAgents.length / PAGE_SIZE);
+                
+                return filteredAgents.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No agents match your search.</p>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Showing {(agentPage - 1) * PAGE_SIZE + 1} - {Math.min(agentPage * PAGE_SIZE, filteredAgents.length)} of {filteredAgents.length} agents
+                    </p>
+                    {paginated.map((agent) => (
+                      <Card key={agent.id} className="border-border">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between flex-wrap gap-4">
+                            <div className="space-y-1">
+                              <h3 className="font-display font-bold text-lg">{agent.store_name}</h3>
+                              <p className="text-sm text-muted-foreground">Ref: <span className="font-bold text-primary">{agent.topup_reference}</span></p>
+                              <p className="text-sm text-muted-foreground">WhatsApp: {agent.whatsapp_number}</p>
+                              <p className="text-sm text-muted-foreground">Support: {agent.support_number}</p>
+                              <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} • {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
+                              <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(agent.wallet_balance).toFixed(2)}</span></p>
+                              {agent.approved && <Link to={`/store/${storeSlug(agent.store_name)}`} className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</Link>}
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-2">
+                                {agent.approved ? (
+                                  <><Badge className="bg-green-600/20 text-green-400 border-green-600/30">Approved</Badge><Button variant="outline" size="sm" onClick={() => toggleApproval(agent.id, false)}><X className="h-4 w-4 mr-1" /> Suspend</Button></>
+                                ) : (
+                                  <><Badge variant="secondary">Pending</Badge><Button variant="hero" size="sm" onClick={() => toggleApproval(agent.id, true)}><Check className="h-4 w-4 mr-1" /> Approve</Button></>
+                                )}
+                              </div>
+                              <Button variant="outline" size="sm" onClick={() => openAgentPricingDialog(agent)}>
+                                <Wallet className="h-4 w-4 mr-1" /> Edit Base Prices
+                              </Button>
+                            </div>
                           </div>
-                          <Button variant="outline" size="sm" onClick={() => openAgentPricingDialog(agent)}>
-                            <Wallet className="h-4 w-4 mr-1" /> Edit Base Prices
-                          </Button>
-                        </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-4">
+                        <Button variant="outline" size="sm" disabled={agentPage === 1} onClick={() => setAgentPage(p => p - 1)}>Previous</Button>
+                        <span className="text-sm text-muted-foreground">Page {agentPage} of {totalPages}</span>
+                        <Button variant="outline" size="sm" disabled={agentPage === totalPages} onClick={() => setAgentPage(p => p + 1)}>Next</Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))
-              }
+                    )}
+                  </>
+                );
+              })()}
             </TabsContent>
           )}
 
@@ -1002,36 +1040,63 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
               <Card className="border-border">
-                <CardHeader><CardTitle className="font-display text-lg">Top‑up History</CardTitle></CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="font-display text-lg">Top-up History</CardTitle>
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search by store name..." value={topupSearchTerm} onChange={(e) => setTopupSearchTerm(e.target.value)} className="pl-10" />
+                  </div>
+                </CardHeader>
                 <CardContent>
-                  {topupHistory.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">No top‑ups recorded yet.</p>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Store</TableHead>
-                          <TableHead>Reference</TableHead>
-                          <TableHead>MoMo Name</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Store Balance</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {topupHistory.map((t) => (
-                          <TableRow key={t.id}>
-                            <TableCell className="text-sm">{new Date(t.created_at).toLocaleString()}</TableCell>
-                            <TableCell className="font-medium">{t.agent_stores?.store_name ?? "—"}</TableCell>
-                            <TableCell className="text-primary">{t.agent_stores?.topup_reference ?? "—"}</TableCell>
-                            <TableCell>{t.agent_stores?.momo_name ?? "—"}</TableCell>
-                            <TableCell>GH₵ {Number(t.amount).toFixed(2)}</TableCell>
-                            <TableCell>GH₵ {t.agent_stores?.wallet_balance?.toFixed(2) ?? "—"}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
+                  {(() => {
+                    const filteredTopups = topupHistory.filter(t => 
+                      t.agent_stores?.store_name?.toLowerCase().includes(topupSearchTerm.toLowerCase()) ||
+                      t.agent_stores?.topup_reference?.includes(topupSearchTerm)
+                    );
+                    const paginated = filteredTopups.slice((topupPage - 1) * PAGE_SIZE, topupPage * PAGE_SIZE);
+                    const totalPages = Math.ceil(filteredTopups.length / PAGE_SIZE);
+                    
+                    return filteredTopups.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No top-ups found.</p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Showing {(topupPage - 1) * PAGE_SIZE + 1} - {Math.min(topupPage * PAGE_SIZE, filteredTopups.length)} of {filteredTopups.length} top-ups
+                        </p>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date & Time</TableHead>
+                              <TableHead>Store</TableHead>
+                              <TableHead>Reference</TableHead>
+                              <TableHead>MoMo Name</TableHead>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Store Balance</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginated.map((t) => (
+                              <TableRow key={t.id}>
+                                <TableCell className="text-sm whitespace-nowrap">{new Date(t.created_at).toLocaleString()}</TableCell>
+                                <TableCell className="font-medium">{t.agent_stores?.store_name ?? "—"}</TableCell>
+                                <TableCell className="text-primary">{t.agent_stores?.topup_reference ?? "—"}</TableCell>
+                                <TableCell>{t.agent_stores?.momo_name ?? "—"}</TableCell>
+                                <TableCell>GH₵ {Number(t.amount).toFixed(2)}</TableCell>
+                                <TableCell>GH₵ {t.agent_stores?.wallet_balance?.toFixed(2) ?? "—"}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-center gap-2 pt-4">
+                            <Button variant="outline" size="sm" disabled={topupPage === 1} onClick={() => setTopupPage(p => p - 1)}>Previous</Button>
+                            <span className="text-sm text-muted-foreground">Page {topupPage} of {totalPages}</span>
+                            <Button variant="outline" size="sm" disabled={topupPage === totalPages} onClick={() => setTopupPage(p => p + 1)}>Next</Button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1046,37 +1111,56 @@ const AdminDashboard = () => {
                 </div>
               )}
               <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by agent store name..." value={withdrawalSearchTerm} onChange={(e) => setWithdrawalSearchTerm(e.target.value)} className="pl-10" /></div>
-              <Card className="border-border">
-                <Table>
-                  <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Agent</TableHead><TableHead>Amount</TableHead><TableHead>Wallet Balance</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {filteredWithdrawals.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
-                      filteredWithdrawals.map((w) => {
-                        const agent = agents.find((a) => a.id === w.agent_store_id);
-                        return (
-                          <TableRow key={w.id}>
-                            <TableCell className="text-sm text-muted-foreground">{new Date(w.created_at).toLocaleString()}</TableCell>
-                            <TableCell className="font-medium">{agent?.store_name ?? "—"}</TableCell>
-                            <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
-                            <TableCell className="font-bold text-green-400">GH₵ {Number(agent?.wallet_balance ?? 0).toFixed(2)}</TableCell>
-                            <TableCell>{agent?.momo_name ?? "—"}</TableCell>
-                            <TableCell className="font-mono">{agent?.momo_number ?? "—"}</TableCell>
-                            <TableCell className="uppercase text-sm">{agent?.momo_network ?? "—"}</TableCell>
-                            <TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{w.status}</Badge></TableCell>
-                            <TableCell>
-                              {w.status === "pending" && (
-                                <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount))} disabled={processingWithdrawals.has(w.id)}>
-                                  {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    }
-                  </TableBody>
-                </Table>
-              </Card>
+              {(() => {
+                const paginated = filteredWithdrawals.slice((withdrawalPage - 1) * PAGE_SIZE, withdrawalPage * PAGE_SIZE);
+                const totalPages = Math.ceil(filteredWithdrawals.length / PAGE_SIZE);
+                
+                return (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Showing {filteredWithdrawals.length === 0 ? 0 : (withdrawalPage - 1) * PAGE_SIZE + 1} - {Math.min(withdrawalPage * PAGE_SIZE, filteredWithdrawals.length)} of {filteredWithdrawals.length} withdrawals
+                    </p>
+                    <Card className="border-border">
+                      <Table>
+                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Agent</TableHead><TableHead>Amount</TableHead><TableHead>Wallet Balance</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                          {paginated.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
+                            paginated.map((w) => {
+                              const agent = agents.find((a) => a.id === w.agent_store_id);
+                              return (
+                                <TableRow key={w.id}>
+                                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{new Date(w.created_at).toLocaleString()}</TableCell>
+                                  <TableCell className="font-medium">{agent?.store_name ?? "—"}</TableCell>
+                                  <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
+                                  <TableCell className="font-bold text-green-400">GH₵ {Number(agent?.wallet_balance ?? 0).toFixed(2)}</TableCell>
+                                  <TableCell>{agent?.momo_name ?? "—"}</TableCell>
+                                  <TableCell className="font-mono">{agent?.momo_number ?? "—"}</TableCell>
+                                  <TableCell className="uppercase text-sm">{agent?.momo_network ?? "—"}</TableCell>
+                                  <TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{w.status}</Badge></TableCell>
+                                  <TableCell>
+                                    {w.status === "pending" && (
+                                      <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount))} disabled={processingWithdrawals.has(w.id)}>
+                                        {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
+                          }
+                        </TableBody>
+                      </Table>
+                    </Card>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-4">
+                        <Button variant="outline" size="sm" disabled={withdrawalPage === 1} onClick={() => setWithdrawalPage(p => p - 1)}>Previous</Button>
+                        <span className="text-sm text-muted-foreground">Page {withdrawalPage} of {totalPages}</span>
+                        <Button variant="outline" size="sm" disabled={withdrawalPage === totalPages} onClick={() => setWithdrawalPage(p => p + 1)}>Next</Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </TabsContent>
           )}
 
@@ -1084,45 +1168,66 @@ const AdminDashboard = () => {
           {canSee("users") && (
             <TabsContent value="users" className="space-y-4">
               <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name..." value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} className="pl-10" /></div>
-              <Card className="border-border">
-                <Table>
-                  <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Role</TableHead><TableHead>Joined</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {filteredUsers.map((u) => (
-                      <TableRow key={u.id}>
-                        <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{u.phone || "—"}</TableCell>
-                        <TableCell><Badge variant={u.role === "admin" ? "default" : u.role === "agent" ? "secondary" : "outline"}>{u.role}</Badge></TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
-                        <TableCell className="space-x-2">
-                          {u.role !== "admin" ? (
-                            <Button variant="outline" size="sm" onClick={() => {
-                              setSelectedUserForAdmin(u);
-                              setNewAdminSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints"]);
-                              setMakeAdminDialogOpen(true);
-                            }}>
-                              <ShieldAlert className="h-4 w-4 mr-1" /> Make Admin
-                            </Button>
-                          ) : (
-                            <>
-                              <Button variant="outline" size="sm" onClick={() => {
-                                setSelectedUserForPermissions(u);
-                                fetchUserPermissions(u.id);
-                                setPermissionsDialogOpen(true);
-                              }}>
-                                <ShieldAlert className="h-4 w-4 mr-1" /> Set Permissions
-                              </Button>
-                              <Button variant="destructive" size="sm" onClick={() => removeAdmin(u)}>
-                                <Trash2 className="h-4 w-4 mr-1" /> Remove Admin
-                              </Button>
-                            </>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Card>
+              {(() => {
+                const paginated = filteredUsers.slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE);
+                const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
+                
+                return (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Showing {filteredUsers.length === 0 ? 0 : (userPage - 1) * PAGE_SIZE + 1} - {Math.min(userPage * PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length} users
+                    </p>
+                    <Card className="border-border">
+                      <Table>
+                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Role</TableHead><TableHead>Joined</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                          {paginated.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No users match your search.</TableCell></TableRow> :
+                            paginated.map((u) => (
+                              <TableRow key={u.id}>
+                                <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
+                                <TableCell className="text-muted-foreground">{u.phone || "—"}</TableCell>
+                                <TableCell><Badge variant={u.role === "admin" ? "default" : u.role === "agent" ? "secondary" : "outline"}>{u.role}</Badge></TableCell>
+                                <TableCell className="text-muted-foreground text-sm">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
+                                <TableCell className="space-x-2">
+                                  {u.role !== "admin" ? (
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                      setSelectedUserForAdmin(u);
+                                      setNewAdminSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints"]);
+                                      setMakeAdminDialogOpen(true);
+                                    }}>
+                                      <ShieldAlert className="h-4 w-4 mr-1" /> Make Admin
+                                    </Button>
+                                  ) : (
+                                    <>
+                                      <Button variant="outline" size="sm" onClick={() => {
+                                        setSelectedUserForPermissions(u);
+                                        fetchUserPermissions(u.id);
+                                        setPermissionsDialogOpen(true);
+                                      }}>
+                                        <ShieldAlert className="h-4 w-4 mr-1" /> Set Permissions
+                                      </Button>
+                                      <Button variant="destructive" size="sm" onClick={() => removeAdmin(u)}>
+                                        <Trash2 className="h-4 w-4 mr-1" /> Remove Admin
+                                      </Button>
+                                    </>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          }
+                        </TableBody>
+                      </Table>
+                    </Card>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-4">
+                        <Button variant="outline" size="sm" disabled={userPage === 1} onClick={() => setUserPage(p => p - 1)}>Previous</Button>
+                        <span className="text-sm text-muted-foreground">Page {userPage} of {totalPages}</span>
+                        <Button variant="outline" size="sm" disabled={userPage === totalPages} onClick={() => setUserPage(p => p + 1)}>Next</Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </TabsContent>
           )}
 

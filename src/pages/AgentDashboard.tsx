@@ -172,6 +172,33 @@ Steps:
 
 A live preview shows exactly how your store will look. Click Save to apply changes.` },
   {
+    icon: "👥", title: "Subagents", content: `Manage people who sell under your store.
+
+• Subagents are sellers who have their own store but operate under you.
+• When a subagent makes a sale, you earn a commission from their profit.
+• You can view all your subagents, their store names, and contact info.
+• Enable/disable subagent registration from Settings.
+
+Subagent Profit Split:
+• When a customer buys from a subagent store:
+  - The subagent earns their profit (Selling Price - Base Cost)
+  - You earn a commission percentage from that profit
+  - Commission rate is set in your settings (default 10%)` },
+  {
+    icon: "💰", title: "Subagent Prices", content: `Set the base prices your subagents will use.
+
+• Base Price for Subagents – The minimum price your subagents can sell at.
+• This is different from your storefront selling price.
+• Subagents can set their own selling prices above this base.
+• Their profit = Their Selling Price - Your Base Price for them.
+
+Example:
+• Your cost (agent price): GH₵ 4.00
+• Base price for subagents: GH₵ 4.30
+• Subagent sells at: GH₵ 4.50
+• Subagent profit: GH₵ 0.20
+• Your commission (10%): GH₵ 0.02` },
+  {
     icon: "🔔", title: "Notifications", content: `Send pop-up announcements that appear on your public store page.
 
 Examples:
@@ -197,6 +224,19 @@ Managing: Toggle Active/Inactive to show or hide without deleting. Bin icon to d
 • Top-Up Reference – your unique code for wallet top-ups (read-only).
 
 Note: The Support Number shown here is what appears in the contact footer of your generated flyer.` },
+  {
+    icon: "📢", title: "Complaints", content: `View and manage customer complaints from your stores.
+
+The Complaints section has two tabs:
+• Storefront Complaints – Issues reported from your main storefront.
+• Agent Store Complaints – Issues reported from your subagent stores.
+
+For subagent store complaints, you'll see:
+• The subagent store name
+• The subagent's contact number
+• Order details and customer info
+
+Important: All complaints sent to your storefront and subagent stores are automatically forwarded to admin for resolution. You can track their status here.` },
   {
     icon: "📜", title: "Rules", content: `Before making an order, make sure you are not owing airtime, MoMo, or bundles.
 You cannot make an order for the same number when the first order has not been delivered (either from our site or other sites) – this can override your previous order.
@@ -808,8 +848,8 @@ const AgentDashboard = () => {
               <CardContent>
                 {filteredOrders.length === 0 ? <p className="text-muted-foreground text-center py-4">No orders found.</p> : (
                   <>
-                    <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Number</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Sell Price</TableHead><TableHead>Base Cost</TableHead><TableHead>Profit</TableHead><TableHead>Method</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                      <TableBody>{filteredOrders.map(order => { const pkg = packages.find(p => p.id === order.package_id); const cost = pkg?.agent_price || 0; const profit = Number(order.amount) - cost; return (<TableRow key={order.id}><TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{order.size_gb}GB</TableCell><TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GH₵ {cost.toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GH₵ {profit.toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
+                    <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Number</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Sell Price</TableHead><TableHead>Base Cost</TableHead><TableHead>Profit</TableHead><TableHead>Method</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                      <TableBody>{filteredOrders.map(order => { const pkg = packages.find(p => p.id === order.package_id); const cost = pkg?.agent_price || 0; const profit = Number(order.amount) - cost; return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{order.size_gb}GB</TableCell><TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GH₵ {cost.toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GH₵ {profit.toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
                     {hasMoreOrders && !orderSearch && <div className="flex justify-center mt-4"><Button variant="outline" onClick={loadMoreOrders} disabled={loadingMoreOrders} className="gap-2">{loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{loadingMoreOrders ? "Loading..." : `Load More (${ordersTotal - orders.length} remaining)`}</Button></div>}
                   </>
                 )}

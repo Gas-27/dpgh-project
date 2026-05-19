@@ -589,6 +589,11 @@ const SubagentDashboard = () => {
   ];
 
   const totalRevenue = orders.reduce((sum, order) => sum + (order.status === "completed" ? order.amount : 0), 0);
+  const totalProfit = orders.reduce((sum, order) => {
+    if (order.status !== "completed") return sum;
+    const baseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+    return sum + (order.amount - baseCost);
+  }, 0);
   const pendingOrders = orders.filter(o => o.status !== "completed").length;
   const totalOrders = orders.length;
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
@@ -724,7 +729,7 @@ const SubagentDashboard = () => {
             </Card>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
                   <p className="text-muted-foreground text-sm">Store Status</p>
@@ -742,13 +747,19 @@ const SubagentDashboard = () => {
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
                   <p className="text-muted-foreground text-sm">Pending</p>
-                  <p className="font-display text-2xl font-bold mt-1 text-primary">{pendingOrders}</p>
+                  <p className="font-display text-2xl font-bold mt-1 text-primary">0</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
                   <p className="text-muted-foreground text-sm">Revenue</p>
-                  <p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵ {totalRevenue.toFixed(2)}</p>
+                  <p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵{totalRevenue.toFixed(2)}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground text-sm">Total Profit</p>
+                  <p className="font-display text-2xl font-bold mt-1 text-yellow-400">GH₵{totalProfit.toFixed(2)}</p>
                 </CardContent>
               </Card>
             </div>
@@ -797,29 +808,39 @@ const SubagentDashboard = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Date</TableHead>
+                          <TableHead>Date & Time</TableHead>
                           <TableHead>Number</TableHead>
                           <TableHead>Network</TableHead>
                           <TableHead>Size</TableHead>
-                          <TableHead>Amount</TableHead>
+                          <TableHead>Selling Price</TableHead>
+                          <TableHead>Base Cost</TableHead>
+                          <TableHead>Profit</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredOrders.slice(0, 10).map(order => (
-                          <TableRow key={order.id}>
-                            <TableCell className="text-sm">{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                            <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
-                            <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                            <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
-                            <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
-                            <TableCell>
-                              <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
-                                {order.status === "paid" ? "completed" : order.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {filteredOrders.slice(0, 10).map(order => {
+                          const baseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+                          const profit = order.amount - baseCost;
+                          return (
+                            <TableRow key={order.id}>
+                              <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
+                              <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                              <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                              <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                              <TableCell className="font-semibold">GH₵{order.amount.toFixed(2)}</TableCell>
+                              <TableCell className="text-muted-foreground">GH₵{baseCost.toFixed(2)}</TableCell>
+                              <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
+                                GH₵{profit.toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
+                                  {order.status === "paid" ? "completed" : order.status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
