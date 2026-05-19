@@ -564,6 +564,8 @@ const AgentStorefront = () => {
     const fetchStore = async () => {
       if (!storeName) { setNotFound(true); setLoading(false); return; }
       const normalized = storeName.toLowerCase().trim();
+      // Normalize for comparison - remove ALL special characters for matching
+      const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
       
       // Check if we're on agentsstore.shop domain (subagent domain)
       const isSubagentDomain = window.location.hostname === "agentsstore.shop" || 
@@ -575,9 +577,14 @@ const AgentStorefront = () => {
       
       let matched = null;
       if (stores && stores.length > 0) {
+        // Try exact slug match first
         matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
+        // Try exact store name match
         if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
-        if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
+        // Try normalized comparison (removes ALL special chars)
+        if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
+        // Try matching without hyphens
+        if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
       }
       
       // If on subagent domain and no agent store found, try subagent_stores
@@ -590,7 +597,8 @@ const AgentStorefront = () => {
         if (subagentStores && subagentStores.length > 0) {
           matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name) === normalized);
           if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
-          if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
+          if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
+          if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
           
           if (matched) {
             // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices

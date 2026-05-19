@@ -406,6 +406,8 @@ export function SubagentStorefront() {
       }
 
       const normalized = urlStoreName.toLowerCase().trim();
+      // Normalize for comparison - remove ALL special characters for matching
+      const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
 
       const { data: stores, error } = await supabase
         .from("subagent_stores")
@@ -423,11 +425,12 @@ export function SubagentStorefront() {
         return;
       }
 
-      // Find matching store - try multiple strategies
+      // Find matching store - try multiple strategies with more robust matching
       let matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalized);
       if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
-      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/\s+/g, "-") === normalized);
-      if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
+      // Normalized clean comparison - removes ALL special characters
+      if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
+      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
       // Also try matching by ID as fallback
       if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
 

@@ -19,6 +19,14 @@ export const DOMAINS = {
       .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
   },
   
+  // Normalize a URL slug or store name for comparison (removes ALL special chars including hyphens)
+  normalizeForComparison: (name: string): string => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]/g, "");       // Remove ALL non-alphanumeric characters
+  },
+  
   // Get full agent store URL (subdomain)
   getAgentStoreUrl: (storeName: string) => {
     const slug = DOMAINS.sanitizeStoreName(storeName);

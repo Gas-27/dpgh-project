@@ -307,7 +307,7 @@ const AgentDashboard = () => {
 
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
-  const effectiveBalance = Math.max(0, Number(store?.wallet_balance ?? 0) - pendingWithdrawalAmount);
+  const effectiveBalance = Math.max(0, profitStats.availableForWithdrawal - pendingWithdrawalAmount);
 
   // ─── flyer scale ──────────────────────────────────────────────────────────
   const recalcScale = useCallback(() => {
@@ -322,30 +322,72 @@ const AgentDashboard = () => {
     return () => { clearTimeout(t); window.removeEventListener("resize", recalcScale); };
   }, [activeTab, recalcScale]);
 
-  // ─── total profit from ALL DB orders ────────────────────────────────────
+  // ─── total profit from ALL DB orders (including subagent orders) ────────────────────────────────────
   const fetchTotalProfit = async () => {
     if (!store?.id) return;
-    const { data, error } = await supabase
+    
+    // Fetch direct orders (orders from agent's storefront)
+    const { data: directOrders, error: directError } = await supabase
       .from("orders")
-      .select("amount, package_id")
+      .select("amount, package_id, subagent_store_id")
       .eq("agent_store_id", store.id)
       .in("status", ["paid", "completed"]);
-    if (error) {
-      console.error("Error fetching profit sum:", error);
+    
+    if (directError) {
+      console.error("Error fetching profit sum:", directError);
       return;
     }
-    let totalRevenue = 0, totalCost = 0;
-    for (const order of data) {
-      totalRevenue += Number(order.amount);
-      const pkg = packages.find(p => p.id === order.package_id);
-      if (pkg) totalCost += pkg.agent_price;
+    
+    // Fetch subagent orders (orders from subagent storefronts that belong to this agent)
+    const { data: subagentStoreIds } = await supabase
+      .from("subagent_stores")
+      .select("id")
+      .eq("agent_store_id", store.id);
+    
+    const subagentIds = (subagentStoreIds || []).map(s => s.id);
+    
+    let subagentOrders: any[] = [];
+    if (subagentIds.length > 0) {
+      const { data: subOrders } = await supabase
+        .from("orders")
+        .select("amount, package_id, subagent_store_id")
+        .in("subagent_store_id", subagentIds)
+        .in("status", ["paid", "completed"]);
+      subagentOrders = subOrders || [];
     }
+    
+    let totalRevenue = 0, totalCost = 0, subagentProfit = 0;
+    
+    // Calculate profit from direct orders
+    for (const order of directOrders || []) {
+      if (!order.subagent_store_id) {
+        // Direct order - agent keeps (selling price - agent cost)
+        totalRevenue += Number(order.amount);
+        const pkg = packages.find(p => p.id === order.package_id);
+        if (pkg) totalCost += pkg.agent_price;
+      }
+    }
+    
+    // Calculate profit from subagent orders
+    // Agent earns: subagent_base_price - agent_price for each order
+    for (const order of subagentOrders) {
+      const pkg = packages.find(p => p.id === order.package_id);
+      if (pkg) {
+        const agentCost = pkg.agent_price || 0;
+        const subagentBasePrice = subagentBasePrices[order.package_id] || agentCost;
+        subagentProfit += (subagentBasePrice - agentCost);
+      }
+    }
+    
+    const directProfit = totalRevenue - totalCost;
+    const combinedProfit = directProfit + subagentProfit;
+    
     setProfitStats(prev => ({
       ...prev,
       totalRevenue,
       totalCost,
-      totalProfit: totalRevenue - totalCost,
-      availableForWithdrawal: store.wallet_balance ?? 0,
+      totalProfit: combinedProfit,
+      availableForWithdrawal: combinedProfit,
     }));
   };
 
@@ -401,7 +443,7 @@ const AgentDashboard = () => {
       setWithdrawals(wd);
       const subags = subagentR.data ?? [];
       setSubagents(subags);
-      setProfitStats(prev => ({ ...prev, availableForWithdrawal: sd.wallet_balance ?? 0 }));
+      // Don't set availableForWithdrawal here - let fetchTotalProfit calculate it based on actual profit
 
       const slug = sd.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       const url = DOMAINS.getAgentStoreUrl(sd.store_name);
@@ -615,7 +657,7 @@ const AgentDashboard = () => {
     if (hasPendingWithdrawal) { toast({ title: "Pending withdrawal exists", variant: "destructive" }); return; }
     const amt = parseFloat(withdrawAmount);
     if (!amt || amt < 10) { toast({ title: "Minimum is GH₵ 10.00", variant: "destructive" }); return; }
-    if (amt > Number(store.wallet_balance)) { toast({ title: "Insufficient balance", variant: "destructive" }); return; }
+    if (amt > profitStats.availableForWithdrawal) { toast({ title: "Insufficient balance", variant: "destructive" }); return; }
     setWithdrawLoading(true);
     const { error } = await supabase.from("withdrawal_requests").insert({ agent_store_id: store.id, amount: amt });
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
