@@ -1,10 +1,11 @@
-import { Zap, Clock, CreditCard, AlertCircle, Store } from "lucide-react";
+import { Zap, Clock, CreditCard, AlertCircle, Store, Loader2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface AgentStore {
   id: string;
@@ -12,12 +13,19 @@ interface AgentStore {
   approved: boolean;
 }
 
+interface AppSettings {
+  agent_registration_fee: number;
+}
+
 const PendingApproval = () => {
   const [copied, setCopied] = useState(false);
   const [store, setStore] = useState<AgentStore | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [registrationFee, setRegistrationFee] = useState(30);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   // Fetch the agent store for the current user
   useEffect(() => {
@@ -44,11 +52,64 @@ const PendingApproval = () => {
           return;
         }
       }
+      
+      // Fetch registration fee from app_settings
+      const { data: settings } = await supabase
+        .from("app_settings")
+        .select("agent_registration_fee")
+        .eq("id", 1)
+        .single();
+      
+      if (settings?.agent_registration_fee) {
+        setRegistrationFee(settings.agent_registration_fee);
+      }
+      
       setLoading(false);
     };
 
     fetchStore();
   }, [user, navigate]);
+
+  // Check for payment verification from URL params
+  useEffect(() => {
+    if (!user || !store) return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRef = urlParams.get("reference") || urlParams.get("trxref");
+    const sessionRef = sessionStorage.getItem("pending_agent_registration_payment");
+    const ref = urlRef || sessionRef;
+    
+    if (!ref) return;
+    
+    if (urlRef) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    // Verify payment
+    supabase.functions.invoke("verify-payment", { body: { reference: ref } })
+      .then(({ data }) => {
+        if (data?.success && data?.approved) {
+          toast({ title: "Payment successful!", description: "Your store has been approved!" });
+          navigate("/agent", { replace: true });
+        } else if (data?.already_processed) {
+          // Check if store is now approved
+          supabase
+            .from("agent_stores")
+            .select("approved")
+            .eq("id", store.id)
+            .single()
+            .then(({ data: storeData }) => {
+              if (storeData?.approved) {
+                navigate("/agent", { replace: true });
+              }
+            });
+        }
+        sessionStorage.removeItem("pending_agent_registration_payment");
+      })
+      .catch(() => {
+        sessionStorage.removeItem("pending_agent_registration_payment");
+      });
+  }, [user, store, navigate, toast]);
 
   // Auto-check for approval every 5 seconds (only if store exists and not approved)
   useEffect(() => {
@@ -76,6 +137,42 @@ const PendingApproval = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+  
+  // Handle Paystack payment
+  const handlePaystackPayment = async () => {
+    if (!user?.email || !store?.id) {
+      toast({ title: "Error", description: "Please log in to continue", variant: "destructive" });
+      return;
+    }
+    
+    setPaymentLoading(true);
+    try {
+      const res = await supabase.functions.invoke("initialize-payment", {
+        body: {
+          amount: registrationFee,
+          email: user.email,
+          phone: "0000000000",
+          callback_url: `${window.location.origin}/pending-approval`,
+          metadata: {
+            type: "agent_registration",
+            agent_store_id: store.id,
+            store_name: store.store_name,
+            amount: registrationFee
+          }
+        }
+      });
+      
+      if (res.error) throw new Error(res.error.message);
+      if (!res.data?.authorization_url) throw new Error("No authorization URL");
+      
+      sessionStorage.setItem("pending_agent_registration_payment", res.data.reference);
+      window.location.href = res.data.authorization_url;
+    } catch (e: any) {
+      toast({ title: "Payment error", description: e.message, variant: "destructive" });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   // Loading state
   if (loading) {
@@ -102,7 +199,7 @@ const PendingApproval = () => {
             <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
             <h2 className="text-xl font-bold">No Store Found</h2>
             <p className="text-muted-foreground">
-              You haven't created an agent store yet. Please go back and register.
+              You haven&apos;t created an agent store yet. Please go back and register.
             </p>
             <Button asChild>
               <Link to="/">Back to Home</Link>
@@ -132,28 +229,49 @@ const PendingApproval = () => {
           <div className="bg-primary/5 rounded-lg p-4 border border-primary/20 flex items-center gap-3">
             <Store className="h-5 w-5 text-primary" />
             <div>
-              <p className="text-xs text-muted-foreground">Your Store Name (for payment reference)</p>
+              <p className="text-xs text-muted-foreground">Your Store Name</p>
               <p className="font-mono font-bold text-lg">{store.store_name}</p>
             </div>
           </div>
 
-          {/* Payment Instructions */}
+          {/* Payment Amount */}
+          <div className="text-center py-4">
+            <p className="text-sm text-muted-foreground mb-2">Registration Fee</p>
+            <span className="text-4xl font-bold text-primary">GH₵ {registrationFee.toFixed(2)}</span>
+          </div>
+
+          {/* Paystack Payment Button */}
+          <Button 
+            variant="hero" 
+            size="lg" 
+            className="w-full bg-green-600 hover:bg-green-700"
+            onClick={handlePaystackPayment}
+            disabled={paymentLoading}
+          >
+            {paymentLoading ? (
+              <><Loader2 className="h-5 w-5 animate-spin mr-2" /> Processing...</>
+            ) : (
+              <><CreditCard className="h-5 w-5 mr-2" /> Pay with Paystack</>
+            )}
+          </Button>
+          
+          <p className="text-xs text-center text-muted-foreground">
+            Pay instantly with card or mobile money. Your store will be approved immediately after payment.
+          </p>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or pay manually</span>
+            </div>
+          </div>
+
+          {/* Manual Payment Instructions */}
           <div className="space-y-4">
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
-                <AlertCircle className="h-5 w-5" />
-                <span className="text-sm font-semibold">Payment Required for Approval</span>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  To complete your store approval, please make a payment of:
-                </p>
-                <div className="text-center">
-                  <span className="text-3xl font-bold text-primary">GHC 30.00</span>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
                   Send payment via Mobile Money to:
@@ -176,20 +294,13 @@ const PendingApproval = () => {
 
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
                 <p className="text-xs text-amber-800 dark:text-amber-400 font-medium mb-1">
-                  ⚠️ Important:
+                  Important:
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-500">
                   Use your store name: <span className="font-bold">{store.store_name}</span> as the payment reference.
-                  Failure to include your store name will result in your store not being approved.
+                  After payment send a screenshot to 0200511211 on WhatsApp.
                 </p>
               </div>
-            </div>
-
-            <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
-              <p className="text-xs text-green-800 dark:text-green-400">
-                ✅ After payment, your store will be approved within 1 hour.
-                After payment send a screenshot of payment to 0200511211 on WhatsApp. Once approved, you will be automatically redirected to your dashboard.
-              </p>
             </div>
           </div>
 

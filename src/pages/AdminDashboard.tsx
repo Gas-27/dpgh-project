@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -59,7 +59,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "spinwheel" | "complaints";
+type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "spinwheel" | "complaints" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -155,6 +155,10 @@ const AdminDashboard = () => {
   // Source info dialog state
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<{ type: string; storeName: string; contact: string } | null>(null);
+  
+  // App settings state
+  const [agentRegistrationFee, setAgentRegistrationFee] = useState(30);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // ======================== Data fetching (initial) ========================
   const fetchData = async () => {
@@ -209,6 +213,30 @@ const AdminDashboard = () => {
     (rolesRes.data ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
     const userList = (profilesRes.data ?? []).map((p: any) => ({ ...p, role: rolesMap[p.id] || "user" }));
     setUsers(userList);
+    
+    // Fetch app settings
+    const { data: appSettings } = await supabase
+      .from("app_settings")
+      .select("agent_registration_fee")
+      .eq("id", 1)
+      .single();
+    if (appSettings?.agent_registration_fee) {
+      setAgentRegistrationFee(appSettings.agent_registration_fee);
+    }
+  };
+  
+  // Save app settings
+  const saveAppSettings = async () => {
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ id: 1, agent_registration_fee: agentRegistrationFee, updated_at: new Date().toISOString() });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Settings saved!" });
+    }
+    setSavingSettings(false);
   };
 
   // ======================== Delete Subagent ========================
@@ -826,8 +854,9 @@ const AdminDashboard = () => {
             {canSee("users") && <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>}
             {canSee("notifications") && <TabsTrigger value="notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Notify</TabsTrigger>}
             {canSee("spinwheel") && <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>}
-            {canSee("complaints") && <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>}
-          </TabsList>
+{canSee("complaints") && <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>}
+  {canSee("settings") && <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>}
+  </TabsList>
 
           {/* PRICES TAB */}
           {canSee("prices") && (
@@ -1640,12 +1669,52 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
-          {/* COMPLAINTS TAB */}
-          {canSee("complaints") && (
-            <TabsContent value="complaints" className="space-y-6">
-              <ComplaintsManager />
-            </TabsContent>
-          )}
+  {/* COMPLAINTS TAB */}
+  {canSee("complaints") && (
+  <TabsContent value="complaints" className="space-y-6">
+  <ComplaintsManager />
+  </TabsContent>
+  )}
+  
+  {/* SETTINGS TAB */}
+  {canSee("settings") && (
+  <TabsContent value="settings" className="space-y-6">
+    <Card className="border-border">
+      <CardHeader>
+        <CardTitle className="font-display flex items-center gap-2">
+          <Settings2 className="h-5 w-5 text-primary" /> App Settings
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">Configure global app settings</p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Agent Registration Fee */}
+        <div className="space-y-4 border p-4 rounded-lg bg-primary/5">
+          <div className="space-y-0.5">
+            <Label className="text-base font-semibold">Agent Registration Fee</Label>
+            <p className="text-sm text-muted-foreground">The amount new agents must pay to get their store approved (via Paystack)</p>
+          </div>
+          <div className="flex gap-4 items-end">
+            <div className="flex-1 space-y-2">
+              <Label>Fee Amount (GH₵)</Label>
+              <Input 
+                type="number" 
+                min="0" 
+                step="0.01"
+                value={agentRegistrationFee} 
+                onChange={(e) => setAgentRegistrationFee(Number(e.target.value) || 0)} 
+              />
+            </div>
+            <Button onClick={saveAppSettings} disabled={savingSettings}>
+              {savingSettings ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Current fee: GH₵{agentRegistrationFee.toFixed(2)}</p>
+        </div>
+      </CardContent>
+    </Card>
+  </TabsContent>
+  )}
         </Tabs>
       </div>
 
