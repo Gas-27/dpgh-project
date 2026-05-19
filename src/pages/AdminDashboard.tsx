@@ -73,6 +73,10 @@ const AdminDashboard = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [topupHistory, setTopupHistory] = useState<TopupRecord[]>([]);
+  
+  // Total counts from database
+  const [totalCounts, setTotalCounts] = useState({ orders: 0, agents: 0, subagents: 0, users: 0, withdrawals: 0, topups: 0, complaints: 0 });
+  
   const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number }>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [saving, setSaving] = useState(false);
@@ -152,7 +156,8 @@ const AdminDashboard = () => {
 
   // Silent background refresh (no loading state)
   const refreshData = async () => {
-    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes, topupRes, subagentRes] = await Promise.all([
+    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes, topupRes, subagentRes, 
+           ordersCount, agentsCount, subagentsCount, usersCount, withdrawalsCount, topupsCount] = await Promise.all([
       supabase.from("data_packages").select("*").order("size_gb"),
       supabase.from("agent_stores").select("*").order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
@@ -165,6 +170,13 @@ const AdminDashboard = () => {
         .order("created_at", { ascending: false })
         .limit(100),
       supabase.from("subagent_stores").select("*, agent_stores(store_name)").order("created_at", { ascending: false }),
+      // Total counts
+      supabase.from("orders").select("id", { count: "exact", head: true }),
+      supabase.from("agent_stores").select("id", { count: "exact", head: true }),
+      supabase.from("subagent_stores").select("id", { count: "exact", head: true }),
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("withdrawal_requests").select("id", { count: "exact", head: true }),
+      supabase.from("wallet_topups").select("id", { count: "exact", head: true }),
     ]);
     setPackages(pkgRes.data ?? []);
     setAgents((agentRes.data as AgentStore[]) ?? []);
@@ -172,6 +184,17 @@ const AdminDashboard = () => {
     setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
     setTopupHistory((topupRes.data as any[]) ?? []);
     setSubagents((subagentRes.data ?? []));
+    
+    // Set total counts
+    setTotalCounts({
+      orders: ordersCount.count ?? 0,
+      agents: agentsCount.count ?? 0,
+      subagents: subagentsCount.count ?? 0,
+      users: usersCount.count ?? 0,
+      withdrawals: withdrawalsCount.count ?? 0,
+      topups: topupsCount.count ?? 0,
+      complaints: 0, // Will be updated when complaints are fetched
+    });
 
     const rolesMap: Record<string, string> = {};
     (rolesRes.data ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
@@ -378,6 +401,42 @@ const AdminDashboard = () => {
     if (currentUser?.id) {
       fetchCurrentUserPermissions(currentUser.id);
     }
+  }, []);
+  
+  // Realtime subscriptions for admin dashboard
+  useEffect(() => {
+    const c1 = supabase.channel("admin-orders")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => refreshData())
+      .subscribe();
+    
+    const c2 = supabase.channel("admin-agents")
+      .on("postgres_changes", { event: "*", schema: "public", table: "agent_stores" }, () => refreshData())
+      .subscribe();
+    
+    const c3 = supabase.channel("admin-subagents")
+      .on("postgres_changes", { event: "*", schema: "public", table: "subagent_stores" }, () => refreshData())
+      .subscribe();
+    
+    const c4 = supabase.channel("admin-withdrawals")
+      .on("postgres_changes", { event: "*", schema: "public", table: "withdrawal_requests" }, () => refreshData())
+      .subscribe();
+    
+    const c5 = supabase.channel("admin-topups")
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallet_topups" }, () => refreshData())
+      .subscribe();
+    
+    const c6 = supabase.channel("admin-users")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => refreshData())
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(c1);
+      supabase.removeChannel(c2);
+      supabase.removeChannel(c3);
+      supabase.removeChannel(c4);
+      supabase.removeChannel(c5);
+      supabase.removeChannel(c6);
+    };
   }, []);
 
   // ======================== Auto‑retry pending orders ========================
@@ -800,7 +859,7 @@ const AdminDashboard = () => {
                 return (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Showing {filteredOrders.length === 0 ? 0 : (orderPage - 1) * PAGE_SIZE + 1} - {Math.min(orderPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length} orders
+                      Showing {filteredOrders.length === 0 ? 0 : (orderPage - 1) * PAGE_SIZE + 1} - {Math.min(orderPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length} orders (Total in database: {totalCounts.orders})
                     </p>
                     <Card className="border-border">
                       <Table>
@@ -901,9 +960,9 @@ const AdminDashboard = () => {
                   <p className="text-muted-foreground text-center py-8">No agents match your search.</p>
                 ) : (
                   <>
-                    <p className="text-sm text-muted-foreground">
-                      Showing {(agentPage - 1) * PAGE_SIZE + 1} - {Math.min(agentPage * PAGE_SIZE, filteredAgents.length)} of {filteredAgents.length} agents
-                    </p>
+                  <p className="text-sm text-muted-foreground">
+                    Showing {(agentPage - 1) * PAGE_SIZE + 1} - {Math.min(agentPage * PAGE_SIZE, filteredAgents.length)} of {filteredAgents.length} agents (Total in database: {totalCounts.agents})
+                  </p>
                     {paginated.map((agent) => (
                       <Card key={agent.id} className="border-border">
                         <CardContent className="p-6">
@@ -974,9 +1033,9 @@ const AdminDashboard = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <>
+                  <>
                   <p className="text-sm text-muted-foreground">
-                    Showing {(subagentPage - 1) * PAGE_SIZE + 1} - {Math.min(subagentPage * PAGE_SIZE, filtered.length)} of {filtered.length} subagents
+                    Showing {(subagentPage - 1) * PAGE_SIZE + 1} - {Math.min(subagentPage * PAGE_SIZE, filtered.length)} of {filtered.length} subagents (Total in database: {totalCounts.subagents})
                   </p>
                   {paginated.map((subagent) => (
                     <Card key={subagent.id} className="border-border bg-card/50">
@@ -1224,9 +1283,9 @@ const AdminDashboard = () => {
                 
                 return (
                   <>
-                    <p className="text-sm text-muted-foreground">
-                      Showing {filteredUsers.length === 0 ? 0 : (userPage - 1) * PAGE_SIZE + 1} - {Math.min(userPage * PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length} users
-                    </p>
+                  <p className="text-sm text-muted-foreground">
+                    Showing {filteredUsers.length === 0 ? 0 : (userPage - 1) * PAGE_SIZE + 1} - {Math.min(userPage * PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length} users (Total in database: {totalCounts.users})
+                  </p>
                     <Card className="border-border">
                       <Table>
                         <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Role</TableHead><TableHead>Joined</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>

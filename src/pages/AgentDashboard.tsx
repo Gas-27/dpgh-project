@@ -279,6 +279,8 @@ const AgentDashboard = () => {
   const [buyLoading, setBuyLoading] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
+  const [topupLoading, setTopupLoading] = useState(false);
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
   const [savingTheme, setSavingTheme] = useState(false);
   const [storeHeadline, setStoreHeadline] = useState("");
@@ -326,11 +328,12 @@ const AgentDashboard = () => {
   const fetchTotalProfit = async () => {
     if (!store?.id) return;
     
-    // Fetch direct orders (orders from agent's storefront)
+    // Fetch direct orders (orders from agent's storefront - NOT subagent orders)
     const { data: directOrders, error: directError } = await supabase
       .from("orders")
       .select("amount, package_id, subagent_store_id")
       .eq("agent_store_id", store.id)
+      .is("subagent_store_id", null)
       .in("status", ["paid", "completed"]);
     
     if (directError) {
@@ -356,39 +359,42 @@ const AgentDashboard = () => {
       subagentOrders = subOrders || [];
     }
     
-    let totalRevenue = 0, totalCost = 0, subagentProfit = 0;
+    let directRevenue = 0, directCost = 0, subagentRevenue = 0, subagentProfit = 0;
     
-    // Calculate profit from direct orders
+    // Calculate profit from direct orders (agent keeps selling price - agent cost)
     for (const order of directOrders || []) {
-      if (!order.subagent_store_id) {
-        // Direct order - agent keeps (selling price - agent cost)
-        totalRevenue += Number(order.amount);
-        const pkg = packages.find(p => p.id === order.package_id);
-        if (pkg) totalCost += pkg.agent_price;
-      }
+      directRevenue += Number(order.amount);
+      const pkg = packages.find(p => p.id === order.package_id);
+      if (pkg) directCost += pkg.agent_price;
     }
     
     // Calculate profit from subagent orders
     // Agent earns: subagent_base_price - agent_price for each order
+    // subagent_base_price is what agent charged subagent (from subagent_package_prices table)
     for (const order of subagentOrders) {
       const pkg = packages.find(p => p.id === order.package_id);
       if (pkg) {
         const agentCost = pkg.agent_price || 0;
         const subagentBasePrice = subagentBasePrices[order.package_id] || agentCost;
         subagentProfit += (subagentBasePrice - agentCost);
+        subagentRevenue += subagentBasePrice; // Revenue from subagent perspective
       }
     }
     
-    const directProfit = totalRevenue - totalCost;
+    const directProfit = directRevenue - directCost;
+    const totalRevenue = directRevenue + subagentRevenue;
+    const totalCost = directCost + (subagentOrders.length > 0 ? subagentOrders.reduce((sum, o) => {
+      const pkg = packages.find(p => p.id === o.package_id);
+      return sum + (pkg?.agent_price || 0);
+    }, 0) : 0);
     const combinedProfit = directProfit + subagentProfit;
     
-    setProfitStats(prev => ({
-      ...prev,
+    setProfitStats({
       totalRevenue,
       totalCost,
       totalProfit: combinedProfit,
       availableForWithdrawal: combinedProfit,
-    }));
+    });
   };
 
   const fetchAllData = async () => {
@@ -474,10 +480,35 @@ const AgentDashboard = () => {
   };
 
   useEffect(() => { if (user) fetchAllData(); }, [user]);
+  
+  // Check for pending wallet topup
+  useEffect(() => {
+    const ref = sessionStorage.getItem("pending_wallet_topup");
+    if (!ref || !store?.id) return;
+    
+    supabase.functions.invoke("verify-payment", { body: { reference: ref } })
+      .then(({ data }) => {
+        if (data?.success && !data?.already_processed) {
+          toast({ title: "Wallet topped up!", description: data.message });
+          fetchAllData();
+        } else if (data?.already_processed) {
+          // Already processed, just refresh
+          fetchAllData();
+        }
+        sessionStorage.removeItem("pending_wallet_topup");
+      })
+      .catch(() => {
+        sessionStorage.removeItem("pending_wallet_topup");
+      });
+  }, [store?.id]);
 
-  // Realtime subscriptions (toasts removed for wallet and price updates)
+  // Realtime subscriptions for instant updates
   useEffect(() => {
     if (!store?.id) return;
+    
+    // Get subagent IDs for monitoring their orders
+    const subagentIds = subagents.map(s => s.id);
+    
     const c1 = supabase.channel("agent-store-changes")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "agent_stores", filter: `id=eq.${store.id}` }, () => fetchAllData())
       .subscribe();
@@ -490,15 +521,33 @@ const AgentDashboard = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "agent_package_prices", filter: `agent_store_id=eq.${store.id}` }, () => fetchAllData())
       .subscribe();
     const c4 = supabase.channel("order-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` }, () => fetchAllData())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` }, (payload) => {
+        fetchAllData();
+        toast({ title: "New Order!", description: `Order received for ${(payload.new as any).size_gb}GB` });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` }, () => fetchAllData())
       .subscribe();
+    
+    // Monitor subagent orders
+    const c5 = supabase.channel("subagent-order-changes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
+        const newOrder = payload.new as any;
+        if (subagentIds.includes(newOrder.subagent_store_id)) {
+          fetchAllData();
+          fetchTotalProfit();
+          toast({ title: "Subagent Order!", description: `Order from subagent for ${newOrder.size_gb}GB` });
+        }
+      })
+      .subscribe();
+    
     return () => {
       supabase.removeChannel(c1);
       supabase.removeChannel(c2);
       supabase.removeChannel(c3);
       supabase.removeChannel(c4);
+      supabase.removeChannel(c5);
     };
-  }, [store?.id]);
+  }, [store?.id, subagents]);
 
   useEffect(() => {
     if (orders.length > 0 && packages.length > 0) fetchTotalProfit();
@@ -776,7 +825,47 @@ const AgentDashboard = () => {
   const copyPhoneNumber = (p: string) => { navigator.clipboard.writeText(p); toast({ title: "Copied!", description: p }); };
   const copyStoreLink = () => { navigator.clipboard.writeText(storeUrl); toast({ title: "Link copied!", description: storeUrl }); };
   const copyRef = () => { if (store?.topup_reference) { navigator.clipboard.writeText(store.topup_reference); toast({ title: "Reference copied!" }); } };
-
+  
+  // Paystack wallet top up
+  const handlePaystackTopup = async () => {
+    const amount = Number(paystackTopupAmount);
+    if (!amount || amount < 1) {
+      toast({ title: "Invalid amount", description: "Enter a valid amount", variant: "destructive" });
+      return;
+    }
+    if (!user?.email || !store?.id) {
+      toast({ title: "Error", description: "Please log in to top up", variant: "destructive" });
+      return;
+    }
+    
+    setTopupLoading(true);
+    try {
+      const res = await supabase.functions.invoke("initialize-payment", {
+        body: {
+          amount,
+          email: user.email,
+          phone: store.support_number || store.whatsapp_number || "0000000000",
+          callback_url: `${window.location.origin}/agent`,
+          metadata: {
+            type: "wallet_topup",
+            agent_store_id: store.id,
+            amount
+          }
+        }
+      });
+      
+      if (res.error) throw new Error(res.error.message);
+      if (!res.data?.authorization_url) throw new Error("No authorization URL");
+      
+      sessionStorage.setItem("pending_wallet_topup", res.data.reference);
+      window.location.href = res.data.authorization_url;
+    } catch (e: any) {
+      toast({ title: "Payment error", description: e.message, variant: "destructive" });
+    } finally {
+      setTopupLoading(false);
+    }
+  };
+  
   // ─── GUARDS ───────────────────────────────────────────────────────────────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
@@ -1024,8 +1113,77 @@ const AgentDashboard = () => {
           </TabsContent>
 
           {/* ============================= TOP UP ============================= */}
-          <TabsContent value="topup" className="mt-0">
-            <Card className="border-border"><CardHeader><CardTitle className="font-display flex items-center gap-2"><Coins className="h-5 w-5 text-primary" /> Top Up Your Wallet</CardTitle></CardHeader><CardContent className="space-y-6"><div className="rounded-lg bg-primary/5 border border-primary/30 p-4 text-center"><p className="text-sm text-muted-foreground">Current Wallet Balance</p><p className="font-display text-3xl font-bold text-primary">GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"}</p></div><div className="space-y-4"><h3 className="font-semibold text-lg">Steps to top up:</h3><ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground"><li>Dial <span className="font-mono font-bold text-foreground">*170#</span> on your MTN MoMo phone.</li><li>Select <b>1</b> (Transfer Money) → <b>1</b> (MoMo User).</li><li>Recipient: <span className="font-mono font-bold text-foreground">0599449202</span> <Button variant="ghost" size="sm" className="h-6 w-6 p-0 ml-1" onClick={() => copyPhoneNumber("0599449202")}><Copy className="h-3 w-3" /></Button></li><li>Enter the amount.</li><li>Reference: <div className="mt-2 p-3 bg-secondary/50 rounded-lg border border-border font-mono font-bold text-center text-primary text-xl">{store?.topup_reference ?? "N/A"}<Button variant="ghost" size="sm" className="ml-2 h-8" onClick={copyRef}><Copy className="h-3 w-3" /> Copy</Button></div></li><li>Send transaction ID to: <div className="mt-2 flex flex-wrap gap-3"><Button variant="outline" size="sm" asChild><a href="https://wa.me/233200511211" target="_blank" rel="noopener noreferrer">📱 WhatsApp 0200511211</a></Button><Button variant="outline" size="sm" asChild><a href="tel:0599449202">📞 Call 0599449202</a></Button></div></li></ol></div><div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-sm"><p className="font-semibold text-yellow-400">⚠️ Important</p><p className="text-muted-foreground">Admin credits your wallet after verifying the transaction ID.</p></div></CardContent></Card>
+          <TabsContent value="topup" className="mt-0 space-y-6">
+            {/* Current Balance */}
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-6 text-center">
+                <p className="text-sm text-muted-foreground">Current Wallet Balance</p>
+                <p className="font-display text-4xl font-bold text-primary mt-2">GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"}</p>
+              </CardContent>
+            </Card>
+
+            {/* Paystack Top Up */}
+            <Card className="border-green-500/30 bg-green-500/5">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2 text-green-400">
+                  <CreditCard className="h-5 w-5" /> Instant Top Up with Paystack
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Top up instantly with any amount using card or mobile money</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Label className="text-sm mb-1 block">Amount (GH₵)</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="Enter amount" 
+                      min="1"
+                      value={paystackTopupAmount}
+                      onChange={(e) => setPaystackTopupAmount(e.target.value)}
+                      className="text-lg"
+                    />
+                  </div>
+                  <Button 
+                    variant="hero" 
+                    className="self-end bg-green-600 hover:bg-green-700"
+                    disabled={!paystackTopupAmount || Number(paystackTopupAmount) < 1 || topupLoading}
+                    onClick={handlePaystackTopup}
+                  >
+                    {topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
+                    Pay Now
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">A small Paystack fee (1.98%) will be added to your payment.</p>
+              </CardContent>
+            </Card>
+
+            {/* Manual MoMo Top Up */}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Coins className="h-5 w-5 text-yellow-400" /> Manual Top Up via MoMo
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Transfer directly via MTN MoMo (minimum GH₵ 100)</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                  <p className="text-sm text-yellow-400 font-semibold">⚠️ Minimum top up amount: GH₵ 100</p>
+                </div>
+                <ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground">
+                  <li>Dial <span className="font-mono font-bold text-foreground">*170#</span> on your MTN MoMo phone.</li>
+                  <li>Select <b>1</b> (Transfer Money) → <b>1</b> (MoMo User).</li>
+                  <li>Recipient: <span className="font-mono font-bold text-foreground">0599449202</span> <Button variant="ghost" size="sm" className="h-6 w-6 p-0 ml-1" onClick={() => copyPhoneNumber("0599449202")}><Copy className="h-3 w-3" /></Button></li>
+                  <li>Enter the amount (minimum GH₵ 100).</li>
+                  <li>Reference: <div className="mt-2 p-3 bg-secondary/50 rounded-lg border border-border font-mono font-bold text-center text-primary text-xl">{store?.topup_reference ?? "N/A"}<Button variant="ghost" size="sm" className="ml-2 h-8" onClick={copyRef}><Copy className="h-3 w-3" /> Copy</Button></div></li>
+                  <li>Send transaction ID to: <div className="mt-2 flex flex-wrap gap-3"><Button variant="outline" size="sm" asChild><a href="https://wa.me/233200511211" target="_blank" rel="noopener noreferrer">WhatsApp 0200511211</a></Button><Button variant="outline" size="sm" asChild><a href="tel:0599449202">Call 0599449202</a></Button></div></li>
+                </ol>
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-sm">
+                  <p className="font-semibold text-destructive">Important</p>
+                  <p className="text-muted-foreground">Admin credits your wallet after verifying the transaction. Always include your reference code.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>n ID.</p></div></CardContent></Card>
           </TabsContent>
 
           {/* ============================= APPEARANCE ============================= */}

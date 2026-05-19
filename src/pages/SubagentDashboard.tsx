@@ -234,6 +234,44 @@ const SubagentDashboard = () => {
     if (subagentStore?.id) fetchNotifications();
   }, [subagentStore?.id]);
 
+  // Realtime subscriptions for instant updates
+  useEffect(() => {
+    if (!subagentStore?.id) return;
+    
+    const c1 = supabase.channel("subagent-store-changes")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "subagent_stores", filter: `id=eq.${subagentStore.id}` }, () => fetchData())
+      .subscribe();
+    
+    const c2 = supabase.channel("subagent-order-changes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `subagent_store_id=eq.${subagentStore.id}` }, (payload) => {
+        fetchData();
+        toast({ title: "New Order!", description: `Order received for ${(payload.new as any).size_gb}GB` });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `subagent_store_id=eq.${subagentStore.id}` }, () => fetchData())
+      .subscribe();
+    
+    const c3 = supabase.channel("subagent-price-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "subagent_package_prices", filter: `subagent_store_id=eq.${subagentStore.id}` }, () => fetchData())
+      .subscribe();
+    
+    const c4 = supabase.channel("subagent-withdrawal-changes")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "subagent_withdrawal_requests", filter: `subagent_store_id=eq.${subagentStore.id}` }, (p) => {
+        if ((p.new as any).status === "completed" && (p.old as any).status !== "completed") {
+          fetchData();
+          toast({ title: "Withdrawal approved!" });
+        } else if ((p.new as any).status !== (p.old as any).status) {
+          fetchData();
+        }
+      }).subscribe();
+    
+    return () => {
+      supabase.removeChannel(c1);
+      supabase.removeChannel(c2);
+      supabase.removeChannel(c3);
+      supabase.removeChannel(c4);
+    };
+  }, [subagentStore?.id]);
+
   const createNotification = async () => {
     if (!subagentStore || !newNotificationMsg.trim()) {
       toast({ title: "Error", description: "Please enter a message", variant: "destructive" });

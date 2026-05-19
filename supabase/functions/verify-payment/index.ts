@@ -105,6 +105,83 @@ Deno.serve(async (req) => {
     }
 
     // =====================================
+    // WALLET TOP UP PAYMENT HANDLER
+    // =====================================
+    if (paymentType === "wallet_topup") {
+      const agentStoreId = metadata.agent_store_id;
+      const baseAmount = metadata.base_amount || (txData.amount / 100);
+      
+      if (!agentStoreId) {
+        return new Response(JSON.stringify({ error: "Missing agent store ID" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Check if this reference was already used
+      const { data: existingTopup } = await supabase
+        .from("wallet_topups")
+        .select("id")
+        .eq("paystack_reference", reference)
+        .maybeSingle();
+      
+      if (existingTopup) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: "Topup already processed",
+          already_processed: true,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Get current wallet balance
+      const { data: store, error: storeError } = await supabase
+        .from("agent_stores")
+        .select("wallet_balance")
+        .eq("id", agentStoreId)
+        .single();
+      
+      if (storeError || !store) {
+        return new Response(JSON.stringify({ error: "Agent store not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      const newBalance = (store.wallet_balance || 0) + baseAmount;
+      
+      // Update wallet balance
+      const { error: updateError } = await supabase
+        .from("agent_stores")
+        .update({ wallet_balance: newBalance })
+        .eq("id", agentStoreId);
+      
+      if (updateError) {
+        console.error("Failed to update wallet:", updateError);
+        return new Response(JSON.stringify({ error: "Failed to update wallet" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Record the topup
+      await supabase.from("wallet_topups").insert({
+        agent_store_id: agentStoreId,
+        amount: baseAmount,
+        paystack_reference: reference,
+      });
+      
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Wallet topped up with GH₵${baseAmount.toFixed(2)}`,
+        new_balance: newBalance,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // =====================================
     // REGULAR DATA PACKAGE PURCHASE HANDLER
     // =====================================
     const phone = metadata.phone || "";

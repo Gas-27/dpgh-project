@@ -725,8 +725,42 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
       .finally(() => setPaymentLoading(false));
   }, [open]);
 
-  const handlePhoneConfirm = () => {
+  // Check for recent orders (within 30 minutes)
+  const [recentOrderBlock, setRecentOrderBlock] = useState(false);
+  const [checkingOrder, setCheckingOrder] = useState(false);
+
+  const handlePhoneConfirm = async () => {
     if (!isValidPhone(phone)) { toast({ title: "Invalid number", description: "Enter 10 digits", variant: "destructive" }); return; }
+    
+    // Check for orders made within the last 30 minutes for this phone number
+    setCheckingOrder(true);
+    try {
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: recentOrders } = await supabase
+        .from("orders")
+        .select("id, created_at")
+        .eq("customer_number", phone)
+        .gte("created_at", thirtyMinutesAgo)
+        .limit(1);
+      
+      if (recentOrders && recentOrders.length > 0) {
+        const orderTime = new Date(recentOrders[0].created_at);
+        const timeSince = Math.round((Date.now() - orderTime.getTime()) / 60000);
+        const remaining = 30 - timeSince;
+        setRecentOrderBlock(true);
+        toast({ 
+          title: "Please wait", 
+          description: `You made an order ${timeSince} minute${timeSince !== 1 ? 's' : ''} ago. Please wait ${remaining} more minute${remaining !== 1 ? 's' : ''} before spinning.`,
+          variant: "destructive"
+        });
+        setCheckingOrder(false);
+        return;
+      }
+    } catch (err) {
+      console.error("Error checking recent orders:", err);
+    }
+    setCheckingOrder(false);
+    
     if (!paymentRequired) {
       const stored = parseInt(localStorage.getItem(getSpinCountKey(phone)) || "0", 10);
       setSpinCount(stored);
@@ -777,7 +811,9 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
                 disabled={phoneConfirmed}
               />
               {!phoneConfirmed && (
-                <Button onClick={handlePhoneConfirm} disabled={!isValidPhone(phone)} className="bg-purple-600 hover:bg-purple-700 shrink-0 text-sm px-3">OK</Button>
+                <Button onClick={handlePhoneConfirm} disabled={!isValidPhone(phone) || checkingOrder} className="bg-purple-600 hover:bg-purple-700 shrink-0 text-sm px-3">
+                  {checkingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : "OK"}
+                </Button>
               )}
             </div>
           </div>
