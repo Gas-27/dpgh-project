@@ -86,7 +86,7 @@ const MANUAL_SECTIONS = [
 • Pending Orders – orders still being processed.
 • Revenue – total money collected from customers.
 • Total Profit – earnings after subtracting the base (cost) price.
-• Available for Withdrawal – your wallet balance you can cash out.
+• My Wallet – your wallet balance you can cash out.
 
 The Recent Orders table loads 100 orders at a time. Click "Load More" to see the next 100. Use the search box to filter by phone number or order ID.` },
   {
@@ -1034,7 +1034,7 @@ const AgentDashboard = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total Profit</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {profitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">(Selling Price - Base Price)</p></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
-              <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Available for Withdrawal</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
+              <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">My Wallet</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
             </div>
             <Card className="border-border">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

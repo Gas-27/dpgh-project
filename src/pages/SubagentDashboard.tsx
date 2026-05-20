@@ -905,12 +905,12 @@ const SubagentDashboard = () => {
               </Card>
             </div>
 
-            {/* Available for Withdrawal Card */}
+            {/* My Wallet Card */}
             <Card className="border-yellow-500/30 bg-yellow-500/5">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Available for Withdrawal</p>
+                    <p className="text-sm text-muted-foreground">My Wallet</p>
                     <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {totalProfit.toFixed(2)}</p>
                     {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
                   </div>

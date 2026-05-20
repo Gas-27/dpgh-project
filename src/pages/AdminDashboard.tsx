@@ -32,10 +32,11 @@ interface DataPackage {
   id: string; network: string; size_gb: number; price: number; agent_price: number; active: boolean;
 }
 interface AgentStore {
-  id: string; user_id: string; store_name: string; whatsapp_number: string; support_number: string;
-  whatsapp_group: string | null; momo_number: string; momo_name: string; momo_network: string;
-  approved: boolean; created_at: string; wallet_balance: number; topup_reference: string;
-}
+    id: string; user_id: string; store_name: string; whatsapp_number: string; support_number: string;
+    whatsapp_group: string | null; momo_number: string; momo_name: string; momo_network: string;
+    approved: boolean; created_at: string; wallet_balance: number; topup_reference: string;
+    subagent_commission_balance?: number;
+  }
 interface UserProfile {
   id: string; full_name: string | null; phone: string | null; created_at: string | null; role: string;
 }
@@ -46,9 +47,9 @@ interface Order {
   payment_method: string; subagent_store_id?: string | null;
 }
 interface WithdrawalRequest {
-  id: string; agent_store_id: string; amount: number; status: string;
-  created_at: string; processed_at: string | null;
-}
+    id: string; agent_store_id: string; amount: number; status: string;
+    created_at: string; processed_at: string | null; withdrawal_source?: string;
+  }
 interface TopupRecord {
   id: string; agent_store_id: string; amount: number; created_at: string;
   agent_stores: { store_name: string; topup_reference: string; wallet_balance: number; momo_name: string; } | null;
@@ -818,17 +819,39 @@ const AdminDashboard = () => {
   };
 
   // ======================== Withdrawals ========================
-  const processWithdrawal = async (withdrawalId: string, agentStoreId: string, amount: number) => {
+  const processWithdrawal = async (withdrawalId: string, agentStoreId: string, amount: number, withdrawalSource: string = "wallet") => {
     setProcessingWithdrawals((prev) => new Set(prev).add(withdrawalId));
     try {
+      // Re-fetch the withdrawal to get the correct source
+      const { data: withdrawalData } = await supabase
+        .from("withdrawal_requests")
+        .select("withdrawal_source")
+        .eq("id", withdrawalId)
+        .single();
+      
+      const confirmedSource = withdrawalData?.withdrawal_source || withdrawalSource || "wallet";
+      const isSubagentProfit = confirmedSource === "subagent_commission";
+      
       const agent = agents.find((a) => a.id === agentStoreId);
       if (!agent) throw new Error("Agent not found");
-      const newBalance = Number(agent.wallet_balance) - amount;
-      await supabase.from("agent_stores").update({ wallet_balance: newBalance }).eq("id", agentStoreId);
+      
+      // Choose which balance to deduct from
+      const currentBalance = isSubagentProfit 
+        ? Number(agent.subagent_commission_balance ?? 0) 
+        : Number(agent.wallet_balance ?? 0);
+      const newBalance = currentBalance - amount;
+      
+      // Update the correct balance column
+      const updateField = isSubagentProfit ? "subagent_commission_balance" : "wallet_balance";
+      await supabase.from("agent_stores").update({ [updateField]: newBalance }).eq("id", agentStoreId);
       await supabase.from("withdrawal_requests").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", withdrawalId);
-      setAgents((prev) => prev.map((a) => a.id === agentStoreId ? { ...a, wallet_balance: newBalance } : a));
+      
+      // Update local state
+      setAgents((prev) => prev.map((a) => a.id === agentStoreId ? { ...a, [updateField]: newBalance } : a));
       setWithdrawals((prev) => prev.map((w) => w.id === withdrawalId ? { ...w, status: "completed", processed_at: new Date().toISOString() } : w));
-      toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted. New balance: GH₵ ${newBalance.toFixed(2)}.` });
+      
+      const sourceLabel = isSubagentProfit ? "Subagent Profit" : "Wallet";
+      toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted from ${sourceLabel}. New balance: GH₵ ${newBalance.toFixed(2)}.` });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -1070,6 +1093,7 @@ const AdminDashboard = () => {
                               <p className="text-sm text-muted-foreground">Support: {agent.support_number}</p>
                               <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} • {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
                               <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(agent.wallet_balance).toFixed(2)}</span></p>
+                              <p className="text-xs text-muted-foreground">Subagent Profit: <span className="font-bold text-purple-400">GH₵ {Number(agent.subagent_commission_balance ?? 0).toFixed(2)}</span></p>
                               {agent.approved && <Link to={`/store/${storeSlug(agent.store_name)}`} className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</Link>}
                             </div>
                             <div className="flex flex-col gap-2">
@@ -1327,24 +1351,27 @@ const AdminDashboard = () => {
                     </p>
                     <Card className="border-border">
                       <Table>
-                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Agent</TableHead><TableHead>Amount</TableHead><TableHead>Wallet Balance</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Agent</TableHead><TableHead>Source</TableHead><TableHead>Amount</TableHead><TableHead>Wallet</TableHead><TableHead>Subagent Profit</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                          {paginated.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
+                          {paginated.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
                             paginated.map((w) => {
                               const agent = agents.find((a) => a.id === w.agent_store_id);
+                              const isSubagentProfit = w.withdrawal_source === "subagent_commission";
                               return (
                                 <TableRow key={w.id}>
                                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{new Date(w.created_at).toLocaleString()}</TableCell>
                                   <TableCell className="font-medium">{agent?.store_name ?? "—"}</TableCell>
+                                  <TableCell><Badge className={isSubagentProfit ? "bg-purple-600/20 text-purple-400 border-purple-600/30" : "bg-blue-600/20 text-blue-400 border-blue-600/30"}>{isSubagentProfit ? "Subagent Profit" : "Wallet"}</Badge></TableCell>
                                   <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
                                   <TableCell className="font-bold text-green-400">GH₵ {Number(agent?.wallet_balance ?? 0).toFixed(2)}</TableCell>
+                                  <TableCell className="font-bold text-purple-400">GH₵ {Number(agent?.subagent_commission_balance ?? 0).toFixed(2)}</TableCell>
                                   <TableCell>{agent?.momo_name ?? "—"}</TableCell>
                                   <TableCell className="font-mono">{agent?.momo_number ?? "—"}</TableCell>
                                   <TableCell className="uppercase text-sm">{agent?.momo_network ?? "—"}</TableCell>
                                   <TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{w.status}</Badge></TableCell>
                                   <TableCell>
                                     {w.status === "pending" && (
-                                      <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount))} disabled={processingWithdrawals.has(w.id)}>
+                                      <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount), w.withdrawal_source)} disabled={processingWithdrawals.has(w.id)}>
                                         {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
                                       </Button>
                                     )}

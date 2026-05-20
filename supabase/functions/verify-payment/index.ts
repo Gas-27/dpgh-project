@@ -52,6 +52,60 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // ==========================
+    // AGENT REGISTRATION PAYMENT HANDLER
+    // ==========================
+    if (paymentType === "agent_registration") {
+      const agentStoreId = metadata.agent_store_id;
+      
+      if (!agentStoreId) {
+        return new Response(JSON.stringify({ error: "Missing agent store ID" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Check if already processed
+      const { data: store } = await supabase
+        .from("agent_stores")
+        .select("approved")
+        .eq("id", agentStoreId)
+        .single();
+      
+      if (store?.approved) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: "Store already approved",
+          already_processed: true,
+          approved: true,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Approve the agent store
+      const { error: updateError } = await supabase
+        .from("agent_stores")
+        .update({ approved: true })
+        .eq("id", agentStoreId);
+      
+      if (updateError) {
+        console.error("Failed to approve store:", updateError);
+        return new Response(JSON.stringify({ error: "Failed to approve store" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      return new Response(JSON.stringify({
+        success: true,
+        message: "Store approved!",
+        approved: true,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ==========================
     // SPIN WHEEL PAYMENT HANDLER
     // ==========================
     if (paymentType === "spin_wheel") {
