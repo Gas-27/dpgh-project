@@ -730,8 +730,8 @@ const AdminDashboard = () => {
         .eq("id", orderId)
         .single();
       if (!currentOrder) { toast({ title: "Order not found" }); return; }
-      if (currentOrder.fulfillment_status === "completed" || currentOrder.fulfillment_status === "failed") {
-        toast({ title: "Order already processed", description: `Status: ${currentOrder.fulfillment_status}` });
+      if (currentOrder.fulfillment_status === "completed") {
+        toast({ title: "Order already completed", description: "This order has already been fulfilled successfully." });
         return;
       }
       if (currentOrder.status !== "paid") { toast({ title: "Order not paid yet", variant: "destructive" }); return; }
@@ -752,7 +752,12 @@ const AdminDashboard = () => {
   };
 
   const retryAllFailed = async () => {
-    const failedOrders = orders.filter((o) => o.fulfillment_status === "failed");
+    const failedOrders = orders.filter((o) => o.fulfillment_status === "failed" && o.status === "paid");
+    if (failedOrders.length === 0) {
+      toast({ title: "No failed orders", description: "There are no failed orders to retry." });
+      return;
+    }
+    toast({ title: "Retrying failed orders", description: `Retrying ${failedOrders.length} failed order(s)...` });
     for (const order of failedOrders) { await retryOrder(order.id); }
   };
 
