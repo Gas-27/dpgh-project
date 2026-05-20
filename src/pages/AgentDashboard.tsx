@@ -79,7 +79,7 @@ const MANUAL_SECTIONS = [
 • Pending Orders – orders still being processed.
 • Revenue – total money collected from customers.
 • Total Profit – earnings after subtracting the base (cost) price.
-• Available for Withdrawal – your wallet balance you can cash out.
+• My Wallet – your wallet balance you can cash out.
 
 The Recent Orders table loads 100 orders at a time. Click "Load More" to see the next 100. Use the search box to filter by phone number or order ID.` },
   {
@@ -244,6 +244,8 @@ const AgentDashboard = () => {
   const [manualOpen, setManualOpen] = useState(false);
   const [openManualSection, setOpenManualSection] = useState<number | null>(null);
   const [markupPercent, setMarkupPercent] = useState("");
+  const [topupAmount, setTopupAmount] = useState("");
+  const [topupLoading, setTopupLoading] = useState(false);
 
   // Flyer
   const flyerRef = useRef<HTMLDivElement>(null);
@@ -553,6 +555,35 @@ const AgentDashboard = () => {
     setWithdrawLoading(false);
   };
 
+  const handlePaystackTopup = async () => {
+    if (!store || !user?.email) return;
+    const amt = parseFloat(topupAmount);
+    if (!amt || amt < 1) { 
+      toast({ title: "Minimum topup is GHS 1.00", variant: "destructive" }); 
+      return; 
+    }
+    setTopupLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("initialize-wallet-topup", {
+        body: {
+          email: user.email,
+          amount: amt,
+          agent_store_id: store.id,
+          callback_url: `${window.location.origin}/agent-topup-callback`,
+        },
+      });
+      if (error) throw error;
+      if (data?.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else {
+        throw new Error("No authorization URL returned");
+      }
+    } catch (e: any) {
+      toast({ title: "Topup Error", description: e.message, variant: "destructive" });
+    }
+    setTopupLoading(false);
+  };
+
   // ==================== FLYER FUNCTIONS ====================
   const getFlyerPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const getMtnPkgs = () => MTN_SIZES.map(s => { const p = packages.find(x => x.network === "mtn" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
@@ -779,7 +810,7 @@ const AgentDashboard = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total Profit</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {profitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">(Selling Price - Base Price)</p></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
-              <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Available for Withdrawal</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
+              <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">My Wallet</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
             </div>
             <Card className="border-border">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -905,8 +936,51 @@ const AgentDashboard = () => {
           </TabsContent>
 
           {/* ============================= TOP UP ============================= */}
-          <TabsContent value="topup" className="mt-0">
-            <Card className="border-border"><CardHeader><CardTitle className="font-display flex items-center gap-2"><Coins className="h-5 w-5 text-primary" /> Top Up Your Wallet</CardTitle></CardHeader><CardContent className="space-y-6"><div className="rounded-lg bg-primary/5 border border-primary/30 p-4 text-center"><p className="text-sm text-muted-foreground">Current Wallet Balance</p><p className="font-display text-3xl font-bold text-primary">GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"}</p></div><div className="space-y-4"><h3 className="font-semibold text-lg">Steps to top up:</h3><ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground"><li>Dial <span className="font-mono font-bold text-foreground">*170#</span> on your MTN MoMo phone.</li><li>Select <b>1</b> (Transfer Money) → <b>1</b> (MoMo User).</li><li>Recipient: <span className="font-mono font-bold text-foreground">0599449202</span> <Button variant="ghost" size="sm" className="h-6 w-6 p-0 ml-1" onClick={() => copyPhoneNumber("0599449202")}><Copy className="h-3 w-3" /></Button></li><li>Enter the amount.</li><li>Reference: <div className="mt-2 p-3 bg-secondary/50 rounded-lg border border-border font-mono font-bold text-center text-primary text-xl">{store?.topup_reference ?? "N/A"}<Button variant="ghost" size="sm" className="ml-2 h-8" onClick={copyRef}><Copy className="h-3 w-3" /> Copy</Button></div></li><li>Send transaction ID to: <div className="mt-2 flex flex-wrap gap-3"><Button variant="outline" size="sm" asChild><a href="https://wa.me/233200511211" target="_blank" rel="noopener noreferrer">📱 WhatsApp 0200511211</a></Button><Button variant="outline" size="sm" asChild><a href="tel:0599449202">📞 Call 0599449202</a></Button></div></li></ol></div><div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-sm"><p className="font-semibold text-yellow-400">⚠️ Important</p><p className="text-muted-foreground">Admin credits your wallet after verifying the transaction ID.</p></div></CardContent></Card>
+          <TabsContent value="topup" className="mt-0 space-y-4">
+            <Card className="border-border">
+              <CardHeader><CardTitle className="font-display flex items-center gap-2"><Coins className="h-5 w-5 text-primary" /> Top Up Your Wallet</CardTitle></CardHeader>
+              <CardContent className="space-y-6">
+                <div className="rounded-lg bg-primary/5 border border-primary/30 p-4 text-center">
+                  <p className="text-sm text-muted-foreground">Current Wallet Balance</p>
+                  <p className="font-display text-3xl font-bold text-primary">GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"}</p>
+                </div>
+                
+                {/* Paystack Topup Section */}
+                <div className="border border-green-500/30 rounded-lg p-4 bg-green-500/5">
+                  <h3 className="font-semibold text-lg flex items-center gap-2 text-green-400 mb-3">
+                    <CreditCard className="h-5 w-5" /> Instant Topup with Paystack
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">Top up instantly using mobile money or card. Your wallet will be credited automatically after payment.</p>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1 space-y-1">
+                      <Label>Amount (GHS)</Label>
+                      <Input type="number" step="1" min="1" placeholder="e.g. 50" value={topupAmount} onChange={e => setTopupAmount(e.target.value)} />
+                    </div>
+                    <Button variant="hero" onClick={handlePaystackTopup} disabled={topupLoading} className="bg-green-600 hover:bg-green-700">
+                      {topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CreditCard className="h-4 w-4 mr-1" />}
+                      Pay with Paystack
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Manual MoMo Instructions */}
+                <div className="border-t border-border pt-4">
+                  <h3 className="font-semibold text-lg mb-3">Alternative: Manual MoMo Transfer</h3>
+                  <ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground">
+                    <li>Dial <span className="font-mono font-bold text-foreground">*170#</span> on your MTN MoMo phone.</li>
+                    <li>Select <b>1</b> (Transfer Money) → <b>1</b> (MoMo User).</li>
+                    <li>Recipient: <span className="font-mono font-bold text-foreground">0599449202</span> <Button variant="ghost" size="sm" className="h-6 w-6 p-0 ml-1" onClick={() => copyPhoneNumber("0599449202")}><Copy className="h-3 w-3" /></Button></li>
+                    <li>Enter the amount.</li>
+                    <li>Reference: <div className="mt-2 p-3 bg-secondary/50 rounded-lg border border-border font-mono font-bold text-center text-primary text-xl">{store?.topup_reference ?? "N/A"}<Button variant="ghost" size="sm" className="ml-2 h-8" onClick={copyRef}><Copy className="h-3 w-3" /> Copy</Button></div></li>
+                    <li>Send transaction ID to: <div className="mt-2 flex flex-wrap gap-3"><Button variant="outline" size="sm" asChild><a href="https://wa.me/233200511211" target="_blank" rel="noopener noreferrer">WhatsApp 0200511211</a></Button><Button variant="outline" size="sm" asChild><a href="tel:0599449202">Call 0599449202</a></Button></div></li>
+                  </ol>
+                </div>
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-sm">
+                  <p className="font-semibold text-yellow-400">Note on Manual Transfers</p>
+                  <p className="text-muted-foreground">Manual transfers require admin verification. Use Paystack for instant credit.</p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ============================= APPEARANCE ============================= */}

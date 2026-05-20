@@ -20,6 +20,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AgentDashboard = lazy(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazy(() => import("./pages/AgentStorefront"));
 const AgentRegistrationCallback = lazy(() => import("./pages/AgentRegistrationCallback"));
+const AgentTopupCallback = lazy(() => import("./pages/AgentTopupCallback"));
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,7 @@ const App = () => {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/store/:storeName" element={<RedirectToStoreSubdomain />} />
                   <Route path="/agent-registration-callback" element={<AgentRegistrationCallback />} />
+                  <Route path="/agent-topup-callback" element={<AgentTopupCallback />} />
                   <Route
                     path="/admin"
                     element={
