@@ -11,11 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2, Megaphone, Smartphone,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
+import PushNotificationManager from "@/components/PushNotificationManager";
 import { DOMAINS } from "@/config/domains";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -1859,6 +1860,13 @@ const AdminDashboard = () => {
   {canSee("complaints") && (
   <TabsContent value="complaints" className="space-y-6">
   <ComplaintsManager />
+  </TabsContent>
+  )}
+
+  {/* PUSH NOTIFICATIONS TAB */}
+  {canSee("push") && (
+  <TabsContent value="push" className="space-y-6">
+    <PushNotificationManager />
   </TabsContent>
   )}
   

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import PushNotificationSubscribe from "@/components/PushNotificationSubscribe";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -41,6 +42,7 @@ const Navbar = () => {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
+          <PushNotificationSubscribe variant="icon" />
           {loading ? (
             <Button variant="ghost" size="sm" disabled>
               <Loader2 className="h-4 w-4 animate-spin" />

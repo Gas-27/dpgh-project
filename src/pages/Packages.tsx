@@ -1027,6 +1027,44 @@ const Packages = () => {
       .then(({ data }) => { setPackages(data ?? []); setLoading(false); });
   }, []);
 
+  // Real-time updates for packages and site config (spin wheel, etc.)
+  useEffect(() => {
+    const packagesChannel = supabase
+      .channel("packages-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "data_packages" },
+        async () => {
+          const { data } = await supabase.from("data_packages").select("id,network,size_gb,price").eq("active", true).order("size_gb", { ascending: true });
+          if (data) setPackages(data);
+        }
+      )
+      .subscribe();
+    
+    const siteConfigChannel = supabase
+      .channel("site-config-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_config" },
+        async () => {
+          const { data } = await supabase.from("site_config").select("*").eq("id", 1).maybeSingle();
+          if (data) {
+            setSiteConfig(
+              !data.spin_wheel_segments
+                ? { ...data, default_network: data.default_network as Network }
+                : { ...data, default_network: data.default_network as Network, segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
+            );
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(packagesChannel);
+      supabase.removeChannel(siteConfigChannel);
+    };
+  }, []);
+
   useEffect(() => {
     const n = searchParams.get("network");
     if (n === "mtn" || n === "airteltigo" || n === "telecel") setSelectedNetwork(n);

@@ -665,6 +665,31 @@ const AgentStorefront = () => {
     return () => { supabase.removeChannel(channel); };
   }, [store?.id, refreshPrices]);
 
+  // ── Real-time store settings updates (spin wheel, theme, etc.) ──
+  useEffect(() => {
+    if (!store?.id) return;
+    const isSubagent = !!(store as any).is_subagent_store;
+    const tableName = isSubagent ? "subagent_stores" : "agent_stores";
+    
+    const storeChannel = supabase
+      .channel(`store-settings-${store.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: tableName, filter: `id=eq.${store.id}` },
+        (payload) => {
+          const newData = payload.new as any;
+          setStore(prev => prev ? { 
+            ...prev, 
+            ...newData,
+            theme_config: { ...prev.theme_config, ...(newData.theme_config || {}) }
+          } : prev);
+        }
+      )
+      .subscribe();
+    
+    return () => { supabase.removeChannel(storeChannel); };
+  }, [store?.id]);
+
   // ── Notifications ──
   const fetchNotifications = useCallback(async () => {
     if (!store?.id) return;

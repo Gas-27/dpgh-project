@@ -475,6 +475,51 @@ export function SubagentStorefront() {
     fetchStore();
   }, [urlStoreName]);
 
+  // Real-time store settings updates (theme, prices, etc.)
+  useEffect(() => {
+    if (!store?.id) return;
+    
+    const storeChannel = supabase
+      .channel(`subagent-store-settings-${store.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "subagent_stores", filter: `id=eq.${store.id}` },
+        (payload) => {
+          const newData = payload.new as any;
+          setStore(prev => prev ? { 
+            ...prev, 
+            ...newData,
+            theme_config: { ...prev.theme_config, ...(newData.theme_config || {}) }
+          } : prev);
+        }
+      )
+      .subscribe();
+    
+    const priceChannel = supabase
+      .channel(`subagent-prices-${store.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "subagent_package_prices", filter: `subagent_store_id=eq.${store.id}` },
+        async () => {
+          const { data } = await supabase
+            .from("subagent_package_prices")
+            .select("package_id, sell_price")
+            .eq("subagent_store_id", store.id);
+          if (data) {
+            const priceMap: Record<string, number> = {};
+            data.forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+            setSubagentPrices(priceMap);
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => { 
+      supabase.removeChannel(storeChannel);
+      supabase.removeChannel(priceChannel);
+    };
+  }, [store?.id]);
+
   // Notifications
   const fetchNotifications = useCallback(async () => {
     if (!store?.id) return;
