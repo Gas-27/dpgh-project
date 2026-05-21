@@ -11,10 +11,11 @@ interface AuthGuardProps {
 const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
   const { user, loading, hasRole, isAdmin } = useAuth();
   const [agentApproved, setAgentApproved] = useState<boolean | null>(null);
+  const [hasAgentStore, setHasAgentStore] = useState<boolean | null>(null);
   const [checkingApproval, setCheckingApproval] = useState(false);
 
   useEffect(() => {
-    // Only check approval for agent role
+    // Check approval for agent role - even if user doesn't have agent role yet
     if (requiredRole === "agent" && user && !isAdmin) {
       setCheckingApproval(true);
       supabase
@@ -23,7 +24,13 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
         .eq("user_id", user.id)
         .maybeSingle()
         .then(({ data }) => {
-          setAgentApproved(data?.approved ?? false);
+          if (data) {
+            setHasAgentStore(true);
+            setAgentApproved(data.approved ?? false);
+          } else {
+            setHasAgentStore(false);
+            setAgentApproved(null);
+          }
           setCheckingApproval(false);
         });
     }
@@ -39,14 +46,21 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
 
   if (!user) return <Navigate to="/login" replace />;
   
-  // Admins can access any role-gated page
-  if (requiredRole && !hasRole(requiredRole) && !isAdmin) {
-    return <Navigate to="/" replace />;
+  // For agent route: check store approval BEFORE role check
+  if (requiredRole === "agent" && !isAdmin) {
+    // User has an agent store but it's not approved yet - redirect to pay
+    if (hasAgentStore && agentApproved === false) {
+      return <Navigate to="/pending-approval" replace />;
+    }
+    // User has no agent store and no agent role - redirect to onboarding
+    if (!hasAgentStore && !hasRole("agent")) {
+      return <Navigate to="/agent-onboarding" replace />;
+    }
   }
 
-  // Redirect unpaid agents to pending approval page
-  if (requiredRole === "agent" && agentApproved === false && !isAdmin) {
-    return <Navigate to="/pending-approval" replace />;
+  // For non-agent routes: standard role check
+  if (requiredRole && requiredRole !== "agent" && !hasRole(requiredRole) && !isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

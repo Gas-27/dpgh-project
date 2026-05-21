@@ -98,12 +98,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAgent = roles.includes("agent");
   const isSubagent = roles.includes("subagent");
 
+  // Track whether user has a pending (unapproved) agent store
+  const [hasPendingAgentStore, setHasPendingAgentStore] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setHasPendingAgentStore(false);
+      return;
+    }
+    // Check if user has an unapproved agent store
+    supabase
+      .from("agent_stores")
+      .select("id, approved")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data && !data.approved) {
+          setHasPendingAgentStore(true);
+        } else {
+          setHasPendingAgentStore(false);
+        }
+      });
+  }, [user]);
+
   const getDashboardRoute = useCallback(() => {
     if (roles.includes("admin")) return "/admin";
     if (roles.includes("agent")) return "/agent";
     if (roles.includes("subagent")) return "/subagent";
+    if (hasPendingAgentStore) return "/pending-approval";
     return "/";
-  }, [roles]);
+  }, [roles, hasPendingAgentStore]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

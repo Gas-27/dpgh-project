@@ -154,8 +154,10 @@ const PendingApproval = () => {
         }
       });
       
-      if (res.error) throw new Error(res.error.message);
-      if (!res.data?.authorization_url) throw new Error("No authorization URL");
+      console.log("[v0] initialize-payment response:", JSON.stringify(res.data), "error:", JSON.stringify(res.error));
+      if (res.error) throw new Error(res.error.message || "Edge function error");
+      if (res.data?.error) throw new Error(res.data.error);
+      if (!res.data?.authorization_url) throw new Error("No authorization URL returned");
       
       sessionStorage.setItem("pending_agent_registration_payment", res.data.reference);
       window.location.href = res.data.authorization_url;
