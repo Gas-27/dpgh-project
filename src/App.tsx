@@ -9,6 +9,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { DOMAINS } from "@/config/domains";
 import { useEffect } from "react";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import NotificationPrompt from "@/components/NotificationPrompt";
 
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Index = lazy(() => import("./pages/Index"));
@@ -70,6 +71,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <PWAInstallPrompt />
+        <NotificationPrompt />
         <BrowserRouter>
           <AuthProvider>
             <Suspense fallback={<RouteLoader />}>
