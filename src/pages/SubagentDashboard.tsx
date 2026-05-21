@@ -734,12 +734,16 @@ const SubagentDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  const totalRevenue = orders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.amount) : 0), 0);
+  const totalRevenue = orders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.selling_price || order.amount) : 0), 0);
   const totalProfit = orders.reduce((sum, order) => {
     if (order.status !== "completed" && order.status !== "paid") return sum;
-    const baseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
-    // Profit = Selling Price - Base Cost
-    return sum + (Number(order.amount) - baseCost);
+    // Use stored profit if available, otherwise calculate from stored prices or fallback
+    if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
+      return sum + Number(order.profit);
+    }
+    // Fallback for old orders without stored profit
+    const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
+    return sum + (Number(order.selling_price || order.amount) - baseCost);
   }, 0);
   const pendingOrders = orders.filter(o => o.status !== "completed").length;
   const totalOrders = orders.length;

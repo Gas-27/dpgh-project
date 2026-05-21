@@ -346,7 +346,7 @@ const AgentDashboard = () => {
     // Fetch direct orders (orders from agent's storefront - NOT subagent orders)
     const { data: directOrders, error: directError } = await supabase
       .from("orders")
-      .select("amount, package_id, subagent_store_id")
+      .select("amount, package_id, subagent_store_id, selling_price, base_price, profit")
       .eq("agent_store_id", store.id)
       .is("subagent_store_id", null)
       .in("status", ["paid", "completed"]);
@@ -368,51 +368,57 @@ const AgentDashboard = () => {
     if (subagentIds.length > 0) {
       const { data: subOrders } = await supabase
         .from("orders")
-        .select("amount, package_id, subagent_store_id")
+        .select("amount, package_id, subagent_store_id, selling_price, base_price, profit")
         .in("subagent_store_id", subagentIds)
         .in("status", ["paid", "completed"]);
       subagentOrders = subOrders || [];
     }
     
-    let directRevenue = 0, directCost = 0, subagentRevenue = 0, subagentProfit = 0;
+    let directRevenue = 0, directProfit = 0, subagentRevenue = 0, subagentProfit = 0;
     
-    // Calculate profit from direct orders (agent keeps selling price - agent cost)
-    // Use agent's custom base price if set by admin, otherwise use default agent_price
+    // Calculate profit from direct orders using STORED VALUES
+    // Use stored selling_price/base_price/profit if available, fallback to dynamic calc for old orders
     for (const order of directOrders || []) {
-      directRevenue += Number(order.amount);
-      const pkg = packages.find(p => p.id === order.package_id);
-      if (pkg) {
-        const agentCost = agentCustomBasePriceMap[order.package_id] || pkg.agent_price;
-        directCost += agentCost;
+      const storedSellPrice = order.selling_price;
+      const storedBasePrice = order.base_price;
+      const storedProfit = order.profit;
+      
+      if (storedSellPrice && storedSellPrice > 0 && storedProfit !== null && storedProfit !== undefined) {
+        // Use stored values - these are permanent
+        directRevenue += Number(storedSellPrice);
+        directProfit += Number(storedProfit);
+      } else {
+        // Fallback for old orders without stored prices
+        directRevenue += Number(order.amount);
+        const pkg = packages.find(p => p.id === order.package_id);
+        if (pkg) {
+          const agentCost = agentCustomBasePriceMap[order.package_id] || pkg.agent_price;
+          directProfit += (Number(order.amount) - agentCost);
+        }
       }
     }
     
     // Calculate profit from subagent orders
-    // Agent earns: subagent_base_price - agent_cost for each order
-    // subagent_base_price is what agent charged subagent (from subagent_package_prices table)
-    // agent_cost is either admin's custom price or default agent_price
+    // Agent's profit from subagent = what agent charged subagent - agent's cost
+    // This is stored in agent_stores.subagent_commission_balance, but we also calculate from orders
     for (const order of subagentOrders) {
+      // For agent's dashboard, subagent orders contribute to revenue (what subagent paid)
+      // and the agent's profit is (subagent_base_price - agent_cost)
       const pkg = packages.find(p => p.id === order.package_id);
       if (pkg) {
         const agentCost = agentCustomBasePriceMap[order.package_id] || pkg.agent_price || 0;
         const subagentBasePrice = subagentBasePrices[order.package_id] || agentCost;
         subagentProfit += (subagentBasePrice - agentCost);
-        subagentRevenue += subagentBasePrice; // Revenue from subagent perspective
+        subagentRevenue += subagentBasePrice;
       }
     }
     
-    const directProfit = directRevenue - directCost;
     const totalRevenue = directRevenue + subagentRevenue;
-    const totalCost = directCost + (subagentOrders.length > 0 ? subagentOrders.reduce((sum, o) => {
-      const pkg = packages.find(p => p.id === o.package_id);
-      const agentCost = agentCustomBasePriceMap[o.package_id] || pkg?.agent_price || 0;
-      return sum + agentCost;
-    }, 0) : 0);
     const combinedProfit = directProfit + subagentProfit;
     
     setProfitStats({
       totalRevenue,
-      totalCost,
+      totalCost: 0, // Not needed anymore
       totalProfit: combinedProfit,
       availableForWithdrawal: combinedProfit,
     });
