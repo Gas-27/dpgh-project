@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent,
@@ -438,6 +439,9 @@ const SubagentDashboard = () => {
           support_number: storeForm.support_number,
           whatsapp_group: storeForm.whatsapp_group || null,
           show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon ?? true,
+          momo_name: storeForm.momo_name,
+          momo_number: storeForm.momo_number,
+          momo_network: storeForm.momo_network,
         })
         .eq("id", subagentStore?.id);
 
@@ -1711,7 +1715,19 @@ const SubagentDashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Store Information</CardTitle>
                 {!editingStore && (
-                  <Button variant="outline" size="sm" onClick={() => setEditingStore(true)}>
+                  <Button variant="outline" size="sm" onClick={() => { 
+                    setStoreForm({ 
+                      store_name: subagentStore.store_name,
+                      whatsapp_number: subagentStore.whatsapp_number,
+                      support_number: subagentStore.support_number,
+                      whatsapp_group: subagentStore.whatsapp_group,
+                      show_whatsapp_group_icon: subagentStore.show_whatsapp_group_icon,
+                      momo_name: subagentStore.momo_name,
+                      momo_number: subagentStore.momo_number,
+                      momo_network: subagentStore.momo_network,
+                    });
+                    setEditingStore(true); 
+                  }}>
                     <Edit2 className="h-4 w-4 mr-1" /> Edit
                   </Button>
                 )}
@@ -1761,6 +1777,40 @@ const SubagentDashboard = () => {
                         {storeForm.show_whatsapp_group_icon !== false ? "A WhatsApp join icon will appear on your storefront." : "The join icon will be hidden."}
                       </p>
                     </div>
+                    <div className="border-t border-border pt-4 mt-4">
+                      <p className="text-sm font-semibold mb-3">MoMo Payment Details</p>
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label>MoMo Name</Label>
+                          <Input
+                            value={storeForm.momo_name || ""}
+                            onChange={e => setStoreForm({ ...storeForm, momo_name: e.target.value })}
+                            placeholder="Account holder name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>MoMo Number</Label>
+                          <Input
+                            value={storeForm.momo_number || ""}
+                            onChange={e => setStoreForm({ ...storeForm, momo_number: e.target.value })}
+                            placeholder="e.g. 0551234567"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Network</Label>
+                          <Select value={storeForm.momo_network || ""} onValueChange={v => setStoreForm({ ...storeForm, momo_network: v })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select network" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="mtn">MTN</SelectItem>
+                              <SelectItem value="vodafone">Vodafone</SelectItem>
+                              <SelectItem value="airteltigo">AirtelTigo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
                     <div className="flex gap-2">
                       <Button variant="outline" onClick={() => setEditingStore(false)}>Cancel</Button>
                       <Button variant="hero" onClick={handleSaveStore} disabled={saving}>
@@ -1790,6 +1840,23 @@ const SubagentDashboard = () => {
                     <div>
                       <p className="text-sm text-muted-foreground">Show Group Icon</p>
                       <p className="font-medium">{subagentStore.show_whatsapp_group_icon !== false ? "Yes" : "No"}</p>
+                    </div>
+                    <div className="border-t border-border pt-3 mt-3">
+                      <p className="text-sm font-semibold mb-2">MoMo Payment Details</p>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div>
+                          <p className="text-sm text-muted-foreground">MoMo Name</p>
+                          <p className="font-medium">{subagentStore.momo_name || "Not set"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">MoMo Number</p>
+                          <p className="font-medium">{subagentStore.momo_number || "Not set"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Network</p>
+                          <p className="font-medium">{subagentStore.momo_network?.toUpperCase() || "Not set"}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
