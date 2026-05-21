@@ -89,23 +89,16 @@ export default function PushNotificationSubscribe({ variant = "icon", className 
     setIsLoading(false);
   };
 
-  const unsubscribeFromPush = async () => {
-    setIsLoading(true);
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      
-      if (subscription) {
-        await subscription.unsubscribe();
-        await supabase.from("push_subscriptions" as any).delete().eq("endpoint", subscription.endpoint);
-        setIsSubscribed(false);
-        toast({ title: "Notifications Disabled" });
-      }
-    } catch (error) {
-      console.error("Error unsubscribing:", error);
-      toast({ title: "Error", description: "Failed to disable notifications.", variant: "destructive" });
+  // Users cannot turn off notifications - clicking just shows a message
+  const handleClick = () => {
+    if (isSubscribed) {
+      toast({ 
+        title: "Notifications Active", 
+        description: "You're receiving updates for special offers and giveaways!" 
+      });
+    } else {
+      subscribeToPush();
     }
-    setIsLoading(false);
   };
 
   if (!isSupported) return null;
@@ -115,10 +108,10 @@ export default function PushNotificationSubscribe({ variant = "icon", className 
       <Button
         variant="ghost"
         size="icon"
-        onClick={isSubscribed ? unsubscribeFromPush : subscribeToPush}
+        onClick={handleClick}
         disabled={isLoading}
         className={`relative ${className}`}
-        title={isSubscribed ? "Disable notifications" : "Enable notifications"}
+        title={isSubscribed ? "Notifications enabled" : "Enable notifications"}
       >
         {isLoading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -137,7 +130,7 @@ export default function PushNotificationSubscribe({ variant = "icon", className 
   return (
     <Button
       variant={isSubscribed ? "outline" : "default"}
-      onClick={isSubscribed ? unsubscribeFromPush : subscribeToPush}
+      onClick={handleClick}
       disabled={isLoading}
       className={className}
     >

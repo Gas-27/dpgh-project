@@ -76,12 +76,11 @@ export default function PushNotificationManager() {
 
     setSending(true);
     try {
-      // Call the edge function to send push notifications
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`, {
+      // Call the Vercel API route to send push notifications
+      const response = await fetch("/api/send-push-notification", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
           title: title.trim(),
