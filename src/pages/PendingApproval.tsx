@@ -138,20 +138,25 @@ const PendingApproval = () => {
       return;
     }
     
+    const requestBody = {
+      amount: registrationFee,
+      email: user.email,
+      phone: "0000000000",
+      callback_url: `${window.location.origin}/pending-approval`,
+      metadata: {
+        type: "agent_registration",
+        agent_store_id: store.id,
+        store_name: store.store_name,
+      }
+    };
+    
+    console.log("[v0] Sending to initialize-payment:", JSON.stringify(requestBody));
+    console.log("[v0] registrationFee:", registrationFee, "email:", user.email, "store.id:", store.id);
+    
     setPaymentLoading(true);
     try {
       const res = await supabase.functions.invoke("initialize-payment", {
-        body: {
-          amount: registrationFee,
-          email: user.email,
-          phone: "0000000000",
-          callback_url: `${window.location.origin}/pending-approval`,
-          metadata: {
-            type: "agent_registration",
-            agent_store_id: store.id,
-            store_name: store.store_name,
-          }
-        }
+        body: requestBody
       });
       
       console.log("[v0] initialize-payment response:", JSON.stringify(res.data), "error:", JSON.stringify(res.error));
