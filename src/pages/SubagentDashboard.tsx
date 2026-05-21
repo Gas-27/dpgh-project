@@ -915,7 +915,7 @@ const SubagentDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">My Wallet</p>
-                    <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {totalProfit.toFixed(2)}</p>
+                    <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}</p>
                     {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
                   </div>
                   <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
