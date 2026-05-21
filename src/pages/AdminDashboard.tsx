@@ -61,7 +61,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "spinwheel" | "complaints" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "complaints" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -419,7 +419,7 @@ const AdminDashboard = () => {
     if (!error && data) {
       setCurrentUserSections(data.sections as Section[]);
     } else {
-      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints", "settings"]);
+      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "push", "spinwheel", "complaints", "settings"]);
     }
   };
 
