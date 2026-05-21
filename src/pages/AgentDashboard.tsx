@@ -380,7 +380,6 @@ const AgentDashboard = () => {
     // Use stored selling_price/base_price/profit if available, fallback to dynamic calc for old orders
     for (const order of directOrders || []) {
       const storedSellPrice = order.selling_price;
-      const storedBasePrice = order.base_price;
       const storedProfit = order.profit;
       
       if (storedSellPrice && storedSellPrice > 0 && storedProfit !== null && storedProfit !== undefined) {
@@ -398,33 +397,33 @@ const AgentDashboard = () => {
       }
     }
     
-    // Calculate profit from subagent orders
-    // Agent's profit from subagent = what agent charged subagent - agent's cost
-    // This is stored in agent_stores.subagent_commission_balance, but we also calculate from orders
+    // For subagent orders, we use the stored subagent_commission_balance from agent_stores
+    // This is the PERMANENT value that gets updated when subagent sales happen
+    // Don't calculate dynamically - just use what's in the database
+    const storedSubagentCommission = Number(store?.subagent_commission_balance ?? 0);
+    
+    // Revenue from subagent orders - use stored values
     for (const order of subagentOrders) {
-      // For agent's dashboard, subagent orders contribute to revenue (what subagent paid)
-      // and the agent's profit is (subagent_base_price - agent_cost)
-      const pkg = packages.find(p => p.id === order.package_id);
-      if (pkg) {
-        const agentCost = agentCustomBasePriceMap[order.package_id] || pkg.agent_price || 0;
-        const subagentBasePrice = subagentBasePrices[order.package_id] || agentCost;
-        subagentProfit += (subagentBasePrice - agentCost);
-        subagentRevenue += subagentBasePrice;
-      }
+      // Add revenue from subagent orders using stored selling_price if available
+      const orderRevenue = order.selling_price && order.selling_price > 0 
+        ? Number(order.selling_price) 
+        : Number(order.amount);
+      subagentRevenue += orderRevenue;
     }
     
     const totalRevenue = directRevenue + subagentRevenue;
-    const combinedProfit = directProfit + subagentProfit;
+    // Total profit = direct profit from own orders + stored subagent commission from database
+    const combinedProfit = directProfit + storedSubagentCommission;
     
     setProfitStats({
       totalRevenue,
       totalCost: 0, // Not needed anymore
       totalProfit: combinedProfit,
-      availableForWithdrawal: combinedProfit,
+      availableForWithdrawal: Number(store?.wallet_balance ?? 0), // Use stored wallet balance
     });
     
-    // Also store the subagent profit separately for display
-    setSubagentProfitForAgent(subagentProfit);
+    // Also store the subagent profit separately for display (from database)
+    setSubagentProfitForAgent(storedSubagentCommission);
   };
 
   const fetchAllData = async () => {
