@@ -7,6 +7,7 @@ import TrustTicker from "@/components/TrustTicker";
 import ServicesSection from "@/components/ServicesSection";
 import AgentSection from "@/components/AgentSection";
 import Footer from "@/components/Footer";
+import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 
 const Index = () => {
   const location = useLocation();
@@ -34,44 +35,7 @@ const Index = () => {
       <AgentSection />
       <Footer />
 
-      {/* Floating WhatsApp Button */}
-      <a
-        href="https://whatsapp.com/channel/0029VbCBiBmCsU9XSl2ozc3R"
-        target="_blank"
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          zIndex: 1000,
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",          // space between icon and text
-          backgroundColor: "#25D366",
-          borderRadius: "30px", // rounded pill shape for icon + text
-          padding: "10px 15px",
-          boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
-          cursor: "pointer",
-          transition: "transform 0.2s",
-        }}
-        onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-        onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      >
-        <img
-          src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
-          alt="Join WhatsApp Channel"
-          style={{ width: "35px", height: "35px" }}
-        />
-        <span
-          style={{
-            color: "white",
-            fontWeight: "bold",
-            fontSize: "14px",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Join channel – get updates & free giveaways
-        </span>
-      </a>
+      <WhatsAppFloatingButton />
     </div>
   );
 };
