@@ -8,6 +8,7 @@ import AuthGuard from "@/components/AuthGuard";
 import { AuthProvider } from "@/hooks/useAuth";
 import { DOMAINS } from "@/config/domains";
 import { useEffect } from "react";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Index = lazy(() => import("./pages/Index"));
@@ -68,6 +69,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <PWAInstallPrompt />
         <BrowserRouter>
           <AuthProvider>
             <Suspense fallback={<RouteLoader />}>

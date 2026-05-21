@@ -2,13 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>DATA PLUG .STORE - Instant Data Bundles in Ghana</title>
     <meta name="description" content="Buy affordable MTN, AirtelTigo &amp; Telecel data bundles instantly. Fast, reliable 24/7 data service in Ghana.">
     <meta name="author" content="Data Plug GH" />
 
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#00d4ff" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="DATA PLUG" />
     
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167x167.png" />
+    
+    <!-- Splash Screens for iOS -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0f4a9bc2-1e9d-4781-8702-e006b01db3eb?Expires=1773712433&amp;GoogleAccessId=go-api-on-aws%40gpt-engineer-390607.iam.gserviceaccount.com&amp;Signature=yTxVJ%2FqDxGp0Jpm8EUyVMRCd%2BHhuQOb2kK8x1IQjNH2U5mFO4a4j5a7MObmryeG0%2FS0phAlGp%2BXycCi3V9SD6lmdfKWtmZpPh%2BGZw1RWWrt5YSBYah1N1Tq7KvY%2FlBPnEzW9bUbWsVQgxcG4PfI%2BrAJrtiXLedZmNBUDb8pgmvCqK%2FAg7YGqSNr87QTippB9%2FKusd5J9FXnK5PyKPs4gifYi8YSxdz57m8Q0A4qxu%2BynsxYQwWHM2TISg60rUt3nW%2BYyKl4qrKIVGzvMvZVAoTWJAuLyQaO31n3vv0Y9HRv85Mj3XufgzO3RDS9HANxRlTHFXCQ%2B7QnpxpOAS%2FVHJg%3D%3D">
@@ -26,5 +42,20 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Register Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered:', registration.scope);
+            })
+            .catch((error) => {
+              console.log('SW registration failed:', error);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
