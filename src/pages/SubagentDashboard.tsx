@@ -948,18 +948,30 @@ const SubagentDashboard = () => {
                       </TableHeader>
                       <TableBody>
                         {filteredOrders.slice(0, 10).map(order => {
-                          const baseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
-                          const profit = order.amount - baseCost;
+                          // Use stored values from order if available, otherwise fall back to current prices (for old orders)
+                          const storedSellPrice = order.selling_price ?? null;
+                          const storedBaseCost = order.base_price ?? null;
+                          const storedProfit = order.profit ?? null;
+                          
+                          // Fallback calculation for old orders
+                          const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+                          const fallbackProfit = order.amount - fallbackBaseCost;
+                          
+                          // Use stored values if they exist and are non-zero
+                          const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
+                          const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
+                          const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
+                          
                           return (
                             <TableRow key={order.id}>
                               <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
                               <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
                               <TableCell className="uppercase text-sm">{order.network}</TableCell>
                               <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
-                              <TableCell className="font-semibold">GH₵{order.amount.toFixed(2)}</TableCell>
-                              <TableCell className="text-muted-foreground">GH₵{baseCost.toFixed(2)}</TableCell>
+                              <TableCell className="font-semibold">GH₵{Number(sellPrice).toFixed(2)}</TableCell>
+                              <TableCell className="text-muted-foreground">GH₵{Number(baseCost).toFixed(2)}</TableCell>
                               <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
-                                GH₵{profit.toFixed(2)}
+                                GH₵{Number(profit).toFixed(2)}
                               </TableCell>
                               <TableCell>
                                 <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
@@ -1127,17 +1139,29 @@ const SubagentDashboard = () => {
                       </TableHeader>
                       <TableBody>
                         {orders.slice(0, 10).map(order => {
-                          const baseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
-                          const profit = order.amount - baseCost;
+                          // Use stored values from order if available, otherwise fall back to current prices
+                          const storedSellPrice = order.selling_price ?? null;
+                          const storedBaseCost = order.base_price ?? null;
+                          const storedProfit = order.profit ?? null;
+                          
+                          // Fallback calculation for old orders
+                          const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+                          const fallbackProfit = order.amount - fallbackBaseCost;
+                          
+                          // Use stored values if they exist and are non-zero
+                          const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
+                          const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
+                          const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
+                          
                           return (
                             <TableRow key={order.id}>
                               <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
                               <TableCell>{order.network.toUpperCase()}</TableCell>
                               <TableCell>{order.size_gb}GB</TableCell>
-                              <TableCell className="font-semibold">GH₵{order.amount.toFixed(2)}</TableCell>
-                              <TableCell className="text-muted-foreground">GH₵{baseCost.toFixed(2)}</TableCell>
+                              <TableCell className="font-semibold">GH₵{Number(sellPrice).toFixed(2)}</TableCell>
+                              <TableCell className="text-muted-foreground">GH₵{Number(baseCost).toFixed(2)}</TableCell>
                               <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
-                                GH₵{profit.toFixed(2)}
+                                GH₵{Number(profit).toFixed(2)}
                               </TableCell>
                               <TableCell>
                                 <Badge variant={order.fulfillment_status === "delivered" ? "default" : "secondary"}>

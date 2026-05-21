@@ -1058,15 +1058,25 @@ const AgentDashboard = () => {
                   <>
                     <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Number</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Sell Price</TableHead><TableHead>Base Cost</TableHead><TableHead>Profit</TableHead><TableHead>Method</TableHead><TableHead>Source</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                       <TableBody>{filteredOrders.map(order => { 
-                        const pkg = packages.find(p => p.id === order.package_id); 
-                        const cost = pkg?.agent_price || 0;
-                        // For subagent orders, the sell price shown should be the price the agent set for subagents (subagent_package_prices)
-                        // For direct orders, it's the order.amount (store selling price)
                         const isSubagentOrder = !!order.subagent_store_id;
-                        const subagentBasePrice = subagentBasePrices[order.package_id] || Number(order.amount);
-                        const sellPrice = isSubagentOrder ? subagentBasePrice : Number(order.amount);
-                        const profit = sellPrice - cost;
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{order.size_gb}GB</TableCell><TableCell>GH₵ {sellPrice.toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GH₵ {cost.toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GH₵ {profit.toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">Subagent</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
+                        // Use stored values from order if available, otherwise fall back to current prices (for old orders)
+                        const storedSellPrice = order.selling_price ?? null;
+                        const storedBaseCost = order.base_price ?? null;
+                        const storedProfit = order.profit ?? null;
+                        
+                        // Fallback calculation for old orders that don't have stored prices
+                        const pkg = packages.find(p => p.id === order.package_id);
+                        const fallbackCost = pkg?.agent_price || 0;
+                        const fallbackSubagentBasePrice = subagentBasePrices[order.package_id] || Number(order.amount);
+                        const fallbackSellPrice = isSubagentOrder ? fallbackSubagentBasePrice : Number(order.amount);
+                        const fallbackProfit = fallbackSellPrice - fallbackCost;
+                        
+                        // Use stored values if they exist and are non-zero, otherwise use fallback
+                        const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : fallbackSellPrice;
+                        const cost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackCost;
+                        const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
+                        
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{order.size_gb}GB</TableCell><TableCell>GH₵ {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(cost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GH₵ {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">Subagent</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
                     {hasMoreOrders && !orderSearch && <div className="flex justify-center mt-4"><Button variant="outline" onClick={loadMoreOrders} disabled={loadingMoreOrders} className="gap-2">{loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{loadingMoreOrders ? "Loading..." : `Load More (${ordersTotal - orders.length} remaining)`}</Button></div>}
                   </>
                 )}
