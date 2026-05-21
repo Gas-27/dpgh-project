@@ -176,17 +176,17 @@ const AdminDashboard = () => {
     const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes, topupRes, subagentRes, 
            ordersCount, agentsCount, subagentsCount, usersCount, withdrawalsCount, topupsCount] = await Promise.all([
       supabase.from("data_packages").select("*").order("size_gb"),
-      supabase.from("agent_stores").select("*").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("user_roles").select("*"),
-      supabase.from("orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("withdrawal_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("agent_stores").select("*").order("created_at", { ascending: false }).range(0, 4999),
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }).range(0, 4999),
+      supabase.from("user_roles").select("*").range(0, 4999),
+      supabase.from("orders").select("*").order("created_at", { ascending: false }).range(0, 4999),
+      supabase.from("withdrawal_requests").select("*").order("created_at", { ascending: false }).range(0, 4999),
       supabase
         .from("wallet_topups")
         .select("id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )")
         .order("created_at", { ascending: false })
-        .limit(100),
-      supabase.from("subagent_stores").select("*, agent_stores(store_name)").order("created_at", { ascending: false }),
+        .range(0, 4999),
+      supabase.from("subagent_stores").select("*, agent_stores(store_name)").order("created_at", { ascending: false }).range(0, 4999),
       // Total counts
       supabase.from("orders").select("id", { count: "exact", head: true }),
       supabase.from("agent_stores").select("id", { count: "exact", head: true }),
@@ -978,7 +978,7 @@ const AdminDashboard = () => {
                 return (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Showing {filteredOrders.length === 0 ? 0 : (orderPage - 1) * PAGE_SIZE + 1} - {Math.min(orderPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length} orders (Total in database: {totalCounts.orders})
+                      Showing {filteredOrders.length === 0 ? 0 : (orderPage - 1) * PAGE_SIZE + 1} - {Math.min(orderPage * PAGE_SIZE, filteredOrders.length)} of {totalCounts.orders} orders
                     </p>
                     <Card className="border-border">
                       <Table>
@@ -1080,7 +1080,7 @@ const AdminDashboard = () => {
                 ) : (
                   <>
                   <p className="text-sm text-muted-foreground">
-                    Showing {(agentPage - 1) * PAGE_SIZE + 1} - {Math.min(agentPage * PAGE_SIZE, filteredAgents.length)} of {filteredAgents.length} agents (Total in database: {totalCounts.agents})
+                    Showing {(agentPage - 1) * PAGE_SIZE + 1} - {Math.min(agentPage * PAGE_SIZE, filteredAgents.length)} of {totalCounts.agents} agents
                   </p>
                     {paginated.map((agent) => (
                       <Card key={agent.id} className="border-border">
@@ -1155,7 +1155,7 @@ const AdminDashboard = () => {
               ) : (
                   <>
                   <p className="text-sm text-muted-foreground">
-                    Showing {(subagentPage - 1) * PAGE_SIZE + 1} - {Math.min(subagentPage * PAGE_SIZE, filtered.length)} of {filtered.length} subagents (Total in database: {totalCounts.subagents})
+                    Showing {(subagentPage - 1) * PAGE_SIZE + 1} - {Math.min(subagentPage * PAGE_SIZE, filtered.length)} of {totalCounts.subagents} subagents
                   </p>
                   {paginated.map((subagent) => (
                     <Card key={subagent.id} className="border-border bg-card/50">
@@ -1347,7 +1347,7 @@ const AdminDashboard = () => {
                 return (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Showing {filteredWithdrawals.length === 0 ? 0 : (withdrawalPage - 1) * PAGE_SIZE + 1} - {Math.min(withdrawalPage * PAGE_SIZE, filteredWithdrawals.length)} of {filteredWithdrawals.length} withdrawals
+                      Showing {filteredWithdrawals.length === 0 ? 0 : (withdrawalPage - 1) * PAGE_SIZE + 1} - {Math.min(withdrawalPage * PAGE_SIZE, filteredWithdrawals.length)} of {totalCounts.withdrawals} withdrawals
                     </p>
                     <Card className="border-border">
                       <Table>
@@ -1407,7 +1407,7 @@ const AdminDashboard = () => {
                 return (
                   <>
                   <p className="text-sm text-muted-foreground">
-                    Showing {filteredUsers.length === 0 ? 0 : (userPage - 1) * PAGE_SIZE + 1} - {Math.min(userPage * PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length} users (Total in database: {totalCounts.users})
+                      Showing {filteredUsers.length === 0 ? 0 : (userPage - 1) * PAGE_SIZE + 1} - {Math.min(userPage * PAGE_SIZE, filteredUsers.length)} of {totalCounts.users} users
                   </p>
                     <Card className="border-border">
                       <Table>

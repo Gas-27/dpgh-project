@@ -280,6 +280,7 @@ const AgentDashboard = () => {
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
   const [buyLoading, setBuyLoading] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawSource, setWithdrawSource] = useState<"wallet" | "subagent_commission">("wallet");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
@@ -760,9 +761,19 @@ const AgentDashboard = () => {
     if (hasPendingWithdrawal) { toast({ title: "Pending withdrawal exists", variant: "destructive" }); return; }
     const amt = parseFloat(withdrawAmount);
     if (!amt || amt < 10) { toast({ title: "Minimum is GH₵ 10.00", variant: "destructive" }); return; }
-    if (amt > profitStats.availableForWithdrawal) { toast({ title: "Insufficient balance", variant: "destructive" }); return; }
+    
+    // Check balance based on source
+    const availableBalance = withdrawSource === "subagent_commission" 
+      ? Number(store.subagent_commission_balance ?? 0) 
+      : Number(store.wallet_balance ?? 0);
+    
+    if (amt > availableBalance) { toast({ title: "Insufficient balance", variant: "destructive" }); return; }
     setWithdrawLoading(true);
-    const { error } = await supabase.from("withdrawal_requests").insert({ agent_store_id: store.id, amount: amt });
+    const { error } = await supabase.from("withdrawal_requests").insert({ 
+      agent_store_id: store.id, 
+      amount: amt,
+      withdrawal_source: withdrawSource
+    });
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Withdrawal requested!" }); setWithdrawAmount(""); fetchAllData(); }
     setWithdrawLoading(false);
@@ -1164,9 +1175,26 @@ const AgentDashboard = () => {
 
           {/* ============================= WITHDRAW ============================= */}
           <TabsContent value="withdraw" className="space-y-6 mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><Card className="border-primary/30 bg-primary/5"><CardContent className="p-6 text-center space-y-2"><TrendingUp className="h-10 w-10 text-primary mx-auto" /><p className="text-muted-foreground text-sm">Total Profit</p><p className="font-display text-3xl font-bold text-green-400">GH₵ {profitStats.totalProfit.toFixed(2)}</p></CardContent></Card><Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6 text-center space-y-2"><ArrowDownToLine className="h-10 w-10 text-yellow-400 mx-auto" /><p className="text-muted-foreground text-sm">Wallet Balance</p><p className="font-display text-3xl font-bold text-yellow-400">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p></CardContent></Card></div>
-            <Card className="border-border"><CardHeader><CardTitle className="font-display text-lg">Request Withdrawal</CardTitle></CardHeader><CardContent className="space-y-4">{hasPendingWithdrawal && (<div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3"><p className="text-sm text-yellow-400 font-medium">⚠️ You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes before requesting another.</p></div>)}<div className="rounded-xl border border-border bg-secondary/50 p-4"><div className="grid grid-cols-3 gap-4 text-sm"><div className="text-center"><p className="text-xs text-muted-foreground">MoMo Name</p><p className="font-bold">{store?.momo_name}</p></div><div className="text-center"><p className="text-xs text-muted-foreground">MoMo Number</p><p className="font-bold">{store?.momo_number}</p></div><div className="text-center"><p className="text-xs text-muted-foreground">Network</p><p className="font-bold">{store?.momo_network?.toUpperCase()}</p></div></div></div><p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p><div className="flex gap-2 items-end"><div className="flex-1 space-y-1"><Label>Amount (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 50.00" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} disabled={hasPendingWithdrawal} /></div><Button variant="hero" onClick={handleWithdraw} disabled={withdrawLoading || hasPendingWithdrawal}>{withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}Withdraw</Button></div></CardContent></Card>
-            {withdrawals.length > 0 && (<Card className="border-border"><CardHeader><CardTitle className="font-display text-lg">Withdrawal History</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{withdrawals.map(w => (<TableRow key={w.id}><TableCell className="text-sm">{new Date(w.created_at).toLocaleString()}</TableCell><TableCell className="font-bold">GH₵ {Number(w.amount).toFixed(2)}</TableCell><TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : w.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>{w.status}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent></Card>)}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className={`cursor-pointer transition-all ${withdrawSource === "wallet" ? "border-yellow-500 bg-yellow-500/10" : "border-border"}`} onClick={() => setWithdrawSource("wallet")}>
+                <CardContent className="p-6 text-center space-y-2">
+                  <ArrowDownToLine className="h-10 w-10 text-yellow-400 mx-auto" />
+                  <p className="text-muted-foreground text-sm">My Wallet</p>
+                  <p className="font-display text-3xl font-bold text-yellow-400">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
+                  {withdrawSource === "wallet" && <Badge className="bg-yellow-500 text-black">Selected</Badge>}
+                </CardContent>
+              </Card>
+              <Card className={`cursor-pointer transition-all ${withdrawSource === "subagent_commission" ? "border-primary bg-primary/10" : "border-border"}`} onClick={() => setWithdrawSource("subagent_commission")}>
+                <CardContent className="p-6 text-center space-y-2">
+                  <Users className="h-10 w-10 text-primary mx-auto" />
+                  <p className="text-muted-foreground text-sm">Profit from Subagents</p>
+                  <p className="font-display text-3xl font-bold text-primary">GH₵ {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p>
+                  {withdrawSource === "subagent_commission" && <Badge className="bg-primary text-black">Selected</Badge>}
+                </CardContent>
+              </Card>
+            </div>
+            <Card className="border-border"><CardHeader><CardTitle className="font-display text-lg">Request Withdrawal from {withdrawSource === "wallet" ? "My Wallet" : "Subagent Profit"}</CardTitle></CardHeader><CardContent className="space-y-4">{hasPendingWithdrawal && (<div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3"><p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes before requesting another.</p></div>)}<div className="rounded-xl border border-border bg-secondary/50 p-4"><div className="grid grid-cols-3 gap-4 text-sm"><div className="text-center"><p className="text-xs text-muted-foreground">MoMo Name</p><p className="font-bold">{store?.momo_name}</p></div><div className="text-center"><p className="text-xs text-muted-foreground">MoMo Number</p><p className="font-bold">{store?.momo_number}</p></div><div className="text-center"><p className="text-xs text-muted-foreground">Network</p><p className="font-bold">{store?.momo_network?.toUpperCase()}</p></div></div></div><p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p><div className="flex gap-2 items-end"><div className="flex-1 space-y-1"><Label>Amount (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 50.00" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} disabled={hasPendingWithdrawal} /></div><Button variant="hero" onClick={handleWithdraw} disabled={withdrawLoading || hasPendingWithdrawal}>{withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}Withdraw</Button></div></CardContent></Card>
+            {withdrawals.length > 0 && (<Card className="border-border"><CardHeader><CardTitle className="font-display text-lg">Withdrawal History</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Source</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{withdrawals.map(w => (<TableRow key={w.id}><TableCell className="text-sm">{new Date(w.created_at).toLocaleString()}</TableCell><TableCell className="font-bold">GH₵ {Number(w.amount).toFixed(2)}</TableCell><TableCell><Badge className={w.withdrawal_source === "subagent_commission" ? "bg-primary/20 text-primary" : "bg-yellow-500/20 text-yellow-400"}>{w.withdrawal_source === "subagent_commission" ? "Subagent Profit" : "Wallet"}</Badge></TableCell><TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : w.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>{w.status}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent></Card>)}
           </TabsContent>
 
           {/* ============================= TOP UP ============================= */}
