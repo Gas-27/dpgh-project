@@ -171,23 +171,38 @@ const AdminDashboard = () => {
     setDataLoading(false);
   };
 
+  // Helper function to fetch ALL records from a table (bypasses Supabase 1000 row limit)
+  const fetchAllRecords = async (table: string, select: string = "*", orderBy?: { column: string; ascending: boolean }) => {
+    const allData: any[] = [];
+    const batchSize = 1000;
+    let from = 0;
+    let hasMore = true;
+    
+    while (hasMore) {
+      let query = supabase.from(table).select(select).range(from, from + batchSize - 1);
+      if (orderBy) {
+        query = query.order(orderBy.column, { ascending: orderBy.ascending });
+      }
+      const { data, error } = await query;
+      if (error) {
+        console.error(`Error fetching ${table}:`, error);
+        break;
+      }
+      if (data && data.length > 0) {
+        allData.push(...data);
+        from += batchSize;
+        hasMore = data.length === batchSize;
+      } else {
+        hasMore = false;
+      }
+    }
+    return allData;
+  };
+
   // Silent background refresh (no loading state)
   const refreshData = async () => {
-    const [pkgRes, agentRes, profilesRes, rolesRes, ordersRes, withdrawRes, topupRes, subagentRes, 
-           ordersCount, agentsCount, subagentsCount, usersCount, withdrawalsCount, topupsCount] = await Promise.all([
-      supabase.from("data_packages").select("*").order("size_gb"),
-      supabase.from("agent_stores").select("*").order("created_at", { ascending: false }).range(0, 4999),
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }).range(0, 4999),
-      supabase.from("user_roles").select("*").range(0, 4999),
-      supabase.from("orders").select("*").order("created_at", { ascending: false }).range(0, 4999),
-      supabase.from("withdrawal_requests").select("*").order("created_at", { ascending: false }).range(0, 4999),
-      supabase
-        .from("wallet_topups")
-        .select("id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )")
-        .order("created_at", { ascending: false })
-        .range(0, 4999),
-      supabase.from("subagent_stores").select("*, agent_stores(store_name)").order("created_at", { ascending: false }).range(0, 4999),
-      // Total counts
+    // Fetch all counts first
+    const [ordersCount, agentsCount, subagentsCount, usersCount, withdrawalsCount, topupsCount] = await Promise.all([
       supabase.from("orders").select("id", { count: "exact", head: true }),
       supabase.from("agent_stores").select("id", { count: "exact", head: true }),
       supabase.from("subagent_stores").select("id", { count: "exact", head: true }),
@@ -195,14 +210,8 @@ const AdminDashboard = () => {
       supabase.from("withdrawal_requests").select("id", { count: "exact", head: true }),
       supabase.from("wallet_topups").select("id", { count: "exact", head: true }),
     ]);
-    setPackages(pkgRes.data ?? []);
-    setAgents((agentRes.data as AgentStore[]) ?? []);
-    setOrders((ordersRes.data as Order[]) ?? []);
-    setWithdrawals((withdrawRes.data as WithdrawalRequest[]) ?? []);
-    setTopupHistory((topupRes.data as any[]) ?? []);
-    setSubagents((subagentRes.data ?? []));
     
-    // Set total counts
+    // Set total counts immediately
     setTotalCounts({
       orders: ordersCount.count ?? 0,
       agents: agentsCount.count ?? 0,
@@ -210,12 +219,31 @@ const AdminDashboard = () => {
       users: usersCount.count ?? 0,
       withdrawals: withdrawalsCount.count ?? 0,
       topups: topupsCount.count ?? 0,
-      complaints: 0, // Will be updated when complaints are fetched
+      complaints: 0,
     });
 
+    // Fetch ALL records from each table (no 1000 limit)
+    const [pkgData, agentData, profilesData, rolesData, ordersData, withdrawData, topupData, subagentData] = await Promise.all([
+      supabase.from("data_packages").select("*").order("size_gb"),
+      fetchAllRecords("agent_stores", "*", { column: "created_at", ascending: false }),
+      fetchAllRecords("profiles", "*", { column: "created_at", ascending: false }),
+      fetchAllRecords("user_roles", "*"),
+      fetchAllRecords("orders", "*", { column: "created_at", ascending: false }),
+      fetchAllRecords("withdrawal_requests", "*", { column: "created_at", ascending: false }),
+      fetchAllRecords("wallet_topups", "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )", { column: "created_at", ascending: false }),
+      fetchAllRecords("subagent_stores", "*, agent_stores(store_name)", { column: "created_at", ascending: false }),
+    ]);
+    
+    setPackages(pkgData.data ?? []);
+    setAgents((agentData as AgentStore[]) ?? []);
+    setOrders((ordersData as Order[]) ?? []);
+    setWithdrawals((withdrawData as WithdrawalRequest[]) ?? []);
+    setTopupHistory((topupData as any[]) ?? []);
+    setSubagents((subagentData ?? []));
+
     const rolesMap: Record<string, string> = {};
-    (rolesRes.data ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
-    const userList = (profilesRes.data ?? []).map((p: any) => ({ ...p, role: rolesMap[p.id] || "user" }));
+    (rolesData ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
+    const userList = (profilesData ?? []).map((p: any) => ({ ...p, role: rolesMap[p.id] || "user" }));
     setUsers(userList);
     
     // Fetch app settings
