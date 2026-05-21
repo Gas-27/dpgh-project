@@ -4,8 +4,8 @@ import { Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-// VAPID Public Key - same as in PushNotificationSubscribe
-const VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
+// VAPID Public Key - must match the one in Vercel environment variables
+const VAPID_PUBLIC_KEY = "BJUskmE3HGHt9COxYVaCsRdoIEvyH9G3N6aV-Q9AxvEPuwpB1FN5Axk5IdWXF6_8mUSbdoaUzzop92I899xVkIY";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
