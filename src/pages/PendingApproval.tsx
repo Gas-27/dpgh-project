@@ -150,7 +150,6 @@ const PendingApproval = () => {
             type: "agent_registration",
             agent_store_id: store.id,
             store_name: store.store_name,
-            amount: registrationFee
           }
         }
       });
