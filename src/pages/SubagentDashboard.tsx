@@ -310,7 +310,7 @@ const SubagentDashboard = () => {
       .subscribe();
     
     const c4 = supabase.channel("subagent-withdrawal-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "subagent_withdrawal_requests", filter: `subagent_store_id=eq.${subagentStore.id}` }, (p) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "withdrawal_requests", filter: `subagent_store_id=eq.${subagentStore.id}` }, (p) => {
         if ((p.new as any).status === "completed" && (p.old as any).status !== "completed") {
           fetchData();
           toast({ title: "Withdrawal approved!" });

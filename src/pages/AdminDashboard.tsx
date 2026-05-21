@@ -918,6 +918,12 @@ const AdminDashboard = () => {
   const filteredUsers = users.filter((user) => (user.full_name?.toLowerCase() || "").includes(userSearchTerm.toLowerCase()));
   const filteredOrders = orders.filter((order) => order.customer_number.toLowerCase().includes(orderSearchTerm.toLowerCase()));
   const filteredWithdrawals = withdrawals.filter((withdrawal) => {
+    // Check if it's a subagent withdrawal
+    if (withdrawal.subagent_store_id) {
+      const subagent = subagents.find((s) => s.id === withdrawal.subagent_store_id);
+      return subagent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
+    }
+    // Otherwise, check agent store
     const agent = agents.find((a) => a.id === withdrawal.agent_store_id);
     return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
   });
