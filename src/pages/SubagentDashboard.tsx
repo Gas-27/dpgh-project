@@ -753,6 +753,9 @@ const SubagentDashboard = () => {
   const totalOrders = orders.length;
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
+  const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
+  // Available wallet balance = total profit earned minus completed withdrawals
+  const availableWalletBalance = totalProfit - completedWithdrawals;
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
@@ -919,7 +922,7 @@ const SubagentDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">My Wallet</p>
-                    <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}</p>
+                    <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {availableWalletBalance.toFixed(2)}</p>
                     {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
                   </div>
                   <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
