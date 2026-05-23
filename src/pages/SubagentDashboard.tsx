@@ -1222,7 +1222,7 @@ const SubagentDashboard = () => {
                   </div>
                 </div>
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                  <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH₵ {Number(subagentStore?.wallet_balance ?? 0).toFixed(2)}</span></p>
+                  <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH₵ {availableWalletBalance.toFixed(2)}</span></p>
                 </div>
                 <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
                 <div className="flex gap-2 items-end">
