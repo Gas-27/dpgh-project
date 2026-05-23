@@ -415,11 +415,19 @@ const AgentDashboard = () => {
     // Total profit = direct profit from own orders + stored subagent commission from database
     const combinedProfit = directProfit + storedSubagentCommission;
     
+    // Calculate completed withdrawals from wallet source only
+    const completedWalletWithdrawals = withdrawals
+      .filter(w => w.status === "completed" && w.source === "wallet")
+      .reduce((sum, w) => sum + Number(w.amount), 0);
+    
+    // Available for withdrawal = direct profit - completed withdrawals from wallet
+    const availableBalance = directProfit - completedWalletWithdrawals;
+    
     setProfitStats({
       totalRevenue,
       totalCost: 0, // Not needed anymore
       totalProfit: combinedProfit,
-      availableForWithdrawal: Number(store?.wallet_balance ?? 0), // Use stored wallet balance
+      availableForWithdrawal: availableBalance, // Calculated from actual profit
     });
     
     // Also store the subagent profit separately for display (from database)
@@ -1050,7 +1058,7 @@ const AgentDashboard = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total Profit</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {profitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">All-time profit</p></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
-              <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">My Wallet</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
+              <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">My Wallet</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {profitStats.availableForWithdrawal.toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Profit from Subagents</p><p className="font-display text-2xl font-bold text-primary mt-1">GH₵ {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Withdraw separately in Wallet tab</p></div><Users className="h-8 w-8 text-primary opacity-50" /></div></CardContent></Card>
             </div>
             <Card className="border-border">
@@ -1204,8 +1212,8 @@ const AgentDashboard = () => {
               <Card className={`cursor-pointer transition-all ${withdrawSource === "wallet" ? "border-yellow-500 bg-yellow-500/10" : "border-border"}`} onClick={() => setWithdrawSource("wallet")}>
                 <CardContent className="p-6 text-center space-y-2">
                   <ArrowDownToLine className="h-10 w-10 text-yellow-400 mx-auto" />
-                  <p className="text-muted-foreground text-sm">My Wallet</p>
-                  <p className="font-display text-3xl font-bold text-yellow-400">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
+<p className="text-muted-foreground text-sm">My Wallet</p>
+  <p className="font-display text-3xl font-bold text-yellow-400">GH₵ {profitStats.availableForWithdrawal.toFixed(2)}</p>
                   {withdrawSource === "wallet" && <Badge className="bg-yellow-500 text-black">Selected</Badge>}
                 </CardContent>
               </Card>

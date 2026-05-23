@@ -141,12 +141,7 @@ export default function NotificationPrompt() {
             >
               {isLoading ? "Enabling..." : "Enable Notifications"}
             </Button>
-            <button 
-              onClick={handleDismiss}
-              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-            >
-              Maybe Later
-            </button>
+          </div>
           </div>
         </div>
       </div>
