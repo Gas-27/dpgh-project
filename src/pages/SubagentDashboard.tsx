@@ -124,7 +124,7 @@ const SubagentDashboard = () => {
       setLoading(true);
       if (!user?.id) return;
 
-      // Fetch subagent store
+      // Fetch subagent store first (needed for other queries)
       const { data: store, error: storeErr } = await supabase
         .from("subagent_stores")
         .select("*")
@@ -132,10 +132,9 @@ const SubagentDashboard = () => {
         .single();
 
       if (storeErr) {
-        console.log("[v0] Error fetching subagent store:", storeErr);
+        console.error("Error fetching subagent store:", storeErr);
         throw storeErr;
       }
-      console.log("[v0] Subagent store fetched:", store);
       setSubagentStore(store);
       setStoreForm(store);
       
@@ -149,92 +148,62 @@ const SubagentDashboard = () => {
 
       if (!store?.id) return;
 
-      // Fetch orders
-      const { data: ordersList } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("subagent_store_id", store.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      setOrders(ordersList || []);
+      // Run all other queries in parallel for faster loading
+      const [
+        ordersResult,
+        withdrawResult,
+        packagesResult,
+        agentSubagentPricesResult,
+        adminCustomPricesResult,
+        subagentPricesResult,
+        topupsResult
+      ] = await Promise.all([
+        supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
+        supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+        supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
+        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
+        supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
+        supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
+        supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50)
+      ]);
 
-      // Fetch withdrawal requests
-      const { data: withdrawList } = await supabase
-        .from("withdrawal_requests")
-        .select("*")
-        .eq("subagent_store_id", store.id)
-        .order("created_at", { ascending: false });
-      setWithdrawals(withdrawList || []);
-
-      // Fetch packages
-      const { data: pkgList } = await supabase
-        .from("data_packages")
-        .select("*")
-        .eq("active", true)
-        .order("size_gb");
-      setPackages(pkgList || []);
-
-      // Fetch base prices set by parent agent for subagents (from subagent_package_prices with agent_store_id)
-      const { data: agentSubagentPrices } = await supabase
-        .from("subagent_package_prices")
-        .select("package_id, base_price")
-        .eq("agent_store_id", store.agent_store_id);
-      
-      // Also fetch any admin custom base prices for the parent agent
-      const { data: adminCustomPrices } = await supabase
-        .from("agent_custom_base_prices")
-        .select("package_id, custom_base_price")
-        .eq("agent_store_id", store.agent_store_id);
+      setOrders(ordersResult.data || []);
+      setWithdrawals(withdrawResult.data || []);
+      setPackages(packagesResult.data || []);
+      setTopupHistory(topupsResult.data || []);
       
       // Build admin custom price map
       const adminPriceMap: Record<string, number> = {};
-      (adminCustomPrices || []).forEach((p: any) => {
+      (adminCustomPricesResult.data || []).forEach((p: any) => {
         if (p.custom_base_price) adminPriceMap[p.package_id] = p.custom_base_price;
       });
       
-      if (agentSubagentPrices) {
+      if (agentSubagentPricesResult.data) {
         const priceMap: Record<string, number> = {};
         // First set admin base prices from packages
-        (pkgList || []).forEach((p: any) => {
-          // Use admin custom base price if set for this agent, otherwise use default package price
+        (packagesResult.data || []).forEach((p: any) => {
           priceMap[p.id] = adminPriceMap[p.id] || p.price;
         });
-        // Then override with agent's subagent base prices (which should be >= admin's price for agent)
-        agentSubagentPrices.forEach((p: any) => {
+        // Then override with agent's subagent base prices
+        agentSubagentPricesResult.data.forEach((p: any) => {
           if (p.base_price) priceMap[p.package_id] = p.base_price;
         });
         setBasePrices(priceMap);
       } else {
-        // Fallback to admin base prices (with custom overrides if any)
         const priceMap: Record<string, number> = {};
-        (pkgList || []).forEach((p: any) => {
+        (packagesResult.data || []).forEach((p: any) => {
           priceMap[p.id] = adminPriceMap[p.id] || p.price;
         });
         setBasePrices(priceMap);
       }
-
-      // Fetch subagent's own selling prices
-      const { data: subagentPricesList } = await supabase
-        .from("subagent_package_prices")
-        .select("package_id, sell_price")
-        .eq("subagent_store_id", store.id);
       
-      if (subagentPricesList) {
+      if (subagentPricesResult.data) {
         const priceMap: Record<string, number> = {};
-        subagentPricesList.forEach((p: any) => {
+        subagentPricesResult.data.forEach((p: any) => {
           priceMap[p.package_id] = p.sell_price;
         });
         setSubagentPrices(priceMap);
       }
-      
-      // Fetch topup history
-      const { data: topups } = await supabase
-        .from("subagent_wallet_topups")
-        .select("id, amount, paystack_reference, created_at")
-        .eq("subagent_store_id", store.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      setTopupHistory(topups || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ title: "Error", description: "Failed to load dashboard", variant: "destructive" });
@@ -756,15 +725,6 @@ const SubagentDashboard = () => {
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
   // Available wallet balance = total profit earned minus completed withdrawals
   const availableWalletBalance = totalProfit - completedWithdrawals;
-  
-  console.log("[v0] Subagent Wallet Debug:", {
-    totalProfit,
-    completedWithdrawals,
-    availableWalletBalance,
-    withdrawalsCount: withdrawals.length,
-    completedWithdrawalsCount: withdrawals.filter(w => w.status === "completed").length,
-    withdrawals: withdrawals.map(w => ({ amount: w.amount, status: w.status }))
-  });
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";

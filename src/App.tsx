@@ -27,11 +27,23 @@ const SubagentDashboard = lazy(() => import("./pages/SubagentDashboard"));
 const SubagentLogin = lazy(() => import("./pages/SubagentLogin"));
 const SubagentStorefront = lazy(() => import("./pages/SubagentStorefront"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 2, // Data is fresh for 2 minutes
+      gcTime: 1000 * 60 * 10, // Cache for 10 minutes
+      refetchOnWindowFocus: false, // Don't refetch on window focus
+      retry: 1, // Only retry once on failure
+    },
+  },
+});
 
 const RouteLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="animate-pulse text-primary font-display text-xl">Loading...</div>
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <p className="text-muted-foreground text-sm">Loading...</p>
+    </div>
   </div>
 );
 
