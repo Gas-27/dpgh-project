@@ -18,10 +18,14 @@ interface SubagentStore {
   momo_network: string;
   wallet_balance: number;
   approved: boolean;
+  // Calculated fields
+  calculated_balance?: number;
 }
 
 interface SubagentStoreWithOrders extends SubagentStore {
   orders?: any[];
+  withdrawals?: any[];
+  topups?: any[];
 }
 
 interface SubagentsListProps {
@@ -44,14 +48,36 @@ export default function SubagentsList({ agentStoreId, subagents, onSuspend }: Su
   const handleViewDetails = async (subagent: SubagentStore) => {
     try {
       setLoading(true);
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("subagent_store_id", subagent.id);
+      // Fetch orders, withdrawals, and topups in parallel
+      const [ordersResult, withdrawalsResult, topupsResult] = await Promise.all([
+        supabase.from("orders").select("*").eq("subagent_store_id", subagent.id),
+        supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", subagent.id),
+        supabase.from("subagent_wallet_topups").select("*").eq("subagent_store_id", subagent.id)
+      ]);
+      
+      const orders = ordersResult.data || [];
+      const withdrawals = withdrawalsResult.data || [];
+      const topups = topupsResult.data || [];
+      
+      // Calculate the actual wallet balance
+      const customerOrders = orders.filter((o: any) => o.payment_method !== "wallet");
+      const totalProfit = customerOrders.reduce((sum: number, order: any) => {
+        if (order.status !== "completed" && order.status !== "paid") return sum;
+        if (order.profit) return sum + Number(order.profit);
+        const baseCost = order.base_price || 0;
+        return sum + (Number(order.selling_price || order.amount) - baseCost);
+      }, 0);
+      const walletPurchases = orders.filter((o: any) => o.payment_method === "wallet").reduce((sum: number, o: any) => sum + Number(o.amount || 0), 0);
+      const totalTopups = topups.reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+      const completedWithdrawals = withdrawals.filter((w: any) => w.status === "completed").reduce((sum: number, w: any) => sum + Number(w.amount), 0);
+      const calculatedBalance = totalProfit + totalTopups - completedWithdrawals - walletPurchases;
       
       setSelectedSubagent({
         ...subagent,
-        orders: orders || [],
+        orders,
+        withdrawals,
+        topups,
+        calculated_balance: calculatedBalance,
       });
     } catch (error) {
       toast({
@@ -157,8 +183,8 @@ export default function SubagentsList({ agentStoreId, subagents, onSuspend }: Su
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Profit</p>
-                    <p className="text-2xl font-bold text-green-400">GH₵ {Number(selectedSubagent.wallet_balance).toFixed(2)}</p>
+                    <p className="text-sm text-muted-foreground">Wallet Balance</p>
+                    <p className="text-2xl font-bold text-green-400">GH₵ {(selectedSubagent.calculated_balance ?? 0).toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Orders</p>

@@ -114,6 +114,23 @@ const SubagentDashboard = () => {
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
 
+  // Helper function to calculate available wallet balance
+  const getAvailableBalance = () => {
+    // Profit from customer sales (orders where customer paid via paystack, not wallet purchases by subagent)
+    const customerOrders = orders.filter(o => (o.status === "completed" || o.status === "paid") && o.payment_method !== "wallet");
+    const totalProfit = customerOrders.reduce((sum, order) => {
+      const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
+      return sum + (Number(order.selling_price || order.amount) - baseCost);
+    }, 0);
+    // Wallet purchases by subagent (deduct from balance)
+    const walletPurchases = orders.filter(o => o.payment_method === "wallet").reduce((sum, order) => {
+      return sum + Number(order.amount || 0);
+    }, 0);
+    const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
+    const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
+    return totalProfit + totalTopups - completedWithdrawals - walletPurchases;
+  };
+
   useEffect(() => {
     if (!isSubagent) return;
     fetchData();
@@ -444,7 +461,7 @@ const SubagentDashboard = () => {
       return;
     }
     
-    if (amount > (subagentStore.wallet_balance || 0)) {
+    if (amount > getAvailableBalance()) {
       toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
       return;
     }
@@ -626,7 +643,7 @@ const SubagentDashboard = () => {
     
     const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
     
-    if (price > (subagentStore.wallet_balance || 0)) {
+    if (price > getAvailableBalance()) {
       toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
       return;
     }
@@ -634,26 +651,21 @@ const SubagentDashboard = () => {
     try {
       setBuyLoading(true);
       
-      // Create order
+      // Create order with wallet payment method
       const { error: orderError } = await supabase.from("orders").insert({
         subagent_store_id: subagentStore.id,
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
         size_gb: buyingPkg.size_gb,
         amount: price,
+        base_price: price,
+        selling_price: price,
+        payment_method: "wallet",
         status: "pending",
         fulfillment_status: "pending"
       });
       
       if (orderError) throw orderError;
-      
-      // Deduct from wallet
-      const { error: walletError } = await supabase
-        .from("subagent_stores")
-        .update({ wallet_balance: (subagentStore.wallet_balance || 0) - price })
-        .eq("id", subagentStore.id);
-      
-      if (walletError) throw walletError;
       
       toast({ title: "Success", description: `${buyingPkg.size_gb}GB data purchased for ${buyCustomerNumber}` });
       setBuyingPkg(null);
@@ -707,8 +719,10 @@ const SubagentDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  const totalRevenue = orders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.selling_price || order.amount) : 0), 0);
-  const totalProfit = orders.reduce((sum, order) => {
+  // Only count customer orders (not wallet purchases by subagent) for revenue and profit
+  const customerOrders = orders.filter(o => o.payment_method !== "wallet");
+  const totalRevenue = customerOrders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.selling_price || order.amount) : 0), 0);
+  const totalProfit = customerOrders.reduce((sum, order) => {
     if (order.status !== "completed" && order.status !== "paid") return sum;
     // Use stored profit if available, otherwise calculate from stored prices or fallback
     if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
@@ -718,13 +732,17 @@ const SubagentDashboard = () => {
     const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
     return sum + (Number(order.selling_price || order.amount) - baseCost);
   }, 0);
+  // Calculate wallet purchases by subagent
+  const walletPurchases = orders.filter(o => o.payment_method === "wallet").reduce((sum, order) => sum + Number(order.amount || 0), 0);
   const pendingOrders = orders.filter(o => o.status !== "completed").length;
   const totalOrders = orders.length;
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-  // Available wallet balance = total profit earned minus completed withdrawals
-  const availableWalletBalance = totalProfit - completedWithdrawals;
+  // Calculate total topups
+  const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
+  // Available wallet balance = total profit + topups - completed withdrawals - wallet purchases
+  const availableWalletBalance = totalProfit + totalTopups - completedWithdrawals - walletPurchases;
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
@@ -978,7 +996,7 @@ const SubagentDashboard = () => {
                     <Wallet className="h-5 w-5 text-primary" />
                     <span className="font-medium">Wallet Balance:</span>
                   </div>
-                  <span className="font-display text-xl font-bold text-primary">GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}</span>
+                  <span className="font-display text-xl font-bold text-primary">GH₵ {availableWalletBalance.toFixed(2)}</span>
                 </div>
                 {hasPendingWithdrawal && <p className="text-xs text-orange-400">GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal.</p>}
               </CardContent>
@@ -1032,7 +1050,7 @@ const SubagentDashboard = () => {
                         variant="outline" 
                         className="w-full border-green-500 text-green-500 hover:bg-green-500/10" 
                         onClick={handleBuyData} 
-                        disabled={buyLoading || !buyCustomerNumber || (basePrices[buyingPkg.id] || buyingPkg.price || 0) > (subagentStore?.wallet_balance || 0)}
+                        disabled={buyLoading || !buyCustomerNumber || (basePrices[buyingPkg.id] || buyingPkg.price || 0) > availableWalletBalance}
                       >
                         {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
                         Pay with Wallet
@@ -1085,7 +1103,7 @@ const SubagentDashboard = () => {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground text-center">
-                      Wallet Balance: GH₵ {(subagentStore?.wallet_balance || 0).toFixed(2)}
+                      Wallet Balance: GH₵ {availableWalletBalance.toFixed(2)}
                     </p>
                   </CardContent>
                 </Card>
