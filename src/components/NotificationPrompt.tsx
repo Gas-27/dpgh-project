@@ -142,7 +142,6 @@ export default function NotificationPrompt() {
               {isLoading ? "Enabling..." : "Enable Notifications"}
             </Button>
           </div>
-          </div>
         </div>
       </div>
     </div>
