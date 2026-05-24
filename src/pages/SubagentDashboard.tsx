@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate, Link } from "react-router-dom";
@@ -156,6 +156,10 @@ const SubagentDashboard = () => {
   }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
 
   // Sync calculated wallet balance to database when data changes
+  // Use a ref to track if we've synced to prevent infinite loops
+  const hasSyncedRef = useRef(false);
+  const lastSyncedBalanceRef = useRef<number | null>(null);
+  
   useEffect(() => {
     const syncWalletBalance = async () => {
       if (!subagentStore?.id) return;
@@ -171,22 +175,22 @@ const SubagentDashboard = () => {
       const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
       const calculatedBalance = profit + topups - completedWithdrawals;
       
-      // Always update the database to ensure it reflects the calculated balance
+      // Only sync if the balance has changed from last sync
+      if (lastSyncedBalanceRef.current === calculatedBalance) return;
+      
+      // Update the database
       const { error } = await supabase
         .from("subagent_stores")
         .update({ wallet_balance: calculatedBalance })
         .eq("id", subagentStore.id);
       
-      if (error) {
-        console.error("Failed to sync wallet balance:", error);
-      } else {
-        // Update local state to reflect the new balance
-        setSubagentStore(prev => prev ? { ...prev, wallet_balance: calculatedBalance } : prev);
+      if (!error) {
+        lastSyncedBalanceRef.current = calculatedBalance;
       }
     };
     
     syncWalletBalance();
-  }, [orders, topupHistory, subagentStore?.id, basePrices]);
+  }, [orders.length, topupHistory.length, withdrawals.length, subagentStore?.id]);
 
   const fetchData = async (userId?: string) => {
     try {

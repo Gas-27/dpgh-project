@@ -14,9 +14,15 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
   const [hasAgentStore, setHasAgentStore] = useState<boolean | null>(null);
   const [checkingApproval, setCheckingApproval] = useState(false);
 
-  // Check for admin impersonation
+  // Check for admin impersonation - allow admin to access any dashboard
   const isImpersonatingSubagent = !!localStorage.getItem("admin_impersonate_subagent");
   const isImpersonatingAgent = !!localStorage.getItem("admin_impersonate_agent");
+  const isImpersonating = isImpersonatingSubagent || isImpersonatingAgent;
+
+  // If admin is impersonating, skip all role checks and allow access
+  if (isAdmin && isImpersonating) {
+    return <>{children}</>;
+  }
 
   useEffect(() => {
     // Check approval for agent role - even if user doesn't have agent role yet
@@ -62,12 +68,8 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
     }
   }
 
-  // For non-agent routes: standard role check (allow admin impersonation)
+  // For non-agent routes: standard role check
   if (requiredRole && requiredRole !== "agent") {
-    // Allow admin to impersonate
-    if (isAdmin && (isImpersonatingSubagent || isImpersonatingAgent)) {
-      return <>{children}</>;
-    }
     if (!hasRole(requiredRole) && !isAdmin) {
       return <Navigate to="/" replace />;
     }
