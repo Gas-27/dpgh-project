@@ -114,21 +114,9 @@ const SubagentDashboard = () => {
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
 
-  // Helper function to calculate available wallet balance
+  // Helper function to get available wallet balance (uses stored DB value)
   const getAvailableBalance = () => {
-    // Profit from customer sales (orders where customer paid via paystack, not wallet purchases by subagent)
-    const customerOrders = orders.filter(o => (o.status === "completed" || o.status === "paid") && o.payment_method !== "wallet");
-    const totalProfit = customerOrders.reduce((sum, order) => {
-      const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
-      return sum + (Number(order.selling_price || order.amount) - baseCost);
-    }, 0);
-    // Wallet purchases by subagent (deduct from balance)
-    const walletPurchases = orders.filter(o => o.payment_method === "wallet").reduce((sum, order) => {
-      return sum + Number(order.amount || 0);
-    }, 0);
-    const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-    const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-    return totalProfit + totalTopups - completedWithdrawals - walletPurchases;
+    return Number(subagentStore?.wallet_balance || 0);
   };
 
   useEffect(() => {
@@ -741,8 +729,11 @@ const SubagentDashboard = () => {
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
   // Calculate total topups
   const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-  // Available wallet balance = total profit + topups - completed withdrawals - wallet purchases
-  const availableWalletBalance = totalProfit + totalTopups - completedWithdrawals - walletPurchases;
+  // Available wallet balance = total profit + topups - wallet purchases
+  // Note: Completed withdrawals are NOT subtracted because they were paid from the database wallet_balance
+  // The database wallet_balance tracks actual balance after withdrawals
+  // We use: stored wallet_balance as the source of truth (synced by backend)
+  const availableWalletBalance = Number(subagentStore?.wallet_balance || 0);
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
