@@ -76,10 +76,12 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
   // For non-agent routes: standard role check
   if (requiredRole && requiredRole !== "agent") {
     if (!hasRole(requiredRole) && !isAdmin) {
+      console.log("[v0] AuthGuard: Redirecting to / because no role and not admin", { requiredRole, isAdmin });
       return <Navigate to="/" replace />;
     }
   }
 
+  console.log("[v0] AuthGuard: Allowing access to children");
   return <>{children}</>;
 };
 
