@@ -829,6 +829,16 @@ const SubagentDashboard = () => {
   // Available wallet balance = Total Profit + Topups - Total Withdrawals (pending + completed)
   const availableWalletBalance = totalProfit + totalTopups - totalWithdrawals;
   
+  // Debug log to trace wallet calculation
+  console.log("[v0] Wallet calculation:", { 
+    totalProfit, 
+    totalTopups, 
+    totalWithdrawals, 
+    withdrawalsCount: withdrawals.length,
+    withdrawalsData: withdrawals,
+    availableWalletBalance 
+  });
+  
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
   const storeUrl = storeName ? DOMAINS.getSubagentStoreUrl(storeName) : "";
