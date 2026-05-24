@@ -286,9 +286,11 @@ const SubagentDashboard = () => {
       
       // Debug: Log price data
       console.log("[v0] Price data:", {
+        subagentStoreId: store.id,
         agentStoreId: store.agent_store_id,
-        agentSubagentPrices: agentSubagentPricesResult.data,
-        adminCustomPrices: adminCustomPricesResult.data,
+        agentSubagentPricesRaw: agentSubagentPricesResult.data,
+        agentSubagentPricesError: agentSubagentPricesResult.error,
+        adminCustomPricesRaw: adminCustomPricesResult.data,
         agentSubagentPriceMap,
         adminPriceMap
       });
