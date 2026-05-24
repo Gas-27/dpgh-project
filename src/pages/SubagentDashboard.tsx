@@ -77,14 +77,39 @@ const SubagentDashboard = () => {
   const { signOut, user, isSubagent, isAdmin } = useAuth();
   const { toast } = useToast();
 
-  // Check if admin is impersonating - use function to avoid SSR issues
-  const getImpersonatedUserId = () => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem("admin_impersonate_subagent");
+  // Check if admin is impersonating - check URL params first (cross-domain), then localStorage
+  const getImpersonationData = () => {
+    if (typeof window === 'undefined') return { userId: null, storeName: null };
+    
+    // Check URL params first (for cross-domain admin impersonation)
+    const urlParams = new URLSearchParams(window.location.search);
+    const adminToken = urlParams.get("admin_token");
+    if (adminToken) {
+      try {
+        const decoded = JSON.parse(atob(adminToken));
+        // Token is valid for 1 hour
+        if (decoded.timestamp && Date.now() - decoded.timestamp < 3600000) {
+          // Store in localStorage for subsequent navigations and remove from URL
+          localStorage.setItem("admin_impersonate_subagent", decoded.userId);
+          localStorage.setItem("admin_impersonate_store", decoded.storeName || "");
+          // Clean URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return { userId: decoded.userId, storeName: decoded.storeName };
+        }
+      } catch (e) {
+        console.error("Invalid admin token");
+      }
+    }
+    
+    // Fall back to localStorage
+    const userId = localStorage.getItem("admin_impersonate_subagent");
+    const storeName = localStorage.getItem("admin_impersonate_store");
+    return { userId, storeName };
   };
   
-  const [impersonatedUserId] = useState<string | null>(getImpersonatedUserId);
-  const isImpersonating = isAdmin && !!impersonatedUserId;
+  const [impersonationData] = useState(getImpersonationData);
+  const impersonatedUserId = impersonationData.userId;
+  const isImpersonating = !!impersonatedUserId;
 
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -141,15 +166,17 @@ const SubagentDashboard = () => {
   // Function to exit impersonation
   const exitImpersonation = () => {
     localStorage.removeItem("admin_impersonate_subagent");
+    localStorage.removeItem("admin_impersonate_store");
     localStorage.removeItem("admin_impersonate_return");
-    window.location.href = "/admin";
+    // Redirect back to admin dashboard on main domain
+    window.location.href = "https://datastores.shop/admin";
   };
 
   useEffect(() => {
     // Use impersonated user ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
     if (!effectiveUserId) return;
-    // Allow if admin impersonating OR if user is a subagent
+    // Allow if impersonating (admin token) OR if user is a subagent
     if (!isImpersonating && !isSubagent) return;
     fetchData(effectiveUserId);
   }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);

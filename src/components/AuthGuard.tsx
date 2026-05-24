@@ -14,10 +14,20 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
   const [hasAgentStore, setHasAgentStore] = useState<boolean | null>(null);
   const [checkingApproval, setCheckingApproval] = useState(false);
 
-  // Check for admin impersonation - stored in localStorage
-  const isImpersonatingSubagent = typeof window !== 'undefined' && !!localStorage.getItem("admin_impersonate_subagent");
-  const isImpersonatingAgent = typeof window !== 'undefined' && !!localStorage.getItem("admin_impersonate_agent");
-  const isImpersonating = isImpersonatingSubagent || isImpersonatingAgent;
+  // Check for admin impersonation - check URL params first (cross-domain), then localStorage
+  const checkImpersonation = () => {
+    if (typeof window === 'undefined') return false;
+    
+    // Check URL params for admin_token (cross-domain impersonation)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("admin_token")) return true;
+    
+    // Check localStorage
+    return !!localStorage.getItem("admin_impersonate_subagent") || 
+           !!localStorage.getItem("admin_impersonate_agent");
+  };
+  
+  const isImpersonating = checkImpersonation();
 
   // If impersonating, allow access immediately (admin set the localStorage before navigating)
   // This check happens BEFORE loading check to prevent any redirects

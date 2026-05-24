@@ -1303,10 +1303,13 @@ const AdminDashboard = () => {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                // Store admin impersonation data
-                                localStorage.setItem("admin_impersonate_subagent", subagent.user_id);
-                                localStorage.setItem("admin_impersonate_return", "true");
-                                window.location.href = "/subagent-dashboard";
+                                // Navigate to subagent domain with impersonation token in URL
+                                const token = btoa(JSON.stringify({ 
+                                  userId: subagent.user_id, 
+                                  storeName: subagent.store_name,
+                                  timestamp: Date.now() 
+                                }));
+                                window.location.href = `https://${DOMAINS.SUBAGENT_STORE}/dashboard?admin_token=${token}`;
                               }}
                               className="text-xs bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
                             >
