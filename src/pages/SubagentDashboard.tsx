@@ -272,34 +272,36 @@ const SubagentDashboard = () => {
       setPackages(packagesResult.data || []);
       setTopupHistory(topupsResult.data || []);
       
-      // Build admin custom price map
+      // Build admin custom price map (admin's price to agents - NOT for subagents)
       const adminPriceMap: Record<string, number> = {};
       (adminCustomPricesResult.data || []).forEach((p: any) => {
         if (p.custom_base_price) adminPriceMap[p.package_id] = p.custom_base_price;
       });
       
-      // Build agent's subagent base prices map (what agent charges subagent)
+      // Build agent's subagent base prices map (what agent charges subagent - THIS IS THE CORRECT ONE)
       const agentSubagentPriceMap: Record<string, number> = {};
       (agentSubagentPricesResult.data || []).forEach((p: any) => {
-        if (p.base_price) agentSubagentPriceMap[p.package_id] = p.base_price;
+        if (p.base_price !== null && p.base_price !== undefined) {
+          agentSubagentPriceMap[p.package_id] = Number(p.base_price);
+        }
       });
       
-      // Debug: Log price data
-      console.log("[v0] Price data:", {
-        subagentStoreId: store.id,
-        agentStoreId: store.agent_store_id,
-        agentSubagentPricesRaw: agentSubagentPricesResult.data,
-        agentSubagentPricesError: agentSubagentPricesResult.error,
-        adminCustomPricesRaw: adminCustomPricesResult.data,
-        agentSubagentPriceMap,
-        adminPriceMap
-      });
-      
-      // Final price map: use agent's subagent price if set, otherwise fall back to admin price
+      // Final price map: Agent's subagent price is the ONLY correct base price for subagents
+      // Only fall back to admin price if agent hasn't set any prices yet
       const priceMap: Record<string, number> = {};
+      const hasAgentPrices = Object.keys(agentSubagentPriceMap).length > 0;
+      
       (packagesResult.data || []).forEach((p: any) => {
-        // Priority: Agent's subagent price > Admin's custom price > Package default price
-        priceMap[p.id] = agentSubagentPriceMap[p.id] || adminPriceMap[p.id] || p.price;
+        if (hasAgentPrices && agentSubagentPriceMap[p.id] !== undefined) {
+          // Use agent's price for subagent
+          priceMap[p.id] = agentSubagentPriceMap[p.id];
+        } else if (adminPriceMap[p.id] !== undefined) {
+          // Fallback to admin price only if agent hasn't set prices
+          priceMap[p.id] = adminPriceMap[p.id];
+        } else {
+          // Final fallback to package default
+          priceMap[p.id] = p.price;
+        }
       });
       setBasePrices(priceMap);
       
