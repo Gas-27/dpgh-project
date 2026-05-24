@@ -150,17 +150,17 @@ const SubagentDashboard = () => {
 
   // Helper function to calculate available wallet balance
   const getAvailableBalance = () => {
-    // Calculate profit from customer sales
-    const customerOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
-    const profit = customerOrders.reduce((sum, order) => {
+    // Calculate profit from ALL completed orders
+    const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
+    const profit = completedOrders.reduce((sum, order) => {
       if (order.profit) return sum + Number(order.profit);
       const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
       return sum + (Number(order.selling_price || order.amount) - baseCost);
     }, 0);
     const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-    const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-    // Wallet = Profit + Topups - Completed Withdrawals
-    return profit + topups - completedWithdrawals;
+    const allWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
+    // Wallet = Profit + Topups - Total Withdrawals
+    return profit + topups - allWithdrawals;
   };
 
   // Function to exit impersonation
@@ -190,16 +190,16 @@ const SubagentDashboard = () => {
     const syncWalletBalance = async () => {
       if (!subagentStore?.id) return;
       
-      // Calculate the correct wallet balance: Profit + Topups - Completed Withdrawals
-      const customerOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
-      const profit = customerOrders.reduce((sum, order) => {
+      // Calculate the correct wallet balance: Profit + Topups - Total Withdrawals
+      const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
+      const profit = completedOrders.reduce((sum, order) => {
         if (order.profit) return sum + Number(order.profit);
         const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
         return sum + (Number(order.selling_price || order.amount) - baseCost);
       }, 0);
       const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-      const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-      const calculatedBalance = profit + topups - completedWithdrawals;
+      const allWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
+      const calculatedBalance = profit + topups - allWithdrawals;
       
       // Only sync if the balance has changed from last sync
       if (lastSyncedBalanceRef.current === calculatedBalance) return;
@@ -802,11 +802,13 @@ const SubagentDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  // Only count customer orders (not wallet purchases by subagent) for revenue and profit
+  // Only count customer orders (not wallet purchases by subagent) for revenue
   const customerOrders = orders.filter(o => o.payment_method !== "wallet");
   const totalRevenue = customerOrders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.selling_price || order.amount) : 0), 0);
-  const totalProfit = customerOrders.reduce((sum, order) => {
-    if (order.status !== "completed" && order.status !== "paid") return sum;
+  
+  // Calculate profit from ALL completed orders (customer pays, subagent earns profit)
+  const allCompletedOrders = orders.filter(o => o.status === "completed" || o.status === "paid");
+  const totalProfit = allCompletedOrders.reduce((sum, order) => {
     // Use stored profit if available, otherwise calculate from stored prices or fallback
     if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
       return sum + Number(order.profit);
@@ -815,18 +817,17 @@ const SubagentDashboard = () => {
     const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
     return sum + (Number(order.selling_price || order.amount) - baseCost);
   }, 0);
-  // Calculate wallet purchases by subagent
-  const walletPurchases = orders.filter(o => o.payment_method === "wallet").reduce((sum, order) => sum + Number(order.amount || 0), 0);
+  
   const pendingOrders = orders.filter(o => o.status !== "completed").length;
   const totalOrders = orders.length;
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
+  const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
   // Calculate total topups
   const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-  // Available wallet balance = total profit + topups - wallet purchases
-  // Note: Completed withdrawals are NOT subtracted - they were already paid out from a previous balance
-  const availableWalletBalance = totalProfit + totalTopups - walletPurchases;
+  // Available wallet balance = Total Profit + Topups - Total Withdrawals (pending + completed)
+  const availableWalletBalance = totalProfit + totalTopups - totalWithdrawals;
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
