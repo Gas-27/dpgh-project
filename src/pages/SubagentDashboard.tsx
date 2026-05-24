@@ -278,24 +278,19 @@ const SubagentDashboard = () => {
         if (p.custom_base_price) adminPriceMap[p.package_id] = p.custom_base_price;
       });
       
-      if (agentSubagentPricesResult.data) {
-        const priceMap: Record<string, number> = {};
-        // First set admin base prices from packages
-        (packagesResult.data || []).forEach((p: any) => {
-          priceMap[p.id] = adminPriceMap[p.id] || p.price;
-        });
-        // Then override with agent's subagent base prices
-        agentSubagentPricesResult.data.forEach((p: any) => {
-          if (p.base_price) priceMap[p.package_id] = p.base_price;
-        });
-        setBasePrices(priceMap);
-      } else {
-        const priceMap: Record<string, number> = {};
-        (packagesResult.data || []).forEach((p: any) => {
-          priceMap[p.id] = adminPriceMap[p.id] || p.price;
-        });
-        setBasePrices(priceMap);
-      }
+      // Build agent's subagent base prices map (what agent charges subagent)
+      const agentSubagentPriceMap: Record<string, number> = {};
+      (agentSubagentPricesResult.data || []).forEach((p: any) => {
+        if (p.base_price) agentSubagentPriceMap[p.package_id] = p.base_price;
+      });
+      
+      // Final price map: use agent's subagent price if set, otherwise fall back to admin price
+      const priceMap: Record<string, number> = {};
+      (packagesResult.data || []).forEach((p: any) => {
+        // Priority: Agent's subagent price > Admin's custom price > Package default price
+        priceMap[p.id] = agentSubagentPriceMap[p.id] || adminPriceMap[p.id] || p.price;
+      });
+      setBasePrices(priceMap);
       
       if (subagentPricesResult.data) {
         const priceMap: Record<string, number> = {};
