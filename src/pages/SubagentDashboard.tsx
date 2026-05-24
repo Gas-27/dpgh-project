@@ -78,8 +78,13 @@ const SubagentDashboard = () => {
   const { toast } = useToast();
 
   // Check if admin is impersonating
-  const [isImpersonating, setIsImpersonating] = useState(false);
-  const [impersonatedUserId, setImpersonatedUserId] = useState<string | null>(null);
+  const [isImpersonating, setIsImpersonating] = useState(() => {
+    // Initialize from localStorage immediately to avoid timing issues
+    return !!localStorage.getItem("admin_impersonate_subagent");
+  });
+  const [impersonatedUserId, setImpersonatedUserId] = useState<string | null>(() => {
+    return localStorage.getItem("admin_impersonate_subagent");
+  });
 
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -132,15 +137,6 @@ const SubagentDashboard = () => {
     // Wallet = Profit + Topups - Completed Withdrawals
     return profit + topups - completedWithdrawals;
   };
-
-  // Check for admin impersonation on mount
-  useEffect(() => {
-    const impersonateUserId = localStorage.getItem("admin_impersonate_subagent");
-    if (impersonateUserId) {
-      setIsImpersonating(true);
-      setImpersonatedUserId(impersonateUserId);
-    }
-  }, []);
 
   // Function to exit impersonation
   const exitImpersonation = () => {

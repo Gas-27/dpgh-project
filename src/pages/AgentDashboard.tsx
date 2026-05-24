@@ -23,7 +23,7 @@ import {
   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
   TrendingUp, Search, Palette, RotateCcw, Bell, Plus, Trash2, Calendar,
   LayoutGrid, Minus, Plus as PlusIcon, Coins, Menu, Image, Download, Share2,
-  ChevronDown, ChevronUp, BookOpen, Percent, Users, AlertCircle,
+  ChevronDown, ChevronUp, BookOpen, Percent, Users, AlertCircle, ShieldAlert,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -248,6 +248,15 @@ const AgentDashboard = () => {
   const { user, isAdmin, loading: authLoading, signOut } = useAuth();
   const { toast } = useToast();
 
+  // Check if admin is impersonating
+  const [isImpersonating] = useState(() => !!localStorage.getItem("admin_impersonate_agent"));
+  const [impersonatedUserId] = useState<string | null>(() => localStorage.getItem("admin_impersonate_agent"));
+
+  const exitImpersonation = () => {
+    localStorage.removeItem("admin_impersonate_agent");
+    window.location.href = "/admin";
+  };
+
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -427,8 +436,9 @@ const AgentDashboard = () => {
   };
 
   const fetchAllData = async () => {
-    if (!user) return;
-    const { data: sd, error: se } = await supabase.from("agent_stores").select("*").eq("user_id", user.id).maybeSingle();
+    const effectiveUserId = impersonatedUserId || user?.id;
+    if (!effectiveUserId) return;
+    const { data: sd, error: se } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
     if (se) { console.error(se); setLoading(false); return; }
     if (sd) {
       if (sd.show_whatsapp_group_icon == null) { sd.show_whatsapp_group_icon = true; await supabase.from("agent_stores").update({ show_whatsapp_group_icon: true }).eq("id", sd.id); }
@@ -530,7 +540,7 @@ const AgentDashboard = () => {
     setLoadingMoreOrders(false);
   };
 
-  useEffect(() => { if (user) fetchAllData(); }, [user]);
+  useEffect(() => { if (user || isImpersonating) fetchAllData(); }, [user, isImpersonating, impersonatedUserId]);
   
   // Check for pending wallet topup from URL params or sessionStorage
   useEffect(() => {
@@ -973,6 +983,25 @@ const AgentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Admin Impersonation Banner */}
+      {isImpersonating && (
+        <div className="bg-blue-500/20 border-b border-blue-500/30 px-4 py-3">
+          <div className="container flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-blue-400" />
+              <p className="text-blue-400 font-semibold">Admin View: You are viewing {store?.store_name}&apos;s dashboard</p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exitImpersonation}
+              className="text-blue-400 border-blue-400 hover:bg-blue-400/20"
+            >
+              Exit to Admin
+            </Button>
+          </div>
+        </div>
+      )}
       <NotificationPopup />
 
       {/* NAV */}

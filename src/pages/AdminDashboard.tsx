@@ -1185,6 +1185,17 @@ const AdminDashboard = () => {
                               <Button variant="outline" size="sm" onClick={() => openAgentPricingDialog(agent)}>
                                 <Wallet className="h-4 w-4 mr-1" /> Edit Base Prices
                               </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => {
+                                  localStorage.setItem("admin_impersonate_agent", agent.user_id);
+                                  window.location.href = "/agent";
+                                }}
+                                className="bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
+                              >
+                                <LogIn className="h-4 w-4 mr-1" /> Login
+                              </Button>
                             </div>
                           </div>
                         </CardContent>
