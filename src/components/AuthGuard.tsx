@@ -42,17 +42,18 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
     }
   }, [user, requiredRole, isAdmin, isImpersonating]);
 
-  // If admin is impersonating, skip all role checks and allow access
-  if (isAdmin && isImpersonating) {
-    return <>{children}</>;
-  }
-
+  // Show loading while auth is being determined
   if (loading || checkingApproval) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-primary font-display text-xl">Loading...</div>
       </div>
     );
+  }
+
+  // If admin is impersonating, skip all role checks and allow access
+  if (isAdmin && isImpersonating) {
+    return <>{children}</>;
   }
 
   if (!user) return <Navigate to="/login" replace />;
