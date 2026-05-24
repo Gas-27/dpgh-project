@@ -284,6 +284,15 @@ const SubagentDashboard = () => {
         if (p.base_price) agentSubagentPriceMap[p.package_id] = p.base_price;
       });
       
+      // Debug: Log price data
+      console.log("[v0] Price data:", {
+        agentStoreId: store.agent_store_id,
+        agentSubagentPrices: agentSubagentPricesResult.data,
+        adminCustomPrices: adminCustomPricesResult.data,
+        agentSubagentPriceMap,
+        adminPriceMap
+      });
+      
       // Final price map: use agent's subagent price if set, otherwise fall back to admin price
       const priceMap: Record<string, number> = {};
       (packagesResult.data || []).forEach((p: any) => {

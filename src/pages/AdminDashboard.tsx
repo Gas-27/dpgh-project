@@ -302,17 +302,24 @@ const AdminDashboard = () => {
     }
     
     try {
+      // First delete related records to avoid foreign key constraints
+      await supabase.from("orders").delete().eq("subagent_store_id", subagentId);
+      await supabase.from("withdrawal_requests").delete().eq("subagent_store_id", subagentId);
+      await supabase.from("subagent_wallet_topups").delete().eq("subagent_store_id", subagentId);
+      await supabase.from("subagent_package_prices").delete().eq("subagent_store_id", subagentId);
+      
       const { error } = await supabase.from("subagent_stores").delete().eq("id", subagentId);
       
       if (error) {
-        toast({ title: "Error", description: "Failed to delete subagent", variant: "destructive" });
+        console.error("[v0] Delete subagent error:", error);
+        toast({ title: "Error", description: `Failed to delete subagent: ${error.message}`, variant: "destructive" });
         return;
       }
       
       toast({ title: "Success", description: `Subagent "${subagentName}" has been deleted` });
       setSubagents(subagents.filter(s => s.id !== subagentId));
     } catch (err) {
-      console.error("Delete subagent error:", err);
+      console.error("[v0] Delete subagent error:", err);
       toast({ title: "Error", description: "Failed to delete subagent", variant: "destructive" });
     }
   };
@@ -320,13 +327,16 @@ const AdminDashboard = () => {
   // ======================== Suspend/Unsuspend Subagent ========================
   const toggleSubagentSuspension = async (subagentId: string, currentSuspended: boolean, subagentName: string) => {
     try {
+      console.log("[v0] Toggling suspension:", { subagentId, currentSuspended, newValue: !currentSuspended });
+      
       const { error } = await supabase
         .from("subagent_stores")
         .update({ suspended: !currentSuspended })
         .eq("id", subagentId);
       
       if (error) {
-        toast({ title: "Error", description: "Failed to update subagent status", variant: "destructive" });
+        console.error("[v0] Suspend error:", error);
+        toast({ title: "Error", description: `Failed to update subagent status: ${error.message}`, variant: "destructive" });
         return;
       }
       
@@ -334,7 +344,7 @@ const AdminDashboard = () => {
       toast({ title: "Success", description: `Subagent "${subagentName}" has been ${action}` });
       setSubagents(subagents.map(s => s.id === subagentId ? { ...s, suspended: !currentSuspended } : s));
     } catch (err) {
-      console.error("Toggle subagent suspension error:", err);
+      console.error("[v0] Toggle subagent suspension error:", err);
       toast({ title: "Error", description: "Failed to update subagent status", variant: "destructive" });
     }
   };
