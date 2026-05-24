@@ -137,7 +137,7 @@ const SubagentDashboard = () => {
   // Sync calculated wallet balance to database when data changes
   useEffect(() => {
     const syncWalletBalance = async () => {
-      if (!subagentStore?.id || orders.length === 0) return;
+      if (!subagentStore?.id) return;
       
       // Calculate the correct wallet balance
       const customerOrders = orders.filter(o => (o.status === "completed" || o.status === "paid") && o.payment_method !== "wallet");
@@ -150,12 +150,20 @@ const SubagentDashboard = () => {
       const walletBuys = orders.filter(o => o.payment_method === "wallet").reduce((sum, o) => sum + Number(o.amount || 0), 0);
       const calculatedBalance = profit + topups - walletBuys;
       
-      // Only update if different from stored value (with small tolerance for floating point)
-      if (Math.abs(calculatedBalance - (subagentStore.wallet_balance || 0)) > 0.01) {
-        await supabase
-          .from("subagent_stores")
-          .update({ wallet_balance: calculatedBalance })
-          .eq("id", subagentStore.id);
+      console.log("[v0] Wallet sync:", { profit, topups, walletBuys, calculatedBalance, storedBalance: subagentStore.wallet_balance });
+      
+      // Always update the database to ensure it reflects the calculated balance
+      const { error } = await supabase
+        .from("subagent_stores")
+        .update({ wallet_balance: calculatedBalance })
+        .eq("id", subagentStore.id);
+      
+      if (error) {
+        console.error("[v0] Failed to sync wallet balance:", error);
+      } else {
+        console.log("[v0] Wallet balance synced to database:", calculatedBalance);
+        // Update local state to reflect the new balance
+        setSubagentStore(prev => prev ? { ...prev, wallet_balance: calculatedBalance } : prev);
       }
     };
     
