@@ -272,14 +272,6 @@ const SubagentDashboard = () => {
       setPackages(packagesResult.data || []);
       setTopupHistory(topupsResult.data || []);
       
-      // Debug: Log fetched data
-      console.log("[v0] Fetched data:", {
-        withdrawals: withdrawResult.data,
-        withdrawalError: withdrawResult.error,
-        topups: topupsResult.data,
-        storeId: store.id
-      });
-      
       // Build admin custom price map
       const adminPriceMap: Record<string, number> = {};
       (adminCustomPricesResult.data || []).forEach((p: any) => {
@@ -834,18 +826,13 @@ const SubagentDashboard = () => {
   const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
   // Calculate total topups
   const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-  // Available wallet balance = Total Profit + Topups - Total Withdrawals (pending + completed)
-  const availableWalletBalance = totalProfit + totalTopups - totalWithdrawals;
-  
-  // Debug log to trace wallet calculation
-  console.log("[v0] Wallet calculation:", { 
-    totalProfit, 
-    totalTopups, 
-    totalWithdrawals, 
-    withdrawalsCount: withdrawals.length,
-    withdrawalsData: withdrawals,
-    availableWalletBalance 
-  });
+  // Available wallet balance = Total Profit + Topups - Total Withdrawals
+  // Use database value if available (it's synced correctly), otherwise calculate
+  const calculatedWalletBalance = totalProfit + totalTopups - totalWithdrawals;
+  // Prefer database value as it's more reliable
+  const availableWalletBalance = subagentStore?.wallet_balance !== undefined && subagentStore?.wallet_balance !== null 
+    ? Number(subagentStore.wallet_balance) 
+    : calculatedWalletBalance;
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
