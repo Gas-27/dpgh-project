@@ -317,6 +317,28 @@ const AdminDashboard = () => {
     }
   };
 
+  // ======================== Suspend/Unsuspend Subagent ========================
+  const toggleSubagentSuspension = async (subagentId: string, currentSuspended: boolean, subagentName: string) => {
+    try {
+      const { error } = await supabase
+        .from("subagent_stores")
+        .update({ suspended: !currentSuspended })
+        .eq("id", subagentId);
+      
+      if (error) {
+        toast({ title: "Error", description: "Failed to update subagent status", variant: "destructive" });
+        return;
+      }
+      
+      const action = currentSuspended ? "unsuspended" : "suspended";
+      toast({ title: "Success", description: `Subagent "${subagentName}" has been ${action}` });
+      setSubagents(subagents.map(s => s.id === subagentId ? { ...s, suspended: !currentSuspended } : s));
+    } catch (err) {
+      console.error("Toggle subagent suspension error:", err);
+      toast({ title: "Error", description: "Failed to update subagent status", variant: "destructive" });
+    }
+  };
+
   // ======================== Spin wheel config ========================
   const fetchSpinConfig = async () => {
     const { data, error } = await supabase.from("spin_config").select("*").eq("id", 1).maybeSingle();
@@ -1214,19 +1236,20 @@ const AdminDashboard = () => {
                     Showing {(subagentPage - 1) * PAGE_SIZE + 1} - {Math.min(subagentPage * PAGE_SIZE, filtered.length)} of {totalCounts.subagents} subagents
                   </p>
                   {paginated.map((subagent) => (
-                    <Card key={subagent.id} className="border-border bg-card/50">
+                    <Card key={subagent.id} className={`border-border bg-card/50 ${subagent.suspended ? 'opacity-60' : ''}`}>
                       <CardContent className="p-3 md:p-6">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
                           <div className="flex-1 space-y-2 md:space-y-3 min-w-0">
-                            <h3 className="font-display font-bold text-base md:text-lg text-foreground truncate">{subagent.store_name}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-display font-bold text-base md:text-lg text-foreground truncate">{subagent.store_name}</h3>
+                              {subagent.suspended && (
+                                <Badge variant="destructive" className="text-xs">Suspended</Badge>
+                              )}
+                            </div>
                             <div className="grid grid-cols-2 md:grid-cols-2 gap-2 md:gap-3 text-xs md:text-sm">
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Parent Agent</p>
                                 <p className="font-semibold text-foreground truncate">{subagent.agent_stores?.store_name || 'N/A'}</p>
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-muted-foreground text-xs">Revenue</p>
-                                <p className="font-bold text-green-400">GH₵ {Number(subagent.wallet_balance).toFixed(2)}</p>
                               </div>
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">WhatsApp</p>
@@ -1236,16 +1259,22 @@ const AdminDashboard = () => {
                                 <p className="text-muted-foreground text-xs">Support</p>
                                 <p className="font-semibold text-foreground">{subagent.support_number}</p>
                               </div>
-                              <div className="col-span-2 md:col-span-2 min-w-0">
-                                <p className="text-muted-foreground text-xs mb-1">MoMo Account</p>
-                                <p className="font-semibold text-foreground truncate">{subagent.momo_name} • {subagent.momo_number} ({subagent.momo_network.toUpperCase()})</p>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">MoMo</p>
+                                <p className="font-semibold text-foreground truncate">{subagent.momo_name}</p>
                               </div>
                             </div>
                           </div>
-                          <div className="flex-shrink-0 flex gap-2">
-                            <Badge className="bg-green-600/20 text-green-400 border-green-600/30 font-semibold">
-                              Active
-                            </Badge>
+                          <div className="flex-shrink-0 flex flex-wrap gap-2">
+                            {subagent.suspended ? (
+                              <Badge className="bg-red-600/20 text-red-400 border-red-600/30 font-semibold">
+                                Suspended
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-green-600/20 text-green-400 border-green-600/30 font-semibold">
+                                Active
+                              </Badge>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -1253,7 +1282,15 @@ const AdminDashboard = () => {
                               className="text-xs"
                             >
                               <Eye className="h-3 w-3 mr-1" />
-                              View Shop
+                              View
+                            </Button>
+                            <Button
+                              variant={subagent.suspended ? "default" : "secondary"}
+                              size="sm"
+                              onClick={() => toggleSubagentSuspension(subagent.id, subagent.suspended || false, subagent.store_name)}
+                              className={`text-xs ${subagent.suspended ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                            >
+                              {subagent.suspended ? "Unsuspend" : "Suspend"}
                             </Button>
                             <Button
                               variant="destructive"

@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
-  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent,
+  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle,
   ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -764,6 +764,15 @@ const SubagentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Suspension Banner */}
+      {subagentStore?.suspended && (
+        <div className="bg-red-500/10 border-b border-red-500/30 px-4 py-3">
+          <div className="container flex items-center justify-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <p className="text-red-500 font-semibold">Your store has been suspended. Please contact your agent for more information.</p>
+          </div>
+        </div>
+      )}
       {/* NAV */}
       <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container flex h-16 items-center justify-between">

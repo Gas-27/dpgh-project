@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, ChevronRight, AlertCircle } from "lucide-react";
+import { Search, ChevronRight, AlertCircle, Ban, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SubagentStore {
@@ -18,6 +18,7 @@ interface SubagentStore {
   momo_network: string;
   wallet_balance: number;
   approved: boolean;
+  suspended?: boolean;
   // Calculated fields
   calculated_balance?: number;
 }
@@ -31,14 +32,15 @@ interface SubagentStoreWithOrders extends SubagentStore {
 interface SubagentsListProps {
   agentStoreId: string;
   subagents: SubagentStore[];
-  onSuspend: (id: string) => Promise<void>;
+  onRefresh?: () => void;
 }
 
-export default function SubagentsList({ agentStoreId, subagents, onSuspend }: SubagentsListProps) {
+export default function SubagentsList({ agentStoreId, subagents, onRefresh }: SubagentsListProps) {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSubagent, setSelectedSubagent] = useState<SubagentStoreWithOrders | null>(null);
   const [loading, setLoading] = useState(false);
+  const [suspendLoading, setSuspendLoading] = useState<string | null>(null);
 
   const filtered = subagents.filter(s =>
     s.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -90,20 +92,31 @@ export default function SubagentsList({ agentStoreId, subagents, onSuspend }: Su
     }
   };
 
-  const handleSuspend = async (id: string) => {
+  const handleSuspend = async (id: string, currentSuspended: boolean) => {
     try {
-      await onSuspend(id);
-      setSelectedSubagent(null);
+      setSuspendLoading(id);
+      const { error } = await supabase
+        .from("subagent_stores")
+        .update({ suspended: !currentSuspended })
+        .eq("id", id);
+      
+      if (error) throw error;
+      
       toast({
         title: "Success",
-        description: "Subagent account has been suspended",
+        description: currentSuspended ? "Subagent account has been unsuspended" : "Subagent account has been suspended",
       });
+      
+      setSelectedSubagent(null);
+      onRefresh?.();
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to suspend account",
+        description: "Failed to update suspension status",
         variant: "destructive",
       });
+    } finally {
+      setSuspendLoading(null);
     }
   };
 
@@ -131,13 +144,17 @@ export default function SubagentsList({ agentStoreId, subagents, onSuspend }: Su
         ) : (
           <div className="space-y-3">
             {filtered.map((subagent) => (
-              <Card key={subagent.id} className="border-border hover:bg-card/80 transition-colors cursor-pointer">
+              <Card key={subagent.id} className={`border-border hover:bg-card/80 transition-colors cursor-pointer ${subagent.suspended ? 'opacity-60' : ''}`}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{subagent.store_name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground truncate">{subagent.store_name}</h3>
+                        {subagent.suspended && (
+                          <Badge variant="destructive" className="text-xs">Suspended</Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground mt-1">{subagent.whatsapp_number}</p>
-                      <p className="text-sm font-bold text-green-400 mt-2">GH₵ {Number(subagent.wallet_balance).toFixed(2)}</p>
                     </div>
                     <Button
                       variant="ghost"
@@ -192,7 +209,11 @@ export default function SubagentsList({ agentStoreId, subagents, onSuspend }: Su
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Status</p>
-                    <Badge className="bg-green-600/20 text-green-400 border-green-600/30 mt-1">Active</Badge>
+                    {selectedSubagent.suspended ? (
+                      <Badge className="bg-red-600/20 text-red-400 border-red-600/30 mt-1">Suspended</Badge>
+                    ) : (
+                      <Badge className="bg-green-600/20 text-green-400 border-green-600/30 mt-1">Active</Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -214,13 +235,27 @@ export default function SubagentsList({ agentStoreId, subagents, onSuspend }: Su
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-border">
-                <Button
-                  variant="destructive"
-                  onClick={() => handleSuspend(selectedSubagent.id)}
-                  className="flex-1"
-                >
-                  <AlertCircle className="h-4 w-4 mr-2" /> Suspend Account
-                </Button>
+                {selectedSubagent.suspended ? (
+                  <Button
+                    variant="default"
+                    onClick={() => handleSuspend(selectedSubagent.id, true)}
+                    disabled={suspendLoading === selectedSubagent.id}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" /> 
+                    {suspendLoading === selectedSubagent.id ? "Processing..." : "Unsuspend Account"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleSuspend(selectedSubagent.id, false)}
+                    disabled={suspendLoading === selectedSubagent.id}
+                    className="flex-1"
+                  >
+                    <Ban className="h-4 w-4 mr-2" /> 
+                    {suspendLoading === selectedSubagent.id ? "Processing..." : "Suspend Account"}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   onClick={() => setSelectedSubagent(null)}

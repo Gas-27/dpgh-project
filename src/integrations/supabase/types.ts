@@ -116,6 +116,7 @@ export type Database = {
           wallet_balance: number
           approved: boolean | null
           allow_registration: boolean
+          suspended: boolean
           created_at: string | null
         }
         Insert: {
@@ -132,6 +133,7 @@ export type Database = {
           wallet_balance?: number
           approved?: boolean | null
           allow_registration?: boolean
+          suspended?: boolean
           created_at?: string | null
         }
         Update: {
@@ -148,6 +150,7 @@ export type Database = {
           wallet_balance?: number
           approved?: boolean | null
           allow_registration?: boolean
+          suspended?: boolean
           created_at?: string | null
         }
         Relationships: [

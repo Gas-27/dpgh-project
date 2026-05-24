@@ -1399,14 +1399,12 @@ const AgentDashboard = () => {
                 <SubagentsList
                   agentStoreId={store?.id || ""}
                   subagents={subagents}
-                  onSuspend={async (id: string) => {
-                    const { error } = await supabase
+                  onRefresh={async () => {
+                    const { data } = await supabase
                       .from("subagent_stores")
-                      .update({ approved: false })
-                      .eq("id", id);
-                    if (!error) {
-                      setSubagents(prev => prev.filter(s => s.id !== id));
-                    }
+                      .select("*")
+                      .eq("agent_store_id", store?.id);
+                    if (data) setSubagents(data);
                   }}
                 />
               </CardContent>
