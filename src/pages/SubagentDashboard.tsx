@@ -146,21 +146,13 @@ const SubagentDashboard = () => {
   };
 
   useEffect(() => {
-    console.log("[v0] SubagentDashboard useEffect:", { isAdmin, isImpersonating, impersonatedUserId, isSubagent, userId: user?.id });
     // Use impersonated user ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
-    if (!effectiveUserId) {
-      console.log("[v0] No effective user ID");
-      return;
-    }
+    if (!effectiveUserId) return;
     // Allow if admin impersonating OR if user is a subagent
-    if (!isImpersonating && !isSubagent) {
-      console.log("[v0] Not impersonating and not subagent - skipping fetch");
-      return;
-    }
-    console.log("[v0] Fetching data for user:", effectiveUserId);
+    if (!isImpersonating && !isSubagent) return;
     fetchData(effectiveUserId);
-  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId, isAdmin]);
+  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
 
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops

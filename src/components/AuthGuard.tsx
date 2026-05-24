@@ -14,14 +14,27 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
   const [hasAgentStore, setHasAgentStore] = useState<boolean | null>(null);
   const [checkingApproval, setCheckingApproval] = useState(false);
 
-  // Check for admin impersonation - allow admin to access any dashboard
+  // Check for admin impersonation - stored in localStorage
   const isImpersonatingSubagent = typeof window !== 'undefined' && !!localStorage.getItem("admin_impersonate_subagent");
   const isImpersonatingAgent = typeof window !== 'undefined' && !!localStorage.getItem("admin_impersonate_agent");
   const isImpersonating = isImpersonatingSubagent || isImpersonatingAgent;
 
+  // If impersonating, allow access immediately (admin set the localStorage before navigating)
+  // This check happens BEFORE loading check to prevent any redirects
+  if (isImpersonating) {
+    // Still need to wait for auth to load to render the dashboard properly
+    if (loading) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="animate-pulse text-primary font-display text-xl">Loading...</div>
+        </div>
+      );
+    }
+    return <>{children}</>;
+  }
+
   useEffect(() => {
     // Check approval for agent role - even if user doesn't have agent role yet
-    // Skip if admin is impersonating
     if (requiredRole === "agent" && user && !isAdmin && !isImpersonating) {
       setCheckingApproval(true);
       supabase
@@ -51,14 +64,6 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
     );
   }
 
-  console.log("[v0] AuthGuard:", { isAdmin, isImpersonating, isImpersonatingSubagent, user: !!user, requiredRole, hasSubagentRole: hasRole("subagent") });
-
-  // If admin is impersonating, skip all role checks and allow access
-  if (isAdmin && isImpersonating) {
-    console.log("[v0] AuthGuard: Admin impersonating - allowing access");
-    return <>{children}</>;
-  }
-
   if (!user) return <Navigate to="/login" replace />;
   
   // For agent route: check store approval BEFORE role check
@@ -76,12 +81,10 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
   // For non-agent routes: standard role check
   if (requiredRole && requiredRole !== "agent") {
     if (!hasRole(requiredRole) && !isAdmin) {
-      console.log("[v0] AuthGuard: Redirecting to / because no role and not admin", { requiredRole, isAdmin });
       return <Navigate to="/" replace />;
     }
   }
 
-  console.log("[v0] AuthGuard: Allowing access to children");
   return <>{children}</>;
 };
 
