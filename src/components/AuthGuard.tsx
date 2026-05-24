@@ -15,18 +15,14 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
   const [checkingApproval, setCheckingApproval] = useState(false);
 
   // Check for admin impersonation - allow admin to access any dashboard
-  const isImpersonatingSubagent = !!localStorage.getItem("admin_impersonate_subagent");
-  const isImpersonatingAgent = !!localStorage.getItem("admin_impersonate_agent");
+  const isImpersonatingSubagent = typeof window !== 'undefined' && !!localStorage.getItem("admin_impersonate_subagent");
+  const isImpersonatingAgent = typeof window !== 'undefined' && !!localStorage.getItem("admin_impersonate_agent");
   const isImpersonating = isImpersonatingSubagent || isImpersonatingAgent;
-
-  // If admin is impersonating, skip all role checks and allow access
-  if (isAdmin && isImpersonating) {
-    return <>{children}</>;
-  }
 
   useEffect(() => {
     // Check approval for agent role - even if user doesn't have agent role yet
-    if (requiredRole === "agent" && user && !isAdmin) {
+    // Skip if admin is impersonating
+    if (requiredRole === "agent" && user && !isAdmin && !isImpersonating) {
       setCheckingApproval(true);
       supabase
         .from("agent_stores")
@@ -44,7 +40,12 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
           setCheckingApproval(false);
         });
     }
-  }, [user, requiredRole, isAdmin]);
+  }, [user, requiredRole, isAdmin, isImpersonating]);
+
+  // If admin is impersonating, skip all role checks and allow access
+  if (isAdmin && isImpersonating) {
+    return <>{children}</>;
+  }
 
   if (loading || checkingApproval) {
     return (
