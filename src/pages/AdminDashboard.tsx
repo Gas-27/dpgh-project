@@ -1263,6 +1263,10 @@ const AdminDashboard = () => {
                                 <p className="text-muted-foreground text-xs">MoMo</p>
                                 <p className="font-semibold text-foreground truncate">{subagent.momo_name}</p>
                               </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Wallet Balance</p>
+                                <p className="font-bold text-yellow-400">GH₵ {Number(subagent.wallet_balance || 0).toFixed(2)}</p>
+                              </div>
                             </div>
                           </div>
                           <div className="flex-shrink-0 flex flex-wrap gap-2">

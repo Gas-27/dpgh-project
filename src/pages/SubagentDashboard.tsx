@@ -114,15 +114,53 @@ const SubagentDashboard = () => {
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
 
-  // Helper function to get available wallet balance (uses stored DB value)
+  // Helper function to calculate available wallet balance
   const getAvailableBalance = () => {
-    return Number(subagentStore?.wallet_balance || 0);
+    // Calculate profit from customer sales (not wallet purchases)
+    const customerOrders = orders.filter(o => (o.status === "completed" || o.status === "paid") && o.payment_method !== "wallet");
+    const profit = customerOrders.reduce((sum, order) => {
+      if (order.profit) return sum + Number(order.profit);
+      const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
+      return sum + (Number(order.selling_price || order.amount) - baseCost);
+    }, 0);
+    const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
+    const walletBuys = orders.filter(o => o.payment_method === "wallet").reduce((sum, o) => sum + Number(o.amount || 0), 0);
+    // Wallet = Profit + Topups - WalletPurchases (NOT minus withdrawals - those were already paid out)
+    return profit + topups - walletBuys;
   };
 
   useEffect(() => {
     if (!isSubagent) return;
     fetchData();
   }, [isSubagent, user?.id]);
+
+  // Sync calculated wallet balance to database when data changes
+  useEffect(() => {
+    const syncWalletBalance = async () => {
+      if (!subagentStore?.id || orders.length === 0) return;
+      
+      // Calculate the correct wallet balance
+      const customerOrders = orders.filter(o => (o.status === "completed" || o.status === "paid") && o.payment_method !== "wallet");
+      const profit = customerOrders.reduce((sum, order) => {
+        if (order.profit) return sum + Number(order.profit);
+        const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
+        return sum + (Number(order.selling_price || order.amount) - baseCost);
+      }, 0);
+      const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
+      const walletBuys = orders.filter(o => o.payment_method === "wallet").reduce((sum, o) => sum + Number(o.amount || 0), 0);
+      const calculatedBalance = profit + topups - walletBuys;
+      
+      // Only update if different from stored value (with small tolerance for floating point)
+      if (Math.abs(calculatedBalance - (subagentStore.wallet_balance || 0)) > 0.01) {
+        await supabase
+          .from("subagent_stores")
+          .update({ wallet_balance: calculatedBalance })
+          .eq("id", subagentStore.id);
+      }
+    };
+    
+    syncWalletBalance();
+  }, [orders, topupHistory, subagentStore?.id, basePrices]);
 
   const fetchData = async () => {
     try {
@@ -730,10 +768,8 @@ const SubagentDashboard = () => {
   // Calculate total topups
   const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
   // Available wallet balance = total profit + topups - wallet purchases
-  // Note: Completed withdrawals are NOT subtracted because they were paid from the database wallet_balance
-  // The database wallet_balance tracks actual balance after withdrawals
-  // We use: stored wallet_balance as the source of truth (synced by backend)
-  const availableWalletBalance = Number(subagentStore?.wallet_balance || 0);
+  // Note: Completed withdrawals are NOT subtracted - they were already paid out from a previous balance
+  const availableWalletBalance = totalProfit + totalTopups - walletPurchases;
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
