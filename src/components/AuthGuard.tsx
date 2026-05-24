@@ -51,8 +51,11 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
     );
   }
 
+  console.log("[v0] AuthGuard:", { isAdmin, isImpersonating, isImpersonatingSubagent, user: !!user, requiredRole, hasSubagentRole: hasRole("subagent") });
+
   // If admin is impersonating, skip all role checks and allow access
   if (isAdmin && isImpersonating) {
+    console.log("[v0] AuthGuard: Admin impersonating - allowing access");
     return <>{children}</>;
   }
 

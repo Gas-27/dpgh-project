@@ -146,11 +146,19 @@ const SubagentDashboard = () => {
   };
 
   useEffect(() => {
+    console.log("[v0] SubagentDashboard useEffect:", { isAdmin, isImpersonating, impersonatedUserId, isSubagent, userId: user?.id });
     // Use impersonated user ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
-    if (!effectiveUserId) return;
+    if (!effectiveUserId) {
+      console.log("[v0] No effective user ID");
+      return;
+    }
     // Allow if admin impersonating OR if user is a subagent
-    if (!isImpersonating && !isSubagent) return;
+    if (!isImpersonating && !isSubagent) {
+      console.log("[v0] Not impersonating and not subagent - skipping fetch");
+      return;
+    }
+    console.log("[v0] Fetching data for user:", effectiveUserId);
     fetchData(effectiveUserId);
   }, [isSubagent, user?.id, isImpersonating, impersonatedUserId, isAdmin]);
 
