@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
-  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle,
+  ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
   ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -77,6 +77,10 @@ const SubagentDashboard = () => {
   const { signOut, user, isSubagent } = useAuth();
   const { toast } = useToast();
 
+  // Check if admin is impersonating
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [impersonatedUserId, setImpersonatedUserId] = useState<string | null>(null);
+
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
@@ -129,10 +133,31 @@ const SubagentDashboard = () => {
     return profit + topups - walletBuys;
   };
 
+  // Check for admin impersonation on mount
   useEffect(() => {
-    if (!isSubagent) return;
-    fetchData();
-  }, [isSubagent, user?.id]);
+    const impersonateUserId = localStorage.getItem("admin_impersonate_subagent");
+    if (impersonateUserId) {
+      setIsImpersonating(true);
+      setImpersonatedUserId(impersonateUserId);
+    }
+  }, []);
+
+  // Function to exit impersonation
+  const exitImpersonation = () => {
+    localStorage.removeItem("admin_impersonate_subagent");
+    localStorage.removeItem("admin_impersonate_return");
+    setIsImpersonating(false);
+    setImpersonatedUserId(null);
+    window.location.href = "/admin";
+  };
+
+  useEffect(() => {
+    // Use impersonated user ID if available, otherwise use logged in user
+    const effectiveUserId = impersonatedUserId || user?.id;
+    if (!effectiveUserId) return;
+    if (!isImpersonating && !isSubagent) return;
+    fetchData(effectiveUserId);
+  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
 
   // Sync calculated wallet balance to database when data changes
   useEffect(() => {
@@ -150,8 +175,6 @@ const SubagentDashboard = () => {
       const walletBuys = orders.filter(o => o.payment_method === "wallet").reduce((sum, o) => sum + Number(o.amount || 0), 0);
       const calculatedBalance = profit + topups - walletBuys;
       
-      console.log("[v0] Wallet sync:", { profit, topups, walletBuys, calculatedBalance, storedBalance: subagentStore.wallet_balance });
-      
       // Always update the database to ensure it reflects the calculated balance
       const { error } = await supabase
         .from("subagent_stores")
@@ -159,9 +182,8 @@ const SubagentDashboard = () => {
         .eq("id", subagentStore.id);
       
       if (error) {
-        console.error("[v0] Failed to sync wallet balance:", error);
+        console.error("Failed to sync wallet balance:", error);
       } else {
-        console.log("[v0] Wallet balance synced to database:", calculatedBalance);
         // Update local state to reflect the new balance
         setSubagentStore(prev => prev ? { ...prev, wallet_balance: calculatedBalance } : prev);
       }
@@ -170,16 +192,17 @@ const SubagentDashboard = () => {
     syncWalletBalance();
   }, [orders, topupHistory, subagentStore?.id, basePrices]);
 
-  const fetchData = async () => {
+  const fetchData = async (userId?: string) => {
     try {
       setLoading(true);
-      if (!user?.id) return;
+      const effectiveUserId = userId || user?.id;
+      if (!effectiveUserId) return;
 
       // Fetch subagent store first (needed for other queries)
       const { data: store, error: storeErr } = await supabase
         .from("subagent_stores")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .single();
 
       if (storeErr) {
@@ -799,6 +822,25 @@ const SubagentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Admin Impersonation Banner */}
+      {isImpersonating && (
+        <div className="bg-blue-500/20 border-b border-blue-500/30 px-4 py-3">
+          <div className="container flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-blue-400" />
+              <p className="text-blue-400 font-semibold">Admin View: You are viewing {subagentStore?.store_name}'s dashboard</p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exitImpersonation}
+              className="text-blue-400 border-blue-400 hover:bg-blue-400/20"
+            >
+              Exit to Admin
+            </Button>
+          </div>
+        </div>
+      )}
       {/* Suspension Banner */}
       {subagentStore?.suspended && (
         <div className="bg-red-500/10 border-b border-red-500/30 px-4 py-3">

@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2, Megaphone, Smartphone,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -1287,6 +1287,20 @@ const AdminDashboard = () => {
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                // Store admin impersonation data
+                                localStorage.setItem("admin_impersonate_subagent", subagent.user_id);
+                                localStorage.setItem("admin_impersonate_return", "true");
+                                window.location.href = "/subagent-dashboard";
+                              }}
+                              className="text-xs bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
+                            >
+                              <LogIn className="h-3 w-3 mr-1" />
+                              Login
                             </Button>
                             <Button
                               variant={subagent.suspended ? "default" : "secondary"}
