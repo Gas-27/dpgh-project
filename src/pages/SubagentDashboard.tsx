@@ -74,17 +74,17 @@ const MANUAL_SECTIONS = [
 ];
 
 const SubagentDashboard = () => {
-  const { signOut, user, isSubagent } = useAuth();
+  const { signOut, user, isSubagent, isAdmin } = useAuth();
   const { toast } = useToast();
 
-  // Check if admin is impersonating
-  const [isImpersonating, setIsImpersonating] = useState(() => {
-    // Initialize from localStorage immediately to avoid timing issues
-    return !!localStorage.getItem("admin_impersonate_subagent");
-  });
-  const [impersonatedUserId, setImpersonatedUserId] = useState<string | null>(() => {
+  // Check if admin is impersonating - use function to avoid SSR issues
+  const getImpersonatedUserId = () => {
+    if (typeof window === 'undefined') return null;
     return localStorage.getItem("admin_impersonate_subagent");
-  });
+  };
+  
+  const [impersonatedUserId] = useState<string | null>(getImpersonatedUserId);
+  const isImpersonating = isAdmin && !!impersonatedUserId;
 
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -142,8 +142,6 @@ const SubagentDashboard = () => {
   const exitImpersonation = () => {
     localStorage.removeItem("admin_impersonate_subagent");
     localStorage.removeItem("admin_impersonate_return");
-    setIsImpersonating(false);
-    setImpersonatedUserId(null);
     window.location.href = "/admin";
   };
 
@@ -151,9 +149,10 @@ const SubagentDashboard = () => {
     // Use impersonated user ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
     if (!effectiveUserId) return;
+    // Allow if admin impersonating OR if user is a subagent
     if (!isImpersonating && !isSubagent) return;
     fetchData(effectiveUserId);
-  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
+  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId, isAdmin]);
 
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops
