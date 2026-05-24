@@ -272,6 +272,14 @@ const SubagentDashboard = () => {
       setPackages(packagesResult.data || []);
       setTopupHistory(topupsResult.data || []);
       
+      // Debug: Log fetched data
+      console.log("[v0] Fetched data:", {
+        withdrawals: withdrawResult.data,
+        withdrawalError: withdrawResult.error,
+        topups: topupsResult.data,
+        storeId: store.id
+      });
+      
       // Build admin custom price map
       const adminPriceMap: Record<string, number> = {};
       (adminCustomPricesResult.data || []).forEach((p: any) => {
