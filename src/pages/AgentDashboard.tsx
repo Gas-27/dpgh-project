@@ -62,8 +62,6 @@ const MTN_SIZES = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 25, 30, 40, 50, 75];
 const AIRTEL_SIZES = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 30, 40, 50];
 const TELECEL_SIZES = [2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 50, 100];
 
-const ORDERS_PAGE_SIZE = 100;
-
 const menuItems = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
@@ -261,9 +259,6 @@ const AgentDashboard = () => {
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [ordersPage, setOrdersPage] = useState(1);
-  const [ordersTotal, setOrdersTotal] = useState(0);
-  const [loadingMoreOrders, setLoadingMoreOrders] = useState(false);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
@@ -467,11 +462,10 @@ const AgentDashboard = () => {
         momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
       });
 
-      const [pkgR, priceR, orderR, orderCountR, wdR, subagentR, customBasePriceR, subagentPriceR] = await Promise.all([
+      const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
-        supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, ORDERS_PAGE_SIZE - 1),
-        supabase.from("orders").select("id", { count: "exact", head: true }).eq("agent_store_id", sd.id),
+        supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("withdrawal_requests").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
@@ -495,12 +489,10 @@ const AgentDashboard = () => {
       setSubagentBasePrices(subPm);
       const os = (orderR.data as Order[]) ?? [];
       setOrders(os);
-      setOrdersPage(1);
-      setOrdersTotal(orderCountR.count ?? 0);
-  const wd = (wdR.data as WithdrawalRequest[]) ?? [];
-    setWithdrawals(wd);
-    const subags = subagentR.data ?? [];
-    setSubagents(subags);
+      const wd = (wdR.data as WithdrawalRequest[]) ?? [];
+      setWithdrawals(wd);
+      const subags = subagentR.data ?? [];
+      setSubagents(subags);
     
     // Fetch topup history
     const { data: topups } = await supabase
@@ -541,37 +533,6 @@ const AgentDashboard = () => {
     }
     setLoading(false);
   };
-
-  const loadMoreOrders = async () => {
-    if (!store) return;
-    setLoadingMoreOrders(true);
-    const nextPage = ordersPage + 1;
-    const from = nextPage * ORDERS_PAGE_SIZE - ORDERS_PAGE_SIZE;
-    const to = nextPage * ORDERS_PAGE_SIZE - 1;
-    const { data } = await supabase.from("orders").select("*").eq("agent_store_id", store.id).order("created_at", { ascending: false }).range(from, to);
-    if (data && data.length > 0) { setOrders(prev => [...prev, ...(data as Order[])]); setOrdersPage(nextPage); }
-    setLoadingMoreOrders(false);
-  };
-  
-  // Load all remaining orders when searching/filtering
-  const loadAllOrders = useCallback(async () => {
-    if (!store) return;
-    setLoadingMoreOrders(true);
-    const { data } = await supabase.from("orders").select("*").eq("agent_store_id", store.id).order("created_at", { ascending: false });
-    if (data && data.length > 0) { 
-      setOrders(data as Order[]); 
-      setOrdersPage(Math.ceil(data.length / ORDERS_PAGE_SIZE)); 
-    }
-    setLoadingMoreOrders(false);
-  }, [store]);
-  
-  // Auto-load all orders when filter or search is applied and there are more orders to load
-  useEffect(() => {
-    const hasMoreOrders = orders.length < ordersTotal;
-    if ((dateFilter !== "all" || orderSearch.trim() !== "") && hasMoreOrders && !loadingMoreOrders) {
-      loadAllOrders();
-    }
-  }, [dateFilter, orderSearch, orders.length, ordersTotal, loadingMoreOrders, loadAllOrders]);
 
   useEffect(() => { if (user || isImpersonating) fetchAllData(); }, [user, isImpersonating, impersonatedUserId]);
   
@@ -1097,7 +1058,6 @@ const AgentDashboard = () => {
     
     return { totalRevenue: revenue, totalProfit: profit };
   })();
-  const hasMoreOrders = orders.length < ordersTotal;
   
   // Pagination
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
@@ -1291,21 +1251,6 @@ const AgentDashboard = () => {
                           <span className="text-sm">Page {currentPage} of {totalPages}</span>
                           <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
                         </div>
-                      </div>
-                    )}
-                    {hasMoreOrders && (
-                      <div className="flex flex-col items-center gap-2 mt-4">
-                        {(orderSearch || dateFilter !== "all") ? (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Loading all {ordersTotal} orders for accurate filtering...
-                          </div>
-                        ) : (
-                          <Button variant="outline" onClick={loadMoreOrders} disabled={loadingMoreOrders} className="gap-2">
-                            {loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                            {loadingMoreOrders ? "Loading..." : `Load More (${ordersTotal - orders.length} remaining)`}
-                          </Button>
-                        )}
                       </div>
                     )}
                   </>
