@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate, Link } from "react-router-dom";
@@ -552,6 +552,18 @@ const AgentDashboard = () => {
     if (data && data.length > 0) { setOrders(prev => [...prev, ...(data as Order[])]); setOrdersPage(nextPage); }
     setLoadingMoreOrders(false);
   };
+  
+  // Load all remaining orders when searching/filtering
+  const loadAllOrders = async () => {
+    if (!store) return;
+    setLoadingMoreOrders(true);
+    const { data } = await supabase.from("orders").select("*").eq("agent_store_id", store.id).order("created_at", { ascending: false });
+    if (data && data.length > 0) { 
+      setOrders(data as Order[]); 
+      setOrdersPage(Math.ceil(data.length / ORDERS_PAGE_SIZE)); 
+    }
+    setLoadingMoreOrders(false);
+  };
 
   useEffect(() => { if (user || isImpersonating) fetchAllData(); }, [user, isImpersonating, impersonatedUserId]);
   
@@ -1052,6 +1064,31 @@ const AgentDashboard = () => {
   const totalOrders = dateFilteredOrders.length;
   const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
   const filteredOrders = getDateFilteredOrders(orders).filter(o => o.customer_number.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase()));
+  
+  // Calculate filtered profit stats based on date filter
+  const filteredProfitStats = useMemo(() => {
+    const completedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
+    let revenue = 0;
+    let profit = 0;
+    
+    for (const order of completedOrders) {
+      const orderRevenue = order.selling_price && order.selling_price > 0 
+        ? Number(order.selling_price) 
+        : Number(order.amount);
+      revenue += orderRevenue;
+      
+      // Calculate profit
+      if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
+        profit += Number(order.profit);
+      } else {
+        const pkg = packages.find(p => p.id === order.package_id);
+        const baseCost = order.base_price || pkg?.agent_price || 0;
+        profit += orderRevenue - baseCost;
+      }
+    }
+    
+    return { totalRevenue: revenue, totalProfit: profit };
+  }, [dateFilteredOrders, packages]);
   const hasMoreOrders = orders.length < ordersTotal;
   
   // Pagination
@@ -1161,15 +1198,39 @@ const AgentDashboard = () => {
                 </div>
               )}
             </Card>
+            
+            {/* Date Filter for Stats */}
+            <div className="flex flex-wrap items-center gap-2 bg-card p-3 rounded-lg border border-border">
+              <span className="text-sm font-medium">Filter Stats & Orders:</span>
+              {(["all", "today", "yesterday", "week", "month", "custom"] as const).map(filter => (
+                <Button
+                  key={filter}
+                  variant={dateFilter === filter ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => { setDateFilter(filter); setCurrentPage(1); }}
+                  className="text-xs"
+                >
+                  {filter === "all" ? "All Time" : filter === "week" ? "This Week" : filter === "month" ? "This Month" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </Button>
+              ))}
+              {dateFilter === "custom" && (
+                <>
+                  <Input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="w-36 h-8" />
+                  <span className="text-muted-foreground">to</span>
+                  <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="w-36 h-8" />
+                </>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Store Status</p><Badge className="mt-2 bg-green-600/20 text-green-400 border-green-600/30">Active</Badge></CardContent></Card>
-              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Total Orders</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
-              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Pending</p><p className="font-display text-2xl font-bold mt-1 text-primary">{pendingOrders}</p></CardContent></Card>
-              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Revenue</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵ {profitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
+              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
+              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Pending (Filtered)" : "Pending"}</p><p className="font-display text-2xl font-bold mt-1 text-primary">{pendingOrders}</p></CardContent></Card>
+              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵ {filteredProfitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total Profit</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {profitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">All-time profit</p></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
-              <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">My Wallet</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
+              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
+              <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">My Wallet (All Time)</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Profit from Subagents</p><p className="font-display text-2xl font-bold text-primary mt-1">GH₵ {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Withdraw separately in Wallet tab</p></div><Users className="h-8 w-8 text-primary opacity-50" /></div></CardContent></Card>
             </div>
             <Card className="border-border">
@@ -1178,28 +1239,6 @@ const AgentDashboard = () => {
                   <CardTitle className="font-display text-lg">Orders ({filteredOrders.length})</CardTitle>
                   <div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by number or order ID..." value={orderSearch} onChange={e => { setOrderSearch(e.target.value); setCurrentPage(1); }} className="pl-9" /></div>
                 </div>
-                {/* Date Filter */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Filter:</span>
-                  {(["all", "today", "yesterday", "week", "month", "custom"] as const).map(filter => (
-                    <Button
-                      key={filter}
-                      variant={dateFilter === filter ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => { setDateFilter(filter); setCurrentPage(1); }}
-                      className="text-xs"
-                    >
-                      {filter === "all" ? "All Time" : filter === "week" ? "This Week" : filter === "month" ? "This Month" : filter.charAt(0).toUpperCase() + filter.slice(1)}
-                    </Button>
-                  ))}
-                </div>
-                {dateFilter === "custom" && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="w-40" />
-                    <span className="text-muted-foreground">to</span>
-                    <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="w-40" />
-                  </div>
-                )}
               </CardHeader>
               <CardContent>
                 {filteredOrders.length === 0 ? <p className="text-muted-foreground text-center py-4">No orders found.</p> : (
@@ -1246,7 +1285,25 @@ const AgentDashboard = () => {
                         </div>
                       </div>
                     )}
-                    {hasMoreOrders && !orderSearch && <div className="flex justify-center mt-4"><Button variant="outline" onClick={loadMoreOrders} disabled={loadingMoreOrders} className="gap-2">{loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{loadingMoreOrders ? "Loading..." : `Load More from Database (${ordersTotal - orders.length} remaining)`}</Button></div>}
+                    {hasMoreOrders && (
+                      <div className="flex flex-col items-center gap-2 mt-4">
+                        {(orderSearch || dateFilter !== "all") && (
+                          <p className="text-xs text-orange-400">Search/filter only works on {orders.length} loaded orders. Load all to search across all {ordersTotal} orders.</p>
+                        )}
+                        <div className="flex gap-2">
+                          <Button variant="outline" onClick={loadMoreOrders} disabled={loadingMoreOrders} className="gap-2">
+                            {loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                            {loadingMoreOrders ? "Loading..." : `Load More (${ordersTotal - orders.length} remaining)`}
+                          </Button>
+                          {(orderSearch || dateFilter !== "all") && (
+                            <Button variant="hero" onClick={loadAllOrders} disabled={loadingMoreOrders} className="gap-2">
+                              {loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                              Load All Orders
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </CardContent>
@@ -1496,6 +1553,50 @@ const AgentDashboard = () => {
 
           {/* ============================= SUBAGENTS ============================= */}
           <TabsContent value="subagents" className="mt-0 space-y-6">
+            {/* Send Notification to Subagents - AT THE TOP */}
+            <Card className="border-orange-500/30 bg-orange-500/5">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-orange-400" /> Send Notification to All Subagents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">Send a popup notification that all your subagents will see when they open their dashboard.</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    placeholder="Type your notification message..."
+                    value={subagentNotificationMsg}
+                    onChange={(e) => setSubagentNotificationMsg(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    variant="hero" 
+                    onClick={sendSubagentNotification} 
+                    disabled={sendingSubagentNotification || !subagentNotificationMsg.trim()}
+                  >
+                    {sendingSubagentNotification ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                    Send
+                  </Button>
+                </div>
+                {subagentNotifications.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-semibold">Recent Notifications Sent</p>
+                    {subagentNotifications.slice(0, 3).map((n) => (
+                      <div key={n.id} className="flex items-start justify-between p-3 bg-secondary/30 rounded-lg">
+                        <div>
+                          <p className="text-sm">{n.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => deleteSubagentNotification(n.id)}>
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-border">
                 <CardContent className="pt-6">
@@ -1561,50 +1662,6 @@ const AgentDashboard = () => {
                     if (data) setSubagents(data);
                   }}
                 />
-              </CardContent>
-            </Card>
-
-            {/* Notifications to Subagents */}
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <Bell className="h-5 w-5" /> Send Notification to Subagents
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Send a notification that all your subagents will see when they log in to their dashboard.</p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    placeholder="Type your notification message..."
-                    value={subagentNotificationMsg}
-                    onChange={(e) => setSubagentNotificationMsg(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    variant="hero" 
-                    onClick={sendSubagentNotification} 
-                    disabled={sendingSubagentNotification || !subagentNotificationMsg.trim()}
-                  >
-                    {sendingSubagentNotification ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                    Send
-                  </Button>
-                </div>
-                {subagentNotifications.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-sm font-semibold">Recent Notifications</p>
-                    {subagentNotifications.slice(0, 5).map((n) => (
-                      <div key={n.id} className="flex items-start justify-between p-3 bg-secondary/30 rounded-lg">
-                        <div>
-                          <p className="text-sm">{n.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => deleteSubagentNotification(n.id)}>
-                          <Trash2 className="h-4 w-4 text-red-400" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </CardContent>
             </Card>
           </TabsContent>

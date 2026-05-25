@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
@@ -156,6 +157,9 @@ const SubagentDashboard = () => {
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+  
+  // Agent notification popup state
+  const [showAgentNotificationPopup, setShowAgentNotificationPopup] = useState(true);
 
   // Helper function to calculate available wallet balance
   const getAvailableBalance = () => {
@@ -932,6 +936,35 @@ const SubagentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Agent Notification Popup Dialog */}
+      {agentNotifications.length > 0 && showAgentNotificationPopup && (
+        <Dialog open={showAgentNotificationPopup} onOpenChange={setShowAgentNotificationPopup}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-orange-400">
+                <Bell className="h-5 w-5" /> Message from Your Agent
+              </DialogTitle>
+              <DialogDescription>
+                Important notification from your agent
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {agentNotifications.map((n) => (
+                <div key={n.id} className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                  <p className="text-foreground">{n.message}</p>
+                  <p className="text-xs text-muted-foreground mt-2">{new Date(n.created_at).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => setShowAgentNotificationPopup(false)}>
+                Got it
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Admin Impersonation Banner */}
       {isImpersonating && (
         <div className="bg-blue-500/20 border-b border-blue-500/30 px-4 py-3">
@@ -1069,25 +1102,28 @@ const SubagentDashboard = () => {
               )}
             </Card>
 
-            {/* Agent Notifications Banner */}
-            {agentNotifications.length > 0 && (
-              <Card className="border-orange-500/30 bg-orange-500/10">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <Bell className="h-5 w-5 text-orange-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="font-semibold text-orange-400 mb-2">Message from your Agent</p>
-                      {agentNotifications.slice(0, 3).map((n) => (
-                        <div key={n.id} className="text-sm text-foreground mb-2 last:mb-0">
-                          <p>{n.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Date Filter for Stats */}
+            <div className="flex flex-wrap items-center gap-2 bg-card p-3 rounded-lg border border-border">
+              <span className="text-sm font-medium">Filter Stats & Orders:</span>
+              {(["all", "today", "yesterday", "week", "month", "custom"] as const).map(filter => (
+                <Button
+                  key={filter}
+                  variant={dateFilter === filter ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => { setDateFilter(filter); setCurrentPage(1); }}
+                  className="text-xs"
+                >
+                  {filter === "all" ? "All Time" : filter === "week" ? "This Week" : filter === "month" ? "This Month" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </Button>
+              ))}
+              {dateFilter === "custom" && (
+                <>
+                  <Input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="w-36 h-8" />
+                  <span className="text-muted-foreground">to</span>
+                  <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="w-36 h-8" />
+                </>
+              )}
+            </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1101,19 +1137,25 @@ const SubagentDashboard = () => {
               </Card>
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">Total Orders</p>
+                  <p className="text-muted-foreground text-sm">
+                    {dateFilter !== "all" ? `Orders (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Orders"}
+                  </p>
                   <p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">Revenue</p>
+                  <p className="text-muted-foreground text-sm">
+                    {dateFilter !== "all" ? `Revenue (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Revenue"}
+                  </p>
                   <p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵{totalRevenue.toFixed(2)}</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">Total Profit</p>
+                  <p className="text-muted-foreground text-sm">
+                    {dateFilter !== "all" ? `Profit (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Profit"}
+                  </p>
                   <p className="font-display text-2xl font-bold mt-1 text-yellow-400">GH₵{totalProfit.toFixed(2)}</p>
                 </CardContent>
               </Card>
@@ -1124,7 +1166,7 @@ const SubagentDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">My Wallet</p>
+                    <p className="text-sm text-muted-foreground">My Wallet (All Time Balance)</p>
                     <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {availableWalletBalance.toFixed(2)}</p>
                     {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
                   </div>
@@ -1137,34 +1179,12 @@ const SubagentDashboard = () => {
             <Card className="border-border">
               <CardHeader className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="font-display text-lg">Recent Orders ({filteredOrders.length})</CardTitle>
+                  <CardTitle className="font-display text-lg">Orders ({filteredOrders.length})</CardTitle>
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input placeholder="Search by number..." value={orderSearch} onChange={e => { setOrderSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
                   </div>
                 </div>
-                {/* Date Filter */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Filter:</span>
-                  {(["all", "today", "yesterday", "week", "month", "custom"] as const).map(filter => (
-                    <Button
-                      key={filter}
-                      variant={dateFilter === filter ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => { setDateFilter(filter); setCurrentPage(1); }}
-                      className="text-xs"
-                    >
-                      {filter === "all" ? "All Time" : filter === "week" ? "This Week" : filter === "month" ? "This Month" : filter.charAt(0).toUpperCase() + filter.slice(1)}
-                    </Button>
-                  ))}
-                </div>
-                {dateFilter === "custom" && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="w-40" />
-                    <span className="text-muted-foreground">to</span>
-                    <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="w-40" />
-                  </div>
-                )}
               </CardHeader>
               <CardContent>
                 {filteredOrders.length === 0 ? (
