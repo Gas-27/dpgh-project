@@ -554,7 +554,7 @@ const AgentDashboard = () => {
   };
   
   // Load all remaining orders when searching/filtering
-  const loadAllOrders = async () => {
+  const loadAllOrders = useCallback(async () => {
     if (!store) return;
     setLoadingMoreOrders(true);
     const { data } = await supabase.from("orders").select("*").eq("agent_store_id", store.id).order("created_at", { ascending: false });
@@ -563,7 +563,15 @@ const AgentDashboard = () => {
       setOrdersPage(Math.ceil(data.length / ORDERS_PAGE_SIZE)); 
     }
     setLoadingMoreOrders(false);
-  };
+  }, [store]);
+  
+  // Auto-load all orders when filter or search is applied and there are more orders to load
+  useEffect(() => {
+    const hasMoreOrders = orders.length < ordersTotal;
+    if ((dateFilter !== "all" || orderSearch.trim() !== "") && hasMoreOrders && !loadingMoreOrders) {
+      loadAllOrders();
+    }
+  }, [dateFilter, orderSearch, orders.length, ordersTotal, loadingMoreOrders, loadAllOrders]);
 
   useEffect(() => { if (user || isImpersonating) fetchAllData(); }, [user, isImpersonating, impersonatedUserId]);
   
@@ -1287,21 +1295,17 @@ const AgentDashboard = () => {
                     )}
                     {hasMoreOrders && (
                       <div className="flex flex-col items-center gap-2 mt-4">
-                        {(orderSearch || dateFilter !== "all") && (
-                          <p className="text-xs text-orange-400">Search/filter only works on {orders.length} loaded orders. Load all to search across all {ordersTotal} orders.</p>
-                        )}
-                        <div className="flex gap-2">
+                        {(orderSearch || dateFilter !== "all") ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Loading all {ordersTotal} orders for accurate filtering...
+                          </div>
+                        ) : (
                           <Button variant="outline" onClick={loadMoreOrders} disabled={loadingMoreOrders} className="gap-2">
                             {loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                             {loadingMoreOrders ? "Loading..." : `Load More (${ordersTotal - orders.length} remaining)`}
                           </Button>
-                          {(orderSearch || dateFilter !== "all") && (
-                            <Button variant="hero" onClick={loadAllOrders} disabled={loadingMoreOrders} className="gap-2">
-                              {loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                              Load All Orders
-                            </Button>
-                          )}
-                        </div>
+                        )}
                       </div>
                     )}
                   </>

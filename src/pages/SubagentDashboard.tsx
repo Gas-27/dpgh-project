@@ -271,7 +271,7 @@ const SubagentDashboard = () => {
         subagentPricesResult,
         topupsResult
       ] = await Promise.all([
-        supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
+        supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
         supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
