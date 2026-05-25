@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate, Link } from "react-router-dom";
@@ -1065,8 +1065,8 @@ const AgentDashboard = () => {
   const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
   const filteredOrders = getDateFilteredOrders(orders).filter(o => o.customer_number.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase()));
   
-  // Calculate filtered profit stats based on date filter
-  const filteredProfitStats = useMemo(() => {
+  // Calculate filtered profit stats based on date filter (no useMemo to avoid hook issues)
+  const filteredProfitStats = (() => {
     const completedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
     let revenue = 0;
     let profit = 0;
@@ -1088,7 +1088,7 @@ const AgentDashboard = () => {
     }
     
     return { totalRevenue: revenue, totalProfit: profit };
-  }, [dateFilteredOrders, packages]);
+  })();
   const hasMoreOrders = orders.length < ordersTotal;
   
   // Pagination
