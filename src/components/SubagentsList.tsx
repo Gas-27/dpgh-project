@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, ChevronRight, AlertCircle, Ban, CheckCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Search, ChevronRight, AlertCircle, Ban, CheckCircle, ExternalLink, Wallet, ShoppingCart, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { DOMAINS } from "@/config/domains";
 
 interface SubagentStore {
   id: string;
@@ -173,13 +174,23 @@ export default function SubagentsList({ agentStoreId, subagents, onRefresh }: Su
       </div>
 
       <Dialog open={!!selectedSubagent} onOpenChange={(open) => !open && setSelectedSubagent(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedSubagent?.store_name}</DialogTitle>
+            <DialogDescription>View subagent details, wallet balance, and orders</DialogDescription>
           </DialogHeader>
           
           {selectedSubagent && (
             <div className="space-y-6">
+              {/* View Shop Button */}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => window.open(DOMAINS.getSubagentStoreUrl(selectedSubagent.store_name), "_blank")}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" /> View Shop
+              </Button>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">WhatsApp</p>
@@ -197,35 +208,59 @@ export default function SubagentsList({ agentStoreId, subagents, onRefresh }: Su
                 </div>
               </div>
 
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Wallet Balance</p>
+              {/* Wallet & Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border-green-500/30 bg-green-500/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Wallet className="h-4 w-4 text-green-400" />
+                      <p className="text-sm text-muted-foreground">Wallet Balance</p>
+                    </div>
                     <p className="text-2xl font-bold text-green-400">GH₵ {(selectedSubagent.calculated_balance ?? 0).toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Orders</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-blue-500/30 bg-blue-500/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShoppingCart className="h-4 w-4 text-blue-400" />
+                      <p className="text-sm text-muted-foreground">Total Orders</p>
+                    </div>
                     <p className="text-2xl font-bold text-blue-400">{selectedSubagent.orders?.length || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-yellow-500/30 bg-yellow-500/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <TrendingUp className="h-4 w-4 text-yellow-400" />
+                      <p className="text-sm text-muted-foreground">Status</p>
+                    </div>
                     {selectedSubagent.suspended ? (
                       <Badge className="bg-red-600/20 text-red-400 border-red-600/30 mt-1">Suspended</Badge>
                     ) : (
                       <Badge className="bg-green-600/20 text-green-400 border-green-600/30 mt-1">Active</Badge>
                     )}
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
 
+              {/* Orders List */}
               <div>
-                <h4 className="font-semibold mb-3">Recent Orders</h4>
+                <h4 className="font-semibold mb-3">Orders ({selectedSubagent.orders?.length || 0})</h4>
                 {selectedSubagent.orders && selectedSubagent.orders.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {selectedSubagent.orders.slice(0, 5).map((order) => (
-                      <div key={order.id} className="text-sm p-2 rounded border border-border">
-                        <p className="font-medium">{order.network.toUpperCase()} - {order.size_gb}GB</p>
-                        <p className="text-xs text-muted-foreground">GH₵ {order.amount}</p>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {selectedSubagent.orders.map((order: any) => (
+                      <div key={order.id} className="text-sm p-3 rounded border border-border flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{order.network.toUpperCase()} - {order.size_gb}GB</p>
+                          <p className="text-xs text-muted-foreground">{order.customer_number}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">GH₵ {Number(order.selling_price || order.amount).toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30 ml-2" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30 ml-2"}>
+                          {order.status === "paid" ? "completed" : order.status}
+                        </Badge>
                       </div>
                     ))}
                   </div>

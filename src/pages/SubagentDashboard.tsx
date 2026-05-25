@@ -147,6 +147,15 @@ const SubagentDashboard = () => {
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
+  
+  // Pagination for orders
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 100;
+  
+  // Date filtering for orders/revenue/profit
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
 
   // Helper function to calculate available wallet balance
   const getAvailableBalance = () => {
@@ -333,8 +342,24 @@ const SubagentDashboard = () => {
     setLoadingNotifications(false);
   };
 
+  // Fetch notifications from agent
+  const [agentNotifications, setAgentNotifications] = useState<any[]>([]);
+  const fetchAgentNotifications = async () => {
+    if (!subagentStore?.agent_store_id) return;
+    const { data, error } = await supabase
+      .from("agent_to_subagent_notifications")
+      .select("*")
+      .eq("agent_store_id", subagentStore.agent_store_id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+    if (!error && data) setAgentNotifications(data);
+  };
+
   useEffect(() => {
-    if (subagentStore?.id) fetchNotifications();
+    if (subagentStore?.id) {
+      fetchNotifications();
+      fetchAgentNotifications();
+    }
   }, [subagentStore?.id]);
 
   // Check for pending wallet topup from URL params
@@ -810,12 +835,49 @@ const SubagentDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
+  // Date filter helper function
+  const getDateFilteredOrders = (orderList: Order[]) => {
+    if (dateFilter === "all") return orderList;
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    
+    return orderList.filter(order => {
+      const orderDate = new Date(order.created_at);
+      switch (dateFilter) {
+        case "today":
+          return orderDate >= today;
+        case "yesterday":
+          return orderDate >= yesterday && orderDate < today;
+        case "week":
+          return orderDate >= weekAgo;
+        case "month":
+          return orderDate >= monthAgo;
+        case "custom":
+          const start = customStartDate ? new Date(customStartDate) : new Date(0);
+          const end = customEndDate ? new Date(customEndDate + "T23:59:59") : new Date();
+          return orderDate >= start && orderDate <= end;
+        default:
+          return true;
+      }
+    });
+  };
+
+  // Apply date filter to orders for stats
+  const dateFilteredOrders = getDateFilteredOrders(orders);
+
   // Only count customer orders (not wallet purchases by subagent) for revenue
-  const customerOrders = orders.filter(o => o.payment_method !== "wallet");
+  const customerOrders = dateFilteredOrders.filter(o => o.payment_method !== "wallet");
   const totalRevenue = customerOrders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.selling_price || order.amount) : 0), 0);
   
   // Calculate profit from ALL completed orders (customer pays, subagent earns profit)
-  const allCompletedOrders = orders.filter(o => o.status === "completed" || o.status === "paid");
+  const allCompletedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
   const totalProfit = allCompletedOrders.reduce((sum, order) => {
     // Use stored profit if available, otherwise calculate from stored prices or fallback
     if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
@@ -826,8 +888,8 @@ const SubagentDashboard = () => {
     return sum + (Number(order.selling_price || order.amount) - baseCost);
   }, 0);
   
-  const pendingOrders = orders.filter(o => o.status !== "completed").length;
-  const totalOrders = orders.length;
+  const pendingOrders = dateFilteredOrders.filter(o => o.status !== "completed").length;
+  const totalOrders = dateFilteredOrders.length;
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
@@ -846,9 +908,17 @@ const SubagentDashboard = () => {
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
   const storeUrl = storeName ? DOMAINS.getSubagentStoreUrl(storeName) : "";
   
-  const filteredOrders = orders.filter(o => 
+  // Filter orders by search and apply date filter
+  const filteredOrders = getDateFilteredOrders(orders).filter(o => 
     o.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) ||
     o.id?.toLowerCase().includes(orderSearch.toLowerCase())
+  );
+  
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * ordersPerPage,
+    currentPage * ordersPerPage
   );
 
   const copyStoreLink = async () => {
@@ -999,6 +1069,26 @@ const SubagentDashboard = () => {
               )}
             </Card>
 
+            {/* Agent Notifications Banner */}
+            {agentNotifications.length > 0 && (
+              <Card className="border-orange-500/30 bg-orange-500/10">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Bell className="h-5 w-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-orange-400 mb-2">Message from your Agent</p>
+                      {agentNotifications.slice(0, 3).map((n) => (
+                        <div key={n.id} className="text-sm text-foreground mb-2 last:mb-0">
+                          <p>{n.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="border-border">
@@ -1045,69 +1135,122 @@ const SubagentDashboard = () => {
 
             {/* Orders Table */}
             <Card className="border-border">
-              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <CardTitle className="font-display text-lg">Recent Orders</CardTitle>
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search by number..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)} className="pl-9" />
+              <CardHeader className="flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="font-display text-lg">Recent Orders ({filteredOrders.length})</CardTitle>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search by number..." value={orderSearch} onChange={e => { setOrderSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
+                  </div>
                 </div>
+                {/* Date Filter */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Filter:</span>
+                  {(["all", "today", "yesterday", "week", "month", "custom"] as const).map(filter => (
+                    <Button
+                      key={filter}
+                      variant={dateFilter === filter ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => { setDateFilter(filter); setCurrentPage(1); }}
+                      className="text-xs"
+                    >
+                      {filter === "all" ? "All Time" : filter === "week" ? "This Week" : filter === "month" ? "This Month" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+                {dateFilter === "custom" && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="w-40" />
+                    <span className="text-muted-foreground">to</span>
+                    <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="w-40" />
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 {filteredOrders.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">No orders found.</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date & Time</TableHead>
-                          <TableHead>Number</TableHead>
-                          <TableHead>Network</TableHead>
-                          <TableHead>Size</TableHead>
-                          <TableHead>Selling Price</TableHead>
-                          <TableHead>Base Cost</TableHead>
-                          <TableHead>Profit</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredOrders.slice(0, 10).map(order => {
-                          // Use stored values from order if available, otherwise fall back to current prices (for old orders)
-                          const storedSellPrice = order.selling_price ?? null;
-                          const storedBaseCost = order.base_price ?? null;
-                          const storedProfit = order.profit ?? null;
-                          
-                          // Fallback calculation for old orders
-                          const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
-                          const fallbackProfit = order.amount - fallbackBaseCost;
-                          
-                          // Use stored values if they exist and are non-zero
-                          const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
-                          const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
-                          const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
-                          
-                          return (
-                            <TableRow key={order.id}>
-                              <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
-                              <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
-                              <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                              <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
-                              <TableCell className="font-semibold">GH₵{Number(sellPrice).toFixed(2)}</TableCell>
-                              <TableCell className="text-muted-foreground">GH₵{Number(baseCost).toFixed(2)}</TableCell>
-                              <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
-                                GH₵{Number(profit).toFixed(2)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
-                                  {order.status === "paid" ? "completed" : order.status}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date & Time</TableHead>
+                            <TableHead>Number</TableHead>
+                            <TableHead>Network</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead>Selling Price</TableHead>
+                            <TableHead>Base Cost</TableHead>
+                            <TableHead>Profit</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedOrders.map(order => {
+                            // Use stored values from order if available, otherwise fall back to current prices (for old orders)
+                            const storedSellPrice = order.selling_price ?? null;
+                            const storedBaseCost = order.base_price ?? null;
+                            const storedProfit = order.profit ?? null;
+                            
+                            // Fallback calculation for old orders
+                            const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+                            const fallbackProfit = order.amount - fallbackBaseCost;
+                            
+                            // Use stored values if they exist and are non-zero
+                            const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
+                            const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
+                            const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
+                            
+                            return (
+                              <TableRow key={order.id}>
+                                <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
+                                <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                                <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                                <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                                <TableCell className="font-semibold">GH₵{Number(sellPrice).toFixed(2)}</TableCell>
+                                <TableCell className="text-muted-foreground">GH₵{Number(baseCost).toFixed(2)}</TableCell>
+                                <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
+                                  GH₵{Number(profit).toFixed(2)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
+                                    {order.status === "paid" ? "completed" : order.status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                        <p className="text-sm text-muted-foreground">
+                          Showing {(currentPage - 1) * ordersPerPage + 1} to {Math.min(currentPage * ordersPerPage, filteredOrders.length)} of {filteredOrders.length} orders
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                          >
+                            Previous
+                          </Button>
+                          <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

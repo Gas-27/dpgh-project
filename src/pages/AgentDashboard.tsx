@@ -24,6 +24,7 @@ import {
   TrendingUp, Search, Palette, RotateCcw, Bell, Plus, Trash2, Calendar,
   LayoutGrid, Minus, Plus as PlusIcon, Coins, Menu, Image, Download, Share2,
   ChevronDown, ChevronUp, BookOpen, Percent, Users, AlertCircle, ShieldAlert,
+  Send, Eye,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -308,6 +309,18 @@ const AgentDashboard = () => {
   const [manualOpen, setManualOpen] = useState(false);
   const [openManualSection, setOpenManualSection] = useState<number | null>(null);
   const [markupPercent, setMarkupPercent] = useState("");
+  
+  // Notifications to subagents
+  const [subagentNotificationMsg, setSubagentNotificationMsg] = useState("");
+  const [sendingSubagentNotification, setSendingSubagentNotification] = useState(false);
+  const [subagentNotifications, setSubagentNotifications] = useState<any[]>([]);
+  
+  // Pagination and date filtering
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 100;
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
 
   // Flyer
   const flyerRef = useRef<HTMLDivElement>(null);
@@ -651,6 +664,44 @@ const AgentDashboard = () => {
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" }); else fetchNotifications();
   };
 
+  // Subagent Notifications (agent to their subagents)
+  const fetchSubagentNotifications = async () => {
+    if (!store?.id) return;
+    const { data, error } = await supabase
+      .from("agent_to_subagent_notifications")
+      .select("*")
+      .eq("agent_store_id", store.id)
+      .order("created_at", { ascending: false });
+    if (!error && data) setSubagentNotifications(data);
+  };
+  useEffect(() => { if (store?.id) fetchSubagentNotifications(); }, [store]);
+
+  const sendSubagentNotification = async () => {
+    if (!store?.id || !subagentNotificationMsg.trim()) {
+      toast({ title: "Error", description: "Please enter a message", variant: "destructive" });
+      return;
+    }
+    setSendingSubagentNotification(true);
+    const { error } = await supabase.from("agent_to_subagent_notifications").insert({
+      agent_store_id: store.id,
+      message: subagentNotificationMsg.trim(),
+      is_active: true,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Notification sent to all subagents!" });
+      setSubagentNotificationMsg("");
+      fetchSubagentNotifications();
+    }
+    setSendingSubagentNotification(false);
+  };
+
+  const deleteSubagentNotification = async (id: string) => {
+    const { error } = await supabase.from("agent_to_subagent_notifications").delete().eq("id", id);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" }); else fetchSubagentNotifications();
+  };
+
   const saveThemeColors = async () => {
     if (!store) return; setSavingTheme(true);
     const { error } = await supabase.from("agent_stores").update({ theme_config: themeColors }).eq("id", store.id);
@@ -963,10 +1014,49 @@ const AgentDashboard = () => {
   const storeName = store?.store_name || "DATA PLUG .STORE";
   const supportNum = store?.support_number || "";
 
-  const totalOrders = ordersTotal;
-  const pendingOrders = orders.filter(o => o.status === "pending").length;
-  const filteredOrders = orders.filter(o => o.customer_number.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase()));
+  // Date filter helper function
+  const getDateFilteredOrders = (orderList: Order[]) => {
+    if (dateFilter === "all") return orderList;
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    
+    return orderList.filter(order => {
+      const orderDate = new Date(order.created_at);
+      switch (dateFilter) {
+        case "today":
+          return orderDate >= today;
+        case "yesterday":
+          return orderDate >= yesterday && orderDate < today;
+        case "week":
+          return orderDate >= weekAgo;
+        case "month":
+          return orderDate >= monthAgo;
+        case "custom":
+          const start = customStartDate ? new Date(customStartDate) : new Date(0);
+          const end = customEndDate ? new Date(customEndDate + "T23:59:59") : new Date();
+          return orderDate >= start && orderDate <= end;
+        default:
+          return true;
+      }
+    });
+  };
+
+  const dateFilteredOrders = getDateFilteredOrders(orders);
+  const totalOrders = dateFilteredOrders.length;
+  const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
+  const filteredOrders = getDateFilteredOrders(orders).filter(o => o.customer_number.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase()));
   const hasMoreOrders = orders.length < ordersTotal;
+  
+  // Pagination
+  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage);
 
   const mtnPkgs = getMtnPkgs();
   const airtelPkgs = getAirtelPkgs();
@@ -1083,15 +1173,39 @@ const AgentDashboard = () => {
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Profit from Subagents</p><p className="font-display text-2xl font-bold text-primary mt-1">GH₵ {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Withdraw separately in Wallet tab</p></div><Users className="h-8 w-8 text-primary opacity-50" /></div></CardContent></Card>
             </div>
             <Card className="border-border">
-              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <CardTitle className="font-display text-lg">Orders <span className="text-sm font-normal text-muted-foreground">({orders.length} of {ordersTotal} shown)</span></CardTitle>
-                <div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by number or order ID..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)} className="pl-9" /></div>
+              <CardHeader className="flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="font-display text-lg">Orders ({filteredOrders.length})</CardTitle>
+                  <div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by number or order ID..." value={orderSearch} onChange={e => { setOrderSearch(e.target.value); setCurrentPage(1); }} className="pl-9" /></div>
+                </div>
+                {/* Date Filter */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Filter:</span>
+                  {(["all", "today", "yesterday", "week", "month", "custom"] as const).map(filter => (
+                    <Button
+                      key={filter}
+                      variant={dateFilter === filter ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => { setDateFilter(filter); setCurrentPage(1); }}
+                      className="text-xs"
+                    >
+                      {filter === "all" ? "All Time" : filter === "week" ? "This Week" : filter === "month" ? "This Month" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+                {dateFilter === "custom" && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="w-40" />
+                    <span className="text-muted-foreground">to</span>
+                    <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="w-40" />
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 {filteredOrders.length === 0 ? <p className="text-muted-foreground text-center py-4">No orders found.</p> : (
                   <>
                     <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Number</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Sell Price</TableHead><TableHead>Base Cost</TableHead><TableHead>Profit</TableHead><TableHead>Method</TableHead><TableHead>Source</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                      <TableBody>{filteredOrders.map(order => { 
+                      <TableBody>{paginatedOrders.map(order => { 
                         const isSubagentOrder = !!order.subagent_store_id;
                         const pkg = packages.find(p => p.id === order.package_id);
                         const adminBasePrice = pkg?.agent_price || 0; // What admin charges agent
@@ -1121,7 +1235,18 @@ const AgentDashboard = () => {
                         }
                         
                         return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{order.size_gb}GB</TableCell><TableCell>GH₵ {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GH₵ {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">Subagent</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
-                    {hasMoreOrders && !orderSearch && <div className="flex justify-center mt-4"><Button variant="outline" onClick={loadMoreOrders} disabled={loadingMoreOrders} className="gap-2">{loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{loadingMoreOrders ? "Loading..." : `Load More (${ordersTotal - orders.length} remaining)`}</Button></div>}
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                        <p className="text-sm text-muted-foreground">Showing {(currentPage - 1) * ordersPerPage + 1} to {Math.min(currentPage * ordersPerPage, filteredOrders.length)} of {filteredOrders.length}</p>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                          <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
+                        </div>
+                      </div>
+                    )}
+                    {hasMoreOrders && !orderSearch && <div className="flex justify-center mt-4"><Button variant="outline" onClick={loadMoreOrders} disabled={loadingMoreOrders} className="gap-2">{loadingMoreOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{loadingMoreOrders ? "Loading..." : `Load More from Database (${ordersTotal - orders.length} remaining)`}</Button></div>}
                   </>
                 )}
               </CardContent>
@@ -1436,6 +1561,50 @@ const AgentDashboard = () => {
                     if (data) setSubagents(data);
                   }}
                 />
+              </CardContent>
+            </Card>
+
+            {/* Notifications to Subagents */}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Bell className="h-5 w-5" /> Send Notification to Subagents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">Send a notification that all your subagents will see when they log in to their dashboard.</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    placeholder="Type your notification message..."
+                    value={subagentNotificationMsg}
+                    onChange={(e) => setSubagentNotificationMsg(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    variant="hero" 
+                    onClick={sendSubagentNotification} 
+                    disabled={sendingSubagentNotification || !subagentNotificationMsg.trim()}
+                  >
+                    {sendingSubagentNotification ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                    Send
+                  </Button>
+                </div>
+                {subagentNotifications.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-semibold">Recent Notifications</p>
+                    {subagentNotifications.slice(0, 5).map((n) => (
+                      <div key={n.id} className="flex items-start justify-between p-3 bg-secondary/30 rounded-lg">
+                        <div>
+                          <p className="text-sm">{n.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => deleteSubagentNotification(n.id)}>
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
