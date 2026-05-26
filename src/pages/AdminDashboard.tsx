@@ -1858,20 +1858,28 @@ const AdminDashboard = () => {
                           <div className="space-y-2">
                             <Label>Order Limit (auto-disable after)</Label>
                             <Input 
-                              type="number" 
-                              min="1" 
-                              value={spinConfig.auto_disable_order_limit} 
-                              onChange={(e) => setSpinConfig({ ...spinConfig, auto_disable_order_limit: Math.max(1, Number(e.target.value) || 1) })} 
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="1"
+                              value={spinConfig.auto_disable_order_limit || ''} 
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setSpinConfig({ ...spinConfig, auto_disable_order_limit: val === '' ? 0 : Math.max(1, parseInt(val, 10)) });
+                              }}
                             />
                             <p className="text-xs text-muted-foreground">Spin wheel disables when this many orders are placed</p>
                           </div>
                           <div className="space-y-2">
                             <Label>Actual Spin Orders (real count)</Label>
                             <Input 
-                              type="number" 
-                              min="0" 
-                              value={spinConfig.current_spin_orders} 
-                              onChange={(e) => setSpinConfig({ ...spinConfig, current_spin_orders: Math.max(0, Number(e.target.value) || 0) })} 
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="0"
+                              value={spinConfig.current_spin_orders || ''} 
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setSpinConfig({ ...spinConfig, current_spin_orders: val === '' ? 0 : parseInt(val, 10) });
+                              }}
                             />
                             <p className="text-xs text-muted-foreground">Real number of spin orders placed</p>
                           </div>
@@ -1879,10 +1887,14 @@ const AdminDashboard = () => {
                         <div className="space-y-2">
                           <Label>Display Count (what users see)</Label>
                           <Input 
-                            type="number" 
-                            min="0" 
-                            value={spinConfig.display_spin_orders} 
-                            onChange={(e) => setSpinConfig({ ...spinConfig, display_spin_orders: Math.max(0, Number(e.target.value) || 0) })} 
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="0"
+                            value={spinConfig.display_spin_orders || ''} 
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '');
+                              setSpinConfig({ ...spinConfig, display_spin_orders: val === '' ? 0 : parseInt(val, 10) });
+                            }}
                           />
                           <p className="text-xs text-muted-foreground">You can manipulate what users see as the "current orders" count</p>
                         </div>
