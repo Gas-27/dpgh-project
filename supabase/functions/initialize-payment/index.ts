@@ -295,49 +295,50 @@ Deno.serve(async (req) => {
 
     // Priority: 1. Subagent's sell_price, 2. Agent's sell_price, 3. Admin's base price
     if (metadata.subagent_store_id) {
-      // Check for subagent's custom price first
-      const { data: subagentPrice } = await supabaseClient
-        .from("subagent_package_prices")
-        .select("sell_price")
-        .eq("subagent_store_id", metadata.subagent_store_id)
-        .eq("package_id", metadata.package_id)
-        .single();
+      // Fetch subagent's custom price AND subagent store info in parallel for speed
+      const [subagentPriceResult, subagentStoreResult] = await Promise.all([
+        supabaseClient
+          .from("subagent_package_prices")
+          .select("sell_price")
+          .eq("subagent_store_id", metadata.subagent_store_id)
+          .eq("package_id", metadata.package_id)
+          .single(),
+        supabaseClient
+          .from("subagent_stores")
+          .select("agent_store_id")
+          .eq("id", metadata.subagent_store_id)
+          .single()
+      ]);
+
+      const subagentPrice = subagentPriceResult.data;
+      const subagentStore = subagentStoreResult.data;
 
       if (subagentPrice?.sell_price != null) {
         baseAmount = Number(subagentPrice.sell_price);
         priceType = "subagent_sell_price";
         console.log(`Using subagent's sell_price: ${baseAmount}`);
-      } else {
-        // Fall back to agent's sell_price if subagent hasn't set their own
-        // First get the agent_store_id from the subagent store
-        const { data: subagentStore } = await supabaseClient
-          .from("subagent_stores")
-          .select("agent_store_id")
-          .eq("id", metadata.subagent_store_id)
+      } else if (subagentStore?.agent_store_id) {
+        // Fall back to agent's sell_price
+        const { data: agentPrice } = await supabaseClient
+          .from("agent_package_prices")
+          .select("sell_price")
+          .eq("agent_store_id", subagentStore.agent_store_id)
+          .eq("package_id", metadata.package_id)
           .single();
 
-        if (subagentStore?.agent_store_id) {
-          const { data: agentPrice } = await supabaseClient
-            .from("agent_package_prices")
-            .select("sell_price")
-            .eq("agent_store_id", subagentStore.agent_store_id)
-            .eq("package_id", metadata.package_id)
-            .single();
-
-          if (agentPrice?.sell_price != null) {
-            baseAmount = Number(agentPrice.sell_price);
-            priceType = "agent_sell_price_fallback";
-            console.log(`Using agent's sell_price as fallback: ${baseAmount}`);
-          } else {
-            baseAmount = Number(packageData.price);
-            priceType = "admin_user_price";
-            console.log(`Using admin base price: ${baseAmount}`);
-          }
+        if (agentPrice?.sell_price != null) {
+          baseAmount = Number(agentPrice.sell_price);
+          priceType = "agent_sell_price_fallback";
+          console.log(`Using agent's sell_price as fallback: ${baseAmount}`);
         } else {
           baseAmount = Number(packageData.price);
           priceType = "admin_user_price";
           console.log(`Using admin base price: ${baseAmount}`);
         }
+      } else {
+        baseAmount = Number(packageData.price);
+        priceType = "admin_user_price";
+        console.log(`Using admin base price: ${baseAmount}`);
       }
     } else if (metadata.agent_store_id) {
       // Agent store purchase - use agent's sell_price

@@ -154,6 +154,17 @@ const PaymentDialog = ({
 
   const handlePay = async () => {
     setLoading(true);
+    
+    // Set a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+      toast({
+        title: "Payment Timeout",
+        description: "The payment request is taking too long. Please try again.",
+        variant: "destructive",
+      });
+    }, 30000); // 30 second timeout
+    
     try {
       const normalizedPhone = normalizePhone(phone.trim());
       const userEmail =
@@ -184,21 +195,26 @@ const PaymentDialog = ({
         }
       );
 
-      if (error) throw error;
+      clearTimeout(timeoutId);
+
+      if (error) {
+        throw error;
+      }
 
       if (data?.authorization_url) {
         storePurchaseTime(normalizedPhone);
-        window.location.href = data.authorization_url;
+        // Use replace to prevent back button issues
+        window.location.replace(data.authorization_url);
       } else {
-        throw new Error(data?.error || "Failed to initialize payment");
+        throw new Error(data?.error || "Failed to get payment URL from Paystack");
       }
     } catch (err: any) {
+      clearTimeout(timeoutId);
       toast({
         title: "Payment Error",
-        description: err.message || "Something went wrong",
+        description: err.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
