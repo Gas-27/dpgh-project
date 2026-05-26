@@ -7,6 +7,7 @@ import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -879,14 +880,41 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
           <div>
             <Label className="text-purple-200 text-xs mb-1 block">Phone number (10 digits)</Label>
             <div className="flex gap-2">
-              <Input
-                placeholder="0501234567"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                className="bg-white/10 text-white border-white/20 placeholder:text-white/30 text-sm"
-                disabled={phoneConfirmed}
-              />
-              {!phoneConfirmed && (
+              <div className="relative flex-1">
+                <Input
+                  placeholder="0501234567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  className="bg-white/10 text-white border-white/20 placeholder:text-white/30 text-sm pr-8"
+                  disabled={phoneConfirmed}
+                />
+                {phone && !phoneConfirmed && (
+                  <button
+                    type="button"
+                    onClick={() => setPhone("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              {phoneConfirmed ? (
+                <Button 
+                  onClick={() => {
+                    setPhone("");
+                    setPhoneConfirmed(false);
+                    setSpinCount(0);
+                    setCooldownMs(0);
+                    setSuccessGb(0);
+                    setResultMsg("");
+                    setShowWinBanner(false);
+                  }} 
+                  variant="outline" 
+                  className="shrink-0 text-sm px-3 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  Clear
+                </Button>
+              ) : (
                 <Button onClick={handlePhoneConfirm} disabled={!isValidPhone(phone) || checkingOrder} className="bg-purple-600 hover:bg-purple-700 shrink-0 text-sm px-3">
                   {checkingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : "OK"}
                 </Button>
@@ -1004,6 +1032,7 @@ const Packages = () => {
   const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services">("data");
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
+  const [showClaimFreeData, setShowClaimFreeData] = useState(false);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
     chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
@@ -1335,6 +1364,24 @@ const Packages = () => {
       )}
 
       {!showSpinWheel && <WhatsAppFloatingButton />}
+
+      {/* Claim Free Data Dialog */}
+      <ClaimFreeDataDialog
+        open={showClaimFreeData}
+        onOpenChange={setShowClaimFreeData}
+      />
+
+      {/* Claim Free Data FAB */}
+      {!showSpinWheel && (
+        <button
+          onClick={() => setShowClaimFreeData(true)}
+          className="fixed z-50 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110"
+          style={{ bottom: "5.5rem", right: "1.5rem" }}
+          title="Claim Free Data"
+        >
+          <Gift className="h-6 w-6" />
+        </button>
+      )}
     </div>
   );
 };

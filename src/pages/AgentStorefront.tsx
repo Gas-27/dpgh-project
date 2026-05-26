@@ -13,9 +13,10 @@ import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
-  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle,
+  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES
@@ -505,6 +506,9 @@ const AgentStorefront = () => {
   // ── Report complaint dialog ──
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
+  
+  // ── Claim Free Data dialog ──
+  const [claimFreeDataOpen, setClaimFreeDataOpen] = useState(false);
 
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
@@ -1306,6 +1310,23 @@ const AgentStorefront = () => {
           agentStoreId={store?.id}
         />
       )}
+
+      {/* Claim Free Data Dialog */}
+      <ClaimFreeDataDialog
+        open={claimFreeDataOpen}
+        onOpenChange={setClaimFreeDataOpen}
+        storeId={store?.id}
+      />
+
+      {/* Claim Free Data FAB - positioned above WhatsApp if exists */}
+      <button
+        onClick={() => setClaimFreeDataOpen(true)}
+        className="fixed z-50 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110"
+        style={{ bottom: groupLink ? "5.5rem" : "1.5rem", right: "1.5rem" }}
+        title="Claim Free Data"
+      >
+        <Gift className="h-6 w-6" />
+      </button>
     </div>
   );
 };
