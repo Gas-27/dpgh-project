@@ -8,6 +8,7 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
+import DraggableFAB from "@/components/DraggableFAB";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1373,14 +1374,17 @@ const Packages = () => {
 
       {/* Claim Free Data FAB */}
       {!showSpinWheel && (
-        <button
+        <DraggableFAB
+          initialBottom={150}
+          initialRight={24}
+          storageKey="claim-free-data"
           onClick={() => setShowClaimFreeData(true)}
-          className="fixed z-50 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110"
-          style={{ bottom: "5.5rem", right: "1.5rem" }}
           title="Claim Free Data"
         >
-          <Gift className="h-6 w-6" />
-        </button>
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
+            <Gift className="h-6 w-6" />
+          </div>
+        </DraggableFAB>
       )}
     </div>
   );

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
+import DraggableFAB from "@/components/DraggableFAB";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES
@@ -1318,15 +1319,18 @@ const AgentStorefront = () => {
         storeId={store?.id}
       />
 
-      {/* Claim Free Data FAB - positioned above WhatsApp if exists */}
-      <button
+      {/* Claim Free Data FAB - draggable */}
+      <DraggableFAB
+        initialBottom={groupLink ? 88 : 24}
+        initialRight={24}
+        storageKey="claim-free-data-agent"
         onClick={() => setClaimFreeDataOpen(true)}
-        className="fixed z-50 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110"
-        style={{ bottom: groupLink ? "5.5rem" : "1.5rem", right: "1.5rem" }}
         title="Claim Free Data"
       >
-        <Gift className="h-6 w-6" />
-      </button>
+        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
+          <Gift className="h-6 w-6" />
+        </div>
+      </DraggableFAB>
     </div>
   );
 };
