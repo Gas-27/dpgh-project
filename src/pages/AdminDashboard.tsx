@@ -1794,33 +1794,42 @@ const AdminDashboard = () => {
                       <div className="space-y-2">
                         <Label>2GB Win Chance (%)</Label>
                         <Input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          value={spinConfig.chance_2gb} 
-                          onChange={(e) => setSpinConfig({ ...spinConfig, chance_2gb: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} 
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={spinConfig.chance_2gb || ''} 
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setSpinConfig({ ...spinConfig, chance_2gb: val === '' ? 0 : Math.min(100, parseInt(val, 10)) });
+                          }}
                         />
                         <p className="text-xs text-muted-foreground">Default: 4%</p>
                       </div>
                       <div className="space-y-2">
                         <Label>1GB Win Chance (%)</Label>
                         <Input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          value={spinConfig.chance_1gb} 
-                          onChange={(e) => setSpinConfig({ ...spinConfig, chance_1gb: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} 
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={spinConfig.chance_1gb || ''} 
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setSpinConfig({ ...spinConfig, chance_1gb: val === '' ? 0 : Math.min(100, parseInt(val, 10)) });
+                          }}
                         />
                         <p className="text-xs text-muted-foreground">Default: 9%</p>
                       </div>
                       <div className="space-y-2">
                         <Label>Extra Spin Chance (%)</Label>
                         <Input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          value={spinConfig.chance_extra_spin} 
-                          onChange={(e) => setSpinConfig({ ...spinConfig, chance_extra_spin: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} 
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="0"
+                          value={spinConfig.chance_extra_spin || ''} 
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setSpinConfig({ ...spinConfig, chance_extra_spin: val === '' ? 0 : Math.min(100, parseInt(val, 10)) });
+                          }}
                         />
                         <p className="text-xs text-muted-foreground">Default: 12%</p>
                       </div>
