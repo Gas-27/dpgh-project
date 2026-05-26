@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import NetworkIndicator from "@/components/NetworkIndicator";
+import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
 import { DOMAINS } from "@/config/domains";
@@ -761,6 +763,19 @@ const SubagentDashboard = () => {
   const handleBuyData = async () => {
     if (!buyingPkg || !buyCustomerNumber || !subagentStore) return;
     
+    // Validate phone number is exactly 10 digits
+    if (!isValidPhoneLength(buyCustomerNumber)) {
+      toast({ title: "Error", description: "Phone number must be exactly 10 digits", variant: "destructive" });
+      return;
+    }
+    
+    // Validate phone matches selected network
+    if (!phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
+      const detected = detectNetwork(buyCustomerNumber);
+      toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
+      return;
+    }
+    
     const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
     
     if (price > getAvailableBalance()) {
@@ -1327,12 +1342,14 @@ const SubagentDashboard = () => {
                       <p className="font-display text-2xl font-bold text-primary">GH₵ {Number(basePrices[buyingPkg.id] || buyingPkg.price || 0).toFixed(2)}</p>
                     </div>
                     <div className="space-y-2">
-                      <Label>Customer Phone Number</Label>
+                      <Label>Customer Phone Number (exactly 10 digits)</Label>
                       <Input
                         placeholder="e.g. 0551234567"
+                        maxLength={10}
                         value={buyCustomerNumber}
-                        onChange={e => setBuyCustomerNumber(e.target.value)}
+                        onChange={e => setBuyCustomerNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       />
+                      <NetworkIndicator phone={buyCustomerNumber} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <Button 
@@ -1352,6 +1369,15 @@ const SubagentDashboard = () => {
                           const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
                           if (!buyCustomerNumber) {
                             toast({ title: "Error", description: "Enter customer phone number", variant: "destructive" });
+                            return;
+                          }
+                          if (!isValidPhoneLength(buyCustomerNumber)) {
+                            toast({ title: "Error", description: "Phone number must be exactly 10 digits", variant: "destructive" });
+                            return;
+                          }
+                          if (!phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
+                            const detected = detectNetwork(buyCustomerNumber);
+                            toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
                             return;
                           }
                           setBuyLoading(true);

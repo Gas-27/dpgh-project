@@ -9,6 +9,7 @@ import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import DraggableFAB from "@/components/DraggableFAB";
+import NetworkIndicator from "@/components/NetworkIndicator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -921,6 +922,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
                 </Button>
               )}
             </div>
+            <NetworkIndicator phone={phone} />
           </div>
 
           {phoneConfirmed && !paymentRequired && cooldownMs > 0 && (

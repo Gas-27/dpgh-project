@@ -14,6 +14,8 @@ import { Loader2, Phone, ShieldCheck, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import NetworkIndicator from "@/components/NetworkIndicator";
+import { detectNetwork, phoneMatchesNetwork } from "@/lib/phoneUtils";
 
 interface PaymentDialogProps {
   open?: boolean;
@@ -138,6 +140,18 @@ const PaymentDialog = ({
       toast({
         title: "Invalid number",
         description: "Phone number must be exactly 10 digits.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if phone matches the selected network
+    const selectedNetwork = network || packageInfo?.network || "";
+    if (selectedNetwork && !phoneMatchesNetwork(phone, selectedNetwork)) {
+      const detected = detectNetwork(phone);
+      toast({
+        title: "Network mismatch",
+        description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${selectedNetwork.toUpperCase()} package`,
         variant: "destructive",
       });
       return;
@@ -283,6 +297,7 @@ const PaymentDialog = ({
                       Phone number must be exactly 10 digits (currently {phone.length})
                     </p>
                   )}
+                  <NetworkIndicator phone={phone} />
                 </div>
 
                 <Button

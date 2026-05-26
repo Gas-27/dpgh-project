@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Gift, Loader2, CheckCircle, X, Trophy, Calendar, AlertCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { detectNetwork, normalizePhone as normalizePhoneUtil, isValidPhone as isValidPhoneUtil } from "@/lib/phoneUtils";
+import NetworkIndicator from "@/components/NetworkIndicator";
 
 interface ClaimFreeDataDialogProps {
   open: boolean;
@@ -192,27 +194,43 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
       if (claimError) throw claimError;
 
-      // Get a valid package_id for the free data (find MTN package matching reward GB)
+      // Detect network from phone number
+      const detectedNetwork = detectNetwork(normalizedPhone);
+      const claimNetwork = detectedNetwork !== "unknown" ? detectedNetwork : "mtn";
+      
+      // Get a valid package_id for the free data (find package matching detected network and reward GB)
       const { data: packageData } = await supabase
         .from("data_packages")
         .select("id")
-        .eq("network", "mtn")
+        .eq("network", claimNetwork)
         .eq("size_gb", freeRewardGb)
         .eq("active", true)
         .limit(1)
         .single();
 
-      // If no exact match, get any active MTN package
+      // If no exact match, get any active package for that network
       let packageId = packageData?.id;
       if (!packageId) {
         const { data: fallbackPackage } = await supabase
+          .from("data_packages")
+          .select("id")
+          .eq("network", claimNetwork)
+          .eq("active", true)
+          .limit(1)
+          .single();
+        packageId = fallbackPackage?.id;
+      }
+      
+      // If still no package, try MTN as final fallback
+      if (!packageId && claimNetwork !== "mtn") {
+        const { data: mtnFallback } = await supabase
           .from("data_packages")
           .select("id")
           .eq("network", "mtn")
           .eq("active", true)
           .limit(1)
           .single();
-        packageId = fallbackPackage?.id;
+        packageId = mtnFallback?.id;
       }
 
       if (!packageId) {
@@ -225,7 +243,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
         .insert({
           package_id: packageId,
           customer_number: normalizedPhone,
-          network: "mtn",
+          network: claimNetwork,
           size_gb: freeRewardGb,
           amount: 0,
           status: "paid",
@@ -340,6 +358,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
                     </Button>
                   )}
                 </div>
+                <NetworkIndicator phone={phone} />
               </div>
 
               {eligibilityChecked && (
