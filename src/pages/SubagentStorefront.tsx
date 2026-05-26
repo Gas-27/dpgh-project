@@ -392,6 +392,7 @@ export function SubagentStorefront() {
   
   // Claim Free Data dialog
   const [claimFreeDataOpen, setClaimFreeDataOpen] = useState(false);
+  const [freeDataEnabled, setFreeDataEnabled] = useState(true);
 
   // Theme
   const theme = store?.theme_config || defaultTheme;
@@ -451,10 +452,11 @@ export function SubagentStorefront() {
 
       // Fetch packages and prices
       // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
-      const [pkgRes, subagentOwnPriceRes, agentSellPriceRes] = await Promise.all([
+      const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
+        supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
       ]);
 
       setPackages(pkgRes.data || []);
@@ -473,6 +475,7 @@ export function SubagentStorefront() {
       });
       
       setSubagentPrices(priceMap);
+      if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
       
       setLoading(false);
     };
@@ -911,17 +914,19 @@ export function SubagentStorefront() {
       />
 
       {/* Claim Free Data FAB - draggable */}
-      <DraggableFAB
-        initialBottom={groupLink ? 88 : 24}
-        initialRight={24}
-        storageKey="claim-free-data-subagent"
-        onClick={() => setClaimFreeDataOpen(true)}
-        title="Claim Free Data"
-      >
-        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
-          <Gift className="h-6 w-6" />
-        </div>
-      </DraggableFAB>
+      {freeDataEnabled && (
+        <DraggableFAB
+          initialBottom={groupLink ? 88 : 24}
+          initialRight={24}
+          storageKey="claim-free-data-subagent"
+          onClick={() => setClaimFreeDataOpen(true)}
+          title="Claim Free Data"
+        >
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
+            <Gift className="h-6 w-6" />
+          </div>
+        </DraggableFAB>
+      )}
     </div>
   );
 }

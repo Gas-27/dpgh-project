@@ -510,6 +510,7 @@ const AgentStorefront = () => {
   
   // ── Claim Free Data dialog ──
   const [claimFreeDataOpen, setClaimFreeDataOpen] = useState(false);
+  const [freeDataEnabled, setFreeDataEnabled] = useState(true);
 
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
@@ -636,14 +637,16 @@ const AgentStorefront = () => {
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
 
-      const [pkgRes, priceRes] = await Promise.all([
+      const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
+        supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
       ]);
       setPackages(pkgRes.data ?? []);
       const priceMap: Record<string, number> = {};
       (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
       setAgentPrices(priceMap);
+      if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
       setLoading(false);
     };
     fetchStore();
@@ -1320,17 +1323,19 @@ const AgentStorefront = () => {
       />
 
       {/* Claim Free Data FAB - draggable */}
-      <DraggableFAB
-        initialBottom={groupLink ? 88 : 24}
-        initialRight={24}
-        storageKey="claim-free-data-agent"
-        onClick={() => setClaimFreeDataOpen(true)}
-        title="Claim Free Data"
-      >
-        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
-          <Gift className="h-6 w-6" />
-        </div>
-      </DraggableFAB>
+      {freeDataEnabled && (
+        <DraggableFAB
+          initialBottom={groupLink ? 88 : 24}
+          initialRight={24}
+          storageKey="claim-free-data-agent"
+          onClick={() => setClaimFreeDataOpen(true)}
+          title="Claim Free Data"
+        >
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
+            <Gift className="h-6 w-6" />
+          </div>
+        </DraggableFAB>
+      )}
     </div>
   );
 };

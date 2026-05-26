@@ -1034,6 +1034,7 @@ const Packages = () => {
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
+  const [freeDataEnabled, setFreeDataEnabled] = useState(true);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
     chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
@@ -1050,6 +1051,9 @@ const Packages = () => {
           : { ...data, default_network: data.default_network as Network, segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
         );
       });
+    // Load free data enabled setting
+    supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single()
+      .then(({ data }) => { if (data) setFreeDataEnabled(data.free_data_enabled ?? true); });
   }, []);
 
   useEffect(() => {
@@ -1373,7 +1377,7 @@ const Packages = () => {
       />
 
       {/* Claim Free Data FAB */}
-      {!showSpinWheel && (
+      {!showSpinWheel && freeDataEnabled && (
         <DraggableFAB
           initialBottom={150}
           initialRight={24}

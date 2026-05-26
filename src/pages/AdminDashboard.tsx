@@ -167,6 +167,7 @@ const AdminDashboard = () => {
   
   // Free Data Offer settings
   const [freeDataConfig, setFreeDataConfig] = useState({
+    enabled: true,
     required_gb: 35,
     reward_gb: 1,
     telecel_enabled: false,
@@ -258,7 +259,7 @@ const AdminDashboard = () => {
     // Fetch app settings
     const { data: appSettings } = await supabase
       .from("app_settings")
-      .select("agent_registration_fee, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
+      .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
       .eq("id", 1)
       .single();
     if (appSettings?.agent_registration_fee) {
@@ -266,6 +267,7 @@ const AdminDashboard = () => {
     }
     if (appSettings) {
       setFreeDataConfig({
+        enabled: appSettings.free_data_enabled ?? true,
         required_gb: appSettings.free_data_required_gb ?? 35,
         reward_gb: appSettings.free_data_reward_gb ?? 1,
         telecel_enabled: appSettings.free_data_telecel_enabled ?? false,
@@ -294,6 +296,7 @@ const AdminDashboard = () => {
       .from("app_settings")
       .upsert({ 
         id: 1, 
+        free_data_enabled: freeDataConfig.enabled,
         free_data_required_gb: freeDataConfig.required_gb,
         free_data_reward_gb: freeDataConfig.reward_gb,
         free_data_telecel_enabled: freeDataConfig.telecel_enabled,
@@ -2047,6 +2050,20 @@ const AdminDashboard = () => {
               <Card className="border-border">
                 <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Gift className="h-5 w-5 text-green-500" /> Free Data Offer Settings</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Enable/Disable Toggle */}
+                  <div className="flex items-center justify-between border p-4 rounded-lg bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
+                    <div className="space-y-0.5">
+                      <Label className="text-base font-semibold">Enable Free Data Offer</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Show or hide the Gift icon on all storefronts
+                      </p>
+                    </div>
+                    <Switch 
+                      checked={freeDataConfig.enabled} 
+                      onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, enabled: checked })} 
+                    />
+                  </div>
+
                   <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
                     <p className="text-sm text-green-300">
                       Users who purchase the required GB within a week (Monday-Sunday) can claim free data once. 
@@ -2066,6 +2083,7 @@ const AdminDashboard = () => {
                           const val = e.target.value.replace(/[^0-9]/g, '');
                           setFreeDataConfig({ ...freeDataConfig, required_gb: val === '' ? 0 : parseInt(val, 10) });
                         }}
+                        disabled={!freeDataConfig.enabled}
                       />
                       <p className="text-xs text-muted-foreground">Users must buy this much GB in a week to qualify</p>
                     </div>
@@ -2080,6 +2098,7 @@ const AdminDashboard = () => {
                           const val = e.target.value.replace(/[^0-9]/g, '');
                           setFreeDataConfig({ ...freeDataConfig, reward_gb: val === '' ? 0 : parseInt(val, 10) });
                         }}
+                        disabled={!freeDataConfig.enabled}
                       />
                       <p className="text-xs text-muted-foreground">How much free data they receive</p>
                     </div>
@@ -2095,7 +2114,8 @@ const AdminDashboard = () => {
                     </div>
                     <Switch 
                       checked={freeDataConfig.telecel_enabled} 
-                      onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, telecel_enabled: checked })} 
+                      onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, telecel_enabled: checked })}
+                      disabled={!freeDataConfig.enabled}
                     />
                   </div>
                   
