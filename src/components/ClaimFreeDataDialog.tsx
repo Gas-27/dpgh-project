@@ -15,7 +15,7 @@ interface ClaimFreeDataDialogProps {
   subagentStoreId?: string | null;
 }
 
-const REQUIRED_GB = 30;
+const REQUIRED_GB = 35;
 const FREE_REWARD_GB = 1;
 const CLAIM_COOLDOWN_DAYS = 7;
 
@@ -278,12 +278,12 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
                     </div>
                   )}
 
-                  {/* Claim Button */}
-                  {canClaim && (
+                  {/* Claim Button - Only visible and enabled when requirements are met */}
+                  {canClaim ? (
                     <Button
                       onClick={handleClaim}
                       disabled={loading}
-                      className="w-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 font-bold text-lg py-6"
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 font-bold text-lg py-6 animate-pulse"
                     >
                       {loading ? (
                         <Loader2 className="animate-spin mr-2 h-5 w-5" />
@@ -292,13 +292,15 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
                       )}
                       Claim Your Free {FREE_REWARD_GB}GB!
                     </Button>
-                  )}
-
-                  {!canClaim && !alreadyClaimed && totalGbThisWeek < REQUIRED_GB && (
-                    <div className="text-center">
-                      <p className="text-gray-400 text-sm">Keep buying to unlock your reward!</p>
-                    </div>
-                  )}
+                  ) : !alreadyClaimed && totalGbThisWeek < REQUIRED_GB ? (
+                    <Button
+                      disabled
+                      className="w-full bg-gray-700 text-gray-400 font-bold text-lg py-6 cursor-not-allowed opacity-50"
+                    >
+                      <Trophy className="mr-2 h-5 w-5" />
+                      Buy {gbRemaining}GB More to Claim
+                    </Button>
+                  ) : null}
                 </div>
               )}
             </>
