@@ -150,6 +150,7 @@ const SubagentDashboard = () => {
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
+  const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string; store_name?: string } | null>(null);
   
   // Pagination for orders
   const [currentPage, setCurrentPage] = useState(1);
@@ -271,7 +272,8 @@ const SubagentDashboard = () => {
         agentSubagentPricesResult,
         adminCustomPricesResult,
         subagentPricesResult,
-        topupsResult
+        topupsResult,
+        agentInfoResult
       ] = await Promise.all([
         supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
         supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -279,13 +281,15 @@ const SubagentDashboard = () => {
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
-        supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50)
+        supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
+        supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
       ]);
 
       setOrders(ordersResult.data || []);
       setWithdrawals(withdrawResult.data || []);
       setPackages(packagesResult.data || []);
       setTopupHistory(topupsResult.data || []);
+      if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
       
       // Build admin custom price map (admin's price to agents - NOT for subagents)
       const adminPriceMap: Record<string, number> = {};
@@ -957,10 +961,10 @@ const SubagentDashboard = () => {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-orange-400">
-                <Bell className="h-5 w-5" /> Message from Your Agent
+                <Bell className="h-5 w-5" /> Message from Your Admin
               </DialogTitle>
               <DialogDescription>
-                Important notification from your agent
+                Important notification from your admin
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -1002,9 +1006,14 @@ const SubagentDashboard = () => {
       {/* Suspension Banner */}
       {subagentStore?.suspended && (
         <div className="bg-red-500/10 border-b border-red-500/30 px-4 py-3">
-          <div className="container flex items-center justify-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
-            <p className="text-red-500 font-semibold">Your store has been suspended. Please contact your agent for more information.</p>
+          <div className="container flex flex-col items-center justify-center gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <p className="text-red-500 font-semibold">Your store has been suspended.</p>
+            </div>
+            <p className="text-red-400 text-sm">
+              Contact your admin {agentInfo?.whatsapp_number ? `(${agentInfo.whatsapp_number})` : ""} for more information.
+            </p>
           </div>
         </div>
       )}
@@ -1348,7 +1357,11 @@ const SubagentDashboard = () => {
                         maxLength={10}
                         value={buyCustomerNumber}
                         onChange={e => setBuyCustomerNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        className={buyCustomerNumber.length > 0 && buyCustomerNumber.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}
                       />
+                      {buyCustomerNumber.length > 0 && buyCustomerNumber.length < 10 && (
+                        <p className="text-xs text-red-500">{10 - buyCustomerNumber.length} digit{10 - buyCustomerNumber.length !== 1 ? "s" : ""} remaining</p>
+                      )}
                       <NetworkIndicator phone={buyCustomerNumber} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">

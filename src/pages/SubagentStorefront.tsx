@@ -33,6 +33,7 @@ interface SubagentStore {
   };
   agent_store_id: string;
   approved?: boolean;
+  suspended?: boolean;
 }
 
 interface DataPackage {
@@ -374,6 +375,7 @@ export function SubagentStorefront() {
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [customerPhone, setCustomerPhone] = useState("");
+  const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string } | null>(null);
   
   // Order search
   const [searchQuery, setSearchQuery] = useState("");
@@ -452,14 +454,16 @@ export function SubagentStorefront() {
 
       // Fetch packages and prices
       // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
-      const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes] = await Promise.all([
+      const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
+        supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
       ]);
 
       setPackages(pkgRes.data || []);
+      if (agentInfoRes.data) setAgentInfo(agentInfoRes.data);
 
       // Build price map with fallback: subagent's own prices -> agent's sell prices -> admin's base
       const priceMap: Record<string, number> = {};
@@ -699,6 +703,28 @@ export function SubagentStorefront() {
               ))}
             </div>
             <Button className="w-full" style={{ background: primaryColor, color: primaryForeground }} onClick={closeAllNotifications}>Dismiss All</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Suspended Store Banner */}
+      {store.suspended && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-md rounded-xl border border-red-500/50 bg-red-950/90 p-6 space-y-4 text-center">
+            <div className="flex justify-center">
+              <div className="rounded-full bg-red-500/20 p-4">
+                <AlertTriangle className="h-12 w-12 text-red-500" />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-red-400">Store Suspended</h2>
+            <p className="text-gray-300">
+              This store has been temporarily suspended and cannot process orders at this time.
+            </p>
+            {agentInfo?.whatsapp_number && (
+              <p className="text-sm text-gray-400">
+                For assistance, contact the administrator at: <span className="text-white font-semibold">{agentInfo.whatsapp_number}</span>
+              </p>
+            )}
           </div>
         </div>
       )}
