@@ -204,10 +204,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
           fulfillment_status: "pending",
           agent_store_id: storeId || null,
           subagent_store_id: subagentStoreId || null,
-          payment_reference: `FREE_DATA_CLAIM_${Date.now()}`,
-          selling_price: 0,
-          base_price: 0,
-          profit: 0,
+          payment_method: "free_data_claim",
         });
 
       if (orderError) throw orderError;
