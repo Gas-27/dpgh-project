@@ -192,11 +192,38 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
       if (claimError) throw claimError;
 
+      // Get a valid package_id for the free data (find MTN package matching reward GB)
+      const { data: packageData } = await supabase
+        .from("data_packages")
+        .select("id")
+        .eq("network", "mtn")
+        .eq("size_gb", freeRewardGb)
+        .eq("active", true)
+        .limit(1)
+        .single();
+
+      // If no exact match, get any active MTN package
+      let packageId = packageData?.id;
+      if (!packageId) {
+        const { data: fallbackPackage } = await supabase
+          .from("data_packages")
+          .select("id")
+          .eq("network", "mtn")
+          .eq("active", true)
+          .limit(1)
+          .single();
+        packageId = fallbackPackage?.id;
+      }
+
+      if (!packageId) {
+        throw new Error("No valid data package found for free data claim");
+      }
+
       // Create a pending order for admin to fulfill
-      // Note: Using same pattern as AgentDashboard order insert
       const { error: orderError } = await supabase
         .from("orders")
         .insert({
+          package_id: packageId,
           customer_number: normalizedPhone,
           network: "mtn",
           size_gb: freeRewardGb,
