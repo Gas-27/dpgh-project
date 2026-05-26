@@ -193,18 +193,19 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       if (claimError) throw claimError;
 
       // Create a pending order for admin to fulfill
+      // Note: Using same pattern as AgentDashboard order insert
       const { error: orderError } = await supabase
         .from("orders")
         .insert({
           customer_number: normalizedPhone,
-          network: "mtn", // Default to MTN for free data
+          network: "mtn",
           size_gb: freeRewardGb,
           amount: 0,
-          status: "completed",
+          status: "paid",
           fulfillment_status: "pending",
+          payment_method: "free_data_claim",
           agent_store_id: storeId || null,
           subagent_store_id: subagentStoreId || null,
-          payment_method: "free_data_claim",
         });
 
       if (orderError) throw orderError;
