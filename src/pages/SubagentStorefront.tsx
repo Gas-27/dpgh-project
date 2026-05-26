@@ -266,10 +266,10 @@ const SubagentOrderTrackingCard = ({
         {complaintStatus && complaintStatus !== "resolved" && (
           <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
             <p className="text-sm font-medium text-yellow-400 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" /> Report has been sent to the agent
+              <CheckCircle className="h-4 w-4" /> Report has been sent 
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. The agent is working on it for you.
+              Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. Your report is being worked on 
             </p>
           </div>
         )}
