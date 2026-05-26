@@ -18,6 +18,7 @@ interface ClaimFreeDataDialogProps {
 const REQUIRED_GB = 35;
 const FREE_REWARD_GB = 1;
 const CLAIM_COOLDOWN_DAYS = 7;
+const ELIGIBLE_NETWORKS = ["mtn", "airteltigo", "airtel-tigo", "at"]; // Networks that count toward the 35GB
 
 // Normalize phone number to consistent format
 const normalizePhone = (phone: string): string => {
@@ -79,17 +80,23 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       weekStart.setDate(now.getDate() - diff);
       weekStart.setHours(0, 0, 0, 0);
 
-      // Check total GB purchased this week for this phone number
+      // Check total GB purchased this week for this phone number (only MTN and AirtelTigo count)
       const { data: orders, error: ordersError } = await supabase
         .from("orders")
-        .select("size_gb, created_at")
+        .select("size_gb, created_at, network")
         .eq("customer_number", normalizedPhone)
         .in("status", ["completed", "paid"])
         .gte("created_at", weekStart.toISOString());
 
       if (ordersError) throw ordersError;
 
-      const totalGb = orders?.reduce((sum, order) => sum + (order.size_gb || 0), 0) || 0;
+      // Only count MTN and AirtelTigo orders
+      const eligibleOrders = orders?.filter(order => {
+        const network = (order.network || "").toLowerCase();
+        return ELIGIBLE_NETWORKS.some(n => network.includes(n));
+      }) || [];
+      
+      const totalGb = eligibleOrders.reduce((sum, order) => sum + (order.size_gb || 0), 0);
       setTotalGbThisWeek(totalGb);
 
       // Check if user already claimed this week
@@ -190,7 +197,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
             <Gift className="h-6 w-6 text-green-400" /> Claim Free Data
           </DialogTitle>
           <DialogDescription className="text-center text-green-300 text-xs">
-            Buy {REQUIRED_GB}GB in a week and get {FREE_REWARD_GB}GB FREE!
+            Buy {REQUIRED_GB}GB of <span className="font-bold text-yellow-300">MTN or AirtelTigo</span> data in a week and get {FREE_REWARD_GB}GB FREE!
           </DialogDescription>
         </DialogHeader>
 
@@ -249,13 +256,13 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
                   {/* Progress Section */}
                   <div className="bg-black/30 rounded-lg p-4 border border-green-500/20">
                     <div className="flex justify-between text-xs text-green-300 mb-2">
-                      <span>Your progress this week</span>
+                      <span>MTN/AirtelTigo purchases this week</span>
                       <span className="font-bold">{totalGbThisWeek}GB / {REQUIRED_GB}GB</span>
                     </div>
                     <Progress value={progressPercent} className="h-3 bg-gray-700" />
                     {totalGbThisWeek < REQUIRED_GB && (
                       <p className="text-xs text-green-400 mt-2 text-center">
-                        Buy <span className="font-bold">{gbRemaining}GB</span> more to unlock your free data!
+                        Buy <span className="font-bold">{gbRemaining}GB</span> more MTN/AirtelTigo to unlock your free data!
                       </p>
                     )}
                     {totalGbThisWeek >= REQUIRED_GB && !alreadyClaimed && (

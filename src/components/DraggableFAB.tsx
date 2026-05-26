@@ -60,15 +60,16 @@ export const DraggableFAB = ({
   const handleMove = (clientX: number, clientY: number) => {
     if (!isDragging) return;
 
-    const deltaX = startPos.current.x - clientX;
-    const deltaY = startPos.current.y - clientY;
+    const deltaX = clientX - startPos.current.x;
+    const deltaY = clientY - startPos.current.y;
 
     // Only consider it moved if dragged more than 5px
     if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
       setHasMoved(true);
     }
 
-    const newRight = Math.max(10, Math.min(window.innerWidth - 60, startOffset.current.right + deltaX));
+    // Moving right decreases "right" value, moving down decreases "bottom" value
+    const newRight = Math.max(10, Math.min(window.innerWidth - 60, startOffset.current.right - deltaX));
     const newBottom = Math.max(10, Math.min(window.innerHeight - 60, startOffset.current.bottom - deltaY));
 
     setPosition({ bottom: newBottom, right: newRight });
