@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Gift, Loader2, CheckCircle, X, Trophy } from "lucide-react";
+import { Gift, Loader2, CheckCircle, X, Trophy, Calendar, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClaimFreeDataDialogProps {
@@ -15,10 +15,10 @@ interface ClaimFreeDataDialogProps {
   subagentStoreId?: string | null;
 }
 
-const REQUIRED_GB = 35;
-const FREE_REWARD_GB = 1;
+// Default values - can be overridden by admin settings
+const DEFAULT_REQUIRED_GB = 35;
+const DEFAULT_FREE_REWARD_GB = 1;
 const CLAIM_COOLDOWN_DAYS = 7;
-const ELIGIBLE_NETWORKS = ["mtn", "airteltigo", "airtel-tigo", "at"]; // Networks that count toward the 35GB
 
 // Normalize phone number to consistent format
 const normalizePhone = (phone: string): string => {
