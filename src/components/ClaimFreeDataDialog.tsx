@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Gift, Loader2, CheckCircle, X, Trophy, Calendar, AlertCircle } from "lucide-react";
+import { Gift, Loader2, CheckCircle, X, Trophy, Calendar, AlertCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClaimFreeDataDialogProps {
@@ -18,7 +18,6 @@ interface ClaimFreeDataDialogProps {
 // Default values - can be overridden by admin settings
 const DEFAULT_REQUIRED_GB = 35;
 const DEFAULT_FREE_REWARD_GB = 1;
-const CLAIM_COOLDOWN_DAYS = 7;
 
 // Normalize phone number to consistent format
 const normalizePhone = (phone: string): string => {
@@ -37,6 +36,23 @@ const isValidPhone = (phone: string): boolean => {
   return /^0[235]\d{8}$/.test(normalized);
 };
 
+// Get start and end of current week (Monday to Sunday)
+const getWeekBounds = () => {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - diff);
+  weekStart.setHours(0, 0, 0, 0);
+  
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  weekEnd.setHours(23, 59, 59, 999);
+  
+  return { weekStart, weekEnd };
+};
+
 export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subagentStoreId }: ClaimFreeDataDialogProps) {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
@@ -47,7 +63,46 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
   const [canClaim, setCanClaim] = useState(false);
   const [alreadyClaimed, setAlreadyClaimed] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState(false);
-  const [nextClaimDate, setNextClaimDate] = useState<Date | null>(null);
+  
+  // Admin configurable settings
+  const [requiredGb, setRequiredGb] = useState(DEFAULT_REQUIRED_GB);
+  const [freeRewardGb, setFreeRewardGb] = useState(DEFAULT_FREE_REWARD_GB);
+  const [telecelEnabled, setTelecelEnabled] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  // Load admin settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from("app_settings")
+          .select("free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
+          .eq("id", 1)
+          .single();
+        
+        if (data) {
+          setRequiredGb(data.free_data_required_gb ?? DEFAULT_REQUIRED_GB);
+          setFreeRewardGb(data.free_data_reward_gb ?? DEFAULT_FREE_REWARD_GB);
+          setTelecelEnabled(data.free_data_telecel_enabled ?? false);
+        }
+      } catch (err) {
+        console.log("Using default free data settings");
+      } finally {
+        setSettingsLoaded(true);
+      }
+    };
+    
+    if (open) loadSettings();
+  }, [open]);
+
+  // Get eligible networks based on settings
+  const getEligibleNetworks = () => {
+    const networks = ["mtn", "airteltigo", "airtel-tigo", "at"];
+    if (telecelEnabled) {
+      networks.push("telecel", "vodafone");
+    }
+    return networks;
+  };
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -58,7 +113,6 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       setCanClaim(false);
       setAlreadyClaimed(false);
       setClaimSuccess(false);
-      setNextClaimDate(null);
     }
   }, [open]);
 
@@ -71,16 +125,10 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
     setChecking(true);
     try {
       const normalizedPhone = normalizePhone(phone.trim());
-      
-      // Get the start of the current week (Monday)
-      const now = new Date();
-      const dayOfWeek = now.getDay();
-      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust so Monday is start
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - diff);
-      weekStart.setHours(0, 0, 0, 0);
+      const { weekStart } = getWeekBounds();
+      const eligibleNetworks = getEligibleNetworks();
 
-      // Check total GB purchased this week for this phone number (only MTN and AirtelTigo count)
+      // Check total GB purchased this week for this phone number
       const { data: orders, error: ordersError } = await supabase
         .from("orders")
         .select("size_gb, created_at, network")
@@ -90,10 +138,10 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
       if (ordersError) throw ordersError;
 
-      // Only count MTN and AirtelTigo orders
+      // Only count eligible network orders
       const eligibleOrders = orders?.filter(order => {
         const network = (order.network || "").toLowerCase();
-        return ELIGIBLE_NETWORKS.some(n => network.includes(n));
+        return eligibleNetworks.some(n => network.includes(n));
       }) || [];
       
       const totalGb = eligibleOrders.reduce((sum, order) => sum + (order.size_gb || 0), 0);
@@ -108,22 +156,13 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
         .limit(1);
 
       if (claimsError && claimsError.code !== "PGRST116") {
-        // Table might not exist yet, that's ok
         console.log("Claims table check:", claimsError);
       }
 
       const hasClaimed = claims && claims.length > 0;
       setAlreadyClaimed(hasClaimed);
 
-      if (hasClaimed && claims[0]) {
-        // Calculate next claim date (7 days from last claim)
-        const lastClaim = new Date(claims[0].created_at);
-        const nextClaim = new Date(lastClaim);
-        nextClaim.setDate(nextClaim.getDate() + CLAIM_COOLDOWN_DAYS);
-        setNextClaimDate(nextClaim);
-      }
-
-      setCanClaim(totalGb >= REQUIRED_GB && !hasClaimed);
+      setCanClaim(totalGb >= requiredGb && !hasClaimed);
       setEligibilityChecked(true);
     } catch (err: any) {
       console.error("Error checking eligibility:", err);
@@ -145,7 +184,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
         .from("free_data_claims")
         .insert({
           phone_number: normalizedPhone,
-          gb_amount: FREE_REWARD_GB,
+          gb_amount: freeRewardGb,
           total_gb_purchased: totalGbThisWeek,
           agent_store_id: storeId || null,
           subagent_store_id: subagentStoreId || null,
@@ -158,8 +197,8 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
         .from("orders")
         .insert({
           customer_number: normalizedPhone,
-          network: "mtn", // Default network for free data
-          size_gb: FREE_REWARD_GB,
+          network: "mtn", // Default to MTN for free data
+          size_gb: freeRewardGb,
           amount: 0,
           status: "completed",
           fulfillment_status: "pending",
@@ -176,7 +215,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       setClaimSuccess(true);
       toast({ 
         title: "Congratulations!", 
-        description: `You've claimed your free ${FREE_REWARD_GB}GB! It will be sent to ${normalizedPhone} shortly.` 
+        description: `You've claimed your free ${freeRewardGb}GB! It will be sent to ${normalizedPhone} shortly.` 
       });
     } catch (err: any) {
       console.error("Error claiming free data:", err);
@@ -186,8 +225,22 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
     }
   };
 
-  const progressPercent = Math.min((totalGbThisWeek / REQUIRED_GB) * 100, 100);
-  const gbRemaining = Math.max(REQUIRED_GB - totalGbThisWeek, 0);
+  const progressPercent = Math.min((totalGbThisWeek / requiredGb) * 100, 100);
+  const gbRemaining = Math.max(requiredGb - totalGbThisWeek, 0);
+  const { weekEnd } = getWeekBounds();
+  const networkText = telecelEnabled ? "MTN, AirtelTigo or Telecel" : "MTN or AirtelTigo";
+
+  if (!settingsLoaded) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-sm border-green-500/30" style={{ background: "linear-gradient(160deg, #001a00 0%, #003300 55%, #001a00 100%)" }}>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-green-400" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -197,11 +250,24 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
             <Gift className="h-6 w-6 text-green-400" /> Claim Free Data
           </DialogTitle>
           <DialogDescription className="text-center text-green-300 text-xs">
-            Buy {REQUIRED_GB}GB of <span className="font-bold text-yellow-300">MTN or AirtelTigo</span> data in a week and get {FREE_REWARD_GB}GB FREE!
+            Buy {requiredGb}GB of <span className="font-bold text-yellow-300">{networkText}</span> data in a week and get <span className="font-bold text-yellow-300">{freeRewardGb}GB FREE!</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Info Box - Week Details */}
+          <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
+              <div className="text-xs text-blue-200 space-y-1">
+                <p><span className="font-bold">Week runs Monday to Sunday.</span></p>
+                <p>Offer expires: <span className="font-bold text-yellow-300">{weekEnd.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</span></p>
+                <p className="text-blue-300/70">If not claimed by Sunday, the offer resets and is lost.</p>
+                {!telecelEnabled && <p className="text-orange-300/80">Telecel purchases do not count (no {freeRewardGb}GB available).</p>}
+              </div>
+            </div>
+          </div>
+
           {!claimSuccess ? (
             <>
               <div>
@@ -256,18 +322,18 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
                   {/* Progress Section */}
                   <div className="bg-black/30 rounded-lg p-4 border border-green-500/20">
                     <div className="flex justify-between text-xs text-green-300 mb-2">
-                      <span>MTN/AirtelTigo purchases this week</span>
-                      <span className="font-bold">{totalGbThisWeek}GB / {REQUIRED_GB}GB</span>
+                      <span>{networkText} this week</span>
+                      <span className="font-bold">{totalGbThisWeek}GB / {requiredGb}GB</span>
                     </div>
                     <Progress value={progressPercent} className="h-3 bg-gray-700" />
-                    {totalGbThisWeek < REQUIRED_GB && (
+                    {totalGbThisWeek < requiredGb && (
                       <p className="text-xs text-green-400 mt-2 text-center">
-                        Buy <span className="font-bold">{gbRemaining}GB</span> more MTN/AirtelTigo to unlock your free data!
+                        Buy <span className="font-bold">{gbRemaining}GB</span> more {networkText} to unlock your free data!
                       </p>
                     )}
-                    {totalGbThisWeek >= REQUIRED_GB && !alreadyClaimed && (
-                      <p className="text-xs text-yellow-400 mt-2 text-center font-bold">
-                        You&apos;ve reached {REQUIRED_GB}GB! Claim your free data now!
+                    {totalGbThisWeek >= requiredGb && !alreadyClaimed && (
+                      <p className="text-xs text-yellow-400 mt-2 text-center font-bold animate-pulse">
+                        You&apos;ve reached {requiredGb}GB! Claim your free data NOW before Sunday!
                       </p>
                     )}
                   </div>
@@ -277,10 +343,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
                     <div className="bg-orange-900/40 border border-orange-500/40 rounded-lg p-3 text-center">
                       <p className="text-orange-300 text-sm font-bold">Already Claimed This Week</p>
                       <p className="text-orange-200/70 text-xs mt-1">
-                        You&apos;ve already claimed your free data this week.
-                        {nextClaimDate && (
-                          <> Next claim available: <span className="font-bold">{nextClaimDate.toLocaleDateString()}</span></>
-                        )}
+                        You&apos;ve already claimed your free data this week. Come back next Monday!
                       </p>
                     </div>
                   )}
@@ -297,9 +360,9 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
                       ) : (
                         <Trophy className="mr-2 h-5 w-5" />
                       )}
-                      Claim Your Free {FREE_REWARD_GB}GB!
+                      Claim Your Free {freeRewardGb}GB!
                     </Button>
-                  ) : !alreadyClaimed && totalGbThisWeek < REQUIRED_GB ? (
+                  ) : !alreadyClaimed && totalGbThisWeek < requiredGb ? (
                     <Button
                       disabled
                       className="w-full bg-gray-700 text-gray-400 font-bold text-lg py-6 cursor-not-allowed opacity-50"
@@ -318,7 +381,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Claim Successful!</h3>
               <p className="text-green-300 text-sm">
-                Your free {FREE_REWARD_GB}GB will be sent to your number shortly.
+                Your free {freeRewardGb}GB will be sent to your number shortly.
               </p>
               <Button
                 onClick={() => onOpenChange(false)}

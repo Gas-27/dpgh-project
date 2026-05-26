@@ -164,6 +164,14 @@ const AdminDashboard = () => {
   // App settings state
   const [agentRegistrationFee, setAgentRegistrationFee] = useState(30);
   const [savingSettings, setSavingSettings] = useState(false);
+  
+  // Free Data Offer settings
+  const [freeDataConfig, setFreeDataConfig] = useState({
+    required_gb: 35,
+    reward_gb: 1,
+    telecel_enabled: false,
+  });
+  const [freeDataSaving, setFreeDataSaving] = useState(false);
 
   // ======================== Data fetching (initial) ========================
   const fetchData = async () => {
@@ -250,11 +258,18 @@ const AdminDashboard = () => {
     // Fetch app settings
     const { data: appSettings } = await supabase
       .from("app_settings")
-      .select("agent_registration_fee")
+      .select("agent_registration_fee, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
       .eq("id", 1)
       .single();
     if (appSettings?.agent_registration_fee) {
       setAgentRegistrationFee(appSettings.agent_registration_fee);
+    }
+    if (appSettings) {
+      setFreeDataConfig({
+        required_gb: appSettings.free_data_required_gb ?? 35,
+        reward_gb: appSettings.free_data_reward_gb ?? 1,
+        telecel_enabled: appSettings.free_data_telecel_enabled ?? false,
+      });
     }
   };
   
@@ -270,6 +285,26 @@ const AdminDashboard = () => {
       toast({ title: "Settings saved!" });
     }
     setSavingSettings(false);
+  };
+  
+  // Save free data offer settings
+  const saveFreeDataSettings = async () => {
+    setFreeDataSaving(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ 
+        id: 1, 
+        free_data_required_gb: freeDataConfig.required_gb,
+        free_data_reward_gb: freeDataConfig.reward_gb,
+        free_data_telecel_enabled: freeDataConfig.telecel_enabled,
+        updated_at: new Date().toISOString() 
+      });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Free Data Settings saved!" });
+    }
+    setFreeDataSaving(false);
   };
   
   // Fetch notifications
@@ -2005,10 +2040,73 @@ const AdminDashboard = () => {
           </div>
           <p className="text-xs text-muted-foreground">Current fee: GH₵{agentRegistrationFee.toFixed(2)}</p>
         </div>
-      </CardContent>
-    </Card>
-  </TabsContent>
-  )}
+                </CardContent>
+              </Card>
+
+              {/* Free Data Offer Settings */}
+              <Card className="border-border">
+                <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Gift className="h-5 w-5 text-green-500" /> Free Data Offer Settings</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                    <p className="text-sm text-green-300">
+                      Users who purchase the required GB within a week (Monday-Sunday) can claim free data once. 
+                      If not claimed by Sunday, the offer expires and resets.
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Required GB to Claim</Label>
+                      <Input 
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="35"
+                        value={freeDataConfig.required_gb || ''} 
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setFreeDataConfig({ ...freeDataConfig, required_gb: val === '' ? 0 : parseInt(val, 10) });
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">Users must buy this much GB in a week to qualify</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Free Reward GB</Label>
+                      <Input 
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="1"
+                        value={freeDataConfig.reward_gb || ''} 
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setFreeDataConfig({ ...freeDataConfig, reward_gb: val === '' ? 0 : parseInt(val, 10) });
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">How much free data they receive</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between border p-4 rounded-lg">
+                    <div className="space-y-0.5">
+                      <Label className="text-base">Include Telecel Purchases</Label>
+                      <p className="text-sm text-muted-foreground">
+                        If OFF, only MTN and AirtelTigo purchases count toward the required GB.
+                        Turn this ON if Telecel has {freeDataConfig.reward_gb}GB packages available.
+                      </p>
+                    </div>
+                    <Switch 
+                      checked={freeDataConfig.telecel_enabled} 
+                      onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, telecel_enabled: checked })} 
+                    />
+                  </div>
+                  
+                  <Button onClick={saveFreeDataSettings} disabled={freeDataSaving}>
+                    {freeDataSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                    Save Free Data Settings
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
