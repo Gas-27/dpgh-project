@@ -792,6 +792,7 @@ const SubagentDashboard = () => {
       
       // Create order with wallet payment method
       const { error: orderError } = await supabase.from("orders").insert({
+        package_id: buyingPkg.id,
         subagent_store_id: subagentStore.id,
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
