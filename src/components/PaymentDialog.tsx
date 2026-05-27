@@ -177,8 +177,20 @@ const PaymentDialog = ({
   };
 
   const handlePay = async () => {
+    // Debug logging to identify issues with specific stores
+    console.log("[v0] PaymentDialog handlePay called with:", {
+      actualPackageId,
+      actualStoreId,
+      subagentStoreId,
+      price,
+      network,
+      phone,
+      packageInfo: pkg ? { id: pkg.id, network: pkg.network, size_gb: pkg.size_gb } : null,
+    });
+    
     // Validate package ID before proceeding
     if (!actualPackageId) {
+      console.error("[v0] Payment failed: No package ID", { packageId, pkg });
       toast({
         title: "Error",
         description: "Invalid package selected. Please try again.",
@@ -191,6 +203,7 @@ const PaymentDialog = ({
     
     // Set a timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
+      console.error("[v0] Payment timeout - request took too long");
       setLoading(false);
       toast({
         title: "Payment Timeout",
@@ -209,6 +222,20 @@ const PaymentDialog = ({
         : "/packages";
 
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
+
+      console.log("[v0] Calling initialize-payment with:", {
+        email: userEmail,
+        amount: price,
+        phone: normalizedPhone,
+        callback_url: callbackUrl,
+        metadata: {
+          package_id: actualPackageId,
+          network,
+          package_name: displayPackageName,
+          agent_store_id: actualStoreId || null,
+          subagent_store_id: subagentStoreId || null,
+        },
+      });
 
       const { data, error } = await supabase.functions.invoke(
         "initialize-payment",
@@ -229,9 +256,12 @@ const PaymentDialog = ({
         }
       );
 
+      console.log("[v0] initialize-payment response:", { data, error });
+
       clearTimeout(timeoutId);
 
       if (error) {
+        console.error("[v0] Payment error from edge function:", error);
         throw error;
       }
 
