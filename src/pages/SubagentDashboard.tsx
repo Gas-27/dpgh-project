@@ -790,6 +790,16 @@ const SubagentDashboard = () => {
     try {
       setBuyLoading(true);
       
+      // Deduct from wallet first
+      const { error: walletError } = await supabase
+        .from("subagent_stores")
+        .update({ wallet_balance: (subagentStore.wallet_balance || 0) - price })
+        .eq("id", subagentStore.id);
+      
+      if (walletError) {
+        throw new Error("Failed to deduct wallet balance: " + walletError.message);
+      }
+      
       // Create order with wallet payment method
       const { error: orderError } = await supabase.from("orders").insert({
         package_id: buyingPkg.id,
@@ -801,11 +811,18 @@ const SubagentDashboard = () => {
         base_price: price,
         selling_price: price,
         payment_method: "wallet",
-        status: "pending",
+        status: "paid",
         fulfillment_status: "pending"
       });
       
-      if (orderError) throw orderError;
+      if (orderError) {
+        // Rollback wallet if order fails
+        await supabase
+          .from("subagent_stores")
+          .update({ wallet_balance: (subagentStore.wallet_balance || 0) })
+          .eq("id", subagentStore.id);
+        throw orderError;
+      }
       
       toast({ title: "Success", description: `${buyingPkg.size_gb}GB data purchased for ${buyCustomerNumber}` });
       setBuyingPkg(null);

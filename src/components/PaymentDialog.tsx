@@ -177,6 +177,16 @@ const PaymentDialog = ({
   };
 
   const handlePay = async () => {
+    // Validate package ID before proceeding
+    if (!actualPackageId) {
+      toast({
+        title: "Error",
+        description: "Invalid package selected. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
     
     // Set a timeout to prevent infinite loading

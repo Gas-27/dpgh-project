@@ -893,6 +893,7 @@ export function SubagentStorefront() {
           isOpen={paymentOpen}
           onOpenChange={setPaymentOpen}
           package={paymentPkg}
+          packageId={paymentPkg.id}
           price={selectedPaymentPrice}
           storeId={store.agent_store_id}
           subagentStoreId={store.id}
