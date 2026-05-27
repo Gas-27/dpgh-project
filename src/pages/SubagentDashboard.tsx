@@ -790,10 +790,31 @@ const SubagentDashboard = () => {
     try {
       setBuyLoading(true);
       
-      // Deduct from wallet first
+      // First, get the current wallet balance to ensure we have fresh data
+      const { data: freshStore, error: fetchError } = await supabase
+        .from("subagent_stores")
+        .select("wallet_balance")
+        .eq("id", subagentStore.id)
+        .single();
+      
+      if (fetchError || !freshStore) {
+        throw new Error("Failed to fetch wallet balance");
+      }
+      
+      const currentBalance = freshStore.wallet_balance || 0;
+      
+      if (price > currentBalance) {
+        toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
+        setBuyLoading(false);
+        return;
+      }
+      
+      const newBalance = currentBalance - price;
+      
+      // Deduct from wallet
       const { error: walletError } = await supabase
         .from("subagent_stores")
-        .update({ wallet_balance: (subagentStore.wallet_balance || 0) - price })
+        .update({ wallet_balance: newBalance })
         .eq("id", subagentStore.id);
       
       if (walletError) {
@@ -819,10 +840,13 @@ const SubagentDashboard = () => {
         // Rollback wallet if order fails
         await supabase
           .from("subagent_stores")
-          .update({ wallet_balance: (subagentStore.wallet_balance || 0) })
+          .update({ wallet_balance: currentBalance })
           .eq("id", subagentStore.id);
         throw orderError;
       }
+      
+      // Update local state immediately
+      setSubagentStore(prev => prev ? { ...prev, wallet_balance: newBalance } : prev);
       
       toast({ title: "Success", description: `${buyingPkg.size_gb}GB data purchased for ${buyCustomerNumber}` });
       setBuyingPkg(null);
