@@ -10,6 +10,7 @@ import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
+import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -609,6 +610,23 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     if (phaseRef.current !== "idle" || segs.length === 0) return;
     if (spinCount <= 0) { toast({ title: "No spins left", variant: "destructive" }); return; }
     if (!paymentRequired && cooldownMs > 0) return;
+    
+    // Validate phone number for spin wheel - must be MTN
+    if (!isValidPhoneLength(phone)) {
+      toast({ title: "Invalid phone number", description: "Please enter exactly 10 digits", variant: "destructive" });
+      return;
+    }
+    
+    const detectedNetwork = detectNetwork(phone);
+    if (detectedNetwork === "unknown") {
+      toast({ title: "Invalid phone prefix", description: "Please check your phone number. The prefix is not recognized.", variant: "destructive" });
+      return;
+    }
+    
+    if (detectedNetwork !== "mtn") {
+      toast({ title: "MTN Only", description: "The spin wheel is only available for MTN phone numbers. Your number appears to be " + detectedNetwork.toUpperCase() + ".", variant: "destructive" });
+      return;
+    }
 
     setSuccessGb(0); setResultMsg(""); setShowWinBanner(false); setWonGbForBanner(0);
     setWinningIdx(null);
@@ -618,7 +636,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     phaseRef.current = "freewheeling";
     setPhase("freewheeling");
     runLoop();
-  }, [segs, spinCount, paymentRequired, cooldownMs, toast, runLoop]);
+  }, [segs, spinCount, paymentRequired, cooldownMs, toast, runLoop, phone]);
 
   // ── Stop button: use PROBABILITY-BASED winning, then find matching segment ──
   const handleStop = useCallback(() => {

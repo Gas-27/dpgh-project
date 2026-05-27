@@ -104,9 +104,15 @@ const FlyerGenerator = ({
         try {
             const dataUrl = await toPng(flyerRef.current, {
                 quality: 1,
-                pixelRatio: 2,
+                pixelRatio: 1,
                 width: FLYER_W,
                 height: FLYER_H,
+                style: {
+                    transform: 'none',
+                    transformOrigin: 'top left',
+                },
+                canvasWidth: FLYER_W,
+                canvasHeight: FLYER_H,
             });
             const link = document.createElement("a");
             link.download = `${storeName.replace(/\s+/g, "-")}-flyer.png`;
@@ -125,7 +131,18 @@ const FlyerGenerator = ({
         if (!flyerRef.current) return;
         setGenerating(true);
         try {
-            const dataUrl = await toPng(flyerRef.current, { quality: 1, pixelRatio: 2, width: FLYER_W, height: FLYER_H });
+            const dataUrl = await toPng(flyerRef.current, { 
+                quality: 1, 
+                pixelRatio: 1, 
+                width: FLYER_W, 
+                height: FLYER_H,
+                style: {
+                    transform: 'none',
+                    transformOrigin: 'top left',
+                },
+                canvasWidth: FLYER_W,
+                canvasHeight: FLYER_H,
+            });
             // Open in new window with full-screen display
             const newWindow = window.open("", "_blank");
             if (newWindow) {
@@ -171,15 +188,25 @@ const FlyerGenerator = ({
         if (!flyerRef.current) return;
         setGenerating(true);
         try {
-            const dataUrl = await toPng(flyerRef.current, {
+            // Clone the node to avoid scaling issues
+            const node = flyerRef.current;
+            
+            // Generate at full resolution
+            const dataUrl = await toPng(node, {
                 quality: 1,
-                pixelRatio: 2,
+                pixelRatio: 1, // Use 1 since we're already at full size (1080x1920)
                 width: FLYER_W,
                 height: FLYER_H,
+                style: {
+                    transform: 'none', // Remove any scaling transform
+                    transformOrigin: 'top left',
+                },
+                canvasWidth: FLYER_W,
+                canvasHeight: FLYER_H,
             });
             const blob = await (await fetch(dataUrl)).blob();
             const file = new File([blob], "flyer.png", { type: "image/png" });
-            const fullShareText = `${shareText}\n\nStore: ${storeUrl}`;
+            const fullShareText = `${shareText}\n\nWhatsApp: ${whatsappNumber}\n\nStore: ${storeUrl}`;
 
             if (navigator.share) {
                 await navigator.share({

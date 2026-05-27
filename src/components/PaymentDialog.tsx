@@ -34,7 +34,7 @@ interface PaymentDialogProps {
   storeName?: string;
 }
 
-const LOCK_MINUTES = 35;
+const LOCK_MINUTES = 10;
 const PAYSTACK_CHARGE_PERCENT = 1.98;
 
 // Calculate Paystack charge
@@ -145,13 +145,23 @@ const PaymentDialog = ({
       return;
     }
 
+    // Check for invalid phone prefix
+    const detectedNetwork = detectNetwork(phone);
+    if (detectedNetwork === "unknown") {
+      toast({
+        title: "Invalid phone prefix",
+        description: "Please check the phone number. The prefix does not match any known network (MTN, Telecel, or AirtelTigo).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check if phone matches the selected network
     const selectedNetwork = network || packageInfo?.network || "";
     if (selectedNetwork && !phoneMatchesNetwork(phone, selectedNetwork)) {
-      const detected = detectNetwork(phone);
       toast({
         title: "Network mismatch",
-        description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${selectedNetwork.toUpperCase()} package`,
+        description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork.toUpperCase()} package`,
         variant: "destructive",
       });
       return;
@@ -328,9 +338,14 @@ const PaymentDialog = ({
                       it belongs to  <span className="font-bold">{(network || "").toUpperCase()}</span> network.
                     </p>
                     <p className="text-xs mt-1 font-medium">
-                      ⚠️ Network providers rule:You cannot make another
+                      ⚠️ Network providers rule: You cannot make another
                       purchase for the same number unless after {LOCK_MINUTES} minutes. This is to prevent the order from being seen as duplicate,
                       making the network provider deliver the order only once.
+                    </p>
+                    <p className="text-xs mt-2 font-medium text-red-600">
+                      ⚠️ IMPORTANT: If the {LOCK_MINUTES}-minute timer has ended but you have NOT received your data yet, 
+                      DO NOT buy another package until you receive the previous one. Buying again may override your pending order. 
+                      Proceed at your own risk!
                     </p>
                   </div>
                 </div>
