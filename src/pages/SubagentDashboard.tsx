@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
-  ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw
+  ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw, Layers, FileSpreadsheet, Upload
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -151,6 +151,14 @@ const SubagentDashboard = () => {
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
   const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string; store_name?: string } | null>(null);
+  
+  // Bulk Orders
+  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
+  const [bulkRecipients, setBulkRecipients] = useState("");
+  const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [bulkResults, setBulkResults] = useState<{ phone: string; size: number; status: string; error?: string }[]>([]);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
   
   // Pagination for orders
   const [currentPage, setCurrentPage] = useState(1);
@@ -890,6 +898,7 @@ const SubagentDashboard = () => {
   const menuItems = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
+    { id: "bulk", label: "Bulk Orders", icon: Layers },
     { id: "store", label: "Store Prices", icon: Store },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
@@ -1692,6 +1701,264 @@ const SubagentDashboard = () => {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* BULK ORDERS */}
+          <TabsContent value="bulk" className="space-y-6 mt-0">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5" /> Bulk Orders</CardTitle>
+                <p className="text-sm text-muted-foreground">Send data to multiple recipients at once. Uses your wallet balance.</p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Step 1: Select Network */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold">1</span>
+                    <span className="font-semibold text-lg">SELECT NETWORK</span>
+                  </div>
+                  <div className="flex gap-3 flex-wrap">
+                    <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
+                    <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
+                    <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
+                  </div>
+                </div>
+
+                {/* Step 2: Recipients */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold">2</span>
+                    <span className="font-semibold text-lg">RECIPIENTS</span>
+                  </div>
+                  
+                  {/* CSV Upload */}
+                  <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-6 text-center hover:border-primary/50 transition-colors cursor-pointer" onClick={() => bulkFileInputRef.current?.click()}>
+                    <input ref={bulkFileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (evt) => {
+                        const text = evt.target?.result as string;
+                        const lines = text.split("\n").filter(l => l.trim()).map(l => {
+                          const parts = l.split(/[,\t]/).map(p => p.trim());
+                          return `${parts[0]} ${parts[1] || ""}`.trim();
+                        }).join("\n");
+                        setBulkRecipients(lines);
+                      };
+                      reader.readAsText(file);
+                      e.target.value = "";
+                    }} />
+                    <FileSpreadsheet className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                    <p className="font-semibold">Upload CSV / Excel file</p>
+                    <p className="text-sm text-muted-foreground">Column A: phone - Column B: GB size (optional)</p>
+                  </div>
+
+                  <div className="flex items-center gap-3 my-4">
+                    <div className="flex-1 h-px bg-border"></div>
+                    <span className="text-sm text-muted-foreground">or type manually</span>
+                    <div className="flex-1 h-px bg-border"></div>
+                  </div>
+
+                  {/* Manual Input */}
+                  <textarea
+                    placeholder={`0241234567 2\n0551234567 5\n0591234567 10`}
+                    value={bulkRecipients}
+                    onChange={(e) => setBulkRecipients(e.target.value)}
+                    rows={8}
+                    className="w-full font-mono text-sm bg-secondary/50 border border-border rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+
+                  {/* Format Guide */}
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 space-y-2">
+                    <p className="font-semibold text-yellow-500">Format: 0241234567 2 (phone then GB size per line)</p>
+                    <p className="text-sm text-muted-foreground">Or use the global package below if all numbers get the same bundle.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Valid prefixes: {bulkNetwork === "mtn" ? "024, 025, 053, 054, 055, 059" : bulkNetwork === "telecel" ? "020, 050" : "026, 027, 056, 057"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3: Global Package (optional) */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold">3</span>
+                    <span className="font-semibold text-lg">GLOBAL PACKAGE (Optional)</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">If set, all recipients without a specified GB size will receive this package.</p>
+                  <Select value={bulkGlobalSize?.toString() || "none"} onValueChange={(v) => setBulkGlobalSize(v === "none" ? null : Number(v))}>
+                    <SelectTrigger className="w-full md:w-64">
+                      <SelectValue placeholder="Select GB size for all" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (use per-line sizes)</SelectItem>
+                      {packages.filter(p => p.network.toLowerCase() === bulkNetwork && p.active).map(p => {
+                        const price = priceMap[p.id] ?? p.price;
+                        return <SelectItem key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {price.toFixed(2)}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Summary & Actions */}
+                <div className="border-t pt-4 space-y-4">
+                  {(() => {
+                    const lines = bulkRecipients.split("\n").filter(l => l.trim());
+                    const parsed = lines.map(line => {
+                      const parts = line.trim().split(/\s+/);
+                      const phone = parts[0]?.replace(/\D/g, "") || "";
+                      const size = parts[1] ? Number(parts[1]) : bulkGlobalSize;
+                      return { phone, size };
+                    }).filter(r => r.phone.length === 10 && r.size && r.size > 0);
+                    
+                    const totalGb = parsed.reduce((sum, r) => sum + (r.size || 0), 0);
+                    const totalCost = parsed.reduce((sum, r) => {
+                      const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
+                      const price = pkg ? (priceMap[pkg.id] ?? pkg.price) : 0;
+                      return sum + price;
+                    }, 0);
+                    const walletBalance = subagentStore?.wallet_balance || 0;
+                    
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                            <p className="text-2xl font-bold">{parsed.length}</p>
+                            <p className="text-xs text-muted-foreground">Valid Recipients</p>
+                          </div>
+                          <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                            <p className="text-2xl font-bold">{totalGb}GB</p>
+                            <p className="text-xs text-muted-foreground">Total Data</p>
+                          </div>
+                          <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                            <p className="text-2xl font-bold text-yellow-500">GH₵ {totalCost.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">Total Cost</p>
+                          </div>
+                          <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                            <p className={`text-2xl font-bold ${walletBalance >= totalCost ? "text-green-500" : "text-red-500"}`}>GH₵ {walletBalance.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">Wallet Balance</p>
+                          </div>
+                        </div>
+                        
+                        {walletBalance < totalCost && parsed.length > 0 && (
+                          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-500 text-sm">
+                            Insufficient wallet balance. You need GH₵ {(totalCost - walletBalance).toFixed(2)} more.
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-3 flex-wrap">
+                          <Button
+                            variant="hero"
+                            className="flex-1"
+                            disabled={bulkProcessing || parsed.length === 0 || walletBalance < totalCost}
+                            onClick={async () => {
+                              if (!subagentStore) return;
+                              setBulkProcessing(true);
+                              setBulkResults([]);
+                              
+                              const results: typeof bulkResults = [];
+                              let totalDeducted = 0;
+                              
+                              // Get fresh wallet balance
+                              const { data: freshStore } = await supabase
+                                .from("subagent_stores")
+                                .select("wallet_balance")
+                                .eq("id", subagentStore.id)
+                                .single();
+                              
+                              const currentBalance = freshStore?.wallet_balance || 0;
+                              
+                              for (const recipient of parsed) {
+                                const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === recipient.size);
+                                if (!pkg) {
+                                  results.push({ phone: recipient.phone, size: recipient.size || 0, status: "failed", error: "Package not found" });
+                                  continue;
+                                }
+                                
+                                const price = priceMap[pkg.id] ?? pkg.price;
+                                
+                                try {
+                                  // Create order
+                                  const { error: orderError } = await supabase.from("orders").insert({
+                                    package_id: pkg.id,
+                                    subagent_store_id: subagentStore.id,
+                                    customer_number: recipient.phone,
+                                    network: bulkNetwork,
+                                    size_gb: recipient.size,
+                                    amount: price,
+                                    base_price: price,
+                                    selling_price: price,
+                                    payment_method: "wallet",
+                                    status: "paid",
+                                    fulfillment_status: "pending"
+                                  });
+                                  
+                                  if (orderError) throw orderError;
+                                  totalDeducted += price;
+                                  results.push({ phone: recipient.phone, size: recipient.size || 0, status: "success" });
+                                } catch (err: any) {
+                                  results.push({ phone: recipient.phone, size: recipient.size || 0, status: "failed", error: err.message });
+                                }
+                              }
+                              
+                              // Deduct total from wallet
+                              if (totalDeducted > 0) {
+                                const newBalance = currentBalance - totalDeducted;
+                                await supabase.from("subagent_stores").update({ wallet_balance: newBalance }).eq("id", subagentStore.id);
+                                setSubagentStore(prev => prev ? { ...prev, wallet_balance: newBalance } : prev);
+                              }
+                              
+                              setBulkResults(results);
+                              setBulkProcessing(false);
+                              toast({ title: "Bulk Order Complete", description: `${results.filter(r => r.status === "success").length}/${results.length} orders created successfully.` });
+                              fetchData();
+                            }}
+                          >
+                            {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Wallet className="h-4 w-4 mr-2" /> Pay with Wallet (GH₵ {totalCost.toFixed(2)})</>}
+                          </Button>
+                          <Button variant="outline" onClick={() => { setBulkRecipients(""); setBulkResults([]); setBulkGlobalSize(null); }}>
+                            <RotateCcw className="h-4 w-4 mr-2" /> Clear
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Results */}
+                {bulkResults.length > 0 && (
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold mb-3">Results</h4>
+                    <div className="max-h-64 overflow-auto border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {bulkResults.map((r, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="font-mono">{r.phone}</TableCell>
+                              <TableCell>{r.size}GB</TableCell>
+                              <TableCell>
+                                <Badge variant={r.status === "success" ? "default" : "destructive"}>
+                                  {r.status === "success" ? "Sent" : r.error || "Failed"}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Success: {bulkResults.filter(r => r.status === "success").length} | Failed: {bulkResults.filter(r => r.status === "failed").length}
+                    </p>
                   </div>
                 )}
               </CardContent>
