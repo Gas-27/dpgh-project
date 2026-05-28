@@ -197,9 +197,10 @@ const SubagentDashboard = () => {
       return sum + (Number(order.selling_price || order.amount) - baseCost);
     }, 0);
     const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-    const allWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
-    // Wallet = Profit + Topups - Total Withdrawals
-    return profit + topups - allWithdrawals;
+    // ONLY deduct completed withdrawals, not pending ones
+    const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
+    // Wallet = Profit + Topups - Completed Withdrawals Only
+    return profit + topups - completedWithdrawals;
   };
 
   // Function to exit impersonation
@@ -1003,13 +1004,17 @@ const SubagentDashboard = () => {
   const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
   // Calculate total topups
   const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-  // Available wallet balance = Total Profit + Topups - Total Withdrawals
-  // Use database value if available (it's synced correctly), otherwise calculate
-  const calculatedWalletBalance = totalProfit + totalTopups - totalWithdrawals;
-  // Prefer database value as it's more reliable
+  
+  // Wallet balance ONLY includes completed withdrawals (deducted from DB)
+  // Pending withdrawals are held but not yet deducted
+  const calculatedWalletBalance = totalProfit + totalTopups - completedWithdrawals;
+  // Prefer database value as it's synced correctly
   const availableWalletBalance = subagentStore?.wallet_balance !== undefined && subagentStore?.wallet_balance !== null 
     ? Number(subagentStore.wallet_balance) 
     : calculatedWalletBalance;
+  
+  // Available for use = actual wallet balance - pending withdrawals
+  const availableForUse = availableWalletBalance - pendingWithdrawalAmount;
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
@@ -1518,6 +1523,11 @@ const SubagentDashboard = () => {
                     </div>
                     <p className="text-xs text-muted-foreground text-center">
                       Wallet Balance: GH₵ {availableWalletBalance.toFixed(2)}
+                      {pendingWithdrawalAmount > 0 && (
+                        <div className="text-yellow-400 text-xs mt-1">
+                          (GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal)
+                        </div>
+                      )}
                     </p>
                   </CardContent>
                 </Card>
@@ -1624,6 +1634,11 @@ const SubagentDashboard = () => {
                 </div>
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
                   <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH₵ {availableWalletBalance.toFixed(2)}</span></p>
+                  {pendingWithdrawalAmount > 0 && (
+                    <p className="text-xs text-yellow-400 mt-2">
+                      (GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal - cannot be used until approved)
+                    </p>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
                 <div className="flex gap-2 items-end">
