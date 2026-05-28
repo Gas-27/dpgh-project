@@ -991,7 +991,7 @@ const AgentDashboard = () => {
     }
   };
   
-  // ─── GUARDS ───────────────────────────────────────────────────────────────
+  // ─── GUARDS ────────────────────────────────────────────────────────��──────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
@@ -1458,7 +1458,7 @@ const AgentDashboard = () => {
                     <SelectContent>
                       <SelectItem value="">None (use per-line sizes)</SelectItem>
                       {packages.filter(p => p.network.toLowerCase() === bulkNetwork && p.active).map(p => (
-                        <SelectItem key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {(basePrices[p.id] ?? p.agent_price ?? p.price).toFixed(2)}</SelectItem>
+                        <SelectItem key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {(p.agent_price ?? p.price).toFixed(2)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1478,7 +1478,7 @@ const AgentDashboard = () => {
                     const totalGb = parsed.reduce((sum, r) => sum + (r.size || 0), 0);
                     const totalCost = parsed.reduce((sum, r) => {
                       const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
-                      const price = pkg ? (basePrices[pkg.id] ?? pkg.agent_price ?? pkg.price) : 0;
+                      const price = pkg ? (pkg.agent_price ?? pkg.price) : 0;
                       return sum + price;
                     }, 0);
                     const walletBalance = store?.wallet_balance || 0;
@@ -1530,7 +1530,7 @@ const AgentDashboard = () => {
                                   continue;
                                 }
                                 
-                                const price = basePrices[pkg.id] ?? pkg.agent_price ?? pkg.price;
+                                const price = pkg.agent_price ?? pkg.price;
                                 
                                 try {
                                   // Create order
