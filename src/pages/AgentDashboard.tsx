@@ -104,7 +104,24 @@ Payment Methods:
 
 ⚠️ If you have a pending withdrawal, the system will prevent you from buying data that would push your balance below the pending withdrawal amount to protect your funds.
 
-Note: 45-minute cooldown per phone number to prevent duplicate orders.` },
+Note: 10-minute cooldown per phone number to prevent duplicate orders.` },
+  {
+    icon: "📦", title: "Bulk Orders", content: `Send data to multiple recipients at once using your wallet.
+
+How to use:
+1. SELECT NETWORK – Choose MTN, Telecel, or AirtelTigo.
+2. RECIPIENTS – Upload a CSV/Excel file OR type manually.
+   • Format: phone number followed by GB size, one per line
+   • Example: 0241234567 2 (sends 2GB to that number)
+3. GLOBAL PACKAGE (Optional) – Set a default GB size for all recipients without specified sizes.
+4. Review the summary showing total recipients, total GB, and total cost.
+5. Click "Pay with Wallet" to process all orders at once.
+
+Tips:
+• CSV/Excel files should have phone numbers in Column A, GB sizes in Column B.
+• The system validates phone prefixes for the selected network.
+• Results table shows success/failure for each recipient after processing.
+• Insufficient wallet balance will prevent processing.` },
   {
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
@@ -1117,16 +1134,18 @@ const AgentDashboard = () => {
             <SheetTrigger asChild>
               <div className="flex items-center gap-2 cursor-pointer"><Menu className="h-5 w-5 text-primary" /><span className="font-display text-lg font-bold text-primary animate-pulse">MENU</span></div>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-4 bg-card border-r border-border">
-              <SheetHeader className="mb-6"><SheetTitle className="flex items-center gap-2"><Store className="h-5 w-5 text-primary" /> Menu</SheetTitle></SheetHeader>
-              <div className="flex flex-col gap-2">
-                {menuItems.map(item => (
-                  <SheetClose asChild key={item.id}>
-                    <button onClick={() => setActiveTab(item.id)} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full">
-                      <item.icon className="h-5 w-5 text-primary" /><span className="font-medium">{item.label}</span>
-                    </button>
-                  </SheetClose>
-                ))}
+            <SheetContent side="left" className="w-64 p-4 bg-card border-r border-border flex flex-col">
+              <SheetHeader className="mb-4"><SheetTitle className="flex items-center gap-2"><Store className="h-5 w-5 text-primary" /> Menu</SheetTitle></SheetHeader>
+              <div className="flex-1 overflow-y-auto">
+                <div className="flex flex-col gap-2 pb-4">
+                  {menuItems.map(item => (
+                    <SheetClose asChild key={item.id}>
+                      <button onClick={() => setActiveTab(item.id)} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full">
+                        <item.icon className="h-5 w-5 text-primary" /><span className="font-medium">{item.label}</span>
+                      </button>
+                    </SheetClose>
+                  ))}
+                </div>
               </div>
             </SheetContent>
           </Sheet>

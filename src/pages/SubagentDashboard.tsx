@@ -68,6 +68,7 @@ const DEFAULT_THEME = { primary: "#38bdf8", primary_foreground: "#000000", backg
 const MANUAL_SECTIONS = [
   { icon: "📊", title: "Overview", content: `Your dashboard home. See wallet balance, total revenue, pending orders, and store status at a glance.\n\n• Wallet Balance – funds available to withdraw\n• Total Revenue – sum of all completed orders\n• Pending Orders – orders awaiting fulfillment` },
   { icon: "🛒", title: "Buy Data", content: `Purchase data bundles at your agent's base price to resell in your store.\n\n• Select network (MTN, AirtelTigo, Telecel)\n• Choose package size\n• Enter customer number\n• Confirm purchase` },
+  { icon: "📦", title: "Bulk Orders", content: `Send data to multiple recipients at once using your wallet.\n\nHow to use:\n1. SELECT NETWORK – Choose MTN, Telecel, or AirtelTigo.\n2. RECIPIENTS – Upload a CSV/Excel file OR type manually.\n   • Format: phone number followed by GB size, one per line\n   • Example: 0241234567 2 (sends 2GB to that number)\n3. GLOBAL PACKAGE (Optional) – Set a default GB size for all recipients.\n4. Review the summary showing total recipients, total GB, and total cost.\n5. Click "Pay with Wallet" to process all orders at once.\n\nTips:\n• CSV/Excel files should have phone in Column A, GB sizes in Column B.\n• Results table shows success/failure for each recipient.` },
   { icon: "💰", title: "Store Prices", content: `Set your selling prices for each data package.\n\n• Base Price = price your agent gives you\n• Your Selling Price = what customers pay\n• Profit = Selling Price - Base Price\n\nUse markup to increase all prices by a percentage.` },
   { icon: "📦", title: "Orders", content: `View all customer orders.\n\n• Track order status (pending, completed, failed)\n• See customer details and amounts\n• Monitor your sales history` },
   { icon: "💸", title: "Withdraw", content: `Cash out your wallet balance to your MoMo account.\n\n• Minimum withdrawal: GH₵ 10.00\n• Only one pending withdrawal at a time\n• Processed within 24 hours` },
@@ -1078,24 +1079,26 @@ const SubagentDashboard = () => {
                 <span className="font-display text-lg font-bold text-primary">MENU</span>
               </div>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-4 bg-card border-r border-border">
-              <SheetHeader className="mb-6">
+            <SheetContent side="left" className="w-64 p-4 bg-card border-r border-border flex flex-col">
+              <SheetHeader className="mb-4">
                 <SheetTitle className="flex items-center gap-2">
                   <Store className="h-5 w-5 text-primary" /> Menu
                 </SheetTitle>
               </SheetHeader>
-              <div className="flex flex-col gap-2">
-                {menuItems.map(item => (
-                  <SheetClose asChild key={item.id}>
-                    <button
-                      onClick={() => setActiveTab(item.id)}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full"
-                    >
-                      <item.icon className="h-5 w-5 text-primary" />
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  </SheetClose>
-                ))}
+              <div className="flex-1 overflow-y-auto">
+                <div className="flex flex-col gap-2 pb-4">
+                  {menuItems.map(item => (
+                    <SheetClose asChild key={item.id}>
+                      <button
+                        onClick={() => setActiveTab(item.id)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full"
+                      >
+                        <item.icon className="h-5 w-5 text-primary" />
+                        <span className="font-medium">{item.label}</span>
+                      </button>
+                    </SheetClose>
+                  ))}
+                </div>
               </div>
             </SheetContent>
           </Sheet>
