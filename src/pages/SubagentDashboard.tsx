@@ -416,7 +416,15 @@ const SubagentDashboard = () => {
     if (!subagentStore?.id) return;
     
     const c1 = supabase.channel("subagent-store-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "subagent_stores", filter: `id=eq.${subagentStore.id}` }, () => fetchData())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "subagent_stores", filter: `id=eq.${subagentStore.id}` }, (payload) => {
+        // Immediately update wallet balance from realtime payload for instant feedback
+        const newData = payload.new as any;
+        if (newData.wallet_balance !== undefined) {
+          setSubagentStore(prev => prev ? { ...prev, wallet_balance: newData.wallet_balance } : prev);
+        }
+        // Also fetch full data to ensure everything is in sync
+        fetchData();
+      })
       .subscribe();
     
     const c2 = supabase.channel("subagent-order-changes")
@@ -432,10 +440,20 @@ const SubagentDashboard = () => {
       .subscribe();
     
     const c4 = supabase.channel("subagent-withdrawal-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "withdrawal_requests", filter: `subagent_store_id=eq.${subagentStore.id}` }, (p) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "withdrawal_requests", filter: `subagent_store_id=eq.${subagentStore.id}` }, async (p) => {
         if ((p.new as any).status === "completed" && (p.old as any).status !== "completed") {
-          fetchData();
+          // Immediately fetch fresh wallet balance for instant feedback
+          const { data: freshStore } = await supabase
+            .from("subagent_stores")
+            .select("wallet_balance")
+            .eq("id", subagentStore.id)
+            .single();
+          
+          if (freshStore) {
+            setSubagentStore(prev => prev ? { ...prev, wallet_balance: freshStore.wallet_balance } : prev);
+          }
           toast({ title: "Withdrawal approved!" });
+          fetchData();
         } else if ((p.new as any).status !== (p.old as any).status) {
           fetchData();
         }

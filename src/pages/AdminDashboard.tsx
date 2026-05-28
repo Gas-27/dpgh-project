@@ -933,11 +933,16 @@ const AdminDashboard = () => {
       const isSubagentProfit = confirmedSource === "subagent_commission";
       
       if (isSubagentWithdrawal) {
-        // SUBAGENT WITHDRAWAL - deduct from subagent_stores.wallet_balance
-        const subagent = subagents.find((s) => s.id === withdrawalData.subagent_store_id);
-        if (!subagent) throw new Error("Subagent not found");
+        // SUBAGENT WITHDRAWAL - fetch fresh balance from database first
+        const { data: freshSubagent, error: fetchError } = await supabase
+          .from("subagent_stores")
+          .select("wallet_balance")
+          .eq("id", withdrawalData.subagent_store_id)
+          .single();
         
-        const currentBalance = Number(subagent.wallet_balance ?? 0);
+        if (fetchError || !freshSubagent) throw new Error("Failed to fetch subagent balance");
+        
+        const currentBalance = Number(freshSubagent.wallet_balance ?? 0);
         const newBalance = currentBalance - amount;
         
         await supabase.from("subagent_stores").update({ wallet_balance: newBalance }).eq("id", withdrawalData.subagent_store_id);
@@ -949,14 +954,19 @@ const AdminDashboard = () => {
         
         toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted from Subagent wallet. New balance: GH₵ ${newBalance.toFixed(2)}.` });
       } else {
-        // AGENT WITHDRAWAL - existing logic
-        const agent = agents.find((a) => a.id === agentStoreId);
-        if (!agent) throw new Error("Agent not found");
+        // AGENT WITHDRAWAL - fetch fresh balance from database first
+        const { data: freshAgent, error: fetchError } = await supabase
+          .from("agent_stores")
+          .select("wallet_balance, subagent_commission_balance")
+          .eq("id", agentStoreId)
+          .single();
+        
+        if (fetchError || !freshAgent) throw new Error("Failed to fetch agent balance");
         
         // Choose which balance to deduct from
         const currentBalance = isSubagentProfit 
-          ? Number(agent.subagent_commission_balance ?? 0) 
-          : Number(agent.wallet_balance ?? 0);
+          ? Number(freshAgent.subagent_commission_balance ?? 0) 
+          : Number(freshAgent.wallet_balance ?? 0);
         const newBalance = currentBalance - amount;
         
         // Update the correct balance column
