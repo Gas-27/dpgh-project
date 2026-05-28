@@ -991,7 +991,7 @@ const AgentDashboard = () => {
     }
   };
   
-  // ─── GUARDS ────────────────────────────────────────────────────────��──────
+  // ─── GUARDS ────────────────────────────────────────────────────────���──────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
@@ -1451,12 +1451,12 @@ const AgentDashboard = () => {
                     <span className="font-semibold text-lg">GLOBAL PACKAGE (Optional)</span>
                   </div>
                   <p className="text-sm text-muted-foreground">If set, all recipients without a specified GB size will receive this package.</p>
-                  <Select value={bulkGlobalSize?.toString() || ""} onValueChange={(v) => setBulkGlobalSize(v ? Number(v) : null)}>
+                  <Select value={bulkGlobalSize?.toString() || "none"} onValueChange={(v) => setBulkGlobalSize(v === "none" ? null : Number(v))}>
                     <SelectTrigger className="w-full md:w-64">
                       <SelectValue placeholder="Select GB size for all" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None (use per-line sizes)</SelectItem>
+                      <SelectItem value="none">None (use per-line sizes)</SelectItem>
                       {packages.filter(p => p.network.toLowerCase() === bulkNetwork && p.active).map(p => (
                         <SelectItem key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {(p.agent_price ?? p.price).toFixed(2)}</SelectItem>
                       ))}
