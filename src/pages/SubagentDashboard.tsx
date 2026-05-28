@@ -1799,7 +1799,7 @@ const SubagentDashboard = () => {
                     <SelectContent>
                       <SelectItem value="none">None (use per-line sizes)</SelectItem>
                       {packages.filter(p => p.network.toLowerCase() === bulkNetwork && p.active).map(p => {
-                        const price = priceMap[p.id] ?? p.price;
+                        const price = basePrices[p.id] ?? p.price;
                         return <SelectItem key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {price.toFixed(2)}</SelectItem>;
                       })}
                     </SelectContent>
@@ -1820,7 +1820,7 @@ const SubagentDashboard = () => {
                     const totalGb = parsed.reduce((sum, r) => sum + (r.size || 0), 0);
                     const totalCost = parsed.reduce((sum, r) => {
                       const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
-                      const price = pkg ? (priceMap[pkg.id] ?? pkg.price) : 0;
+                      const price = pkg ? (basePrices[pkg.id] ?? pkg.price) : 0;
                       return sum + price;
                     }, 0);
                     const walletBalance = subagentStore?.wallet_balance || 0;
@@ -1881,7 +1881,7 @@ const SubagentDashboard = () => {
                                   continue;
                                 }
                                 
-                                const price = priceMap[pkg.id] ?? pkg.price;
+                                const price = basePrices[pkg.id] ?? pkg.price;
                                 
                                 try {
                                   // Create order
