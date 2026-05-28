@@ -1070,6 +1070,20 @@ const Packages = () => {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Handle bulk payment callback - show success message after returning from Paystack
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("bulk_payment") === "true" && urlParams.get("reference")) {
+      toast({
+        title: "Bulk Order Placed Successfully!",
+        description: "Your orders have been placed. You can track them using the Track Order section.",
+        duration: 8000,
+      });
+      // Clear URL params without reload
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [toast]);
+
   useEffect(() => {
     supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders").single()
       .then(({ data, error }) => {

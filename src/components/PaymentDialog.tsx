@@ -199,6 +199,17 @@ const PaymentDialog = ({
       return;
     }
     
+    // Validate price is not 0 or undefined
+    if (!price || price <= 0) {
+      console.error("[v0] Payment failed: Invalid price", { price });
+      toast({
+        title: "Error",
+        description: "Package price not loaded. Please close this dialog and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
     
     // Set a timeout to prevent infinite loading

@@ -160,6 +160,20 @@ const SubagentDashboard = () => {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkResults, setBulkResults] = useState<{ phone: string; size: number; status: string; error?: string }[]>([]);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle bulk payment callback - show success message after returning from Paystack
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("bulk_payment") === "true" && urlParams.get("reference")) {
+      toast({
+        title: "Bulk Order Placed Successfully!",
+        description: "Your orders have been placed. Check the Orders tab to track them.",
+        duration: 8000,
+      });
+      // Clear URL params without reload
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [toast]);
   
   // Pagination for orders
   const [currentPage, setCurrentPage] = useState(1);

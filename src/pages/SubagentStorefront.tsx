@@ -405,6 +405,20 @@ export function SubagentStorefront() {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Handle bulk payment callback - show success message after returning from Paystack
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("bulk_payment") === "true" && urlParams.get("reference")) {
+      toast({
+        title: "Bulk Order Placed Successfully!",
+        description: "Your orders have been placed. You can track them using the Track Order section above.",
+        duration: 8000,
+      });
+      // Clear URL params without reload
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [toast]);
+
   // Theme
   const theme = store?.theme_config || defaultTheme;
   const primaryColor = theme.primary || defaultTheme.primary;
