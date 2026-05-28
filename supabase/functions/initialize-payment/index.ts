@@ -294,6 +294,8 @@ Deno.serve(async (req) => {
             total_gb: metadata.total_gb,
             recipient_count: metadata.recipient_count,
             phone: phone || metadata.recipients[0]?.phone,
+            agent_store_id: metadata.agent_store_id || null,
+            subagent_store_id: metadata.subagent_store_id || null,
           },
         }),
       });

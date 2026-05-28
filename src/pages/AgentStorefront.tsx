@@ -14,6 +14,7 @@ import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
+  Layers, FileSpreadsheet, RotateCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
@@ -514,8 +515,15 @@ const AgentStorefront = () => {
 
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
-    "data" | "afa" | "vouchers" | "services"
+    "data" | "afa" | "vouchers" | "services" | "bulk"
   >("data");
+  
+  // ── Bulk Orders ──
+  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
+  const [bulkRecipients, setBulkRecipients] = useState("");
+  const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Default theme ──
   const defaultTheme = {
@@ -937,18 +945,20 @@ const AgentStorefront = () => {
       {/* Category tabs */}
       <div className="container pb-8">
         <div className="flex flex-wrap justify-center gap-3 items-center">
-          {(["data", "afa", "vouchers", "services"] as const).map((cat) => {
+          {(["data", "afa", "vouchers", "services", "bulk"] as const).map((cat) => {
             const icons: Record<string, React.ReactNode> = {
               data: <Wifi className="h-4 w-4 mr-2" />,
               afa: <Package className="h-4 w-4 mr-2" />,
               vouchers: <CheckCircle className="h-4 w-4 mr-2" />,
               services: <Rocket className="h-4 w-4 mr-2" />,
+              bulk: <Layers className="h-4 w-4 mr-2" />,
             };
             const labels: Record<string, string> = {
               data: "Data",
               afa: "AFA Bundles",
               vouchers: "Vouchers",
               services: "Internet Services",
+              bulk: "Bulk Orders",
             };
             return (
               <Button
@@ -1190,6 +1200,216 @@ const AgentStorefront = () => {
             )}
           </div>
         </>
+      ) : activeCategory === "bulk" ? (
+        <div className="container pb-20">
+          <Card className="border-primary/30 bg-primary/5 max-w-3xl mx-auto">
+            <CardContent className="p-6 space-y-6">
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
+                  <Layers className="h-8 w-8" style={{ color: primaryColor }} />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground">Bulk Orders</h2>
+                <p className="text-muted-foreground">Send data to multiple recipients at once via Paystack</p>
+              </div>
+
+              {/* Step 1: Select Network */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold" style={{ backgroundColor: primaryColor, color: primaryForeground }}>1</span>
+                  <span className="font-semibold text-lg">SELECT NETWORK</span>
+                </div>
+                <div className="flex gap-3 flex-wrap">
+                  <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
+                  <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
+                  <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
+                </div>
+              </div>
+
+              {/* Step 2: Recipients */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold" style={{ backgroundColor: primaryColor, color: primaryForeground }}>2</span>
+                  <span className="font-semibold text-lg">RECIPIENTS</span>
+                </div>
+                
+                {/* CSV Upload */}
+                <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-6 text-center hover:border-primary/50 transition-colors cursor-pointer" onClick={() => bulkFileInputRef.current?.click()}>
+                  <input ref={bulkFileInputRef} type="file" accept=".csv,.xlsx,.xls,.txt" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      const text = evt.target?.result as string;
+                      const lines = text.split("\n").filter(l => l.trim()).map(l => {
+                        const parts = l.split(/[,\t]/).map(p => p.trim());
+                        return `${parts[0]} ${parts[1] || ""}`.trim();
+                      }).join("\n");
+                      setBulkRecipients(lines);
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }} />
+                  <FileSpreadsheet className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                  <p className="font-semibold">Upload CSV / Excel / Text file</p>
+                  <p className="text-sm text-muted-foreground">Column A: phone - Column B: GB size (optional)</p>
+                </div>
+
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-border"></div>
+                  <span className="text-sm text-muted-foreground">or type manually</span>
+                  <div className="flex-1 h-px bg-border"></div>
+                </div>
+
+                {/* Manual Input */}
+                <textarea
+                  placeholder={`0241234567 2\n0551234567 5\n0591234567 10`}
+                  value={bulkRecipients}
+                  onChange={(e) => setBulkRecipients(e.target.value)}
+                  rows={8}
+                  className="w-full font-mono text-sm bg-secondary/50 border border-border rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+
+                {/* Format Guide */}
+                <div className="rounded-lg p-4 space-y-2" style={{ backgroundColor: `${primaryColor}20`, borderColor: `${primaryColor}50`, borderWidth: 1 }}>
+                  <p className="font-semibold" style={{ color: primaryColor }}>Format: 0241234567 2 (phone then GB size per line)</p>
+                  <p className="text-sm text-muted-foreground">Or use the global package below if all numbers get the same bundle.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Valid prefixes: {bulkNetwork === "mtn" ? "024, 025, 053, 054, 055, 059" : bulkNetwork === "telecel" ? "020, 050" : "026, 027, 056, 057"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3: Global Package (optional) */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold" style={{ backgroundColor: primaryColor, color: primaryForeground }}>3</span>
+                  <span className="font-semibold text-lg">GLOBAL PACKAGE (Optional)</span>
+                </div>
+                <p className="text-sm text-muted-foreground">If set, all recipients without a specified GB size will receive this package.</p>
+                <select
+                  value={bulkGlobalSize?.toString() || "none"}
+                  onChange={(e) => setBulkGlobalSize(e.target.value === "none" ? null : Number(e.target.value))}
+                  className="w-full md:w-64 bg-secondary/50 border border-border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="none">None (use per-line sizes)</option>
+                  {packages.filter(p => p.network.toLowerCase() === bulkNetwork).map(p => {
+                    const price = agentPrices[p.id] ?? p.price;
+                    return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {price.toFixed(2)}</option>;
+                  })}
+                </select>
+              </div>
+
+              {/* Summary & Actions */}
+              <div className="border-t pt-4 space-y-4">
+                {(() => {
+                  const lines = bulkRecipients.split("\n").filter(l => l.trim());
+                  const parsed = lines.map(line => {
+                    const parts = line.trim().split(/\s+/);
+                    const phone = parts[0]?.replace(/\D/g, "") || "";
+                    const size = parts[1] ? Number(parts[1]) : bulkGlobalSize;
+                    return { phone, size };
+                  }).filter(r => r.phone.length === 10 && r.size && r.size > 0);
+                  
+                  const totalGb = parsed.reduce((sum, r) => sum + (r.size || 0), 0);
+                  const totalCost = parsed.reduce((sum, r) => {
+                    const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
+                    const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                    return sum + price;
+                  }, 0);
+                  const paystackFee = Math.ceil(totalCost * 0.0198 * 100) / 100;
+                  const grandTotal = totalCost + paystackFee;
+                  
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-2xl font-bold">{parsed.length}</p>
+                          <p className="text-xs text-muted-foreground">Valid Recipients</p>
+                        </div>
+                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-2xl font-bold">{totalGb}GB</p>
+                          <p className="text-xs text-muted-foreground">Total Data</p>
+                        </div>
+                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-2xl font-bold" style={{ color: primaryColor }}>GH₵ {totalCost.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">Data Cost</p>
+                        </div>
+                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-2xl font-bold text-green-500">GH₵ {grandTotal.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">Total (incl. fees)</p>
+                        </div>
+                      </div>
+                      
+                      {paystackFee > 0 && (
+                        <p className="text-sm text-muted-foreground text-center">Paystack fee (1.98%): GH₵ {paystackFee.toFixed(2)}</p>
+                      )}
+                      
+                      <div className="flex gap-3 flex-wrap">
+                        <Button
+                          variant="hero"
+                          className="flex-1"
+                          disabled={bulkProcessing || parsed.length === 0}
+                          onClick={async () => {
+                            if (parsed.length === 0 || !store) return;
+                            setBulkProcessing(true);
+                            
+                            try {
+                              const recipients = parsed.map(r => {
+                                const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
+                                const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                                return {
+                                  phone: r.phone,
+                                  size_gb: r.size,
+                                  package_id: pkg?.id,
+                                  price: price
+                                };
+                              });
+                              
+                              const callbackUrl = window.location.href.split("?")[0] + "?bulk_payment=true";
+                              
+                              const { data, error } = await supabase.functions.invoke("initialize-payment", {
+                                body: {
+                                  email: `bulk_${Date.now()}@datapluggh.com`,
+                                  amount: grandTotal,
+                                  phone: recipients[0]?.phone || "0000000000",
+                                  callback_url: callbackUrl,
+                                  metadata: {
+                                    type: "bulk_order",
+                                    network: bulkNetwork,
+                                    recipients: recipients,
+                                    total_gb: totalGb,
+                                    recipient_count: parsed.length,
+                                    agent_store_id: store.id
+                                  }
+                                }
+                              });
+                              
+                              if (error) throw error;
+                              if (data?.authorization_url) {
+                                window.location.href = data.authorization_url;
+                              } else {
+                                throw new Error("No payment URL received");
+                              }
+                            } catch (err: any) {
+                              toast({ title: "Payment Error", description: err.message, variant: "destructive" });
+                            } finally {
+                              setBulkProcessing(false);
+                            }
+                          }}
+                        >
+                          {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <>Pay with Paystack (GH₵ {grandTotal.toFixed(2)})</>}
+                        </Button>
+                        <Button variant="outline" onClick={() => { setBulkRecipients(""); setBulkGlobalSize(null); }}>
+                          <RotateCcw className="h-4 w-4 mr-2" /> Clear
+                        </Button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <div className="container pb-20">{renderComingSoon()}</div>
       )}
