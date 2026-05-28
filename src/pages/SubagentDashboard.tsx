@@ -864,19 +864,22 @@ const SubagentDashboard = () => {
       }
       
       // Create order with wallet payment method
-      const { error: orderError } = await supabase.from("orders").insert({
+      // Include agent_store_id so it shows on storefront and for proper tracking
+      const { data: orderData, error: orderError } = await supabase.from("orders").insert({
         package_id: buyingPkg.id,
         subagent_store_id: subagentStore.id,
+        agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
         size_gb: buyingPkg.size_gb,
         amount: price,
         base_price: price,
         selling_price: price,
+        profit: 0, // Subagent buying at cost, no profit
         payment_method: "wallet",
         status: "paid",
         fulfillment_status: "pending"
-      });
+      }).select("id").single();
       
       if (orderError) {
         // Rollback wallet if order fails
@@ -885,6 +888,17 @@ const SubagentDashboard = () => {
           .update({ wallet_balance: currentBalance })
           .eq("id", subagentStore.id);
         throw orderError;
+      }
+      
+      // Trigger fulfillment for the order
+      if (orderData?.id) {
+        try {
+          await supabase.functions.invoke("fulfill-order", {
+            body: { order_id: orderData.id }
+          });
+        } catch (fulfillErr) {
+          console.error("Fulfillment trigger error:", fulfillErr);
+        }
       }
       
       // Update local state immediately
