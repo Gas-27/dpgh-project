@@ -256,6 +256,67 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Handle bulk_order payments
+    if (metadata?.type === "bulk_order") {
+      if (!requestedAmount || !email || !metadata?.recipients || !metadata?.network) {
+        return new Response(JSON.stringify({ error: "Missing required fields for bulk order" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+      if (!PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Amount already includes Paystack fee from frontend
+      const amountInPesewas = Math.round(Number(requestedAmount) * 100);
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url,
+          metadata: {
+            type: "bulk_order",
+            network: metadata.network,
+            recipients: JSON.stringify(metadata.recipients),
+            total_gb: metadata.total_gb,
+            recipient_count: metadata.recipient_count,
+            phone: phone || metadata.recipients[0]?.phone,
+          },
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack bulk order error:", result);
+        return new Response(JSON.stringify({ error: result.message || "Bulk payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: requestedAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Regular package payment - require package_id
     if (!email || !phone || !metadata?.package_id) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
