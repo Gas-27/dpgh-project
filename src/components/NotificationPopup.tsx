@@ -63,38 +63,54 @@ const NotificationPopup = () => {
   const { user, roles } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || roles.length === 0) return;
 
     const fetchNotifications = async () => {
-      const userRole = roles.includes("admin")
-        ? "admin"
-        : roles.includes("agent")
-        ? "agent"
-        : "user";
+      try {
+        const userRole = roles.includes("admin")
+          ? "admin"
+          : roles.includes("agent")
+          ? "agent"
+          : "user";
 
-      const { data: dismissed } = await supabase
-        .from("notification_dismissals")
-        .select("notification_id")
-        .eq("user_id", user.id);
+        const { data: dismissed, error: dismissedError } = await supabase
+          .from("notification_dismissals")
+          .select("notification_id")
+          .eq("user_id", user.id);
 
-      const dismissedIds = (dismissed ?? []).map(
-        (d: any) => d.notification_id
-      );
+        if (dismissedError) {
+          console.error("[v0] Error fetching dismissals:", dismissedError);
+          return;
+        }
 
-      const { data: notifs } = await supabase
-        .from("notifications")
-        .select("*")
-        .or(`target_role.eq.all,target_role.eq.${userRole}`)
-        .order("created_at", { ascending: false });
+        const dismissedIds = (dismissed ?? []).map(
+          (d: any) => d.notification_id
+        );
 
-      const unseen = (notifs ?? []).filter(
-        (n: any) => !dismissedIds.includes(n.id)
-      );
+        const { data: notifs, error: notifsError } = await supabase
+          .from("notifications")
+          .select("*")
+          .or(`target_role.eq.all,target_role.eq.${userRole}`)
+          .order("created_at", { ascending: false });
 
-      setNotifications(unseen);
-      setCurrentIndex(0);
+        if (notifsError) {
+          console.error("[v0] Error fetching notifications:", notifsError);
+          return;
+        }
+
+        const unseen = (notifs ?? []).filter(
+          (n: any) => !dismissedIds.includes(n.id)
+        );
+
+        setNotifications(unseen);
+        setCurrentIndex(0);
+      } catch (err: any) {
+        console.error("[v0] Error in fetchNotifications:", err);
+        setError(err.message);
+      }
     };
 
     fetchNotifications();
@@ -103,21 +119,25 @@ const NotificationPopup = () => {
   const dismiss = async () => {
     if (!user || notifications.length === 0) return;
 
-    const notif = notifications[currentIndex];
+    try {
+      const notif = notifications[currentIndex];
 
-    await supabase.from("notification_dismissals").insert({
-      notification_id: notif.id,
-      user_id: user.id,
-    });
+      await supabase.from("notification_dismissals").insert({
+        notification_id: notif.id,
+        user_id: user.id,
+      });
 
-    if (currentIndex < notifications.length - 1) {
-      setCurrentIndex((i) => i + 1);
-    } else {
-      setNotifications([]);
+      if (currentIndex < notifications.length - 1) {
+        setCurrentIndex((i) => i + 1);
+      } else {
+        setNotifications([]);
+      }
+    } catch (err: any) {
+      console.error("[v0] Error dismissing notification:", err);
     }
   };
 
-  if (notifications.length === 0) return null;
+  if (error || notifications.length === 0) return null;
 
   const notif = notifications[currentIndex];
   const meta = getMeta(notif.message);

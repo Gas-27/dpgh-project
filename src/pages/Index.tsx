@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import NotificationPopup from "@/components/NotificationPopup";
 import Navbar from "@/components/Navbar";
@@ -27,7 +27,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <NotificationPopup />
+      <Suspense fallback={null}>
+        <NotificationPopup />
+      </Suspense>
       <Navbar />
       <HeroSection />
       <TrustTicker />
