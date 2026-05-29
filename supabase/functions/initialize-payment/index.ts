@@ -356,81 +356,129 @@ Deno.serve(async (req) => {
     let baseAmount: number;
     let priceType: string;
 
+    console.log("[v0] Determining price with metadata:", { 
+      subagent_store_id: metadata.subagent_store_id,
+      agent_store_id: metadata.agent_store_id,
+      package_id: metadata.package_id,
+      base_package_price: packageData.price
+    });
+
     // Priority: 1. Subagent's sell_price, 2. Agent's sell_price, 3. Admin's base price
     if (metadata.subagent_store_id) {
-      // Fetch subagent's custom price AND subagent store info in parallel for speed
-      const [subagentPriceResult, subagentStoreResult] = await Promise.all([
-        supabaseClient
-          .from("subagent_package_prices")
-          .select("sell_price")
-          .eq("subagent_store_id", metadata.subagent_store_id)
-          .eq("package_id", metadata.package_id),
-      ]);
+      console.log("[v0] Fetching subagent prices for store:", metadata.subagent_store_id);
+      
+      // Fetch subagent's custom price
+      const { data: subagentPrices, error: subagentPriceError } = await supabaseClient
+        .from("subagent_package_prices")
+        .select("sell_price")
+        .eq("subagent_store_id", metadata.subagent_store_id)
+        .eq("package_id", metadata.package_id);
 
-      const subagentPrices = subagentPriceResult.data;
+      if (subagentPriceError) {
+        console.error("[v0] Error fetching subagent prices:", subagentPriceError);
+      }
+
       const subagentPrice = subagentPrices && subagentPrices.length > 0 ? subagentPrices[0] : null;
+      console.log("[v0] Subagent price query result:", { subagentPrice, count: subagentPrices?.length });
 
       if (subagentPrice?.sell_price != null) {
         baseAmount = Number(subagentPrice.sell_price);
         priceType = "subagent_sell_price";
-        console.log(`Using subagent's sell_price: ${baseAmount}`);
+        console.log(`[v0] Using subagent's sell_price: ${baseAmount}`);
       } else {
         // No custom subagent price - fall back to agent price or admin price
-        const { data: subagentStoreData } = await supabaseClient
+        console.log("[v0] No subagent price found, fetching subagent store info");
+        const { data: subagentStoreData, error: subagentStoreError } = await supabaseClient
           .from("subagent_stores")
           .select("agent_store_id")
           .eq("id", metadata.subagent_store_id)
           .single();
 
+        if (subagentStoreError) {
+          console.error("[v0] Error fetching subagent store:", subagentStoreError);
+        }
+
+        console.log("[v0] Subagent store lookup result:", { 
+          store_id: metadata.subagent_store_id,
+          agent_store_id: subagentStoreData?.agent_store_id 
+        });
+
         if (subagentStoreData?.agent_store_id) {
           // Try to get agent's sell_price
-          const { data: agentPrices } = await supabaseClient
+          const { data: agentPrices, error: agentPriceError } = await supabaseClient
             .from("agent_package_prices")
             .select("sell_price")
             .eq("agent_store_id", subagentStoreData.agent_store_id)
             .eq("package_id", metadata.package_id);
 
+          if (agentPriceError) {
+            console.error("[v0] Error fetching agent prices:", agentPriceError);
+          }
+
           const agentPrice = agentPrices && agentPrices.length > 0 ? agentPrices[0] : null;
+          console.log("[v0] Agent price query result:", { agentPrice, count: agentPrices?.length });
 
           if (agentPrice?.sell_price != null) {
             baseAmount = Number(agentPrice.sell_price);
             priceType = "agent_sell_price_fallback";
-            console.log(`Using agent's sell_price as fallback: ${baseAmount}`);
+            console.log(`[v0] Using agent's sell_price as fallback: ${baseAmount}`);
           } else {
             baseAmount = Number(packageData.price);
             priceType = "admin_user_price";
-            console.log(`Using admin base price (no agent price): ${baseAmount}`);
+            console.log(`[v0] Using admin base price (no agent price): ${baseAmount}`);
           }
         } else {
           baseAmount = Number(packageData.price);
           priceType = "admin_user_price";
-          console.log(`Using admin base price (no agent store): ${baseAmount}`);
+          console.log(`[v0] Using admin base price (no agent store found): ${baseAmount}`);
         }
       }
     } else if (metadata.agent_store_id) {
       // Agent store purchase - use agent's sell_price
-      const { data: agentPrices } = await supabaseClient
+      console.log("[v0] Fetching agent prices for store:", metadata.agent_store_id);
+      const { data: agentPrices, error: agentPriceError } = await supabaseClient
         .from("agent_package_prices")
         .select("sell_price")
         .eq("agent_store_id", metadata.agent_store_id)
         .eq("package_id", metadata.package_id);
 
+      if (agentPriceError) {
+        console.error("[v0] Error fetching agent prices:", agentPriceError);
+      }
+
       const agentPrice = agentPrices && agentPrices.length > 0 ? agentPrices[0] : null;
+      console.log("[v0] Agent price query result:", { agentPrice, count: agentPrices?.length });
 
       if (agentPrice?.sell_price != null) {
         baseAmount = Number(agentPrice.sell_price);
         priceType = "agent_sell_price";
-        console.log(`Using agent's sell_price: ${baseAmount}`);
+        console.log(`[v0] Using agent's sell_price: ${baseAmount}`);
       } else {
         baseAmount = Number(packageData.price);
         priceType = "admin_user_price";
-        console.log(`Using admin base price (no agent price): ${baseAmount}`);
+        console.log(`[v0] Using admin base price (no agent price): ${baseAmount}`);
       }
     } else {
       // Direct purchase from main site - use admin's base price
       baseAmount = Number(packageData.price);
       priceType = "admin_user_price";
-      console.log(`Using admin base price: ${baseAmount}`);
+      console.log(`[v0] Using admin base price (direct purchase): ${baseAmount}`);
+    }
+
+    // Safety check - baseAmount must be set and valid
+    if (!baseAmount || isNaN(baseAmount) || baseAmount <= 0) {
+      console.error("[v0] ERROR: Invalid baseAmount after price calculation:", {
+        baseAmount,
+        isNaN: isNaN(baseAmount),
+        packagePrice: packageData.price,
+        priceType
+      });
+      return new Response(JSON.stringify({ 
+        error: `Invalid price calculated: ${baseAmount}. Please refresh and try again.` 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Calculate total with Paystack fee (1.98%)
@@ -439,10 +487,11 @@ Deno.serve(async (req) => {
     // Round to 2 decimal places using proper rounding
     const amountToCharge = Math.round(totalWithFee * 100) / 100;
 
-    console.log(`Calculated amount - Base: ${baseAmount}, Fee: ${feeAmount.toFixed(2)}, Total: ${amountToCharge}, Type: ${priceType}`);
+    console.log(`[v0] Calculated amount - Base: ${baseAmount}, Fee: ${feeAmount.toFixed(2)}, Total: ${amountToCharge}, Type: ${priceType}`);
 
     const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!PAYSTACK_SECRET_KEY) {
+      console.error("[v0] CRITICAL: Paystack secret key not configured");
       return new Response(JSON.stringify({ error: "Paystack not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -450,6 +499,8 @@ Deno.serve(async (req) => {
     }
 
     const amountInPesewas = Math.round(amountToCharge * 100);
+    
+    console.log(`[v0] Sending to Paystack - Amount in Pesewas: ${amountInPesewas}, Email: ${email}, Phone: ${phone}`);
 
     const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
@@ -474,13 +525,34 @@ Deno.serve(async (req) => {
 
     const result = await paystackRes.json();
 
+    console.log("[v0] Paystack response status:", paystackRes.status, "Body:", result);
+
     if (!result.status) {
-      console.error("Paystack error:", result);
-      return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
+      console.error("[v0] Paystack returned error:", { 
+        paystack_status: result.status, 
+        paystack_message: result.message,
+        paystack_response: result 
+      });
+      return new Response(JSON.stringify({ 
+        error: result.message || "Payment initialization failed" 
+      }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Final validation - make sure authorization_url exists
+    if (!result.data?.authorization_url) {
+      console.error("[v0] CRITICAL: No authorization_url in Paystack response:", result.data);
+      return new Response(JSON.stringify({ 
+        error: "Paystack did not provide authorization URL" 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("[v0] Payment initialization successful, returning authorization URL");
 
     return new Response(JSON.stringify({
       authorization_url: result.data.authorization_url,
