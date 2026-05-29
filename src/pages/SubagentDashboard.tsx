@@ -1295,27 +1295,28 @@ const SubagentDashboard = () => {
                   </div>
                   <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                 </div>
-                {/* Topup Reference Code */}
+                {/* USSD Code with Access Code */}
                 {subagentStore?.topup_reference && (
                   <div className="mt-4 pt-4 border-t border-yellow-500/20">
-                    <p className="text-xs text-muted-foreground mb-2">Your USSD Reference Code</p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 p-3 bg-secondary/50 rounded-lg border border-border font-mono font-bold text-center text-primary text-xl">
-                        {subagentStore.topup_reference}
+                    <div className="text-center space-y-3">
+                      <p className="text-xs text-muted-foreground">Your customers can buy data via USSD</p>
+                      <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
+                        <p className="text-2xl font-bold font-mono text-primary">*380*455#</p>
+                        <p className="text-sm text-muted-foreground mt-2">Access Code:</p>
+                        <p className="text-3xl font-bold font-mono text-foreground">{subagentStore.topup_reference}</p>
                       </div>
                       <Button 
                         variant="outline" 
-                        size="sm" 
-                        className="h-12"
+                        size="sm"
+                        className="w-full"
                         onClick={() => {
-                          navigator.clipboard.writeText(subagentStore.topup_reference || "");
-                          toast({ title: "Copied!", description: "Reference code copied to clipboard" });
+                          navigator.clipboard.writeText(`Dial *380*455# and enter access code: ${subagentStore.topup_reference}`);
+                          toast({ title: "Copied!", description: "USSD info copied to clipboard" });
                         }}
                       >
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-4 w-4 mr-2" /> Copy USSD Info
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">Share this code with your customers for USSD purchases</p>
                   </div>
                 )}
               </CardContent>

@@ -1231,6 +1231,38 @@ const AgentDashboard = () => {
               <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">My Wallet (All Time)</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Profit from Subagents</p><p className="font-display text-2xl font-bold text-primary mt-1">GH₵ {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Withdraw separately in Wallet tab</p></div><Users className="h-8 w-8 text-primary opacity-50" /></div></CardContent></Card>
             </div>
+            
+            {/* USSD Access Code Card */}
+            {store?.topup_reference && (
+              <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="text-center md:text-left">
+                      <p className="text-sm text-muted-foreground mb-1">Your customers can buy data via USSD</p>
+                      <div className="flex items-center justify-center md:justify-start gap-3">
+                        <div className="p-3 bg-primary/20 rounded-lg">
+                          <p className="text-2xl font-bold font-mono text-primary">*380*455#</p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs text-muted-foreground">Access Code</p>
+                          <p className="text-3xl font-bold font-mono text-foreground">{store.topup_reference}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`Dial *380*455# and enter access code: ${store.topup_reference}`);
+                        toast({ title: "Copied!", description: "USSD info copied to clipboard" });
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-2" /> Copy USSD Info
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <Card className="border-border">
               <CardHeader className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
