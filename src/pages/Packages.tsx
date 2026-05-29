@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Wifi, Search, Package, CheckCircle, Clock, XCircle, X,
-  Loader2, Check, Mail, MessageCircle, Rocket, Gift, Trophy, UserPlus, Layers, FileSpreadsheet, RotateCcw,
+  Loader2, Check, Mail, MessageCircle, Rocket, Gift, Trophy, UserPlus, Layers, FileSpreadsheet, RotateCcw, Phone,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -1194,7 +1194,23 @@ const Packages = () => {
       <Navbar />
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
-        <p className="text-muted-foreground text-center mb-8">Choose a category and get connected instantly</p>
+        <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
+
+        {/* USSD Info Banner */}
+        <div className="max-w-md mx-auto mb-8">
+          <a href="tel:*380*455#" className="block p-4 rounded-xl border border-green-500/30 bg-green-500/5 hover:bg-green-500/10 transition-colors">
+            <div className="flex items-center justify-center gap-3 text-center">
+              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                <Phone className="h-5 w-5 text-green-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
+                <p className="text-xl font-bold font-mono text-green-400">*380*455#</p>
+                <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">0</span></p>
+              </div>
+            </div>
+          </a>
+        </div>
 
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {(["data", "afa", "vouchers", "services", "bulk"] as const).map((cat) => (
@@ -1306,7 +1322,7 @@ const Packages = () => {
               ))}
             </div>
 
-            {loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (
+            {loading ? <div className="text-center text-muted-foreground">Loading packages���</div> : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filtered.map((pkg) => (
                   <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={{ background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>

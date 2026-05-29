@@ -1126,14 +1126,7 @@ const AgentStorefront = () => {
                         Check the contact well, or check your order ID.
                       </p>
                     </div>
-                  ) : (
-                    <div className="text-center py-8 border border-border rounded-lg bg-background/50">
-                      <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground">
-                        Enter a phone number or order ID and click Search.
-                      </p>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -1159,8 +1152,8 @@ const AgentStorefront = () => {
           {/* USSD Info Banner */}
           {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
             <div className="container pb-4">
-              <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left">
-                <div className="flex items-center gap-3">
+              <a href="tel:*380*455#" className="block p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
+                <div className="flex items-center justify-center gap-3 text-center">
                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                     <Phone className="h-5 w-5" style={{ color: primaryColor }} />
                   </div>
@@ -1170,7 +1163,7 @@ const AgentStorefront = () => {
                     <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
                   </div>
                 </div>
-              </div>
+              </a>
             </div>
           )}
 

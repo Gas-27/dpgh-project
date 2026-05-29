@@ -1078,8 +1078,8 @@ export function SubagentStorefront() {
           <>
           {/* USSD Info Banner */}
           {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
-            <div className="mb-4 p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left">
-              <div className="flex items-center gap-3">
+            <a href="tel:*380*455#" className="block mb-4 p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
+              <div className="flex items-center justify-center gap-3 text-center">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                   <Phone className="h-5 w-5 text-primary" />
                 </div>
@@ -1089,7 +1089,7 @@ export function SubagentStorefront() {
                   <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
                 </div>
               </div>
-            </div>
+            </a>
           )}
           <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
             {filteredPackages.length === 0 ? (
