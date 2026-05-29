@@ -656,10 +656,41 @@ const SubagentDashboard = () => {
   const handleSaveStore = async () => {
     try {
       setSaving(true);
+      
+      let finalStoreName = storeForm.store_name;
+      
+      // If store name has changed, check for uniqueness
+      if (storeForm.store_name !== subagentStore?.store_name) {
+        const { data: existingStores } = await supabase
+          .from("subagent_stores")
+          .select("store_name")
+          .eq("approved", true)
+          .neq("id", subagentStore?.id);  // Exclude this store from comparison
+        
+        if (existingStores && existingStores.length > 0) {
+          const slugifiedName = DOMAINS.sanitizeStoreName(storeForm.store_name);
+          
+          // Count how many OTHER stores have the same slug
+          const duplicates = existingStores.filter((s: any) => {
+            const existingSlug = DOMAINS.sanitizeStoreName(s.store_name);
+            return existingSlug === slugifiedName;
+          });
+          
+          // If duplicates exist, append a number
+          if (duplicates.length > 0) {
+            finalStoreName = `${storeForm.store_name} ${duplicates.length + 1}`;
+            toast({
+              title: "Store name adjusted",
+              description: `Store name changed to "${finalStoreName}" to ensure unique URL`,
+            });
+          }
+        }
+      }
+      
       const { error } = await supabase
         .from("subagent_stores")
         .update({
-          store_name: storeForm.store_name,
+          store_name: finalStoreName,
           whatsapp_number: storeForm.whatsapp_number,
           support_number: storeForm.support_number,
           whatsapp_group: storeForm.whatsapp_group || null,
@@ -672,7 +703,7 @@ const SubagentDashboard = () => {
         .eq("id", subagentStore?.id);
 
       if (error) throw error;
-      setSubagentStore(prev => prev ? { ...prev, ...storeForm } : null);
+      setSubagentStore(prev => prev ? { ...prev, ...storeForm, store_name: finalStoreName } : null);
       setEditingStore(false);
       toast({ title: "Store updated successfully" });
     } catch (error) {
