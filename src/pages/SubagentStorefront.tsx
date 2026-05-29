@@ -439,6 +439,7 @@ export function SubagentStorefront() {
       }
 
       const normalized = urlStoreName.toLowerCase().trim();
+      const normalizedSlugified = slugify(normalized);
       // Normalize for comparison - remove ALL special characters for matching
       const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
 
@@ -460,7 +461,7 @@ export function SubagentStorefront() {
       }
 
       // Find matching store - try multiple strategies with more robust matching
-      let matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalized);
+      let matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
       if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
       // Normalized clean comparison - removes ALL special characters
       if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);

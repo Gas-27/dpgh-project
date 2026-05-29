@@ -258,6 +258,77 @@ const SubagentDashboard = () => {
     syncWalletBalance();
   }, [orders.length, topupHistory.length, withdrawals.length, subagentStore?.id]);
 
+  // Real-time wallet balance updates
+  useEffect(() => {
+    if (!subagentStore?.id) return;
+
+    // Subscribe to wallet balance updates in real-time
+    const walletChannel = supabase
+      .channel(`subagent-wallet-${subagentStore.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "subagent_stores",
+          filter: `id=eq.${subagentStore.id}`,
+        },
+        (payload: any) => {
+          const newData = payload.new as any;
+          if (newData && newData.wallet_balance !== undefined) {
+            setSubagentStore((prev) =>
+              prev
+                ? { ...prev, wallet_balance: newData.wallet_balance }
+                : prev
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // Also subscribe to order changes to update wallet in real-time
+    const ordersChannel = supabase
+      .channel(`subagent-orders-wallet-${subagentStore.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `subagent_store_id=eq.${subagentStore.id}`,
+        },
+        () => {
+          // Re-fetch orders to update wallet calculation
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to withdrawal changes
+    const withdrawalsChannel = supabase
+      .channel(`subagent-withdrawals-wallet-${subagentStore.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "withdrawals",
+          filter: `subagent_store_id=eq.${subagentStore.id}`,
+        },
+        () => {
+          // Re-fetch data to update wallet
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(walletChannel);
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(withdrawalsChannel);
+    };
+  }, [subagentStore?.id]);
+
   const fetchData = async (userId?: string) => {
     try {
       setLoading(true);
