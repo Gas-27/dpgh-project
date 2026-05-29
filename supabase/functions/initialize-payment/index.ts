@@ -15,12 +15,18 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  console.log("[v0] ===== initialize-payment function START =====");
+
   try {
-    const { email, phone, metadata, callback_url, amount: requestedAmount } = await req.json();
+    const body = await req.json();
+    const { email, phone, metadata, callback_url, amount: requestedAmount } = body;
+    
+    console.log("[v0] Request received with metadata type:", metadata?.type);
 
     // Handle agent_registration payments
     if (metadata?.type === "agent_registration") {
       if (!requestedAmount || !email || !metadata?.agent_store_id) {
+        console.error("[v0] VALIDATION FAILED: Missing required fields for agent registration");
         return new Response(JSON.stringify({ error: "Missing required fields for agent registration" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -29,6 +35,7 @@ Deno.serve(async (req) => {
 
       const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
       if (!PAYSTACK_SECRET_KEY) {
+        console.error("[v0] CRITICAL: Paystack secret key not configured");
         return new Response(JSON.stringify({ error: "Paystack not configured" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -339,15 +346,18 @@ Deno.serve(async (req) => {
     );
 
     // Fetch package base data
+    console.log("[v0] STEP 1: Fetching package data for ID:", metadata.package_id);
     const { data: packageData, error: packageError } = await supabaseClient
       .from("data_packages")
       .select("agent_price, price, size_gb, network")
       .eq("id", metadata.package_id)
       .single();
 
+    console.log("[v0] STEP 1 COMPLETE: Package query result - error:", packageError, "data:", !!packageData);
+
     if (packageError || !packageData) {
-      console.error("Package not found:", metadata.package_id);
-      return new Response(JSON.stringify({ error: "Package not found" }), {
+      console.error("[v0] STEP 1 FAILED: Package not found - error:", packageError);
+      return new Response(JSON.stringify({ error: "Package not found: " + (packageError?.message || metadata.package_id) }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -387,28 +397,28 @@ Deno.serve(async (req) => {
         console.log(`[v0] Using subagent's sell_price: ${baseAmount}`);
       } else {
         // No custom subagent price - fall back to agent price or admin price
-        console.log("[v0] No subagent price found, fetching subagent store info");
+        console.log("[v0] STEP 2B: No subagent price found, fetching subagent store info for:", metadata.subagent_store_id);
+        
         const { data: subagentStoreData, error: subagentStoreError } = await supabaseClient
           .from("subagent_stores")
           .select("agent_store_id")
-          .eq("id", metadata.subagent_store_id)
-          .single();
+          .eq("id", metadata.subagent_store_id);
+
+        console.log("[v0] STEP 2B COMPLETE: Subagent store query - error:", subagentStoreError, "count:", subagentStoreData?.length);
 
         if (subagentStoreError) {
           console.error("[v0] Error fetching subagent store:", subagentStoreError);
         }
 
-        console.log("[v0] Subagent store lookup result:", { 
-          store_id: metadata.subagent_store_id,
-          agent_store_id: subagentStoreData?.agent_store_id 
-        });
+        const storeRecord = subagentStoreData && subagentStoreData.length > 0 ? subagentStoreData[0] : null;
+        console.log("[v0] Store record found:", !!storeRecord, "agent_store_id:", storeRecord?.agent_store_id);
 
-        if (subagentStoreData?.agent_store_id) {
+        if (storeRecord?.agent_store_id) {
           // Try to get agent's sell_price
           const { data: agentPrices, error: agentPriceError } = await supabaseClient
             .from("agent_package_prices")
             .select("sell_price")
-            .eq("agent_store_id", subagentStoreData.agent_store_id)
+            .eq("agent_store_id", storeRecord.agent_store_id)
             .eq("package_id", metadata.package_id);
 
           if (agentPriceError) {
@@ -564,11 +574,24 @@ Deno.serve(async (req) => {
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    console.error("Payment initialization error:", err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
+  } catch (err: any) {
+    console.error("[v0] ===== EDGE FUNCTION ERROR =====");
+    console.error("[v0] Error type:", err?.constructor?.name);
+    console.error("[v0] Error message:", err?.message);
+    console.error("[v0] Error details:", err);
+    console.error("[v0] Error stack:", err?.stack?.substring(0, 500));
+    console.error("[v0] ===== END ERROR =====");
+    
+    const errorMessage = err?.message || "Unknown error in payment initialization";
+    
+    return new Response(JSON.stringify({ 
+      error: errorMessage,
+      error_type: err?.constructor?.name,
+    }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  } finally {
+    console.log("[v0] ===== initialize-payment function END =====");
   }
 });
