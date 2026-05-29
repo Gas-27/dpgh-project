@@ -10,6 +10,81 @@ const corsHeaders = {
 const PAYSTACK_FEE_PERCENT = 1.98;
 const PACKAGES_PER_PAGE = 5;
 
+// Detect network from phone number prefix
+function detectNetworkFromPhone(phone: string): string {
+  let cleaned = phone.replace(/^\+/, "").replace(/^233/, "0");
+  if (!cleaned.startsWith("0")) {
+    cleaned = "0" + cleaned;
+  }
+  
+  // MTN prefixes: 024, 053, 054, 055, 059
+  if (/^0(24|53|54|55|59)/.test(cleaned)) {
+    return "mtn";
+  }
+  // Telecel/Vodafone prefixes: 020, 050
+  if (/^0(20|50)/.test(cleaned)) {
+    return "telecel";
+  }
+  // AirtelTigo prefixes: 026, 027, 056, 057
+  if (/^0(26|27|56|57)/.test(cleaned)) {
+    return "airteltigo";
+  }
+  return "unknown";
+}
+
+// Get display name for network
+function getNetworkDisplayName(network: string): string {
+  if (network === "mtn") return "MTN";
+  if (network === "telecel") return "Telecel";
+  if (network === "airteltigo") return "AirtelTigo";
+  return "Unknown";
+}
+
+// Get Paystack provider code based on network
+function getProviderCode(network: string): string {
+  if (network === "telecel") return "vod";
+  if (network === "airteltigo") return "tgo";
+  return "mtn";
+}
+
+// Get approval instructions based on network
+function getApprovalInstructions(network: string): string {
+  if (network === "telecel") {
+    return "*110# > My Wallet > Approvals";
+  } else if (network === "airteltigo") {
+    return "*500# > My Approvals";
+  }
+  return "*170# > Wallet > My Approvals";
+}
+
+// Format date/time for display
+function formatOrderTime(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const mins = date.getMinutes().toString().padStart(2, '0');
+    return `${day}/${month} ${hours}:${mins}`;
+  } catch {
+    return "";
+  }
+}
+
+// Format phone for Paystack - LOCAL format (0XXXXXXXXX)
+function formatPhoneForPaystack(phone: string): string {
+  let cleaned = phone.replace(/^\+/, "");
+  
+  if (cleaned.startsWith("233")) {
+    cleaned = "0" + cleaned.substring(3);
+  }
+  if (!cleaned.startsWith("0")) {
+    cleaned = "0" + cleaned;
+  }
+  
+  return cleaned;
+}
+
 Deno.serve(async (req) => {
   console.log(`[USSD] ========== NEW REQUEST ==========`);
   console.log(`[USSD] Method: ${req.method}`);
@@ -45,16 +120,18 @@ Deno.serve(async (req) => {
       network = formData.get("network") as string || "";
     }
 
+    // Detect network from phone number
+    const detectedNetwork = detectNetworkFromPhone(msisdn);
     console.log(`[USSD] Parsed values:`);
     console.log(`  - sessionID: "${sessionID}"`);
     console.log(`  - ussdServiceOp: "${ussdServiceOp}"`);
     console.log(`  - ussdString: "${ussdString}"`);
     console.log(`  - msisdn: "${msisdn}"`);
-    console.log(`  - network: "${network}"`);
+    console.log(`  - detected network: "${detectedNetwork}"`);
 
     if (!sessionID) {
       console.error(`[USSD] ERROR: Missing sessionID!`);
-      return sendResponse("", "Technical error. Please try again.", "17", corsHeaders);
+      return sendResponse("", "Technical error. Please try again.", "3", corsHeaders);
     }
     
     const supabase = createClient(
@@ -63,17 +140,17 @@ Deno.serve(async (req) => {
     );
 
     let msg = "";
-    let responseOp = "17";
+    let responseOp = "3"; // Default to end session
 
     // START SESSION
     if (ussdServiceOp === "1") {
       console.log(`[USSD] Starting new session: ${sessionID}`);
       
       const newSession = {
-        step: "main_menu",
+        step: "enter_access_code",
         created_at: Date.now(),
         caller_msisdn: msisdn,
-        caller_network: network,
+        caller_network: detectedNetwork,
       };
       
       const { error: upsertError } = await supabase
@@ -86,11 +163,9 @@ Deno.serve(async (req) => {
       
       if (upsertError) {
         console.error(`[USSD] Failed to save session:`, upsertError);
-      } else {
-        console.log(`[USSD] Session saved to database`);
       }
       
-      msg = "Welcome to DataPlug\n\n1. Buy MTN Data\n2. Buy Telecel Data\n3. Buy AT Data\n4. Track Order";
+      msg = "Welcome\nEnter access code:";
       responseOp = "2";
     }
     // CONTINUE SESSION
@@ -106,11 +181,10 @@ Deno.serve(async (req) => {
       if (fetchError) {
         console.error(`[USSD] Error fetching session:`, fetchError);
         msg = "Technical error. Please try again.";
-        responseOp = "17";
+        responseOp = "3";
       } else if (!sessionData) {
-        console.log(`[USSD] WARNING: Session ${sessionID} not found in database!`);
         msg = "Session expired. Please dial again.";
-        responseOp = "17";
+        responseOp = "3";
       } else {
         const session = sessionData.data;
         console.log(`[USSD] Session found. Step: ${session.step}`);
@@ -141,51 +215,103 @@ Deno.serve(async (req) => {
           }
         };
         
-        // MAIN MENU - Select network or track order
-        if (session.step === "main_menu") {
-          const selection = ussdString.trim();
-          console.log(`[USSD] Main menu selection: "${selection}"`);
-          
+        // STEP 1: Enter agent code
+        if (session.step === "enter_access_code") {
+          const agentCode = ussdString.trim();
+          console.log(`[USSD] Processing agent code: "${agentCode}"`);
+          let agentStoreId: string | null = null;
+
+          if (agentCode !== "0") {
+            const { data: agent, error: agentError } = await supabase
+              .from("agent_stores")
+              .select("id")
+              .eq("topup_reference", agentCode)
+              .eq("approved", true)
+              .single();
+
+            if (agentError || !agent) {
+              msg = "Invalid code.\nEnter a valid code:";
+              responseOp = "2";
+              await updateSession({ step: "enter_access_code" });
+              return sendResponse(sessionID, msg, responseOp, corsHeaders);
+            }
+            agentStoreId = agent.id;
+          }
+
+          await updateSession({
+            step: "select_network",
+            agent_store_id: agentStoreId,
+          });
+
+          msg = "Select network:\n1. MTN\n2. Telecel\n3. AT\n4. Track Order\n0. Back";
+          responseOp = "2";
+        }
+        // STEP 2: Select network
+        else if (session.step === "select_network") {
           const networkMap: Record<string, string> = {
             "1": "mtn",
             "2": "telecel",
             "3": "airteltigo",
           };
-          const selectedNetwork = networkMap[selection];
-          
-          if (selection === "4") {
-            // Track Order
-            await updateSession({ step: "enter_tracking_number" });
-            msg = "Enter your phone number to track orders:";
+          const selectedNetwork = networkMap[ussdString];
+
+          if (ussdString === "0") {
+            await updateSession({ step: "enter_access_code" });
+            msg = "Enter access code:";
+            responseOp = "2";
+          } else if (ussdString === "4") {
+            await updateSession({ step: "track_order_enter_phone" });
+            msg = "Enter phone number for order\n(e.g., 024XXXXXXX):";
             responseOp = "2";
           } else if (!selectedNetwork) {
-            msg = "Invalid selection.\n\n1. Buy MTN Data\n2. Buy Telecel Data\n3. Buy AT Data\n4. Track Order";
+            msg = "Invalid option.\n1. MTN\n2. Telecel\n3. AT\n4. Track Order\n0. Back";
             responseOp = "2";
           } else {
-            console.log(`[USSD] Fetching packages for ${selectedNetwork}`);
-            
-            // Fetch packages with default prices (no agent)
-            const { data, error } = await supabase
-              .from("data_packages")
-              .select("id, size_gb, price")
-              .eq("active", true)
-              .eq("network", selectedNetwork)
-              .order("size_gb", { ascending: true });
-            
             let packages: any[] = [];
-            if (!error && data) {
-              packages = data.map(pkg => ({
-                id: pkg.id,
-                size_gb: pkg.size_gb,
-                price: pkg.price, // Use customer price
-              }));
+
+            if (session.agent_store_id) {
+              const { data, error } = await supabase
+                .from("data_packages")
+                .select(`
+                  id,
+                  size_gb,
+                  network,
+                  agent_price,
+                  agent_package_prices!left (sell_price)
+                `)
+                .eq("active", true)
+                .eq("network", selectedNetwork)
+                .eq("agent_package_prices.agent_store_id", session.agent_store_id);
+
+              if (!error && data) {
+                packages = data.map(pkg => ({
+                  id: pkg.id,
+                  size_gb: pkg.size_gb,
+                  price: pkg.agent_package_prices?.[0]?.sell_price ?? pkg.agent_price,
+                }));
+              }
+            } else {
+              const { data, error } = await supabase
+                .from("data_packages")
+                .select("id, size_gb, agent_price")
+                .eq("active", true)
+                .eq("network", selectedNetwork);
+
+              if (!error && data) {
+                packages = data.map(pkg => ({
+                  id: pkg.id,
+                  size_gb: pkg.size_gb,
+                  price: pkg.agent_price,
+                }));
+              }
             }
-            
+
             if (packages.length === 0) {
-              msg = "No packages available.\n\n0. Back";
-              await updateSession({ step: "no_packages" });
+              msg = "No packages available.\n0. Back";
               responseOp = "2";
             } else {
+              packages.sort((a, b) => a.size_gb - b.size_gb);
+              
               await updateSession({
                 step: "view_packages",
                 network: selectedNetwork,
@@ -202,7 +328,7 @@ Deno.serve(async (req) => {
               });
               
               if (totalPages > 1) {
-                packageMenu += `\n98. Next (1/${totalPages})\n`;
+                packageMenu += `6. Next\n`;
               }
               packageMenu += "0. Back";
               
@@ -212,76 +338,74 @@ Deno.serve(async (req) => {
           }
         }
         // TRACK ORDER - Enter phone number
-        else if (session.step === "enter_tracking_number") {
-          const phoneInput = ussdString.trim();
+        else if (session.step === "track_order_enter_phone") {
+          const phone = ussdString.trim();
           
-          if (phoneInput === "0") {
-            await updateSession({ step: "main_menu" });
-            msg = "Welcome to DataPlug\n\n1. Buy MTN Data\n2. Buy Telecel Data\n3. Buy AT Data\n4. Track Order";
+          if (phone === "0") {
+            await updateSession({ step: "select_network" });
+            msg = "Select network:\n1. MTN\n2. Telecel\n3. AT\n4. Track Order\n0. Back";
             responseOp = "2";
-          } else if (!phoneInput.match(/^0[2-9]\d{8}$/)) {
-            msg = "Invalid phone number.\nEnter your phone number (e.g., 024XXXXXXX):\n\n0. Back";
+          } else if (!phone.match(/^0[2-9]\d{8}$/)) {
+            msg = "Invalid number.\nEnter phone (e.g., 024XXXXXXX):\n0. Back";
             responseOp = "2";
           } else {
-            // Look up recent orders for this phone number
-            const { data: orders, error: ordersError } = await supabase
+            const { data: orders, error: orderError } = await supabase
               .from("orders")
               .select("id, size_gb, network, status, fulfillment_status, created_at")
-              .eq("customer_number", phoneInput)
+              .eq("customer_number", phone)
               .order("created_at", { ascending: false })
               .limit(5);
             
-            if (ordersError || !orders || orders.length === 0) {
-              msg = `No orders found for ${phoneInput}.\n\n0. Back to menu`;
-              await updateSession({ step: "no_orders" });
+            if (orderError || !orders || orders.length === 0) {
+              msg = `No orders for ${phone}.\n0. Back`;
+              await updateSession({ step: "no_orders_found" });
               responseOp = "2";
             } else {
-              let orderList = `Recent orders for ${phoneInput}:\n\n`;
+              let orderList = `Orders for ${phone}:\n`;
               orders.forEach((order, idx) => {
-                const statusText = order.fulfillment_status === "completed" ? "Delivered" : 
-                                   order.fulfillment_status === "failed" ? "Failed" : "Processing";
-                const networkName = order.network === "mtn" ? "MTN" : 
-                                   order.network === "telecel" ? "Telecel" : "AT";
-                orderList += `${idx + 1}. ${order.size_gb}GB ${networkName} - ${statusText}\n`;
+                const net = order.network === "mtn" ? "MTN" : 
+                           order.network === "telecel" ? "Tel" : "AT";
+                const status = order.fulfillment_status === "failed" ? "Failed" : "Pending";
+                const time = formatOrderTime(order.created_at);
+                orderList += `${idx + 1}. ${order.size_gb}GB ${net} ${time} - ${status}\n`;
               });
-              orderList += "\n0. Back to menu";
+              orderList += "0. Back";
               
-              msg = orderList;
               await updateSession({ step: "view_orders" });
+              msg = orderList;
               responseOp = "2";
             }
           }
         }
-        // VIEW ORDERS - Back to menu
-        else if (session.step === "view_orders" || session.step === "no_orders") {
+        // NO ORDERS FOUND - Back handler
+        else if (session.step === "no_orders_found") {
           if (ussdString === "0") {
-            await updateSession({ step: "main_menu" });
-            msg = "Welcome to DataPlug\n\n1. Buy MTN Data\n2. Buy Telecel Data\n3. Buy AT Data\n4. Track Order";
+            await updateSession({ step: "select_network" });
+            msg = "Select network:\n1. MTN\n2. Telecel\n3. AT\n4. Track Order\n0. Back";
             responseOp = "2";
           } else {
-            msg = "Press 0 to go back to menu.";
+            msg = "Invalid option.\n0. Back";
             responseOp = "2";
           }
         }
-        // NO PACKAGES - Back
-        else if (session.step === "no_packages") {
+        // VIEW ORDERS - Back handler
+        else if (session.step === "view_orders") {
           if (ussdString === "0") {
-            await updateSession({ step: "main_menu" });
-            msg = "Welcome to DataPlug\n\n1. Buy MTN Data\n2. Buy Telecel Data\n3. Buy AT Data\n4. Track Order";
+            await updateSession({ step: "select_network" });
+            msg = "Select network:\n1. MTN\n2. Telecel\n3. AT\n4. Track Order\n0. Back";
             responseOp = "2";
           } else {
-            msg = "Press 0 to go back.";
+            msg = "Invalid option.\n0. Back";
             responseOp = "2";
           }
         }
-        // VIEW PACKAGES - Package selection with pagination
+        // STEP 3: View packages with pagination
         else if (session.step === "view_packages") {
           const selection = ussdString;
           const totalPages = Math.ceil(session.packages.length / PACKAGES_PER_PAGE);
           const currentPage = session.current_page || 0;
           
-          if (selection === "98") {
-            // Next page
+          if (selection === "6") {
             const nextPage = currentPage + 1;
             if (nextPage < totalPages) {
               const start = nextPage * PACKAGES_PER_PAGE;
@@ -293,9 +417,9 @@ Deno.serve(async (req) => {
                 packageMenu += `${idx + 1}. ${pkg.size_gb}GB - GHS ${pkg.price.toFixed(2)}\n`;
               });
               
-              packageMenu += `\n97. Previous (${nextPage + 1}/${totalPages})\n`;
+              packageMenu += `7. Prev\n`;
               if (nextPage + 1 < totalPages) {
-                packageMenu += "98. Next\n";
+                packageMenu += "6. Next\n";
               }
               packageMenu += "0. Back";
               
@@ -303,178 +427,119 @@ Deno.serve(async (req) => {
               msg = packageMenu;
               responseOp = "2";
             } else {
-              // Already on last page, show same page
-              const start = currentPage * PACKAGES_PER_PAGE;
-              const pagePackages = session.packages.slice(start, start + PACKAGES_PER_PAGE);
-              
-              let packageMenu = "Select package:\n";
-              pagePackages.forEach((pkg: any, idx: number) => {
-                packageMenu += `${idx + 1}. ${pkg.size_gb}GB - GHS ${pkg.price.toFixed(2)}\n`;
-              });
-              
-              if (currentPage > 0) packageMenu += `\n97. Previous (${currentPage + 1}/${totalPages})\n`;
-              packageMenu += "0. Back";
-              
-              msg = packageMenu;
+              msg = "No more pages.\n0. Back";
               responseOp = "2";
             }
           }
-          else if (selection === "97") {
-            // Previous page
+          else if (selection === "7") {
             const prevPage = currentPage - 1;
             if (prevPage >= 0) {
               const start = prevPage * PACKAGES_PER_PAGE;
-              const pagePackages = session.packages.slice(start, start + PACKAGES_PER_PAGE);
+              const end = start + PACKAGES_PER_PAGE;
+              const pagePackages = session.packages.slice(start, end);
               
               let packageMenu = "Select package:\n";
               pagePackages.forEach((pkg: any, idx: number) => {
                 packageMenu += `${idx + 1}. ${pkg.size_gb}GB - GHS ${pkg.price.toFixed(2)}\n`;
               });
               
-              if (prevPage > 0) packageMenu += `\n97. Previous (${prevPage + 1}/${totalPages})\n`;
-              if (prevPage + 1 < totalPages) packageMenu += "98. Next\n";
+              if (prevPage > 0) packageMenu += `7. Prev\n`;
+              packageMenu += "6. Next\n";
               packageMenu += "0. Back";
               
               await updateSession({ current_page: prevPage });
               msg = packageMenu;
               responseOp = "2";
             } else {
-              // Already on first page
-              const pagePackages = session.packages.slice(0, PACKAGES_PER_PAGE);
-              
-              let packageMenu = "Select package:\n";
-              pagePackages.forEach((pkg: any, idx: number) => {
-                packageMenu += `${idx + 1}. ${pkg.size_gb}GB - GHS ${pkg.price.toFixed(2)}\n`;
-              });
-              
-              if (totalPages > 1) packageMenu += `\n98. Next (1/${totalPages})\n`;
-              packageMenu += "0. Back";
-              
-              msg = packageMenu;
+              msg = "Already first page.\n0. Back";
               responseOp = "2";
             }
           }
           else if (selection === "0") {
-            // Back to main menu
-            await updateSession({ step: "main_menu" });
-            msg = "Welcome to DataPlug\n\n1. Buy MTN Data\n2. Buy Telecel Data\n3. Buy AT Data\n4. Track Order";
+            await updateSession({ step: "select_network" });
+            msg = "Select network:\n1. MTN\n2. Telecel\n3. AT\n4. Track Order\n0. Back";
             responseOp = "2";
           }
           else {
-            // Package selection
             const selectionNum = parseInt(selection);
             const start = currentPage * PACKAGES_PER_PAGE;
             const selectedIndex = start + selectionNum - 1;
             
             if (isNaN(selectionNum) || selectionNum < 1 || selectionNum > PACKAGES_PER_PAGE || selectedIndex >= session.packages.length) {
-              const pagePackages = session.packages.slice(start, start + PACKAGES_PER_PAGE);
-              
-              let packageMenu = "Invalid selection.\nSelect package:\n";
-              pagePackages.forEach((pkg: any, idx: number) => {
-                packageMenu += `${idx + 1}. ${pkg.size_gb}GB - GHS ${pkg.price.toFixed(2)}\n`;
-              });
-              
-              if (currentPage > 0) packageMenu += `\n97. Previous\n`;
-              if (currentPage + 1 < totalPages) packageMenu += "98. Next\n";
-              packageMenu += "0. Back";
-              
-              msg = packageMenu;
+              msg = "Invalid option. Try again.\n0. Back";
               responseOp = "2";
             } else {
               const selectedPackage = session.packages[selectedIndex];
-              console.log(`[USSD] Package selected: ${selectedPackage.size_gb}GB at GHS ${selectedPackage.price}`);
               await updateSession({
                 step: "enter_recipient",
                 package_id: selectedPackage.id,
                 package_price: selectedPackage.price,
                 package_size: selectedPackage.size_gb,
               });
-              msg = "Enter recipient phone number\n(e.g., 024XXXXXXX):";
+              msg = "Enter recipient number\n(e.g., 024XXXXXXX):";
               responseOp = "2";
             }
           }
         }
-        // ENTER RECIPIENT - Phone number input
+        // STEP 4: Enter recipient number - VALIDATE NETWORK MATCHES
         else if (session.step === "enter_recipient") {
           const recipient = ussdString.trim();
           
-          if (recipient === "0") {
-            // Back to package selection
-            const totalPages = Math.ceil(session.packages.length / PACKAGES_PER_PAGE);
-            const currentPage = session.current_page || 0;
-            const start = currentPage * PACKAGES_PER_PAGE;
-            const pagePackages = session.packages.slice(start, start + PACKAGES_PER_PAGE);
-            
-            let packageMenu = "Select package:\n";
-            pagePackages.forEach((pkg: any, idx: number) => {
-              packageMenu += `${idx + 1}. ${pkg.size_gb}GB - GHS ${pkg.price.toFixed(2)}\n`;
-            });
-            
-            if (currentPage > 0) packageMenu += `\n97. Previous\n`;
-            if (currentPage + 1 < totalPages) packageMenu += "98. Next\n";
-            packageMenu += "0. Back";
-            
-            await updateSession({ step: "view_packages" });
-            msg = packageMenu;
-            responseOp = "2";
-          } else if (!recipient.match(/^0[2-9]\d{8}$/)) {
-            msg = "Invalid phone number.\nEnter recipient number\n(e.g., 024XXXXXXX):\n\n0. Back";
+          if (!recipient.match(/^0[2-9]\d{8}$/)) {
+            msg = "Invalid number.\nEnter recipient (e.g., 024XXXXXXX):";
             responseOp = "2";
           } else {
-            await updateSession({
-              step: "confirm_payment",
-              recipient_number: recipient,
-            });
-
-            const fee = session.package_price * (PAYSTACK_FEE_PERCENT / 100);
-            const total = session.package_price + fee;
+            const recipientNetwork = detectNetworkFromPhone(recipient);
+            const selectedNetwork = session.network;
             
-            const displayNetwork = session.network === "mtn" ? "MTN" : 
-                                  session.network === "telecel" ? "Telecel" : "AT";
+            if (recipientNetwork !== selectedNetwork) {
+              const selectedNetworkName = getNetworkDisplayName(selectedNetwork);
+              const recipientNetworkName = recipientNetwork === "unknown" ? "unknown network" : getNetworkDisplayName(recipientNetwork);
+              
+              msg = `This is not a ${selectedNetworkName} number.\nThis looks like ${recipientNetworkName}.\nPlease enter correct number:`;
+              responseOp = "2";
+            } else {
+              await updateSession({
+                step: "confirm_payment",
+                recipient_number: recipient,
+              });
 
-            msg = `Confirm purchase:\n\nPackage: ${session.package_size}GB ${displayNetwork}\nPrice: GHS ${session.package_price.toFixed(2)}\nFee: GHS ${fee.toFixed(2)}\nTotal: GHS ${total.toFixed(2)}\nRecipient: ${recipient}\n\n1. Confirm\n2. Cancel`;
-            responseOp = "2";
+              const fee = session.package_price * (PAYSTACK_FEE_PERCENT / 100);
+              const total = session.package_price + fee;
+              
+              const displayNetwork = session.network === "mtn" ? "MTN" : 
+                                    session.network === "telecel" ? "Telecel" : "AT";
+
+              msg = `Confirm:\n${session.package_size}GB ${displayNetwork}\nGHS ${total.toFixed(2)}\nTo: ${recipient}\n\n1. Pay\n2. Cancel`;
+              responseOp = "2";
+            }
           }
         }
-        // CONFIRM PAYMENT - Process payment
+        // STEP 5: Confirm payment - Initiate Paystack Charge
         else if (session.step === "confirm_payment") {
           if (ussdString === "2") {
-            msg = "Transaction cancelled.\nThank you for using DataPlug!";
-            responseOp = "17";
+            msg = "Cancelled. Thank you!";
+            responseOp = "3";
             await deleteSession();
           } else if (ussdString !== "1") {
-            const fee = session.package_price * (PAYSTACK_FEE_PERCENT / 100);
-            const total = session.package_price + fee;
-            msg = `Invalid option.\n\n1. Confirm (GHS ${total.toFixed(2)})\n2. Cancel`;
+            msg = `Invalid.\n1. Pay\n2. Cancel`;
             responseOp = "2";
           } else {
-            // Process payment
             const fee = session.package_price * (PAYSTACK_FEE_PERCENT / 100);
             const totalWithFee = session.package_price + fee;
             const amountInPesewas = Math.round(totalWithFee * 100);
             const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
             const reference = `USS_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-            // Format phone number to international format (233XXXXXXXXX)
-            let formattedPhone = msisdn;
-            if (msisdn.startsWith("0")) {
-              formattedPhone = "233" + msisdn.substring(1);
-            } else if (msisdn.startsWith("+233")) {
-              formattedPhone = msisdn.substring(1);
-            } else if (msisdn.startsWith("+")) {
-              formattedPhone = msisdn.substring(1);
-            } else if (!msisdn.startsWith("233")) {
-              formattedPhone = "233" + msisdn;
-            }
-            console.log(`[USSD] Formatted phone: ${msisdn} -> ${formattedPhone}`);
-
-            // Provider codes for Ghana Mobile Money USSD Push
-            const providerCodes: Record<string, string> = {
-              "mtn": "mtn",
-              "telecel": "vod",
-              "airteltigo": "tgo"
-            };
-            const provider = providerCodes[session.network] || "mtn";
+            const callerNetwork = session.caller_network || detectNetworkFromPhone(msisdn);
+            const provider = getProviderCode(callerNetwork);
+            const phoneLocal = formatPhoneForPaystack(msisdn);
+            
+            console.log(`[USSD] ===== PAYSTACK CHARGE =====`);
+            console.log(`[USSD] Caller network: ${callerNetwork}`);
+            console.log(`[USSD] Provider code: ${provider}`);
+            console.log(`[USSD] Phone: ${phoneLocal}`);
+            console.log(`[USSD] Amount: ${amountInPesewas} pesewas`);
 
             const metadata: any = {
               type: "ussd_purchase",
@@ -487,13 +552,11 @@ Deno.serve(async (req) => {
               fee_amount: fee,
             };
 
-            const customerEmail = `${formattedPhone}@ussd.dataplug.store`;
+            if (session.agent_store_id) {
+              metadata.agent_store_id = session.agent_store_id;
+            }
 
-            console.log(`[USSD] Initiating Paystack charge:`);
-            console.log(`  - Amount: GHS ${totalWithFee.toFixed(2)} (${amountInPesewas} pesewas)`);
-            console.log(`  - Provider: ${provider}`);
-            console.log(`  - Phone: ${formattedPhone}`);
-            console.log(`  - Reference: ${reference}`);
+            const customerEmail = `233${phoneLocal.substring(1)}@ussd.dataplug.store`;
 
             try {
               const chargePayload = {
@@ -502,7 +565,7 @@ Deno.serve(async (req) => {
                 currency: "GHS",
                 reference: reference,
                 mobile_money: {
-                  phone: formattedPhone,
+                  phone: phoneLocal,
                   provider: provider
                 },
                 metadata: metadata,
@@ -523,52 +586,44 @@ Deno.serve(async (req) => {
               console.log(`[USSD] Paystack response:`, JSON.stringify(result));
 
               if (!result.status) {
-                console.error(`[USSD] Paystack charge failed:`, result);
-                msg = `Payment failed.\n${result.message || "Please try again."}\n\nThank you!`;
-                responseOp = "17";
+                console.error(`[USSD] Paystack failed:`, result);
+                msg = `Failed: ${result.message || "Try again"}`;
+                responseOp = "3";
                 await deleteSession();
               } else {
-                const chargeStatus = result.data?.status;
-                console.log(`[USSD] Charge status: ${chargeStatus}`);
-                
-                // Store reference for webhook
-                await updateSession({
-                  step: "payment_pending",
-                  payment_reference: result.data?.reference || reference,
-                  payment_initiated_at: Date.now(),
-                });
-
-                // Show payment instructions to user
-                msg = `A payment prompt will be sent to your phone shortly.\n\nIf the prompt does not appear:\nDial *170#\n> Select Wallet\n> Choose My Approvals\n> Approve the transaction.\n\nThank you for using DataPlug!`;
-                responseOp = "17";
+                // Payment initiated - tell user to approve
+                // For ALL networks, the payment goes to pending approvals
+                const approvalSteps = getApprovalInstructions(callerNetwork);
+                msg = `Payment sent!\n\nApprove at:\n${approvalSteps}`;
+                responseOp = "3";
                 await deleteSession();
               }
             } catch (paystackError) {
               console.error(`[USSD] Paystack error:`, paystackError);
-              msg = "Payment service unavailable.\nPlease try again later.";
-              responseOp = "17";
+              msg = "Service unavailable. Try again.";
+              responseOp = "3";
               await deleteSession();
             }
           }
         }
         else {
-          msg = "Session expired.\nPlease dial again.";
-          responseOp = "17";
+          msg = "Session expired. Dial again.";
+          responseOp = "3";
           await deleteSession();
         }
       }
     }
     else {
-      msg = "An error occurred.\nPlease try again.";
-      responseOp = "17";
+      msg = "Error. Please try again.";
+      responseOp = "3";
     }
 
-    console.log(`[USSD] Sending response - sessionID: "${sessionID}", op: ${responseOp}`);
+    console.log(`[USSD] Response - op: ${responseOp}, msg: ${msg.substring(0, 50)}...`);
     return sendResponse(sessionID, msg, responseOp, corsHeaders);
 
   } catch (err) {
     console.error("[USSD] Fatal error:", err);
-    return sendResponse("", "Service unavailable.\nPlease try again later.", "17", corsHeaders);
+    return sendResponse("", "Service unavailable.", "3", corsHeaders);
   }
 });
 
