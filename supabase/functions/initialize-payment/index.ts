@@ -364,53 +364,58 @@ Deno.serve(async (req) => {
           .from("subagent_package_prices")
           .select("sell_price")
           .eq("subagent_store_id", metadata.subagent_store_id)
-          .eq("package_id", metadata.package_id)
-          .single(),
-        supabaseClient
-          .from("subagent_stores")
-          .select("agent_store_id")
-          .eq("id", metadata.subagent_store_id)
-          .single()
+          .eq("package_id", metadata.package_id),
       ]);
 
-      const subagentPrice = subagentPriceResult.data;
-      const subagentStore = subagentStoreResult.data;
+      const subagentPrices = subagentPriceResult.data;
+      const subagentPrice = subagentPrices && subagentPrices.length > 0 ? subagentPrices[0] : null;
 
       if (subagentPrice?.sell_price != null) {
         baseAmount = Number(subagentPrice.sell_price);
         priceType = "subagent_sell_price";
         console.log(`Using subagent's sell_price: ${baseAmount}`);
-      } else if (subagentStore?.agent_store_id) {
-        // Fall back to agent's sell_price
-        const { data: agentPrice } = await supabaseClient
-          .from("agent_package_prices")
-          .select("sell_price")
-          .eq("agent_store_id", subagentStore.agent_store_id)
-          .eq("package_id", metadata.package_id)
+      } else {
+        // No custom subagent price - fall back to agent price or admin price
+        const { data: subagentStoreData } = await supabaseClient
+          .from("subagent_stores")
+          .select("agent_store_id")
+          .eq("id", metadata.subagent_store_id)
           .single();
 
-        if (agentPrice?.sell_price != null) {
-          baseAmount = Number(agentPrice.sell_price);
-          priceType = "agent_sell_price_fallback";
-          console.log(`Using agent's sell_price as fallback: ${baseAmount}`);
+        if (subagentStoreData?.agent_store_id) {
+          // Try to get agent's sell_price
+          const { data: agentPrices } = await supabaseClient
+            .from("agent_package_prices")
+            .select("sell_price")
+            .eq("agent_store_id", subagentStoreData.agent_store_id)
+            .eq("package_id", metadata.package_id);
+
+          const agentPrice = agentPrices && agentPrices.length > 0 ? agentPrices[0] : null;
+
+          if (agentPrice?.sell_price != null) {
+            baseAmount = Number(agentPrice.sell_price);
+            priceType = "agent_sell_price_fallback";
+            console.log(`Using agent's sell_price as fallback: ${baseAmount}`);
+          } else {
+            baseAmount = Number(packageData.price);
+            priceType = "admin_user_price";
+            console.log(`Using admin base price (no agent price): ${baseAmount}`);
+          }
         } else {
           baseAmount = Number(packageData.price);
           priceType = "admin_user_price";
-          console.log(`Using admin base price: ${baseAmount}`);
+          console.log(`Using admin base price (no agent store): ${baseAmount}`);
         }
-      } else {
-        baseAmount = Number(packageData.price);
-        priceType = "admin_user_price";
-        console.log(`Using admin base price: ${baseAmount}`);
       }
     } else if (metadata.agent_store_id) {
       // Agent store purchase - use agent's sell_price
-      const { data: agentPrice } = await supabaseClient
+      const { data: agentPrices } = await supabaseClient
         .from("agent_package_prices")
         .select("sell_price")
         .eq("agent_store_id", metadata.agent_store_id)
-        .eq("package_id", metadata.package_id)
-        .single();
+        .eq("package_id", metadata.package_id);
+
+      const agentPrice = agentPrices && agentPrices.length > 0 ? agentPrices[0] : null;
 
       if (agentPrice?.sell_price != null) {
         baseAmount = Number(agentPrice.sell_price);
@@ -419,7 +424,7 @@ Deno.serve(async (req) => {
       } else {
         baseAmount = Number(packageData.price);
         priceType = "admin_user_price";
-        console.log(`Using admin base price: ${baseAmount}`);
+        console.log(`Using admin base price (no agent price): ${baseAmount}`);
       }
     } else {
       // Direct purchase from main site - use admin's base price

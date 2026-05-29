@@ -72,6 +72,7 @@ const PaymentDialog = ({
   const [phone, setPhone] = useState(phoneNumber || "");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Support both prop patterns
   const isDialogOpen = open ?? isOpen ?? false;
@@ -177,6 +178,9 @@ const PaymentDialog = ({
   };
 
   const handlePay = async () => {
+    // Clear any previous errors
+    setPaymentError(null);
+    
     // Debug logging to identify issues with specific stores
     console.log("[v0] PaymentDialog handlePay called with:", {
       actualPackageId,
@@ -191,9 +195,11 @@ const PaymentDialog = ({
     // Validate package ID before proceeding
     if (!actualPackageId) {
       console.error("[v0] Payment failed: No package ID", { packageId, pkg });
+      const errorMsg = "Invalid package selected. Please try again.";
+      setPaymentError(errorMsg);
       toast({
         title: "Error",
-        description: "Invalid package selected. Please try again.",
+        description: errorMsg,
         variant: "destructive",
       });
       return;
@@ -202,9 +208,11 @@ const PaymentDialog = ({
     // Validate price is not 0 or undefined
     if (!price || price <= 0) {
       console.error("[v0] Payment failed: Invalid price", { price });
+      const errorMsg = "Package price not loaded. Please close this dialog and try again.";
+      setPaymentError(errorMsg);
       toast({
         title: "Error",
-        description: "Package price not loaded. Please close this dialog and try again.",
+        description: errorMsg,
         variant: "destructive",
       });
       return;
@@ -216,9 +224,11 @@ const PaymentDialog = ({
     const timeoutId = setTimeout(() => {
       console.error("[v0] Payment timeout - request took too long");
       setLoading(false);
+      const errorMsg = "The payment request is taking too long. Please try again.";
+      setPaymentError(errorMsg);
       toast({
         title: "Payment Timeout",
-        description: "The payment request is taking too long. Please try again.",
+        description: errorMsg,
         variant: "destructive",
       });
     }, 30000); // 30 second timeout
@@ -273,6 +283,8 @@ const PaymentDialog = ({
 
       if (error) {
         console.error("[v0] Payment error from edge function:", error);
+        const errorMsg = error.message || "Failed to initialize payment. Please try again.";
+        setPaymentError(errorMsg);
         throw error;
       }
 
@@ -283,14 +295,19 @@ const PaymentDialog = ({
         // This ensures UI shows "Processing..." during redirect
         window.location.replace(data.authorization_url);
       } else {
+        const errorMsg = data?.error || "Failed to get payment URL from Paystack - no authorization URL returned";
         console.error("[v0] No authorization URL in response:", data);
-        throw new Error(data?.error || "Failed to get payment URL from Paystack - no authorization URL returned");
+        setPaymentError(errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
+      const errorMsg = err.message || "Something went wrong. Please try again.";
+      setPaymentError(errorMsg);
+      console.error("[v0] Payment error:", err);
       toast({
         title: "Payment Error",
-        description: err.message || "Something went wrong. Please try again.",
+        description: errorMsg,
         variant: "destructive",
       });
       setLoading(false);
@@ -443,6 +460,13 @@ const PaymentDialog = ({
                   <ShieldCheck className="h-4 w-4 flex-shrink-0" />
                   ⚠️ Make sure you are not owing on your contact. ⚠️
                 </div>
+
+                {paymentError && (
+                  <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded p-3">
+                    <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-700">{paymentError}</p>
+                  </div>
+                )}
 
                 <div className="flex gap-3">
                   <Button
