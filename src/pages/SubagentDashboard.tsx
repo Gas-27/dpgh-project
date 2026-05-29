@@ -40,6 +40,7 @@ interface SubagentStore {
   store_headline?: string;
   whatsapp_group?: string;
   show_whatsapp_group_icon?: boolean;
+  topup_reference?: string;
 }
 
 interface Order {
@@ -1301,6 +1302,29 @@ const SubagentDashboard = () => {
                   </div>
                   <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                 </div>
+                {/* Topup Reference Code */}
+                {subagentStore?.topup_reference && (
+                  <div className="mt-4 pt-4 border-t border-yellow-500/20">
+                    <p className="text-xs text-muted-foreground mb-2">Your USSD Reference Code</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 p-3 bg-secondary/50 rounded-lg border border-border font-mono font-bold text-center text-primary text-xl">
+                        {subagentStore.topup_reference}
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-12"
+                        onClick={() => {
+                          navigator.clipboard.writeText(subagentStore.topup_reference || "");
+                          toast({ title: "Copied!", description: "Reference code copied to clipboard" });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">Share this code with your customers for USSD purchases</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -1926,7 +1950,7 @@ const SubagentDashboard = () => {
                               const results: typeof bulkResults = [];
                               let totalDeducted = 0;
                               
-                              // Get fresh wallet balance
+                              // Get fresh wallet balance from database
                               const { data: freshStore } = await supabase
                                 .from("subagent_stores")
                                 .select("wallet_balance")
@@ -1934,6 +1958,29 @@ const SubagentDashboard = () => {
                                 .single();
                               
                               const currentBalance = freshStore?.wallet_balance || 0;
+                              
+                              // Check if we have enough balance
+                              if (currentBalance < totalCost) {
+                                toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
+                                setBulkProcessing(false);
+                                return;
+                              }
+                              
+                              // First deduct the total amount from wallet to prevent race conditions
+                              const newBalance = currentBalance - totalCost;
+                              const { error: walletError } = await supabase
+                                .from("subagent_stores")
+                                .update({ wallet_balance: newBalance })
+                                .eq("id", subagentStore.id);
+                              
+                              if (walletError) {
+                                toast({ title: "Error", description: "Failed to process payment", variant: "destructive" });
+                                setBulkProcessing(false);
+                                return;
+                              }
+                              
+                              // Update local state immediately
+                              setSubagentStore(prev => prev ? { ...prev, wallet_balance: newBalance } : prev);
                               
                               for (const recipient of parsed) {
                                 const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === recipient.size);
@@ -1945,22 +1992,36 @@ const SubagentDashboard = () => {
                                 const price = basePrices[pkg.id] ?? pkg.price;
                                 
                                 try {
-                                  // Create order
-                                  const { error: orderError } = await supabase.from("orders").insert({
+                                  // Create order with agent_store_id for tracking
+                                  const { data: orderData, error: orderError } = await supabase.from("orders").insert({
                                     package_id: pkg.id,
                                     subagent_store_id: subagentStore.id,
+                                    agent_store_id: subagentStore.agent_store_id,
                                     customer_number: recipient.phone,
                                     network: bulkNetwork,
                                     size_gb: recipient.size,
                                     amount: price,
                                     base_price: price,
                                     selling_price: price,
+                                    profit: 0,
                                     payment_method: "wallet",
                                     status: "paid",
                                     fulfillment_status: "pending"
-                                  });
+                                  }).select("id").single();
                                   
                                   if (orderError) throw orderError;
+                                  
+                                  // Trigger fulfillment for each order
+                                  if (orderData?.id) {
+                                    try {
+                                      await supabase.functions.invoke("fulfill-order", {
+                                        body: { order_id: orderData.id }
+                                      });
+                                    } catch (fulfillErr) {
+                                      console.error("Fulfillment trigger error:", fulfillErr);
+                                    }
+                                  }
+                                  
                                   totalDeducted += price;
                                   results.push({ phone: recipient.phone, size: recipient.size || 0, status: "success" });
                                 } catch (err: any) {
@@ -1968,11 +2029,17 @@ const SubagentDashboard = () => {
                                 }
                               }
                               
-                              // Deduct total from wallet
-                              if (totalDeducted > 0) {
-                                const newBalance = currentBalance - totalDeducted;
-                                await supabase.from("subagent_stores").update({ wallet_balance: newBalance }).eq("id", subagentStore.id);
-                                setSubagentStore(prev => prev ? { ...prev, wallet_balance: newBalance } : prev);
+                              // If some orders failed, refund the difference
+                              const actualDeducted = results.filter(r => r.status === "success").reduce((sum, r) => {
+                                const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
+                                return sum + (pkg ? (basePrices[pkg.id] ?? pkg.price) : 0);
+                              }, 0);
+                              
+                              const refundAmount = totalCost - actualDeducted;
+                              if (refundAmount > 0) {
+                                const refundedBalance = newBalance + refundAmount;
+                                await supabase.from("subagent_stores").update({ wallet_balance: refundedBalance }).eq("id", subagentStore.id);
+                                setSubagentStore(prev => prev ? { ...prev, wallet_balance: refundedBalance } : prev);
                               }
                               
                               setBulkResults(results);

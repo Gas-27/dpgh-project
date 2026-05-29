@@ -117,6 +117,7 @@ export type Database = {
           approved: boolean | null
           allow_registration: boolean
           suspended: boolean
+          topup_reference: string | null
           created_at: string | null
         }
         Insert: {
@@ -134,6 +135,7 @@ export type Database = {
           approved?: boolean | null
           allow_registration?: boolean
           suspended?: boolean
+          topup_reference?: string | null
           created_at?: string | null
         }
         Update: {
@@ -151,6 +153,7 @@ export type Database = {
           approved?: boolean | null
           allow_registration?: boolean
           suspended?: boolean
+          topup_reference?: string | null
           created_at?: string | null
         }
         Relationships: [

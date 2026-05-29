@@ -217,11 +217,13 @@ Deno.serve(async (req) => {
         
         // STEP 1: Enter agent code
         if (session.step === "enter_access_code") {
-          const agentCode = ussdString.trim();
+          const agentCode = ussdString.trim().toUpperCase();
           console.log(`[USSD] Processing agent code: "${agentCode}"`);
           let agentStoreId: string | null = null;
+          let subagentStoreId: string | null = null;
 
           if (agentCode !== "0") {
+            // First check agent_stores for the code
             const { data: agent, error: agentError } = await supabase
               .from("agent_stores")
               .select("id")
@@ -229,18 +231,35 @@ Deno.serve(async (req) => {
               .eq("approved", true)
               .single();
 
-            if (agentError || !agent) {
-              msg = "Invalid code.\nEnter a valid code:";
-              responseOp = "2";
-              await updateSession({ step: "enter_access_code" });
-              return sendResponse(sessionID, msg, responseOp, corsHeaders);
+            if (!agentError && agent) {
+              agentStoreId = agent.id;
+              console.log(`[USSD] Found agent store: ${agentStoreId}`);
+            } else {
+              // If not found in agent_stores, check subagent_stores
+              const { data: subagent, error: subagentError } = await supabase
+                .from("subagent_stores")
+                .select("id, agent_store_id")
+                .eq("topup_reference", agentCode)
+                .eq("approved", true)
+                .single();
+
+              if (!subagentError && subagent) {
+                subagentStoreId = subagent.id;
+                agentStoreId = subagent.agent_store_id; // Get parent agent for pricing
+                console.log(`[USSD] Found subagent store: ${subagentStoreId}, parent agent: ${agentStoreId}`);
+              } else {
+                msg = "Invalid code.\nEnter a valid code:";
+                responseOp = "2";
+                await updateSession({ step: "enter_access_code" });
+                return sendResponse(sessionID, msg, responseOp, corsHeaders);
+              }
             }
-            agentStoreId = agent.id;
           }
 
           await updateSession({
             step: "select_network",
             agent_store_id: agentStoreId,
+            subagent_store_id: subagentStoreId,
           });
 
           msg = "Select network:\n1. MTN\n2. Telecel\n3. AT\n4. Track Order\n0. Back";
