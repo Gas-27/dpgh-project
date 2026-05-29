@@ -90,9 +90,10 @@ const SubagentDashboard = () => {
     // Check URL params first (for cross-domain admin impersonation)
     const urlParams = new URLSearchParams(window.location.search);
     const adminToken = urlParams.get("admin_token");
-    if (adminToken) {
-      try {
-        const decoded = JSON.parse(atob(adminToken));
+  if (adminToken) {
+  try {
+  // Decode URI component first, then parse JSON (to handle non-Latin1 characters)
+  const decoded = JSON.parse(decodeURIComponent(atob(adminToken)));
         // Token is valid for 1 hour
         if (decoded.timestamp && Date.now() - decoded.timestamp < 3600000) {
           // Store in localStorage for subsequent navigations and remove from URL
@@ -2459,6 +2460,7 @@ const SubagentDashboard = () => {
                 supportNumber={subagentStore.support_number || ""}
                 packages={packages}
                 agentPrices={subagentPrices}
+                topupReference={subagentStore.topup_reference || ""}
               />
             )}
           </TabsContent>

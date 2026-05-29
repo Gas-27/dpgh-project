@@ -26,6 +26,7 @@ interface FlyerGeneratorProps {
     supportNumber: string;
     packages: DataPackage[];
     agentPrices: Record<string, number>;
+    topupReference?: string;
 }
 
 // Default colors matching the agent flyer
@@ -47,6 +48,7 @@ const FlyerGenerator = ({
     supportNumber,
     packages,
     agentPrices,
+    topupReference,
 }: FlyerGeneratorProps) => {
     const { toast } = useToast();
     const flyerRef = useRef<HTMLDivElement>(null);
@@ -60,8 +62,9 @@ const FlyerGenerator = ({
     const [shareText, setShareText] = useState("");
 
     useEffect(() => {
-        setShareText(`🎉 Get the best data deals from ${storeName}!\n\n📱 MTN • AirtelTigo • Telecel\n💨 Instant delivery • 24/7 Support\n\nVisit: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
-    }, [storeName, storeUrl, whatsappNumber]);
+        const ussdText = topupReference ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${topupReference}` : "";
+        setShareText(`🎉 Get the best data deals from ${storeName}!\n\n📱 MTN • AirtelTigo • Telecel\n💨 Instant delivery • 24/7 Support${ussdText}\n\nVisit: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
+    }, [storeName, storeUrl, whatsappNumber, topupReference]);
 
     // Calculate scale to fit container
     useEffect(() => {
@@ -424,6 +427,20 @@ const FlyerGenerator = ({
                             <span style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Chat on WhatsApp</span>
                         </div>
                     </div>
+
+                    {/* USSD Section */}
+                    {topupReference && (
+                        <div style={{ margin: "0 20px 16px", background: "linear-gradient(135deg, #1e3a5f 0%, #0d2137 100%)", borderRadius: 14, padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "center", gap: 24, border: "2px solid #3b82f680" }}>
+                            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
+                            </div>
+                            <div style={{ textAlign: "center" }}>
+                                <div style={{ fontSize: 14, color: "#93c5fd", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>Buy Data via USSD</div>
+                                <div style={{ fontSize: 36, fontWeight: 900, color: "#fff", marginTop: 4, fontFamily: "monospace" }}>*380*455#</div>
+                                <div style={{ fontSize: 14, color: "#93c5fd", marginTop: 4 }}>Access Code: <span style={{ fontWeight: 900, color: "#fbbf24", fontSize: 18, fontFamily: "monospace" }}>{topupReference}</span></div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Store URL */}
                     <div style={{ textAlign: "center", paddingBottom: 24, fontSize: 16, color: "#444" }}>

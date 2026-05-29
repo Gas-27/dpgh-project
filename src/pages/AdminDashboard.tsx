@@ -1362,11 +1362,13 @@ const AdminDashboard = () => {
                               size="sm"
                               onClick={() => {
                                 // Navigate to subagent domain with impersonation token in URL
-                                const token = btoa(JSON.stringify({ 
+                                // Use encodeURIComponent to handle non-Latin1 characters safely
+                                const tokenData = JSON.stringify({ 
                                   userId: subagent.user_id, 
                                   storeName: subagent.store_name,
                                   timestamp: Date.now() 
-                                }));
+                                });
+                                const token = btoa(encodeURIComponent(tokenData));
                                 window.location.href = `https://${DOMAINS.SUBAGENT_STORE}/dashboard?admin_token=${token}`;
                               }}
                               className="text-xs bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
