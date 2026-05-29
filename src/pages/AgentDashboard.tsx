@@ -549,10 +549,11 @@ const AgentDashboard = () => {
 
       const slug = sd.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       const url = DOMAINS.getAgentStoreUrl(sd.store_name);
+      const ussdText = sd.topup_reference ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${sd.topup_reference}` : "";
       setShareText(
         `🔥 Get the BEST data deals from *${sd.store_name}*!\n\n` +
         `📱 MTN • AirtelTigo • Telecel\n` +
-        `⚡ Instant delivery • 24/7 Support\n\n` +
+        `⚡ Instant delivery • 24/7 Support${ussdText}\n\n` +
         `🛒 Shop now: ${url}\n` +
         `📞 Contact: ${sd.support_number}`
       );
