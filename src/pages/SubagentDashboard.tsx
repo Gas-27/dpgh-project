@@ -1020,9 +1020,11 @@ const SubagentDashboard = () => {
   // Calculate total topups
   const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
   
-  // Wallet balance ONLY includes completed withdrawals (deducted from DB)
-  // Pending withdrawals are held but not yet deducted
-  const calculatedWalletBalance = totalProfit + totalTopups - completedWithdrawals;
+  // Wallet purchases from buy data and bulk order sections
+  const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
+  
+  // Wallet balance = Profit + Topups - Completed Withdrawals - Wallet Purchases
+  const calculatedWalletBalance = totalProfit + totalTopups - completedWithdrawals - walletPurchases;
   // Prefer database value as it's synced correctly
   const availableWalletBalance = subagentStore?.wallet_balance !== undefined && subagentStore?.wallet_balance !== null 
     ? Number(subagentStore.wallet_balance) 
