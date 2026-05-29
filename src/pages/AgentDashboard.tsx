@@ -41,12 +41,12 @@ import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/ph
 // ==================== INTERFACES ====================
 interface AgentStore {
   id: string; store_name: string; whatsapp_number: string; support_number: string;
-  whatsapp_group: string | null; show_whatsapp_group_icon: boolean;
+  whatsapp_group: string | null; show_whatsapp_group_icon: boolean; show_ussd_on_storefront: boolean;
   momo_number: string; momo_name: string; momo_network: string; approved: boolean;
   wallet_balance: number; topup_reference: string; store_headline: string;
   tutorial_video_url: string | null; allow_subagent_registration?: boolean;
   theme_config: { primary: string; primary_foreground: string; background: string; card_background: string; gridColumns: number; };
-}
+  }
 interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; active: boolean; }
 interface Order { id: string; customer_number: string; network: string; size_gb: number; amount: number; status: string; fulfillment_status: string; payment_method: string; created_at: string; package_id: string; }
 interface WithdrawalRequest { id: string; amount: number; status: string; created_at: string; }
@@ -292,9 +292,9 @@ const AgentDashboard = () => {
   const [editingStore, setEditingStore] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
   const [storeForm, setStoreForm] = useState({
-    store_name: "", whatsapp_number: "", support_number: "",
-    whatsapp_group: "", show_whatsapp_group_icon: true,
-    momo_number: "", momo_name: "", momo_network: "",
+  store_name: "", whatsapp_number: "", support_number: "",
+  whatsapp_group: "", show_whatsapp_group_icon: true, show_ussd_on_storefront: true,
+  momo_number: "", momo_name: "", momo_network: "",
   });
   const [savingStore, setSavingStore] = useState(false);
   const [profitStats, setProfitStats] = useState<ProfitStats>({ totalRevenue: 0, totalCost: 0, totalProfit: 0, availableForWithdrawal: 0 });
@@ -476,19 +476,21 @@ const AgentDashboard = () => {
     if (!effectiveUserId) return;
     const { data: sd, error: se } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
     if (se) { console.error(se); setLoading(false); return; }
-    if (sd) {
-      if (sd.show_whatsapp_group_icon == null) { sd.show_whatsapp_group_icon = true; await supabase.from("agent_stores").update({ show_whatsapp_group_icon: true }).eq("id", sd.id); }
-      if (!sd.store_headline) { sd.store_headline = `Get the best data deals from ${sd.store_name}. Select your network and package below`; await supabase.from("agent_stores").update({ store_headline: sd.store_headline }).eq("id", sd.id); }
+  if (sd) {
+  if (sd.show_whatsapp_group_icon == null) { sd.show_whatsapp_group_icon = true; await supabase.from("agent_stores").update({ show_whatsapp_group_icon: true }).eq("id", sd.id); }
+  if (sd.show_ussd_on_storefront == null) { sd.show_ussd_on_storefront = true; await supabase.from("agent_stores").update({ show_ussd_on_storefront: true }).eq("id", sd.id); }
+  if (!sd.store_headline) { sd.store_headline = `Get the best data deals from ${sd.store_name}. Select your network and package below`; await supabase.from("agent_stores").update({ store_headline: sd.store_headline }).eq("id", sd.id); }
       setStore(sd as AgentStore);
       setStoreHeadline(sd.store_headline || "");
       if (sd.theme_config) setThemeColors({ ...DEFAULT_THEME, ...sd.theme_config });
       else { await supabase.from("agent_stores").update({ theme_config: DEFAULT_THEME }).eq("id", sd.id); setThemeColors(DEFAULT_THEME); }
-      setStoreForm({
-        store_name: sd.store_name, whatsapp_number: sd.whatsapp_number,
-        support_number: sd.support_number, whatsapp_group: sd.whatsapp_group || "",
-        show_whatsapp_group_icon: sd.show_whatsapp_group_icon ?? true,
-        momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
-      });
+  setStoreForm({
+  store_name: sd.store_name, whatsapp_number: sd.whatsapp_number,
+  support_number: sd.support_number, whatsapp_group: sd.whatsapp_group || "",
+  show_whatsapp_group_icon: sd.show_whatsapp_group_icon ?? true,
+  show_ussd_on_storefront: sd.show_ussd_on_storefront ?? true,
+  momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
+  });
 
       const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
@@ -781,16 +783,17 @@ const AgentDashboard = () => {
   };
 
   const saveStoreInfo = async () => {
-    if (!store) return; setSavingStore(true);
-    const { error } = await supabase.from("agent_stores").update({
-      store_name: storeForm.store_name, whatsapp_number: storeForm.whatsapp_number,
-      support_number: storeForm.support_number, whatsapp_group: storeForm.whatsapp_group || null,
-      show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon,
-      momo_number: storeForm.momo_number, momo_name: storeForm.momo_name, momo_network: storeForm.momo_network,
-    }).eq("id", store.id);
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else { setStore({ ...store, ...storeForm, whatsapp_group: storeForm.whatsapp_group || null }); setEditingStore(false); toast({ title: "Store updated!" }); }
-    setSavingStore(false);
+  if (!store) return; setSavingStore(true);
+  const { error } = await supabase.from("agent_stores").update({
+  store_name: storeForm.store_name, whatsapp_number: storeForm.whatsapp_number,
+  support_number: storeForm.support_number, whatsapp_group: storeForm.whatsapp_group || null,
+  show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon,
+  show_ussd_on_storefront: storeForm.show_ussd_on_storefront,
+  momo_number: storeForm.momo_number, momo_name: storeForm.momo_name, momo_network: storeForm.momo_network,
+  }).eq("id", store.id);
+  if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+  else { setStore({ ...store, ...storeForm, whatsapp_group: storeForm.whatsapp_group || null }); setEditingStore(false); toast({ title: "Store updated!" }); }
+  setSavingStore(false);
   };
 
   const openBuyDialog = (pkg: DataPackage) => { setBuyPkg(pkg); setBuyPhone(""); setBuyStep("phone"); setBuyPaymentMethod("wallet"); setBuyDialogOpen(true); };
@@ -1253,11 +1256,11 @@ const AgentDashboard = () => {
                       variant="outline" 
                       size="sm"
                       onClick={() => {
-                        navigator.clipboard.writeText(`Dial *380*455# and enter access code: ${store.topup_reference}`);
-                        toast({ title: "Copied!", description: "USSD info copied to clipboard" });
+                        navigator.clipboard.writeText("*380*455#");
+                        toast({ title: "Copied!", description: "USSD code copied to clipboard" });
                       }}
                     >
-                      <Copy className="h-4 w-4 mr-2" /> Copy USSD Info
+                      <Copy className="h-4 w-4 mr-2" /> Copy USSD Code
                     </Button>
                   </div>
                 </CardContent>
@@ -1957,7 +1960,7 @@ const AgentDashboard = () => {
 
           {/* ============================= SETTINGS ============================= */}
           <TabsContent value="settings" className="mt-0">
-            <Card className="border-border"><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="font-display">Store Information</CardTitle>{!editingStore && <Button variant="outline" size="sm" onClick={() => setEditingStore(true)}><Edit2 className="h-4 w-4 mr-1" />Edit</Button>}</CardHeader><CardContent className="space-y-4">{editingStore ? (<><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div><div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={e => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div><div className="space-y-2"><Label>Support Number <span className="text-xs text-primary font-normal">(shown on flyer footer)</span></Label><Input value={storeForm.support_number} onChange={e => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>WhatsApp Group / Channel Link</Label><div className="flex items-center gap-2"><Label htmlFor="show-group-icon" className="text-sm text-muted-foreground cursor-pointer">Show join icon on storefront</Label><Switch id="show-group-icon" checked={storeForm.show_whatsapp_group_icon} onCheckedChange={c => setStoreForm({ ...storeForm, show_whatsapp_group_icon: c })} /></div></div><Input value={storeForm.whatsapp_group} onChange={e => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Paste the WhatsApp link here" /><p className="text-xs text-muted-foreground">{storeForm.show_whatsapp_group_icon ? "✅ A WhatsApp join icon will appear on your storefront." : "❌ The join icon will be hidden."}</p></div><div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={e => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Number</Label><Input value={storeForm.momo_number} onChange={e => setStoreForm({ ...storeForm, momo_number: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Network</Label><Input value={storeForm.momo_network} onChange={e => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" /></div></div><div className="flex gap-2 pt-2"><Button variant="hero" size="sm" onClick={saveStoreInfo} disabled={savingStore}><Save className="h-4 w-4 mr-1" />{savingStore ? "Saving..." : "Save Changes"}</Button><Button variant="outline" size="sm" onClick={() => setEditingStore(false)}>Cancel</Button></div></>) : (<div className="grid grid-cols-2 gap-4 text-sm"><div><p className="text-muted-foreground">Store Name</p><p className="font-semibold">{store?.store_name}</p></div><div><p className="text-muted-foreground">WhatsApp</p><p className="font-semibold">{store?.whatsapp_number}</p></div><div><p className="text-muted-foreground">Support Number</p><p className="font-semibold">{store?.support_number}</p></div><div><p className="text-muted-foreground">WhatsApp Group</p><p className="font-semibold">{store?.whatsapp_group || "Not set"}</p></div><div><p className="text-muted-foreground">Show Group Icon</p><p className="font-semibold">{store?.show_whatsapp_group_icon !== false ? "Yes (default)" : "No"}</p></div><div><p className="text-muted-foreground">MoMo Name</p><p className="font-semibold">{store?.momo_name}</p></div><div><p className="text-muted-foreground">MoMo Number</p><p className="font-semibold">{store?.momo_number}</p></div><div><p className="text-muted-foreground">MoMo Network</p><p className="font-semibold">{store?.momo_network?.toUpperCase()}</p></div><div className="col-span-2"><p className="text-muted-foreground">Topup Reference</p><p className="font-display text-xl font-bold text-primary">{store?.topup_reference}</p></div></div>)}</CardContent></Card>
+            <Card className="border-border"><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="font-display">Store Information</CardTitle>{!editingStore && <Button variant="outline" size="sm" onClick={() => setEditingStore(true)}><Edit2 className="h-4 w-4 mr-1" />Edit</Button>}</CardHeader><CardContent className="space-y-4">{editingStore ? (<><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div><div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={e => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div><div className="space-y-2"><Label>Support Number <span className="text-xs text-primary font-normal">(shown on flyer footer)</span></Label><Input value={storeForm.support_number} onChange={e => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>WhatsApp Group / Channel Link</Label><div className="flex items-center gap-2"><Label htmlFor="show-group-icon" className="text-sm text-muted-foreground cursor-pointer">Show join icon on storefront</Label><Switch id="show-group-icon" checked={storeForm.show_whatsapp_group_icon} onCheckedChange={c => setStoreForm({ ...storeForm, show_whatsapp_group_icon: c })} /></div></div><Input value={storeForm.whatsapp_group} onChange={e => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Paste the WhatsApp link here" /><p className="text-xs text-muted-foreground">{storeForm.show_whatsapp_group_icon ? "The WhatsApp join icon will appear on your storefront." : "The join icon will be hidden."}</p></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>USSD Access Code</Label><div className="flex items-center gap-2"><Label htmlFor="show-ussd" className="text-sm text-muted-foreground cursor-pointer">Show USSD on storefront</Label><Switch id="show-ussd" checked={storeForm.show_ussd_on_storefront} onCheckedChange={c => setStoreForm({ ...storeForm, show_ussd_on_storefront: c })} /></div></div><p className="text-xs text-muted-foreground">{storeForm.show_ussd_on_storefront ? "The USSD code (*380*455#) and your access code will be displayed on your storefront." : "USSD information will be hidden from your storefront."}</p></div><div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={e => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Number</Label><Input value={storeForm.momo_number} onChange={e => setStoreForm({ ...storeForm, momo_number: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Network</Label><Input value={storeForm.momo_network} onChange={e => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" /></div></div><div className="flex gap-2 pt-2"><Button variant="hero" size="sm" onClick={saveStoreInfo} disabled={savingStore}><Save className="h-4 w-4 mr-1" />{savingStore ? "Saving..." : "Save Changes"}</Button><Button variant="outline" size="sm" onClick={() => setEditingStore(false)}>Cancel</Button></div></>) : (<div className="grid grid-cols-2 gap-4 text-sm"><div><p className="text-muted-foreground">Store Name</p><p className="font-semibold">{store?.store_name}</p></div><div><p className="text-muted-foreground">WhatsApp</p><p className="font-semibold">{store?.whatsapp_number}</p></div><div><p className="text-muted-foreground">Support Number</p><p className="font-semibold">{store?.support_number}</p></div><div><p className="text-muted-foreground">WhatsApp Group</p><p className="font-semibold">{store?.whatsapp_group || "Not set"}</p></div><div><p className="text-muted-foreground">Show Group Icon</p><p className="font-semibold">{store?.show_whatsapp_group_icon !== false ? "Yes (default)" : "No"}</p></div><div><p className="text-muted-foreground">MoMo Name</p><p className="font-semibold">{store?.momo_name}</p></div><div><p className="text-muted-foreground">MoMo Number</p><p className="font-semibold">{store?.momo_number}</p></div><div><p className="text-muted-foreground">MoMo Network</p><p className="font-semibold">{store?.momo_network?.toUpperCase()}</p></div><div className="col-span-2"><p className="text-muted-foreground">Topup Reference</p><p className="font-display text-xl font-bold text-primary">{store?.topup_reference}</p></div></div>)}</CardContent></Card>
           </TabsContent>
         </Tabs>
       </div>

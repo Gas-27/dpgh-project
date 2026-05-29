@@ -40,6 +40,7 @@ interface SubagentStore {
   store_headline?: string;
   whatsapp_group?: string;
   show_whatsapp_group_icon?: boolean;
+  show_ussd_on_storefront?: boolean;
   topup_reference?: string;
 }
 
@@ -587,6 +588,7 @@ const SubagentDashboard = () => {
           support_number: storeForm.support_number,
           whatsapp_group: storeForm.whatsapp_group || null,
           show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon ?? true,
+          show_ussd_on_storefront: storeForm.show_ussd_on_storefront ?? true,
           momo_name: storeForm.momo_name,
           momo_number: storeForm.momo_number,
           momo_network: storeForm.momo_network,
@@ -1310,11 +1312,11 @@ const SubagentDashboard = () => {
                         size="sm"
                         className="w-full"
                         onClick={() => {
-                          navigator.clipboard.writeText(`Dial *380*455# and enter access code: ${subagentStore.topup_reference}`);
-                          toast({ title: "Copied!", description: "USSD info copied to clipboard" });
+                          navigator.clipboard.writeText("*380*455#");
+                          toast({ title: "Copied!", description: "USSD code copied to clipboard" });
                         }}
                       >
-                        <Copy className="h-4 w-4 mr-2" /> Copy USSD Info
+                        <Copy className="h-4 w-4 mr-2" /> Copy USSD Code
                       </Button>
                     </div>
                   </div>
@@ -2474,6 +2476,7 @@ const SubagentDashboard = () => {
                       support_number: subagentStore.support_number,
                       whatsapp_group: subagentStore.whatsapp_group,
                       show_whatsapp_group_icon: subagentStore.show_whatsapp_group_icon,
+                      show_ussd_on_storefront: subagentStore.show_ussd_on_storefront ?? true,
                       momo_name: subagentStore.momo_name,
                       momo_number: subagentStore.momo_number,
                       momo_network: subagentStore.momo_network,
@@ -2527,6 +2530,22 @@ const SubagentDashboard = () => {
                       />
                       <p className="text-xs text-muted-foreground">
                         {storeForm.show_whatsapp_group_icon !== false ? "A WhatsApp join icon will appear on your storefront." : "The join icon will be hidden."}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <Label>USSD Access Code</Label>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="show-ussd" className="text-sm text-muted-foreground cursor-pointer">Show USSD on storefront</Label>
+                          <Switch 
+                            id="show-ussd" 
+                            checked={storeForm.show_ussd_on_storefront ?? true} 
+                            onCheckedChange={c => setStoreForm({ ...storeForm, show_ussd_on_storefront: c })} 
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {storeForm.show_ussd_on_storefront !== false ? "The USSD code (*380*455#) and your access code will be displayed on your storefront." : "USSD information will be hidden from your storefront."}
                       </p>
                     </div>
                     <div className="border-t border-border pt-4 mt-4">
