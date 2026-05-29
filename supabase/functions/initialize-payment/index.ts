@@ -10,7 +10,10 @@ const corsHeaders = {
 
 const PAYSTACK_FEE_PERCENT = 1.98;
 
-Deno.serve(async (req) => {
+// Create a timeout wrapper to catch hanging functions
+async function handleRequest(req: Request): Promise<Response> {
+  console.log("[v0] ===== initialize-payment handler START =====");
+  
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -18,10 +21,13 @@ Deno.serve(async (req) => {
   console.log("[v0] ===== initialize-payment function START =====");
 
   try {
+    console.log("[v0] Parsing request body...");
     const body = await req.json();
+    console.log("[v0] Request body parsed successfully");
+    
     const { email, phone, metadata, callback_url, amount: requestedAmount } = body;
     
-    console.log("[v0] Request received with metadata type:", metadata?.type);
+    console.log("[v0] Extracted variables from body");
 
     // Handle agent_registration payments
     if (metadata?.type === "agent_registration") {
@@ -328,12 +334,14 @@ Deno.serve(async (req) => {
 
     // Regular package payment - require package_id
     if (!email || !phone || !metadata?.package_id) {
+      console.error("[v0] Validation failed - missing required fields");
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log("[v0] All required fields present. Creating Supabase client...");
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -344,6 +352,7 @@ Deno.serve(async (req) => {
         },
       }
     );
+    console.log("[v0] Supabase client created successfully");
 
     // Fetch package base data
     console.log("[v0] STEP 1: Fetching package data for ID:", metadata.package_id);
@@ -592,6 +601,32 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } finally {
-    console.log("[v0] ===== initialize-payment function END =====");
+    console.log("[v0] ===== initialize-payment handler END =====");
+  }
+}
+
+// Wrap with Deno.serve and add a timeout failsafe
+Deno.serve(async (req) => {
+  // Add a 25-second timeout to prevent hanging
+  const timeoutPromise = new Promise<Response>((resolve) => {
+    setTimeout(() => {
+      console.error("[v0] CRITICAL: Handler timeout after 25 seconds");
+      resolve(new Response(JSON.stringify({ 
+        error: "Payment initialization timeout - please try again" 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }));
+    }, 25000);
+  });
+
+  try {
+    return await Promise.race([handleRequest(req), timeoutPromise]);
+  } catch (err) {
+    console.error("[v0] Deno.serve error:", err);
+    return new Response(JSON.stringify({ error: "Server error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
