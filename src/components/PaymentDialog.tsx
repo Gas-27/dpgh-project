@@ -277,11 +277,14 @@ const PaymentDialog = ({
       }
 
       if (data?.authorization_url) {
+        console.log("[v0] Redirecting to Paystack:", data.authorization_url);
         storePurchaseTime(normalizedPhone);
-        // Use replace to prevent back button issues
+        // Don't set loading false - let the page redirect handle it
+        // This ensures UI shows "Processing..." during redirect
         window.location.replace(data.authorization_url);
       } else {
-        throw new Error(data?.error || "Failed to get payment URL from Paystack");
+        console.error("[v0] No authorization URL in response:", data);
+        throw new Error(data?.error || "Failed to get payment URL from Paystack - no authorization URL returned");
       }
     } catch (err: any) {
       clearTimeout(timeoutId);

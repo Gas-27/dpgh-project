@@ -104,13 +104,36 @@ export default function SubagentRegistrationForm({
       if (authError) throw authError;
       if (!authData.user?.id) throw new Error("Failed to create user account");
 
-      // Create subagent store (auto-approved)
+      // Create subagent store (auto-approved) with unique URL enforcement
+      let uniqueStoreName = formData.storeName;
+      
+      // Check if store name already exists
+      const { data: existingStores } = await supabase
+        .from("subagent_stores")
+        .select("store_name")
+        .eq("approved", true);
+      
+      if (existingStores && existingStores.length > 0) {
+        const slugifiedName = DOMAINS.sanitizeStoreName(formData.storeName);
+        
+        // Count how many stores have the same slug
+        const duplicates = existingStores.filter((s: any) => {
+          const existingSlug = DOMAINS.sanitizeStoreName(s.store_name);
+          return existingSlug === slugifiedName;
+        });
+        
+        // If duplicates exist, append a number
+        if (duplicates.length > 0) {
+          uniqueStoreName = `${formData.storeName} ${duplicates.length + 1}`;
+        }
+      }
+      
       const { data: storeData, error: storeError } = await supabase
         .from("subagent_stores")
         .insert({
           user_id: authData.user.id,
           agent_store_id: agentStoreId,
-          store_name: formData.storeName,
+          store_name: uniqueStoreName,
           whatsapp_number: formData.whatsappNumber,
           support_number: formData.supportNumber,
           momo_name: formData.momoName,
