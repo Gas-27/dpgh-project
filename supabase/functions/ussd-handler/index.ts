@@ -574,6 +574,10 @@ Deno.serve(async (req) => {
             if (session.agent_store_id) {
               metadata.agent_store_id = session.agent_store_id;
             }
+            
+            if (session.subagent_store_id) {
+              metadata.subagent_store_id = session.subagent_store_id;
+            }
 
             const customerEmail = `233${phoneLocal.substring(1)}@ussd.dataplug.store`;
 

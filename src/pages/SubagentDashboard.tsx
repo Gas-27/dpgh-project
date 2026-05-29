@@ -188,20 +188,13 @@ const SubagentDashboard = () => {
   // Agent notification popup state
   const [showAgentNotificationPopup, setShowAgentNotificationPopup] = useState(true);
 
-  // Helper function to calculate available wallet balance
+  // Helper function to get available wallet balance
+  // Uses the actual wallet_balance from database, minus any pending withdrawals
   const getAvailableBalance = () => {
-    // Calculate profit from ALL completed orders
-    const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
-    const profit = completedOrders.reduce((sum, order) => {
-      if (order.profit) return sum + Number(order.profit);
-      const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
-      return sum + (Number(order.selling_price || order.amount) - baseCost);
-    }, 0);
-    const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-    // ONLY deduct completed withdrawals, not pending ones
-    const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-    // Wallet = Profit + Topups - Completed Withdrawals Only
-    return profit + topups - completedWithdrawals;
+    const dbBalance = subagentStore?.wallet_balance || 0;
+    // Deduct pending withdrawals from available balance
+    const pendingWithdrawals = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
+    return dbBalance - pendingWithdrawals;
   };
 
   // Function to exit impersonation
