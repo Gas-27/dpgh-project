@@ -288,7 +288,31 @@ Deno.serve(async (req) => {
           } else {
             let packages: any[] = [];
 
-            if (session.agent_store_id) {
+            // If subagent code was used, get subagent's custom prices
+            if (session.subagent_store_id) {
+              const { data, error } = await supabase
+                .from("data_packages")
+                .select(`
+                  id,
+                  size_gb,
+                  network,
+                  agent_price,
+                  subagent_package_prices!left (sell_price)
+                `)
+                .eq("active", true)
+                .eq("network", selectedNetwork)
+                .eq("subagent_package_prices.subagent_store_id", session.subagent_store_id);
+
+              if (!error && data) {
+                packages = data.map(pkg => ({
+                  id: pkg.id,
+                  size_gb: pkg.size_gb,
+                  price: pkg.subagent_package_prices?.[0]?.sell_price ?? pkg.agent_price,
+                }));
+              }
+            }
+            // If agent code was used, get agent's custom prices
+            else if (session.agent_store_id) {
               const { data, error } = await supabase
                 .from("data_packages")
                 .select(`
@@ -309,7 +333,9 @@ Deno.serve(async (req) => {
                   price: pkg.agent_package_prices?.[0]?.sell_price ?? pkg.agent_price,
                 }));
               }
-            } else {
+            } 
+            // No code entered (code "0"), use default agent prices
+            else {
               const { data, error } = await supabase
                 .from("data_packages")
                 .select("id, size_gb, agent_price")
