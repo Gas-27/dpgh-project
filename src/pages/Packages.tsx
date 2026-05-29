@@ -1196,15 +1196,15 @@ const Packages = () => {
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
 
-        {/* USSD Info Banner */}
+        {/* USSD Info Banner - Tap to dial */}
         <div className="max-w-md mx-auto mb-8">
-          <a href="tel:*380*455#" className="block p-4 rounded-xl border border-green-500/30 bg-green-500/5 hover:bg-green-500/10 transition-colors">
+          <a href="tel:*380*455#" className="block p-4 rounded-xl border border-green-500/30 bg-green-500/5 hover:bg-green-500/10 transition-colors cursor-pointer">
             <div className="flex items-center justify-center gap-3 text-center">
               <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
                 <Phone className="h-5 w-5 text-green-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
+                <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed! Tap to dial</p>
                 <p className="text-xl font-bold font-mono text-green-400">*380*455#</p>
                 <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">0</span></p>
               </div>
