@@ -288,49 +288,62 @@ Deno.serve(async (req) => {
           } else {
             let packages: any[] = [];
 
-            // If subagent code was used, get subagent's custom prices
+            // If subagent code was used, get packages with subagent's custom prices (fallback to agent prices, then default)
             if (session.subagent_store_id) {
-              const { data, error } = await supabase
+              // First get all active packages for this network
+              const { data: allPackages, error: pkgError } = await supabase
                 .from("data_packages")
-                .select(`
-                  id,
-                  size_gb,
-                  network,
-                  agent_price,
-                  subagent_package_prices!left (sell_price)
-                `)
+                .select("id, size_gb, network, agent_price")
                 .eq("active", true)
-                .eq("network", selectedNetwork)
-                .eq("subagent_package_prices.subagent_store_id", session.subagent_store_id);
+                .eq("network", selectedNetwork);
 
-              if (!error && data) {
-                packages = data.map(pkg => ({
+              if (!pkgError && allPackages) {
+                // Get subagent's custom prices
+                const { data: subagentPrices } = await supabase
+                  .from("subagent_package_prices")
+                  .select("package_id, sell_price")
+                  .eq("subagent_store_id", session.subagent_store_id);
+
+                // Get parent agent's custom prices as fallback
+                const { data: agentPrices } = await supabase
+                  .from("agent_package_prices")
+                  .select("package_id, sell_price")
+                  .eq("agent_store_id", session.agent_store_id);
+
+                const subagentPriceMap = new Map((subagentPrices || []).map(p => [p.package_id, p.sell_price]));
+                const agentPriceMap = new Map((agentPrices || []).map(p => [p.package_id, p.sell_price]));
+
+                packages = allPackages.map(pkg => ({
                   id: pkg.id,
                   size_gb: pkg.size_gb,
-                  price: pkg.subagent_package_prices?.[0]?.sell_price ?? pkg.agent_price,
+                  // Priority: subagent price > agent price > default agent_price
+                  price: subagentPriceMap.get(pkg.id) ?? agentPriceMap.get(pkg.id) ?? pkg.agent_price,
                 }));
               }
             }
             // If agent code was used, get agent's custom prices
             else if (session.agent_store_id) {
-              const { data, error } = await supabase
+              // First get all active packages for this network
+              const { data: allPackages, error: pkgError } = await supabase
                 .from("data_packages")
-                .select(`
-                  id,
-                  size_gb,
-                  network,
-                  agent_price,
-                  agent_package_prices!left (sell_price)
-                `)
+                .select("id, size_gb, network, agent_price")
                 .eq("active", true)
-                .eq("network", selectedNetwork)
-                .eq("agent_package_prices.agent_store_id", session.agent_store_id);
+                .eq("network", selectedNetwork);
 
-              if (!error && data) {
-                packages = data.map(pkg => ({
+              if (!pkgError && allPackages) {
+                // Get agent's custom prices
+                const { data: agentPrices } = await supabase
+                  .from("agent_package_prices")
+                  .select("package_id, sell_price")
+                  .eq("agent_store_id", session.agent_store_id);
+
+                const agentPriceMap = new Map((agentPrices || []).map(p => [p.package_id, p.sell_price]));
+
+                packages = allPackages.map(pkg => ({
                   id: pkg.id,
                   size_gb: pkg.size_gb,
-                  price: pkg.agent_package_prices?.[0]?.sell_price ?? pkg.agent_price,
+                  // Priority: agent price > default agent_price
+                  price: agentPriceMap.get(pkg.id) ?? pkg.agent_price,
                 }));
               }
             } 
