@@ -89,7 +89,7 @@ export function PWAInstallPrompt() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-white text-lg">Install DATA PLUG</h3>
+            <h3 className="font-bold text-white text-lg">Install THE DATA APP</h3>
             <p className="text-sm text-gray-300 mt-1">
               {isIOS
                 ? "Tap the share button and select 'Add to Home Screen' for the best experience."

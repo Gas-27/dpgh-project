@@ -226,7 +226,7 @@ const SubagentDashboard = () => {
     const syncWalletBalance = async () => {
       if (!subagentStore?.id) return;
       
-      // Calculate the correct wallet balance: Profit + Topups - COMPLETED Withdrawals only
+      // Calculate the correct wallet balance: Profit + Topups - COMPLETED Withdrawals - Wallet Purchases
       // Pending withdrawals should NOT be deducted from the DB balance - they are just "reserved"
       const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
       const profit = completedOrders.reduce((sum, order) => {
@@ -237,7 +237,9 @@ const SubagentDashboard = () => {
       const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
       // Only subtract COMPLETED withdrawals from the stored balance
       const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-      const calculatedBalance = profit + topups - completedWithdrawals;
+      // Subtract purchases made with wallet (from buy data and bulk order sections)
+      const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
+      const calculatedBalance = profit + topups - completedWithdrawals - walletPurchases;
       
       // Only sync if the balance has changed from last sync
       if (lastSyncedBalanceRef.current === calculatedBalance) return;
