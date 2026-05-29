@@ -25,6 +25,8 @@ interface SubagentStore {
   support_number: string;
   whatsapp_group?: string | null;
   show_whatsapp_group_icon?: boolean;
+  show_ussd_on_storefront?: boolean;
+  topup_reference?: string;
   theme_config?: {
     primary: string;
     primary_foreground: string;
@@ -1073,6 +1075,22 @@ export function SubagentStorefront() {
           </Card>
         ) : (
           /* Packages Grid */
+          <>
+          {/* USSD Info Banner */}
+          {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
+            <div className="mb-4 p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <Phone className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
+                  <p className="text-xl font-bold font-mono text-primary">*380*455#</p>
+                  <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
             {filteredPackages.length === 0 ? (
               <div className="col-span-full text-center py-12">
@@ -1095,6 +1113,7 @@ export function SubagentStorefront() {
               })
             )}
           </div>
+          </>
         )}
 
         {/* Support */}

@@ -30,6 +30,8 @@ interface AgentStore {
   support_number: string;
   whatsapp_group?: string | null;
   show_whatsapp_group_icon?: boolean;
+  show_ussd_on_storefront?: boolean;
+  topup_reference?: string;
   allow_subagent_registration?: boolean;
   theme_config?: {
     primary: string;
@@ -1154,7 +1156,25 @@ const AgentStorefront = () => {
             </div>
           </div>
 
-          {/* ── Packages grid ─�� */}
+          {/* USSD Info Banner */}
+          {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
+            <div className="container pb-4">
+              <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Phone className="h-5 w-5" style={{ color: primaryColor }} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
+                    <p className="text-xl font-bold font-mono" style={{ color: primaryColor }}>*380*455#</p>
+                    <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Packages grid */}
           <div className="container pb-20">
             <div
               className="grid gap-3 sm:gap-4"
