@@ -163,74 +163,48 @@ Deno.serve(async (req) => {
         .eq("id", order_id)
         .single();
 
-      // Credit profit to the appropriate wallet
-      if (fullOrder) {
-        const profit = fullOrder.profit || 0;
+      // Credit agent commission ONLY for subagent orders
+      // (Subagent profit already credited in verify-payment)
+      if (fullOrder && fullOrder.subagent_store_id) {
+        // Get subagent store info
+        const { data: subagentStore } = await supabase
+          .from("subagent_stores")
+          .select("agent_store_id")
+          .eq("id", fullOrder.subagent_store_id)
+          .single();
         
-        if (fullOrder.subagent_store_id) {
-          // Subagent order: Credit subagent's profit to subagent_stores.wallet_balance
-          // And credit agent's commission to agent_stores.subagent_commission_balance
-          const { data: subagentStore } = await supabase
-            .from("subagent_stores")
-            .select("wallet_balance, parent_agent_id")
-            .eq("id", fullOrder.subagent_store_id)
+        // Calculate and credit agent's commission
+        // Agent commission = base_price (what agent charged subagent) - admin's agent_price
+        if (subagentStore?.agent_store_id && fullOrder.package_id) {
+          const { data: pkg } = await supabase
+            .from("data_packages")
+            .select("agent_price")
+            .eq("id", fullOrder.package_id)
             .single();
           
-          if (subagentStore) {
-            // Credit subagent's profit
-            await supabase
-              .from("subagent_stores")
-              .update({ wallet_balance: (subagentStore.wallet_balance || 0) + profit })
-              .eq("id", fullOrder.subagent_store_id);
+          if (pkg) {
+            // Use order's base_price (what agent charged subagent)
+            const agentCommission = (fullOrder.base_price || 0) - (pkg.agent_price || 0);
             
-            // Calculate and credit agent's commission
-            // Agent commission = base_price (what agent charged subagent) - admin's agent_price
-            if (subagentStore.parent_agent_id && fullOrder.package_id) {
-              const { data: pkg } = await supabase
-                .from("data_packages")
-                .select("agent_price")
-                .eq("id", fullOrder.package_id)
+            console.log(`[v0] Order ${order_id} agent commission: base_price=${fullOrder.base_price}, admin_price=${pkg.agent_price}, commission=${agentCommission}`);
+            
+            if (agentCommission > 0) {
+              const { data: agentStore } = await supabase
+                .from("agent_stores")
+                .select("subagent_commission_balance")
+                .eq("id", subagentStore.agent_store_id)
                 .single();
               
-              if (pkg) {
-                // Use order's base_price (what agent charged subagent) NOT subagent_package_prices
-                const agentCommission = (fullOrder.base_price || 0) - (pkg.agent_price || 0);
+              if (agentStore) {
+                const newBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
+                console.log(`[v0] Order ${order_id} crediting agent ${subagentStore.agent_store_id}: +${agentCommission}, new=${newBalance}`);
                 
-                console.log(`Order ${order_id} agent commission: base_price=${fullOrder.base_price}, admin_price=${pkg.agent_price}, commission=${agentCommission}`);
-                
-                if (agentCommission > 0) {
-                  const { data: agentStore } = await supabase
-                    .from("agent_stores")
-                    .select("subagent_commission_balance")
-                    .eq("id", subagentStore.parent_agent_id)
-                    .single();
-                  
-                  if (agentStore) {
-                    const newBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
-                    console.log(`Order ${order_id} crediting agent: current=${agentStore.subagent_commission_balance}, adding=${agentCommission}, new=${newBalance}`);
-                    
-                    await supabase
-                      .from("agent_stores")
-                      .update({ subagent_commission_balance: newBalance })
-                      .eq("id", subagentStore.parent_agent_id);
-                  }
-                }
+                await supabase
+                  .from("agent_stores")
+                  .update({ subagent_commission_balance: newBalance })
+                  .eq("id", subagentStore.agent_store_id);
               }
             }
-          }
-        } else if (fullOrder.agent_store_id) {
-          // Direct agent order: Credit profit to agent_stores.wallet_balance
-          const { data: agentStore } = await supabase
-            .from("agent_stores")
-            .select("wallet_balance")
-            .eq("id", fullOrder.agent_store_id)
-            .single();
-          
-          if (agentStore && profit > 0) {
-            await supabase
-              .from("agent_stores")
-              .update({ wallet_balance: (agentStore.wallet_balance || 0) + profit })
-              .eq("id", fullOrder.agent_store_id);
           }
         }
       }
