@@ -186,19 +186,24 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       // Credit profit to the appropriate wallet - BUT ONLY IF NOT ALREADY CREDITED
-      if (fullOrder && !fullOrder.profit_credited) {
+      // Check if profit_credited is explicitly true (skip if already credited)
+      if (fullOrder && fullOrder.profit_credited === true) {
+        console.log(`Order ${order_id} profit already credited - skipping profit distribution`);
+      } else if (fullOrder) {
         const profit = fullOrder.profit || 0;
         
-        // 🔴 CRITICAL: Mark profit as credited FIRST to prevent double crediting
-        const { error: markCreditedError } = await supabase
+        // 🔴 CRITICAL: Mark profit as credited FIRST using atomic update
+        // This prevents race conditions - only ONE request can successfully set this
+        const { data: updateResult, error: markCreditedError } = await supabase
           .from("orders")
           .update({ profit_credited: true })
           .eq("id", order_id)
-          .eq("profit_credited", false); // Only update if not already credited
+          .or("profit_credited.is.null,profit_credited.eq.false")
+          .select("id");
         
-        // If we couldn't mark it (another process did), skip crediting
-        if (markCreditedError) {
-          console.log(`Order ${order_id} profit already being credited by another process - skipping`);
+        // If no rows were updated, another process already credited
+        if (markCreditedError || !updateResult || updateResult.length === 0) {
+          console.log(`Order ${order_id} profit already being credited by another process - skipping (error: ${markCreditedError?.message})`);
         } else {
           console.log(`Order ${order_id} marked as profit_credited, proceeding to credit`);
           
