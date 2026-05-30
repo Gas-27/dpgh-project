@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     // 🔴 CRITICAL: Check if this order has already been fulfilled
     const { data: existingOrder } = await supabase
       .from("orders")
-      .select("id, fulfillment_status, status, customer_number, network, size_gb")
+      .select("id, fulfillment_status, status, customer_number, network, size_gb, profit_credited")
       .eq("id", order_id)
       .maybeSingle();
 
@@ -59,6 +59,28 @@ Deno.serve(async (req) => {
     if (existingOrder.fulfillment_status === "completed") {
       console.log(`Order ${order_id} already fulfilled - skipping`);
       return new Response(JSON.stringify({ success: true, message: "Already fulfilled", skipped: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 🔴 CRITICAL: Don't re-fulfill orders that are currently processing
+    if (existingOrder.fulfillment_status === "processing") {
+      console.log(`Order ${order_id} is currently being processed - skipping`);
+      return new Response(JSON.stringify({ success: true, message: "Currently processing", skipped: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 🔴 CRITICAL: Mark as processing IMMEDIATELY to prevent race conditions
+    const { error: lockError } = await supabase
+      .from("orders")
+      .update({ fulfillment_status: "processing" })
+      .eq("id", order_id)
+      .eq("fulfillment_status", existingOrder.fulfillment_status); // Only update if status hasn't changed
+    
+    if (lockError) {
+      console.log(`Order ${order_id} lock failed - another process may be handling it`);
+      return new Response(JSON.stringify({ success: false, message: "Order is being processed by another request", skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -159,13 +181,19 @@ Deno.serve(async (req) => {
       // Get the full order details to calculate profit
       const { data: fullOrder } = await supabase
         .from("orders")
-        .select("*, package_id, agent_store_id, subagent_store_id, selling_price, base_price, profit, amount")
+        .select("*, package_id, agent_store_id, subagent_store_id, selling_price, base_price, profit, amount, profit_credited")
         .eq("id", order_id)
         .maybeSingle();
 
-      // Credit profit to the appropriate wallet
-      if (fullOrder) {
+      // Credit profit to the appropriate wallet - BUT ONLY IF NOT ALREADY CREDITED
+      if (fullOrder && !fullOrder.profit_credited) {
         const profit = fullOrder.profit || 0;
+        
+        // 🔴 CRITICAL: Mark profit as credited FIRST to prevent double crediting
+        await supabase
+          .from("orders")
+          .update({ profit_credited: true })
+          .eq("id", order_id);
         
         if (fullOrder.subagent_store_id) {
           // Subagent order: Calculate BOTH subagent profit AND agent commission separately

@@ -262,9 +262,11 @@ const SubagentDashboard = () => {
   useEffect(() => {
     if (!subagentStore?.id) return;
 
+    console.log("[v0] Setting up real-time subscriptions for subagent:", subagentStore.id);
+
     // Subscribe to wallet balance updates in real-time
     const walletChannel = supabase
-      .channel(`subagent-wallet-${subagentStore.id}`)
+      .channel(`subagent-wallet-live-${subagentStore.id}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
@@ -274,6 +276,7 @@ const SubagentDashboard = () => {
           filter: `id=eq.${subagentStore.id}`,
         },
         (payload: any) => {
+          console.log("[v0] Wallet update received:", payload);
           const newData = payload.new as any;
           if (newData && newData.wallet_balance !== undefined) {
             setSubagentStore((prev) =>
@@ -282,15 +285,17 @@ const SubagentDashboard = () => {
                 : prev
             );
             // Force sync of balances when wallet changes
-            lastSyncedBalanceRef.current = null;
+            lastSyncedBalanceRef.current = newData.wallet_balance;
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[v0] Wallet channel status:", status);
+      });
 
     // Also subscribe to order changes to update wallet in real-time
     const ordersChannel = supabase
-      .channel(`subagent-orders-wallet-${subagentStore.id}`)
+      .channel(`subagent-orders-live-${subagentStore.id}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
@@ -299,16 +304,19 @@ const SubagentDashboard = () => {
           table: "orders",
           filter: `subagent_store_id=eq.${subagentStore.id}`,
         },
-        () => {
-          // Re-fetch orders to update wallet calculation
+        (payload: any) => {
+          console.log("[v0] Order update received:", payload);
+          // Re-fetch all data to update wallet, profit, revenue
           fetchData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[v0] Orders channel status:", status);
+      });
 
     // Subscribe to withdrawal changes
     const withdrawalsChannel = supabase
-      .channel(`subagent-withdrawals-wallet-${subagentStore.id}`)
+      .channel(`subagent-withdrawals-live-${subagentStore.id}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
@@ -317,12 +325,15 @@ const SubagentDashboard = () => {
           table: "withdrawals",
           filter: `subagent_store_id=eq.${subagentStore.id}`,
         },
-        () => {
+        (payload: any) => {
+          console.log("[v0] Withdrawal update received:", payload);
           // Re-fetch data to update wallet
           fetchData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[v0] Withdrawals channel status:", status);
+      });
 
     return () => {
       supabase.removeChannel(walletChannel);
