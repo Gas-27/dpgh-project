@@ -232,7 +232,11 @@ Deno.serve(async (req) => {
                 .eq("package_id", fullOrder.package_id)
                 .maybeSingle();
               
-              if (pkg && subagentPrice) {
+              console.log(`Order ${order_id} price lookup: pkg=${JSON.stringify(pkg)}, subagentPrice=${JSON.stringify(subagentPrice)}`);
+              
+              // ONLY credit commission if subagentPrice exists - meaning agent set a custom price for this subagent
+              // If no subagentPrice entry, agent gets ZERO commission (they didn't set pricing for this subagent)
+              if (pkg && subagentPrice && subagentPrice.base_price != null) {
                 // Agent commission: agent's price to subagent - admin's base price
                 const agentCommission = (subagentPrice.base_price || 0) - (pkg.agent_price || 0);
                 
@@ -249,7 +253,7 @@ Deno.serve(async (req) => {
                     .eq("id", fullOrder.subagent_store_id);
                 }
                 
-                // Credit agent their commission
+                // Credit agent their commission ONLY if positive
                 if (agentCommission > 0) {
                   const { data: agentStore } = await supabase
                     .from("agent_stores")
@@ -267,6 +271,9 @@ Deno.serve(async (req) => {
                       .eq("id", subagentStore.parent_agent_id);
                   }
                 }
+              } else {
+                // No subagent_package_prices entry - agent gets 0 commission
+                console.log(`Order ${order_id} - NO subagent_package_prices entry found, agent gets 0 commission`);
               }
             }
           } else if (fullOrder.agent_store_id) {
