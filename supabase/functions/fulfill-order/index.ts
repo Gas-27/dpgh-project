@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       .from("orders")
       .select("id, fulfillment_status, status, customer_number, network, size_gb")
       .eq("id", order_id)
-      .single();
+      .maybeSingle();
 
     if (!existingOrder) {
       return new Response(JSON.stringify({ error: "Order not found" }), {
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
         .from("orders")
         .select("*, package_id, agent_store_id, subagent_store_id, selling_price, base_price, profit, amount")
         .eq("id", order_id)
-        .single();
+        .maybeSingle();
 
       // Credit profit to the appropriate wallet
       if (fullOrder) {
@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
             .from("subagent_stores")
             .select("wallet_balance, parent_agent_id")
             .eq("id", fullOrder.subagent_store_id)
-            .single();
+            .maybeSingle();
           
           if (subagentStore) {
             // Credit subagent's profit
@@ -189,14 +189,14 @@ Deno.serve(async (req) => {
                 .from("data_packages")
                 .select("agent_price")
                 .eq("id", fullOrder.package_id)
-                .single();
+                .maybeSingle();
               
               const { data: subagentPrice } = await supabase
                 .from("subagent_package_prices")
                 .select("base_price")
                 .eq("subagent_store_id", fullOrder.subagent_store_id)
                 .eq("package_id", fullOrder.package_id)
-                .single();
+                .maybeSingle();
               
               if (pkg && subagentPrice) {
                 const agentCommission = (subagentPrice.base_price || 0) - (pkg.agent_price || 0);
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
                     .from("agent_stores")
                     .select("subagent_commission_balance")
                     .eq("id", subagentStore.parent_agent_id)
-                    .single();
+                    .maybeSingle();
                   
                   if (agentStore) {
                     await supabase
@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
             .from("agent_stores")
             .select("wallet_balance")
             .eq("id", fullOrder.agent_store_id)
-            .single();
+            .maybeSingle();
           
           if (agentStore && profit > 0) {
             await supabase
