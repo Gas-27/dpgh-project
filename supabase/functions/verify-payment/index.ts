@@ -1,3 +1,5 @@
+// supabase/functions/verify-payment/index.ts
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -45,71 +47,16 @@ Deno.serve(async (req) => {
 
     const txData = verifyData.data;
     const metadata = txData.metadata || {};
-    const paymentType = metadata.type; // "spin_wheel" or undefined
+    const paymentType = metadata.type;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // ==========================
-    // AGENT REGISTRATION PAYMENT HANDLER
-    // ==========================
-    if (paymentType === "agent_registration") {
-      const agentStoreId = metadata.agent_store_id;
-      
-      if (!agentStoreId) {
-        return new Response(JSON.stringify({ error: "Missing agent store ID" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      // Check if already processed
-      const { data: store } = await supabase
-        .from("agent_stores")
-        .select("approved")
-        .eq("id", agentStoreId)
-        .single();
-      
-      if (store?.approved) {
-        return new Response(JSON.stringify({
-          success: true,
-          message: "Store already approved",
-          already_processed: true,
-          approved: true,
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      // Approve the agent store
-      const { error: updateError } = await supabase
-        .from("agent_stores")
-        .update({ approved: true })
-        .eq("id", agentStoreId);
-      
-      if (updateError) {
-        console.error("Failed to approve store:", updateError);
-        return new Response(JSON.stringify({ error: "Failed to approve store" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Store approved!",
-        approved: true,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ==========================
     // SPIN WHEEL PAYMENT HANDLER
     // ==========================
     if (paymentType === "spin_wheel") {
-      // 1) Check if this reference was already used
       const { data: existing } = await supabase
         .from("spin_wheel_payments")
         .select("id")
@@ -126,7 +73,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // 2) Record the payment (prevents reuse)
       const userId = metadata.userId || null;
       const phone = metadata.phone || "";
       const { error: insertErr } = await supabase
@@ -147,7 +93,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // 3) Return success – frontend will grant 2 spins
       return new Response(JSON.stringify({
         success: true,
         grant_spins: true,
@@ -159,11 +104,63 @@ Deno.serve(async (req) => {
     }
 
     // =====================================
-    // WALLET TOP UP PAYMENT HANDLER
+    // AGENT REGISTRATION PAYMENT HANDLER
+    // =====================================
+    if (paymentType === "agent_registration") {
+      const agentStoreId = metadata.agent_store_id;
+      
+      if (!agentStoreId) {
+        return new Response(JSON.stringify({ error: "Missing agent store ID" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: storeData } = await supabase
+        .from("agent_stores")
+        .select("approved")
+        .eq("id", agentStoreId)
+        .single();
+
+      if (storeData?.approved) {
+        return new Response(JSON.stringify({
+          success: true,
+          approved: true,
+          message: "Store already approved",
+          already_processed: true,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: approveError } = await supabase
+        .from("agent_stores")
+        .update({ approved: true })
+        .eq("id", agentStoreId);
+
+      if (approveError) {
+        console.error("Failed to approve store:", approveError);
+        return new Response(JSON.stringify({ error: "Failed to approve store" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        approved: true,
+        message: "Payment confirmed! Your store has been approved.",
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // =====================================
+    // WALLET TOP UP PAYMENT HANDLER (Agent)
     // =====================================
     if (paymentType === "wallet_topup") {
       const agentStoreId = metadata.agent_store_id;
-      const baseAmount = metadata.base_amount || (txData.amount / 100);
+      const baseAmount = Number(metadata.base_amount) || (txData.amount / 100);
       
       if (!agentStoreId) {
         return new Response(JSON.stringify({ error: "Missing agent store ID" }), {
@@ -172,7 +169,6 @@ Deno.serve(async (req) => {
         });
       }
       
-      // Check if this reference was already used
       const { data: existingTopup } = await supabase
         .from("wallet_topups")
         .select("id")
@@ -189,7 +185,6 @@ Deno.serve(async (req) => {
         });
       }
       
-      // Get current wallet balance
       const { data: store, error: storeError } = await supabase
         .from("agent_stores")
         .select("wallet_balance")
@@ -203,9 +198,8 @@ Deno.serve(async (req) => {
         });
       }
       
-      const newBalance = (store.wallet_balance || 0) + baseAmount;
+      const newBalance = (Number(store.wallet_balance) || 0) + baseAmount;
       
-      // Update wallet balance
       const { error: updateError } = await supabase
         .from("agent_stores")
         .update({ wallet_balance: newBalance })
@@ -219,7 +213,6 @@ Deno.serve(async (req) => {
         });
       }
       
-      // Record the topup
       await supabase.from("wallet_topups").insert({
         agent_store_id: agentStoreId,
         amount: baseAmount,
@@ -240,7 +233,7 @@ Deno.serve(async (req) => {
     // =====================================
     if (paymentType === "subagent_wallet_topup") {
       const subagentStoreId = metadata.subagent_store_id;
-      const baseAmount = metadata.base_amount || (txData.amount / 100);
+      const baseAmount = Number(metadata.base_amount) || (txData.amount / 100);
       
       if (!subagentStoreId) {
         return new Response(JSON.stringify({ error: "Missing subagent store ID" }), {
@@ -249,7 +242,6 @@ Deno.serve(async (req) => {
         });
       }
       
-      // Check if this reference was already used
       const { data: existingTopup } = await supabase
         .from("subagent_wallet_topups")
         .select("id")
@@ -266,7 +258,6 @@ Deno.serve(async (req) => {
         });
       }
       
-      // Get current wallet balance
       const { data: store, error: storeError } = await supabase
         .from("subagent_stores")
         .select("wallet_balance")
@@ -280,9 +271,8 @@ Deno.serve(async (req) => {
         });
       }
       
-      const newBalance = (store.wallet_balance || 0) + baseAmount;
+      const newBalance = (Number(store.wallet_balance) || 0) + baseAmount;
       
-      // Update wallet balance
       const { error: updateError } = await supabase
         .from("subagent_stores")
         .update({ wallet_balance: newBalance })
@@ -296,7 +286,6 @@ Deno.serve(async (req) => {
         });
       }
       
-      // Record the topup
       await supabase.from("subagent_wallet_topups").insert({
         subagent_store_id: subagentStoreId,
         amount: baseAmount,
@@ -322,12 +311,10 @@ Deno.serve(async (req) => {
     const agentStoreId = metadata.agent_store_id || null;
     const subagentStoreId = metadata.subagent_store_id || null;
 
-    // Extract size from package name (e.g. "5GB" -> 5)
     const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
-    const amount = txData.amount / 100; // Convert from pesewas
+    const amount = txData.amount / 100;
 
-    // 1) Fast check – does order already exist?
     const { data: existing } = await supabase
       .from("orders")
       .select("id")
@@ -344,7 +331,91 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2) Build the new order
+    // =====================================================
+    // CALCULATE PRICES
+    // =====================================================
+    let sellingPrice = amount;
+    let basePriceForOrder = 0;
+    let profitForOrder = 0;
+
+    const { data: pkgData } = await supabase
+      .from("data_packages")
+      .select("agent_price")
+      .eq("id", packageId)
+      .single();
+
+    const adminBasePrice = pkgData?.agent_price ? Number(pkgData.agent_price) : 0;
+
+    if (subagentStoreId) {
+      // SUBAGENT ORDER
+      const { data: subagentStore } = await supabase
+        .from("subagent_stores")
+        .select("agent_store_id, wallet_balance")
+        .eq("id", subagentStoreId)
+        .single();
+
+      const { data: packagePrice } = await supabase
+        .from("subagent_package_prices")
+        .select("base_price")
+        .eq("subagent_store_id", subagentStoreId)
+        .eq("package_id", packageId)
+        .maybeSingle();
+
+      const agentPriceToSubagent = packagePrice?.base_price != null 
+        ? Number(packagePrice.base_price) 
+        : adminBasePrice;
+      
+      sellingPrice = amount;
+      basePriceForOrder = agentPriceToSubagent;
+      profitForOrder = sellingPrice - basePriceForOrder;
+
+      // CREDIT SUBAGENT PROFIT
+      if (subagentStore && profitForOrder > 0) {
+        const newWalletBalance = (Number(subagentStore.wallet_balance) || 0) + profitForOrder;
+        await supabase
+          .from("subagent_stores")
+          .update({ wallet_balance: newWalletBalance })
+          .eq("id", subagentStoreId);
+        
+        console.log(`[v0] Credited subagent ${subagentStoreId}: +${profitForOrder}, new balance=${newWalletBalance}`);
+      }
+
+      // CREDIT AGENT COMMISSION (base_price - admin_agent_price)
+      if (subagentStore?.agent_store_id && packageId) {
+        const agentCommission = basePriceForOrder - adminBasePrice;
+        
+        if (agentCommission > 0) {
+          const { data: agentStore } = await supabase
+            .from("agent_stores")
+            .select("subagent_commission_balance")
+            .eq("id", subagentStore.agent_store_id)
+            .single();
+          
+          if (agentStore) {
+            const newBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
+            await supabase
+              .from("agent_stores")
+              .update({ subagent_commission_balance: newBalance })
+              .eq("id", subagentStore.agent_store_id);
+            
+            console.log(`[v0] Credited agent ${subagentStore.agent_store_id}: +${agentCommission}, new balance=${newBalance}`);
+          }
+        }
+      }
+
+    } else if (agentStoreId) {
+      // AGENT ORDER (direct sale)
+      sellingPrice = amount;
+      basePriceForOrder = adminBasePrice;
+      profitForOrder = sellingPrice - basePriceForOrder;
+    } else {
+      // DIRECT/ADMIN ORDER
+      sellingPrice = amount;
+      basePriceForOrder = adminBasePrice;
+      profitForOrder = 0;
+    }
+
+    // Build the new order
     const orderInsert: Record<string, unknown> = {
       customer_number: phone,
       package_id: packageId,
@@ -354,17 +425,31 @@ Deno.serve(async (req) => {
       status: "paid",
       fulfillment_status: "pending",
       paystack_reference: reference,
+      selling_price: sellingPrice,
+      base_price: basePriceForOrder,
+      profit: profitForOrder,
+      profit_credited: false,
     };
+    
     if (agentStoreId) {
       orderInsert.agent_store_id = agentStoreId;
     }
     if (subagentStoreId) {
       orderInsert.subagent_store_id = subagentStoreId;
+      
+      const { data: subagentStore } = await supabase
+        .from("subagent_stores")
+        .select("agent_store_id")
+        .eq("id", subagentStoreId)
+        .maybeSingle();
+      
+      if (subagentStore?.agent_store_id) {
+        orderInsert.agent_store_id = subagentStore.agent_store_id;
+      }
     }
 
     let orderId = "";
 
-    // 3) Insert with race‑condition protection
     try {
       const { data: order, error: insertErr } = await supabase
         .from("orders")
@@ -375,7 +460,6 @@ Deno.serve(async (req) => {
       if (insertErr) throw insertErr;
       orderId = order.id;
     } catch (insertErr: any) {
-      // If unique violation (23505), another request already inserted it
       if (insertErr.code === "23505") {
         const { data: actualOrder } = await supabase
           .from("orders")
@@ -394,7 +478,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Any other error
       console.error("Order insert error:", insertErr);
       return new Response(JSON.stringify({ error: "Failed to create order", details: insertErr.message }), {
         status: 500,
@@ -402,7 +485,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 4) Fulfill the order (non‑blocking)
+    // Fulfill the order (non-blocking)
     try {
       const fulfillUrl = `${supabaseUrl}/functions/v1/fulfill-order`;
       await fetch(fulfillUrl, {
@@ -414,7 +497,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ order_id: orderId }),
       });
     } catch (fulfillErr) {
-      console.error("Fulfillment attempt error (admin will retry):", fulfillErr);
+      console.error("Fulfillment attempt error:", fulfillErr);
     }
 
     return new Response(JSON.stringify({

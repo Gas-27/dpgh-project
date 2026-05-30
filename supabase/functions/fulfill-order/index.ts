@@ -163,51 +163,8 @@ Deno.serve(async (req) => {
         .eq("id", order_id)
         .single();
 
-      // Credit agent commission ONLY for subagent orders
-      // (Subagent profit already credited in verify-payment)
-      if (fullOrder && fullOrder.subagent_store_id) {
-        // Get subagent store info
-        const { data: subagentStore } = await supabase
-          .from("subagent_stores")
-          .select("agent_store_id")
-          .eq("id", fullOrder.subagent_store_id)
-          .single();
-        
-        // Calculate and credit agent's commission
-        // Agent commission = base_price (what agent charged subagent) - admin's agent_price
-        if (subagentStore?.agent_store_id && fullOrder.package_id) {
-          const { data: pkg } = await supabase
-            .from("data_packages")
-            .select("agent_price")
-            .eq("id", fullOrder.package_id)
-            .single();
-          
-          if (pkg) {
-            // Use order's base_price (what agent charged subagent)
-            const agentCommission = (fullOrder.base_price || 0) - (pkg.agent_price || 0);
-            
-            console.log(`[v0] Order ${order_id} agent commission: base_price=${fullOrder.base_price}, admin_price=${pkg.agent_price}, commission=${agentCommission}`);
-            
-            if (agentCommission > 0) {
-              const { data: agentStore } = await supabase
-                .from("agent_stores")
-                .select("subagent_commission_balance")
-                .eq("id", subagentStore.agent_store_id)
-                .single();
-              
-              if (agentStore) {
-                const newBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
-                console.log(`[v0] Order ${order_id} crediting agent ${subagentStore.agent_store_id}: +${agentCommission}, new=${newBalance}`);
-                
-                await supabase
-                  .from("agent_stores")
-                  .update({ subagent_commission_balance: newBalance })
-                  .eq("id", subagentStore.agent_store_id);
-              }
-            }
-          }
-        }
-      }
+      // No profit crediting here - all profit crediting done in verify-payment
+      // fulfill-order only handles order fulfillment via API
 
       await supabase
         .from("orders")
