@@ -183,7 +183,8 @@ Deno.serve(async (req) => {
               .update({ wallet_balance: (subagentStore.wallet_balance || 0) + profit })
               .eq("id", fullOrder.subagent_store_id);
             
-            // Calculate and credit agent's commission (price agent gave subagent - admin price)
+            // Calculate and credit agent's commission
+            // Agent commission = base_price (what agent charged subagent) - admin's agent_price
             if (subagentStore.parent_agent_id && fullOrder.package_id) {
               const { data: pkg } = await supabase
                 .from("data_packages")
@@ -191,15 +192,12 @@ Deno.serve(async (req) => {
                 .eq("id", fullOrder.package_id)
                 .single();
               
-              const { data: subagentPrice } = await supabase
-                .from("subagent_package_prices")
-                .select("base_price")
-                .eq("subagent_store_id", fullOrder.subagent_store_id)
-                .eq("package_id", fullOrder.package_id)
-                .single();
-              
-              if (pkg && subagentPrice) {
-                const agentCommission = (subagentPrice.base_price || 0) - (pkg.agent_price || 0);
+              if (pkg) {
+                // Use order's base_price (what agent charged subagent) NOT subagent_package_prices
+                const agentCommission = (fullOrder.base_price || 0) - (pkg.agent_price || 0);
+                
+                console.log(`Order ${order_id} agent commission: base_price=${fullOrder.base_price}, admin_price=${pkg.agent_price}, commission=${agentCommission}`);
+                
                 if (agentCommission > 0) {
                   const { data: agentStore } = await supabase
                     .from("agent_stores")
@@ -208,9 +206,12 @@ Deno.serve(async (req) => {
                     .single();
                   
                   if (agentStore) {
+                    const newBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
+                    console.log(`Order ${order_id} crediting agent: current=${agentStore.subagent_commission_balance}, adding=${agentCommission}, new=${newBalance}`);
+                    
                     await supabase
                       .from("agent_stores")
-                      .update({ subagent_commission_balance: (agentStore.subagent_commission_balance || 0) + agentCommission })
+                      .update({ subagent_commission_balance: newBalance })
                       .eq("id", subagentStore.parent_agent_id);
                   }
                 }
