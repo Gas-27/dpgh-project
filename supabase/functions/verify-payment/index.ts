@@ -357,9 +357,61 @@ Deno.serve(async (req) => {
     };
     if (agentStoreId) {
       orderInsert.agent_store_id = agentStoreId;
+      
+      // For agent orders, fetch agent_price to calculate profit
+      const { data: pkg } = await supabase
+        .from("data_packages")
+        .select("agent_price")
+        .eq("id", packageId)
+        .maybeSingle();
+      
+      if (pkg) {
+        orderInsert.base_price = pkg.agent_price;
+        orderInsert.selling_price = amount;
+        orderInsert.profit = amount - pkg.agent_price;
+      }
     }
     if (subagentStoreId) {
       orderInsert.subagent_store_id = subagentStoreId;
+      
+      // For subagent orders, fetch the price agent set for this subagent
+      const { data: subagentPrice } = await supabase
+        .from("subagent_package_prices")
+        .select("base_price")
+        .eq("subagent_store_id", subagentStoreId)
+        .eq("package_id", packageId)
+        .maybeSingle();
+      
+      // Also get admin's agent_price for reference
+      const { data: pkg } = await supabase
+        .from("data_packages")
+        .select("agent_price")
+        .eq("id", packageId)
+        .maybeSingle();
+      
+      if (subagentPrice && pkg) {
+        // base_price = what agent charges subagent
+        orderInsert.base_price = subagentPrice.base_price;
+        orderInsert.selling_price = amount;
+        // profit = what subagent makes (selling price - agent's price to subagent)
+        orderInsert.profit = amount - subagentPrice.base_price;
+      } else if (pkg) {
+        // Fallback: if no subagent_package_prices entry, use agent_price
+        orderInsert.base_price = pkg.agent_price;
+        orderInsert.selling_price = amount;
+        orderInsert.profit = amount - pkg.agent_price;
+      }
+      
+      // Also include parent agent_store_id for proper tracking
+      const { data: subagentStore } = await supabase
+        .from("subagent_stores")
+        .select("agent_store_id")
+        .eq("id", subagentStoreId)
+        .maybeSingle();
+      
+      if (subagentStore?.agent_store_id) {
+        orderInsert.agent_store_id = subagentStore.agent_store_id;
+      }
     }
 
     let orderId = "";
