@@ -208,72 +208,65 @@ Deno.serve(async (req) => {
           console.log(`Order ${order_id} marked as profit_credited, proceeding to credit`);
           
           if (fullOrder.subagent_store_id) {
-            // Subagent order: Calculate BOTH subagent profit AND agent commission separately
-            // Agent commission = price agent gave subagent - admin base price
-            // Subagent profit = what subagent is selling for - what agent gave them
+            // Subagent order: Calculate agent commission from the ORDER's base_price
+            // Agent commission = order.base_price (what agent charges subagent) - admin's agent_price
+            // Subagent profit = order.selling_price (what subagent sells for) - order.base_price (what agent charges)
             
             const { data: subagentStore } = await supabase
               .from("subagent_stores")
-              .select("wallet_balance, parent_agent_id")
+              .select("wallet_balance, agent_store_id")
               .eq("id", fullOrder.subagent_store_id)
               .maybeSingle();
             
-            if (subagentStore && subagentStore.parent_agent_id && fullOrder.package_id) {
+            if (subagentStore && subagentStore.agent_store_id && fullOrder.package_id) {
               const { data: pkg } = await supabase
                 .from("data_packages")
                 .select("agent_price")
                 .eq("id", fullOrder.package_id)
                 .maybeSingle();
               
-              const { data: subagentPrice } = await supabase
-                .from("subagent_package_prices")
-                .select("base_price")
-                .eq("subagent_store_id", fullOrder.subagent_store_id)
-                .eq("package_id", fullOrder.package_id)
-                .maybeSingle();
+              console.log(`Order ${order_id} values: base_price=${fullOrder.base_price}, selling_price=${fullOrder.selling_price}, amount=${fullOrder.amount}, agent_price=${pkg?.agent_price}`);
               
-              console.log(`Order ${order_id} price lookup: pkg=${JSON.stringify(pkg)}, subagentPrice=${JSON.stringify(subagentPrice)}`);
+              // Use the order's base_price (what agent charged subagent)
+              const orderBasePrice = fullOrder.base_price || 0;
+              const orderSellingPrice = fullOrder.selling_price || fullOrder.amount || 0;
+              const adminAgentPrice = pkg?.agent_price || 0;
               
-              // ONLY credit commission if subagentPrice exists - meaning agent set a custom price for this subagent
-              // If no subagentPrice entry, agent gets ZERO commission (they didn't set pricing for this subagent)
-              if (pkg && subagentPrice && subagentPrice.base_price != null) {
-                // Agent commission: agent's price to subagent - admin's base price
-                const agentCommission = (subagentPrice.base_price || 0) - (pkg.agent_price || 0);
+              // Agent commission: what agent charged subagent - what admin charges agent
+              const agentCommission = orderBasePrice - adminAgentPrice;
+              
+              // Subagent profit: what subagent sold for - what agent charged subagent
+              const subagentProfit = orderSellingPrice - orderBasePrice;
+              
+              console.log(`Order ${order_id} commission calculation: orderBasePrice=${orderBasePrice}, adminAgentPrice=${adminAgentPrice}, agentCommission=${agentCommission}, subagentProfit=${subagentProfit}`);
+              
+              // Credit subagent their profit only (not the agent commission)
+              if (subagentProfit > 0) {
+                await supabase
+                  .from("subagent_stores")
+                  .update({ wallet_balance: (subagentStore.wallet_balance || 0) + subagentProfit })
+                  .eq("id", fullOrder.subagent_store_id);
+              }
+              
+              // Credit agent their commission ONLY if positive
+              if (agentCommission > 0) {
+                const { data: agentStore } = await supabase
+                  .from("agent_stores")
+                  .select("subagent_commission_balance")
+                  .eq("id", subagentStore.agent_store_id)
+                  .maybeSingle();
                 
-                console.log(`Order ${order_id} commission calculation: subagent_base_price=${subagentPrice.base_price}, agent_price=${pkg.agent_price}, agentCommission=${agentCommission}`);
-                
-                // Subagent profit: what subagent sells for - what agent charged them
-                const subagentProfit = (fullOrder.selling_price || fullOrder.amount || 0) - (subagentPrice.base_price || 0);
-                
-                // Credit subagent their profit only (not the agent commission)
-                if (subagentProfit > 0) {
-                  await supabase
-                    .from("subagent_stores")
-                    .update({ wallet_balance: (subagentStore.wallet_balance || 0) + subagentProfit })
-                    .eq("id", fullOrder.subagent_store_id);
-                }
-                
-                // Credit agent their commission ONLY if positive
-                if (agentCommission > 0) {
-                  const { data: agentStore } = await supabase
-                    .from("agent_stores")
-                    .select("subagent_commission_balance")
-                    .eq("id", subagentStore.parent_agent_id)
-                    .maybeSingle();
+                if (agentStore) {
+                  const newCommissionBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
+                  console.log(`Order ${order_id} crediting agent commission: current=${agentStore.subagent_commission_balance}, adding=${agentCommission}, new=${newCommissionBalance}`);
                   
-                  if (agentStore) {
-                    const newCommissionBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
-                    console.log(`Order ${order_id} crediting agent commission: current=${agentStore.subagent_commission_balance}, adding=${agentCommission}, new=${newCommissionBalance}`);
-                    
-                    await supabase
-                      .from("agent_stores")
-                      .update({ subagent_commission_balance: newCommissionBalance })
-                      .eq("id", subagentStore.parent_agent_id);
-                  }
+                  await supabase
+                    .from("agent_stores")
+                    .update({ subagent_commission_balance: newCommissionBalance })
+                    .eq("id", subagentStore.agent_store_id);
                 }
               } else {
-                // No subagent_package_prices entry - agent gets 0 commission
-                console.log(`Order ${order_id} - NO subagent_package_prices entry found, agent gets 0 commission`);
+                console.log(`Order ${order_id} - agent commission is ${agentCommission}, not crediting`);
               }
             }
           } else if (fullOrder.agent_store_id) {
