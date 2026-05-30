@@ -208,6 +208,15 @@ const SubagentDashboard = () => {
     window.location.href = "https://datastores.shop/admin";
   };
 
+  // Store subagentStore.id in a ref to avoid re-triggering the effect
+  const subagentStoreIdRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    if (subagentStore?.id) {
+      subagentStoreIdRef.current = subagentStore.id;
+    }
+  }, [subagentStore?.id]);
+
   useEffect(() => {
     // Use impersonated user ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
@@ -215,28 +224,39 @@ const SubagentDashboard = () => {
     // Allow if impersonating (admin token) OR if user is a subagent
     if (!isImpersonating && !isSubagent) return;
     fetchData(effectiveUserId);
+  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
+  
+  // Separate polling effect that doesn't depend on subagentStore
+  useEffect(() => {
+    const effectiveUserId = impersonatedUserId || user?.id;
+    if (!effectiveUserId) return;
+    if (!isImpersonating && !isSubagent) return;
     
-    // Poll for wallet updates every 5 seconds for real-time balance
+    // Poll for wallet updates every 10 seconds for real-time balance
     const pollInterval = setInterval(() => {
-      if (subagentStore?.id) {
+      const storeId = subagentStoreIdRef.current;
+      if (storeId) {
         // Fetch only the wallet balance for efficiency
         supabase
           .from("subagent_stores")
           .select("wallet_balance")
-          .eq("id", subagentStore.id)
+          .eq("id", storeId)
           .single()
           .then(({ data }) => {
-            if (data && data.wallet_balance !== subagentStore.wallet_balance) {
-              setSubagentStore((prev) => prev ? { ...prev, wallet_balance: data.wallet_balance } : prev);
+            if (data) {
+              setSubagentStore((prev) => {
+                if (prev && data.wallet_balance !== prev.wallet_balance) {
+                  return { ...prev, wallet_balance: data.wallet_balance };
+                }
+                return prev;
+              });
             }
           });
-        // Also refresh orders for profit/revenue updates
-        fetchData(effectiveUserId);
       }
-    }, 5000);
+    }, 10000);
     
     return () => clearInterval(pollInterval);
-  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId, subagentStore?.id]);
+  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
 
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops
