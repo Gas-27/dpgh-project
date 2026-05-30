@@ -215,7 +215,28 @@ const SubagentDashboard = () => {
     // Allow if impersonating (admin token) OR if user is a subagent
     if (!isImpersonating && !isSubagent) return;
     fetchData(effectiveUserId);
-  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
+    
+    // Poll for wallet updates every 5 seconds for real-time balance
+    const pollInterval = setInterval(() => {
+      if (subagentStore?.id) {
+        // Fetch only the wallet balance for efficiency
+        supabase
+          .from("subagent_stores")
+          .select("wallet_balance")
+          .eq("id", subagentStore.id)
+          .single()
+          .then(({ data }) => {
+            if (data && data.wallet_balance !== subagentStore.wallet_balance) {
+              setSubagentStore((prev) => prev ? { ...prev, wallet_balance: data.wallet_balance } : prev);
+            }
+          });
+        // Also refresh orders for profit/revenue updates
+        fetchData(effectiveUserId);
+      }
+    }, 5000);
+    
+    return () => clearInterval(pollInterval);
+  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId, subagentStore?.id]);
 
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops
