@@ -281,6 +281,8 @@ const SubagentDashboard = () => {
                 ? { ...prev, wallet_balance: newData.wallet_balance }
                 : prev
             );
+            // Force sync of balances when wallet changes
+            lastSyncedBalanceRef.current = null;
           }
         }
       )
