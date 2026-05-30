@@ -208,15 +208,6 @@ const SubagentDashboard = () => {
     window.location.href = "https://datastores.shop/admin";
   };
 
-  // Store subagentStore.id in a ref to avoid re-triggering the effect
-  const subagentStoreIdRef = useRef<string | null>(null);
-  
-  useEffect(() => {
-    if (subagentStore?.id) {
-      subagentStoreIdRef.current = subagentStore.id;
-    }
-  }, [subagentStore?.id]);
-
   useEffect(() => {
     // Use impersonated user ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
@@ -224,38 +215,6 @@ const SubagentDashboard = () => {
     // Allow if impersonating (admin token) OR if user is a subagent
     if (!isImpersonating && !isSubagent) return;
     fetchData(effectiveUserId);
-  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
-  
-  // Separate polling effect that doesn't depend on subagentStore
-  useEffect(() => {
-    const effectiveUserId = impersonatedUserId || user?.id;
-    if (!effectiveUserId) return;
-    if (!isImpersonating && !isSubagent) return;
-    
-    // Poll for wallet updates every 10 seconds for real-time balance
-    const pollInterval = setInterval(() => {
-      const storeId = subagentStoreIdRef.current;
-      if (storeId) {
-        // Fetch only the wallet balance for efficiency
-        supabase
-          .from("subagent_stores")
-          .select("wallet_balance")
-          .eq("id", storeId)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              setSubagentStore((prev) => {
-                if (prev && data.wallet_balance !== prev.wallet_balance) {
-                  return { ...prev, wallet_balance: data.wallet_balance };
-                }
-                return prev;
-              });
-            }
-          });
-      }
-    }, 10000);
-    
-    return () => clearInterval(pollInterval);
   }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
 
   // Sync calculated wallet balance to database when data changes
@@ -303,11 +262,9 @@ const SubagentDashboard = () => {
   useEffect(() => {
     if (!subagentStore?.id) return;
 
-    console.log("[v0] Setting up real-time subscriptions for subagent:", subagentStore.id);
-
     // Subscribe to wallet balance updates in real-time
     const walletChannel = supabase
-      .channel(`subagent-wallet-live-${subagentStore.id}-${Date.now()}`)
+      .channel(`subagent-wallet-${subagentStore.id}`)
       .on(
         "postgres_changes",
         {
@@ -317,7 +274,6 @@ const SubagentDashboard = () => {
           filter: `id=eq.${subagentStore.id}`,
         },
         (payload: any) => {
-          console.log("[v0] Wallet update received:", payload);
           const newData = payload.new as any;
           if (newData && newData.wallet_balance !== undefined) {
             setSubagentStore((prev) =>
@@ -325,18 +281,14 @@ const SubagentDashboard = () => {
                 ? { ...prev, wallet_balance: newData.wallet_balance }
                 : prev
             );
-            // Force sync of balances when wallet changes
-            lastSyncedBalanceRef.current = newData.wallet_balance;
           }
         }
       )
-      .subscribe((status) => {
-        console.log("[v0] Wallet channel status:", status);
-      });
+      .subscribe();
 
     // Also subscribe to order changes to update wallet in real-time
     const ordersChannel = supabase
-      .channel(`subagent-orders-live-${subagentStore.id}-${Date.now()}`)
+      .channel(`subagent-orders-wallet-${subagentStore.id}`)
       .on(
         "postgres_changes",
         {
@@ -345,19 +297,16 @@ const SubagentDashboard = () => {
           table: "orders",
           filter: `subagent_store_id=eq.${subagentStore.id}`,
         },
-        (payload: any) => {
-          console.log("[v0] Order update received:", payload);
-          // Re-fetch all data to update wallet, profit, revenue
+        () => {
+          // Re-fetch orders to update wallet calculation
           fetchData();
         }
       )
-      .subscribe((status) => {
-        console.log("[v0] Orders channel status:", status);
-      });
+      .subscribe();
 
     // Subscribe to withdrawal changes
     const withdrawalsChannel = supabase
-      .channel(`subagent-withdrawals-live-${subagentStore.id}-${Date.now()}`)
+      .channel(`subagent-withdrawals-wallet-${subagentStore.id}`)
       .on(
         "postgres_changes",
         {
@@ -366,15 +315,12 @@ const SubagentDashboard = () => {
           table: "withdrawals",
           filter: `subagent_store_id=eq.${subagentStore.id}`,
         },
-        (payload: any) => {
-          console.log("[v0] Withdrawal update received:", payload);
+        () => {
           // Re-fetch data to update wallet
           fetchData();
         }
       )
-      .subscribe((status) => {
-        console.log("[v0] Withdrawals channel status:", status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(walletChannel);
@@ -1454,7 +1400,7 @@ const SubagentDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">My Wallet</p>
+                    <p className="text-sm text-muted-foreground">My Wallet (All Time Balance)</p>
                     <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {availableWalletBalance.toFixed(2)}</p>
                     {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
                   </div>

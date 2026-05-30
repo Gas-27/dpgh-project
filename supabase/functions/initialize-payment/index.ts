@@ -1,103 +1,332 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// supabase/functions/initialize-payment/index.ts
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const PAYSTACK_FEE_PERCENT = 1.98;
 
-// Timeout wrapper - if handler takes more than 25 seconds, return error
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 25000): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Handler timeout")), timeoutMs)
-    ),
-  ]);
-}
-
 Deno.serve(async (req) => {
-  console.log("[v0] REQUEST_RECEIVED");
-  
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    return await withTimeout(handlePayment(req));
-  } catch (err: any) {
-    console.error("[v0] HANDLER_ERROR:", err?.message);
-    return new Response(
-      JSON.stringify({ error: err?.message || "Payment processing failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-});
+    const { email, phone, metadata, callback_url, amount: requestedAmount } = await req.json();
 
-async function handlePayment(req: Request): Promise<Response> {
-  console.log("[v0] PARSING_REQUEST");
-  const { email, phone, metadata, callback_url, amount: requestedAmount } = await req.json();
+    // Handle agent_registration payments
+    if (metadata?.type === "agent_registration") {
+      if (!requestedAmount || !email || !metadata?.agent_store_id) {
+        return new Response(JSON.stringify({ error: "Missing required fields for agent registration" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-  if (!email || !phone || !metadata) {
-    return new Response(JSON.stringify({ error: "Missing required fields" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+      const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+      if (!PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-  console.log("[v0] PAYMENT_TYPE:", metadata?.type);
-  
-  const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
-  if (!PAYSTACK_SECRET_KEY) {
-    console.error("[v0] PAYSTACK_KEY_MISSING");
-    return new Response(JSON.stringify({ error: "Paystack not configured" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+      const amountInPesewas = Math.round(Number(requestedAmount) * 100);
 
-  // Handle agent_registration payments
-  if (metadata?.type === "agent_registration") {
-    console.log("[v0] AGENT_REGISTRATION_TYPE");
-    if (!requestedAmount || !metadata?.agent_store_id) {
-      return new Response(JSON.stringify({ error: "Missing agent registration fields" }), {
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url,
+          metadata: {
+            ...metadata,
+            phone,
+          },
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack error:", result);
+        return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: requestedAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle spin_wheel payments differently - they send amount directly
+    if (metadata?.type === "spin_wheel") {
+      if (!requestedAmount || !email || !phone) {
+        return new Response(JSON.stringify({ error: "Missing required fields for spin wheel payment" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+      if (!PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const amountInPesewas = Math.round(Number(requestedAmount) * 100);
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url,
+          metadata: {
+            ...metadata,
+            phone,
+          },
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack error:", result);
+        return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: requestedAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle wallet_topup payments - they send amount directly
+    if (metadata?.type === "wallet_topup") {
+      if (!requestedAmount || !email || !metadata?.agent_store_id) {
+        return new Response(JSON.stringify({ error: "Missing required fields for wallet topup" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+      if (!PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Add 1.98% Paystack fee
+      const baseAmount = Number(requestedAmount);
+      const feeAmount = baseAmount * 0.0198;
+      const totalWithFee = Math.round((baseAmount + feeAmount) * 100) / 100;
+      const amountInPesewas = Math.round(totalWithFee * 100);
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url,
+          metadata: {
+            ...metadata,
+            phone,
+            base_amount: baseAmount,
+            fee_amount: feeAmount,
+          },
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack error:", result);
+        return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: totalWithFee,
+        base_amount: baseAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle subagent_wallet_topup payments
+    if (metadata?.type === "subagent_wallet_topup") {
+      if (!requestedAmount || !email || !metadata?.subagent_store_id) {
+        return new Response(JSON.stringify({ error: "Missing required fields for subagent wallet topup" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+      if (!PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Add 1.98% Paystack fee
+      const baseAmount = Number(requestedAmount);
+      const feeAmount = baseAmount * 0.0198;
+      const totalWithFee = Math.round((baseAmount + feeAmount) * 100) / 100;
+      const amountInPesewas = Math.round(totalWithFee * 100);
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url,
+          metadata: {
+            ...metadata,
+            phone,
+            base_amount: baseAmount,
+            fee_amount: feeAmount,
+          },
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack error:", result);
+        return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: totalWithFee,
+        base_amount: baseAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle bulk_order payments
+    if (metadata?.type === "bulk_order") {
+      if (!requestedAmount || !email || !metadata?.recipients || !metadata?.network) {
+        return new Response(JSON.stringify({ error: "Missing required fields for bulk order" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+      if (!PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Amount already includes Paystack fee from frontend
+      const amountInPesewas = Math.round(Number(requestedAmount) * 100);
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url,
+          metadata: {
+            type: "bulk_order",
+            network: metadata.network,
+            recipients: JSON.stringify(metadata.recipients),
+            total_gb: metadata.total_gb,
+            recipient_count: metadata.recipient_count,
+            phone: phone || metadata.recipients[0]?.phone,
+            agent_store_id: metadata.agent_store_id || null,
+            subagent_store_id: metadata.subagent_store_id || null,
+          },
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack bulk order error:", result);
+        return new Response(JSON.stringify({ error: result.message || "Bulk payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: requestedAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Regular package payment - require package_id
+    if (!email || !phone || !metadata?.package_id) {
+      return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const amountInPesewas = Math.round(Number(requestedAmount) * 100);
-    return initializePaystack(email, amountInPesewas, callback_url, metadata, PAYSTACK_SECRET_KEY);
-  }
-
-  // Handle spin_wheel payments
-  if (metadata?.type === "spin_wheel") {
-    console.log("[v0] SPIN_WHEEL_TYPE");
-    if (!requestedAmount) {
-      return new Response(JSON.stringify({ error: "Missing spin wheel amount" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const amountInPesewas = Math.round(Number(requestedAmount) * 100);
-    return initializePaystack(email, amountInPesewas, callback_url, metadata, PAYSTACK_SECRET_KEY);
-  }
-
-  // Handle data_package purchases (THIS IS WHERE THE BUG WAS - .single() was crashing)
-  if (metadata?.type === "data_package" || metadata?.package_id) {
-    console.log("[v0] DATA_PACKAGE_TYPE");
-    
-    if (!metadata?.package_id) {
-      return new Response(JSON.stringify({ error: "Missing package ID" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    console.log("[v0] SUPABASE_CLIENT_INIT");
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -109,193 +338,165 @@ async function handlePayment(req: Request): Promise<Response> {
       }
     );
 
-    console.log("[v0] FETCH_PACKAGE");
-    // ✅ FIX #1: Changed from .single() to .maybeSingle() to prevent crashes
+    // Fetch package base data
     const { data: packageData, error: packageError } = await supabaseClient
       .from("data_packages")
       .select("agent_price, price, size_gb, network")
       .eq("id", metadata.package_id)
-      .maybeSingle();
+      .single();
 
     if (packageError || !packageData) {
-      console.error("[v0] PACKAGE_FETCH_ERROR:", packageError?.message);
+      console.error("Package not found:", metadata.package_id);
       return new Response(JSON.stringify({ error: "Package not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("[v0] PACKAGE_FOUND");
-
     let baseAmount: number;
     let priceType: string;
 
     // Priority: 1. Subagent's sell_price, 2. Agent's sell_price, 3. Admin's base price
     if (metadata.subagent_store_id) {
-      console.log("[v0] FETCH_SUBAGENT_PRICE");
-      // ✅ FIX #2: Changed from .single() to .maybeSingle()
-      const { data: subagentPrices, error: subagentPriceError } = await supabaseClient
-        .from("subagent_package_prices")
-        .select("sell_price")
-        .eq("subagent_store_id", metadata.subagent_store_id)
-        .eq("package_id", metadata.package_id)
-        .maybeSingle();
+      // Fetch subagent's custom price AND subagent store info in parallel for speed
+      const [subagentPriceResult, subagentStoreResult] = await Promise.all([
+        supabaseClient
+          .from("subagent_package_prices")
+          .select("sell_price")
+          .eq("subagent_store_id", metadata.subagent_store_id)
+          .eq("package_id", metadata.package_id),
+      ]);
 
-      if (!subagentPriceError && subagentPrices?.sell_price != null) {
-        baseAmount = Number(subagentPrices.sell_price);
+      const subagentPrices = subagentPriceResult.data;
+      const subagentPrice = subagentPrices && subagentPrices.length > 0 ? subagentPrices[0] : null;
+
+      if (subagentPrice?.sell_price != null) {
+        baseAmount = Number(subagentPrice.sell_price);
         priceType = "subagent_sell_price";
-        console.log("[v0] USING_SUBAGENT_PRICE:", baseAmount);
+        console.log(`Using subagent's sell_price: ${baseAmount}`);
       } else {
-        console.log("[v0] SUBAGENT_PRICE_FALLBACK");
-        // Fall back to agent price
-        // ✅ FIX #3: Changed from .single() to .maybeSingle()
-        const { data: agentStoreData, error: agentStoreError } = await supabaseClient
+        // No custom subagent price - fall back to agent price or admin price
+        const { data: subagentStoreData } = await supabaseClient
           .from("subagent_stores")
           .select("agent_store_id")
           .eq("id", metadata.subagent_store_id)
-          .maybeSingle();
+          .single();
 
-        if (!agentStoreError && agentStoreData?.agent_store_id) {
-          // ✅ FIX #4: Changed from .single() to .maybeSingle()
-          const { data: agentPrices, error: agentPriceError } = await supabaseClient
+        if (subagentStoreData?.agent_store_id) {
+          // Try to get agent's sell_price
+          const { data: agentPrices } = await supabaseClient
             .from("agent_package_prices")
             .select("sell_price")
-            .eq("agent_store_id", agentStoreData.agent_store_id)
-            .eq("package_id", metadata.package_id)
-            .maybeSingle();
+            .eq("agent_store_id", subagentStoreData.agent_store_id)
+            .eq("package_id", metadata.package_id);
 
-          if (!agentPriceError && agentPrices?.sell_price != null) {
-            baseAmount = Number(agentPrices.sell_price);
+          const agentPrice = agentPrices && agentPrices.length > 0 ? agentPrices[0] : null;
+
+          if (agentPrice?.sell_price != null) {
+            baseAmount = Number(agentPrice.sell_price);
             priceType = "agent_sell_price_fallback";
-            console.log("[v0] USING_AGENT_PRICE:", baseAmount);
+            console.log(`Using agent's sell_price as fallback: ${baseAmount}`);
           } else {
             baseAmount = Number(packageData.price);
             priceType = "admin_user_price";
-            console.log("[v0] USING_ADMIN_PRICE:", baseAmount);
+            console.log(`Using admin base price (no agent price): ${baseAmount}`);
           }
         } else {
           baseAmount = Number(packageData.price);
           priceType = "admin_user_price";
-          console.log("[v0] USING_ADMIN_PRICE_NO_AGENT:", baseAmount);
+          console.log(`Using admin base price (no agent store): ${baseAmount}`);
         }
       }
     } else if (metadata.agent_store_id) {
-      console.log("[v0] FETCH_AGENT_PRICE");
-      // ✅ FIX #5: Changed from .single() to .maybeSingle()
-      const { data: agentPrices, error: agentPriceError } = await supabaseClient
+      // Agent store purchase - use agent's sell_price
+      const { data: agentPrices } = await supabaseClient
         .from("agent_package_prices")
         .select("sell_price")
         .eq("agent_store_id", metadata.agent_store_id)
-        .eq("package_id", metadata.package_id)
-        .maybeSingle();
+        .eq("package_id", metadata.package_id);
 
-      if (!agentPriceError && agentPrices?.sell_price != null) {
-        baseAmount = Number(agentPrices.sell_price);
+      const agentPrice = agentPrices && agentPrices.length > 0 ? agentPrices[0] : null;
+
+      if (agentPrice?.sell_price != null) {
+        baseAmount = Number(agentPrice.sell_price);
         priceType = "agent_sell_price";
-        console.log("[v0] USING_AGENT_PRICE:", baseAmount);
+        console.log(`Using agent's sell_price: ${baseAmount}`);
       } else {
         baseAmount = Number(packageData.price);
         priceType = "admin_user_price";
-        console.log("[v0] USING_ADMIN_PRICE_NO_AGENT_MATCH:", baseAmount);
+        console.log(`Using admin base price (no agent price): ${baseAmount}`);
       }
     } else {
+      // Direct purchase from main site - use admin's base price
       baseAmount = Number(packageData.price);
       priceType = "admin_user_price";
-      console.log("[v0] USING_ADMIN_PRICE_DIRECT:", baseAmount);
+      console.log(`Using admin base price: ${baseAmount}`);
     }
 
-    // Safety check
-    if (!baseAmount || isNaN(baseAmount) || baseAmount <= 0) {
-      console.error("[v0] INVALID_AMOUNT:", baseAmount);
-      return new Response(JSON.stringify({ error: "Invalid package price" }), {
+    // Calculate total with Paystack fee (1.98%)
+    const feeAmount = baseAmount * (PAYSTACK_FEE_PERCENT / 100);
+    const totalWithFee = baseAmount + feeAmount;
+    // Round to 2 decimal places using proper rounding
+    const amountToCharge = Math.round(totalWithFee * 100) / 100;
+
+    console.log(`Calculated amount - Base: ${baseAmount}, Fee: ${feeAmount.toFixed(2)}, Total: ${amountToCharge}, Type: ${priceType}`);
+
+    const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+    if (!PAYSTACK_SECRET_KEY) {
+      return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const amountInPesewas = Math.round(amountToCharge * 100);
+
+    const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        amount: amountInPesewas,
+        currency: "GHS",
+        callback_url,
+        metadata: {
+          ...metadata,
+          phone,
+          price_type: priceType,
+          base_amount: baseAmount,
+          fee_amount: feeAmount,
+        },
+      }),
+    });
+
+    const result = await paystackRes.json();
+
+    if (!result.status) {
+      console.error("Paystack error:", result);
+      return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Calculate total with Paystack fee
-    const feeAmount = baseAmount * (PAYSTACK_FEE_PERCENT / 100);
-    const totalWithFee = baseAmount + feeAmount;
-    const amountToCharge = Math.round(totalWithFee * 100) / 100;
-    const amountInPesewas = Math.round(amountToCharge * 100);
-
-    console.log("[v0] AMOUNT_CALCULATED:", { baseAmount, fee: feeAmount, total: amountToCharge });
-
-    return initializePaystack(
-      email,
-      amountInPesewas,
-      callback_url,
-      {
-        ...metadata,
-        phone,
-        price_type: priceType,
-        base_amount: baseAmount,
-        fee_amount: feeAmount,
-      },
-      PAYSTACK_SECRET_KEY
-    );
-  }
-
-  return new Response(JSON.stringify({ error: "Unknown payment type" }), {
-    status: 400,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-async function initializePaystack(
-  email: string,
-  amountInPesewas: number,
-  callback_url: string,
-  metadata: Record<string, unknown>,
-  PAYSTACK_SECRET_KEY: string
-): Promise<Response> {
-  console.log("[v0] PAYSTACK_INIT");
-  
-  const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      amount: amountInPesewas,
-      currency: "GHS",
-      callback_url,
-      metadata,
-    }),
-  });
-
-  console.log("[v0] PAYSTACK_RESPONSE_STATUS:", paystackRes.status);
-  
-  const result = await paystackRes.json();
-
-  if (!result.status) {
-    console.error("[v0] PAYSTACK_ERROR:", result.message);
-    return new Response(JSON.stringify({ error: result.message || "Paystack error" }), {
-      status: 400,
+    return new Response(JSON.stringify({
+      authorization_url: result.data.authorization_url,
+      reference: result.data.reference,
+      // Return the calculated amount so frontend can display it
+      amount: amountToCharge,
+      base_amount: baseAmount,
+      fee_amount: feeAmount,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  }
-
-  if (!result.data?.authorization_url) {
-    console.error("[v0] NO_AUTHORIZATION_URL");
-    return new Response(JSON.stringify({ error: "No authorization URL from Paystack" }), {
+  } catch (err) {
+    console.error("Payment initialization error:", err);
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
-  console.log("[v0] PAYSTACK_SUCCESS");
-  
-  return new Response(
-    JSON.stringify({
-      authorization_url: result.data.authorization_url,
-      reference: result.data.reference,
-      amount: result.data.amount,
-    }),
-    {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    }
-  );
-}
+});

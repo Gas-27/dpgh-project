@@ -182,19 +182,19 @@ const PaymentDialog = ({
     setPaymentError(null);
     
     // Debug logging to identify issues with specific stores
-    console.log("[v0] PaymentDialog handlePay STARTING with:", {
+    console.log("[v0] PaymentDialog handlePay called with:", {
       actualPackageId,
       actualStoreId,
       subagentStoreId,
       price,
       network,
-      phone: phone.slice(-4),
-      timestamp: new Date().toISOString(),
+      phone,
+      packageInfo: pkg ? { id: pkg.id, network: pkg.network, size_gb: pkg.size_gb } : null,
     });
     
     // Validate package ID before proceeding
     if (!actualPackageId) {
-      console.error("[v0] VALIDATION FAILED: No package ID", { packageId, pkg });
+      console.error("[v0] Payment failed: No package ID", { packageId, pkg });
       const errorMsg = "Invalid package selected. Please try again.";
       setPaymentError(errorMsg);
       toast({
@@ -207,7 +207,7 @@ const PaymentDialog = ({
     
     // Validate price is not 0 or undefined
     if (!price || price <= 0) {
-      console.error("[v0] VALIDATION FAILED: Invalid price", { price });
+      console.error("[v0] Payment failed: Invalid price", { price });
       const errorMsg = "Package price not loaded. Please close this dialog and try again.";
       setPaymentError(errorMsg);
       toast({
@@ -222,16 +222,16 @@ const PaymentDialog = ({
     
     // Set a timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
-      console.error("[v0] TIMEOUT: Payment request took too long (30+ seconds)");
+      console.error("[v0] Payment timeout - request took too long");
       setLoading(false);
-      const errorMsg = "The payment request is taking too long. Please check your internet connection and try again.";
+      const errorMsg = "The payment request is taking too long. Please try again.";
       setPaymentError(errorMsg);
       toast({
         title: "Payment Timeout",
         description: errorMsg,
         variant: "destructive",
       });
-    }, 30000);
+    }, 30000); // 30 second timeout
     
     try {
       const normalizedPhone = normalizePhone(phone.trim());
@@ -244,7 +244,7 @@ const PaymentDialog = ({
 
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
 
-      const requestPayload = {
+      console.log("[v0] Calling initialize-payment with:", {
         email: userEmail,
         amount: price,
         phone: normalizedPhone,
@@ -256,67 +256,55 @@ const PaymentDialog = ({
           agent_store_id: actualStoreId || null,
           subagent_store_id: subagentStoreId || null,
         },
-      };
-
-      console.log("[v0] Calling initialize-payment with payload:", {
-        ...requestPayload,
-        phone: requestPayload.phone.slice(-4),
       });
 
       const { data, error } = await supabase.functions.invoke(
         "initialize-payment",
-        { body: requestPayload }
+        {
+          body: {
+            email: userEmail,
+            amount: price,
+            phone: normalizedPhone,
+            callback_url: callbackUrl,
+            metadata: {
+              package_id: actualPackageId,
+              network,
+              package_name: displayPackageName,
+              agent_store_id: actualStoreId || null,
+              subagent_store_id: subagentStoreId || null,
+            },
+          },
+        }
       );
 
-      console.log("[v0] initialize-payment returned:", { 
-        has_data: !!data,
-        has_error: !!error, 
-        data_keys: data ? Object.keys(data) : null,
-        error_msg: error?.message 
-      });
+      console.log("[v0] initialize-payment response:", { data, error });
 
       clearTimeout(timeoutId);
 
       if (error) {
-        console.error("[v0] EDGE FUNCTION ERROR:", {
-          message: error.message,
-          status: error.status,
-          context: error.context,
-        });
-        const errorMsg = `Payment setup failed: ${error.message || "Unknown error"}`;
+        console.error("[v0] Payment error from edge function:", error);
+        const errorMsg = error.message || "Failed to initialize payment. Please try again.";
         setPaymentError(errorMsg);
         throw error;
       }
 
-      if (!data) {
-        const errorMsg = "No response from payment server";
-        console.error("[v0] NO DATA IN RESPONSE");
-        setPaymentError(errorMsg);
-        throw new Error(errorMsg);
-      }
-
       if (data?.authorization_url) {
-        console.log("[v0] SUCCESS: Got authorization URL, redirecting now");
+        console.log("[v0] Redirecting to Paystack:", data.authorization_url);
         storePurchaseTime(normalizedPhone);
+        // Don't set loading false - let the page redirect handle it
+        // This ensures UI shows "Processing..." during redirect
         window.location.replace(data.authorization_url);
       } else {
-        const errorMsg = data?.error || "Payment server did not provide checkout URL";
-        console.error("[v0] NO AUTHORIZATION URL:", {
-          data_keys: Object.keys(data),
-          data_contents: JSON.stringify(data).substring(0, 500),
-        });
+        const errorMsg = data?.error || "Failed to get payment URL from Paystack - no authorization URL returned";
+        console.error("[v0] No authorization URL in response:", data);
         setPaymentError(errorMsg);
         throw new Error(errorMsg);
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
       const errorMsg = err.message || "Something went wrong. Please try again.";
-      console.error("[v0] PAYMENT PROCESS ERROR:", {
-        message: errorMsg,
-        error_type: err.constructor.name,
-        stack: err.stack?.substring(0, 200),
-      });
       setPaymentError(errorMsg);
+      console.error("[v0] Payment error:", err);
       toast({
         title: "Payment Error",
         description: errorMsg,
