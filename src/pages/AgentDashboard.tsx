@@ -474,7 +474,11 @@ const AgentDashboard = () => {
   const fetchAllData = async () => {
     const effectiveUserId = impersonatedUserId || user?.id;
     if (!effectiveUserId) return;
-    const { data: sd, error: se } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
+    const { data: sd, error: se } = await supabase
+      .from("agent_stores")
+      .select("id, store_name, user_id, whatsapp_number, support_number, whatsapp_group, show_whatsapp_group_icon, show_ussd_on_storefront, store_headline, theme_config, momo_number, momo_name, momo_network, wallet_balance, subagent_commission_balance")
+      .eq("user_id", effectiveUserId)
+      .maybeSingle();
     if (se) { console.error(se); setLoading(false); return; }
   if (sd) {
   if (sd.show_whatsapp_group_icon == null) { sd.show_whatsapp_group_icon = true; await supabase.from("agent_stores").update({ show_whatsapp_group_icon: true }).eq("id", sd.id); }
@@ -493,11 +497,11 @@ const AgentDashboard = () => {
   });
 
       const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR] = await Promise.all([
-        supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
+        supabase.from("data_packages").select("id, size_gb, name, network, agent_price, active").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
-        supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
-        supabase.from("withdrawal_requests").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
-        supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("orders").select("id, created_at, customer_number, package_id, amount, status, fulfillment_status, agent_store_id").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).limit(100),
+        supabase.from("withdrawal_requests").select("id, amount, status, created_at").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).limit(50),
+        supabase.from("subagent_stores").select("id, store_name, wallet_balance, created_at").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
       ]);
@@ -559,7 +563,11 @@ const AgentDashboard = () => {
       );
       await fetchTotalProfit();
     } else {
-      const { data: pkgData } = await supabase.from("data_packages").select("*").eq("active", true).order("size_gb");
+      const { data: pkgData } = await supabase
+        .from("data_packages")
+        .select("id, size_gb, name, network, agent_price, active")
+        .eq("active", true)
+        .order("size_gb");
       setPackages(pkgData ?? []);
     }
     setLoading(false);
@@ -652,7 +660,12 @@ const AgentDashboard = () => {
 
   const fetchNotifications = async () => {
     if (!store?.id) return; setLoadingNotifications(true);
-    const { data, error } = await supabase.from("agent_notifications").select("*").eq("agent_store_id", store.id).order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("agent_notifications")
+      .select("id, message, type, created_at")
+      .eq("agent_store_id", store.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
     if (!error && data) setNotifications(data as Notification[]);
     setLoadingNotifications(false);
   };

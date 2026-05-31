@@ -182,8 +182,8 @@ const OrderTrackingCard = ({
     };
 
     fetchComplaintStatus();
-    const interval = setInterval(fetchComplaintStatus, 5000); // Check every 5 seconds
-    return () => clearInterval(interval);
+    // Real-time updates already handled by database subscriptions
+    // Removed polling to improve performance
   }, [order.id]);
 
   const elapsedMs = currentTime.getTime() - new Date(order.created_at).getTime();
@@ -602,8 +602,11 @@ const AgentStorefront = () => {
                                window.location.hostname === "www.agentsstore.shop" ||
                                window.location.hostname.includes("localhost");
       
-      // First try agent_stores
-      const { data: stores } = await supabase.from("agent_stores").select("*").eq("approved", true) as any;
+      // First try agent_stores - select only needed fields for performance
+      const { data: stores } = await supabase
+        .from("agent_stores")
+        .select("id, store_name, theme_config, show_whatsapp_group_icon, whatsapp_url")
+        .eq("approved", true) as any;
       
       let matched = null;
       if (stores && stores.length > 0) {
@@ -621,7 +624,7 @@ const AgentStorefront = () => {
       if (!matched && isSubagentDomain) {
         const { data: subagentStores } = await supabase
           .from("subagent_stores")
-          .select("*, agent_stores(store_name)")
+          .select("id, store_name, theme_config, show_whatsapp_group_icon, whatsapp_url, agent_store_id")
           .eq("approved", true) as any;
         
         if (subagentStores && subagentStores.length > 0) {
@@ -679,9 +682,8 @@ const AgentStorefront = () => {
   // ── Price polling (15 s) + realtime ──
   useEffect(() => {
     if (!store?.id) return;
+    // Fetch prices once on mount, then rely on realtime subscription
     refreshPrices();
-    const interval = setInterval(refreshPrices, 15_000);
-    return () => clearInterval(interval);
   }, [store?.id, refreshPrices]);
 
   useEffect(() => {
