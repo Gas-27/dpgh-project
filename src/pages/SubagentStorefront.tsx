@@ -476,6 +476,9 @@ export function SubagentStorefront() {
       updatePageMetadata(store.store_name);
     }
   }, [store?.store_name]);
+
+  // Fetch store by name
+  useEffect(() => {
     const fetchStore = async () => {
       if (!urlStoreName) {
         setNotFound(true);
