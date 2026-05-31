@@ -11,6 +11,7 @@ import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
+import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
@@ -361,7 +362,7 @@ const OrderTrackingCard = ({
     );
   }
 
-  // ── In-progress state ──
+  // ─��� In-progress state ──
   return (
     <div className="space-y-4">
       <div className="relative">
