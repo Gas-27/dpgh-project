@@ -338,7 +338,7 @@ const SubagentDashboard = () => {
       // Fetch subagent store first (needed for other queries)
       const { data: store, error: storeErr } = await supabase
         .from("subagent_stores")
-        .select("id, user_id, store_name, wallet_balance, theme_config, store_headline, agent_store_id, show_whatsapp_group_icon, whatsapp_url, approved, created_at")
+        .select("*")
         .eq("user_id", effectiveUserId)
         .single();
 
@@ -370,9 +370,9 @@ const SubagentDashboard = () => {
         topupsResult,
         agentInfoResult
       ] = await Promise.all([
-        supabase.from("orders").select("id, created_at, customer_number, package_id, amount, status, fulfillment_status, subagent_store_id, network").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
-        supabase.from("withdrawal_requests").select("id, amount, status, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
-        supabase.from("data_packages").select("id, size_gb, name, network, agent_price, active").eq("active", true).order("size_gb"),
+        supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+        supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+        supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
@@ -441,7 +441,7 @@ const SubagentDashboard = () => {
     try {
       const { data, error } = await supabase
         .from("subagent_notifications")
-        .select("id, message, type, created_at")
+        .select("*")
         .eq("subagent_store_id", subagentStore.id)
         .order("created_at", { ascending: false });
       if (!error && data) setNotifications(data);
@@ -458,7 +458,7 @@ const SubagentDashboard = () => {
     if (!subagentStore?.agent_store_id) return;
     const { data, error } = await supabase
       .from("agent_to_subagent_notifications")
-      .select("id, message, type, created_at")
+      .select("*")
       .eq("agent_store_id", subagentStore.agent_store_id)
       .eq("is_active", true)
       .order("created_at", { ascending: false });
