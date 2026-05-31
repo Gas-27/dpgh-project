@@ -716,7 +716,12 @@ const AgentStorefront = () => {
     fetchStore();
   }, [storeName, subdomainStoreName]);
 
-  // ── Price polling (15 s) + realtime ──
+  // ── Update page metadata when store loads ──
+  useEffect(() => {
+    if (store?.store_name) {
+      updatePageMetadata(store.store_name);
+    }
+  }, [store?.store_name]);
   useEffect(() => {
     if (!store?.id) return;
     refreshPrices();

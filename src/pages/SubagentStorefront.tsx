@@ -470,8 +470,12 @@ export function SubagentStorefront() {
   const cardBg = theme.card_background || defaultTheme.card_background;
   const gridColumns = theme.gridColumns || 2;
 
-  // Fetch store by name
+  // ── Update page metadata when store loads ──
   useEffect(() => {
+    if (store?.store_name) {
+      updatePageMetadata(store.store_name);
+    }
+  }, [store?.store_name]);
     const fetchStore = async () => {
       if (!urlStoreName) {
         setNotFound(true);
