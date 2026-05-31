@@ -647,15 +647,17 @@ const AgentDashboard = () => {
   }, [store?.id, subagents]);
 
   // Background auto-refresh every 5 seconds (silent, no page flicker)
+  // ONLY refreshes: wallet balance, commission balance, profit, and orders - does NOT touch form data
   useEffect(() => {
     if (!store?.id) return;
 
     const intervalId = setInterval(() => {
-      // Silently refresh key data in background
+      // Silently refresh ONLY display data in background
       const refreshBackgroundData = async () => {
         try {
-          // Only fetch wallet balance and recent orders (most important data)
+          // Only fetch wallet balance, commission balance and recent orders
           // Do NOT set loading state to avoid UI flicker
+          // Do NOT touch form data (storeForm) - only update display state
           const [storeRes, ordersRes] = await Promise.all([
             supabase
               .from("agent_stores")
@@ -669,7 +671,7 @@ const AgentDashboard = () => {
               .order("created_at", { ascending: false })
           ]);
 
-          // Update wallet balances silently
+          // Update ONLY wallet and commission balances - never touches storeForm
           if (storeRes.data) {
             setStore((prev) =>
               prev
@@ -682,13 +684,13 @@ const AgentDashboard = () => {
             );
           }
 
-          // Update orders silently
+          // Update ONLY orders display - never touches user edits
           if (ordersRes.data) {
             setOrders(ordersRes.data as any[]);
           }
         } catch (error) {
           console.error("[v0] Background refresh error:", error);
-          // Fail silently - no error toast to avoid interrupting user
+          // Fail silently - no error toast to avoid interrupting user edits
         }
       };
 
