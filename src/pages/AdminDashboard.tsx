@@ -642,6 +642,49 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, [retryingOrders]);
 
+  // Background auto-refresh every 1 second (silent, no page flicker)
+  // ONLY refreshes display data - does NOT touch form edits or editedPrices
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      // Silently refresh ONLY display data in background
+      const refreshBackgroundData = async () => {
+        try {
+          // Fetch counts only (lightweight) - DO NOT touch form data
+          const [ordersCount, agentsCount, subagentsCount, usersCount, withdrawalsCount, topupsCount, complaintRes] = await Promise.all([
+            supabase.from("orders").select("id", { count: "exact", head: true }),
+            supabase.from("agent_stores").select("id", { count: "exact", head: true }),
+            supabase.from("subagent_stores").select("id", { count: "exact", head: true }),
+            supabase.from("profiles").select("id", { count: "exact", head: true }),
+            supabase.from("withdrawal_requests").select("id", { count: "exact", head: true }),
+            supabase.from("wallet_topups").select("id", { count: "exact", head: true }),
+            supabase.from("complaints").select("id", { count: "exact", head: true }),
+          ]);
+
+          // Update ONLY display counts - never touches editedPrices or any forms
+          if (ordersCount.count !== undefined) {
+            setTotalCounts((prev) => ({
+              ...prev,
+              orders: ordersCount.count ?? 0,
+              agents: agentsCount.count ?? 0,
+              subagents: subagentsCount.count ?? 0,
+              users: usersCount.count ?? 0,
+              withdrawals: withdrawalsCount.count ?? 0,
+              topups: topupsCount.count ?? 0,
+              complaints: complaintRes.count ?? 0,
+            }));
+          }
+        } catch (error) {
+          console.error("[v0] Background refresh error:", error);
+          // Fail silently - no error toast to avoid interrupting admin
+        }
+      };
+
+      refreshBackgroundData();
+    }, 1000); // Refresh every 1 second
+
+    return () => clearInterval(intervalId);
+  }, []);
+
   // ======================== Withdrawal email listener ========================
   useEffect(() => {
     const channel = supabase
