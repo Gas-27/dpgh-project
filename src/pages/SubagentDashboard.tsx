@@ -329,6 +329,57 @@ const SubagentDashboard = () => {
     };
   }, [subagentStore?.id]);
 
+  // Background auto-refresh every 5 seconds (silent, no page flicker)
+  useEffect(() => {
+    if (!subagentStore?.id) return;
+    
+    const intervalId = setInterval(() => {
+      // Silently refresh key data in background
+      const refreshBackgroundData = async () => {
+        try {
+          const effectiveUserId = user?.id;
+          if (!effectiveUserId) return;
+
+          // Only fetch wallet balance and orders (most important data)
+          // Do NOT set loading state to avoid UI flicker
+          const [storeRes, ordersRes] = await Promise.all([
+            supabase
+              .from("subagent_stores")
+              .select("wallet_balance, id")
+              .eq("id", subagentStore.id)
+              .single(),
+            supabase
+              .from("orders")
+              .select("*")
+              .eq("subagent_store_id", subagentStore.id)
+              .order("created_at", { ascending: false })
+          ]);
+
+          // Update wallet balance silently
+          if (storeRes.data && storeRes.data.wallet_balance !== undefined) {
+            setSubagentStore((prev) =>
+              prev
+                ? { ...prev, wallet_balance: storeRes.data.wallet_balance }
+                : prev
+            );
+          }
+
+          // Update orders silently
+          if (ordersRes.data) {
+            setAllCompletedOrders(ordersRes.data as any[]);
+          }
+        } catch (error) {
+          console.error("[v0] Background refresh error:", error);
+          // Fail silently - no error toast to avoid interrupting user
+        }
+      };
+
+      refreshBackgroundData();
+    }, 5000); // Refresh every 5 seconds
+
+    return () => clearInterval(intervalId);
+  }, [subagentStore?.id, user?.id]);
+
   const fetchData = async (userId?: string) => {
     try {
       setLoading(true);
