@@ -21,37 +21,41 @@ import DraggableFAB from "@/components/DraggableFAB";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
-  // Update document title
-  document.title = `${storeName} - Buy Affordable Data Bundles Instantly`;
+  try {
+    // Update document title
+    document.title = `${storeName} - Buy Affordable Data Bundles Instantly`;
 
-  // Update og:title
-  const ogTitle = document.querySelector('meta[property="og:title"]');
-  if (ogTitle) ogTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
+    // Update og:title
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
 
-  // Update twitter:title
-  const twitterTitle = document.querySelector('meta[name="twitter:title"]');
-  if (twitterTitle) twitterTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
+    // Update twitter:title
+    const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+    if (twitterTitle) twitterTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
 
-  // Update og:description
-  const ogDesc = document.querySelector('meta[property="og:description"]');
-  const desc = description || `Get instant data bundles from ${storeName}. Buy affordable MTN, AirtelTigo & Telecel data bundles. Fast, reliable 24/7 service.`;
-  if (ogDesc) ogDesc.setAttribute('content', desc);
+    // Update og:description
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    const desc = description || `Get instant data bundles from ${storeName}. Buy affordable MTN, AirtelTigo & Telecel data bundles. Fast, reliable 24/7 service.`;
+    if (ogDesc) ogDesc.setAttribute('content', desc);
 
-  // Update twitter:description
-  const twitterDesc = document.querySelector('meta[name="twitter:description"]');
-  if (twitterDesc) twitterDesc.setAttribute('content', desc);
+    // Update twitter:description
+    const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+    if (twitterDesc) twitterDesc.setAttribute('content', desc);
 
-  // Update meta description
-  const metaDesc = document.querySelector('meta[name="description"]');
-  if (metaDesc) metaDesc.setAttribute('content', desc);
+    // Update meta description
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', desc);
 
-  // Update og:image if provided
-  if (imageUrl) {
-    const ogImage = document.querySelector('meta[property="og:image"]');
-    if (ogImage) ogImage.setAttribute('content', imageUrl);
+    // Update og:image if provided
+    if (imageUrl) {
+      const ogImage = document.querySelector('meta[property="og:image"]');
+      if (ogImage) ogImage.setAttribute('content', imageUrl);
 
-    const twitterImage = document.querySelector('meta[name="twitter:image"]');
-    if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+      const twitterImage = document.querySelector('meta[name="twitter:image"]');
+      if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+    }
+  } catch (error) {
+    console.error("[v0] Error updating page metadata:", error);
   }
 };
 
@@ -1028,7 +1032,7 @@ export function SubagentStorefront() {
                   <option value="none">None (use per-line sizes)</option>
                   {packages.filter(p => p.network.toLowerCase() === bulkNetwork).map(p => {
                     const price = subagentPrices[p.id] ?? p.price;
-                    return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {price.toFixed(2)}</option>;
+                    return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH�� {price.toFixed(2)}</option>;
                   })}
                 </select>
               </div>
