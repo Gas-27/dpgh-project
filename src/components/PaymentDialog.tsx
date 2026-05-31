@@ -258,32 +258,59 @@ const PaymentDialog = ({
         },
       });
 
-      const { data, error } = await supabase.functions.invoke(
-        "initialize-payment",
-        {
-          body: {
-            email: userEmail,
-            amount: price,
-            phone: normalizedPhone,
-            callback_url: callbackUrl,
-            metadata: {
-              package_id: actualPackageId,
-              network,
-              package_name: displayPackageName,
-              agent_store_id: actualStoreId || null,
-              subagent_store_id: subagentStoreId || null,
-            },
-          },
+      let data, error;
+      let retries = 3;
+      
+      // Retry logic for connection issues
+      while (retries > 0) {
+        try {
+          const response = await supabase.functions.invoke(
+            "initialize-payment",
+            {
+              body: {
+                email: userEmail,
+                amount: price,
+                phone: normalizedPhone,
+                callback_url: callbackUrl,
+                metadata: {
+                  package_id: actualPackageId,
+                  network,
+                  package_name: displayPackageName,
+                  agent_store_id: actualStoreId || null,
+                  subagent_store_id: subagentStoreId || null,
+                },
+              },
+            }
+          );
+          
+          data = response.data;
+          error = response.error;
+          
+          if (!error) break; // Success, exit retry loop
+          retries--;
+          
+          if (retries > 0) {
+            console.log(`[v0] Payment initialization failed, retrying... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+          }
+        } catch (e) {
+          retries--;
+          if (retries > 0) {
+            console.log(`[v0] Network error, retrying... (${retries} attempts left)`, e);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else {
+            error = e;
+          }
         }
-      );
+      }
 
-      console.log("[v0] initialize-payment response:", { data, error });
+      console.log("[v0] initialize-payment response:", { data, error, retries });
 
       clearTimeout(timeoutId);
 
       if (error) {
         console.error("[v0] Payment error from edge function:", error);
-        const errorMsg = error.message || "Failed to initialize payment. Please try again.";
+        const errorMsg = error?.message || "Failed to initialize payment. Please check your connection and try again.";
         setPaymentError(errorMsg);
         throw error;
       }

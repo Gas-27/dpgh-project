@@ -438,12 +438,17 @@ const SubagentDashboard = () => {
   const fetchNotifications = async () => {
     if (!subagentStore?.id) return;
     setLoadingNotifications(true);
-    const { data, error } = await supabase
-      .from("subagent_notifications")
-      .select("*")
-      .eq("subagent_store_id", subagentStore.id)
-      .order("created_at", { ascending: false });
-    if (!error && data) setNotifications(data);
+    try {
+      const { data, error } = await supabase
+        .from("subagent_notifications")
+        .select("*")
+        .eq("subagent_store_id", subagentStore.id)
+        .order("created_at", { ascending: false });
+      if (!error && data) setNotifications(data);
+      if (error) console.warn("[v0] Error fetching notifications:", error);
+    } catch (e) {
+      console.warn("[v0] Exception fetching notifications:", e);
+    }
     setLoadingNotifications(false);
   };
 
@@ -545,11 +550,25 @@ const SubagentDashboard = () => {
         }
       }).subscribe();
     
+    const c5 = supabase.channel("subagent-notifications-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "subagent_notifications", filter: `subagent_store_id=eq.${subagentStore.id}` }, () => {
+        // Fetch fresh notifications on any change (insert, update, delete)
+        fetchNotifications();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log("[v0] Subscribed to notifications updates");
+        } else if (status === 'CLOSED') {
+          console.log("[v0] Notifications subscription closed");
+        }
+      });
+    
     return () => {
       supabase.removeChannel(c1);
       supabase.removeChannel(c2);
       supabase.removeChannel(c3);
       supabase.removeChannel(c4);
+      supabase.removeChannel(c5);
     };
   }, [subagentStore?.id]);
 
