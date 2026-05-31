@@ -29,6 +29,8 @@ export default function SubagentRegistrationForm({
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
+  const [storeNameError, setStoreNameError] = useState("");
+  const [checkingStoreName, setCheckingStoreName] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -43,13 +45,49 @@ export default function SubagentRegistrationForm({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
+    
+    // Clear error when user starts typing again
+    if (id === "storeName") {
+      setStoreNameError("");
+    }
+  };
+
+  // Check if store name is available on blur
+  const checkStoreNameAvailability = async () => {
+    if (!formData.storeName.trim()) return;
+    
+    setCheckingStoreName(true);
+    try {
+      const { data: existingStores, error } = await supabase
+        .from("subagent_stores")
+        .select("store_name")
+        .ilike("store_name", `%${formData.storeName}%`);
+
+      if (!error && existingStores && existingStores.length > 0) {
+        const isDuplicate = existingStores.some((store: any) => 
+          store.store_name.toLowerCase().trim() === formData.storeName.toLowerCase().trim()
+        );
+        
+        if (isDuplicate) {
+          setStoreNameError(`Store name "${formData.storeName}" is already taken. Please choose a different name.`);
+        } else {
+          setStoreNameError("");
+        }
+      } else {
+        setStoreNameError("");
+      }
+    } catch (error) {
+      console.error("[v0] Error checking store name:", error);
+      setStoreNameError("");
+    }
+    setCheckingStoreName(false);
   };
 
   const handleSelectChange = (value: string) => {
     setFormData(prev => ({ ...prev, momoNetwork: value }));
   };
 
-  const validateForm = () => {
+  const validateForm = async () => {
     if (!formData.email || !formData.password || !formData.storeName || 
         !formData.supportNumber || !formData.whatsappNumber || 
         !formData.momoName || !formData.momoNumber) {
@@ -79,13 +117,35 @@ export default function SubagentRegistrationForm({
       return false;
     }
 
+    // Check if store name is already taken
+    const { data: existingStores, error: checkError } = await supabase
+      .from("subagent_stores")
+      .select("store_name")
+      .ilike("store_name", `%${formData.storeName}%`);
+
+    if (!checkError && existingStores && existingStores.length > 0) {
+      // Check for exact match (case-insensitive)
+      const isDuplicate = existingStores.some((store: any) => 
+        store.store_name.toLowerCase().trim() === formData.storeName.toLowerCase().trim()
+      );
+      
+      if (isDuplicate) {
+        toast({
+          title: "Store Name Taken",
+          description: `The store name "${formData.storeName}" is already taken. Please choose a different name.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+
     return true;
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!(await validateForm())) return;
 
     try {
       setLoading(true);
@@ -104,36 +164,13 @@ export default function SubagentRegistrationForm({
       if (authError) throw authError;
       if (!authData.user?.id) throw new Error("Failed to create user account");
 
-      // Create subagent store (auto-approved) with unique URL enforcement
-      let uniqueStoreName = formData.storeName;
-      
-      // Check if store name already exists
-      const { data: existingStores } = await supabase
-        .from("subagent_stores")
-        .select("store_name")
-        .eq("approved", true);
-      
-      if (existingStores && existingStores.length > 0) {
-        const slugifiedName = DOMAINS.sanitizeStoreName(formData.storeName);
-        
-        // Count how many stores have the same slug
-        const duplicates = existingStores.filter((s: any) => {
-          const existingSlug = DOMAINS.sanitizeStoreName(s.store_name);
-          return existingSlug === slugifiedName;
-        });
-        
-        // If duplicates exist, append a number
-        if (duplicates.length > 0) {
-          uniqueStoreName = `${formData.storeName} ${duplicates.length + 1}`;
-        }
-      }
-      
+      // Create subagent store (auto-approved) with exact store name
       const { data: storeData, error: storeError } = await supabase
         .from("subagent_stores")
         .insert({
           user_id: authData.user.id,
           agent_store_id: agentStoreId,
-          store_name: uniqueStoreName,
+          store_name: formData.storeName,
           whatsapp_number: formData.whatsappNumber,
           support_number: formData.supportNumber,
           momo_name: formData.momoName,
@@ -238,11 +275,15 @@ export default function SubagentRegistrationForm({
             <Input
               id="storeName"
               placeholder="Your Store Name"
-              className="bg-background border-border"
+              className={`bg-background border-border ${storeNameError ? 'border-red-500' : ''}`}
               value={formData.storeName}
               onChange={handleInputChange}
-              disabled={loading}
+              onBlur={checkStoreNameAvailability}
+              disabled={loading || checkingStoreName}
             />
+            {storeNameError && (
+              <p className="text-sm text-red-500">{storeNameError}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -321,7 +362,7 @@ export default function SubagentRegistrationForm({
               background: primaryColor,
               color: primaryForeground,
             }}
-            disabled={loading}
+            disabled={loading || checkingStoreName || !!storeNameError}
           >
             {loading ? (
               <>
