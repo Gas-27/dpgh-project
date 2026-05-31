@@ -370,8 +370,8 @@ const SubagentDashboard = () => {
         topupsResult,
         agentInfoResult
       ] = await Promise.all([
-        supabase.from("orders").select("id, created_at, customer_number, package_id, amount, status, fulfillment_status, subagent_store_id").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(100),
-        supabase.from("withdrawal_requests").select("id, amount, status, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
+        supabase.from("orders").select("id, created_at, customer_number, package_id, amount, status, fulfillment_status, subagent_store_id, network").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+        supabase.from("withdrawal_requests").select("id, amount, status, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
         supabase.from("data_packages").select("id, size_gb, name, network, agent_price, active").eq("active", true).order("size_gb"),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
@@ -443,8 +443,7 @@ const SubagentDashboard = () => {
         .from("subagent_notifications")
         .select("id, message, type, created_at")
         .eq("subagent_store_id", subagentStore.id)
-        .order("created_at", { ascending: false })
-        .limit(20);
+        .order("created_at", { ascending: false });
       if (!error && data) setNotifications(data);
       if (error) console.warn("[v0] Error fetching notifications:", error);
     } catch (e) {
@@ -462,8 +461,7 @@ const SubagentDashboard = () => {
       .select("id, message, type, created_at")
       .eq("agent_store_id", subagentStore.agent_store_id)
       .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .limit(20);
+      .order("created_at", { ascending: false });
     if (!error && data) setAgentNotifications(data);
   };
 

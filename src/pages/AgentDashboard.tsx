@@ -499,8 +499,8 @@ const AgentDashboard = () => {
       const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR] = await Promise.all([
         supabase.from("data_packages").select("id, size_gb, name, network, agent_price, active").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
-        supabase.from("orders").select("id, created_at, customer_number, package_id, amount, status, fulfillment_status, agent_store_id").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).limit(100),
-        supabase.from("withdrawal_requests").select("id, amount, status, created_at").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).limit(50),
+        supabase.from("orders").select("id, created_at, customer_number, package_id, amount, status, fulfillment_status, agent_store_id, network").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("withdrawal_requests").select("id, amount, status, created_at").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("subagent_stores").select("id, store_name, wallet_balance, created_at").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
@@ -664,8 +664,7 @@ const AgentDashboard = () => {
       .from("agent_notifications")
       .select("id, message, type, created_at")
       .eq("agent_store_id", store.id)
-      .order("created_at", { ascending: false })
-      .limit(20);
+      .order("created_at", { ascending: false });
     if (!error && data) setNotifications(data as Notification[]);
     setLoadingNotifications(false);
   };
