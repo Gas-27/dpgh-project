@@ -3,6 +3,21 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import PaymentDialog from "@/components/PaymentDialog";
+import PaymentVerifier from "@/components/PaymentVerifier";
+import {
+  Zap, Phone, Wifi, Clock, Search, Package,
+  CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
+  MessageCircle, Users, AlertTriangle, Check, Gift,
+  Layers, FileSpreadsheet, RotateCcw, LinkIcon,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import ReportComplaintDialog from "@/components/ReportComplaintDialog";
+import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
+import DraggableFAB from "@/components/DraggableFAB";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {

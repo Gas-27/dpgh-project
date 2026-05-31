@@ -3,6 +3,21 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import PaymentDialog from "@/components/PaymentDialog";
+import PaymentVerifier from "@/components/PaymentVerifier";
+import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
+import ReportComplaintDialog from "@/components/ReportComplaintDialog";
+import {
+  Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
+  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
+  Layers, FileSpreadsheet, RotateCcw, LinkIcon,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import DraggableFAB from "@/components/DraggableFAB";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -39,22 +54,6 @@ const updatePageMetadata = (storeName: string, description?: string, imageUrl?: 
     if (twitterImage) twitterImage.setAttribute('content', imageUrl);
   }
 };
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import PaymentDialog from "@/components/PaymentDialog";
-import PaymentVerifier from "@/components/PaymentVerifier";
-import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
-import ReportComplaintDialog from "@/components/ReportComplaintDialog";
-import {
-  Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
-  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
-  Layers, FileSpreadsheet, RotateCcw, LinkIcon,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
-import DraggableFAB from "@/components/DraggableFAB";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES
