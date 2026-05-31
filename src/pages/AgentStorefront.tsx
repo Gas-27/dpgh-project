@@ -14,7 +14,7 @@ import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
-  Layers, FileSpreadsheet, RotateCcw,
+  Layers, FileSpreadsheet, RotateCcw, LinkIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
@@ -916,6 +916,38 @@ const AgentStorefront = () => {
           </div>
         </div>
       </header>
+
+      {/* Store URL Banner - Shows branded store link */}
+      {store && (
+        <div className="bg-background/50 border-b border-border/50 px-4 py-3">
+          <div className="container flex items-center justify-between gap-4 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <LinkIcon className="h-4 w-4" />
+              <span>Share your store link:</span>
+              <code 
+                className="bg-background px-2 py-1 rounded font-mono text-foreground font-semibold"
+                style={{ color: primaryColor }}
+              >
+                {DOMAINS.getAgentStoreUrl(store.store_name).replace('https://', '')}
+              </code>
+            </div>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={() => {
+                const url = DOMAINS.getAgentStoreUrl(store.store_name);
+                navigator.clipboard.writeText(url);
+                toast({
+                  title: "Link copied!",
+                  description: "Store link copied to clipboard",
+                });
+              }}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Hero */}
       <section className="relative overflow-hidden py-16 md:py-20">

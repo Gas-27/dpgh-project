@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import {
   Zap, Phone, Wifi, Clock, Search, Package,
   CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
   MessageCircle, Users, AlertTriangle, Check, Gift,
-  Layers, FileSpreadsheet, RotateCcw,
+  Layers, FileSpreadsheet, RotateCcw, LinkIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
@@ -778,6 +779,35 @@ export function SubagentStorefront() {
           </div>
         </div>
       </header>
+
+      {/* Store URL Banner - Shows branded store link */}
+      {store && (
+        <div className="bg-background/50 border-b border-border/50 px-4 py-3">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <LinkIcon className="h-4 w-4" />
+              <span>Share your store link:</span>
+              <code 
+                className="bg-background px-2 py-1 rounded font-mono text-foreground font-semibold"
+                style={{ color: primaryColor }}
+              >
+                {DOMAINS.getSubagentStoreUrl(store.store_name).replace('https://', '')}
+              </code>
+            </div>
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={() => {
+                const url = DOMAINS.getSubagentStoreUrl(store.store_name);
+                navigator.clipboard.writeText(url);
+                // Note: use toast from useToast hook if available in this component
+              }}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
         {/* Order Search */}
