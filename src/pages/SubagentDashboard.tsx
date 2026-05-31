@@ -374,7 +374,7 @@ const SubagentDashboard = () => {
       };
 
       refreshBackgroundData();
-    }, 5000); // Refresh every 5 seconds
+    }, 1000); // Refresh every 1 second
 
     return () => clearInterval(intervalId);
   }, [subagentStore?.id]);
