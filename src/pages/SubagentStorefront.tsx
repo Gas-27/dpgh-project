@@ -3,21 +3,42 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import PaymentDialog from "@/components/PaymentDialog";
-import PaymentVerifier from "@/components/PaymentVerifier";
-import {
-  Zap, Phone, Wifi, Clock, Search, Package,
-  CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
-  MessageCircle, Users, AlertTriangle, Check, Gift,
-  Layers, FileSpreadsheet, RotateCcw, LinkIcon,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import ReportComplaintDialog from "@/components/ReportComplaintDialog";
-import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
-import DraggableFAB from "@/components/DraggableFAB";
+
+// Utility function to update page metadata dynamically
+const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
+  // Update document title
+  document.title = `${storeName} - Buy Affordable Data Bundles Instantly`;
+
+  // Update og:title
+  const ogTitle = document.querySelector('meta[property="og:title"]');
+  if (ogTitle) ogTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
+
+  // Update twitter:title
+  const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+  if (twitterTitle) twitterTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
+
+  // Update og:description
+  const ogDesc = document.querySelector('meta[property="og:description"]');
+  const desc = description || `Get instant data bundles from ${storeName}. Buy affordable MTN, AirtelTigo & Telecel data bundles. Fast, reliable 24/7 service.`;
+  if (ogDesc) ogDesc.setAttribute('content', desc);
+
+  // Update twitter:description
+  const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+  if (twitterDesc) twitterDesc.setAttribute('content', desc);
+
+  // Update meta description
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc) metaDesc.setAttribute('content', desc);
+
+  // Update og:image if provided
+  if (imageUrl) {
+    const ogImage = document.querySelector('meta[property="og:image"]');
+    if (ogImage) ogImage.setAttribute('content', imageUrl);
+
+    const twitterImage = document.querySelector('meta[name="twitter:image"]');
+    if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+  }
+};
 
 interface SubagentStore {
   id: string;
@@ -479,6 +500,9 @@ export function SubagentStorefront() {
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       // Don't override show_whatsapp_group_icon - use database value directly
       setStore(matched);
+
+      // Update page metadata with store name
+      updatePageMetadata(matched.store_name);
 
       // Fetch packages and prices
       // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices

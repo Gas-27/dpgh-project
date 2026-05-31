@@ -3,6 +3,42 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
+
+// Utility function to update page metadata dynamically
+const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
+  // Update document title
+  document.title = `${storeName} - Buy Affordable Data Bundles Instantly`;
+
+  // Update og:title
+  const ogTitle = document.querySelector('meta[property="og:title"]');
+  if (ogTitle) ogTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
+
+  // Update twitter:title
+  const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+  if (twitterTitle) twitterTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
+
+  // Update og:description
+  const ogDesc = document.querySelector('meta[property="og:description"]');
+  const desc = description || `Get instant data bundles from ${storeName}. Buy affordable MTN, AirtelTigo & Telecel data bundles. Fast, reliable 24/7 service.`;
+  if (ogDesc) ogDesc.setAttribute('content', desc);
+
+  // Update twitter:description
+  const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+  if (twitterDesc) twitterDesc.setAttribute('content', desc);
+
+  // Update meta description
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc) metaDesc.setAttribute('content', desc);
+
+  // Update og:image if provided
+  if (imageUrl) {
+    const ogImage = document.querySelector('meta[property="og:image"]');
+    if (ogImage) ogImage.setAttribute('content', imageUrl);
+
+    const twitterImage = document.querySelector('meta[name="twitter:image"]');
+    if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+  }
+};
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -637,6 +673,9 @@ const AgentStorefront = () => {
             matched.is_subagent_store = true;
             setStore(matched);
             
+            // Update page metadata with store name
+            updatePageMetadata(matched.store_name);
+
             const [pkgRes, subagentPriceRes, agentPriceRes] = await Promise.all([
               supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
               supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
@@ -660,6 +699,9 @@ const AgentStorefront = () => {
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
+
+      // Update page metadata with store name
+      updatePageMetadata(matched.store_name);
 
       const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
