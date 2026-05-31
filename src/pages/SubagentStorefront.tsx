@@ -520,9 +520,6 @@ export function SubagentStorefront() {
       // Don't override show_whatsapp_group_icon - use database value directly
       setStore(matched);
 
-      // Update page metadata with store name
-      updatePageMetadata(matched.store_name);
-
       // Fetch packages and prices
       // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
       const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
