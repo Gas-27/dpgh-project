@@ -632,6 +632,7 @@ const AgentStorefront = () => {
   // ── Initial data fetch ──
   useEffect(() => {
     const fetchStore = async () => {
+      console.log("[v0] Starting fetchStore with storeName:", storeName);
       if (!storeName) { setNotFound(true); setLoading(false); return; }
       const normalized = storeName.toLowerCase().trim();
       // Normalize for comparison - remove ALL special characters for matching
@@ -642,8 +643,10 @@ const AgentStorefront = () => {
                                window.location.hostname === "www.agentsstore.shop" ||
                                window.location.hostname.includes("localhost");
       
+      console.log("[v0] Fetching agent stores...");
       // First try agent_stores
       const { data: stores } = await supabase.from("agent_stores").select("*").eq("approved", true) as any;
+      console.log("[v0] Found stores:", stores?.length);
       
       let matched = null;
       if (stores && stores.length > 0) {
