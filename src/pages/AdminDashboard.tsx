@@ -96,6 +96,13 @@ const AdminDashboard = () => {
   const [topupSearchTerm, setTopupSearchTerm] = useState("");
   const [complaintSearchTerm, setComplaintSearchTerm] = useState("");
 
+  // Filter states for Orders, Agents, and Subagents
+  const [orderNetworkFilter, setOrderNetworkFilter] = useState<string>("all");
+  const [orderFulfillmentFilter, setOrderFulfillmentFilter] = useState<string>("all");
+  const [orderPaymentStatusFilter, setOrderPaymentStatusFilter] = useState<string>("all");
+  const [agentApprovalFilter, setAgentApprovalFilter] = useState<string>("all");
+  const [subagentStatusFilter, setSubagentStatusFilter] = useState<string>("all");
+
   // Pagination state
   const [agentPage, setAgentPage] = useState(1);
   const [subagentPage, setSubagentPage] = useState(1);
@@ -904,6 +911,27 @@ const AdminDashboard = () => {
     for (const order of failedOrders) { await retryOrder(order.id); }
   };
 
+  // Toggle order fulfillment status
+  const toggleOrderFulfillment = async (orderId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "completed" ? "pending" : "completed";
+    const { error } = await supabase
+      .from("orders")
+      .update({ fulfillment_status: newStatus })
+      .eq("id", orderId);
+    
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    setOrders((prev) =>
+      prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: newStatus } : o)
+    );
+
+    const action = newStatus === "completed" ? "marked as completed" : "marked as pending";
+    toast({ title: "Success", description: `Order ${action}` });
+  };
+
   // ======================== Wallet topup ========================
   const searchTopupRef = () => {
     const found = agents.find((a) => a.topup_reference === topupSearch.trim());
@@ -1038,9 +1066,19 @@ const AdminDashboard = () => {
   const storeSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
-  const filteredAgents = agents.filter((agent) => agent.store_name.toLowerCase().includes(agentSearchTerm.toLowerCase()));
+  
+  const filteredAgents = agents
+    .filter((agent) => agent.store_name.toLowerCase().includes(agentSearchTerm.toLowerCase()))
+    .filter((agent) => agentApprovalFilter === "all" ? true : (agentApprovalFilter === "approved" ? agent.approved : !agent.approved));
+  
   const filteredUsers = users.filter((user) => (user.full_name?.toLowerCase() || "").includes(userSearchTerm.toLowerCase()));
-  const filteredOrders = orders.filter((order) => order.customer_number.toLowerCase().includes(orderSearchTerm.toLowerCase()));
+  
+  const filteredOrders = orders
+    .filter((order) => order.customer_number.toLowerCase().includes(orderSearchTerm.toLowerCase()))
+    .filter((order) => orderNetworkFilter === "all" ? true : order.network.toLowerCase() === orderNetworkFilter.toLowerCase())
+    .filter((order) => orderFulfillmentFilter === "all" ? true : order.fulfillment_status.toLowerCase() === orderFulfillmentFilter.toLowerCase())
+    .filter((order) => orderPaymentStatusFilter === "all" ? true : order.status.toLowerCase() === orderPaymentStatusFilter.toLowerCase());
+  
   const filteredWithdrawals = withdrawals.filter((withdrawal) => {
     // Check if it's a subagent withdrawal
     if (withdrawal.subagent_store_id) {
@@ -1051,6 +1089,10 @@ const AdminDashboard = () => {
     const agent = agents.find((a) => a.id === withdrawal.agent_store_id);
     return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
   });
+
+  const filteredSubagents = subagents
+    .filter((subagent) => subagent.store_name.toLowerCase().includes(subagentSearchTerm.toLowerCase()))
+    .filter((subagent) => subagentStatusFilter === "all" ? true : (subagentStatusFilter === "active" ? !subagent.suspended : subagent.suspended));
 
   if (dataLoading) {
     return (
@@ -1150,6 +1192,39 @@ const AdminDashboard = () => {
                 </div>
               )}
               <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by phone number..." value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="pl-10" /></div>
+              
+              {/* Order Filters */}
+              <div className="flex gap-2 flex-wrap">
+                <Select value={orderNetworkFilter} onValueChange={setOrderNetworkFilter}>
+                  <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Network" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Networks</SelectItem>
+                    <SelectItem value="mtn">MTN</SelectItem>
+                    <SelectItem value="airtel">AirtelTigo</SelectItem>
+                    <SelectItem value="telecel">Telecel</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={orderFulfillmentFilter} onValueChange={setOrderFulfillmentFilter}>
+                  <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Fulfillment" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={orderPaymentStatusFilter} onValueChange={setOrderPaymentStatusFilter}>
+                  <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Payment" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Payment Status</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               {(() => {
                 const paginated = filteredOrders.slice((orderPage - 1) * PAGE_SIZE, orderPage * PAGE_SIZE);
                 const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
@@ -1220,11 +1295,20 @@ const AdminDashboard = () => {
                                 <TableCell><Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge></TableCell>
                                 <TableCell><Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge></TableCell>
                                 <TableCell>
-                                  {order.fulfillment_status !== "completed" && (
-                                    <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
-                                      {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
+                                  <div className="flex gap-1 flex-wrap">
+                                    {order.fulfillment_status !== "completed" && (
+                                      <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
+                                        {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
+                                      </Button>
+                                    )}
+                                    <Button 
+                                      variant={order.fulfillment_status === "completed" ? "default" : "secondary"} 
+                                      size="sm" 
+                                      onClick={() => toggleOrderFulfillment(order.id, order.fulfillment_status)}
+                                    >
+                                      {order.fulfillment_status === "completed" ? "Unfulfill" : "Fulfill"}
                                     </Button>
-                                  )}
+                                  </div>
                                 </TableCell>
                               </TableRow>
                               );
@@ -1249,7 +1333,18 @@ const AdminDashboard = () => {
           {/* AGENTS TAB */}
           {canSee("agents") && (
             <TabsContent value="agents" className="space-y-4">
-              <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by store name..." value={agentSearchTerm} onChange={(e) => setAgentSearchTerm(e.target.value)} className="pl-10" /></div>
+              <div className="flex gap-2 flex-wrap">
+                <div className="relative flex-1 max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by store name..." value={agentSearchTerm} onChange={(e) => setAgentSearchTerm(e.target.value)} className="pl-10" /></div>
+                
+                <Select value={agentApprovalFilter} onValueChange={setAgentApprovalFilter}>
+                  <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Approval" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Agents</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               {(() => {
                 const paginated = filteredAgents.slice((agentPage - 1) * PAGE_SIZE, agentPage * PAGE_SIZE);
                 const totalPages = Math.ceil(filteredAgents.length / PAGE_SIZE);
@@ -1318,25 +1413,32 @@ const AdminDashboard = () => {
           {/* SUBAGENTS TAB */}
           {canSee("subagents") && (
             <TabsContent value="subagents" className="space-y-4">
-              <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search by store name..." 
-                  className="pl-10" 
-                  value={subagentSearchTerm}
-                  onChange={(e) => setSubagentSearchTerm(e.target.value)}
-                />
+              <div className="flex gap-2 flex-wrap">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search by store name..." 
+                    className="pl-10" 
+                    value={subagentSearchTerm}
+                    onChange={(e) => setSubagentSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                <Select value={subagentStatusFilter} onValueChange={setSubagentStatusFilter}>
+                  <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subagents</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               {(() => {
-                const filtered = subagents.filter(s => 
-                  s.store_name?.toLowerCase().includes(subagentSearchTerm.toLowerCase()) ||
-                  s.agent_stores?.store_name?.toLowerCase().includes(subagentSearchTerm.toLowerCase())
-                );
-                const paginated = filtered.slice((subagentPage - 1) * PAGE_SIZE, subagentPage * PAGE_SIZE);
-                const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+                const paginated = filteredSubagents.slice((subagentPage - 1) * PAGE_SIZE, subagentPage * PAGE_SIZE);
+                const totalPages = Math.ceil(filteredSubagents.length / PAGE_SIZE);
                 
-                return filtered.length === 0 ? (
+                return filteredSubagents.length === 0 ? (
                 <Card className="border-border">
                   <CardContent className="py-12">
                     <p className="text-center text-muted-foreground">No subagents match your search.</p>
@@ -1345,7 +1447,7 @@ const AdminDashboard = () => {
               ) : (
                   <>
                   <p className="text-sm text-muted-foreground">
-                    Showing {(subagentPage - 1) * PAGE_SIZE + 1} - {Math.min(subagentPage * PAGE_SIZE, filtered.length)} of {totalCounts.subagents} subagents
+                    Showing {(subagentPage - 1) * PAGE_SIZE + 1} - {Math.min(subagentPage * PAGE_SIZE, filteredSubagents.length)} of {totalCounts.subagents} subagents
                   </p>
                   {paginated.map((subagent) => (
                     <Card key={subagent.id} className={`border-border bg-card/50 ${subagent.suspended ? 'opacity-60' : ''}`}>
