@@ -213,10 +213,9 @@ const SubagentDashboard = () => {
     // Use impersonated user ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
     if (!effectiveUserId) return;
-    // Allow if impersonating (admin token) OR if user is a subagent
-    if (!isImpersonating && !isSubagent) return;
+    // Load data for any logged-in user or impersonated user
     fetchData(effectiveUserId);
-  }, [isSubagent, user?.id, isImpersonating, impersonatedUserId]);
+  }, [user?.id, isImpersonating, impersonatedUserId]);
 
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops
