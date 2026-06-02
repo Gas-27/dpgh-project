@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Edit2, Loader2, DollarSign, TrendingUp, AlertCircle } from "lucide-react";
+import { Edit2, Loader2, DollarSign, TrendingUp, AlertCircle, Zap } from "lucide-react";
 
 interface AFAPackage {
   id: string;
@@ -19,6 +19,12 @@ interface AFAPackage {
   commission_percent: number;
   min_price?: number;
   max_price?: number;
+}
+
+interface AgentStore {
+  id: string;
+  store_name: string;
+  afa_bundle_price?: number;
 }
 
 interface AgentAFAPrice {
@@ -32,7 +38,11 @@ interface AgentAFAPrice {
 export default function AgentAFAPriceManager() {
   const [packages, setPackages] = useState<AFAPackage[]>([]);
   const [agentPrices, setAgentPrices] = useState<AgentAFAPrice[]>([]);
+  const [agentStore, setAgentStore] = useState<AgentStore | null>(null);
+  const [minBundlePrice, setMinBundlePrice] = useState(13.00);
+  const [agentBundlePrice, setAgentBundlePrice] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [savingBundle, setSavingBundle] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -56,16 +66,34 @@ export default function AgentAFAPriceManager() {
         return;
       }
 
-      // Get agent store ID
-      const { data: agentStore } = await supabase
+      // Get agent store ID and AFA bundle price
+      const { data: store } = await supabase
         .from("agent_stores")
-        .select("id")
+        .select("id, store_name, afa_bundle_price")
         .eq("user_id", authData.user.id)
         .single();
 
-      if (!agentStore) {
+      if (!store) {
         toast({ title: "Error", description: "Agent store not found", variant: "destructive" });
         return;
+      }
+
+      setAgentStore(store as AgentStore);
+      setAgentBundlePrice(store.afa_bundle_price || 0);
+
+      // Get AFA settings to show minimum price
+      try {
+        const { data: afaSettings } = await supabase
+          .from("afa_settings")
+          .select("bundle_price")
+          .single();
+        
+        if (afaSettings?.bundle_price) {
+          setMinBundlePrice(afaSettings.bundle_price);
+        }
+      } catch (err) {
+        console.log("[v0] AFA settings not found, using default minimum");
+        setMinBundlePrice(13.00);
       }
 
       // Fetch available AFA packages
@@ -81,7 +109,7 @@ export default function AgentAFAPriceManager() {
       const { data: pricesData, error: pricesError } = await supabase
         .from("agent_afa_prices")
         .select("*")
-        .eq("agent_store_id", agentStore.id);
+        .eq("agent_store_id", store.id);
 
       if (pricesError) throw pricesError;
 
@@ -101,6 +129,42 @@ export default function AgentAFAPriceManager() {
       toast({ title: "Error", description: "Failed to load pricing data", variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveBundlePrice = async () => {
+    if (agentBundlePrice < minBundlePrice) {
+      toast({
+        title: "Price too low",
+        description: `AFA Bundle price must be at least GH₵${minBundlePrice.toFixed(2)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!agentStore) return;
+
+    setSavingBundle(true);
+    try {
+      const { error } = await supabase
+        .from("agent_stores")
+        .update({ afa_bundle_price: agentBundlePrice })
+        .eq("id", agentStore.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `AFA Bundle price updated to GH₵${agentBundlePrice.toFixed(2)}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save bundle price",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingBundle(false);
     }
   };
 
@@ -228,11 +292,63 @@ export default function AgentAFAPriceManager() {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold">AFA Package Pricing</h3>
-        <p className="text-sm text-muted-foreground">Set your selling prices for each AFA package</p>
-      </div>
+    <div className="space-y-6">
+      {/* AFA Bundle Registration Price */}
+      <Card className="border-green-500/30 bg-green-900/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-green-600" />
+            AFA Bundle Registration Price
+          </CardTitle>
+          <CardDescription>
+            Set the price customers must pay to register for AFA. Minimum price set by admin: GH₵{minBundlePrice.toFixed(2)}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-sm font-medium">Admin Minimum Price</Label>
+              <div className="text-2xl font-bold text-green-600 mt-2">GH₵{minBundlePrice.toFixed(2)}</div>
+            </div>
+            <div>
+              <Label htmlFor="bundlePrice" className="text-sm font-medium">Your Asking Price (GH₵)</Label>
+              <Input
+                id="bundlePrice"
+                type="number"
+                min={minBundlePrice}
+                step="0.01"
+                value={agentBundlePrice || ""}
+                onChange={(e) => setAgentBundlePrice(Number(e.target.value) || 0)}
+                className="mt-2"
+                placeholder={`Minimum: ${minBundlePrice.toFixed(2)}`}
+              />
+            </div>
+            <div className="flex flex-col justify-end">
+              <Button 
+                onClick={handleSaveBundlePrice}
+                disabled={savingBundle || agentBundlePrice < minBundlePrice}
+                className="w-full"
+              >
+                {savingBundle ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Price"
+                )}
+              </Button>
+            </div>
+          </div>
+          {agentBundlePrice > 0 && agentBundlePrice >= minBundlePrice && (
+            <div className="text-sm text-green-700 bg-green-50 p-3 rounded">
+              Your customers will pay GH₵{agentBundlePrice.toFixed(2)} to register for AFA
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* AFA Package Pricing */}
 
       <Card>
         <Table>
