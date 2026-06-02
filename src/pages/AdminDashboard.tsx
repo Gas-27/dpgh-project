@@ -632,13 +632,51 @@ const AdminDashboard = () => {
     }
   }, []);
   
-  // DISABLED: Realtime subscriptions are no longer needed
-  // With lazy loading, each tab only loads when clicked
-  // No background refreshes needed - significantly improves performance
-  /*
+  // Lightweight background refresh - only fetch counts every 10 seconds
+  useEffect(() => {
+    const refreshCountsOnly = async () => {
+      try {
+        const [ordersCount, agentsCount, subagentsCount, usersCount, withdrawalsCount, topupsCount] = await Promise.all([
+          supabase.from("orders").select("id", { count: "exact", head: true }),
+          supabase.from("agent_stores").select("id", { count: "exact", head: true }),
+          supabase.from("subagent_stores").select("id", { count: "exact", head: true }),
+          supabase.from("profiles").select("id", { count: "exact", head: true }),
+          supabase.from("withdrawal_requests").select("id", { count: "exact", head: true }),
+          supabase.from("wallet_topups").select("id", { count: "exact", head: true }),
+        ]);
+        
+        setTotalCounts({
+          orders: ordersCount.count ?? 0,
+          agents: agentsCount.count ?? 0,
+          subagents: subagentsCount.count ?? 0,
+          users: usersCount.count ?? 0,
+          withdrawals: withdrawalsCount.count ?? 0,
+          topups: topupsCount.count ?? 0,
+          complaints: 0,
+        });
+      } catch (error) {
+        console.error("[v0] Error refreshing counts:", error);
+      }
+    };
+
+    // Initial count refresh
+    refreshCountsOnly();
+    
+    // Refresh counts every 10 seconds (lightweight - counts only, no record data)
+    const interval = setInterval(refreshCountsOnly, 10000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Realtime subscriptions with 5-second debounce (increased from 2 seconds)
+  // Only triggers refreshData if tab is already loaded
   useOptimizedRealtime(
-    () => refreshData(),
-    2000,
+    () => {
+      // Only refresh data if a tab other than prices is currently active
+      if (activeTab !== "prices" && loadedTabs.has(activeTab)) {
+        handleTabChange(activeTab);
+      }
+    },
+    5000, // 5 second debounce - less aggressive than 2 seconds
     [
       { name: 'orders' },
       { name: 'agent_stores' },
@@ -648,34 +686,34 @@ const AdminDashboard = () => {
       { name: 'profiles' },
     ]
   );
-  */
 
-  // DISABLED: Auto-retry was causing unnecessary queries every 30 seconds
-  // Admins can manually retry orders from the Orders tab
-  /*
+  // Auto-retry pending orders - 60 second interval (less aggressive)
   useEffect(() => {
     const autoRetryPendingOrders = async () => {
-      const { data: pendingOrders } = await supabase
-        .from("orders")
-        .select("id")
-        .eq("fulfillment_status", "pending")
-        .eq("status", "paid");
-      if (!pendingOrders?.length) return;
-      for (const order of pendingOrders) {
-        if (retryingOrders.has(order.id)) continue;
-        const { data: fresh } = await supabase
+      try {
+        const { data: pendingOrders } = await supabase
           .from("orders")
-          .select("fulfillment_status")
-          .eq("id", order.id)
-          .single();
-        if (fresh?.fulfillment_status !== "pending") continue;
-        await retryOrder(order.id);
+          .select("id")
+          .eq("fulfillment_status", "pending")
+          .eq("status", "paid");
+        if (!pendingOrders?.length) return;
+        for (const order of pendingOrders) {
+          if (retryingOrders.has(order.id)) continue;
+          const { data: fresh } = await supabase
+            .from("orders")
+            .select("fulfillment_status")
+            .eq("id", order.id)
+            .single();
+          if (fresh?.fulfillment_status !== "pending") continue;
+          await retryOrder(order.id);
+        }
+      } catch (error) {
+        console.error("[v0] Auto-retry error:", error);
       }
     };
-    const interval = setInterval(autoRetryPendingOrders, 30000);
+    const interval = setInterval(autoRetryPendingOrders, 60000); // 60 seconds (was 30)
     return () => clearInterval(interval);
   }, [retryingOrders]);
-  */
 
   // Background auto-refresh every 1 second (silent, no page flicker)
   // ONLY refreshes display data - does NOT touch form edits or editedPrices
