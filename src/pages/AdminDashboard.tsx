@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import PushNotificationManager from "@/components/PushNotificationManager";
-import AdminAFAPackageManager from "@/components/AdminAFAPackageManager";
+import AdminAFAManagementTabs from "@/components/AdminAFAManagementTabs";
 import { DOMAINS } from "@/config/domains";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -2163,7 +2163,7 @@ const AdminDashboard = () => {
   {/* AFA BUNDLES TAB */}
   {canSee("afa") && (
   <TabsContent value="afa" className="space-y-6">
-    <AdminAFAPackageManager />
+    <AdminAFAManagementTabs />
   </TabsContent>
   )}
 
