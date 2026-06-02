@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOptimizedRealtime } from "@/hooks/useOptimizedRealtime";
+import { useDatabaseSearch } from "@/hooks/useDatabaseSearch";
+import { usePaginatedData } from "@/hooks/usePaginatedData";
+import { PaginatedTableFooter } from "@/components/PaginatedTableFooter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,6 +122,25 @@ const AdminDashboard = () => {
   const [selectedAgentForPricing, setSelectedAgentForPricing] = useState<AgentStore | null>(null);
   const [agentCustomPrices, setAgentCustomPrices] = useState<Record<string, number>>({});
   const [loadingAgentPrices, setLoadingAgentPrices] = useState(false);
+
+  // Database search hooks for real-time searching
+  const orderSearch = useDatabaseSearch<Order>(
+    "orders",
+    "customer_number",
+    "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id"
+  );
+  
+  const profileSearch = useDatabaseSearch<UserProfile>(
+    "profiles",
+    "full_name",
+    "id, full_name, phone, created_at"
+  );
+  
+  const withdrawalSearch = useDatabaseSearch<WithdrawalRequest>(
+    "withdrawal_requests",
+    "agent_store_id",
+    "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source"
+  );
   const [savingAgentPrices, setSavingAgentPrices] = useState(false);
   const [agentPriceNetworkFilter, setAgentPriceNetworkFilter] = useState("mtn");
 
@@ -239,10 +261,10 @@ const AdminDashboard = () => {
     const [pkgData, agentData, profilesData, rolesData, ordersData, withdrawData, topupData, subagentData] = await Promise.all([
       supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
       fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 200),
-      fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 200),
+      fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 100),
       fetchRecords("user_roles", "user_id, role", undefined, 500),
-      fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id", { column: "created_at", ascending: false }, 200),
-      fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 200),
+      fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id", { column: "created_at", ascending: false }, 100),
+      fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 1000),
       fetchRecords("wallet_topups", "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )", { column: "created_at", ascending: false }, 200),
       fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 200),
     ]);
@@ -1049,8 +1071,14 @@ const AdminDashboard = () => {
   
   const filteredUsers = users.filter((user) => (user.full_name?.toLowerCase() || "").includes(userSearchTerm.toLowerCase()));
   
-  const filteredOrders = orders
-    .filter((order) => order.customer_number.toLowerCase().includes(orderSearchTerm.toLowerCase()))
+  // Use database search results if searching, otherwise use local data
+  const filteredOrders = (orderSearchTerm.length > 0 ? orderSearch.results : orders)
+    .filter((order) => {
+      const matchesNetwork = orderNetworkFilter === "all" || order.network.toUpperCase() === orderNetworkFilter.toUpperCase();
+      const matchesFulfillment = orderFulfillmentFilter === "all" || order.fulfillment_status === orderFulfillmentFilter;
+      const matchesPayment = orderPaymentStatusFilter === "all" || order.status === orderPaymentStatusFilter;
+      return matchesNetwork && matchesFulfillment && matchesPayment;
+    })
     .filter((order) => orderNetworkFilter === "all" ? true : order.network.toLowerCase() === orderNetworkFilter.toLowerCase())
     .filter((order) => orderFulfillmentFilter === "all" ? true : order.fulfillment_status.toLowerCase() === orderFulfillmentFilter.toLowerCase())
     .filter((order) => orderPaymentStatusFilter === "all" ? true : order.status.toLowerCase() === orderPaymentStatusFilter.toLowerCase());
@@ -1168,7 +1196,21 @@ const AdminDashboard = () => {
                   <Button variant="destructive" size="sm" onClick={retryAllFailed}><RefreshCw className="h-4 w-4 mr-1" /> Retry All Failed</Button>
                 </div>
               )}
-              <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by phone number..." value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="pl-10" /></div>
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search by phone number..." 
+                  value={orderSearchTerm}
+                  onChange={(e) => {
+                    setOrderSearchTerm(e.target.value);
+                    if (e.target.value.length > 0) {
+                      orderSearch.search(e.target.value);
+                    }
+                  }}
+                  className="pl-10" 
+                />
+                {orderSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
               
               {/* Order Filters */}
               <div className="flex gap-2 flex-wrap">
