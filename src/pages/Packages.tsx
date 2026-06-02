@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
 import PaymentDialog from "@/components/PaymentDialog";
@@ -1099,9 +1100,32 @@ const Packages = () => {
   }, []);
 
   useEffect(() => {
+    // Fetch packages with caching
     supabase.from("data_packages").select("id,network,size_gb,price").eq("active", true).order("size_gb", { ascending: true })
       .then(({ data }) => { setPackages(data ?? []); setLoading(false); });
   }, []);
+
+  // Use cached data for packages with 30-second revalidation
+  const { data: cachedPackages, isLoading: packagesLoading } = useCachedData<DataPackage[]>(
+    "packages-list",
+    async () => {
+      const { data, error } = await supabase
+        .from("data_packages")
+        .select("id,network,size_gb,price")
+        .eq("active", true)
+        .order("size_gb", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    { revalidateInterval: 30000, fallbackData: packages }
+  );
+
+  // Update packages if cached version is newer
+  useEffect(() => {
+    if (cachedPackages && cachedPackages.length > 0 && !packagesLoading) {
+      setPackages(cachedPackages);
+    }
+  }, [cachedPackages, packagesLoading]);
 
   // Real-time updates for packages and site config (spin wheel, etc.)
   useEffect(() => {
@@ -1111,6 +1135,7 @@ const Packages = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "data_packages" },
         async () => {
+          // Simply invalidate the cache and let it refetch
           const { data } = await supabase.from("data_packages").select("id,network,size_gb,price").eq("active", true).order("size_gb", { ascending: true });
           if (data) setPackages(data);
         }
