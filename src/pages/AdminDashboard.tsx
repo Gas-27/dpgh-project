@@ -293,69 +293,35 @@ const AdminDashboard = () => {
     }
   };
   const refreshData = async () => {
-    // Fetch all counts first
-    const [ordersCount, agentsCount, subagentsCount, usersCount, withdrawalsCount, topupsCount] = await Promise.all([
-      supabase.from("orders").select("id", { count: "exact", head: true }),
-      supabase.from("agent_stores").select("id", { count: "exact", head: true }),
-      supabase.from("subagent_stores").select("id", { count: "exact", head: true }),
-      supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase.from("withdrawal_requests").select("id", { count: "exact", head: true }),
-      supabase.from("wallet_topups").select("id", { count: "exact", head: true }),
-    ]);
-    
-    // Set total counts immediately
-    setTotalCounts({
-      orders: ordersCount.count ?? 0,
-      agents: agentsCount.count ?? 0,
-      subagents: subagentsCount.count ?? 0,
-      users: usersCount.count ?? 0,
-      withdrawals: withdrawalsCount.count ?? 0,
-      topups: topupsCount.count ?? 0,
-      complaints: 0,
-    });
-
-    // Fetch records with pagination (first 200 of each)
-    // Only fetch columns that are actually used in the UI
-    // This reduces network payload and prevents database timeouts
-    const [pkgData, agentData, profilesData, rolesData, ordersData, withdrawData, topupData, subagentData] = await Promise.all([
-      supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
-      fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 200),
-      fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 100),
-      fetchRecords("user_roles", "user_id, role", undefined, 500),
-      fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id", { column: "created_at", ascending: false }, 100),
-      fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 1000),
-      fetchRecords("wallet_topups", "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )", { column: "created_at", ascending: false }, 200),
-      fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 200),
-    ]);
-    
-    setPackages(pkgData.data ?? []);
-    setAgents((agentData as AgentStore[]) ?? []);
-    setOrders((ordersData as Order[]) ?? []);
-    setWithdrawals((withdrawData as WithdrawalRequest[]) ?? []);
-    setTopupHistory((topupData as any[]) ?? []);
-    setSubagents((subagentData ?? []));
-
-    const rolesMap: Record<string, string> = {};
-    (rolesData ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
-    const userList = (profilesData ?? []).map((p: any) => ({ ...p, role: rolesMap[p.id] || "user" }));
-    setUsers(userList);
-    
-    // Fetch app settings
-    const { data: appSettings } = await supabase
-      .from("app_settings")
-      .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
-      .eq("id", 1)
-      .single();
-    if (appSettings?.agent_registration_fee) {
-      setAgentRegistrationFee(appSettings.agent_registration_fee);
-    }
-    if (appSettings) {
-      setFreeDataConfig({
-        enabled: appSettings.free_data_enabled ?? true,
-        required_gb: appSettings.free_data_required_gb ?? 35,
-        reward_gb: appSettings.free_data_reward_gb ?? 1,
-        telecel_enabled: appSettings.free_data_telecel_enabled ?? false,
-      });
+    console.log("[v0] Initial load - only packages and app settings");
+    try {
+      // Only load packages for the Prices tab
+      const { data: pkgData } = await supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100);
+      setPackages(pkgData ?? []);
+      
+      // Fetch app settings only
+      const { data: appSettings } = await supabase
+        .from("app_settings")
+        .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
+        .eq("id", 1)
+        .single();
+      
+      if (appSettings?.agent_registration_fee) {
+        setAgentRegistrationFee(appSettings.agent_registration_fee);
+      }
+      if (appSettings) {
+        setFreeDataConfig({
+          enabled: appSettings.free_data_enabled ?? true,
+          required_gb: appSettings.free_data_required_gb ?? 35,
+          reward_gb: appSettings.free_data_reward_gb ?? 1,
+          telecel_enabled: appSettings.free_data_telecel_enabled ?? false,
+        });
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error("[v0] Error in refreshData:", error);
+      setLoading(false);
     }
   };
   
@@ -666,12 +632,13 @@ const AdminDashboard = () => {
     }
   }, []);
   
-  // Optimized Realtime subscriptions with debouncing
-  // Instead of refreshing on every change, we debounce for 2 seconds
-  // This means rapid changes (like multiple orders) only trigger ONE refresh
+  // DISABLED: Realtime subscriptions are no longer needed
+  // With lazy loading, each tab only loads when clicked
+  // No background refreshes needed - significantly improves performance
+  /*
   useOptimizedRealtime(
     () => refreshData(),
-    2000, // 2 second debounce
+    2000,
     [
       { name: 'orders' },
       { name: 'agent_stores' },
@@ -681,8 +648,11 @@ const AdminDashboard = () => {
       { name: 'profiles' },
     ]
   );
+  */
 
-  // ======================== Auto‑retry pending orders ========================
+  // DISABLED: Auto-retry was causing unnecessary queries every 30 seconds
+  // Admins can manually retry orders from the Orders tab
+  /*
   useEffect(() => {
     const autoRetryPendingOrders = async () => {
       const { data: pendingOrders } = await supabase
@@ -705,6 +675,7 @@ const AdminDashboard = () => {
     const interval = setInterval(autoRetryPendingOrders, 30000);
     return () => clearInterval(interval);
   }, [retryingOrders]);
+  */
 
   // Background auto-refresh every 1 second (silent, no page flicker)
   // ONLY refreshes display data - does NOT touch form edits or editedPrices
