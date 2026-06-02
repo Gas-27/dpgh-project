@@ -352,27 +352,31 @@ const AdminDashboard = () => {
   const saveAppSettings = async () => {
     setSavingSettings(true);
     try {
-      // Save both agent and AFA fees in parallel
-      const [agentRes, afaRes] = await Promise.all([
-        supabase
-          .from("app_settings")
-          .upsert({ id: 1, agent_registration_fee: agentRegistrationFee, updated_at: new Date().toISOString() }),
-        supabase
-          .from("afa_settings")
-          .upsert({ id: 1, registration_fee: afaRegistrationFee, updated_at: new Date().toISOString() }),
-      ]);
+      // Save agent fee
+      const { error: agentErr } = await supabase
+        .from("app_settings")
+        .upsert({ id: 1, agent_registration_fee: agentRegistrationFee });
       
-      if (agentRes.error) {
-        toast({ title: "Error", description: agentRes.error.message, variant: "destructive" });
-      } else if (afaRes.error) {
-        toast({ title: "Error", description: afaRes.error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Settings saved!", description: "Agent and AFA registration fees updated" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: String(error), variant: "destructive" });
+      if (agentErr) throw agentErr;
+      
+      // Save AFA fee
+      const { error: afaErr } = await supabase
+        .from("afa_settings")
+        .upsert({ id: 1, registration_fee: afaRegistrationFee });
+      
+      if (afaErr) throw afaErr;
+      
+      toast({ title: "Success!", description: "All fees saved successfully" });
+    } catch (error: any) {
+      console.error("[v0] Save error:", error);
+      toast({ 
+        title: "Error saving", 
+        description: error?.message || "Failed to save settings", 
+        variant: "destructive" 
+      });
+    } finally {
+      setSavingSettings(false);
     }
-    setSavingSettings(false);
   };
   
   // Save free data offer settings
@@ -1377,6 +1381,17 @@ const AdminDashboard = () => {
                 </Select>
               </div>
               {(() => {
+                // Show loading state if tab just loaded
+                if (activeTab === "orders" && !loadedTabs.has("orders")) {
+                  return (
+                    <div className="space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="h-12 bg-muted rounded animate-pulse"></div>
+                      ))}
+                    </div>
+                  );
+                }
+                
                 const paginated = filteredOrders.slice((orderPage - 1) * PAGE_SIZE, orderPage * PAGE_SIZE);
                 const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
                 
@@ -1511,6 +1526,17 @@ const AdminDashboard = () => {
                 </Select>
               </div>
               {(() => {
+                // Show loading state if agents tab just opened
+                if (activeTab === "agents" && !loadedTabs.has("agents")) {
+                  return (
+                    <div className="space-y-3">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="h-32 bg-muted rounded animate-pulse"></div>
+                      ))}
+                    </div>
+                  );
+                }
+                
                 const paginated = filteredAgents.slice((agentPage - 1) * PAGE_SIZE, agentPage * PAGE_SIZE);
                 const totalPages = Math.ceil(filteredAgents.length / PAGE_SIZE);
                 
