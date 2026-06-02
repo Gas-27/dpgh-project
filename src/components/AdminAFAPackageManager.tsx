@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +30,19 @@ export default function AdminAFAPackageManager() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingPackage, setEditingPackage] = useState<AFAPackage | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Initialize supabase safely
+  const getSupabase = () => {
+    try {
+      const { supabase } = require("@/integrations/supabase/client");
+      return supabase;
+    } catch (err) {
+      console.error("Failed to initialize Supabase:", err);
+      return null;
+    }
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -49,7 +60,12 @@ export default function AdminAFAPackageManager() {
 
   const fetchPackages = async () => {
     setLoading(true);
+    setError(null);
     try {
+      const supabase = getSupabase();
+      if (!supabase) {
+        throw new Error("Supabase not initialized");
+      }
       const { data, error } = await supabase
         .from("afa_packages")
         .select("*")
@@ -58,8 +74,10 @@ export default function AdminAFAPackageManager() {
       if (error) throw error;
       setPackages(data || []);
     } catch (err) {
-      console.error("Failed to fetch AFA packages:", err);
-      toast({ title: "Error", description: "Failed to load AFA packages", variant: "destructive" });
+      const errorMsg = err instanceof Error ? err.message : "Failed to fetch AFA packages";
+      console.error("[v0] Failed to fetch AFA packages:", err);
+      setError(errorMsg);
+      toast({ title: "Error", description: errorMsg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -98,6 +116,11 @@ export default function AdminAFAPackageManager() {
 
     setSubmitting(true);
     try {
+      const supabase = getSupabase();
+      if (!supabase) {
+        throw new Error("Supabase not initialized");
+      }
+      
       if (editingPackage) {
         // Update existing package
         const { error } = await supabase
@@ -147,19 +170,30 @@ export default function AdminAFAPackageManager() {
     if (!confirm("Are you sure you want to delete this AFA package?")) return;
 
     try {
+      const supabase = getSupabase();
+      if (!supabase) {
+        throw new Error("Supabase not initialized");
+      }
+      
       const { error } = await supabase.from("afa_packages").delete().eq("id", id);
 
       if (error) throw error;
       toast({ title: "Success", description: "AFA package deleted successfully" });
       fetchPackages();
     } catch (err) {
-      console.error("Failed to delete AFA package:", err);
-      toast({ title: "Error", description: "Failed to delete package", variant: "destructive" });
+      const errorMsg = err instanceof Error ? err.message : "Failed to delete package";
+      console.error("[v0] Failed to delete AFA package:", err);
+      toast({ title: "Error", description: errorMsg, variant: "destructive" });
     }
   };
 
   const toggleActive = async (pkg: AFAPackage) => {
     try {
+      const supabase = getSupabase();
+      if (!supabase) {
+        throw new Error("Supabase not initialized");
+      }
+      
       const { error } = await supabase
         .from("afa_packages")
         .update({ is_active: !pkg.is_active })
@@ -169,10 +203,27 @@ export default function AdminAFAPackageManager() {
       toast({ title: "Success", description: `Package ${!pkg.is_active ? "activated" : "deactivated"}` });
       fetchPackages();
     } catch (err) {
-      console.error("Failed to toggle package status:", err);
-      toast({ title: "Error", description: "Failed to update package status", variant: "destructive" });
+      const errorMsg = err instanceof Error ? err.message : "Failed to update package status";
+      console.error("[v0] Failed to toggle package status:", err);
+      toast({ title: "Error", description: errorMsg, variant: "destructive" });
     }
   };
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="text-center text-red-500">
+            <p className="font-semibold">Failed to load AFA packages</p>
+            <p className="text-sm mt-2">{error}</p>
+            <Button onClick={() => fetchPackages()} className="mt-4">
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
