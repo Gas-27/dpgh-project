@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
