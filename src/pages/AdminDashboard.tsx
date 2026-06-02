@@ -141,6 +141,25 @@ const AdminDashboard = () => {
     "agent_store_id",
     "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source"
   );
+
+  const agentSearch = useDatabaseSearch<AgentStore>(
+    "agent_stores",
+    "store_name",
+    "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance"
+  );
+
+  const subagentSearch = useDatabaseSearch<any>(
+    "subagent_stores",
+    "store_name",
+    "id, store_name, agent_store_id, created_at, agent_stores(store_name, id, user_id)"
+  );
+
+  const topupDatabaseSearch = useDatabaseSearch<any>(
+    "wallet_topups",
+    "agent_store_id",
+    "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )"
+  );
+  
   const [savingAgentPrices, setSavingAgentPrices] = useState(false);
   const [agentPriceNetworkFilter, setAgentPriceNetworkFilter] = useState("mtn");
 
@@ -1065,8 +1084,7 @@ const AdminDashboard = () => {
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
   
-  const filteredAgents = agents
-    .filter((agent) => agent.store_name.toLowerCase().includes(agentSearchTerm.toLowerCase()))
+  const filteredAgents = (agentSearchTerm.length > 0 ? agentSearch.results : agents)
     .filter((agent) => agentApprovalFilter === "all" ? true : (agentApprovalFilter === "approved" ? agent.approved : !agent.approved));
   
   // Use database search results if searching, otherwise use local users (first 100)
@@ -1095,8 +1113,7 @@ const AdminDashboard = () => {
     return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
   });
 
-  const filteredSubagents = subagents
-    .filter((subagent) => subagent.store_name.toLowerCase().includes(subagentSearchTerm.toLowerCase()))
+  const filteredSubagents = (subagentSearchTerm.length > 0 ? subagentSearch.results : subagents)
     .filter((subagent) => subagentStatusFilter === "all" ? true : (subagentStatusFilter === "active" ? !subagent.suspended : subagent.suspended));
 
   if (dataLoading) {
@@ -1354,7 +1371,21 @@ const AdminDashboard = () => {
           {canSee("agents") && (
             <TabsContent value="agents" className="space-y-4">
               <div className="flex gap-2 flex-wrap">
-                <div className="relative flex-1 max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by store name..." value={agentSearchTerm} onChange={(e) => setAgentSearchTerm(e.target.value)} className="pl-10" /></div>
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search by store name..." 
+                    value={agentSearchTerm}
+                    onChange={(e) => {
+                      setAgentSearchTerm(e.target.value);
+                      if (e.target.value.length > 0) {
+                        agentSearch.search(e.target.value);
+                      }
+                    }}
+                    className="pl-10" 
+                  />
+                  {agentSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                </div>
                 
                 <Select value={agentApprovalFilter} onValueChange={setAgentApprovalFilter}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Approval" /></SelectTrigger>
@@ -1440,8 +1471,14 @@ const AdminDashboard = () => {
                     placeholder="Search by store name..." 
                     className="pl-10" 
                     value={subagentSearchTerm}
-                    onChange={(e) => setSubagentSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      setSubagentSearchTerm(e.target.value);
+                      if (e.target.value.length > 0) {
+                        subagentSearch.search(e.target.value);
+                      }
+                    }}
                   />
+                  {subagentSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
                 </div>
 
                 <Select value={subagentStatusFilter} onValueChange={setSubagentStatusFilter}>
@@ -1623,15 +1660,23 @@ const AdminDashboard = () => {
                   <CardTitle className="font-display text-lg">Top-up History</CardTitle>
                   <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search by store name..." value={topupSearchTerm} onChange={(e) => setTopupSearchTerm(e.target.value)} className="pl-10" />
+                    <Input 
+                      placeholder="Search by store name..." 
+                      value={topupSearchTerm} 
+                      onChange={(e) => {
+                        setTopupSearchTerm(e.target.value);
+                        if (e.target.value.length > 0) {
+                          topupDatabaseSearch.search(e.target.value);
+                        }
+                      }} 
+                      className="pl-10" 
+                    />
+                    {topupDatabaseSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
                   </div>
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    const filteredTopups = topupHistory.filter(t => 
-                      t.agent_stores?.store_name?.toLowerCase().includes(topupSearchTerm.toLowerCase()) ||
-                      t.agent_stores?.topup_reference?.includes(topupSearchTerm)
-                    );
+                    const filteredTopups = topupSearchTerm.length > 0 ? topupDatabaseSearch.results : topupHistory;
                     const paginated = filteredTopups.slice((topupPage - 1) * PAGE_SIZE, topupPage * PAGE_SIZE);
                     const totalPages = Math.ceil(filteredTopups.length / PAGE_SIZE);
                     
