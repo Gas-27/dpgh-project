@@ -16,7 +16,7 @@ import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
-  Layers, FileSpreadsheet, RotateCcw, LinkIcon,
+  Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
@@ -179,7 +179,7 @@ const getInternationalDigits = (phone: string): string => {
  */
 const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 
-// ──────────────────────────────��──────────────────────────────────────────────
+// ───────��──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -976,7 +976,7 @@ const AgentStorefront = () => {
           <div className="container flex items-center justify-between gap-4 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <LinkIcon className="h-4 w-4" />
-              <span>Share your store link:</span>
+              <span>Share store link to more people:</span>
               <code 
                 className="bg-background px-2 py-1 rounded font-mono text-foreground font-semibold"
                 style={{ color: primaryColor }}
@@ -984,20 +984,45 @@ const AgentStorefront = () => {
                 {DOMAINS.getAgentStoreUrl(store.store_name).replace('https://', '')}
               </code>
             </div>
-            <Button 
-              size="sm" 
-              variant="ghost"
-              onClick={() => {
-                const url = DOMAINS.getAgentStoreUrl(store.store_name);
-                navigator.clipboard.writeText(url);
-                toast({
-                  title: "Link copied!",
-                  description: "Store link copied to clipboard",
-                });
-              }}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => {
+                  const url = DOMAINS.getAgentStoreUrl(store.store_name);
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `${store.store_name} - Data Store`,
+                      text: `Buy affordable data bundles from ${store.store_name}`,
+                      url: url,
+                    }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(url);
+                    toast({
+                      title: "Link copied!",
+                      description: "Store link copied to clipboard",
+                    });
+                  }
+                }}
+                title="Share store link"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => {
+                  const url = DOMAINS.getAgentStoreUrl(store.store_name);
+                  navigator.clipboard.writeText(url);
+                  toast({
+                    title: "Link copied!",
+                    description: "Store link copied to clipboard",
+                  });
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
