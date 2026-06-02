@@ -219,6 +219,7 @@ const AdminDashboard = () => {
   
   // App settings state
   const [agentRegistrationFee, setAgentRegistrationFee] = useState(30);
+  const [afaRegistrationFee, setAfaRegistrationFee] = useState(50);
   const [savingSettings, setSavingSettings] = useState(false);
   
   // Free Data Offer settings
@@ -284,7 +285,7 @@ const AdminDashboard = () => {
         const data = await fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 1000);
         setAgents(data ?? []);
       } else if (tabValue === "subagents") {
-        const data = await fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 1000);
         setSubagents(data ?? []);
       } else if (tabValue === "users") {
         const data = await fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 10000);
@@ -295,15 +296,20 @@ const AdminDashboard = () => {
     }
   };
   const refreshData = async () => {
-    console.log("[v0] Initial load - packages, withdrawals, and app settings");
+    console.log("[v0] Initial load - packages, withdrawals, app settings, and AFA settings");
     try {
       // Load both packages and withdrawals on initial load
-      const [{ data: pkgData }, withdrawalsData, { data: appSettings }] = await Promise.all([
+      const [{ data: pkgData }, withdrawalsData, { data: appSettings }, { data: afaSettings }] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
         fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 10000),
         supabase
           .from("app_settings")
           .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
+          .eq("id", 1)
+          .single(),
+        supabase
+          .from("afa_settings")
+          .select("registration_fee")
           .eq("id", 1)
           .single(),
       ]);
@@ -313,6 +319,9 @@ const AdminDashboard = () => {
       
       if (appSettings?.agent_registration_fee) {
         setAgentRegistrationFee(appSettings.agent_registration_fee);
+      }
+      if (afaSettings?.registration_fee) {
+        setAfaRegistrationFee(afaSettings.registration_fee);
       }
       if (appSettings) {
         setFreeDataConfig({
@@ -333,13 +342,26 @@ const AdminDashboard = () => {
   // Save app settings
   const saveAppSettings = async () => {
     setSavingSettings(true);
-    const { error } = await supabase
-      .from("app_settings")
-      .upsert({ id: 1, agent_registration_fee: agentRegistrationFee, updated_at: new Date().toISOString() });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Settings saved!" });
+    try {
+      // Save both agent and AFA fees in parallel
+      const [agentRes, afaRes] = await Promise.all([
+        supabase
+          .from("app_settings")
+          .upsert({ id: 1, agent_registration_fee: agentRegistrationFee, updated_at: new Date().toISOString() }),
+        supabase
+          .from("afa_settings")
+          .upsert({ id: 1, registration_fee: afaRegistrationFee, updated_at: new Date().toISOString() }),
+      ]);
+      
+      if (agentRes.error) {
+        toast({ title: "Error", description: agentRes.error.message, variant: "destructive" });
+      } else if (afaRes.error) {
+        toast({ title: "Error", description: afaRes.error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Settings saved!", description: "Agent and AFA registration fees updated" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: String(error), variant: "destructive" });
     }
     setSavingSettings(false);
   };
@@ -1583,7 +1605,7 @@ const AdminDashboard = () => {
                                 <Badge variant="destructive" className="text-xs">Suspended</Badge>
                               )}
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-2 gap-2 md:gap-3 text-xs md:text-sm">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 text-xs md:text-sm">
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Parent Agent</p>
                                 <p className="font-semibold text-foreground truncate">{subagent.agent_stores?.store_name || 'N/A'}</p>
@@ -1597,8 +1619,16 @@ const AdminDashboard = () => {
                                 <p className="font-semibold text-foreground">{subagent.support_number}</p>
                               </div>
                               <div className="min-w-0">
-                                <p className="text-muted-foreground text-xs">MoMo</p>
+                                <p className="text-muted-foreground text-xs">MoMo Name</p>
                                 <p className="font-semibold text-foreground truncate">{subagent.momo_name}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">MoMo Number</p>
+                                <p className="font-semibold text-foreground">{subagent.momo_number || 'N/A'}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">MoMo Network</p>
+                                <p className="font-semibold text-foreground">{subagent.momo_network || 'N/A'}</p>
                               </div>
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Wallet Balance</p>
@@ -2351,6 +2381,31 @@ const AdminDashboard = () => {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">Current fee: GH₵{agentRegistrationFee.toFixed(2)}</p>
+        </div>
+
+        {/* AFA Registration Fee */}
+        <div className="space-y-4 border p-4 rounded-lg bg-blue-900/10 border-blue-500/30">
+          <div className="space-y-0.5">
+            <Label className="text-base font-semibold">AFA Registration Fee</Label>
+            <p className="text-sm text-muted-foreground">The amount users must pay to register as an AFA (Agricultural Farmer Agent) participant</p>
+          </div>
+          <div className="flex gap-4 items-end">
+            <div className="flex-1 space-y-2">
+              <Label>Fee Amount (GH₵)</Label>
+              <Input 
+                type="number" 
+                min="0" 
+                step="0.01"
+                value={afaRegistrationFee} 
+                onChange={(e) => setAfaRegistrationFee(Number(e.target.value) || 0)} 
+              />
+            </div>
+            <Button onClick={saveAppSettings} disabled={savingSettings}>
+              {savingSettings ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Current fee: GH₵{afaRegistrationFee.toFixed(2)}</p>
         </div>
                 </CardContent>
               </Card>
