@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,7 @@ export default function AFAPackagesDisplay({
         .order("name");
 
       if (pkgsError) throw pkgsError;
+      console.log("[v0] AFA Packages fetched:", pkgsData);
       setPackages(pkgsData || []);
 
       // Fetch agent or subagent pricing
@@ -96,7 +99,12 @@ export default function AFAPackagesDisplay({
   }
 
   if (packages.length === 0) {
-    return null;
+    return (
+      <div className="text-center py-12">
+        <Zap className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+        <p className="text-muted-foreground">No AFA packages available at this time.</p>
+      </div>
+    );
   }
 
   return (
