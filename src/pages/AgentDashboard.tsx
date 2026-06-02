@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
 import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
+import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
@@ -71,6 +72,7 @@ const menuItems = [
   { id: "store", label: "Store Prices", icon: Store },
   { id: "subagents", label: "Subagents", icon: Users },
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
+  { id: "afa", label: "AFA Bundles", icon: Zap },
   { id: "flyer", label: "Flyer Generator", icon: Image },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
   { id: "topup", label: "Top Up", icon: Coins },
@@ -2058,6 +2060,11 @@ const AgentDashboard = () => {
           {/* ============================= COMPLAINTS ============================= */}
           <TabsContent value="complaints" className="mt-0 space-y-6">
             <ComplaintsManager isAgent={true} agentStoreId={store?.id} />
+          </TabsContent>
+
+          {/* ============================= AFA BUNDLES ============================= */}
+          <TabsContent value="afa" className="mt-0 space-y-6">
+            <AgentAFAPriceManager />
           </TabsContent>
 
           {/* ============================= SETTINGS ============================= */}
