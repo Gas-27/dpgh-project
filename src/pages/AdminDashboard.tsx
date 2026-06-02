@@ -83,6 +83,7 @@ const AdminDashboard = () => {
   
   // Total counts from database
   const [totalCounts, setTotalCounts] = useState({ orders: 0, agents: 0, subagents: 0, users: 0, withdrawals: 0, topups: 0, complaints: 0 });
+  const [unapprovedWithdrawals, setUnapprovedWithdrawals] = useState(0);
   
   const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number }>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
@@ -118,8 +119,9 @@ const AdminDashboard = () => {
   const PAGE_SIZE = 100;
 
   // Lazy loading state - tracks which tabs have been clicked and loaded
-  const [activeTab, setActiveTab] = useState("prices");
-  const [loadedTabs, setLoadedTabs] = useState(new Set(["prices"])); // Track which tabs have been loaded
+  // Start with withdrawals tab (loads first)
+  const [activeTab, setActiveTab] = useState("withdrawals");
+  const [loadedTabs, setLoadedTabs] = useState(new Set(["withdrawals"])); // Track which tabs have been loaded
 
   // Agent-specific pricing state
   const [agentPriceDialogOpen, setAgentPriceDialogOpen] = useState(false);
@@ -293,18 +295,21 @@ const AdminDashboard = () => {
     }
   };
   const refreshData = async () => {
-    console.log("[v0] Initial load - only packages and app settings");
+    console.log("[v0] Initial load - packages, withdrawals, and app settings");
     try {
-      // Only load packages for the Prices tab
-      const { data: pkgData } = await supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100);
-      setPackages(pkgData ?? []);
+      // Load both packages and withdrawals on initial load
+      const [{ data: pkgData }, withdrawalsData, { data: appSettings }] = await Promise.all([
+        supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
+        fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 10000),
+        supabase
+          .from("app_settings")
+          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
+          .eq("id", 1)
+          .single(),
+      ]);
       
-      // Fetch app settings only
-      const { data: appSettings } = await supabase
-        .from("app_settings")
-        .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
-        .eq("id", 1)
-        .single();
+      setPackages(pkgData ?? []);
+      setWithdrawals(withdrawalsData ?? []);
       
       if (appSettings?.agent_registration_fee) {
         setAgentRegistrationFee(appSettings.agent_registration_fee);
@@ -714,6 +719,14 @@ const AdminDashboard = () => {
     const interval = setInterval(autoRetryPendingOrders, 60000); // 60 seconds (was 30)
     return () => clearInterval(interval);
   }, [retryingOrders]);
+
+  // Calculate unapproved withdrawals count
+  useEffect(() => {
+    if (withdrawals && withdrawals.length > 0) {
+      const unapprovedCount = withdrawals.filter(w => w.status !== "completed" && w.status !== "approved").length;
+      setUnapprovedWithdrawals(unapprovedCount);
+    }
+  }, [withdrawals]);
 
   // Background auto-refresh every 1 second (silent, no page flicker)
   // ONLY refreshes display data - does NOT touch form edits or editedPrices
@@ -1203,8 +1216,13 @@ const AdminDashboard = () => {
             {canSee("subagents") && <TabsTrigger value="subagents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Subagents ({subagents.filter((s) => !s.approved).length})</TabsTrigger>}
             {canSee("topup") && <TabsTrigger value="topup" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Wallet className="h-3 w-3 md:h-4 md:w-4" /> Topup</TabsTrigger>}
             {canSee("withdrawals") && (
-              <TabsTrigger value="withdrawals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
+              <TabsTrigger value="withdrawals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1 relative">
                 <DollarSign className="h-3 w-3 md:h-4 md:w-4" /> Withdrawals ({totalCounts.withdrawals})
+                {unapprovedWithdrawals > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {unapprovedWithdrawals}
+                  </span>
+                )}
               </TabsTrigger>
             )}
             {canSee("users") && <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>}

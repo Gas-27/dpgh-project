@@ -181,7 +181,7 @@ const SubagentDashboard = () => {
   
   // Pagination for orders
   const [currentPage, setCurrentPage] = useState(1);
-  const ordersPerPage = 100;
+  const ordersPerPage = 50; // Changed from 100 to 50 for "Load More" functionality
   
   // Date filtering for orders/revenue/profit
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
@@ -1572,31 +1572,12 @@ const SubagentDashboard = () => {
                         </TableBody>
                       </Table>
                     </div>
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                        <p className="text-sm text-muted-foreground">
-                          Showing {(currentPage - 1) * ordersPerPage + 1} to {Math.min(currentPage * ordersPerPage, filteredOrders.length)} of {filteredOrders.length} orders
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            disabled={currentPage === 1}
-                          >
-                            Previous
-                          </Button>
-                          <span className="text-sm">Page {currentPage} of {totalPages}</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            disabled={currentPage === totalPages}
-                          >
-                            Next
-                          </Button>
-                        </div>
+                    {/* Load More Button */}
+                    {currentPage * ordersPerPage < filteredOrders.length && (
+                      <div className="flex items-center justify-center mt-6">
+                        <Button onClick={() => setCurrentPage(p => p + 1)} className="w-full sm:w-auto">
+                          Load More Orders ({filteredOrders.length - currentPage * ordersPerPage} remaining)
+                        </Button>
                       </div>
                     )}
                   </>

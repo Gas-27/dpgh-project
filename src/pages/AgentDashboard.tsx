@@ -342,7 +342,7 @@ const AgentDashboard = () => {
   
   // Pagination and date filtering
   const [currentPage, setCurrentPage] = useState(1);
-  const ordersPerPage = 100;
+  const ordersPerPage = 50; // Changed from 100 to 50 for "Load More" functionality
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
@@ -1364,15 +1364,12 @@ const AgentDashboard = () => {
                         }
                         
                         return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{order.size_gb}GB</TableCell><TableCell>GH₵ {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GH₵ {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">Subagent</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                        <p className="text-sm text-muted-foreground">Showing {(currentPage - 1) * ordersPerPage + 1} to {Math.min(currentPage * ordersPerPage, filteredOrders.length)} of {filteredOrders.length}</p>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
-                          <span className="text-sm">Page {currentPage} of {totalPages}</span>
-                          <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
-                        </div>
+                    {/* Load More Button */}
+                    {currentPage * ordersPerPage < filteredOrders.length && (
+                      <div className="flex items-center justify-center mt-6">
+                        <Button onClick={() => setCurrentPage(p => p + 1)} className="w-full sm:w-auto">
+                          Load More Orders ({filteredOrders.length - currentPage * ordersPerPage} remaining)
+                        </Button>
                       </div>
                     )}
                   </>
