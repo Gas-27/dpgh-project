@@ -190,32 +190,24 @@ const AdminDashboard = () => {
     setDataLoading(false);
   };
 
-  // Helper function to fetch ALL records from a table (bypasses Supabase 1000 row limit)
-  const fetchAllRecords = async (table: string, select: string = "*", orderBy?: { column: string; ascending: boolean }) => {
-    const allData: any[] = [];
-    const batchSize = 1000;
-    let from = 0;
-    let hasMore = true;
-    
-    while (hasMore) {
-      let query = supabase.from(table).select(select).range(from, from + batchSize - 1);
+  // Helper function to fetch records with pagination (NOT all records)
+  // Only fetches first 200 records to prevent database timeout
+  const fetchRecords = async (table: string, select: string = "*", orderBy?: { column: string; ascending: boolean }, limit: number = 200) => {
+    try {
+      let query = supabase.from(table).select(select).limit(limit);
       if (orderBy) {
         query = query.order(orderBy.column, { ascending: orderBy.ascending });
       }
       const { data, error } = await query;
       if (error) {
         console.error(`Error fetching ${table}:`, error);
-        break;
+        return [];
       }
-      if (data && data.length > 0) {
-        allData.push(...data);
-        from += batchSize;
-        hasMore = data.length === batchSize;
-      } else {
-        hasMore = false;
-      }
+      return data || [];
+    } catch (err) {
+      console.error(`Exception fetching ${table}:`, err);
+      return [];
     }
-    return allData;
   };
 
   // Silent background refresh (no loading state)
@@ -241,18 +233,18 @@ const AdminDashboard = () => {
       complaints: 0,
     });
 
-    // Fetch ALL records from each table with optimized column selection
+    // Fetch records with pagination (first 200 of each)
     // Only fetch columns that are actually used in the UI
-    // This reduces network payload by ~40%
+    // This reduces network payload and prevents database timeouts
     const [pkgData, agentData, profilesData, rolesData, ordersData, withdrawData, topupData, subagentData] = await Promise.all([
-      supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb"),
-      fetchAllRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }),
-      fetchAllRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }),
-      fetchAllRecords("user_roles", "user_id, role"),
-      fetchAllRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id", { column: "created_at", ascending: false }),
-      fetchAllRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }),
-      fetchAllRecords("wallet_topups", "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )", { column: "created_at", ascending: false }),
-      fetchAllRecords("subagent_stores", "id, store_name, agent_store_id, created_at, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }),
+      supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
+      fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 200),
+      fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 200),
+      fetchRecords("user_roles", "user_id, role", undefined, 500),
+      fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id", { column: "created_at", ascending: false }, 200),
+      fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 200),
+      fetchRecords("wallet_topups", "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )", { column: "created_at", ascending: false }, 200),
+      fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 200),
     ]);
     
     setPackages(pkgData.data ?? []);

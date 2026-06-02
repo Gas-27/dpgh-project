@@ -17,9 +17,12 @@ export function useOptimizedRealtime(
 ) {
   const timeoutRef = useRef<NodeJS.Timeout>();
   const channelsRef = useRef<any[]>([]);
+  const subscriptionSetupRef = useRef(false);
 
   useEffect(() => {
-    if (tables.length === 0) return;
+    if (tables.length === 0 || subscriptionSetupRef.current) return;
+
+    subscriptionSetupRef.current = true;
 
     // Create debounced callback
     const debouncedCallback = () => {
@@ -59,8 +62,9 @@ export function useOptimizedRealtime(
         supabase.removeChannel(channel);
       });
       channelsRef.current = [];
+      subscriptionSetupRef.current = false;
     };
-  }, [callback, debounceMs, tables]);
+  }, []); // Empty dependency array - setup once on mount
 }
 
 /**
