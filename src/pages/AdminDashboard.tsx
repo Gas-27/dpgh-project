@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import PushNotificationManager from "@/components/PushNotificationManager";
+import AdminAFAPackageManager from "@/components/AdminAFAPackageManager";
 import { DOMAINS } from "@/config/domains";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -1141,6 +1142,7 @@ const AdminDashboard = () => {
             {canSee("notifications") && <TabsTrigger value="notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Notify</TabsTrigger>}
             {canSee("push") && <TabsTrigger value="push" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Smartphone className="h-3 w-3 md:h-4 md:w-4" /> Push</TabsTrigger>}
             {canSee("spinwheel") && <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>}
+            {canSee("afa") && <TabsTrigger value="afa" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> AFA</TabsTrigger>}
 {canSee("complaints") && <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>}
   {canSee("settings") && <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>}
   </TabsList>
@@ -2155,6 +2157,13 @@ const AdminDashboard = () => {
   {canSee("complaints") && (
   <TabsContent value="complaints" className="space-y-6">
   <ComplaintsManager />
+  </TabsContent>
+  )}
+
+  {/* AFA BUNDLES TAB */}
+  {canSee("afa") && (
+  <TabsContent value="afa" className="space-y-6">
+    <AdminAFAPackageManager />
   </TabsContent>
   )}
 
