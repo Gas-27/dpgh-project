@@ -298,8 +298,8 @@ const AdminDashboard = () => {
   const refreshData = async () => {
     console.log("[v0] Initial load - packages, withdrawals, app settings, and AFA settings");
     try {
-      // Load both packages and withdrawals on initial load
-      const [pkgResult, withdrawalsData, appSettingsResult, afaSettingsResult] = await Promise.all([
+      // Load packages, withdrawals, and settings on initial load
+      const [pkgResult, withdrawalsData, appSettingsResult] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
         fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 10000),
         supabase
@@ -307,24 +307,15 @@ const AdminDashboard = () => {
           .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
           .eq("id", 1)
           .single(),
-        supabase
-          .from("afa_settings")
-          .select("registration_fee")
-          .eq("id", 1)
-          .single().catch(() => ({ data: null })),
       ]);
       
       setPackages(pkgResult.data ?? []);
       setWithdrawals(withdrawalsData ?? []);
       
       const appSettings = appSettingsResult.data;
-      const afaSettings = afaSettingsResult.data;
       
       if (appSettings?.agent_registration_fee) {
         setAgentRegistrationFee(appSettings.agent_registration_fee);
-      }
-      if (afaSettings?.registration_fee) {
-        setAfaRegistrationFee(afaSettings.registration_fee);
       }
       if (appSettings) {
         setFreeDataConfig({
@@ -333,6 +324,21 @@ const AdminDashboard = () => {
           reward_gb: appSettings.free_data_reward_gb ?? 1,
           telecel_enabled: appSettings.free_data_telecel_enabled ?? false,
         });
+      }
+      
+      // Load AFA settings separately with error handling
+      try {
+        const { data: afaSettings } = await supabase
+          .from("afa_settings")
+          .select("registration_fee")
+          .eq("id", 1)
+          .single();
+        if (afaSettings?.registration_fee) {
+          setAfaRegistrationFee(afaSettings.registration_fee);
+        }
+      } catch (afaError) {
+        console.log("[v0] AFA settings not found, using default");
+        setAfaRegistrationFee(50);
       }
       
       setDataLoading(false);
@@ -697,8 +703,9 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
   
-  // Realtime subscriptions with 5-second debounce (increased from 2 seconds)
-  // Only triggers refreshData if tab is already loaded
+  // Realtime subscriptions disabled - causes excessive refreshes and tab jumping
+  // Admin dashboard works best with manual tab refreshes only
+  /*
   useOptimizedRealtime(
     () => {
       // Only refresh data if a tab other than prices is currently active
@@ -716,6 +723,7 @@ const AdminDashboard = () => {
       { name: 'profiles' },
     ]
   );
+  */
 
   // Auto-retry pending orders - 60 second interval (less aggressive)
   useEffect(() => {
@@ -1038,9 +1046,24 @@ const AdminDashboard = () => {
 
   // ======================== Wallet topup ========================
   const searchTopupRef = () => {
-    const found = agents.find((a) => a.topup_reference === topupSearch.trim());
-    if (found) setTopupAgent(found);
-    else { setTopupAgent(null); toast({ title: "Not found", description: "No agent with that reference code.", variant: "destructive" }); }
+    if (!topupSearch.trim()) {
+      setTopupAgent(null);
+      return;
+    }
+    
+    // Search for agent by topup_reference
+    const found = agents.find((a) => a.topup_reference && a.topup_reference.toString().includes(topupSearch.trim()));
+    if (found) {
+      setTopupAgent(found);
+    } else {
+      // If not found in agents, show message to load agents first
+      toast({ 
+        title: "Not found", 
+        description: agents.length === 0 ? "Please load agents first (click Agents tab)" : "No agent with that reference code.", 
+        variant: "destructive" 
+      }); 
+      setTopupAgent(null);
+    }
   };
 
   const creditWallet = async () => {

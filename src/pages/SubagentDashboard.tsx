@@ -389,7 +389,7 @@ const SubagentDashboard = () => {
       // Fetch subagent store first (needed for other queries)
       const { data: store, error: storeErr } = await supabase
         .from("subagent_stores")
-        .select("*")
+        .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, show_whatsapp_group_icon, show_ussd_on_storefront, topup_reference")
         .eq("user_id", effectiveUserId)
         .single();
 

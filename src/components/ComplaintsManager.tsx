@@ -65,14 +65,10 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
     try {
       setLoading(true);
       setTableError(false);
+      // Simplified query - fetch complaints only without complex joins
       let query = supabase
         .from("complaints")
-        .select(
-          `*,
-           orders(network, size_gb, amount, fulfillment_status, created_at),
-           agent_stores(store_name, phone_number),
-           subagent_stores(store_name, whatsapp_number)`
-        )
+        .select("id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at")
         .order("created_at", { ascending: false });
 
       // If viewing as agent, only show complaints from their store
