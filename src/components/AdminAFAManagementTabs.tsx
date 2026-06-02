@@ -1,15 +1,15 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AdminAFAPackageManager from './AdminAFAPackageManager';
+import AdminAFAPriceManager from './AdminAFAPriceManager';
 import AFARegistrationManagement from './AFARegistrationManagement';
 import AFAAnalyticsMonitoring from './AFAAnalyticsMonitoring';
-import { Box, Users, BarChart3 } from 'lucide-react';
+import { DollarSign, Users, BarChart3 } from 'lucide-react';
 
 export default function AdminAFAManagementTabs() {
   return (
-    <Tabs defaultValue="packages" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="packages" className="flex items-center gap-2">
-          <Box className="h-4 w-4" /> Packages
+    <Tabs defaultValue="pricing" className="w-full">
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="pricing" className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4" /> Pricing
         </TabsTrigger>
         <TabsTrigger value="registrations" className="flex items-center gap-2">
           <Users className="h-4 w-4" /> Registrations
@@ -19,8 +19,8 @@ export default function AdminAFAManagementTabs() {
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="packages" className="space-y-6">
-        <AdminAFAPackageManager />
+      <TabsContent value="pricing" className="space-y-6">
+        <AdminAFAPriceManager />
       </TabsContent>
 
       <TabsContent value="registrations" className="space-y-6">
