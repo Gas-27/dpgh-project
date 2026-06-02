@@ -8,6 +8,7 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
+import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
@@ -1543,6 +1544,20 @@ const Packages = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        ) : activeCategory === "afa" ? (
+          <div className="container pb-20">
+            <AFAPackagesDisplay
+              onRegisterClick={(packageId, packageName, price) => {
+                setPaymentPkg({
+                  id: packageId,
+                  size_gb: 0,
+                  price,
+                  network: "mtn"
+                });
+              }}
+              themeColor="#3b82f6"
+            />
           </div>
         ) : renderComingSoon()}
       </div>
