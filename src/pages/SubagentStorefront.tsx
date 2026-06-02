@@ -449,6 +449,13 @@ export function SubagentStorefront() {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── AFA Packages ──
+  const [selectedAFAPackage, setSelectedAFAPackage] = useState<{
+    id: string;
+    name: string;
+    price: number;
+  } | null>(null);
+
   // Handle bulk payment callback - show success message after returning from Paystack
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -1194,6 +1201,20 @@ export function SubagentStorefront() {
           </div>
           </>
         )}
+
+        {/* AFA BUNDLES SECTION */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>AFA Bundles</h2>
+          <AFAPackagesDisplay
+            agentStoreId={store.id}
+            subagentStoreId={store.id}
+            onRegisterClick={(packageId, packageName, price) => {
+              setSelectedAFAPackage({ id: packageId, name: packageName, price });
+              setPaymentOpen(true);
+            }}
+            themeColor={primaryColor}
+          />
+        </div>
 
         {/* Support */}
         <Card style={{ background: cardBg }} className="border-border">
