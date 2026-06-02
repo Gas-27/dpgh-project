@@ -12,6 +12,7 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
+import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
@@ -178,7 +179,7 @@ const getInternationalDigits = (phone: string): string => {
  */
 const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -566,6 +567,13 @@ const AgentStorefront = () => {
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── AFA Packages ──
+  const [selectedAFAPackage, setSelectedAFAPackage] = useState<{
+    id: string;
+    name: string;
+    price: number;
+  } | null>(null);
 
   // Handle bulk payment callback - show success message after returning from Paystack
   useEffect(() => {
@@ -1513,6 +1521,17 @@ const AgentStorefront = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+      ) : activeCategory === "afa" ? (
+        <div className="container pb-20">
+          <AFAPackagesDisplay
+            agentStoreId={store?.id}
+            onRegisterClick={(packageId, packageName, price) => {
+              setPaymentDialogOpen(true);
+              setSelectedAFAPackage({ id: packageId, name: packageName, price });
+            }}
+            themeColor={primaryColor}
+          />
         </div>
       ) : (
         <div className="container pb-20">{renderComingSoon()}</div>
