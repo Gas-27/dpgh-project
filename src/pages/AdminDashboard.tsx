@@ -117,6 +117,10 @@ const AdminDashboard = () => {
   const [topupPage, setTopupPage] = useState(1);
   const PAGE_SIZE = 100;
 
+  // Lazy loading state - tracks which tabs have been clicked and loaded
+  const [activeTab, setActiveTab] = useState("prices");
+  const [loadedTabs, setLoadedTabs] = useState(new Set(["prices"])); // Track which tabs have been loaded
+
   // Agent-specific pricing state
   const [agentPriceDialogOpen, setAgentPriceDialogOpen] = useState(false);
   const [selectedAgentForPricing, setSelectedAgentForPricing] = useState<AgentStore | null>(null);
@@ -251,7 +255,43 @@ const AdminDashboard = () => {
     }
   };
 
-  // Silent background refresh (no loading state)
+  // Handle tab change - lazy load data when tab is clicked
+  const handleTabChange = async (tabValue: string) => {
+    setActiveTab(tabValue);
+    
+    // If this tab has already been loaded, don't fetch again
+    if (loadedTabs.has(tabValue)) {
+      return;
+    }
+    
+    // Mark tab as loaded
+    setLoadedTabs(prev => new Set(prev).add(tabValue));
+    
+    // Fetch data for this specific tab
+    try {
+      if (tabValue === "withdrawals") {
+        const data = await fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 10000);
+        setWithdrawals(data ?? []);
+      } else if (tabValue === "topup") {
+        const data = await fetchRecords("wallet_topups", "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )", { column: "created_at", ascending: false }, 1000);
+        setTopupHistory(data ?? []);
+      } else if (tabValue === "orders") {
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id", { column: "created_at", ascending: false }, 1000);
+        setOrders(data ?? []);
+      } else if (tabValue === "agents") {
+        const data = await fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 1000);
+        setAgents(data ?? []);
+      } else if (tabValue === "subagents") {
+        const data = await fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 1000);
+        setSubagents(data ?? []);
+      } else if (tabValue === "users") {
+        const data = await fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 10000);
+        setUsers(data ?? []);
+      }
+    } catch (error) {
+      console.error(`Error loading ${tabValue} tab:`, error);
+    }
+  };
   const refreshData = async () => {
     // Fetch all counts first
     const [ordersCount, agentsCount, subagentsCount, usersCount, withdrawalsCount, topupsCount] = await Promise.all([
@@ -1141,7 +1181,7 @@ const AdminDashboard = () => {
       </nav>
 
       <div className="container py-4 md:py-8 space-y-4 md:space-y-8 px-2 md:px-4">
-        <Tabs defaultValue="prices">
+        <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="prices">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
             {canSee("prices") && <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>}
             {canSee("orders") && (
@@ -1155,8 +1195,7 @@ const AdminDashboard = () => {
             {canSee("topup") && <TabsTrigger value="topup" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Wallet className="h-3 w-3 md:h-4 md:w-4" /> Topup</TabsTrigger>}
             {canSee("withdrawals") && (
               <TabsTrigger value="withdrawals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
-                <ArrowDownToLine className="h-3 w-3 md:h-4 md:w-4" /> Withdrawals
-                {pendingWithdrawals.length > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingWithdrawals.length}</Badge>}
+                <DollarSign className="h-3 w-3 md:h-4 md:w-4" /> Withdrawals ({totalCounts.withdrawals})
               </TabsTrigger>
             )}
             {canSee("users") && <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>}
