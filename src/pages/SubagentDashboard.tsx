@@ -28,11 +28,11 @@ import SubagentAFAPriceManager from "@/components/SubagentAFAPriceManager";
 interface SubagentStore {
   id: string;
   store_name: string;
-  whatsapp_number: string;
-  support_number: string;
-  momo_number: string;
-  momo_name: string;
-  momo_network: string;
+  whatsapp_number?: string;
+  support_number?: string;
+  momo_number?: string;
+  momo_name?: string;
+  momo_network?: string;
   wallet_balance: number;
   approved: boolean;
   agent_store_id: string;
@@ -40,9 +40,6 @@ interface SubagentStore {
   theme_config?: any;
   store_headline?: string;
   whatsapp_group?: string;
-  show_whatsapp_group_icon?: boolean;
-  show_ussd_on_storefront?: boolean;
-  topup_reference?: string;
 }
 
 interface Order {
@@ -388,7 +385,7 @@ const SubagentDashboard = () => {
       // Fetch subagent store first (needed for other queries)
       const { data: store, error: storeErr } = await supabase
         .from("subagent_stores")
-        .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, show_whatsapp_group_icon, show_ussd_on_storefront, topup_reference")
+        .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group")
         .eq("user_id", effectiveUserId)
         .single();
 
@@ -763,8 +760,6 @@ const SubagentDashboard = () => {
           whatsapp_number: storeForm.whatsapp_number,
           support_number: storeForm.support_number,
           whatsapp_group: storeForm.whatsapp_group || null,
-          show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon ?? true,
-          show_ussd_on_storefront: storeForm.show_ussd_on_storefront ?? true,
           momo_name: storeForm.momo_name,
           momo_number: storeForm.momo_number,
           momo_network: storeForm.momo_network,
