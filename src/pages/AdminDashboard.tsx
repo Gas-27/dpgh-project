@@ -299,7 +299,7 @@ const AdminDashboard = () => {
     console.log("[v0] Initial load - packages, withdrawals, app settings, and AFA settings");
     try {
       // Load both packages and withdrawals on initial load
-      const [{ data: pkgData }, withdrawalsData, { data: appSettings }, { data: afaSettings }] = await Promise.all([
+      const [pkgResult, withdrawalsData, appSettingsResult, afaSettingsResult] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
         fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 10000),
         supabase
@@ -311,11 +311,14 @@ const AdminDashboard = () => {
           .from("afa_settings")
           .select("registration_fee")
           .eq("id", 1)
-          .single(),
+          .single().catch(() => ({ data: null })),
       ]);
       
-      setPackages(pkgData ?? []);
+      setPackages(pkgResult.data ?? []);
       setWithdrawals(withdrawalsData ?? []);
+      
+      const appSettings = appSettingsResult.data;
+      const afaSettings = afaSettingsResult.data;
       
       if (appSettings?.agent_registration_fee) {
         setAgentRegistrationFee(appSettings.agent_registration_fee);
