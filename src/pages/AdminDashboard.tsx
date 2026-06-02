@@ -1069,7 +1069,8 @@ const AdminDashboard = () => {
     .filter((agent) => agent.store_name.toLowerCase().includes(agentSearchTerm.toLowerCase()))
     .filter((agent) => agentApprovalFilter === "all" ? true : (agentApprovalFilter === "approved" ? agent.approved : !agent.approved));
   
-  const filteredUsers = users.filter((user) => (user.full_name?.toLowerCase() || "").includes(userSearchTerm.toLowerCase()));
+  // Use database search results if searching, otherwise use local users (first 100)
+  const filteredUsers = userSearchTerm.length > 0 ? profileSearch.results : users;
   
   // Use database search results if searching, otherwise use local data
   const filteredOrders = (orderSearchTerm.length > 0 ? orderSearch.results : orders)
@@ -1755,7 +1756,21 @@ const AdminDashboard = () => {
           {/* USERS TAB */}
           {canSee("users") && (
             <TabsContent value="users" className="space-y-4">
-              <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name..." value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} className="pl-10" /></div>
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search by name..." 
+                  value={userSearchTerm}
+                  onChange={(e) => {
+                    setUserSearchTerm(e.target.value);
+                    if (e.target.value.length > 0) {
+                      profileSearch.search(e.target.value);
+                    }
+                  }}
+                  className="pl-10" 
+                />
+                {profileSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
               {(() => {
                 const paginated = filteredUsers.slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE);
                 const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
