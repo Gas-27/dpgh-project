@@ -318,10 +318,10 @@ const AdminDashboard = () => {
         });
       }
       
-      setLoading(false);
+      setDataLoading(false);
     } catch (error) {
       console.error("[v0] Error in refreshData:", error);
-      setLoading(false);
+      setDataLoading(false);
     }
   };
   
