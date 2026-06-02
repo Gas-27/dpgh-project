@@ -17,6 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
+import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import DraggableFAB from "@/components/DraggableFAB";
 
 // Utility function to update page metadata dynamically
