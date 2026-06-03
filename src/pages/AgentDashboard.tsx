@@ -31,6 +31,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
+import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
@@ -2061,7 +2062,20 @@ const AgentDashboard = () => {
 
           {/* ============================= AFA BUNDLES ============================= */}
           <TabsContent value="afa" className="mt-0 space-y-6">
-            <AgentAFAPriceManager />
+            <Tabs defaultValue="pricing" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="pricing">Pricing</TabsTrigger>
+                <TabsTrigger value="registrations">Bundle Registrations</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="pricing" className="space-y-6 mt-4">
+                <AgentAFAPriceManager />
+              </TabsContent>
+
+              <TabsContent value="registrations" className="space-y-6 mt-4">
+                {store && <AgentAFABundleRegistrations agentStoreId={store.id} primaryColor={primaryColor} />}
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* ============================= SETTINGS ============================= */}
