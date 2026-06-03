@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Zap, Check } from "lucide-react";
+import AFARegistrationForm from "./AFARegistrationForm";
 
 interface AFAPackage {
   id: string;
@@ -131,9 +132,17 @@ export default function AFAPackagesDisplay({
 
   if (packages.length === 0) {
     return (
-      <div className="text-center py-12">
-        <Zap className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-        <p className="text-muted-foreground">No AFA packages available at this time.</p>
+      <div className="space-y-6">
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="h-5 w-5 text-primary" />
+            <h2 className="text-2xl font-bold">AFA Registration</h2>
+          </div>
+          <p className="text-muted-foreground">
+            Register for our AFA (Agriculture and Farming Association) program to access exclusive agricultural resources and support.
+          </p>
+        </div>
+        <AFARegistrationForm />
       </div>
     );
   }
