@@ -1955,11 +1955,6 @@ const AdminDashboard = () => {
                               const isSubagentWithdrawal = !!w.subagent_store_id;
                               const isSubagentProfit = w.withdrawal_source === "subagent_commission";
                               
-                              // Debug: log what's in the withdrawal object
-                              if (!w.agent_store && !w.subagent_store) {
-                                console.log("[v0] Withdrawal missing store data - ID:", w.id, "agent_id:", w.agent_store_id, "subagent_id:", w.subagent_store_id, "Full object:", w);
-                              }
-                              
                               // Get store data from nested objects (now fetched in the query)
                               const store = isSubagentWithdrawal ? w.subagent_store : w.agent_store;
                               const storeName = store?.store_name || "—";
