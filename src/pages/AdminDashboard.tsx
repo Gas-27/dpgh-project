@@ -80,6 +80,8 @@ const AdminDashboard = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [topupHistory, setTopupHistory] = useState<TopupRecord[]>([]);
+  const [filteredTopupHistory, setFilteredTopupHistory] = useState<TopupRecord[]>([]);
+  const [topupSearching, setTopupSearching] = useState(false);
   
   // Total counts from database
   const [totalCounts, setTotalCounts] = useState({ orders: 0, agents: 0, subagents: 0, users: 0, withdrawals: 0, topups: 0, complaints: 0 });
@@ -255,6 +257,67 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error(`Exception fetching ${table}:`, err);
       return [];
+    }
+  };
+
+  // Server-side search for topups by store name or reference number
+  const searchTopupsByStoreOrReference = async (searchQuery: string) => {
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      setFilteredTopupHistory(topupHistory);
+      setTopupSearching(false);
+      return;
+    }
+
+    setTopupSearching(true);
+    try {
+      const query = searchQuery.toLowerCase().trim();
+      
+      // Search for exact reference match first (treat as numeric if possible)
+      const { data: exactRefMatch, error: refError } = await supabase
+        .from("agent_wallet_topups")
+        .select("id, agent_store_id, amount, created_at, agent_stores(id, store_name, topup_reference, wallet_balance, momo_name, momo_number, momo_network)")
+        .eq("agent_stores.topup_reference", query)
+        .limit(100);
+
+      if (!refError && exactRefMatch && exactRefMatch.length > 0) {
+        setFilteredTopupHistory(exactRefMatch as TopupRecord[]);
+        setTopupSearching(false);
+        return;
+      }
+
+      // Search by store name (ilike for case-insensitive)
+      const { data: storeNameMatch, error: nameError } = await supabase
+        .from("agent_wallet_topups")
+        .select("id, agent_store_id, amount, created_at, agent_stores(id, store_name, topup_reference, wallet_balance, momo_name, momo_number, momo_network)")
+        .ilike("agent_stores.store_name", `%${query}%`)
+        .limit(100);
+
+      if (!nameError && storeNameMatch) {
+        setFilteredTopupHistory(storeNameMatch as TopupRecord[]);
+        setTopupSearching(false);
+        return;
+      }
+
+      // Search by reference number (starts-with or partial match)
+      const { data: refMatch, error: refPartialError } = await supabase
+        .from("agent_wallet_topups")
+        .select("id, agent_store_id, amount, created_at, agent_stores(id, store_name, topup_reference, wallet_balance, momo_name, momo_number, momo_network)")
+        .ilike("agent_stores.topup_reference", `%${query}%`)
+        .limit(100);
+
+      if (!refPartialError && refMatch) {
+        setFilteredTopupHistory(refMatch as TopupRecord[]);
+        setTopupSearching(false);
+        return;
+      }
+
+      // No results found
+      setFilteredTopupHistory([]);
+    } catch (err) {
+      console.error("[v0] Topup search error:", err);
+      setFilteredTopupHistory([]);
+    } finally {
+      setTopupSearching(false);
     }
   };
 
@@ -807,6 +870,15 @@ const AdminDashboard = () => {
 
     return () => clearInterval(intervalId);
   }, []);
+
+  // Debounced server-side search for topups
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      searchTopupsByStoreOrReference(topupSearchTerm);
+    }, 300); // Wait 300ms after user stops typing
+
+    return () => clearTimeout(debounceTimer);
+  }, [topupSearchTerm]);
 
   // ======================== Withdrawal email listener ========================
   useEffect(() => {
@@ -1831,63 +1903,21 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    let filteredTopups = topupHistory;
+                    // Use server-side filtered results (from searchTopupsByStoreOrReference)
+                    const displayTopups = topupSearchTerm.length > 0 
+                      ? filteredTopupHistory 
+                      : topupHistory;
                     
-                    if (topupSearchTerm.length > 0) {
-                      const searchLower = topupSearchTerm.toLowerCase().trim();
-                      
-                      // Separate exact matches, starts-with matches, and contains matches
-                      const exactMatches: typeof topupHistory = [];
-                      const startsWithMatches: typeof topupHistory = [];
-                      const containsMatches: typeof topupHistory = [];
-                      
-                      topupHistory.forEach(t => {
-                        const storeName = (t.agent_stores?.store_name || "").toLowerCase();
-                        const referenceStr = String(t.agent_stores?.topup_reference || "");
-                        
-                        // TRY EXACT MATCH ON REFERENCE FIRST
-                        if (referenceStr === searchLower) {
-                          exactMatches.push(t);
-                          return;
-                        }
-                        
-                        // TRY EXACT MATCH ON STORE NAME
-                        if (storeName === searchLower) {
-                          exactMatches.push(t);
-                          return;
-                        }
-                        
-                        // TRY STARTS-WITH ON REFERENCE
-                        if (referenceStr.startsWith(searchLower)) {
-                          startsWithMatches.push(t);
-                          return;
-                        }
-                        
-                        // TRY STARTS-WITH ON STORE NAME
-                        if (storeName.startsWith(searchLower)) {
-                          startsWithMatches.push(t);
-                          return;
-                        }
-                        
-                        // ONLY SUBSTRING MATCH ON STORE NAME (not reference numbers)
-                        if (storeName.includes(searchLower)) {
-                          containsMatches.push(t);
-                          return;
-                        }
-                      });
-                      
-                      filteredTopups = [...exactMatches, ...startsWithMatches, ...containsMatches];
-                    }
+                    const paginated = displayTopups.slice((topupPage - 1) * PAGE_SIZE, topupPage * PAGE_SIZE);
+                    const totalPages = Math.ceil(displayTopups.length / PAGE_SIZE);
                     
-                    const paginated = filteredTopups.slice((topupPage - 1) * PAGE_SIZE, topupPage * PAGE_SIZE);
-                    const totalPages = Math.ceil(filteredTopups.length / PAGE_SIZE);
-                    
-                    return filteredTopups.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-4">No top-ups found.</p>
+                    return displayTopups.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">{topupSearchTerm ? "No top-ups found matching your search." : "No top-ups found."}</p>
                     ) : (
                       <>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Showing {(topupPage - 1) * PAGE_SIZE + 1} - {Math.min(topupPage * PAGE_SIZE, filteredTopups.length)} of {filteredTopups.length} top-ups
+                          Showing {displayTopups.length > 0 ? (topupPage - 1) * PAGE_SIZE + 1 : 0} - {Math.min(topupPage * PAGE_SIZE, displayTopups.length)} of {displayTopups.length} top-ups
+                          {topupSearching && " (searching...)"}
                         </p>
                         <Table>
                           <TableHeader>
