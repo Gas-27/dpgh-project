@@ -407,27 +407,61 @@ Deno.serve(async (req) => {
             msg = "Invalid number.\nEnter phone (e.g., 024XXXXXXX):\n0. Back";
             responseOp = "2";
           } else {
+            // Fetch support contact from agent or subagent
+            let supportContact = "";
+            
+            if (session.subagent_store_id) {
+              // Get support contact from subagent
+              const { data: subagent } = await supabase
+                .from("subagent_stores")
+                .select("support_number")
+                .eq("id", session.subagent_store_id)
+                .single();
+              
+              if (subagent?.support_number) {
+                supportContact = subagent.support_number;
+              }
+            } else if (session.agent_store_id) {
+              // Get support contact from agent
+              const { data: agent } = await supabase
+                .from("agent_stores")
+                .select("support_number")
+                .eq("id", session.agent_store_id)
+                .single();
+              
+              if (agent?.support_number) {
+                supportContact = agent.support_number;
+              }
+            }
+
+            // Fetch only 2 most recent orders
             const { data: orders, error: orderError } = await supabase
               .from("orders")
               .select("id, size_gb, network, status, fulfillment_status, created_at")
               .eq("customer_number", phone)
               .order("created_at", { ascending: false })
-              .limit(5);
+              .limit(2);
             
             if (orderError || !orders || orders.length === 0) {
               msg = `No orders for ${phone}.\n0. Back`;
+              if (supportContact) {
+                msg += `\nSupport: ${supportContact}`;
+              }
               await updateSession({ step: "no_orders_found" });
               responseOp = "2";
             } else {
-              let orderList = `Orders for ${phone}:\n`;
+              let orderList = `Recent Orders:\n\n`;
               orders.forEach((order, idx) => {
                 const net = order.network === "mtn" ? "MTN" : 
                            order.network === "telecel" ? "Tel" : "AT";
-                const status = order.fulfillment_status === "failed" ? "Failed" : "Pending";
                 const time = formatOrderTime(order.created_at);
-                orderList += `${idx + 1}. ${order.size_gb}GB ${net} ${time} - ${status}\n`;
+                orderList += `${idx + 1}. ${order.size_gb}GB ${net}\nOrder made will be\ndelivered soon\nTime: ${time}\n\n`;
               });
               orderList += "0. Back";
+              
+              if (supportContact) {
+                orderList += `\nSupport: ${supportContact}`;
+              }
               
               await updateSession({ step: "view_orders" });
               msg = orderList;
