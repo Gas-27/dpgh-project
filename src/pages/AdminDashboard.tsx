@@ -1214,11 +1214,11 @@ const AdminDashboard = () => {
     }
     
     try {
-      // Query Supabase directly for agent by topup_reference
+      // Query Supabase directly for agent by exact topup_reference match
       const { data, error } = await supabase
         .from("agent_stores")
         .select("id, store_name, topup_reference, wallet_balance, momo_name, momo_number, momo_network")
-        .ilike("topup_reference::text", `%${topupSearch.trim()}%`)
+        .eq("topup_reference::text", topupSearch.trim())
         .limit(1)
         .single();
 
