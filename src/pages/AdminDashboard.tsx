@@ -260,6 +260,48 @@ const AdminDashboard = () => {
     }
   };
 
+  // Fetch withdrawals with related store data using RPC function
+  const fetchWithdrawalsWithStores = async (limit: number = 10000) => {
+    try {
+      const { data, error } = await supabase.rpc('get_withdrawals_with_stores', { limit_count: limit });
+      if (error) {
+        console.error('Error fetching withdrawals with stores:', error);
+        return [];
+      }
+      // Transform the flat response into nested structure for compatibility
+      return (data || []).map((w: any) => ({
+        id: w.id,
+        agent_store_id: w.agent_store_id,
+        subagent_store_id: w.subagent_store_id,
+        amount: w.amount,
+        status: w.status,
+        created_at: w.created_at,
+        processed_at: w.processed_at,
+        withdrawal_source: w.withdrawal_source,
+        agent_store: {
+          id: w.agent_store_id,
+          store_name: w.agent_store_name,
+          momo_name: w.agent_momo_name,
+          momo_number: w.agent_momo_number,
+          momo_network: w.agent_momo_network,
+          wallet_balance: w.agent_wallet_balance,
+          subagent_commission_balance: w.agent_subagent_commission_balance,
+        },
+        subagent_store: {
+          id: w.subagent_store_id,
+          store_name: w.subagent_store_name,
+          momo_name: w.subagent_momo_name,
+          momo_number: w.subagent_momo_number,
+          momo_network: w.subagent_momo_network,
+          wallet_balance: w.subagent_wallet_balance,
+        },
+      }));
+    } catch (err) {
+      console.error('Exception fetching withdrawals with stores:', err);
+      return [];
+    }
+  };
+
   // Server-side search for topups by store name or reference number
   const searchTopupsByStoreOrReference = async (searchQuery: string) => {
     if (!searchQuery || searchQuery.trim().length === 0) {
@@ -336,7 +378,7 @@ const AdminDashboard = () => {
     // Fetch data for this specific tab
     try {
       if (tabValue === "withdrawals") {
-        const data = await fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source, agent_stores(id, store_name, momo_name, momo_number, momo_network, wallet_balance, subagent_commission_balance), subagent_stores(id, store_name, momo_name, momo_number, momo_network, wallet_balance)", { column: "created_at", ascending: false }, 10000);
+        const data = await fetchWithdrawalsWithStores(10000);
         setWithdrawals(data ?? []);
       } else if (tabValue === "topup") {
         const data = await fetchRecords("wallet_topups", "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )", { column: "created_at", ascending: false }, 1000);
@@ -364,7 +406,7 @@ const AdminDashboard = () => {
       // Load packages, withdrawals, and settings on initial load
       const [pkgResult, withdrawalsData, appSettingsResult] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
-        fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source, agent_stores(id, store_name, momo_name, momo_number, momo_network, wallet_balance, subagent_commission_balance), subagent_stores(id, store_name, momo_name, momo_number, momo_network, wallet_balance)", { column: "created_at", ascending: false }, 10000),
+        fetchWithdrawalsWithStores(10000),
         supabase
           .from("app_settings")
           .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
@@ -1985,18 +2027,7 @@ const AdminDashboard = () => {
                               const isSubagentWithdrawal = !!w.subagent_store_id;
                               const isSubagentProfit = w.withdrawal_source === "subagent_commission";
                               
-                              // Debug: log what we're getting
-                              console.log("[v0] Withdrawal record:", {
-                                id: w.id,
-                                agent_store_id: w.agent_store_id,
-                                subagent_store_id: w.subagent_store_id,
-                                has_agent_store: !!w.agent_store,
-                                has_subagent_store: !!w.subagent_store,
-                                agent_store_keys: w.agent_store ? Object.keys(w.agent_store) : [],
-                                subagent_store_keys: w.subagent_store ? Object.keys(w.subagent_store) : [],
-                              });
-                              
-                              // Get store data from nested objects (now fetched in the query)
+                              // Get store data from nested objects (now fetched from RPC function)
                               const store = isSubagentWithdrawal ? w.subagent_store : w.agent_store;
                               const storeName = store?.store_name || "—";
                               const momoName = store?.momo_name || "—";
