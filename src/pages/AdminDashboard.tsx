@@ -1207,23 +1207,50 @@ const AdminDashboard = () => {
   };
 
   // ======================== Wallet topup ========================
-  const searchTopupRef = () => {
+  const searchTopupRef = async () => {
     if (!topupSearch.trim()) {
       setTopupAgent(null);
       return;
     }
     
-    // Search for agent by topup_reference
-    const found = agents.find((a) => a.topup_reference && a.topup_reference.toString().includes(topupSearch.trim()));
-    if (found) {
-      setTopupAgent(found);
-    } else {
-      // If not found in agents, show message to load agents first
+    try {
+      // Query Supabase directly for agent by topup_reference
+      const { data, error } = await supabase
+        .from("agent_stores")
+        .select("id, store_name, topup_reference, wallet_balance, momo_name, momo_number, momo_network")
+        .ilike("topup_reference::text", `%${topupSearch.trim()}%`)
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows returned, which is fine
+        console.error("Error searching topup reference:", error);
+        toast({ 
+          title: "Error", 
+          description: "Error searching for agent store", 
+          variant: "destructive" 
+        });
+        setTopupAgent(null);
+        return;
+      }
+
+      if (data) {
+        setTopupAgent(data);
+      } else {
+        toast({ 
+          title: "Not found", 
+          description: "No agent with that reference code.", 
+          variant: "destructive" 
+        }); 
+        setTopupAgent(null);
+      }
+    } catch (err) {
+      console.error("Exception searching topup reference:", err);
       toast({ 
-        title: "Not found", 
-        description: agents.length === 0 ? "Please load agents first (click Agents tab)" : "No agent with that reference code.", 
+        title: "Error", 
+        description: "Error searching for agent store", 
         variant: "destructive" 
-      }); 
+      });
       setTopupAgent(null);
     }
   };
