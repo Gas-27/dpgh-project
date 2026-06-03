@@ -33,6 +33,8 @@ export default function AFAPackagesDisplay({
 }: AFADisplayProps) {
   const [packages, setPackages] = useState<AFAPackage[]>([]);
   const [pricing, setPricing] = useState<Record<string, { sell_price: number }>>({});
+  const [bundlePrice, setBundlePrice] = useState(0);
+  const [agentBundlePrice, setAgentBundlePrice] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,8 +55,29 @@ export default function AFAPackagesDisplay({
       console.log("[v0] AFA Packages fetched:", pkgsData);
       setPackages(pkgsData || []);
 
-      // Fetch agent or subagent pricing
+      // Fetch admin AFA bundle price (minimum registration fee)
+      try {
+        const { data: afaSettings } = await supabase
+          .from("afa_settings")
+          .select("bundle_price")
+          .single();
+        if (afaSettings?.bundle_price) {
+          setBundlePrice(afaSettings.bundle_price);
+        }
+      } catch (err) {
+        console.log("[v0] AFA settings not found");
+        setBundlePrice(0);
+      }
+
+      // Fetch agent's AFA bundle price (agent markup)
       if (agentStoreId) {
+        const { data: agentData } = await supabase
+          .from("agent_stores")
+          .select("afa_bundle_price")
+          .eq("id", agentStoreId)
+          .single();
+        setAgentBundlePrice(agentData?.afa_bundle_price || bundlePrice);
+
         const { data: priceData } = await supabase
           .from("agent_afa_prices")
           .select("afa_package_id, sell_price")
@@ -69,6 +92,13 @@ export default function AFAPackagesDisplay({
         );
         setPricing(priceMap);
       } else if (subagentStoreId) {
+        const { data: subagentData } = await supabase
+          .from("subagent_stores")
+          .select("afa_bundle_price")
+          .eq("id", subagentStoreId)
+          .single();
+        setAgentBundlePrice(subagentData?.afa_bundle_price || bundlePrice);
+
         const { data: priceData } = await supabase
           .from("subagent_afa_prices")
           .select("afa_package_id, sell_price")
@@ -119,6 +149,62 @@ export default function AFAPackagesDisplay({
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* AFA Bundle Registration Card */}
+        {bundlePrice > 0 && (
+          <Card className="flex flex-col hover:shadow-lg transition-shadow border-green-500/50 bg-gradient-to-br from-green-50/50 to-transparent">
+            <CardHeader>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <CardTitle className="text-lg">AFA Bundle Registration</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">Get registered as an AFA participant</p>
+                </div>
+                <Badge className="bg-green-600 flex items-center gap-1 whitespace-nowrap">
+                  <Zap className="h-3 w-3" />
+                  Registration
+                </Badge>
+              </div>
+            </CardHeader>
+
+            <CardContent className="flex-1 flex flex-col gap-4">
+              <div className="space-y-2 flex-1">
+                <div className="bg-muted/50 p-3 rounded-lg border-l-4 border-green-500">
+                  <p className="text-xs text-muted-foreground">Registration Fee</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    GH₵ {(agentBundlePrice || bundlePrice).toFixed(2)}
+                  </p>
+                  {agentBundlePrice > bundlePrice && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Admin minimum: GH₵{bundlePrice.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
+                  <p className="text-xs text-muted-foreground">One-time registration</p>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
+                  <p className="text-xs text-muted-foreground">Farmer profile activation</p>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
+                  <p className="text-xs text-muted-foreground">Access to AFA packages</p>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => onRegisterClick('afa-bundle', 'AFA Bundle Registration', agentBundlePrice || bundlePrice)}
+                className="w-full bg-green-600 text-white hover:bg-green-700 transition-colors"
+              >
+                Register as AFA
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {packages.map((pkg) => {
           const displayPrice = pricing[pkg.id]?.sell_price || pkg.base_price;
 

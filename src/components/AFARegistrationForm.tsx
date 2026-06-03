@@ -171,17 +171,33 @@ export default function AFARegistrationForm({
       <CardHeader>
         <CardTitle>AFA Registration</CardTitle>
         <CardDescription>
-          Register for {packageName} - GHS {amount.toFixed(2)}
+          Register for {packageName} - GH₵ {amount.toFixed(2)}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Payment Notice */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="space-y-2">
+                <p className="font-semibold text-blue-900">Important Notice</p>
+                <p className="text-sm text-blue-800">
+                  Registration fee is <strong>GH₵{amount.toFixed(2)}</strong> and is <strong>non-refundable</strong>. 
+                  Ensure all details are correct before submitting.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {error && (
             <div className="flex gap-2 p-3 rounded-md bg-red-50 border border-red-200">
               <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
+
+          {/* Registration Form Fields */}
 
           {/* Required Fields */}
           <div className="space-y-2">
