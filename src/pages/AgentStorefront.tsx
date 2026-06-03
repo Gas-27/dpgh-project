@@ -12,15 +12,7 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
-import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
-import AFARegistrationForm from "@/components/AFARegistrationForm";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import AFABundleSection from "@/components/AFABundleSection";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
@@ -577,11 +569,7 @@ const AgentStorefront = () => {
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
   // ── AFA Packages ──
-  const [selectedAFAPackage, setSelectedAFAPackage] = useState<{
-    id: string;
-    name: string;
-    price: number;
-  } | null>(null);
+  // (Handled by AFABundleSection component)
 
   // Handle bulk payment callback - show success message after returning from Paystack
   useEffect(() => {
@@ -1557,12 +1545,9 @@ const AgentStorefront = () => {
         </div>
       ) : activeCategory === "afa" ? (
         <div className="container pb-20">
-          <AFAPackagesDisplay
+          <AFABundleSection
             agentStoreId={store?.id}
-            onRegisterClick={(packageId, packageName, price) => {
-              setPaymentDialogOpen(true);
-              setSelectedAFAPackage({ id: packageId, name: packageName, price });
-            }}
+            storeType="agent"
             themeColor={primaryColor}
           />
         </div>

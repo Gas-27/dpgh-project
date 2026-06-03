@@ -17,7 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
-import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
+import AFABundleSection from "@/components/AFABundleSection";
 import DraggableFAB from "@/components/DraggableFAB";
 
 // Utility function to update page metadata dynamically
@@ -1226,13 +1226,9 @@ export function SubagentStorefront() {
         {/* AFA BUNDLES SECTION */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>AFA Bundles</h2>
-          <AFAPackagesDisplay
-            agentStoreId={store.id}
+          <AFABundleSection
             subagentStoreId={store.id}
-            onRegisterClick={(packageId, packageName, price) => {
-              setSelectedAFAPackage({ id: packageId, name: packageName, price });
-              setPaymentOpen(true);
-            }}
+            storeType="subagent"
             themeColor={primaryColor}
           />
         </div>
