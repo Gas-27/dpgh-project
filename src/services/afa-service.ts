@@ -8,9 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
  * - AFA_WEBHOOK_SECRET: Secret for validating webhook signatures
  */
 
-const AFA_API_KEY = process.env.VITE_AFA_API_KEY || '';
-const AFA_API_URL = process.env.VITE_AFA_API_URL || 'https://api.afa-provider.com';
-const AFA_WEBHOOK_SECRET = process.env.VITE_AFA_WEBHOOK_SECRET || '';
+const AFA_API_KEY = import.meta.env.VITE_AFA_API_KEY || '';
+const AFA_API_URL = import.meta.env.VITE_AFA_API_URL || 'https://api.afa-provider.com';
+const AFA_WEBHOOK_SECRET = import.meta.env.VITE_AFA_WEBHOOK_SECRET || '';
 
 interface AFARegistrationRequest {
   customer_name: string;
@@ -188,7 +188,8 @@ export const handleAFAWebhook = async (
 ): Promise<{ success: boolean; message: string }> => {
   try {
     // Validate webhook signature
-    if (!validateWebhookSignature(payload, signature)) {
+    const isValid = await validateWebhookSignature(payload, signature);
+    if (!isValid) {
       return {
         success: false,
         message: 'Invalid webhook signature',
@@ -238,20 +239,25 @@ export const handleAFAWebhook = async (
 /**
  * Validate webhook signature from AFA provider
  */
-const validateWebhookSignature = (payload: any, signature: string): boolean => {
+const validateWebhookSignature = async (payload: any, signature: string): Promise<boolean> => {
   if (!AFA_WEBHOOK_SECRET) {
     console.warn('[AFA] Webhook secret not configured');
     return false;
   }
 
-  // Create HMAC signature
-  const crypto = require('crypto');
-  const hash = crypto
-    .createHmac('sha256', AFA_WEBHOOK_SECRET)
-    .update(JSON.stringify(payload))
-    .digest('hex');
+  // Use Web Crypto API available in browser
+  const encoder = new TextEncoder();
+  const data = encoder.encode(JSON.stringify(payload));
+  const keyData = encoder.encode(AFA_WEBHOOK_SECRET);
+  
+  const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const hash = await crypto.subtle.sign('HMAC', key, data);
+  
+  // Convert to hex string
+  const hashArray = Array.from(new Uint8Array(hash));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-  return hash === signature;
+  return hashHex === signature;
 };
 
 /**
