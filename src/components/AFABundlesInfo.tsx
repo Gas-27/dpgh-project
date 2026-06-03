@@ -1,76 +1,101 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Zap } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import AFARegistrationFormStandalone from './AFARegistrationFormStandalone';
 
 export default function AFABundlesInfo() {
   const [showForm, setShowForm] = useState(false);
+  const [registrationFee, setRegistrationFee] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFee = async () => {
+      try {
+        const { data } = await supabase
+          .from('afa_settings')
+          .select('registration_fee')
+          .single();
+        
+        setRegistrationFee(data?.registration_fee || 50);
+      } catch (err) {
+        setRegistrationFee(50);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFee();
+  }, []);
 
   return (
     <div className="space-y-6">
-      {/* AFA Description Section */}
-      <Card className="border-l-4 border-l-primary">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <Zap className="h-6 w-6 text-primary" />
-            <div>
-              <CardTitle className="text-2xl">What is AFA Registration?</CardTitle>
-              <CardDescription>Agriculture and Farming Association Program</CardDescription>
+      {/* AFA Registration Card - Like Package Cards */}
+      <Card className="overflow-hidden border-0 shadow-lg">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white rounded-t-lg">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Zap className="h-6 w-6" />
+              <div>
+                <h3 className="text-xl font-bold">AFA REGISTRATION</h3>
+                <p className="text-blue-100 text-sm">(Both Reg. & Verification)</p>
+              </div>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <p className="text-base leading-relaxed">
-              The AFA (Agriculture and Farming Association) is an exclusive program designed to support farmers and agricultural workers across Ghana. 
-              By registering with AFA, you gain access to:
+          
+          <div className="space-y-4">
+            <p className="text-blue-100">
+              Join the Agriculture and Farming Association to access training, market linkages, and exclusive member benefits
             </p>
-            <ul className="space-y-2 ml-6">
-              <li className="flex gap-3">
-                <span className="text-primary font-bold">•</span>
-                <span>Agricultural training and resources to improve your farming practices</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-primary font-bold">•</span>
-                <span>Market linkages to connect with buyers and expand your reach</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-primary font-bold">•</span>
-                <span>Access to premium content and agricultural insights</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-primary font-bold">•</span>
-                <span>Member-only discounts and special offers</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-primary font-bold">•</span>
-                <span>Networking opportunities with other farmers in your region</span>
-              </li>
-            </ul>
-          </div>
+            
+            <div className="text-center py-4">
+              <p className="text-blue-100 mb-2">Registration Fee</p>
+              <p className="text-4xl font-bold">
+                {loading ? '...' : `₵${registrationFee?.toFixed(2)}`}
+              </p>
+            </div>
 
-          {/* Register Button */}
-          <div className="pt-4">
             <Button
               onClick={() => setShowForm(!showForm)}
-              className="w-full md:w-auto"
+              className="w-full bg-white text-blue-600 hover:bg-blue-50 font-semibold py-6 rounded-full"
               size="lg"
             >
-              {showForm ? (
-                <>
-                  <ChevronUp className="mr-2 h-5 w-5" />
-                  Hide Registration Form
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="mr-2 h-5 w-5" />
-                  Register Now
-                </>
-              )}
+              {showForm ? 'Hide Form' : 'Register'}
             </Button>
+          </div>
+        </div>
+
+        {/* Registration Benefits */}
+        <CardContent className="p-6 space-y-4 bg-background">
+          <div>
+            <Badge className="bg-cyan-500 text-white mb-3">Instant Access via Mobile Money</Badge>
+            <p className="font-semibold mb-3">Benefits Include:</p>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex gap-2">
+                <span className="text-primary">✓</span>
+                <span>Agricultural training and expert resources</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary">✓</span>
+                <span>Connect with buyers and expand market reach</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary">✓</span>
+                <span>Premium content and farming insights</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary">✓</span>
+                <span>Member-only discounts and exclusive offers</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary">✓</span>
+                <span>Network with farmers across Ghana</span>
+              </li>
+            </ul>
           </div>
         </CardContent>
       </Card>
