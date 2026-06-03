@@ -303,16 +303,43 @@ const AdminDashboard = () => {
   };
 
   // Server-side search for topups by store name or reference number using RPC
+  // Always queries Supabase directly, independent of loaded data
   const searchTopupsByStoreOrReference = async (searchQuery: string) => {
-    if (!searchQuery || searchQuery.trim().length === 0) {
-      setFilteredTopupHistory(topupHistory);
-      setTopupSearching(false);
-      return;
-    }
-
     setTopupSearching(true);
     try {
       const query = searchQuery.trim();
+      
+      // If search is empty, fetch all topups from Supabase (not from pre-loaded data)
+      if (!query || query.length === 0) {
+        const { data, error } = await supabase.rpc('get_topups_with_store_data');
+        
+        if (error) {
+          console.error("[v0] Error fetching all topups:", error);
+          setFilteredTopupHistory([]);
+          setTopupSearching(false);
+          return;
+        }
+        
+        const results = (data || []).map((row: any) => ({
+          id: row.id,
+          agent_store_id: row.agent_store_id,
+          amount: row.amount,
+          created_at: row.created_at,
+          agent_stores: {
+            id: row.agent_store_id,
+            store_name: row.store_name,
+            topup_reference: row.topup_reference,
+            wallet_balance: row.wallet_balance,
+            momo_name: row.momo_name,
+            momo_number: row.momo_number,
+            momo_network: row.momo_network,
+          },
+        }));
+        
+        setFilteredTopupHistory(results);
+        setTopupSearching(false);
+        return;
+      }
       
       // Call the RPC function that searches topups by store name or reference
       const { data, error } = await supabase.rpc('search_topups_by_store_or_ref', { search_query: query });
