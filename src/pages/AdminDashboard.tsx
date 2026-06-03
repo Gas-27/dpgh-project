@@ -301,7 +301,7 @@ const AdminDashboard = () => {
       // Load packages, withdrawals, and settings on initial load
       const [pkgResult, withdrawalsData, appSettingsResult] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
-        fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 10000),
+        fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source, agent_stores(id, store_name, momo_name, momo_number, momo_network, wallet_balance, subagent_commission_balance), subagent_stores(id, store_name, momo_name, momo_number, momo_network, wallet_balance)", { column: "created_at", ascending: false }, 10000),
         supabase
           .from("app_settings")
           .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
