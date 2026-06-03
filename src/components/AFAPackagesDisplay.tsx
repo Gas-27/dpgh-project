@@ -56,17 +56,18 @@ export default function AFAPackagesDisplay({
       setPackages(pkgsData || []);
 
       // Fetch admin AFA bundle price (minimum registration fee)
+      let adminBundlePrice = 0;
       try {
         const { data: afaSettings } = await supabase
           .from("afa_settings")
           .select("bundle_price")
           .single();
         if (afaSettings?.bundle_price) {
-          setBundlePrice(afaSettings.bundle_price);
+          adminBundlePrice = afaSettings.bundle_price;
+          setBundlePrice(adminBundlePrice);
         }
       } catch (err) {
         console.log("[v0] AFA settings not found");
-        setBundlePrice(0);
       }
 
       // Fetch agent's AFA bundle price (agent markup)
@@ -76,7 +77,7 @@ export default function AFAPackagesDisplay({
           .select("afa_bundle_price")
           .eq("id", agentStoreId)
           .single();
-        setAgentBundlePrice(agentData?.afa_bundle_price || bundlePrice);
+        setAgentBundlePrice(agentData?.afa_bundle_price || adminBundlePrice);
 
         const { data: priceData } = await supabase
           .from("agent_afa_prices")
@@ -97,7 +98,7 @@ export default function AFAPackagesDisplay({
           .select("afa_bundle_price")
           .eq("id", subagentStoreId)
           .single();
-        setAgentBundlePrice(subagentData?.afa_bundle_price || bundlePrice);
+        setAgentBundlePrice(subagentData?.afa_bundle_price || adminBundlePrice);
 
         const { data: priceData } = await supabase
           .from("subagent_afa_prices")

@@ -1069,7 +1069,7 @@ const AgentDashboard = () => {
     }
   };
   
-  // ─── GUARDS ────────────────────────────────────────────────────────���──────
+  // ─── GUARDS ────────────────────────────────────────────────────────����──────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
@@ -2073,7 +2073,7 @@ const AgentDashboard = () => {
               </TabsContent>
 
               <TabsContent value="registrations" className="space-y-6 mt-4">
-                {store && <AgentAFABundleRegistrations agentStoreId={store.id} primaryColor={primaryColor} />}
+                {store && <AgentAFABundleRegistrations agentStoreId={store.id} primaryColor={themeColors?.primaryColor || "#000000"} />}
               </TabsContent>
             </Tabs>
           </TabsContent>

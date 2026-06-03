@@ -383,16 +383,18 @@ const SubagentDashboard = () => {
       if (!effectiveUserId) return;
 
       // Fetch subagent store first (needed for other queries)
-      const { data: store, error: storeErr } = await supabase
+      const { data: storeData, error: storeErr } = await supabase
         .from("subagent_stores")
         .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group")
-        .eq("user_id", effectiveUserId)
-        .single();
+        .eq("user_id", effectiveUserId);
 
-      if (storeErr) {
+      if (storeErr || !storeData || storeData.length === 0) {
         console.error("Error fetching subagent store:", storeErr);
-        throw storeErr;
+        toast({ title: "Error", description: "Subagent store not found. Please complete your registration.", variant: "destructive" });
+        return;
       }
+
+      const store = storeData[0];
       setSubagentStore(store);
       setStoreForm(store);
       
@@ -2291,7 +2293,7 @@ const SubagentDashboard = () => {
                   )}
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />💡 Markup Explanation (Remember to click save after applying markup)</p>
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />���� Markup Explanation (Remember to click save after applying markup)</p>
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
