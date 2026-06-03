@@ -260,7 +260,36 @@ const AdminDashboard = () => {
     }
   };
 
-  // Fetch withdrawals with related store data using RPC function
+  // Fetch all topups with store data using RPC function (NO LIMIT - loads all topups)
+  const fetchAllTopupsWithStores = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_topups_with_store_data');
+      if (error) {
+        console.error('Error fetching topups with stores:', error);
+        return [];
+      }
+      // Transform the flat response into TopupRecord structure
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        agent_store_id: row.agent_store_id,
+        amount: row.amount,
+        created_at: row.created_at,
+        agent_stores: {
+          id: row.agent_store_id,
+          store_name: row.store_name,
+          topup_reference: row.topup_reference,
+          wallet_balance: row.wallet_balance,
+          momo_name: row.momo_name,
+          momo_number: row.momo_number,
+          momo_network: row.momo_network,
+        },
+      }));
+    } catch (err) {
+      console.error('Exception fetching topups with stores:', err);
+      return [];
+    }
+  };
+
   const fetchWithdrawalsWithStores = async (limit: number = 10000) => {
     try {
       const { data, error } = await supabase.rpc('get_withdrawals_with_stores', { limit_count: limit });
@@ -395,8 +424,9 @@ const AdminDashboard = () => {
         const data = await fetchWithdrawalsWithStores(10000);
         setWithdrawals(data ?? []);
       } else if (tabValue === "topup") {
-        const data = await fetchRecords("wallet_topups", "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchAllTopupsWithStores();
         setTopupHistory(data ?? []);
+        setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
         const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id", { column: "created_at", ascending: false }, 1000);
         setOrders(data ?? []);
