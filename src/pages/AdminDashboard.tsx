@@ -273,7 +273,7 @@ const AdminDashboard = () => {
     // Fetch data for this specific tab
     try {
       if (tabValue === "withdrawals") {
-        const data = await fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source", { column: "created_at", ascending: false }, 10000);
+        const data = await fetchRecords("withdrawal_requests", "id, agent_store_id, subagent_store_id, amount, status, created_at, processed_at, withdrawal_source, agent_stores(id, store_name, momo_name, momo_number, momo_network, wallet_balance, subagent_commission_balance), subagent_stores(id, store_name, momo_name, momo_number, momo_network, wallet_balance)", { column: "created_at", ascending: false }, 10000);
         setWithdrawals(data ?? []);
       } else if (tabValue === "topup") {
         const data = await fetchRecords("wallet_topups", "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )", { column: "created_at", ascending: false }, 1000);
@@ -1831,14 +1831,10 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    // Local client-side filtering for store name and reference
-                    // Smart search with proper prioritization
                     let filteredTopups = topupHistory;
                     
                     if (topupSearchTerm.length > 0) {
                       const searchLower = topupSearchTerm.toLowerCase().trim();
-                      const searchNum = parseInt(searchLower);
-                      const isNumericSearch = !isNaN(searchNum);
                       
                       // Separate exact matches, starts-with matches, and contains matches
                       const exactMatches: typeof topupHistory = [];
@@ -1847,34 +1843,42 @@ const AdminDashboard = () => {
                       
                       topupHistory.forEach(t => {
                         const storeName = (t.agent_stores?.store_name || "").toLowerCase();
-                        const referenceStr = (t.agent_stores?.topup_reference || "").toString();
-                        const referenceNum = parseInt(referenceStr);
-                        const referenceLower = referenceStr.toLowerCase();
+                        const referenceStr = String(t.agent_stores?.topup_reference || "");
                         
-                        // If searching for a number, prioritize exact numeric match
-                        if (isNumericSearch) {
-                          if (referenceNum === searchNum) {
-                            // Exact numeric match (e.g., search "1" finds reference 1, not 1575)
-                            exactMatches.push(t);
-                          } else if (referenceLower.startsWith(searchLower) && String(referenceNum).length > 1) {
-                            // Starts with (e.g., search "15" finds 1575)
-                            startsWithMatches.push(t);
-                          } else if (referenceLower.includes(searchLower) && String(referenceNum).length > 1) {
-                            // Contains (fallback for numeric substring)
-                            containsMatches.push(t);
-                          } else if (storeName.includes(searchLower)) {
-                            // Store name match as last resort
-                            containsMatches.push(t);
-                          }
-                        } else {
-                          // Text search - store name only
-                          if (storeName === searchLower) {
-                            exactMatches.push(t);
-                          } else if (storeName.startsWith(searchLower)) {
-                            startsWithMatches.push(t);
-                          } else if (storeName.includes(searchLower)) {
-                            containsMatches.push(t);
-                          }
+                        // Try to match as exact number first
+                        if (referenceStr === searchLower) {
+                          exactMatches.push(t);
+                          return;
+                        }
+                        
+                        // Try to match store name exact
+                        if (storeName === searchLower) {
+                          exactMatches.push(t);
+                          return;
+                        }
+                        
+                        // Reference starts with search (substring match from beginning)
+                        if (referenceStr.startsWith(searchLower)) {
+                          startsWithMatches.push(t);
+                          return;
+                        }
+                        
+                        // Store name starts with search
+                        if (storeName.startsWith(searchLower)) {
+                          startsWithMatches.push(t);
+                          return;
+                        }
+                        
+                        // Reference contains search (substring anywhere)
+                        if (referenceStr.includes(searchLower)) {
+                          containsMatches.push(t);
+                          return;
+                        }
+                        
+                        // Store name contains search
+                        if (storeName.includes(searchLower)) {
+                          containsMatches.push(t);
+                          return;
                         }
                       });
                       
@@ -1955,45 +1959,27 @@ const AdminDashboard = () => {
                           {paginated.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
                             paginated.map((w) => {
                               const isSubagentWithdrawal = !!w.subagent_store_id;
-                              
-                              // Try to find store info - first check if it's in the data, then lookup in arrays
-                              let storeName = "";
-                              let momoName = "";
-                              let momoNumber = "";
-                              let momoNetwork = "";
-                              let walletBalance = 0;
-                              
-                              if (isSubagentWithdrawal) {
-                                // Try to get from subagent array first
-                                const subagent = subagents.find((s) => s.id === w.subagent_store_id);
-                                storeName = subagent?.store_name || w.subagent_store?.store_name || "";
-                                momoName = subagent?.momo_name || w.subagent_store?.momo_name || "";
-                                momoNumber = subagent?.momo_number || w.subagent_store?.momo_number || "";
-                                momoNetwork = subagent?.momo_network || w.subagent_store?.momo_network || "";
-                                walletBalance = subagent?.wallet_balance || w.subagent_store?.wallet_balance || 0;
-                              } else {
-                                // Try to get from agent array first
-                                const agent = agents.find((a) => a.id === w.agent_store_id);
-                                const isSubagentProfit = w.withdrawal_source === "subagent_commission";
-                                
-                                storeName = agent?.store_name || w.agent_store?.store_name || "";
-                                momoName = agent?.momo_name || w.agent_store?.momo_name || "";
-                                momoNumber = agent?.momo_number || w.agent_store?.momo_number || "";
-                                momoNetwork = agent?.momo_network || w.agent_store?.momo_network || "";
-                                
-                                if (isSubagentProfit) {
-                                  walletBalance = agent?.subagent_commission_balance || w.agent_store?.subagent_commission_balance || 0;
-                                } else {
-                                  walletBalance = agent?.wallet_balance || w.agent_store?.wallet_balance || 0;
-                                }
-                              }
-                              
                               const isSubagentProfit = w.withdrawal_source === "subagent_commission";
+                              
+                              // Get store data from nested objects (now fetched in the query)
+                              const store = isSubagentWithdrawal ? w.subagent_store : w.agent_store;
+                              const storeName = store?.store_name || "—";
+                              const momoName = store?.momo_name || "—";
+                              const momoNumber = store?.momo_number || "—";
+                              const momoNetwork = store?.momo_network || "—";
+                              
+                              // Get wallet balance based on withdrawal type
+                              let walletBalance = 0;
+                              if (isSubagentWithdrawal) {
+                                walletBalance = store?.wallet_balance || 0;
+                              } else {
+                                walletBalance = isSubagentProfit ? (store?.subagent_commission_balance || 0) : (store?.wallet_balance || 0);
+                              }
                               
                               return (
                                 <TableRow key={w.id}>
                                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{new Date(w.created_at).toLocaleString()}</TableCell>
-                                  <TableCell className="font-medium">{storeName || "—"}</TableCell>
+                                  <TableCell className="font-medium">{storeName}</TableCell>
                                   <TableCell><Badge className={isSubagentWithdrawal ? "bg-orange-600/20 text-orange-400 border-orange-600/30" : "bg-cyan-600/20 text-cyan-400 border-cyan-600/30"}>{isSubagentWithdrawal ? "Subagent" : "Agent"}</Badge></TableCell>
                                   <TableCell><Badge className={isSubagentProfit ? "bg-purple-600/20 text-purple-400 border-purple-600/30" : "bg-blue-600/20 text-blue-400 border-blue-600/30"}>{isSubagentProfit ? "Subagent Profit" : "Wallet"}</Badge></TableCell>
                                   <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
