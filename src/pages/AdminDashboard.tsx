@@ -1216,16 +1216,26 @@ const AdminDashboard = () => {
     .filter((order) => orderFulfillmentFilter === "all" ? true : order.fulfillment_status.toLowerCase() === orderFulfillmentFilter.toLowerCase())
     .filter((order) => orderPaymentStatusFilter === "all" ? true : order.status.toLowerCase() === orderPaymentStatusFilter.toLowerCase());
   
-  const filteredWithdrawals = withdrawals.filter((withdrawal) => {
-    // Check if it's a subagent withdrawal
-    if (withdrawal.subagent_store_id) {
-      const subagent = subagents.find((s) => s.id === withdrawal.subagent_store_id);
-      return subagent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
-    }
-    // Otherwise, check agent store
-    const agent = agents.find((a) => a.id === withdrawal.agent_store_id);
-    return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
-  });
+  const filteredWithdrawals = withdrawals
+    .filter((withdrawal) => {
+      // If no search term, show all
+      if (!withdrawalSearchTerm) return true;
+      
+      // Check if it's a subagent withdrawal
+      if (withdrawal.subagent_store_id) {
+        const subagent = subagents.find((s) => s.id === withdrawal.subagent_store_id);
+        return subagent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
+      }
+      // Otherwise, check agent store
+      const agent = agents.find((a) => a.id === withdrawal.agent_store_id);
+      return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
+    })
+    // Sort: pending first, then by date descending
+    .sort((a, b) => {
+      if (a.status === "pending" && b.status !== "pending") return -1;
+      if (a.status !== "pending" && b.status === "pending") return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
   const filteredSubagents = (subagentSearchTerm.length > 0 ? subagentSearch.results : subagents)
     .filter((subagent) => subagentStatusFilter === "all" ? true : (subagentStatusFilter === "active" ? !subagent.suspended : subagent.suspended));
@@ -1822,14 +1832,38 @@ const AdminDashboard = () => {
                 <CardContent>
                   {(() => {
                     // Local client-side filtering for store name and reference
-                    const filteredTopups = topupSearchTerm.length > 0 
-                      ? topupHistory.filter(t => {
-                          const storeName = (t.agent_stores?.store_name || "").toLowerCase();
-                          const reference = (t.agent_stores?.topup_reference || "").toLowerCase();
-                          const searchLower = topupSearchTerm.toLowerCase();
-                          return storeName.includes(searchLower) || reference.includes(searchLower);
-                        })
-                      : topupHistory;
+                    // Search by both store name and reference with smart matching
+                    let filteredTopups = topupHistory;
+                    
+                    if (topupSearchTerm.length > 0) {
+                      const searchLower = topupSearchTerm.toLowerCase().trim();
+                      
+                      // Separate exact matches, starts-with matches, and contains matches
+                      const exactMatches: typeof topupHistory = [];
+                      const startsWithMatches: typeof topupHistory = [];
+                      const containsMatches: typeof topupHistory = [];
+                      
+                      topupHistory.forEach(t => {
+                        const storeName = (t.agent_stores?.store_name || "").toLowerCase();
+                        const reference = (t.agent_stores?.topup_reference || "").toLowerCase();
+                        
+                        // Exact match on reference (most important)
+                        if (reference === searchLower) {
+                          exactMatches.push(t);
+                        }
+                        // Starts with - reference or store name
+                        else if (reference.startsWith(searchLower) || storeName.startsWith(searchLower)) {
+                          startsWithMatches.push(t);
+                        }
+                        // Contains match
+                        else if (storeName.includes(searchLower) || reference.includes(searchLower)) {
+                          containsMatches.push(t);
+                        }
+                      });
+                      
+                      filteredTopups = [...exactMatches, ...startsWithMatches, ...containsMatches];
+                    }
+                    
                     const paginated = filteredTopups.slice((topupPage - 1) * PAGE_SIZE, topupPage * PAGE_SIZE);
                     const totalPages = Math.ceil(filteredTopups.length / PAGE_SIZE);
                     
