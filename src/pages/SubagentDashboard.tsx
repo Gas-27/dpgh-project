@@ -120,6 +120,7 @@ const SubagentDashboard = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [editingStore, setEditingStore] = useState(false);
@@ -379,10 +380,13 @@ const SubagentDashboard = () => {
   const fetchData = async (userId?: string) => {
     try {
       setLoading(true);
+      setLoadError(null);
       // Use the provided userId parameter first, fall back to user?.id
       const effectiveUserId = userId || user?.id;
       if (!effectiveUserId) {
-        console.error("No user ID available");
+        console.error("[v0] No user ID available");
+        setLoadError("Authentication error. Please log in again.");
+        setLoading(false);
         return;
       }
 
@@ -393,20 +397,23 @@ const SubagentDashboard = () => {
         .eq("user_id", effectiveUserId);
 
       if (storeErr) {
-        console.error("Error fetching subagent store:", storeErr);
-        toast({ title: "Error", description: "Failed to load store. Please try again.", variant: "destructive" });
+        console.error("[v0] Error fetching subagent store:", storeErr);
+        setLoadError("Failed to load your store. Please refresh the page or try again.");
+        setLoading(false);
         return;
       }
 
       if (!storeData || storeData.length === 0) {
-        console.warn("No subagent store found for user:", effectiveUserId);
-        toast({ title: "Store Not Found", description: "Subagent store not found. Please complete your registration.", variant: "destructive" });
+        console.warn("[v0] No subagent store found for user:", effectiveUserId);
+        setLoadError("Store not found. Please contact your agent to complete registration.");
+        setLoading(false);
         return;
       }
 
       const store = storeData[0];
       setSubagentStore(store);
       setStoreForm(store);
+      setLoadError(null);
       
       // Set theme colors and headline from store (with null checks)
       if (store?.theme_config && typeof store.theme_config === 'object') {
@@ -1107,15 +1114,30 @@ const SubagentDashboard = () => {
     );
   }
 
-  if (!subagentStore) {
+  if (!subagentStore || loadError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="border-border w-96">
           <CardContent className="pt-6 text-center space-y-4">
-            <p className="text-muted-foreground">No subagent store found. Please complete your registration.</p>
-            <Button variant="hero" asChild>
-              <Link to="/">Go Home</Link>
-            </Button>
+            {loadError ? (
+              <>
+                <ShieldAlert className="h-12 w-12 mx-auto text-red-500" />
+                <p className="text-foreground font-semibold">{loadError}</p>
+                <Button variant="hero" onClick={() => window.location.reload()}>
+                  Refresh Page
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/">Go Home</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground">No subagent store found. Please complete your registration.</p>
+                <Button variant="hero" asChild>
+                  <Link to="/">Go Home</Link>
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
