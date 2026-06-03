@@ -66,7 +66,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "complaints" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "afa" | "complaints" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();

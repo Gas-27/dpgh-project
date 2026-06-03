@@ -59,17 +59,24 @@ export default function AFARegistrationFormStandalone() {
 
         if (error) {
           console.error('Error loading AFA settings:', error);
+          // Set default fee if settings don't exist
+          setRegistrationFee(50); // Default AFA registration fee
           return;
         }
 
         if (data) {
-          setRegistrationFee(data.registration_fee || 0);
+          setRegistrationFee(data.registration_fee || 50);
           if (!data.registration_enabled) {
             setError('AFA registration is currently disabled');
           }
+        } else {
+          // No data returned, use default
+          setRegistrationFee(50);
         }
       } catch (err) {
         console.error('Error loading registration fee:', err);
+        // Use default fee on error
+        setRegistrationFee(50);
       }
     };
 
