@@ -150,62 +150,6 @@ export default function AFAPackagesDisplay({
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* AFA Bundle Registration Card */}
-        {bundlePrice > 0 && (
-          <Card className="flex flex-col hover:shadow-lg transition-shadow border-green-500/50 bg-gradient-to-br from-green-50/50 to-transparent">
-            <CardHeader>
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">AFA Bundle Registration</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">Get registered as an AFA participant</p>
-                </div>
-                <Badge className="bg-green-600 flex items-center gap-1 whitespace-nowrap">
-                  <Zap className="h-3 w-3" />
-                  Registration
-                </Badge>
-              </div>
-            </CardHeader>
-
-            <CardContent className="flex-1 flex flex-col gap-4">
-              <div className="space-y-2 flex-1">
-                <div className="bg-muted/50 p-3 rounded-lg border-l-4 border-green-500">
-                  <p className="text-xs text-muted-foreground">Registration Fee</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    GH₵ {(agentBundlePrice || bundlePrice).toFixed(2)}
-                  </p>
-                  {agentBundlePrice > bundlePrice && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Admin minimum: GH₵{bundlePrice.toFixed(2)}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
-                  <p className="text-xs text-muted-foreground">One-time registration</p>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
-                  <p className="text-xs text-muted-foreground">Farmer profile activation</p>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <Check className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
-                  <p className="text-xs text-muted-foreground">Access to AFA packages</p>
-                </div>
-              </div>
-
-              <Button
-                onClick={() => onRegisterClick('afa-bundle', 'AFA Bundle Registration', agentBundlePrice || bundlePrice)}
-                className="w-full bg-green-600 text-white hover:bg-green-700 transition-colors"
-              >
-                Register as AFA
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
         {packages.map((pkg) => {
           const displayPrice = pricing[pkg.id]?.sell_price || pkg.base_price;
 

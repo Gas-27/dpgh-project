@@ -23,7 +23,6 @@ import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/ph
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
 import { DOMAINS } from "@/config/domains";
-import SubagentAFAPriceManager from "@/components/SubagentAFAPriceManager";
 
 interface SubagentStore {
   id: string;
@@ -1186,7 +1185,6 @@ const SubagentDashboard = () => {
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
     { id: "bulk", label: "Bulk Orders", icon: Layers },
     { id: "store", label: "Store Prices", icon: Store },
-    { id: "afa", label: "AFA Bundles", icon: Zap },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "topup", label: "Top Up", icon: Wallet },
@@ -2688,11 +2686,6 @@ const SubagentDashboard = () => {
                 topupReference={subagentStore.topup_reference || ""}
               />
             )}
-          </TabsContent>
-
-          {/* AFA BUNDLES */}
-          <TabsContent value="afa" className="mt-0 space-y-6">
-            <SubagentAFAPriceManager />
           </TabsContent>
 
           {/* SETTINGS */}
