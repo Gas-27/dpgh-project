@@ -210,13 +210,10 @@ const SubagentDashboard = () => {
   useEffect(() => {
     // Use impersonated user ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
-    console.log("[v0] useEffect triggered - effectiveUserId:", effectiveUserId, "user?.id:", user?.id, "impersonatedUserId:", impersonatedUserId);
     if (!effectiveUserId) {
-      console.log("[v0] No effectiveUserId, waiting for auth...");
       return;
     }
     // Load data for any logged-in user or impersonated user
-    console.log("[v0] Calling fetchData with effectiveUserId");
     fetchData(effectiveUserId);
   }, [user?.id, isImpersonating, impersonatedUserId]);
 
@@ -388,22 +385,17 @@ const SubagentDashboard = () => {
       setLoadError(null);
       // Use the provided userId parameter first, fall back to user?.id
       const effectiveUserId = userId || user?.id;
-      console.log("[v0] fetchData called with effectiveUserId:", effectiveUserId);
       if (!effectiveUserId) {
-        console.error("[v0] No user ID available");
         setLoadError("Authentication error. Please log in again.");
         setLoading(false);
         return;
       }
 
       // Fetch subagent store first (needed for other queries)
-      console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
       const { data: storeData, error: storeErr } = await supabase
         .from("subagent_stores")
         .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group")
         .eq("user_id", effectiveUserId);
-
-      console.log("[v0] Store query result - error:", storeErr, "data:", storeData);
 
       if (storeErr) {
         console.error("[v0] Error fetching subagent store:", storeErr);
@@ -413,7 +405,6 @@ const SubagentDashboard = () => {
       }
 
       if (!storeData || storeData.length === 0) {
-        console.warn("[v0] No subagent store found for user:", effectiveUserId);
         setLoadError("Store not found. Please contact your agent to complete registration.");
         setLoading(false);
         return;
