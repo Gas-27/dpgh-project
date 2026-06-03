@@ -379,8 +379,12 @@ const SubagentDashboard = () => {
   const fetchData = async (userId?: string) => {
     try {
       setLoading(true);
+      // Use the provided userId parameter first, fall back to user?.id
       const effectiveUserId = userId || user?.id;
-      if (!effectiveUserId) return;
+      if (!effectiveUserId) {
+        console.error("No user ID available");
+        return;
+      }
 
       // Fetch subagent store first (needed for other queries)
       const { data: storeData, error: storeErr } = await supabase
@@ -388,9 +392,15 @@ const SubagentDashboard = () => {
         .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group")
         .eq("user_id", effectiveUserId);
 
-      if (storeErr || !storeData || storeData.length === 0) {
+      if (storeErr) {
         console.error("Error fetching subagent store:", storeErr);
-        toast({ title: "Error", description: "Subagent store not found. Please complete your registration.", variant: "destructive" });
+        toast({ title: "Error", description: "Failed to load store. Please try again.", variant: "destructive" });
+        return;
+      }
+
+      if (!storeData || storeData.length === 0) {
+        console.warn("No subagent store found for user:", effectiveUserId);
+        toast({ title: "Store Not Found", description: "Subagent store not found. Please complete your registration.", variant: "destructive" });
         return;
       }
 

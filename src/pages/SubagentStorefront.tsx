@@ -17,7 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
-import AFABundleSection from "@/components/AFABundleSection";
+import AFAStandaloneRegistration from "@/components/AFAStandaloneRegistration";
 import DraggableFAB from "@/components/DraggableFAB";
 
 // Utility function to update page metadata dynamically
@@ -1224,14 +1224,10 @@ export function SubagentStorefront() {
         )}
 
         {/* AFA BUNDLES SECTION */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>AFA Bundles</h2>
-          <AFABundleSection
-            subagentStoreId={store.id}
-            storeType="subagent"
-            themeColor={primaryColor}
-          />
-        </div>
+        <AFAStandaloneRegistration
+          subagentStoreId={store.id}
+          themeColor={primaryColor}
+        />
 
         {/* Support */}
         <Card style={{ background: cardBg }} className="border-border">

@@ -12,7 +12,7 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
-import AFABundleSection from "@/components/AFABundleSection";
+import AFAStandaloneRegistration from "@/components/AFAStandaloneRegistration";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
@@ -179,7 +179,7 @@ const getInternationalDigits = (phone: string): string => {
  */
 const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 
-// ───────��──────────────────────��──────────────────────────────────────────────
+// ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1545,9 +1545,8 @@ const AgentStorefront = () => {
         </div>
       ) : activeCategory === "afa" ? (
         <div className="container pb-20">
-          <AFABundleSection
+          <AFAStandaloneRegistration
             agentStoreId={store?.id}
-            storeType="agent"
             themeColor={primaryColor}
           />
         </div>
