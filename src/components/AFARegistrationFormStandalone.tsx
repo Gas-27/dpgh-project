@@ -167,7 +167,7 @@ export default function AFARegistrationFormStandalone() {
             ghana_card_number: formData.ghana_card,
             date_of_birth: formData.date_of_birth,
             town: formData.town,
-            occupation: formData.occupation || null,
+            occupation: 'Farmer', // Always set to Farmer for AFA
             region: formData.region,
             crop_produce: formData.crop,
             registration_fee: registrationFee || 0,
@@ -335,14 +335,16 @@ export default function AFARegistrationFormStandalone() {
           {/* Occupation */}
           <div className="space-y-2">
             <Label htmlFor="occupation">Occupation</Label>
-            <Input
-              id="occupation"
-              name="occupation"
-              value={formData.occupation}
-              onChange={handleChange}
-              placeholder="e.g., Teacher"
-              disabled={loading}
-            />
+            <div className="relative">
+              <Input
+                id="occupation"
+                name="occupation"
+                value="Farmer"
+                disabled
+                className="bg-muted text-foreground opacity-60 cursor-not-allowed"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Fixed as Farmer for AFA registration</p>
           </div>
 
           {/* Region */}
