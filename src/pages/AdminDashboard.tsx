@@ -302,7 +302,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // Server-side search for topups by store name or reference number
+  // Server-side search for topups by store name or reference number using RPC
   const searchTopupsByStoreOrReference = async (searchQuery: string) => {
     if (!searchQuery || searchQuery.trim().length === 0) {
       setFilteredTopupHistory(topupHistory);
@@ -312,51 +312,38 @@ const AdminDashboard = () => {
 
     setTopupSearching(true);
     try {
-      const query = searchQuery.toLowerCase().trim();
+      const query = searchQuery.trim();
       
-      // Search for exact reference match first (treat as numeric if possible)
-      const { data: exactRefMatch, error: refError } = await supabase
-        .from("agent_wallet_topups")
-        .select("id, agent_store_id, amount, created_at, agent_stores(id, store_name, topup_reference, wallet_balance, momo_name, momo_number, momo_network)")
-        .eq("agent_stores.topup_reference", query)
-        .limit(100);
-
-      if (!refError && exactRefMatch && exactRefMatch.length > 0) {
-        setFilteredTopupHistory(exactRefMatch as TopupRecord[]);
+      // Call the RPC function that searches topups by store name or reference
+      const { data, error } = await supabase.rpc('search_topups_by_store_or_ref', { search_query: query });
+      
+      if (error) {
+        console.error("[v0] Topup search error:", error);
+        setFilteredTopupHistory([]);
         setTopupSearching(false);
         return;
       }
 
-      // Search by store name (ilike for case-insensitive)
-      const { data: storeNameMatch, error: nameError } = await supabase
-        .from("agent_wallet_topups")
-        .select("id, agent_store_id, amount, created_at, agent_stores(id, store_name, topup_reference, wallet_balance, momo_name, momo_number, momo_network)")
-        .ilike("agent_stores.store_name", `%${query}%`)
-        .limit(100);
+      // Transform the flat response into TopupRecord structure
+      const results = (data || []).map((row: any) => ({
+        id: row.id,
+        agent_store_id: row.agent_store_id,
+        amount: row.amount,
+        created_at: row.created_at,
+        agent_stores: {
+          id: row.agent_store_id,
+          store_name: row.store_name,
+          topup_reference: row.topup_reference,
+          wallet_balance: row.wallet_balance,
+          momo_name: row.momo_name,
+          momo_number: row.momo_number,
+          momo_network: row.momo_network,
+        },
+      }));
 
-      if (!nameError && storeNameMatch) {
-        setFilteredTopupHistory(storeNameMatch as TopupRecord[]);
-        setTopupSearching(false);
-        return;
-      }
-
-      // Search by reference number (starts-with or partial match)
-      const { data: refMatch, error: refPartialError } = await supabase
-        .from("agent_wallet_topups")
-        .select("id, agent_store_id, amount, created_at, agent_stores(id, store_name, topup_reference, wallet_balance, momo_name, momo_number, momo_network)")
-        .ilike("agent_stores.topup_reference", `%${query}%`)
-        .limit(100);
-
-      if (!refPartialError && refMatch) {
-        setFilteredTopupHistory(refMatch as TopupRecord[]);
-        setTopupSearching(false);
-        return;
-      }
-
-      // No results found
-      setFilteredTopupHistory([]);
+      setFilteredTopupHistory(results);
     } catch (err) {
-      console.error("[v0] Topup search error:", err);
+      console.error("[v0] Topup search exception:", err);
       setFilteredTopupHistory([]);
     } finally {
       setTopupSearching(false);
