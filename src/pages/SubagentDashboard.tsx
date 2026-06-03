@@ -392,10 +392,11 @@ const SubagentDashboard = () => {
       }
 
       // Fetch subagent store first (needed for other queries)
+      // Query without filtering by user_id - let RLS policies handle access control
       const { data: storeData, error: storeErr } = await supabase
         .from("subagent_stores")
         .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group")
-        .eq("user_id", effectiveUserId);
+        .limit(1);
 
       if (storeErr) {
         console.error("[v0] Error fetching subagent store:", storeErr);
