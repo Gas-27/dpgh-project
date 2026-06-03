@@ -1712,10 +1712,11 @@ const AdminDashboard = () => {
                               size="sm"
                               onClick={() => {
                                 // Navigate to subagent domain with impersonation token in URL
-                                // Use encodeURIComponent to handle non-Latin1 characters safely
+                                // Pass store ID so we can query directly
                                 const tokenData = JSON.stringify({ 
-                                  userId: subagent.user_id, 
+                                  storeId: subagent.id,
                                   storeName: subagent.store_name,
+                                  userId: subagent.user_id,
                                   timestamp: Date.now() 
                                 });
                                 const token = btoa(encodeURIComponent(tokenData));

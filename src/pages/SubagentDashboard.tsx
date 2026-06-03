@@ -81,25 +81,25 @@ const SubagentDashboard = () => {
   const { signOut, user, isSubagent, isAdmin } = useAuth();
   const { toast } = useToast();
 
-  // Check if admin is impersonating - check URL params first (cross-domain), then localStorage
   const getImpersonationData = () => {
-    if (typeof window === 'undefined') return { userId: null, storeName: null };
+    if (typeof window === 'undefined') return { userId: null, storeId: null, storeName: null };
     
     // Check URL params first (for cross-domain admin impersonation)
     const urlParams = new URLSearchParams(window.location.search);
     const adminToken = urlParams.get("admin_token");
-  if (adminToken) {
-  try {
-  // Decode URI component first, then parse JSON (to handle non-Latin1 characters)
-  const decoded = JSON.parse(decodeURIComponent(atob(adminToken)));
+    if (adminToken) {
+      try {
+        // Decode URI component first, then parse JSON (to handle non-Latin1 characters)
+        const decoded = JSON.parse(decodeURIComponent(atob(adminToken)));
         // Token is valid for 1 hour
         if (decoded.timestamp && Date.now() - decoded.timestamp < 3600000) {
           // Store in localStorage for subsequent navigations and remove from URL
-          localStorage.setItem("admin_impersonate_subagent", decoded.userId);
+          localStorage.setItem("admin_impersonate_subagent", decoded.userId || "");
+          localStorage.setItem("admin_impersonate_store_id", decoded.storeId || "");
           localStorage.setItem("admin_impersonate_store", decoded.storeName || "");
           // Clean URL
           window.history.replaceState({}, document.title, window.location.pathname);
-          return { userId: decoded.userId, storeName: decoded.storeName };
+          return { userId: decoded.userId, storeId: decoded.storeId, storeName: decoded.storeName };
         }
       } catch (e) {
         console.error("Invalid admin token");
@@ -108,13 +108,15 @@ const SubagentDashboard = () => {
     
     // Fall back to localStorage
     const userId = localStorage.getItem("admin_impersonate_subagent");
+    const storeId = localStorage.getItem("admin_impersonate_store_id");
     const storeName = localStorage.getItem("admin_impersonate_store");
-    return { userId, storeName };
+    return { userId, storeId, storeName };
   };
   
   const [impersonationData] = useState(getImpersonationData);
   const impersonatedUserId = impersonationData.userId;
-  const isImpersonating = !!impersonatedUserId;
+  const impersonatedStoreId = impersonationData.storeId;
+  const isImpersonating = !!impersonatedUserId || !!impersonatedStoreId;
 
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -201,6 +203,7 @@ const SubagentDashboard = () => {
   // Function to exit impersonation
   const exitImpersonation = () => {
     localStorage.removeItem("admin_impersonate_subagent");
+    localStorage.removeItem("admin_impersonate_store_id");
     localStorage.removeItem("admin_impersonate_store");
     localStorage.removeItem("admin_impersonate_return");
     // Redirect back to admin dashboard on main domain
@@ -208,14 +211,18 @@ const SubagentDashboard = () => {
   };
 
   useEffect(() => {
-    // Use impersonated user ID if available, otherwise use logged in user
+    // Use impersonated user ID/store ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
-    if (!effectiveUserId) {
+    if (!effectiveUserId && !impersonatedStoreId) {
       return;
     }
-    // Load data for any logged-in user or impersonated user
-    fetchData(effectiveUserId);
-  }, [user?.id, isImpersonating, impersonatedUserId]);
+    // Load data for any logged-in user, impersonated user, or impersonated store
+    if (impersonatedStoreId) {
+      fetchData(undefined, impersonatedStoreId);
+    } else {
+      fetchData(effectiveUserId);
+    }
+  }, [user?.id, isImpersonating, impersonatedUserId, impersonatedStoreId]);
 
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops
@@ -379,47 +386,71 @@ const SubagentDashboard = () => {
     return () => clearInterval(intervalId);
   }, [subagentStore?.id]);
 
-  const fetchData = async (userId?: string) => {
+  const fetchData = async (userId?: string, storeId?: string) => {
     try {
       setLoading(true);
       setLoadError(null);
-      // Use the provided userId parameter first, fall back to user?.id
-      const effectiveUserId = userId || user?.id;
-      console.log("[v0] SubagentDashboard - fetchData called with effectiveUserId:", effectiveUserId);
-      if (!effectiveUserId) {
-        setLoadError("Authentication error. Please log in again.");
-        setLoading(false);
-        return;
+      
+      // If admin is impersonating and passed storeId, use that directly
+      if (storeId) {
+        console.log("[v0] SubagentDashboard - Admin impersonation with storeId:", storeId);
+        const { data: storeData, error: storeErr } = await supabase
+          .from("subagent_stores")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group")
+          .eq("id", storeId)
+          .single();
+
+        if (storeErr || !storeData) {
+          console.error("[v0] Error fetching subagent store by ID:", storeErr);
+          setLoadError("Failed to load your store. Please refresh the page or try again.");
+          setLoading(false);
+          return;
+        }
+
+        const store = storeData;
+        console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
+        setSubagentStore(store);
+        setStoreForm(store);
+        setLoadError(null);
+      } else {
+        // Normal flow - filter by user_id
+        const effectiveUserId = userId || user?.id;
+        console.log("[v0] SubagentDashboard - fetchData called with effectiveUserId:", effectiveUserId);
+        if (!effectiveUserId) {
+          setLoadError("Authentication error. Please log in again.");
+          setLoading(false);
+          return;
+        }
+
+        // Fetch subagent store first (needed for other queries)
+        // Filter by user_id to ensure each subagent only sees their own store
+        console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
+        const { data: storeData, error: storeErr } = await supabase
+          .from("subagent_stores")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group")
+          .eq("user_id", effectiveUserId);
+
+        console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
+        if (storeErr) {
+          console.error("[v0] Error fetching subagent store:", storeErr);
+          setLoadError("Failed to load your store. Please refresh the page or try again.");
+          setLoading(false);
+          return;
+        }
+
+        if (!storeData || storeData.length === 0) {
+          console.warn("[v0] No subagent store found for user_id:", effectiveUserId);
+          setLoadError("Store not found. Please contact your agent to complete registration.");
+          setLoading(false);
+          return;
+        }
+
+        const store = storeData[0];
+        console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
+        setSubagentStore(store);
+        setStoreForm(store);
+        setLoadError(null);
       }
-
-      // Fetch subagent store first (needed for other queries)
-      // Filter by user_id to ensure each subagent only sees their own store
-      console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
-      const { data: storeData, error: storeErr } = await supabase
-        .from("subagent_stores")
-        .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group")
-        .eq("user_id", effectiveUserId);
-
-      console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
-      if (storeErr) {
-        console.error("[v0] Error fetching subagent store:", storeErr);
-        setLoadError("Failed to load your store. Please refresh the page or try again.");
-        setLoading(false);
-        return;
-      }
-
-      if (!storeData || storeData.length === 0) {
-        console.warn("[v0] No subagent store found for user_id:", effectiveUserId);
-        setLoadError("Store not found. Please contact your agent to complete registration.");
-        setLoading(false);
-        return;
-      }
-
-      const store = storeData[0];
-      console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
-      setSubagentStore(store);
-      setStoreForm(store);
-      setLoadError(null);
       
       // Set theme colors and headline from store (with null checks)
       if (store?.theme_config && typeof store.theme_config === 'object') {
