@@ -1845,37 +1845,31 @@ const AdminDashboard = () => {
                         const storeName = (t.agent_stores?.store_name || "").toLowerCase();
                         const referenceStr = String(t.agent_stores?.topup_reference || "");
                         
-                        // Try to match as exact number first
+                        // TRY EXACT MATCH ON REFERENCE FIRST
                         if (referenceStr === searchLower) {
                           exactMatches.push(t);
                           return;
                         }
                         
-                        // Try to match store name exact
+                        // TRY EXACT MATCH ON STORE NAME
                         if (storeName === searchLower) {
                           exactMatches.push(t);
                           return;
                         }
                         
-                        // Reference starts with search (substring match from beginning)
+                        // TRY STARTS-WITH ON REFERENCE
                         if (referenceStr.startsWith(searchLower)) {
                           startsWithMatches.push(t);
                           return;
                         }
                         
-                        // Store name starts with search
+                        // TRY STARTS-WITH ON STORE NAME
                         if (storeName.startsWith(searchLower)) {
                           startsWithMatches.push(t);
                           return;
                         }
                         
-                        // Reference contains search (substring anywhere)
-                        if (referenceStr.includes(searchLower)) {
-                          containsMatches.push(t);
-                          return;
-                        }
-                        
-                        // Store name contains search
+                        // ONLY SUBSTRING MATCH ON STORE NAME (not reference numbers)
                         if (storeName.includes(searchLower)) {
                           containsMatches.push(t);
                           return;
@@ -1960,6 +1954,11 @@ const AdminDashboard = () => {
                             paginated.map((w) => {
                               const isSubagentWithdrawal = !!w.subagent_store_id;
                               const isSubagentProfit = w.withdrawal_source === "subagent_commission";
+                              
+                              // Debug: log what's in the withdrawal object
+                              if (!w.agent_store && !w.subagent_store) {
+                                console.log("[v0] Withdrawal missing store data - ID:", w.id, "agent_id:", w.agent_store_id, "subagent_id:", w.subagent_store_id, "Full object:", w);
+                              }
                               
                               // Get store data from nested objects (now fetched in the query)
                               const store = isSubagentWithdrawal ? w.subagent_store : w.agent_store;
