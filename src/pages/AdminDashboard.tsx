@@ -1810,22 +1810,26 @@ const AdminDashboard = () => {
                   <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                      placeholder="Search by store name..." 
+                      placeholder="Search by store name or ref..." 
                       value={topupSearchTerm} 
                       onChange={(e) => {
                         setTopupSearchTerm(e.target.value);
-                        if (e.target.value.length > 0) {
-                          topupDatabaseSearch.search(e.target.value);
-                        }
                       }} 
                       className="pl-10" 
                     />
-                    {topupDatabaseSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
                   </div>
                 </CardHeader>
                 <CardContent>
                   {(() => {
-                    const filteredTopups = topupSearchTerm.length > 0 ? topupDatabaseSearch.results : topupHistory;
+                    // Local client-side filtering for store name and reference
+                    const filteredTopups = topupSearchTerm.length > 0 
+                      ? topupHistory.filter(t => {
+                          const storeName = (t.agent_stores?.store_name || "").toLowerCase();
+                          const reference = (t.agent_stores?.topup_reference || "").toLowerCase();
+                          const searchLower = topupSearchTerm.toLowerCase();
+                          return storeName.includes(searchLower) || reference.includes(searchLower);
+                        })
+                      : topupHistory;
                     const paginated = filteredTopups.slice((topupPage - 1) * PAGE_SIZE, topupPage * PAGE_SIZE);
                     const totalPages = Math.ceil(filteredTopups.length / PAGE_SIZE);
                     
