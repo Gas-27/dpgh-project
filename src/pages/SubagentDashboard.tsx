@@ -385,6 +385,7 @@ const SubagentDashboard = () => {
       setLoadError(null);
       // Use the provided userId parameter first, fall back to user?.id
       const effectiveUserId = userId || user?.id;
+      console.log("[v0] SubagentDashboard - fetchData called with effectiveUserId:", effectiveUserId);
       if (!effectiveUserId) {
         setLoadError("Authentication error. Please log in again.");
         setLoading(false);
@@ -392,12 +393,14 @@ const SubagentDashboard = () => {
       }
 
       // Fetch subagent store first (needed for other queries)
-      // Query without filtering by user_id - let RLS policies handle access control
+      // Filter by user_id to ensure each subagent only sees their own store
+      console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
       const { data: storeData, error: storeErr } = await supabase
         .from("subagent_stores")
         .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group")
-        .limit(1);
+        .eq("user_id", effectiveUserId);
 
+      console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
       if (storeErr) {
         console.error("[v0] Error fetching subagent store:", storeErr);
         setLoadError("Failed to load your store. Please refresh the page or try again.");
@@ -406,12 +409,14 @@ const SubagentDashboard = () => {
       }
 
       if (!storeData || storeData.length === 0) {
+        console.warn("[v0] No subagent store found for user_id:", effectiveUserId);
         setLoadError("Store not found. Please contact your agent to complete registration.");
         setLoading(false);
         return;
       }
 
       const store = storeData[0];
+      console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
       setSubagentStore(store);
       setStoreForm(store);
       setLoadError(null);
