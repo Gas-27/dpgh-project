@@ -85,6 +85,12 @@ function formatPhoneForPaystack(phone: string): string {
   return cleaned;
 }
 
+function sendResponse(sessionID: string, msg: string, op: string, headers: any) {
+  return new Response(JSON.stringify({ sessionID, USSD_RETURN_OP: op, USSD_RETURN_MSG: msg }), {
+    headers: { ...headers, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
   console.log(`[USSD] ========== NEW REQUEST ==========`);
   console.log(`[USSD] Method: ${req.method}`);
@@ -573,7 +579,7 @@ Deno.serve(async (req) => {
             }
           }
         }
-        // STEP 4: Enter recipient number - VALIDATE NETWORK MATCHES
+        // STEP 4: Enter recipient number - VALIDATE NETWORK MATCHES & CHECK IF FIRST-TIME BUYER
         else if (session.step === "enter_recipient") {
           const recipient = ussdString.trim();
           
@@ -591,9 +597,79 @@ Deno.serve(async (req) => {
               msg = `This is not a ${selectedNetworkName} number.\nThis looks like ${recipientNetworkName}.\nPlease enter correct number:`;
               responseOp = "2";
             } else {
+              // Check if customer exists (first-time buyer check)
+              const { data: existingCustomer } = await supabase
+                .from("customers")
+                .select("id")
+                .eq("phone_number", recipient)
+                .maybeSingle();
+
+              if (!existingCustomer) {
+                // First-time buyer - generate and send OTP
+                console.log(`[USSD] First-time buyer detected: ${recipient}`);
+                const otp = Math.floor(100000 + Math.random() * 900000).toString();
+                
+                await updateSession({
+                  step: "enter_otp",
+                  recipient_number: recipient,
+                  otp_code: otp,
+                  otp_sent: true,
+                  otp_attempts: 0,
+                });
+                
+                msg = `OTP sent to ${recipient}.\nEnter OTP:`;
+                responseOp = "2";
+                console.log(`[USSD] OTP generated: ${otp}`);
+              } else {
+                // Returning customer - proceed to confirmation
+                console.log(`[USSD] Returning customer: ${recipient}`);
+                await updateSession({
+                  step: "confirm_payment",
+                  recipient_number: recipient,
+                });
+
+                const fee = session.package_price * (PAYSTACK_FEE_PERCENT / 100);
+                const total = session.package_price + fee;
+                
+                const displayNetwork = session.network === "mtn" ? "MTN" : 
+                                      session.network === "telecel" ? "Telecel" : "AT";
+
+                msg = `Confirm:\n${session.package_size}GB ${displayNetwork}\nGHS ${total.toFixed(2)}\nTo: ${recipient}\n\n1. Pay\n2. Cancel`;
+                responseOp = "2";
+              }
+            }
+          }
+        }
+        // STEP 4.5: Enter OTP (NEW - Only for first-time buyers)
+        else if (session.step === "enter_otp") {
+          const enteredOtp = ussdString.trim();
+          const maxAttempts = 3;
+          const attempts = (session.otp_attempts || 0) + 1;
+          
+          console.log(`[USSD] OTP entry attempt ${attempts}/${maxAttempts}`);
+          
+          if (enteredOtp === session.otp_code) {
+            // OTP correct - create customer and proceed to payment confirmation
+            console.log(`[USSD] OTP verified correctly for ${session.recipient_number}`);
+            
+            // Create new customer record
+            const { error: createError } = await supabase
+              .from("customers")
+              .insert({
+                phone_number: session.recipient_number,
+                network: session.network,
+                created_at: new Date().toISOString(),
+              });
+            
+            if (createError) {
+              console.error(`[USSD] Failed to create customer:`, createError);
+              msg = "Error processing. Try again.\n0. Back";
+              responseOp = "2";
+              await updateSession({ step: "enter_recipient" });
+            } else {
               await updateSession({
                 step: "confirm_payment",
-                recipient_number: recipient,
+                otp_verified: true,
               });
 
               const fee = session.package_price * (PAYSTACK_FEE_PERCENT / 100);
@@ -602,9 +678,30 @@ Deno.serve(async (req) => {
               const displayNetwork = session.network === "mtn" ? "MTN" : 
                                     session.network === "telecel" ? "Telecel" : "AT";
 
-              msg = `Confirm:\n${session.package_size}GB ${displayNetwork}\nGHS ${total.toFixed(2)}\nTo: ${recipient}\n\n1. Pay\n2. Cancel`;
+              msg = `Confirm:\n${session.package_size}GB ${displayNetwork}\nGHS ${total.toFixed(2)}\nTo: ${session.recipient_number}\n\n1. Pay\n2. Cancel`;
               responseOp = "2";
             }
+          } else if (attempts >= maxAttempts) {
+            // Too many failed attempts
+            console.log(`[USSD] OTP verification failed - max attempts reached for ${session.recipient_number}`);
+            
+            msg = `Incorrect OTP. Max attempts reached.\n0. Back`;
+            responseOp = "2";
+            
+            await updateSession({
+              step: "enter_recipient",
+            });
+          } else {
+            // Incorrect OTP - allow retry
+            const remaining = maxAttempts - attempts;
+            console.log(`[USSD] OTP incorrect. Remaining attempts: ${remaining}`);
+            
+            msg = `Incorrect OTP.\nAttempts remaining: ${remaining}\nEnter OTP:`;
+            responseOp = "2";
+            
+            await updateSession({
+              otp_attempts: attempts,
+            });
           }
         }
         // STEP 5: Confirm payment - Initiate Paystack Charge
