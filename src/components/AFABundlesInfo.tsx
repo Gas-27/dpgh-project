@@ -8,21 +8,42 @@ import { Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import AFARegistrationFormStandalone from './AFARegistrationFormStandalone';
 
-export default function AFABundlesInfo() {
+interface AFABundlesInfoProps {
+  agentId?: string;
+  showAgentPrice?: boolean;
+}
+
+export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFABundlesInfoProps) {
   const [showForm, setShowForm] = useState(false);
   const [registrationFee, setRegistrationFee] = useState<number | null>(null);
+  const [agentBundlePrice, setAgentBundlePrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadFee = async () => {
       try {
+        // Get admin base price
         const { data } = await supabase
           .from('afa_settings')
           .select('registration_fee')
           .single();
         
         setRegistrationFee(data?.registration_fee || 50);
+
+        // Get agent's custom price if agent ID provided
+        if (agentId && showAgentPrice) {
+          const { data: agentStore } = await supabase
+            .from('agent_stores')
+            .select('afa_bundle_price')
+            .eq('id', agentId)
+            .single();
+          
+          if (agentStore?.afa_bundle_price) {
+            setAgentBundlePrice(agentStore.afa_bundle_price);
+          }
+        }
       } catch (err) {
+        console.log('[v0] Error loading AFA fees:', err);
         setRegistrationFee(50);
       } finally {
         setLoading(false);
@@ -30,7 +51,7 @@ export default function AFABundlesInfo() {
     };
 
     loadFee();
-  }, []);
+  }, [agentId, showAgentPrice]);
 
   return (
     <div className="space-y-6">
@@ -166,9 +187,24 @@ export default function AFABundlesInfo() {
             
             <div className="text-center py-4">
               <p className="text-blue-100 mb-2">Registration Fee</p>
-              <p className="text-4xl font-bold">
-                {loading ? '...' : `₵${registrationFee?.toFixed(2)}`}
-              </p>
+              {showAgentPrice && agentBundlePrice ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-lg text-blue-100 line-through">₵{registrationFee?.toFixed(2)}</span>
+                    <span className="text-sm text-blue-200">(Base Price)</span>
+                  </div>
+                  <p className="text-4xl font-bold">
+                    ₵{agentBundlePrice.toFixed(2)}
+                  </p>
+                  <p className="text-sm text-blue-200">
+                    Your markup: ₵{(agentBundlePrice - (registrationFee || 0)).toFixed(2)}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-4xl font-bold">
+                  {loading ? '...' : `₵${registrationFee?.toFixed(2)}`}
+                </p>
+              )}
             </div>
 
             <Button

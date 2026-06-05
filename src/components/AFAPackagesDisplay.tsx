@@ -131,7 +131,13 @@ export default function AFAPackagesDisplay({
   }
 
   if (packages.length === 0) {
-    return <AFABundlesInfo />;
+    return (
+      <AFABundlesInfo 
+        agentId={agentStoreId || subagentStoreId || undefined}
+        showAgentPrice={!!(agentStoreId || subagentStoreId)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -204,5 +210,4 @@ export default function AFAPackagesDisplay({
       </div>
     </div>
   );
-}
 }
