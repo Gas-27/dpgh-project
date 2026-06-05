@@ -129,7 +129,7 @@ Tips:
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price – set any amount above the base price.
+• Your Selling Price ��� set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -324,6 +324,7 @@ const AgentDashboard = () => {
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [afaTabActive, setAfaTabActive] = useState("pricing");
   const [manualOpen, setManualOpen] = useState(false);
   const [openManualSection, setOpenManualSection] = useState<number | null>(null);
   const [markupPercent, setMarkupPercent] = useState("");
@@ -706,6 +707,17 @@ const AgentDashboard = () => {
   useEffect(() => {
     if (orders.length > 0 && packages.length > 0) fetchTotalProfit();
   }, [orders, packages]);
+
+  // Listen for AFA pricing tab switch events
+  useEffect(() => {
+    const handleSwitchToAFAPricing = () => {
+      setActiveTab("afa");
+      setAfaTabActive("pricing");
+    };
+
+    window.addEventListener("switchToAFAPricingTab", handleSwitchToAFAPricing);
+    return () => window.removeEventListener("switchToAFAPricingTab", handleSwitchToAFAPricing);
+  }, []);
 
   const fetchNotifications = async () => {
     if (!store?.id) return; setLoadingNotifications(true);
@@ -2062,7 +2074,7 @@ const AgentDashboard = () => {
 
           {/* ============================= AFA BUNDLES ============================= */}
           <TabsContent value="afa" className="mt-0 space-y-6">
-            <Tabs defaultValue="pricing" className="w-full">
+            <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>
                 <TabsTrigger value="registrations">Bundle Registrations</TabsTrigger>

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Download, Eye } from 'lucide-react';
+import { Loader2, Download, Eye, AlertCircle, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface AFARegistration {
@@ -191,6 +191,32 @@ export default function AgentAFABundleRegistrations({
           </CardContent>
         </Card>
       </div>
+
+      {/* Pricing Info Card */}
+      <Card className="border-blue-500/30 bg-blue-900/5">
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-sm">Set Your AFA Registration Pricing</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Click the "Pricing" tab to set your AFA bundle registration price and manage package pricing. Your customers will see your prices on the storefront.
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <a href="#" onClick={(e) => {
+                e.preventDefault();
+                // Scroll to pricing tab or trigger tab change - this will be handled by parent
+                window.dispatchEvent(new CustomEvent('switchToAFAPricingTab'));
+              }}>
+                Go to Pricing <ArrowRight className="h-4 w-4 ml-2" />
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Search and Export */}
       <Card>
