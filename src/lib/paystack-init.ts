@@ -26,6 +26,75 @@ Deno.serve(async (req) => {
     }
 
     // ==========================
+    // AFA REGISTRATION PAYMENT
+    // ==========================
+    if (metadata?.type === "afa_registration") {
+      if (!requestedAmount || !email || !metadata?.customer_name) {
+        return new Response(JSON.stringify({ error: "Missing required fields for AFA registration payment" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const amountInPesewas = Math.round(Number(requestedAmount) * 100);
+
+      const afaRegistrationMetadata: Record<string, unknown> = {
+        type: "afa_registration",
+        customer_name: metadata.customer_name,
+        customer_phone: phone || metadata.customer_phone || "",
+        ghana_card_number: metadata.ghana_card_number || "",
+        date_of_birth: metadata.date_of_birth || null,
+        town: metadata.town || "",
+        occupation: metadata.occupation || "Farmer",
+        region: metadata.region || "",
+        crop_produce: metadata.crop_produce || "",
+        registration_fee: requestedAmount,
+        phone: phone || metadata.customer_phone || "",
+      };
+
+      // Add agent/subagent if provided
+      if (metadata.agent_store_id) {
+        afaRegistrationMetadata.agent_store_id = metadata.agent_store_id;
+      }
+      if (metadata.subagent_store_id) {
+        afaRegistrationMetadata.subagent_store_id = metadata.subagent_store_id;
+      }
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url,
+          metadata: afaRegistrationMetadata,
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack AFA registration error:", result);
+        return new Response(JSON.stringify({ error: result.message || "AFA registration payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: requestedAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ==========================
     // AFA BUNDLE PAYMENT
     // ==========================
     if (metadata?.type === "afa_bundle") {
