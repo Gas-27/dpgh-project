@@ -729,7 +729,7 @@ const AdminDashboard = () => {
     if (!error && data) {
       setCurrentUserSections(data.sections as Section[]);
     } else {
-      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "push", "spinwheel", "complaints", "settings"]);
+      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "settings"]);
     }
   };
 

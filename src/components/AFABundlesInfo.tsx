@@ -82,6 +82,70 @@ export default function AFABundlesInfo() {
         </CardContent>
       </Card>
 
+      {/* MTN AFA Benefits & Offers Section */}
+      <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950">
+        <CardContent className="p-6 space-y-6">
+          <h3 className="text-lg font-bold text-green-900 dark:text-green-100">🎉 MTN AFA Benefits & Offers</h3>
+          <p className="text-sm text-green-800 dark:text-green-200">Once your MTN number is registered on AFA, you can enjoy:</p>
+
+          {/* Voice Bundle */}
+          <div className="space-y-2">
+            <h4 className="font-semibold text-green-900 dark:text-green-100">📞 Voice Bundle (Most Popular)</h4>
+            <ul className="space-y-1 text-sm text-green-800 dark:text-green-200 ml-4">
+              <li>• 200 MTN minutes</li>
+              <li>• 20 minutes to other networks</li>
+              <li>• 1,000 MTN SMS</li>
+              <li>• 50 SMS to other networks</li>
+              <li>• FREE calls to other AFA members</li>
+            </ul>
+          </div>
+
+          {/* Voice + Data Bundle */}
+          <div className="space-y-2">
+            <h4 className="font-semibold text-green-900 dark:text-green-100">📱 Voice + Data Bundle</h4>
+            <ul className="space-y-1 text-sm text-green-800 dark:text-green-200 ml-4">
+              <li>• 140 MTN minutes</li>
+              <li>• 20 minutes to other networks</li>
+              <li>• 150MB data</li>
+              <li>• 1,000 MTN SMS</li>
+              <li>• 50 SMS to other networks</li>
+              <li>• FREE calls to other AFA members</li>
+            </ul>
+          </div>
+
+          {/* AFA Voice Packages */}
+          <div className="space-y-2">
+            <h4 className="font-semibold text-green-900 dark:text-green-100">💰 AFA Voice Packages</h4>
+            <div className="grid grid-cols-2 gap-2 text-sm text-green-800 dark:text-green-200 ml-4">
+              <div>• GH₵6 → 220 minutes</div>
+              <div>• GH₵12 → 440 minutes</div>
+              <div>• GH₵18 → 660 minutes</div>
+              <div>• GH₵24 → 880 minutes</div>
+              <div>• GH₵30 → 1,100 minutes</div>
+              <div>• GH₵36 → 1,320 minutes</div>
+            </div>
+          </div>
+
+          {/* Extra Benefits */}
+          <div className="space-y-2 bg-white dark:bg-slate-900 rounded-lg p-4 border border-green-200 dark:border-green-800">
+            <h4 className="font-semibold text-green-900 dark:text-green-100">🔥 Extra Benefits</h4>
+            <ul className="space-y-1 text-sm text-green-800 dark:text-green-200">
+              <li>✅ Free calls between AFA members</li>
+              <li>✅ Cheaper voice rates</li>
+              <li>✅ Special MTN offers unavailable to regular users</li>
+              <li>✅ One-time registration</li>
+              <li>✅ Renew and continue enjoying the benefits</li>
+            </ul>
+          </div>
+
+          <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-3 border border-blue-300 dark:border-blue-700">
+            <p className="text-sm text-blue-900 dark:text-blue-100 font-semibold">
+              📞 Dial *1848# after registration to access AFA bundles.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* AFA Registration Card - Like Package Cards */}
       <Card className="overflow-hidden border-0 shadow-lg">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white rounded-t-lg">
