@@ -22,6 +22,7 @@ import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import AdminAFABundleManager from "@/components/AdminAFABundleManager";
+import AdminAFAManager from "@/components/AdminAFAManager";
 import { DOMAINS } from "@/config/domains";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -2594,7 +2595,7 @@ const AdminDashboard = () => {
   {/* AFA BUNDLES TAB */}
   {canSee("afa") && (
   <TabsContent value="afa" className="space-y-6">
-    <AdminAFABundleManager />
+    <AdminAFAManager />
   </TabsContent>
   )}
 

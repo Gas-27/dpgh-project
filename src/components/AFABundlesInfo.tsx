@@ -103,7 +103,7 @@ export default function AFABundlesInfo() {
       {/* Registration Form - Toggleable */}
       {showForm && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-          <AFARegistrationFormStandalone />
+          <AFARegistrationFormStandalone key="afa-form" />
         </div>
       )}
     </div>
