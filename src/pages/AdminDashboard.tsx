@@ -67,7 +67,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "afa" | "complaints" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -1478,6 +1478,7 @@ const AdminDashboard = () => {
             {canSee("push") && <TabsTrigger value="push" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Smartphone className="h-3 w-3 md:h-4 md:w-4" /> Push</TabsTrigger>}
             {canSee("spinwheel") && <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>}
             {canSee("afa") && <TabsTrigger value="afa" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> AFA</TabsTrigger>}
+            {canSee("afa_bundles") && <TabsTrigger value="afa_bundles" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> AFA Bundles</TabsTrigger>}
 {canSee("complaints") && <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>}
   {canSee("settings") && <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>}
   </TabsList>
@@ -2599,6 +2600,13 @@ const AdminDashboard = () => {
   </TabsContent>
   )}
 
+  {/* AFA BUNDLES TAB */}
+  {canSee("afa_bundles") && (
+  <TabsContent value="afa_bundles" className="space-y-6">
+    <AdminAFABundleManager />
+  </TabsContent>
+  )}
+
   {/* PUSH NOTIFICATIONS TAB */}
   {canSee("push") && (
   <TabsContent value="push" className="space-y-6">
@@ -2642,30 +2650,7 @@ const AdminDashboard = () => {
           <p className="text-xs text-muted-foreground">Current fee: GH₵{agentRegistrationFee.toFixed(2)}</p>
         </div>
 
-        {/* AFA Registration Fee */}
-        <div className="space-y-4 border p-4 rounded-lg bg-blue-900/10 border-blue-500/30">
-          <div className="space-y-0.5">
-            <Label className="text-base font-semibold">AFA Registration Fee</Label>
-            <p className="text-sm text-muted-foreground">The amount users must pay to register as an AFA (Agricultural Farmer Agent) participant</p>
-          </div>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1 space-y-2">
-              <Label>Fee Amount (GH₵)</Label>
-              <Input 
-                type="number" 
-                min="0" 
-                step="0.01"
-                value={afaRegistrationFee} 
-                onChange={(e) => setAfaRegistrationFee(Number(e.target.value) || 0)} 
-              />
-            </div>
-            <Button onClick={saveAppSettings} disabled={savingSettings}>
-              {savingSettings ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Save
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">Current fee: GH₵{afaRegistrationFee.toFixed(2)}</p>
-        </div>
+        {/* AFA Registration Fee section removed - moved to dedicated AFA tab */}
                 </CardContent>
               </Card>
 

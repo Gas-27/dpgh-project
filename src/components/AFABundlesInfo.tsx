@@ -34,6 +34,54 @@ export default function AFABundlesInfo() {
 
   return (
     <div className="space-y-6">
+      {/* AFA Info Marketing Section */}
+      <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 border-blue-200 dark:border-blue-800">
+        <CardContent className="p-6 space-y-4">
+          <div>
+            <h3 className="text-xl font-bold text-blue-900 dark:text-blue-100 mb-4">🎉 What is AFA Registration?</h3>
+            <p className="text-blue-800 dark:text-blue-200 mb-4">
+              AFA Registration activates your MTN number for the MTN AFA platform, giving you access to special call and bundle offers not available to regular users. 📱🔥
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-blue-900 dark:text-blue-100 mb-3">🎁 What do you get after activation?</h4>
+            <ul className="space-y-2 text-blue-800 dark:text-blue-200 text-sm">
+              <li className="flex items-center gap-2">
+                <span>✅</span>
+                <span>220 MTN call minutes</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span>✅</span>
+                <span>20 minutes to call other networks</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span>✅</span>
+                <span>50 SMS</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span>✅</span>
+                <span>FREE calls to other AFA members</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span>✅</span>
+                <span>Renew your package monthly and continue enjoying the benefits</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-900 dark:text-blue-200">
+              💡 <strong>If you make a lot of calls, AFA can help you save money while staying connected to friends, family, customers, and colleagues.</strong>
+            </p>
+          </div>
+
+          <p className="text-blue-900 dark:text-blue-100 font-semibold">
+            🚀 Register once and start enjoying exclusive AFA benefits today!
+          </p>
+        </CardContent>
+      </Card>
+
       {/* AFA Registration Card - Like Package Cards */}
       <Card className="overflow-hidden border-0 shadow-lg">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white rounded-t-lg">
