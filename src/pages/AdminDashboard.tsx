@@ -2593,30 +2593,30 @@ const AdminDashboard = () => {
   </TabsContent>
   )}
 
-  {/* AFA BUNDLES TAB */}
+  {/* AFA TAB */}
   {canSee("afa") && (
-  <TabsContent value="afa" className="space-y-6">
-    <AdminAFAManager />
-  </TabsContent>
-  )}
+            <TabsContent value="afa" className="space-y-6">
+              <AdminAFAManager />
+            </TabsContent>
+          )}
 
   {/* AFA BUNDLES TAB */}
   {canSee("afa_bundles") && (
-  <TabsContent value="afa_bundles" className="space-y-6">
-    <AdminAFABundleManager />
-  </TabsContent>
-  )}
+            <TabsContent value="afa_bundles" className="space-y-6">
+              <AdminAFABundleManager />
+            </TabsContent>
+          )}
 
-  {/* PUSH NOTIFICATIONS TAB */}
-  {canSee("push") && (
-  <TabsContent value="push" className="space-y-6">
-    <PushNotificationManager />
-  </TabsContent>
-  )}
-  
-  {/* SETTINGS TAB */}
-  {canSee("settings") && (
-  <TabsContent value="settings" className="space-y-6">
+          {/* PUSH NOTIFICATIONS TAB */}
+          {canSee("push") && (
+            <TabsContent value="push" className="space-y-6">
+              <PushNotificationManager />
+            </TabsContent>
+          )}
+          
+          {/* SETTINGS TAB */}
+          {canSee("settings") && (
+            <TabsContent value="settings" className="space-y-6">
     <Card className="border-border">
       <CardHeader>
         <CardTitle className="font-display flex items-center gap-2">
