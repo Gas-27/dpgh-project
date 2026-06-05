@@ -2586,155 +2586,150 @@ const AdminDashboard = () => {
             </TabsContent>
           )}
 
-  {/* COMPLAINTS TAB */}
-          {canSee("complaints") && (
-            <TabsContent value="complaints" className="space-y-6">
-              <ComplaintsManager />
-            </TabsContent>
-          )}
+            {canSee("complaints") && (
+              <TabsContent value="complaints" className="space-y-6">
+                <ComplaintsManager />
+              </TabsContent>
+            )}
 
-          {/* AFA TAB */}
-          {canSee("afa") && (
-            <TabsContent value="afa" className="space-y-6">
-              <AdminAFAManager />
-            </TabsContent>
-          )}
+            {canSee("afa") && (
+              <TabsContent value="afa" className="space-y-6">
+                <AdminAFAManager />
+              </TabsContent>
+            )}
 
-          {/* AFA BUNDLES TAB */}
-          {canSee("afa_bundles") && (
-            <TabsContent value="afa_bundles" className="space-y-6">
-              <AdminAFABundleManager />
-            </TabsContent>
-          )}
+            {canSee("afa_bundles") && (
+              <TabsContent value="afa_bundles" className="space-y-6">
+                <AdminAFABundleManager />
+              </TabsContent>
+            )}
 
-          {/* PUSH NOTIFICATIONS TAB */}
-          {canSee("push") && (
-            <TabsContent value="push" className="space-y-6">
-              <PushNotificationManager />
-            </TabsContent>
-          )}
-          
-          {/* SETTINGS TAB */}
-          {canSee("settings") && (
-            <TabsContent value="settings" className="space-y-6">
-    <Card className="border-border">
-      <CardHeader>
-        <CardTitle className="font-display flex items-center gap-2">
-          <Settings2 className="h-5 w-5 text-primary" /> App Settings
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">Configure global app settings</p>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Agent Registration Fee */}
-        <div className="space-y-4 border p-4 rounded-lg bg-primary/5">
-          <div className="space-y-0.5">
-            <Label className="text-base font-semibold">Agent Registration Fee</Label>
-            <p className="text-sm text-muted-foreground">The amount new agents must pay to get their store approved (via Paystack)</p>
-          </div>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1 space-y-2">
-              <Label>Fee Amount (GH₵)</Label>
-              <Input 
-                type="number" 
-                min="0" 
-                step="0.01"
-                value={agentRegistrationFee} 
-                onChange={(e) => setAgentRegistrationFee(Number(e.target.value) || 0)} 
-              />
-            </div>
-            <Button onClick={saveAppSettings} disabled={savingSettings}>
-              {savingSettings ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Save
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">Current fee: GH₵{agentRegistrationFee.toFixed(2)}</p>
-        </div>
-
-        {/* AFA Registration Fee section removed - moved to dedicated AFA tab */}
-                </CardContent>
-              </Card>
-
-              {/* Free Data Offer Settings */}
-              <Card className="border-border">
-                <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Gift className="h-5 w-5 text-green-500" /> Free Data Offer Settings</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Enable/Disable Toggle */}
-                  <div className="flex items-center justify-between border p-4 rounded-lg bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
-                    <div className="space-y-0.5">
-                      <Label className="text-base font-semibold">Enable Free Data Offer</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Show or hide the Gift icon on all storefronts
-                      </p>
+            {canSee("push") && (
+              <TabsContent value="push" className="space-y-6">
+                <PushNotificationManager />
+              </TabsContent>
+            )}
+            
+            {canSee("settings") && (
+              <TabsContent value="settings" className="space-y-6">
+                <Card className="border-border">
+                  <CardHeader>
+                    <CardTitle className="font-display flex items-center gap-2">
+                      <Settings2 className="h-5 w-5 text-primary" /> App Settings
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">Configure global app settings</p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Agent Registration Fee */}
+                    <div className="space-y-4 border p-4 rounded-lg bg-primary/5">
+                      <div className="space-y-0.5">
+                        <Label className="text-base font-semibold">Agent Registration Fee</Label>
+                        <p className="text-sm text-muted-foreground">The amount new agents must pay to get their store approved (via Paystack)</p>
+                      </div>
+                      <div className="flex gap-4 items-end">
+                        <div className="flex-1 space-y-2">
+                          <Label>Fee Amount (GH₵)</Label>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            step="0.01"
+                            value={agentRegistrationFee} 
+                            onChange={(e) => setAgentRegistrationFee(Number(e.target.value) || 0)} 
+                          />
+                        </div>
+                        <Button onClick={saveAppSettings} disabled={savingSettings}>
+                          {savingSettings ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Save
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Current fee: GH₵{agentRegistrationFee.toFixed(2)}</p>
                     </div>
-                    <Switch 
-                      checked={freeDataConfig.enabled} 
-                      onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, enabled: checked })} 
-                    />
-                  </div>
 
-                  <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                    <p className="text-sm text-green-300">
-                      Users who purchase the required GB within a week (Monday-Sunday) can claim free data once. 
-                      If not claimed by Sunday, the offer expires and resets.
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Required GB to Claim</Label>
-                      <Input 
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="35"
-                        value={freeDataConfig.required_gb || ''} 
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setFreeDataConfig({ ...freeDataConfig, required_gb: val === '' ? 0 : parseInt(val, 10) });
-                        }}
-                        disabled={!freeDataConfig.enabled}
-                      />
-                      <p className="text-xs text-muted-foreground">Users must buy this much GB in a week to qualify</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Free Reward GB</Label>
-                      <Input 
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="1"
-                        value={freeDataConfig.reward_gb || ''} 
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setFreeDataConfig({ ...freeDataConfig, reward_gb: val === '' ? 0 : parseInt(val, 10) });
-                        }}
-                        disabled={!freeDataConfig.enabled}
-                      />
-                      <p className="text-xs text-muted-foreground">How much free data they receive</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between border p-4 rounded-lg">
-                    <div className="space-y-0.5">
-                      <Label className="text-base">Include Telecel Purchases</Label>
-                      <p className="text-sm text-muted-foreground">
-                        If OFF, only MTN and AirtelTigo purchases count toward the required GB.
-                        Turn this ON if Telecel has {freeDataConfig.reward_gb}GB packages available.
-                      </p>
-                    </div>
-                    <Switch 
-                      checked={freeDataConfig.telecel_enabled} 
-                      onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, telecel_enabled: checked })}
-                      disabled={!freeDataConfig.enabled}
-                    />
-                  </div>
-                  
-                  <Button onClick={saveFreeDataSettings} disabled={freeDataSaving}>
-                    {freeDataSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                    Save Free Data Settings
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+                    {/* AFA Registration Fee section removed - moved to dedicated AFA tab */}
+
+                    {/* Free Data Offer Settings */}
+                    <Card className="border-border">
+                      <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Gift className="h-5 w-5 text-green-500" /> Free Data Offer Settings</CardTitle></CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Enable/Disable Toggle */}
+                        <div className="flex items-center justify-between border p-4 rounded-lg bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
+                          <div className="space-y-0.5">
+                            <Label className="text-base font-semibold">Enable Free Data Offer</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Show or hide the Gift icon on all storefronts
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={freeDataConfig.enabled} 
+                            onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, enabled: checked })} 
+                          />
+                        </div>
+
+                        <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                          <p className="text-sm text-green-300">
+                            Users who purchase the required GB within a week (Monday-Sunday) can claim free data once. 
+                            If not claimed by Sunday, the offer expires and resets.
+                          </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Required GB to Claim</Label>
+                            <Input 
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="35"
+                              value={freeDataConfig.required_gb || ''} 
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setFreeDataConfig({ ...freeDataConfig, required_gb: val === '' ? 0 : parseInt(val, 10) });
+                              }}
+                              disabled={!freeDataConfig.enabled}
+                            />
+                            <p className="text-xs text-muted-foreground">Users must buy this much GB in a week to qualify</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Free Reward GB</Label>
+                            <Input 
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="1"
+                              value={freeDataConfig.reward_gb || ''} 
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setFreeDataConfig({ ...freeDataConfig, reward_gb: val === '' ? 0 : parseInt(val, 10) });
+                              }}
+                              disabled={!freeDataConfig.enabled}
+                            />
+                            <p className="text-xs text-muted-foreground">How much free data they receive</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between border p-4 rounded-lg">
+                          <div className="space-y-0.5">
+                            <Label className="text-base">Include Telecel Purchases</Label>
+                            <p className="text-sm text-muted-foreground">
+                              If OFF, only MTN and AirtelTigo purchases count toward the required GB.
+                              Turn this ON if Telecel has {freeDataConfig.reward_gb}GB packages available.
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={freeDataConfig.telecel_enabled} 
+                            onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, telecel_enabled: checked })}
+                            disabled={!freeDataConfig.enabled}
+                          />
+                        </div>
+                        
+                        <Button onClick={saveFreeDataSettings} disabled={freeDataSaving}>
+                          {freeDataSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                          Save Free Data Settings
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
         </Tabs>
       </div>
 
