@@ -141,6 +141,28 @@ export default function AFAPackagesDisplay({
 
   return (
     <div className="space-y-4">
+      {/* Display admin bundle price and agent bundle price */}
+      {(bundlePrice > 0 || agentBundlePrice > 0) && (
+        <Card className="border-green-500/30 bg-green-900/5">
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground mb-2">AFA Bundle Registration</p>
+            <div className="flex items-baseline gap-3">
+              {agentBundlePrice > 0 ? (
+                <>
+                  <p className="text-lg text-muted-foreground line-through">₵{bundlePrice.toFixed(2)}</p>
+                  <p className="text-3xl font-bold text-green-600">₵{agentBundlePrice.toFixed(2)}</p>
+                  <Badge className="ml-auto">Agent Price</Badge>
+                </>
+              ) : (
+                <p className="text-3xl font-bold">₵{bundlePrice.toFixed(2)}</p>
+              )}
+            </div>
+            {agentBundlePrice > 0 && bundlePrice > 0 && (
+              <p className="text-sm text-green-600 mt-2">Your markup: ₵{(agentBundlePrice - bundlePrice).toFixed(2)}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
       <div className="flex items-center gap-2">
         <Zap className="h-5 w-5" style={{ color: themeColor }} />
         <h2 className="text-xl font-bold">Activate AFA Bundle</h2>
