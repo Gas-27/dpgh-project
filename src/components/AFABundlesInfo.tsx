@@ -17,18 +17,20 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
   const [showForm, setShowForm] = useState(false);
   const [registrationFee, setRegistrationFee] = useState<number | null>(null);
   const [agentBundlePrice, setAgentBundlePrice] = useState<number | null>(null);
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadFee = async () => {
       try {
-        // Get admin base price
+        // Get admin settings including registration enabled status
         const { data } = await supabase
           .from('afa_settings')
-          .select('registration_fee')
+          .select('registration_fee, registration_enabled')
           .single();
         
         setRegistrationFee(data?.registration_fee || 50);
+        setRegistrationEnabled(data?.registration_enabled !== false);
 
         // Get agent's custom price if agent ID provided
         if (agentId && showAgentPrice) {
@@ -45,6 +47,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
       } catch (err) {
         console.log('[v0] Error loading AFA fees:', err);
         setRegistrationFee(50);
+        setRegistrationEnabled(true);
       } finally {
         setLoading(false);
       }
@@ -52,6 +55,22 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
 
     loadFee();
   }, [agentId, showAgentPrice]);
+
+  // If registration is disabled, show a message instead of the form
+  if (!registrationEnabled && !loading) {
+    return (
+      <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950 dark:to-orange-950 border-yellow-200 dark:border-yellow-800">
+        <CardContent className="p-6 text-center">
+          <div className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+            AFA Registration is Temporarily Closed
+          </div>
+          <p className="text-yellow-800 dark:text-yellow-200">
+            AFA Bundle registrations are currently disabled. Please check back later.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

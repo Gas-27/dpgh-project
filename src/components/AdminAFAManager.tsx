@@ -83,12 +83,19 @@ export default function AdminAFAManager() {
   const saveAFASettings = async () => {
     try {
       setSaving(true);
+      
+      // First, try to upsert with a fixed UUID for the settings row
+      const settingsId = '550e8400-e29b-41d4-a716-446655440000'; // Fixed UUID for AFA settings
+      
       const { error } = await supabase
         .from('afa_settings')
         .upsert({
-          id: 1,
+          id: settingsId,
           registration_fee: registrationFee,
           registration_enabled: registrationEnabled,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'id'
         });
 
       if (error) {
@@ -100,6 +107,7 @@ export default function AdminAFAManager() {
       alert('AFA settings saved successfully!');
     } catch (err) {
       console.error('Error:', err);
+      alert('Error saving settings');
     } finally {
       setSaving(false);
     }

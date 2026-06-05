@@ -280,17 +280,6 @@ export default function AgentAFAPriceManager() {
     );
   }
 
-  if (packages.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-muted-foreground">No AFA packages available. Contact admin to create packages.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* AFA Bundle Registration Price */}
@@ -348,9 +337,19 @@ export default function AgentAFAPriceManager() {
         </CardContent>
       </Card>
 
-      {/* AFA Package Pricing */}
-
-      <Card>
+      {/* AFA Packages Pricing */}
+      {packages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-blue-600" />
+              AFA Package Pricing
+            </CardTitle>
+            <CardDescription>
+              Set individual prices for each AFA package. Customers see these prices on your storefront.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
@@ -409,7 +408,9 @@ export default function AgentAFAPriceManager() {
             })}
           </TableBody>
         </Table>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Price Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
