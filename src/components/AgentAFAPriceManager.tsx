@@ -85,11 +85,14 @@ export default function AgentAFAPriceManager() {
       try {
         const { data: afaSettings } = await supabase
           .from("afa_settings")
-          .select("bundle_price")
+          .select("bundle_price, registration_fee")
           .single();
         
-        if (afaSettings?.bundle_price) {
-          setMinBundlePrice(afaSettings.bundle_price);
+        console.log("[v0] AFA settings loaded in agent pricing:", afaSettings);
+        // Use registration_fee if available, fallback to bundle_price for compatibility
+        const minPrice = afaSettings?.registration_fee || afaSettings?.bundle_price;
+        if (minPrice) {
+          setMinBundlePrice(minPrice);
         }
       } catch (err) {
         console.log("[v0] AFA settings not found, using default minimum");
@@ -146,6 +149,7 @@ export default function AgentAFAPriceManager() {
 
     setSavingBundle(true);
     try {
+      console.log("[v0] Saving AFA bundle price:", { agentStoreId: agentStore?.id, price: agentBundlePrice });
       const { error } = await supabase
         .from("agent_stores")
         .update({ afa_bundle_price: agentBundlePrice })
@@ -153,11 +157,13 @@ export default function AgentAFAPriceManager() {
 
       if (error) throw error;
 
+      console.log("[v0] AFA bundle price saved successfully");
       toast({
         title: "Success",
         description: `AFA Bundle price updated to GH₵${agentBundlePrice.toFixed(2)}`,
       });
     } catch (err: any) {
+      console.error("[v0] Error saving AFA bundle price:", err);
       toast({
         title: "Error",
         description: err.message || "Failed to save bundle price",

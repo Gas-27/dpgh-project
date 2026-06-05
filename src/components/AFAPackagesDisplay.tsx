@@ -42,6 +42,15 @@ export default function AFAPackagesDisplay({
     fetchAFAData();
   }, [agentStoreId, subagentStoreId]);
 
+  // Add a refresh interval to check for updates every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAFAData();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [agentStoreId, subagentStoreId]);
+
   const fetchAFAData = async () => {
     setLoading(true);
     try {
@@ -56,19 +65,20 @@ export default function AFAPackagesDisplay({
       console.log("[v0] AFA Packages fetched:", pkgsData);
       setPackages(pkgsData || []);
 
-      // Fetch admin AFA bundle price (minimum registration fee)
+      // Fetch admin AFA registration fee (base price)
       let adminBundlePrice = 0;
       try {
         const { data: afaSettings } = await supabase
           .from("afa_settings")
-          .select("bundle_price")
+          .select("registration_fee, registration_enabled")
           .single();
-        if (afaSettings?.bundle_price) {
-          adminBundlePrice = afaSettings.bundle_price;
+        if (afaSettings?.registration_fee) {
+          adminBundlePrice = afaSettings.registration_fee;
           setBundlePrice(adminBundlePrice);
         }
+        console.log("[v0] AFA settings loaded:", afaSettings);
       } catch (err) {
-        console.log("[v0] AFA settings not found");
+        console.log("[v0] AFA settings not found:", err);
       }
 
       // Fetch agent's AFA bundle price (agent markup)

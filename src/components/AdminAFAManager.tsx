@@ -84,14 +84,15 @@ export default function AdminAFAManager() {
     try {
       setSaving(true);
       
-      // First, try to upsert with a fixed UUID for the settings row
-      const settingsId = '550e8400-e29b-41d4-a716-446655440000'; // Fixed UUID for AFA settings
+      // Fixed UUID for AFA settings singleton
+      const settingsId = '550e8400-e29b-41d4-a716-446655440000';
       
       const { error } = await supabase
         .from('afa_settings')
         .upsert({
           id: settingsId,
           registration_fee: registrationFee,
+          bundle_price: registrationFee, // Keep both columns in sync for compatibility
           registration_enabled: registrationEnabled,
           updated_at: new Date().toISOString(),
         }, {
@@ -104,6 +105,7 @@ export default function AdminAFAManager() {
         return;
       }
 
+      console.log('[v0] AFA settings saved:', { registrationFee, registrationEnabled });
       alert('AFA settings saved successfully!');
     } catch (err) {
       console.error('Error:', err);

@@ -29,6 +29,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
           .select('registration_fee, registration_enabled')
           .single();
         
+        console.log("[v0] AFABundlesInfo loading settings:", data);
         setRegistrationFee(data?.registration_fee || 50);
         setRegistrationEnabled(data?.registration_enabled !== false);
 
@@ -40,6 +41,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
             .eq('id', agentId)
             .single();
           
+          console.log("[v0] Agent AFA bundle price:", agentStore);
           if (agentStore?.afa_bundle_price) {
             setAgentBundlePrice(agentStore.afa_bundle_price);
           }
