@@ -2587,21 +2587,21 @@ const AdminDashboard = () => {
           )}
 
   {/* COMPLAINTS TAB */}
-  {canSee("complaints") && (
-  <TabsContent value="complaints" className="space-y-6">
-  <ComplaintsManager />
-  </TabsContent>
-  )}
+          {canSee("complaints") && (
+            <TabsContent value="complaints" className="space-y-6">
+              <ComplaintsManager />
+            </TabsContent>
+          )}
 
-  {/* AFA TAB */}
-  {canSee("afa") && (
+          {/* AFA TAB */}
+          {canSee("afa") && (
             <TabsContent value="afa" className="space-y-6">
               <AdminAFAManager />
             </TabsContent>
           )}
 
-  {/* AFA BUNDLES TAB */}
-  {canSee("afa_bundles") && (
+          {/* AFA BUNDLES TAB */}
+          {canSee("afa_bundles") && (
             <TabsContent value="afa_bundles" className="space-y-6">
               <AdminAFABundleManager />
             </TabsContent>
