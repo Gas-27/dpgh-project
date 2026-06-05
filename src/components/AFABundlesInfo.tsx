@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import AFARegistrationFormStandalone from './AFARegistrationFormStandalone';
@@ -238,39 +237,16 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
           </div>
         </div>
 
-        {/* Registration Benefits */}
-        <CardContent className="p-6 space-y-4 bg-background">
-          <div>
-            <Badge className="bg-cyan-500 text-white mb-3">Instant Access via Mobile Money</Badge>
-            <p className="font-semibold mb-3">Benefits Include:</p>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex gap-2">
-                <span className="text-primary">✓</span>
-                <span>Agricultural training and expert resources</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary">✓</span>
-                <span>Connect with buyers and expand market reach</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary">✓</span>
-                <span>Premium content and farming insights</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary">✓</span>
-                <span>Member-only discounts and exclusive offers</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary">✓</span>
-                <span>Network with farmers across Ghana</span>
-              </li>
-            </ul>
-          </div>
-        </CardContent>
+        {/* Registration Form - Toggleable */}
+        {showForm && (
+          <CardContent className="p-6">
+            <AFARegistrationFormStandalone key="afa-form" />
+          </CardContent>
+        )}
       </Card>
 
-      {/* Registration Form - Toggleable */}
-      {showForm && (
+      {/* Registration Form - Outside Card if needed */}
+      {showForm && false && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
           <AFARegistrationFormStandalone key="afa-form" />
         </div>

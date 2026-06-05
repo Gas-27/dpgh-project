@@ -42,15 +42,6 @@ export default function AFAPackagesDisplay({
     fetchAFAData();
   }, [agentStoreId, subagentStoreId]);
 
-  // Add a refresh interval to check for updates every 3 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchAFAData();
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [agentStoreId, subagentStoreId]);
-
   const fetchAFAData = async () => {
     setLoading(true);
     try {
