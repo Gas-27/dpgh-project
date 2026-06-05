@@ -157,61 +157,62 @@ export default function AFARegistrationFormStandalone() {
         return;
       }
 
-      // Insert into database - using column names as they exist in the table
-      const { data, error: insertError } = await supabase
-        .from('afa_registrations')
-        .insert([
-          {
-            full_name: formData.customer_name,
-            customer_phone: formData.customer_phone,
-            ghana_card_number: formData.ghana_card,
-            date_of_birth: formData.date_of_birth,
-            town: formData.town,
-            occupation: 'Farmer',
-            region: formData.region,
-            crop_produce: formData.crop,
-            registration_fee: registrationFee || 0,
-            status: 'pending',
-          },
-        ])
-        .select();
-
-      if (insertError) {
-        setError(insertError.message);
-        toast({
-          title: 'Error',
-          description: insertError.message,
-          variant: 'destructive',
-        });
+      // Initialize Paystack Payment
+      const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY;
+      
+      if (!paystackSecretKey) {
+        setError('Payment configuration error. Please contact support.');
         setLoading(false);
         return;
       }
 
-      toast({
-        title: 'Success',
-        description: 'AFA registration submitted successfully. You will be contacted soon.',
-      });
+      const response = await fetch(
+        `https://api.paystack.co/transaction/initialize`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${paystackSecretKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: formData.customer_phone, // Using phone as identifier since no email field
+            amount: (registrationFee || 50) * 100, // Convert to kobo
+            metadata: {
+              customer_name: formData.customer_name,
+              customer_phone: formData.customer_phone,
+              ghana_card_number: formData.ghana_card,
+              date_of_birth: formData.date_of_birth,
+              town: formData.town,
+              occupation: 'Farmer',
+              region: formData.region,
+              crop_produce: formData.crop,
+              registration_fee: registrationFee || 50,
+              registration_type: 'afa_bundle_registration',
+            },
+          }),
+        }
+      );
 
-      // Reset form
-      setFormData({
-        customer_name: '',
-        customer_phone: '',
-        ghana_card: '',
-        date_of_birth: '',
-        town: '',
-        occupation: '',
-        region: '',
-        crop: '',
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Registration failed';
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to initialize payment');
+      }
+
+      if (data.status && data.data && data.data.authorization_url) {
+        // Redirect to Paystack checkout
+        window.location.href = data.data.authorization_url;
+      } else {
+        throw new Error('No authorization URL received from Paystack');
+      }
+    } catch (err: any) {
+      const message = err instanceof Error ? err.message : 'Payment initialization failed';
       setError(message);
       toast({
         title: 'Error',
         description: message,
         variant: 'destructive',
       });
-    } finally {
       setLoading(false);
     }
   };
