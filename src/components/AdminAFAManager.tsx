@@ -150,14 +150,16 @@ export default function AdminAFAManager() {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsTrigger value="settings" className="flex items-center gap-2">
-          <Settings className="h-4 w-4" />
-          Settings
-        </TabsTrigger>
-        <TabsTrigger value="registrations" className="flex items-center gap-2">
-          <Users className="h-4 w-4" />
-          Registrations
-        </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Settings
+          </TabsTrigger>
+          <TabsTrigger value="registrations" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Registrations
+          </TabsTrigger>
+        </TabsList>
 
         {/* SETTINGS TAB */}
         <TabsContent value="settings" className="space-y-6">
