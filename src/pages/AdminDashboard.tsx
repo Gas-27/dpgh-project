@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -1453,34 +1453,30 @@ const AdminDashboard = () => {
       <div className="container py-4 md:py-8 space-y-4 md:space-y-8 px-2 md:px-4">
         <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="prices">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
-            {canSee("prices") && <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>}
-            {canSee("orders") && (
-              <TabsTrigger value="orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
-                <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" /> Orders
-                {failedCount > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{failedCount}</Badge>}
-              </TabsTrigger>
-            )}
-            {canSee("agents") && <TabsTrigger value="agents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Agents ({agents.filter((a) => !a.approved).length})</TabsTrigger>}
-            {canSee("subagents") && <TabsTrigger value="subagents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Subagents ({subagents.filter((s) => !s.approved).length})</TabsTrigger>}
-            {canSee("topup") && <TabsTrigger value="topup" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Wallet className="h-3 w-3 md:h-4 md:w-4" /> Topup</TabsTrigger>}
-            {canSee("withdrawals") && (
-              <TabsTrigger value="withdrawals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1 relative">
-                <DollarSign className="h-3 w-3 md:h-4 md:w-4" /> Withdrawals ({totalCounts.withdrawals})
-                {unapprovedWithdrawals > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                    {unapprovedWithdrawals}
-                  </span>
-                )}
-              </TabsTrigger>
-            )}
-            {canSee("users") && <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>}
-            {canSee("notifications") && <TabsTrigger value="notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Notify</TabsTrigger>}
-            {canSee("push") && <TabsTrigger value="push" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Smartphone className="h-3 w-3 md:h-4 md:w-4" /> Push</TabsTrigger>}
-            {canSee("spinwheel") && <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>}
-            {canSee("afa") && <TabsTrigger value="afa" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> AFA</TabsTrigger>}
-            {canSee("afa_bundles") && <TabsTrigger value="afa_bundles" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> AFA Bundles</TabsTrigger>}
-            {canSee("complaints") && <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>}
-            {canSee("settings") && <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>}
+            <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>
+            <TabsTrigger value="orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
+              <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" /> Orders
+              {failedCount > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{failedCount}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="agents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Agents ({agents.filter((a) => !a.approved).length})</TabsTrigger>
+            <TabsTrigger value="subagents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Subagents ({subagents.filter((s) => !s.approved).length})</TabsTrigger>
+            <TabsTrigger value="topup" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Wallet className="h-3 w-3 md:h-4 md:w-4" /> Topup</TabsTrigger>
+            <TabsTrigger value="withdrawals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1 relative">
+              <DollarSign className="h-3 w-3 md:h-4 md:w-4" /> Withdrawals ({totalCounts.withdrawals})
+              {unapprovedWithdrawals > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                  {unapprovedWithdrawals}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>
+            <TabsTrigger value="notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Notify</TabsTrigger>
+            <TabsTrigger value="push" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Smartphone className="h-3 w-3 md:h-4 md:w-4" /> Push</TabsTrigger>
+            <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>
+            <TabsTrigger value="afa" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> AFA</TabsTrigger>
+            <TabsTrigger value="afa_bundles" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> AFA Bundles</TabsTrigger>
+            <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
           </TabsList>
 
           {/* PRICES TAB */}
