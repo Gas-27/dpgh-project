@@ -157,17 +157,17 @@ export default function AFARegistrationFormStandalone() {
         return;
       }
 
-      // Insert into database
+      // Insert into database - using column names as they exist in the table
       const { data, error: insertError } = await supabase
         .from('afa_registrations')
         .insert([
           {
             full_name: formData.customer_name,
-            phone_number: formData.customer_phone,
+            customer_phone: formData.customer_phone,
             ghana_card_number: formData.ghana_card,
             date_of_birth: formData.date_of_birth,
             town: formData.town,
-            occupation: 'Farmer', // Always set to Farmer for AFA
+            occupation: 'Farmer',
             region: formData.region,
             crop_produce: formData.crop,
             registration_fee: registrationFee || 0,
