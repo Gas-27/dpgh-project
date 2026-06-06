@@ -83,6 +83,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
 
   // If registration is disabled, show a message instead of the form
   if (!registrationEnabled && !loading) {
+    console.log('[v0] AFABundlesInfo: Registration disabled, showing closed message');
     return (
       <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950 dark:to-orange-950 border-yellow-200 dark:border-yellow-800">
         <CardContent className="p-6 text-center">

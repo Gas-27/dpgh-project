@@ -39,26 +39,34 @@ export default function AdminAFASettings() {
   const fetchAFASettings = async () => {
     setLoading(true);
     try {
+      console.log('[v0] AdminAFASettings: Fetching settings...');
       const { data, error } = await supabase
         .from('afa_settings')
         .select('*')
+        .eq('id', 1)
         .single();
+
+      console.log('[v0] AdminAFASettings: Fetch response:', { data, error });
 
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
 
       if (data) {
-        setSettings({
+        const newSettings = {
           registration_fee: data.registration_fee || 0,
           package_page_price: data.package_page_price || 0,
           agent_base_price: data.agent_base_price || 0,
           agent_commission_percent: data.agent_commission_percent || 0,
           registration_enabled: data.registration_enabled !== false,
-        });
+        };
+        console.log('[v0] AdminAFASettings: Loaded settings:', newSettings);
+        setSettings(newSettings);
+      } else {
+        console.log('[v0] AdminAFASettings: No settings found, using defaults');
       }
     } catch (err) {
-      console.error('Error fetching AFA settings:', err);
+      console.error('[v0] Error fetching AFA settings:', err);
       toast({ title: 'Error', description: 'Failed to load AFA settings', variant: 'destructive' });
     } finally {
       setLoading(false);
@@ -68,7 +76,9 @@ export default function AdminAFASettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      console.log('[v0] AdminAFASettings: Saving settings:', settings);
+      
+      const { error, data } = await supabase
         .from('afa_settings')
         .upsert({
           id: 1, // Single settings row
@@ -78,17 +88,25 @@ export default function AdminAFASettings() {
           agent_commission_percent: parseFloat(settings.agent_commission_percent.toString()),
           registration_enabled: settings.registration_enabled,
           updated_at: new Date().toISOString(),
-        });
+        }, {
+          onConflict: 'id'
+        })
+        .select();
+
+      console.log('[v0] AdminAFASettings: Save response:', { error, data });
 
       if (error) throw error;
 
       setChanged(false);
       toast({
         title: 'Success',
-        description: 'AFA settings have been updated.',
+        description: 'AFA settings have been saved and will update immediately.',
       });
+      
+      // Refetch to verify save
+      await fetchAFASettings();
     } catch (err) {
-      console.error('Error saving AFA settings:', err);
+      console.error('[v0] Error saving AFA settings:', err);
       toast({ title: 'Error', description: 'Failed to save AFA settings', variant: 'destructive' });
     } finally {
       setSaving(false);
