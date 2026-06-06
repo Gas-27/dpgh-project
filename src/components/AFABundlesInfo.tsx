@@ -25,11 +25,11 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
         // Get admin settings including registration enabled status
         const { data } = await supabase
           .from('afa_settings')
-          .select('registration_fee, registration_enabled')
+          .select('package_page_price, registration_enabled')
           .single();
         
         console.log("[v0] AFABundlesInfo loading settings:", data);
-        setRegistrationFee(data?.registration_fee || 50);
+        setRegistrationFee(data?.package_page_price || 50);
         setRegistrationEnabled(data?.registration_enabled !== false);
 
         // Get agent's custom price if agent ID provided
@@ -69,7 +69,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
         (payload) => {
           console.log('[v0] AFA settings updated:', payload);
           if (payload.new) {
-            setRegistrationFee(payload.new.registration_fee || 50);
+            setRegistrationFee(payload.new.package_page_price || 50);
             setRegistrationEnabled(payload.new.registration_enabled !== false);
           }
         }

@@ -12,17 +12,21 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, AlertCircle, Check } from 'lucide-react';
 
 interface AFASettings {
-  bundle_price: number;
+  registration_fee: number;
+  package_page_price: number;
+  agent_base_price: number;
   agent_commission_percent: number;
-  is_enabled: boolean;
+  registration_enabled: boolean;
 }
 
 export default function AdminAFASettings() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<AFASettings>({
-    bundle_price: 0,
+    registration_fee: 0,
+    package_page_price: 0,
+    agent_base_price: 0,
     agent_commission_percent: 0,
-    is_enabled: true,
+    registration_enabled: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,9 +50,11 @@ export default function AdminAFASettings() {
 
       if (data) {
         setSettings({
-          bundle_price: data.bundle_price || 0,
+          registration_fee: data.registration_fee || 0,
+          package_page_price: data.package_page_price || 0,
+          agent_base_price: data.agent_base_price || 0,
           agent_commission_percent: data.agent_commission_percent || 0,
-          is_enabled: data.is_enabled !== false,
+          registration_enabled: data.registration_enabled !== false,
         });
       }
     } catch (err) {
@@ -66,9 +72,11 @@ export default function AdminAFASettings() {
         .from('afa_settings')
         .upsert({
           id: 1, // Single settings row
-          bundle_price: parseFloat(settings.bundle_price.toString()),
+          registration_fee: parseFloat(settings.registration_fee.toString()),
+          package_page_price: parseFloat(settings.package_page_price.toString()),
+          agent_base_price: parseFloat(settings.agent_base_price.toString()),
           agent_commission_percent: parseFloat(settings.agent_commission_percent.toString()),
-          is_enabled: settings.is_enabled,
+          registration_enabled: settings.registration_enabled,
           updated_at: new Date().toISOString(),
         });
 
@@ -95,7 +103,7 @@ export default function AdminAFASettings() {
     );
   }
 
-  const agentPrice = settings.bundle_price * (1 + settings.agent_commission_percent / 100);
+  const agentPrice = settings.agent_base_price * (1 + settings.agent_commission_percent / 100);
 
   return (
     <div className="space-y-6">
@@ -114,38 +122,84 @@ export default function AdminAFASettings() {
               </p>
             </div>
             <Switch
-              checked={settings.is_enabled}
+              checked={settings.registration_enabled}
               onCheckedChange={(checked) => {
-                setSettings({ ...settings, is_enabled: checked });
+                setSettings({ ...settings, registration_enabled: checked });
                 setChanged(true);
               }}
             />
           </div>
 
-          {/* Base Registration Fee */}
+          {/* Storefront/Package Page Price */}
           <div className="space-y-2">
-            <Label htmlFor="bundle-price" className="text-base font-semibold">
-              Base Registration Fee (GH₵)
+            <Label htmlFor="package-price" className="text-base font-semibold">
+              Package Page Display Price (GH₵)
             </Label>
             <p className="text-sm text-muted-foreground">
-              Minimum price charged for AFA registration. This is the amount you receive.
+              Price shown on the packages/AFA listing page for customers to see
             </p>
             <Input
-              id="bundle-price"
+              id="package-price"
               type="number"
               step="0.01"
               min="0"
-              value={settings.bundle_price}
+              value={settings.package_page_price}
               onChange={(e) => {
-                setSettings({ ...settings, bundle_price: parseFloat(e.target.value) || 0 });
+                setSettings({ ...settings, package_page_price: parseFloat(e.target.value) || 0 });
+                setChanged(true);
+              }}
+              className="text-lg"
+              placeholder="0.00"
+            />
+          </div>
+
+          {/* Agent Base Price */}
+          <div className="space-y-2">
+            <Label htmlFor="agent-base-price" className="text-base font-semibold">
+              Agent Base Price (GH₵)
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Minimum price agents can charge for AFA registration
+            </p>
+            <Input
+              id="agent-base-price"
+              type="number"
+              step="0.01"
+              min="0"
+              value={settings.agent_base_price}
+              onChange={(e) => {
+                setSettings({ ...settings, agent_base_price: parseFloat(e.target.value) || 0 });
                 setChanged(true);
               }}
               className="text-lg"
               placeholder="0.00"
             />
             <p className="text-sm font-medium text-green-600">
-              You will receive: GH₵{settings.bundle_price.toFixed(2)} per registration
+              You will receive: GH₵{settings.registration_fee.toFixed(2)} per agent registration
             </p>
+          </div>
+
+          {/* Storefront Registration Fee */}
+          <div className="space-y-2">
+            <Label htmlFor="registration-fee" className="text-base font-semibold">
+              Storefront Registration Fee (GH₵)
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Amount you receive from direct storefront registrations
+            </p>
+            <Input
+              id="registration-fee"
+              type="number"
+              step="0.01"
+              min="0"
+              value={settings.registration_fee}
+              onChange={(e) => {
+                setSettings({ ...settings, registration_fee: parseFloat(e.target.value) || 0 });
+                setChanged(true);
+              }}
+              className="text-lg"
+              placeholder="0.00"
+            />
           </div>
 
           {/* Agent Commission */}
@@ -181,9 +235,11 @@ export default function AdminAFASettings() {
             <AlertDescription className="text-blue-900">
               <strong>Price Structure:</strong>
               <ul className="mt-2 space-y-1 ml-4">
-                <li>• Admin minimum price: GH₵{settings.bundle_price.toFixed(2)}</li>
+                <li>• Package page display price: GH₵{settings.package_page_price.toFixed(2)}</li>
+                <li>• Agent base price: GH₵{settings.agent_base_price.toFixed(2)}</li>
                 <li>• Agent commission allowed: {settings.agent_commission_percent.toFixed(1)}%</li>
                 <li>• Max agent can charge: GH₵{agentPrice.toFixed(2)}</li>
+                <li>• Storefront registration fee (admin receives): GH₵{settings.registration_fee.toFixed(2)}</li>
               </ul>
             </AlertDescription>
           </Alert>
