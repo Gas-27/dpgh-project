@@ -24,7 +24,7 @@ export default function AFARegistrationFormStandalone() {
     town: '',
     occupation: '',
     region: '',
-    crop: '',
+    crop: 'Yam', // Fixed to Yam only
   });
 
   const GHANA_REGIONS = [
@@ -52,29 +52,37 @@ export default function AFARegistrationFormStandalone() {
   useEffect(() => {
     const loadRegistrationFee = async () => {
       try {
+        console.log('[v0] AFARegistrationFormStandalone: Loading AFA settings...');
         const { data, error } = await supabase
           .from('afa_settings')
-          .select('registration_fee, registration_enabled')
+          .select('agent_base_price, package_page_price, registration_fee, registration_enabled')
           .single();
 
+        console.log('[v0] AFARegistrationFormStandalone: Fetch response:', { data, error });
+
         if (error) {
-          console.error('Error loading AFA settings:', error);
+          console.error('[v0] Error loading AFA settings:', error);
           // Set default fee if settings don't exist
           setRegistrationFee(50); // Default AFA registration fee
           return;
         }
 
         if (data) {
-          setRegistrationFee(data.registration_fee || 50);
+          // Try to use agent_base_price first, then package_page_price, then registration_fee
+          const fee = data.agent_base_price || data.package_page_price || data.registration_fee || 50;
+          console.log('[v0] AFARegistrationFormStandalone: Setting registration fee to:', fee);
+          setRegistrationFee(fee);
           if (!data.registration_enabled) {
+            console.log('[v0] AFARegistrationFormStandalone: Registration is disabled');
             setError('AFA registration is currently disabled');
           }
         } else {
           // No data returned, use default
+          console.log('[v0] AFARegistrationFormStandalone: No data returned, using default fee of 50');
           setRegistrationFee(50);
         }
       } catch (err) {
-        console.error('Error loading registration fee:', err);
+        console.error('[v0] Error loading registration fee:', err);
         // Use default fee on error
         setRegistrationFee(50);
       }
@@ -151,11 +159,7 @@ export default function AFARegistrationFormStandalone() {
         return;
       }
 
-      if (!formData.crop) {
-        setError('Crop type is required');
-        setLoading(false);
-        return;
-      }
+      // Crop is automatically set to "Yam" - no validation needed
 
       // Initialize Paystack Payment
       const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY;
@@ -365,21 +369,13 @@ export default function AFARegistrationFormStandalone() {
             </Select>
           </div>
 
-          {/* Crop Produce */}
+          {/* Crop Produce - Fixed to Yam */}
           <div className="space-y-2">
             <Label htmlFor="crop">Crop Produce *</Label>
-            <Select value={formData.crop} onValueChange={(value) => handleSelectChange('crop', value)} disabled={loading}>
-              <SelectTrigger id="crop">
-                <SelectValue placeholder="Select crop produce" />
-              </SelectTrigger>
-              <SelectContent>
-                {CROP_TYPES.map((crop) => (
-                  <SelectItem key={crop} value={crop}>
-                    {crop}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md px-3 py-2 text-base">
+              <p className="font-medium">Yam</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">This is fixed for AFA registration</p>
+            </div>
           </div>
 
           {/* Submit Button */}
