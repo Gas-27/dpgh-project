@@ -6,12 +6,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Map your internal network names to Spendless network keys
+// Map your internal network names to GHDATE CONNECT network keys
 const NETWORK_MAP: Record<string, string> = {
-  mtn: "YELLO",
-  telecel: "TELECEL",
-  airteltigo: "AT_PREMIUM",       // iShare bundles
-  // If you have airteltigo_bigtime, add: "airteltigo_bigtime": "AT_BIGTIME"
+  mtn: "mtn",
+  telecel: "telecel",
+  airteltigo: "airteltigo",
 };
 
 Deno.serve(async (req) => {
@@ -22,10 +21,11 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const spendlessApiKey = Deno.env.get("SPENDLESS_API_KEY");   // ← NEW env var
+    const ghdateApiKey = Deno.env.get("GHDATE_API_KEY");
+    const ghdateApiUrl = Deno.env.get("GHDATE_API_URL") || "https://api.ghdate.com";
 
-    if (!spendlessApiKey) {
-      return new Response(JSON.stringify({ error: "Spendless API key not configured" }), {
+    if (!ghdateApiKey) {
+      return new Response(JSON.stringify({ error: "GHDATE API key not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -122,21 +122,19 @@ Deno.serve(async (req) => {
 
     console.log(`Fulfilling order ${order_id}: recipient=${phone}, capacity=${capacity}GB, networkKey=${networkKey}`);
 
-    // 🔄 NEW: Call Spendless API
-    const apiUrl = "https://spendless.top/api/purchase";
+    // Call GHDATE CONNECT API
+    const apiUrl = `${ghdateApiUrl}/api/purchase`;
     const requestBody = {
-      networkKey: networkKey,
-      recipient: phone,
-      capacity: capacity,
-      // Optional: add webhook_url if you haven't set a global one in dashboard
-      // webhook_url: "https://yourdomain.com/api/spendless-webhook"
+      network: networkKey,
+      phone: phone,
+      amount: capacity,
     };
 
     const apiRes = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-API-Key": spendlessApiKey,
+        "Authorization": `Bearer ${ghdateApiKey}`,
       },
       body: JSON.stringify(requestBody),
     });
@@ -247,7 +245,7 @@ Deno.serve(async (req) => {
             amount: order.amount,
             error_type: "DATA_ORDER_EXCEPTION_ERROR",
             error_message: (err as Error).message || "Unknown error in fulfillment",
-            api_endpoint: "https://spendless.top/api/purchase",
+            api_endpoint: `${ghdateApiUrl}/api/purchase`,
           }).catch(() => null);
         }
       }
