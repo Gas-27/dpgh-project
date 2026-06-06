@@ -129,7 +129,7 @@ Tips:
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price ��� set any amount above the base price.
+• Your Selling Price ����� set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -749,15 +749,12 @@ const AgentDashboard = () => {
     try {
       const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
       
-      const { data: { session } } = await supabase.auth.getSession();
-      
       const response = await fetch(
-        `/functions/v1/create-agent-notification`,
+        `/api/notifications/create-agent-notification`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({
             agent_store_id: store.id,
@@ -821,15 +818,12 @@ const AgentDashboard = () => {
     setSendingSubagentNotification(true);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
       const response = await fetch(
-        `/functions/v1/create-agent-notification`,
+        `/api/notifications/create-agent-notification`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({
             agent_store_id: store.id,
