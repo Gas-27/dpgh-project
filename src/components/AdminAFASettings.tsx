@@ -80,9 +80,53 @@ export default function AdminAFASettings() {
     try {
       console.log('[v0] AdminAFASettings: Saving settings:', settings);
       
-      const settingsId = localStorage.getItem('afa_settings_id');
+      // Get the settings ID - try localStorage first, then fetch if not found
+      let settingsId = localStorage.getItem('afa_settings_id');
+      
       if (!settingsId) {
-        throw new Error('Settings UUID not found. Please refresh and try again.');
+        console.log('[v0] AdminAFASettings: UUID not in localStorage, fetching from DB');
+        const { data: existingSettings } = await supabase
+          .from('afa_settings')
+          .select('id')
+          .limit(1)
+          .single();
+        
+        if (existingSettings?.id) {
+          settingsId = existingSettings.id;
+          localStorage.setItem('afa_settings_id', settingsId);
+          console.log('[v0] AdminAFASettings: Found UUID in DB:', settingsId);
+        }
+      }
+
+      if (!settingsId) {
+        console.error('[v0] AdminAFASettings: No settings record exists, trying upsert');
+        // If no record exists, create one
+        const { data: newSettings, error: insertError } = await supabase
+          .from('afa_settings')
+          .insert({
+            registration_fee: parseFloat(settings.registration_fee.toString()),
+            package_page_price: parseFloat(settings.package_page_price.toString()),
+            agent_base_price: parseFloat(settings.agent_base_price.toString()),
+            agent_commission_percent: parseFloat(settings.agent_commission_percent.toString()),
+            registration_enabled: settings.registration_enabled,
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        if (newSettings?.id) {
+          localStorage.setItem('afa_settings_id', newSettings.id);
+          console.log('[v0] AdminAFASettings: Created new settings record:', newSettings.id);
+        }
+
+        setChanged(false);
+        toast({
+          title: 'Success',
+          description: 'AFA settings have been created and saved.',
+        });
+        await fetchAFASettings();
+        return;
       }
 
       const { error, data } = await supabase
@@ -98,9 +142,14 @@ export default function AdminAFASettings() {
         .eq('id', settingsId)
         .select();
 
-      console.log('[v0] AdminAFASettings: Save response:', { error, data });
+      console.log('[v0] AdminAFASettings: Save response:', { error, data, settingsId });
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        console.error('[v0] AdminAFASettings: Update returned no rows, may not have updated');
+        throw new Error('Settings update failed - no rows returned');
+      }
 
       setChanged(false);
       toast({
@@ -112,7 +161,11 @@ export default function AdminAFASettings() {
       await fetchAFASettings();
     } catch (err) {
       console.error('[v0] Error saving AFA settings:', err);
-      toast({ title: 'Error', description: 'Failed to save AFA settings', variant: 'destructive' });
+      toast({ 
+        title: 'Error', 
+        description: err instanceof Error ? err.message : 'Failed to save AFA settings',
+        variant: 'destructive' 
+      });
     } finally {
       setSaving(false);
     }

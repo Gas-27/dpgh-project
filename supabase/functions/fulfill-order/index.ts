@@ -193,12 +193,68 @@ Deno.serve(async (req) => {
         })
         .eq("id", order_id);
 
+      // Log API error for admin debugging
+      console.log(`[v0] Logging data order API error for order ${order_id}`);
+      try {
+        await supabase.from("api_error_logs").insert({
+          order_id: order_id,
+          customer_number: existingOrder.customer_number,
+          network: existingOrder.network,
+          size_gb: existingOrder.size_gb,
+          amount: existingOrder.amount,
+          error_type: "DATA_ORDER_FULFILLMENT_FAILED",
+          error_message: errorMessage,
+          api_endpoint: apiUrl,
+          http_status_code: apiRes.status,
+          request_payload: requestBody,
+          response_payload: parsedResponse || { raw: rawResponse.slice(0, 500) },
+        });
+      } catch (logErr) {
+        console.error(`[v0] Failed to log error: ${logErr}`);
+      }
+
       return new Response(JSON.stringify({ success: false, message: "Fulfillment failed", api_response: errorMessage }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
   } catch (err) {
     console.error("Fulfill error:", err);
+    
+    // Try to log the error if we have order_id
+    try {
+      const body = await req.clone().json().catch(() => ({}));
+      const orderId = body.order_id;
+      if (orderId) {
+        // Get order details
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, serviceRoleKey);
+        
+        const { data: order } = await supabase
+          .from("orders")
+          .select("customer_number, network, size_gb, amount")
+          .eq("id", orderId)
+          .single()
+          .catch(() => ({ data: null }));
+
+        // Log the exception error
+        if (order) {
+          await supabase.from("api_error_logs").insert({
+            order_id: orderId,
+            customer_number: order.customer_number,
+            network: order.network,
+            size_gb: order.size_gb,
+            amount: order.amount,
+            error_type: "DATA_ORDER_EXCEPTION_ERROR",
+            error_message: (err as Error).message || "Unknown error in fulfillment",
+            api_endpoint: "https://spendless.top/api/purchase",
+          }).catch(() => null);
+        }
+      }
+    } catch (logErr) {
+      console.error(`[v0] Failed to log exception: ${logErr}`);
+    }
+    
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
