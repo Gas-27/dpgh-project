@@ -722,24 +722,22 @@ const AgentDashboard = () => {
   const fetchNotifications = async () => {
     if (!store?.id) return; 
     setLoadingNotifications(true);
-    console.log("[v0] Fetching notifications for agent:", store.id);
     const { data, error } = await supabase
       .from("agent_notifications")
       .select("*")
       .eq("agent_store_id", store.id)
       .order("created_at", { ascending: false });
     
-    console.log("[v0] Notifications fetch result:", { data, error });
-    
     if (error) {
       console.error("[v0] Error fetching notifications:", error);
     } else if (data) {
       setNotifications(data as Notification[]);
-      console.log("[v0] Set notifications:", data.length, "records");
     }
     setLoadingNotifications(false);
   };
-  useEffect(() => { if (store?.id) fetchNotifications(); }, [store]);
+  useEffect(() => { 
+    if (store?.id) fetchNotifications(); 
+  }, [store?.id]);
 
   const createNotification = async () => {
     if (!store || !newNotificationMsg.trim()) { toast({ title: "Error", description: "Please enter a message", variant: "destructive" }); return; }
@@ -762,23 +760,21 @@ const AgentDashboard = () => {
   // Subagent Notifications (agent to their subagents)
   const fetchSubagentNotifications = async () => {
     if (!store?.id) return;
-    console.log("[v0] Fetching subagent notifications for agent:", store.id);
     const { data, error } = await supabase
       .from("agent_to_subagent_notifications")
       .select("*")
       .eq("agent_store_id", store.id)
       .order("created_at", { ascending: false });
     
-    console.log("[v0] Subagent notifications fetch result:", { data, error });
-    
     if (error) {
       console.error("[v0] Error fetching subagent notifications:", error);
     } else if (data) {
       setSubagentNotifications(data);
-      console.log("[v0] Set subagent notifications:", data.length, "records");
     }
   };
-  useEffect(() => { if (store?.id) fetchSubagentNotifications(); }, [store]);
+  useEffect(() => { 
+    if (store?.id) fetchSubagentNotifications(); 
+  }, [store?.id]);
 
   const sendSubagentNotification = async () => {
     if (!store?.id || !subagentNotificationMsg.trim()) {
