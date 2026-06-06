@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { logAPIError } from '@/hooks/useAPIErrorLogging';
 
 /**
  * AFA Service - Handles integration with AFA provider API
@@ -75,6 +76,35 @@ export const registerAFA = async (
 
     if (!response.ok) {
       const error = await response.json();
+      
+      // Log API error for admin debugging
+      console.log('[v0] Logging AFA registration API error');
+      await logAPIError({
+        customer_number: data.customer_phone,
+        network: 'afa',
+        size_gb: 0,
+        amount: data.amount,
+        agent_store_id: storeType === 'agent' ? storeId : undefined,
+        subagent_store_id: storeType === 'subagent' ? storeId : undefined,
+        error_type: 'AFA_REGISTRATION_FAILED',
+        error_message: error.message || 'Failed to register with AFA provider',
+        api_endpoint: `${AFA_API_URL}/register`,
+        http_status_code: response.status,
+        request_payload: {
+          name: data.customer_name,
+          phone: data.customer_phone,
+          id_number: data.customer_id,
+          dob: data.date_of_birth,
+          town: data.town,
+          occupation: data.occupation,
+          region: data.region,
+          crop: data.crop,
+          package_id: data.package_id,
+          amount: data.amount,
+        },
+        response_payload: error,
+      });
+      
       return {
         success: false,
         message: error.message || 'Failed to register with AFA provider',
@@ -119,6 +149,33 @@ export const registerAFA = async (
     };
   } catch (error) {
     console.error('[AFA] Registration error:', error);
+    
+    // Log network/exception error for admin debugging
+    console.log('[v0] Logging AFA registration exception error');
+    await logAPIError({
+      customer_number: data.customer_phone,
+      network: 'afa',
+      size_gb: 0,
+      amount: data.amount,
+      agent_store_id: storeType === 'agent' ? storeId : undefined,
+      subagent_store_id: storeType === 'subagent' ? storeId : undefined,
+      error_type: error instanceof Error && error.message.includes('fetch') ? 'NETWORK_ERROR' : 'EXCEPTION_ERROR',
+      error_message: error instanceof Error ? error.message : 'Unknown error occurred',
+      api_endpoint: `${AFA_API_URL}/register`,
+      request_payload: {
+        name: data.customer_name,
+        phone: data.customer_phone,
+        id_number: data.customer_id,
+        dob: data.date_of_birth,
+        town: data.town,
+        occupation: data.occupation,
+        region: data.region,
+        crop: data.crop,
+        package_id: data.package_id,
+        amount: data.amount,
+      },
+    });
+    
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error occurred',
