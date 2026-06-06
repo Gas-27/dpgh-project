@@ -740,47 +740,13 @@ const AgentDashboard = () => {
   }, [store?.id]);
 
   const createNotification = async () => {
-    if (!store || !newNotificationMsg.trim()) { 
-      toast({ title: "Error", description: "Please enter a message", variant: "destructive" }); 
-      return; 
-    }
+    if (!store || !newNotificationMsg.trim()) { toast({ title: "Error", description: "Please enter a message", variant: "destructive" }); return; }
     setSendingNotification(true);
-    
-    try {
-      const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
-      
-      const response = await fetch(
-        `/api/create-agent-notification`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            agent_store_id: store.id,
-            message: newNotificationMsg.trim(),
-            is_active: true,
-            expires_at,
-            type: "agent",
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        toast({ title: "Error", description: result.error || "Failed to send notification", variant: "destructive" });
-      } else {
-        toast({ title: "Notification sent!" });
-        setNewNotificationMsg("");
-        setNewNotificationExpiry("");
-        fetchNotifications();
-      }
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to send notification", variant: "destructive" });
-    } finally {
-      setSendingNotification(false);
-    }
+    const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
+    const { error } = await supabase.from("agent_notifications").insert({ agent_store_id: store.id, message: newNotificationMsg.trim(), is_active: true, expires_at });
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else { toast({ title: "Notification sent!" }); setNewNotificationMsg(""); setNewNotificationExpiry(""); fetchNotifications(); }
+    setSendingNotification(false);
   };
   const toggleNotificationActive = async (id: string, cur: boolean) => {
     const { error } = await supabase.from("agent_notifications").update({ is_active: !cur }).eq("id", id);
@@ -816,38 +782,19 @@ const AgentDashboard = () => {
       return;
     }
     setSendingSubagentNotification(true);
-    
-    try {
-      const response = await fetch(
-        `/api/create-agent-notification`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            agent_store_id: store.id,
-            message: subagentNotificationMsg.trim(),
-            is_active: true,
-            type: "subagent",
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        toast({ title: "Error", description: result.error || "Failed to send notification", variant: "destructive" });
-      } else {
-        toast({ title: "Notification sent to all subagents!" });
-        setSubagentNotificationMsg("");
-        fetchSubagentNotifications();
-      }
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to send notification", variant: "destructive" });
-    } finally {
-      setSendingSubagentNotification(false);
+    const { error } = await supabase.from("agent_to_subagent_notifications").insert({
+      agent_store_id: store.id,
+      message: subagentNotificationMsg.trim(),
+      is_active: true,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Notification sent to all subagents!" });
+      setSubagentNotificationMsg("");
+      fetchSubagentNotifications();
     }
+    setSendingSubagentNotification(false);
   };
 
   const deleteSubagentNotification = async (id: string) => {
