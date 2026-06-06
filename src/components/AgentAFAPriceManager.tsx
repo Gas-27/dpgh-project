@@ -83,19 +83,25 @@ export default function AgentAFAPriceManager() {
 
       // Get AFA settings to show minimum price
       try {
-        const { data: afaSettings } = await supabase
+        const { data: afaSettings, error: afaError } = await supabase
           .from("afa_settings")
-          .select("bundle_price, registration_fee")
+          .select("agent_base_price, registration_fee, package_page_price")
           .single();
         
-        console.log("[v0] AFA settings loaded in agent pricing:", afaSettings);
-        // Use registration_fee if available, fallback to bundle_price for compatibility
-        const minPrice = afaSettings?.registration_fee || afaSettings?.bundle_price;
-        if (minPrice) {
+        console.log("[v0] AFA settings loaded in agent pricing:", { afaSettings, error: afaError });
+        
+        // Try to get agent_base_price, fallback to registration_fee or package_page_price
+        const minPrice = afaSettings?.agent_base_price || afaSettings?.registration_fee || afaSettings?.package_page_price;
+        if (minPrice && minPrice > 0) {
+          console.log("[v0] Setting minimum bundle price to:", minPrice);
           setMinBundlePrice(minPrice);
+        } else {
+          console.log("[v0] No valid minimum price found in settings, using default 50");
+          setMinBundlePrice(50.00);
         }
       } catch (err) {
-        console.log("[v0] AFA settings not found, using default minimum of 50");
+        console.log("[v0] Error fetching AFA settings:", err);
+        console.log("[v0] Using default minimum price of 50");
         setMinBundlePrice(50.00);
       }
 
