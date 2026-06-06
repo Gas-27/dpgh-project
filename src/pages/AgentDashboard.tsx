@@ -752,7 +752,7 @@ const AgentDashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-agent-notification`,
+        `/functions/v1/create-agent-notification`,
         {
           method: "POST",
           headers: {
@@ -824,7 +824,7 @@ const AgentDashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-agent-notification`,
+        `/functions/v1/create-agent-notification`,
         {
           method: "POST",
           headers: {
