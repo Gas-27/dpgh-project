@@ -310,18 +310,18 @@ export default function AgentAFAPriceManager() {
               <Input
                 id="bundlePrice"
                 type="number"
-                min={minBundlePrice}
+                min={minBundlePrice || 0}
                 step="0.01"
                 value={agentBundlePrice || ""}
                 onChange={(e) => setAgentBundlePrice(Number(e.target.value) || 0)}
                 className="mt-2"
-                placeholder={`Minimum: ${minBundlePrice.toFixed(2)}`}
+                placeholder={`Minimum: ${minBundlePrice ? minBundlePrice.toFixed(2) : 'Loading...'}`}
               />
             </div>
             <div className="flex flex-col justify-end">
               <Button 
                 onClick={handleSaveBundlePrice}
-                disabled={savingBundle || agentBundlePrice < minBundlePrice}
+                disabled={savingBundle || !minBundlePrice || agentBundlePrice < minBundlePrice}
                 className="w-full"
               >
                 {savingBundle ? (
