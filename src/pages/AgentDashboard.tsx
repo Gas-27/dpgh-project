@@ -129,7 +129,7 @@ Tips:
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price ����� set any amount above the base price.
+• Your Selling Price ������� set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -750,7 +750,7 @@ const AgentDashboard = () => {
       const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
       
       const response = await fetch(
-        `/api/notifications/create-agent-notification`,
+        `/api/create-agent-notification`,
         {
           method: "POST",
           headers: {
@@ -819,7 +819,7 @@ const AgentDashboard = () => {
     
     try {
       const response = await fetch(
-        `/api/notifications/create-agent-notification`,
+        `/api/create-agent-notification`,
         {
           method: "POST",
           headers: {
