@@ -55,6 +55,30 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
     };
 
     loadFee();
+
+    // Subscribe to real-time changes
+    const subscription = supabase
+      .channel('afa_settings_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'afa_settings',
+        },
+        (payload) => {
+          console.log('[v0] AFA settings updated:', payload);
+          if (payload.new) {
+            setRegistrationFee(payload.new.registration_fee || 50);
+            setRegistrationEnabled(payload.new.registration_enabled !== false);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [agentId, showAgentPrice]);
 
   // If registration is disabled, show a message instead of the form

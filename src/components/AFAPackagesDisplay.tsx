@@ -42,6 +42,59 @@ export default function AFAPackagesDisplay({
     fetchAFAData();
   }, [agentStoreId, subagentStoreId]);
 
+  // Subscribe to real-time changes to afa_settings
+  useEffect(() => {
+    const subscription = supabase
+      .channel('afa_settings_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'afa_settings',
+        },
+        (payload) => {
+          console.log('[v0] AFA settings changed, refreshing data:', payload);
+          if (payload.new) {
+            setBundlePrice(payload.new.registration_fee || 0);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Subscribe to real-time changes to agent_stores (for agent bundle price changes)
+  useEffect(() => {
+    if (!agentStoreId) return;
+
+    const subscription = supabase
+      .channel(`agent_stores_${agentStoreId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'agent_stores',
+          filter: `id=eq.${agentStoreId}`,
+        },
+        (payload) => {
+          console.log('[v0] Agent store changed, refreshing bundle price:', payload);
+          if (payload.new?.afa_bundle_price) {
+            setAgentBundlePrice(payload.new.afa_bundle_price);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [agentStoreId]);
+
   const fetchAFAData = async () => {
     setLoading(true);
     try {
