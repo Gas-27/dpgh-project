@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOptimizedRealtime } from "@/hooks/useOptimizedRealtime";
 import { useDatabaseSearch } from "@/hooks/useDatabaseSearch";
 import { usePaginatedData } from "@/hooks/usePaginatedData";
-import { PaginatedTableFooter } from "@/components/PaginatedTableFooter";
+import { getAPIErrorLogs, markErrorAsResolved, deleteAPIError } from "@/hooks/useAPIErrorLogging";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,7 +67,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -79,6 +79,7 @@ const AdminDashboard = () => {
   const [subagents, setSubagents] = useState<any[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [apiErrors, setAPIErrors] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [topupHistory, setTopupHistory] = useState<TopupRecord[]>([]);
   const [filteredTopupHistory, setFilteredTopupHistory] = useState<TopupRecord[]>([]);
@@ -440,6 +441,9 @@ const AdminDashboard = () => {
       } else if (tabValue === "users") {
         const data = await fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 10000);
         setUsers(data ?? []);
+      } else if (tabValue === "api_errors") {
+        const logs = await getAPIErrorLogs({ resolved: false, limit: 1000 });
+        setAPIErrors(logs ?? []);
       }
     } catch (error) {
       console.error(`Error loading ${tabValue} tab:`, error);
@@ -1470,6 +1474,10 @@ const AdminDashboard = () => {
               )}
             </TabsTrigger>
             <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>
+            <TabsTrigger value="api_errors" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
+              <AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> API Errors
+              {apiErrors.length > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{apiErrors.length}</Badge>}
+            </TabsTrigger>
             <TabsTrigger value="notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Notify</TabsTrigger>
             <TabsTrigger value="push" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Smartphone className="h-3 w-3 md:h-4 md:w-4" /> Push</TabsTrigger>
             <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>
@@ -2605,6 +2613,139 @@ const AdminDashboard = () => {
                 <PushNotificationManager />
               </TabsContent>
             )}
+
+            {/* API ERRORS TAB */}
+            <TabsContent value="api_errors" className="space-y-4">
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-destructive" /> API Error Logs
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Failed API requests that couldn't reach the data service. Resolve issues to retry.</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {apiErrors.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                      <p>No API errors - all systems operational!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-sm font-medium">
+                        <span className="text-destructive font-bold">{apiErrors.length} error{apiErrors.length !== 1 ? 's' : ''}</span> - Click error type to see details
+                      </p>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Error Type</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Network</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead>Message</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {apiErrors.slice(0, 50).map((error: any) => (
+                            <TableRow key={error.id}>
+                              <TableCell className="text-xs whitespace-nowrap">
+                                {new Date(error.created_at).toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                <Badge variant="outline" className="bg-destructive/10 text-destructive">
+                                  {error.error_type}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-medium">{error.customer_number}</TableCell>
+                              <TableCell className="uppercase text-xs">{error.network}</TableCell>
+                              <TableCell>{error.size_gb}GB</TableCell>
+                              <TableCell className="text-xs max-w-xs truncate" title={error.error_message}>
+                                {error.error_message}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={error.resolved ? "outline" : "destructive"}>
+                                  {error.resolved ? "Resolved" : "Pending"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="space-x-2">
+                                <Dialog>
+                                  <DialogContent className="max-w-2xl max-h-96 overflow-y-auto">
+                                    <DialogHeader>
+                                      <DialogTitle>API Error Details</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <div>
+                                        <p className="font-semibold text-sm mb-1">Order Information</p>
+                                        <div className="text-xs space-y-1 bg-muted p-3 rounded">
+                                          <p><span className="font-mono text-muted-foreground">Order ID:</span> {error.order_id || 'N/A'}</p>
+                                          <p><span className="font-mono text-muted-foreground">Phone:</span> {error.customer_number}</p>
+                                          <p><span className="font-mono text-muted-foreground">Network:</span> {error.network}</p>
+                                          <p><span className="font-mono text-muted-foreground">Size:</span> {error.size_gb}GB @ GH₵{Number(error.amount).toFixed(2)}</p>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <p className="font-semibold text-sm mb-1">Error Details</p>
+                                        <div className="text-xs space-y-1 bg-muted p-3 rounded font-mono">
+                                          <p><span className="text-muted-foreground">Type:</span> {error.error_type}</p>
+                                          <p><span className="text-muted-foreground">HTTP Status:</span> {error.http_status_code || 'N/A'}</p>
+                                          <p><span className="text-muted-foreground">Endpoint:</span> {error.api_endpoint}</p>
+                                          <p className="break-words"><span className="text-muted-foreground">Message:</span> {error.error_message}</p>
+                                        </div>
+                                      </div>
+                                      {error.request_payload && (
+                                        <div>
+                                          <p className="font-semibold text-sm mb-1">Request Sent</p>
+                                          <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-32">
+                                            {JSON.stringify(error.request_payload, null, 2)}
+                                          </pre>
+                                        </div>
+                                      )}
+                                      {error.response_payload && (
+                                        <div>
+                                          <p className="font-semibold text-sm mb-1">Response Received</p>
+                                          <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-32">
+                                            {JSON.stringify(error.response_payload, null, 2)}
+                                          </pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={async () => {
+                                    await markErrorAsResolved(error.id, 'Manually resolved by admin');
+                                    setAPIErrors(prev => prev.filter(e => e.id !== error.id));
+                                    toast({ title: 'Error marked as resolved' });
+                                  }}
+                                  disabled={error.resolved}
+                                >
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={async () => {
+                                    await deleteAPIError(error.id);
+                                    setAPIErrors(prev => prev.filter(e => e.id !== error.id));
+                                    toast({ title: 'Error deleted' });
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
             
             {canSee("settings") && (
               <TabsContent value="settings" className="space-y-6">
