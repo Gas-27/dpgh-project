@@ -1,61 +1,120 @@
--- ============================================================================
--- DataPlug Supabase Database Setup - FIXED RLS Policies
--- Run this in your Supabase SQL Editor to fix the complaints RLS
--- ============================================================================
+-- =================================================
+-- FIX: Agent Notifications RLS Policies
+-- =================================================
+-- The error "new row violates row-level security policy" happens because
+-- the INSERT policy is checking if the agent is the owner, but the new row
+-- being created has agent_store_id that needs to be validated differently.
 
--- 1. DROP existing policies that are blocking inserts
-DROP POLICY IF EXISTS "Agents can view complaints from their store" ON public.complaints;
-DROP POLICY IF EXISTS "Admins can manage all complaints" ON public.complaints;
+-- STEP 1: Drop existing policies (if they exist)
+DROP POLICY IF EXISTS "Agents can view their own notifications" ON agent_notifications;
+DROP POLICY IF EXISTS "Agents can insert their own notifications" ON agent_notifications;
+DROP POLICY IF EXISTS "Agents can update their own notifications" ON agent_notifications;
+DROP POLICY IF EXISTS "Agents can delete their own notifications" ON agent_notifications;
 
--- 2. CREATE NEW POLICIES that allow customers to submit complaints
+-- STEP 2: Create simplified, working policies
+-- SELECT: Agent can see notifications for their store
+CREATE POLICY "agent_notifications_select"
+ON agent_notifications
+FOR SELECT
+USING (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+);
 
--- Allow anyone to INSERT complaints (customers reporting)
-CREATE POLICY "Anyone can submit complaints"
-  ON public.complaints FOR INSERT
-  WITH CHECK (true);
+-- INSERT: Agent can insert notifications for their store
+CREATE POLICY "agent_notifications_insert"
+ON agent_notifications
+FOR INSERT
+WITH CHECK (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+);
 
--- Allow customers to VIEW their own complaints
-CREATE POLICY "Customers can view their own complaints"
-  ON public.complaints FOR SELECT
-  USING (true);
+-- UPDATE: Agent can update their own notifications
+CREATE POLICY "agent_notifications_update"
+ON agent_notifications
+FOR UPDATE
+USING (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+);
 
--- Allow agents to VIEW complaints from their store
-CREATE POLICY "Agents can view store complaints"
-  ON public.complaints FOR SELECT
-  USING (
-    auth.uid() IN (SELECT user_id FROM public.agent_stores WHERE id = agent_store_id)
-  );
+-- DELETE: Agent can delete their own notifications
+CREATE POLICY "agent_notifications_delete"
+ON agent_notifications
+FOR DELETE
+USING (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+);
 
--- Allow agents to UPDATE complaints from their store
-CREATE POLICY "Agents can update store complaints"
-  ON public.complaints FOR UPDATE
-  USING (
-    auth.uid() IN (SELECT user_id FROM public.agent_stores WHERE id = agent_store_id)
-  );
+-- =================================================
+-- FIX: Subagent Notifications RLS Policies
+-- =================================================
+DROP POLICY IF EXISTS "agent_to_subagent_select" ON agent_to_subagent_notifications;
+DROP POLICY IF EXISTS "agent_to_subagent_insert" ON agent_to_subagent_notifications;
+DROP POLICY IF EXISTS "agent_to_subagent_update" ON agent_to_subagent_notifications;
+DROP POLICY IF EXISTS "agent_to_subagent_delete" ON agent_to_subagent_notifications;
 
--- Allow admins full access
-CREATE POLICY "Admins can manage all complaints"
-  ON public.complaints FOR ALL
-  USING (
-    auth.role() = 'authenticated' AND auth.jwt()->>'role' = 'admin'
-  );
+-- SELECT: Agent can see notifications they sent
+CREATE POLICY "agent_to_subagent_select"
+ON agent_to_subagent_notifications
+FOR SELECT
+USING (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+);
 
--- 3. Ensure RLS is enabled
-ALTER TABLE public.complaints ENABLE ROW LEVEL SECURITY;
+-- INSERT: Agent can insert notifications
+CREATE POLICY "agent_to_subagent_insert"
+ON agent_to_subagent_notifications
+FOR INSERT
+WITH CHECK (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+);
 
--- 4. Ensure permissions are correct
-GRANT SELECT, INSERT, UPDATE ON public.complaints TO authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.complaints TO anon;
+-- UPDATE: Agent can update their notifications
+CREATE POLICY "agent_to_subagent_update"
+ON agent_to_subagent_notifications
+FOR UPDATE
+USING (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+);
 
--- ============================================================================
--- VERIFY THE SETUP
--- ============================================================================
+-- DELETE: Agent can delete their notifications
+CREATE POLICY "agent_to_subagent_delete"
+ON agent_to_subagent_notifications
+FOR DELETE
+USING (
+  agent_store_id IN (
+    SELECT id FROM agent_stores WHERE user_id = auth.uid()
+  )
+);
 
--- Check RLS is enabled
-SELECT tablename, rowsecurity FROM pg_tables 
-WHERE tablename = 'complaints' AND schemaname = 'public';
+-- =================================================
+-- VERIFY: Run these to test if policies work
+-- =================================================
+-- This should return rows for the logged-in agent
+SELECT * FROM agent_notifications LIMIT 10;
 
--- Check all policies
-SELECT policyname, cmd, qual, with_check 
-FROM pg_policies 
-WHERE tablename = 'complaints';
+-- This should also work now
+SELECT * FROM agent_to_subagent_notifications LIMIT 10;
