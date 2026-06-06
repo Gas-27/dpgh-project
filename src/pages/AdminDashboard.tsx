@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOptimizedRealtime } from "@/hooks/useOptimizedRealtime";
 import { useDatabaseSearch } from "@/hooks/useDatabaseSearch";
 import { usePaginatedData } from "@/hooks/usePaginatedData";
-import { getAPIErrorLogs, markErrorAsResolved, deleteAPIError } from "@/hooks/useAPIErrorLogging";
+import { getAPIErrorLogs, markErrorAsResolved, deleteAPIError, retryFailedOrder, retryAllFailedOrders } from "@/hooks/useAPIErrorLogging";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,7 @@ import AdminAFABundleManager from "@/components/AdminAFABundleManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import { DOMAINS } from "@/config/domains";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -96,6 +96,7 @@ const AdminDashboard = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newPkg, setNewPkg] = useState({ network: "mtn", size_gb: "", price: "", agent_price: "" });
   const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
+  const [retryingAllOrders, setRetryingAllOrders] = useState(false);
   const [processingWithdrawals, setProcessingWithdrawals] = useState<Set<string>>(new Set());
 
   const [agentSearchTerm, setAgentSearchTerm] = useState("");
@@ -2631,9 +2632,39 @@ const AdminDashboard = () => {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <p className="text-sm font-medium">
-                        <span className="text-destructive font-bold">{apiErrors.length} error{apiErrors.length !== 1 ? 's' : ''}</span> - Click error type to see details
-                      </p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm font-medium">
+                            <span className="text-destructive font-bold">{apiErrors.length} error{apiErrors.length !== 1 ? 's' : ''}</span> - Failed API requests needing retry
+                          </p>
+                        </div>
+                        <Button 
+                          onClick={async () => {
+                            setRetryingAllOrders(true);
+                            toast({ title: 'Retrying all failed orders...', description: 'This may take a few minutes' });
+                            const result = await retryAllFailedOrders();
+                            if (result.success) {
+                              toast({ 
+                                title: 'Retry Complete',
+                                description: `Succeeded: ${result.succeeded}, Failed: ${result.failed}`,
+                                variant: result.failed > 0 ? 'destructive' : 'default'
+                              });
+                              // Reload the errors list
+                              const logs = await getAPIErrorLogs({ resolved: false, limit: 1000 });
+                              setAPIErrors(logs ?? []);
+                            } else {
+                              toast({ title: 'Error', description: result.error, variant: 'destructive' });
+                            }
+                            setRetryingAllOrders(false);
+                          }}
+                          disabled={retryingAllOrders}
+                          className="gap-2"
+                        >
+                          {retryingAllOrders && <Loader2 className="h-4 w-4 animate-spin" />}
+                          <RefreshCw className="h-4 w-4" />
+                          Retry All
+                        </Button>
+                      </div>
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -2715,6 +2746,29 @@ const AdminDashboard = () => {
                                 </Dialog>
                                 <Button 
                                   size="sm" 
+                                  variant="outline"
+                                  onClick={async () => {
+                                    setRetryingOrders(prev => new Set(prev).add(error.id));
+                                    const result = await retryFailedOrder(error);
+                                    if (result.success) {
+                                      setAPIErrors(prev => prev.filter(e => e.id !== error.id));
+                                      toast({ title: 'Order retried successfully', description: 'Order has been reprocessed' });
+                                    } else {
+                                      toast({ title: 'Retry failed', description: result.error, variant: 'destructive' });
+                                    }
+                                    setRetryingOrders(prev => {
+                                      const newSet = new Set(prev);
+                                      newSet.delete(error.id);
+                                      return newSet;
+                                    });
+                                  }}
+                                  disabled={retryingOrders.has(error.id) || error.resolved}
+                                  title="Retry this order"
+                                >
+                                  {retryingOrders.has(error.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                </Button>
+                                <Button 
+                                  size="sm" 
                                   variant="ghost"
                                   onClick={async () => {
                                     await markErrorAsResolved(error.id, 'Manually resolved by admin');
@@ -2722,6 +2776,7 @@ const AdminDashboard = () => {
                                     toast({ title: 'Error marked as resolved' });
                                   }}
                                   disabled={error.resolved}
+                                  title="Mark as resolved"
                                 >
                                   <Check className="h-3 w-3" />
                                 </Button>
@@ -2733,6 +2788,7 @@ const AdminDashboard = () => {
                                     setAPIErrors(prev => prev.filter(e => e.id !== error.id));
                                     toast({ title: 'Error deleted' });
                                   }}
+                                  title="Delete this error"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
