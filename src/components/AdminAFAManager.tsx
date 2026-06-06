@@ -84,32 +84,81 @@ export default function AdminAFAManager() {
     try {
       setSaving(true);
       
-      // Fixed UUID for AFA settings singleton
       const settingsId = '550e8400-e29b-41d4-a716-446655440000';
       
-      const { error } = await supabase
+      console.log('[v0] Saving AFA settings:', { settingsId, registrationFee, registrationEnabled });
+      
+      // First try to get the current record
+      const { data: existingData, error: fetchError } = await supabase
         .from('afa_settings')
-        .upsert({
-          id: settingsId,
-          registration_fee: registrationFee,
-          bundle_price: registrationFee, // Keep both columns in sync for compatibility
-          registration_enabled: registrationEnabled,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'id'
-        });
+        .select('id')
+        .eq('id', settingsId)
+        .single();
 
-      if (error) {
-        console.error('Error saving settings:', error);
-        alert('Failed to save settings');
-        return;
+      console.log('[v0] Existing record check:', { exists: !!existingData, fetchError });
+
+      // If record doesn't exist, insert first
+      if (!existingData && fetchError?.code === 'PGRST116') {
+        console.log('[v0] Creating new AFA settings record');
+        const { error: insertError } = await supabase
+          .from('afa_settings')
+          .insert({
+            id: settingsId,
+            registration_fee: registrationFee,
+            bundle_price: registrationFee,
+            registration_enabled: registrationEnabled,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+
+        if (insertError) {
+          console.error('[v0] Insert error:', insertError);
+          alert(`Failed to save settings: ${insertError.message}`);
+          setSaving(false);
+          return;
+        }
+        console.log('[v0] AFA settings created successfully');
+      } else {
+        // Otherwise update
+        console.log('[v0] Updating existing AFA settings record');
+        const { error: updateError } = await supabase
+          .from('afa_settings')
+          .update({
+            registration_fee: registrationFee,
+            bundle_price: registrationFee,
+            registration_enabled: registrationEnabled,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', settingsId);
+
+        if (updateError) {
+          console.error('[v0] Update error:', updateError);
+          alert(`Failed to save settings: ${updateError.message}`);
+          setSaving(false);
+          return;
+        }
+        console.log('[v0] AFA settings updated successfully');
       }
 
-      console.log('[v0] AFA settings saved:', { registrationFee, registrationEnabled });
-      alert('AFA settings saved successfully!');
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Error saving settings');
+      // Verify the save
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('afa_settings')
+        .select('*')
+        .eq('id', settingsId)
+        .single();
+
+      console.log('[v0] Settings verification:', { verifyData, verifyError });
+
+      if (verifyData) {
+        setRegistrationFee(verifyData.registration_fee);
+        setRegistrationEnabled(verifyData.registration_enabled);
+        alert('AFA settings saved successfully!');
+      } else {
+        alert('Settings saved but verification failed');
+      }
+    } catch (err: any) {
+      console.error('[v0] Error saving settings:', err);
+      alert(`Error: ${err.message || 'Failed to save settings'}`);
     } finally {
       setSaving(false);
     }

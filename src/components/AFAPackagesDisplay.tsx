@@ -36,6 +36,7 @@ export default function AFAPackagesDisplay({
   const [pricing, setPricing] = useState<Record<string, { sell_price: number }>>({});
   const [bundlePrice, setBundlePrice] = useState(0);
   const [agentBundlePrice, setAgentBundlePrice] = useState(0);
+  const [afaEnabled, setAfaEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,6 +45,25 @@ export default function AFAPackagesDisplay({
 
   // Subscribe to real-time changes to afa_settings
   useEffect(() => {
+    // First load the current state
+    const loadAfaStatus = async () => {
+      try {
+        const { data } = await supabase
+          .from('afa_settings')
+          .select('registration_enabled, registration_fee')
+          .single();
+        
+        if (data) {
+          setAfaEnabled(data.registration_enabled !== false);
+          setBundlePrice(data.registration_fee || 0);
+        }
+      } catch (err) {
+        console.log('[v0] Error loading AFA status');
+      }
+    };
+
+    loadAfaStatus();
+
     const subscription = supabase
       .channel('afa_settings_realtime')
       .on(
@@ -57,6 +77,7 @@ export default function AFAPackagesDisplay({
           console.log('[v0] AFA settings changed, refreshing data:', payload);
           if (payload.new) {
             setBundlePrice(payload.new.registration_fee || 0);
+            setAfaEnabled(payload.new.registration_enabled !== false);
           }
         }
       )
@@ -119,6 +140,9 @@ export default function AFAPackagesDisplay({
         if (afaSettings?.registration_fee) {
           adminBundlePrice = afaSettings.registration_fee;
           setBundlePrice(adminBundlePrice);
+        }
+        if (afaSettings?.registration_enabled !== undefined) {
+          setAfaEnabled(afaSettings.registration_enabled !== false);
         }
         console.log("[v0] AFA settings loaded:", afaSettings);
       } catch (err) {
@@ -195,6 +219,17 @@ export default function AFAPackagesDisplay({
 
   return (
     <div className="space-y-4">
+      {/* Show disabled message if AFA is disabled */}
+      {!afaEnabled && (
+        <Card className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
+          <CardContent className="p-4">
+            <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
+              AFA Bundle Registration is currently disabled. Please try again later.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Display admin bundle price and agent bundle price */}
       {(bundlePrice > 0 || agentBundlePrice > 0) && (
         <Card className="border-green-500/30 bg-green-900/5">
@@ -226,7 +261,8 @@ export default function AFAPackagesDisplay({
         Register for educational packages and gain access to premium learning resources. Choose your preferred plan below.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {afaEnabled ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {packages.map((pkg) => {
           const displayPrice = pricing[pkg.id]?.sell_price || pkg.base_price;
 
@@ -283,7 +319,12 @@ export default function AFAPackagesDisplay({
             </Card>
           );
         })}
-      </div>
+        </div>
+      ) : (
+        <p className="text-center text-muted-foreground py-8">
+          AFA Bundle registration is currently disabled. Please check back soon.
+        </p>
+      )}
     </div>
   );
 }
