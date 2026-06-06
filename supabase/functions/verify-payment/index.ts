@@ -429,6 +429,8 @@ Deno.serve(async (req) => {
       base_price: basePriceForOrder,
       profit: profitForOrder,
       profit_credited: false,
+      agent_store_id: null,
+      subagent_store_id: null,
     };
     
     if (agentStoreId) {
