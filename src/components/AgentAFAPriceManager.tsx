@@ -39,7 +39,7 @@ export default function AgentAFAPriceManager() {
   const [packages, setPackages] = useState<AFAPackage[]>([]);
   const [agentPrices, setAgentPrices] = useState<AgentAFAPrice[]>([]);
   const [agentStore, setAgentStore] = useState<AgentStore | null>(null);
-  const [minBundlePrice, setMinBundlePrice] = useState(13.00);
+  const [minBundlePrice, setMinBundlePrice] = useState<number | null>(null);
   const [agentBundlePrice, setAgentBundlePrice] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingBundle, setSavingBundle] = useState(false);
@@ -95,8 +95,8 @@ export default function AgentAFAPriceManager() {
           setMinBundlePrice(minPrice);
         }
       } catch (err) {
-        console.log("[v0] AFA settings not found, using default minimum");
-        setMinBundlePrice(13.00);
+        console.log("[v0] AFA settings not found, using default minimum of 50");
+        setMinBundlePrice(50.00);
       }
 
       // Fetch available AFA packages
@@ -296,14 +296,14 @@ export default function AgentAFAPriceManager() {
             AFA Bundle Registration Price
           </CardTitle>
           <CardDescription>
-            Set the price customers must pay to register for AFA. Minimum price set by admin: GH₵{minBundlePrice.toFixed(2)}
+            Set the price customers must pay to register for AFA. Minimum price set by admin: GH₵{minBundlePrice ? minBundlePrice.toFixed(2) : 'Loading...'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-sm font-medium">Admin Minimum Price</Label>
-              <div className="text-2xl font-bold text-green-600 mt-2">GH₵{minBundlePrice.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-green-600 mt-2">GH₵{minBundlePrice ? minBundlePrice.toFixed(2) : 'Loading...'}</div>
             </div>
             <div>
               <Label htmlFor="bundlePrice" className="text-sm font-medium">Your Asking Price (GH₵)</Label>

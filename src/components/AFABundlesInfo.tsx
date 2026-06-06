@@ -264,7 +264,10 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
         {/* Registration Form - Toggleable */}
         {showForm && (
           <CardContent className="p-6">
-            <AFARegistrationFormStandalone key="afa-form" />
+            <AFARegistrationFormStandalone 
+              key="afa-form" 
+              registrationFee={agentBundlePrice || registrationFee || 50}
+            />
           </CardContent>
         )}
       </Card>
