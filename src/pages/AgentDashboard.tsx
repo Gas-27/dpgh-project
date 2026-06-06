@@ -740,13 +740,50 @@ const AgentDashboard = () => {
   }, [store?.id]);
 
   const createNotification = async () => {
-    if (!store || !newNotificationMsg.trim()) { toast({ title: "Error", description: "Please enter a message", variant: "destructive" }); return; }
+    if (!store || !newNotificationMsg.trim()) { 
+      toast({ title: "Error", description: "Please enter a message", variant: "destructive" }); 
+      return; 
+    }
     setSendingNotification(true);
-    const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
-    const { error } = await supabase.from("agent_notifications").insert({ agent_store_id: store.id, message: newNotificationMsg.trim(), is_active: true, expires_at });
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else { toast({ title: "Notification sent!" }); setNewNotificationMsg(""); setNewNotificationExpiry(""); fetchNotifications(); }
-    setSendingNotification(false);
+    
+    try {
+      const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-agent-notification`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            agent_store_id: store.id,
+            message: newNotificationMsg.trim(),
+            is_active: true,
+            expires_at,
+            type: "agent",
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast({ title: "Error", description: result.error || "Failed to send notification", variant: "destructive" });
+      } else {
+        toast({ title: "Notification sent!" });
+        setNewNotificationMsg("");
+        setNewNotificationExpiry("");
+        fetchNotifications();
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to send notification", variant: "destructive" });
+    } finally {
+      setSendingNotification(false);
+    }
   };
   const toggleNotificationActive = async (id: string, cur: boolean) => {
     const { error } = await supabase.from("agent_notifications").update({ is_active: !cur }).eq("id", id);
@@ -782,19 +819,41 @@ const AgentDashboard = () => {
       return;
     }
     setSendingSubagentNotification(true);
-    const { error } = await supabase.from("agent_to_subagent_notifications").insert({
-      agent_store_id: store.id,
-      message: subagentNotificationMsg.trim(),
-      is_active: true,
-    });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Notification sent to all subagents!" });
-      setSubagentNotificationMsg("");
-      fetchSubagentNotifications();
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-agent-notification`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            agent_store_id: store.id,
+            message: subagentNotificationMsg.trim(),
+            is_active: true,
+            type: "subagent",
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast({ title: "Error", description: result.error || "Failed to send notification", variant: "destructive" });
+      } else {
+        toast({ title: "Notification sent to all subagents!" });
+        setSubagentNotificationMsg("");
+        fetchSubagentNotifications();
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to send notification", variant: "destructive" });
+    } finally {
+      setSendingSubagentNotification(false);
     }
-    setSendingSubagentNotification(false);
   };
 
   const deleteSubagentNotification = async (id: string) => {
