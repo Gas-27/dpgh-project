@@ -43,7 +43,7 @@ export default function AdminAFASettings() {
       const { data, error } = await supabase
         .from('afa_settings')
         .select('*')
-        .eq('id', 1)
+        .limit(1)
         .single();
 
       console.log('[v0] AdminAFASettings: Fetch response:', { data, error });
@@ -61,7 +61,9 @@ export default function AdminAFASettings() {
           registration_enabled: data.registration_enabled !== false,
         };
         console.log('[v0] AdminAFASettings: Loaded settings:', newSettings);
+        console.log('[v0] AdminAFASettings: Settings UUID:', data.id);
         setSettings(newSettings);
+        localStorage.setItem('afa_settings_id', data.id);
       } else {
         console.log('[v0] AdminAFASettings: No settings found, using defaults');
       }
@@ -78,19 +80,22 @@ export default function AdminAFASettings() {
     try {
       console.log('[v0] AdminAFASettings: Saving settings:', settings);
       
+      const settingsId = localStorage.getItem('afa_settings_id');
+      if (!settingsId) {
+        throw new Error('Settings UUID not found. Please refresh and try again.');
+      }
+
       const { error, data } = await supabase
         .from('afa_settings')
-        .upsert({
-          id: 1, // Single settings row
+        .update({
           registration_fee: parseFloat(settings.registration_fee.toString()),
           package_page_price: parseFloat(settings.package_page_price.toString()),
           agent_base_price: parseFloat(settings.agent_base_price.toString()),
           agent_commission_percent: parseFloat(settings.agent_commission_percent.toString()),
           registration_enabled: settings.registration_enabled,
           updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'id'
         })
+        .eq('id', settingsId)
         .select();
 
       console.log('[v0] AdminAFASettings: Save response:', { error, data });

@@ -23,14 +23,18 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
     const loadFee = async () => {
       try {
         // Get admin settings including registration enabled status
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('afa_settings')
           .select('package_page_price, registration_enabled')
           .single();
         
-        console.log("[v0] AFABundlesInfo loading settings:", data);
+        console.log("[v0] AFABundlesInfo loading settings:", { data, error });
+        if (error) {
+          console.log("[v0] AFABundlesInfo error:", error.message);
+        }
         setRegistrationFee(data?.package_page_price || 50);
         setRegistrationEnabled(data?.registration_enabled !== false);
+        console.log("[v0] AFABundlesInfo set registration_enabled to:", data?.registration_enabled);
 
         // Get agent's custom price if agent ID provided
         if (agentId && showAgentPrice) {
