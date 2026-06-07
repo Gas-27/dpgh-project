@@ -52,38 +52,27 @@ export default function AFARegistrationFormStandalone() {
   useEffect(() => {
     const loadRegistrationFee = async () => {
       try {
-        console.log('[v0] AFARegistrationFormStandalone: Loading AFA settings...');
         const { data, error } = await supabase
           .from('afa_settings')
-          .select('agent_base_price, package_page_price, registration_fee, registration_enabled')
+          .select('registration_fee, registration_enabled')
           .single();
-
-        console.log('[v0] AFARegistrationFormStandalone: Fetch response:', { data, error });
 
         if (error) {
           console.error('[v0] Error loading AFA settings:', error);
-          // Set default fee if settings don't exist
-          setRegistrationFee(50); // Default AFA registration fee
+          setRegistrationFee(50);
           return;
         }
 
         if (data) {
-          // Try to use agent_base_price first, then package_page_price, then registration_fee
-          const fee = data.agent_base_price || data.package_page_price || data.registration_fee || 50;
-          console.log('[v0] AFARegistrationFormStandalone: Setting registration fee to:', fee);
-          setRegistrationFee(fee);
+          setRegistrationFee(data.registration_fee || 50);
           if (!data.registration_enabled) {
-            console.log('[v0] AFARegistrationFormStandalone: Registration is disabled');
             setError('AFA registration is currently disabled');
           }
         } else {
-          // No data returned, use default
-          console.log('[v0] AFARegistrationFormStandalone: No data returned, using default fee of 50');
           setRegistrationFee(50);
         }
       } catch (err) {
         console.error('[v0] Error loading registration fee:', err);
-        // Use default fee on error
         setRegistrationFee(50);
       }
     };
@@ -159,58 +148,42 @@ export default function AFARegistrationFormStandalone() {
         return;
       }
 
-      // Crop is automatically set to "Yam" - no validation needed
-
-      // Initialize Paystack Payment
-      const paystackSecretKey = process.env.NEXT_PUBLIC_PAYSTACK_SECRET_KEY;
+      // Call the Supabase edge function to initialize payment
+      console.log('[v0] Calling AFA registration edge function...');
       
-      if (!paystackSecretKey) {
-        setError('Payment configuration error. Please contact support.');
-        setLoading(false);
-        return;
+      const response = await supabase.functions.invoke('AFA-registration', {
+        body: {
+          fullName: formData.customer_name,
+          phoneNumber: formData.customer_phone,
+          idNumber: formData.ghana_card,
+          dateOfBirth: formData.date_of_birth,
+          town: formData.town,
+          occupation: 'Farmer',
+          region: formData.region,
+          cropProduce: formData.crop,
+          agentStoreId: null, // Can be passed from props if needed
+          subagentStoreId: null, // Can be passed from props if needed
+        },
+      });
+
+      console.log('[v0] Edge function response:', response);
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to initialize payment');
       }
 
-      const response = await fetch(
-        `https://api.paystack.co/transaction/initialize`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${paystackSecretKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: formData.customer_phone, // Using phone as identifier since no email field
-            amount: (registrationFee || 50) * 100, // Convert to kobo
-            metadata: {
-              customer_name: formData.customer_name,
-              customer_phone: formData.customer_phone,
-              ghana_card_number: formData.ghana_card,
-              date_of_birth: formData.date_of_birth,
-              town: formData.town,
-              occupation: 'Farmer',
-              region: formData.region,
-              crop_produce: formData.crop,
-              registration_fee: registrationFee || 50,
-              registration_type: 'afa_bundle_registration',
-            },
-          }),
-        }
-      );
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to initialize payment');
-      }
-
-      if (data.status && data.data && data.data.authorization_url) {
+      if (data.success && data.data?.authorization_url) {
+        console.log('[v0] Redirecting to Paystack:', data.data.authorization_url);
         // Redirect to Paystack checkout
         window.location.href = data.data.authorization_url;
       } else {
-        throw new Error('No authorization URL received from Paystack');
+        throw new Error(data.message || 'Failed to initialize payment');
       }
     } catch (err: any) {
       const message = err instanceof Error ? err.message : 'Payment initialization failed';
+      console.error('[v0] Error during registration:', message);
       setError(message);
       toast({
         title: 'Error',
