@@ -997,8 +997,8 @@ const AdminDashboard = () => {
                 contact: agent.whatsapp_number || agent.momo_number || "No contact",
                 momoName: agent.momo_name || "Not set",
                 amount: requestedAmount,
-                currentBalance: currentBalance.toFixed(2),
-                remainingBalance: remainingBalance.toFixed(2),
+                                currentBalance: Number(currentBalance || 0).toFixed(2),
+                                remainingBalance: Number(remainingBalance || 0).toFixed(2),
               },
             });
           } catch (err) {
@@ -1279,7 +1279,7 @@ const AdminDashboard = () => {
     setAgents((prev) => prev.map((a) => a.id === topupAgent.id ? { ...a, wallet_balance: newBalance } : a));
     setTopupAgent({ ...topupAgent, wallet_balance: newBalance });
     setTopupAmount("");
-    toast({ title: "Wallet credited!", description: `GH₵ ${amount.toFixed(2)} added to ${topupAgent.store_name}` });
+    toast({ title: "Wallet credited!", description: `GH₵ ${Number(amount || 0).toFixed(2)} added to ${topupAgent.store_name}` });
     setTopupLoading(false);
   };
 
@@ -1344,7 +1344,7 @@ const AdminDashboard = () => {
         setSubagents((prev) => prev.map((s) => s.id === withdrawalData.subagent_store_id ? { ...s, wallet_balance: newBalance } : s));
         setWithdrawals((prev) => prev.map((w) => w.id === withdrawalId ? { ...w, status: "completed", processed_at: new Date().toISOString() } : w));
         
-        toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted from Subagent wallet. New balance: GH₵ ${newBalance.toFixed(2)}.` });
+        toast({ title: "Withdrawal processed!", description: `GH₵ ${Number(amount || 0).toFixed(2)} deducted from Subagent wallet. New balance: GH₵ ${Number(newBalance || 0).toFixed(2)}.` });
       } else {
         // AGENT WITHDRAWAL - fetch fresh balance from database first
         const { data: freshAgent, error: fetchError } = await supabase
@@ -1371,7 +1371,7 @@ const AdminDashboard = () => {
         setWithdrawals((prev) => prev.map((w) => w.id === withdrawalId ? { ...w, status: "completed", processed_at: new Date().toISOString() } : w));
         
         const sourceLabel = isSubagentProfit ? "Subagent Profit" : "Wallet";
-        toast({ title: "Withdrawal processed!", description: `GH₵ ${amount.toFixed(2)} deducted from ${sourceLabel}. New balance: GH₵ ${newBalance.toFixed(2)}.` });
+        toast({ title: "Withdrawal processed!", description: `GH₵ ${Number(amount || 0).toFixed(2)} deducted from ${sourceLabel}. New balance: GH₵ ${Number(newBalance || 0).toFixed(2)}.` });
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -2057,7 +2057,7 @@ const AdminDashboard = () => {
                                 <TableCell className="text-primary">{t.agent_stores?.topup_reference ?? "—"}</TableCell>
                                 <TableCell>{t.agent_stores?.momo_name ?? "—"}</TableCell>
                                 <TableCell>GH₵ {Number(t.amount).toFixed(2)}</TableCell>
-                                <TableCell>GH₵ {t.agent_stores?.wallet_balance?.toFixed(2) ?? "—"}</TableCell>
+                                <TableCell>GH₵ {(t.agent_stores?.wallet_balance ? Number(t.agent_stores.wallet_balance).toFixed(2) : "—")}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
