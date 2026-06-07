@@ -31,18 +31,22 @@ interface AFARegistration {
 }
 
 interface AFASettings {
-  bundle_price: number;
+  id: string;
+  registration_fee: number;
   agent_commission_percent: number;
-  is_enabled: boolean;
+  registration_enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export default function AdminAFABundleManager() {
   const { toast } = useToast();
   const [registrations, setRegistrations] = useState<AFARegistration[]>([]);
   const [settings, setSettings] = useState<AFASettings>({
-    bundle_price: 50,
+    id: '00000000-0000-0000-0000-000000000001',
+    registration_fee: 50,
     agent_commission_percent: 10,
-    is_enabled: true,
+    registration_enabled: true,
   });
   const [loading, setLoading] = useState(true);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -93,10 +97,10 @@ export default function AdminAFABundleManager() {
       const { error } = await supabase
         .from('afa_settings')
         .upsert({
-          id: '00000000-0000-0000-0000-000000000001', // Static ID for singleton pattern
-          bundle_price: parseFloat(String(settings.bundle_price)),
+          id: '00000000-0000-0000-0000-000000000001',
+          registration_fee: parseFloat(String(settings.registration_fee)),
           agent_commission_percent: parseFloat(String(settings.agent_commission_percent)),
-          is_enabled: settings.is_enabled,
+          registration_enabled: settings.registration_enabled,
           updated_at: new Date().toISOString(),
         });
 
@@ -184,8 +188,8 @@ export default function AdminAFABundleManager() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={settings.bundle_price}
-                    onChange={(e) => setSettings({ ...settings, bundle_price: parseFloat(e.target.value) })}
+                    value={settings.registration_fee}
+                    onChange={(e) => setSettings({ ...settings, registration_fee: parseFloat(e.target.value) })}
                     className="mt-2"
                   />
                 </div>
@@ -205,18 +209,18 @@ export default function AdminAFABundleManager() {
                 <div>
                   <Label className="text-base">AFA Registration Status</Label>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {settings.is_enabled ? 'Currently accepting registrations' : 'Registrations disabled'}
-                  </p>
-                </div>
+                    {settings.registration_enabled ? 'Currently accepting registrations' : 'Registrations disabled'}
+                  </span>
+                </Label>
                 <Switch
-                  checked={settings.is_enabled}
-                  onCheckedChange={(checked) => setSettings({ ...settings, is_enabled: checked })}
+                  checked={settings.registration_enabled}
+                  onCheckedChange={(checked) => setSettings({ ...settings, registration_enabled: checked })}
                 />
               </div>
 
               <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-900 dark:text-blue-100">
-                  <strong>Expected Agent Price Range:</strong> GH₵{Number(settings.bundle_price || 0).toFixed(2)} - GH₵{(Number(settings.bundle_price || 0) * (1 + Number(settings.agent_commission_percent || 0) / 100)).toFixed(2)}
+                  <strong>Expected Agent Price Range:</strong> GH₵{Number(settings.registration_fee || 0).toFixed(2)} - GH₵{(Number(settings.registration_fee || 0) * (1 + Number(settings.agent_commission_percent || 0) / 100)).toFixed(2)}
                 </p>
               </div>
 
@@ -234,7 +238,7 @@ export default function AdminAFABundleManager() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Base Registration Fee</p>
-                <p className="text-2xl font-bold mt-2">GH₵{Number(settings.bundle_price || 0).toFixed(2)}</p>
+                <p className="text-2xl font-bold mt-2">GH₵{Number(settings.registration_fee || 0).toFixed(2)}</p>
               </div>
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Agent Commission</p>
@@ -242,8 +246,8 @@ export default function AdminAFABundleManager() {
               </div>
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Status</p>
-                <Badge variant={settings.is_enabled ? 'default' : 'secondary'} className="mt-2">
-                  {settings.is_enabled ? 'Accepting' : 'Disabled'}
+                <Badge variant={settings.registration_enabled ? 'default' : 'secondary'} className="mt-2">
+                  {settings.registration_enabled ? 'Accepting' : 'Disabled'}
                 </Badge>
               </div>
             </div>
