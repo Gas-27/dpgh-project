@@ -136,10 +136,11 @@ export default function AgentAFAPriceManager() {
   };
 
   const handleSaveBundlePrice = async () => {
-    if (agentBundlePrice < minBundlePrice) {
+    const minimumPrice = minBundlePrice !== null ? minBundlePrice : 50;
+    if (agentBundlePrice < minimumPrice) {
       toast({
         title: "Price too low",
-        description: `AFA Bundle price must be at least GH₵${minBundlePrice.toFixed(2)}`,
+        description: `AFA Bundle price must be at least GH₵${minimumPrice.toFixed(2)}`,
         variant: "destructive",
       });
       return;
@@ -296,32 +297,32 @@ export default function AgentAFAPriceManager() {
             AFA Bundle Registration Price
           </CardTitle>
           <CardDescription>
-            Set the price customers must pay to register for AFA. Minimum price set by admin: GH₵{minBundlePrice ? minBundlePrice.toFixed(2) : 'Loading...'}
+            Set the price customers must pay to register for AFA. Minimum price set by admin: GH₵{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '50.00'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-sm font-medium">Admin Minimum Price</Label>
-              <div className="text-2xl font-bold text-green-600 mt-2">GH₵{minBundlePrice ? minBundlePrice.toFixed(2) : 'Loading...'}</div>
+              <div className="text-2xl font-bold text-green-600 mt-2">GH₵{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '50.00'}</div>
             </div>
             <div>
               <Label htmlFor="bundlePrice" className="text-sm font-medium">Your Asking Price (GH₵)</Label>
               <Input
                 id="bundlePrice"
                 type="number"
-                min={minBundlePrice}
+                min={minBundlePrice || 50}
                 step="0.01"
                 value={agentBundlePrice || ""}
                 onChange={(e) => setAgentBundlePrice(Number(e.target.value) || 0)}
                 className="mt-2"
-                placeholder={`Minimum: ${minBundlePrice.toFixed(2)}`}
+                placeholder={`Minimum: ${minBundlePrice !== null ? minBundlePrice.toFixed(2) : '50.00'}`}
               />
             </div>
             <div className="flex flex-col justify-end">
               <Button 
                 onClick={handleSaveBundlePrice}
-                disabled={savingBundle || agentBundlePrice < minBundlePrice}
+                disabled={savingBundle || agentBundlePrice < (minBundlePrice !== null ? minBundlePrice : 50)}
                 className="w-full"
               >
                 {savingBundle ? (
@@ -335,7 +336,7 @@ export default function AgentAFAPriceManager() {
               </Button>
             </div>
           </div>
-          {agentBundlePrice > 0 && agentBundlePrice >= minBundlePrice && (
+          {agentBundlePrice > 0 && agentBundlePrice >= (minBundlePrice !== null ? minBundlePrice : 50) && (
             <div className="text-sm text-green-700 bg-green-50 p-3 rounded">
               Your customers will pay GH₵{agentBundlePrice.toFixed(2)} to register for AFA
             </div>
