@@ -156,33 +156,6 @@ export default function AgentAFAPriceManager() {
     }
   };
 
-    setSavingBundle(true);
-    try {
-      console.log("[v0] Saving AFA bundle price:", { agentStoreId: agentStore?.id, price: agentBundlePrice });
-      const { error } = await supabase
-        .from("agent_stores")
-        .update({ afa_bundle_price: agentBundlePrice })
-        .eq("id", agentStore.id);
-
-      if (error) throw error;
-
-      console.log("[v0] AFA bundle price saved successfully");
-      toast({
-        title: "Success",
-        description: `AFA Bundle price updated to GH₵${agentBundlePrice.toFixed(2)}`,
-      });
-    } catch (err: any) {
-      console.error("[v0] Error saving AFA bundle price:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to save bundle price",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingBundle(false);
-    }
-  };
-
   const handleOpenDialog = (packageId: string) => {
     const existingPrice = agentPrices.find((p) => p.afa_package_id === packageId);
     const pkg = packages.find((p) => p.id === packageId);
