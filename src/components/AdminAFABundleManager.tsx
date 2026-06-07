@@ -149,7 +149,7 @@ export default function AdminAFABundleManager() {
 
   const pendingCount = registrations.filter(r => r.status === 'pending').length;
   const completedCount = registrations.filter(r => r.status === 'completed').length;
-  const totalRevenue = registrations.reduce((sum, r) => sum + r.amount_paid, 0);
+  const totalRevenue = registrations.reduce((sum, r) => sum + (Number(r.amount_paid) || 0), 0);
 
   if (loading) {
     return (
@@ -213,7 +213,7 @@ export default function AdminAFABundleManager() {
 
               <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-900 dark:text-blue-100">
-                  <strong>Expected Agent Price Range:</strong> GH₵{settings.bundle_price.toFixed(2)} - GH₵{(settings.bundle_price * (1 + settings.agent_commission_percent / 100)).toFixed(2)}
+                  <strong>Expected Agent Price Range:</strong> GH₵{Number(settings.bundle_price || 0).toFixed(2)} - GH₵{(Number(settings.bundle_price || 0) * (1 + Number(settings.agent_commission_percent || 0) / 100)).toFixed(2)}
                 </p>
               </div>
 
@@ -231,11 +231,11 @@ export default function AdminAFABundleManager() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Base Registration Fee</p>
-                <p className="text-2xl font-bold mt-2">GH₵{settings.bundle_price.toFixed(2)}</p>
+                <p className="text-2xl font-bold mt-2">GH₵{Number(settings.bundle_price || 0).toFixed(2)}</p>
               </div>
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Agent Commission</p>
-                <p className="text-2xl font-bold mt-2">{settings.agent_commission_percent.toFixed(1)}%</p>
+                <p className="text-2xl font-bold mt-2">{Number(settings.agent_commission_percent || 0).toFixed(1)}%</p>
               </div>
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Status</p>
@@ -282,7 +282,7 @@ export default function AdminAFABundleManager() {
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">GH₵{totalRevenue.toFixed(2)}</p>
+            <p className="text-2xl font-bold">GH₵{Number(totalRevenue || 0).toFixed(2)}</p>
           </CardContent>
         </Card>
       </div>
@@ -341,7 +341,7 @@ export default function AdminAFABundleManager() {
                     <TableCell className="text-sm">
                       {reg.agent_stores?.store_name || reg.subagent_stores?.store_name || 'N/A'}
                     </TableCell>
-                    <TableCell className="font-medium">GH₵{reg.amount_paid.toFixed(2)}</TableCell>
+                    <TableCell className="font-medium">GH₵{Number(reg.amount_paid || 0).toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge variant={reg.status === 'completed' ? 'default' : 'secondary'}>
                         {reg.status === 'completed' ? (
