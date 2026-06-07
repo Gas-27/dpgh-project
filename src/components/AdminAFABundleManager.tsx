@@ -110,6 +110,14 @@ export default function AdminAFABundleManager() {
       }
       toast({ title: 'Success', description: 'AFA settings updated' });
       setEditingSettings(false);
+      // Refetch settings to ensure we have the latest values
+      const { data: updatedSettings } = await supabase
+        .from('afa_settings')
+        .select('*')
+        .single();
+      if (updatedSettings) {
+        setSettings(updatedSettings);
+      }
     } catch (err) {
       console.error("[v0] Error updating settings:", err);
       toast({ title: 'Error', description: `Failed to update settings: ${err instanceof Error ? err.message : 'Unknown error'}`, variant: 'destructive' });
@@ -229,7 +237,20 @@ export default function AdminAFABundleManager() {
                   {settingsLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Save Settings
                 </Button>
-                <Button variant="outline" onClick={() => setEditingSettings(false)}>
+                <Button 
+                  variant="outline" 
+                  onClick={async () => {
+                    setEditingSettings(false);
+                    // Refetch to discard unsaved changes
+                    const { data: currentSettings } = await supabase
+                      .from('afa_settings')
+                      .select('*')
+                      .single();
+                    if (currentSettings) {
+                      setSettings(currentSettings);
+                    }
+                  }}
+                >
                   Cancel
                 </Button>
               </div>
