@@ -2990,12 +2990,12 @@ const AdminDashboard = () => {
                     .map((pkg) => (
                       <TableRow key={pkg.id}>
                         <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
-                        <TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <Input
                             type="number"
                             step="0.01"
-                            placeholder={`Default: ${pkg.agent_price}`}
+                            placeholder={`Default: ${(pkg.agent_price || 0).toFixed(2)}`}
                             value={agentCustomPrices[pkg.id] || ""}
                             onChange={(e) => handleAgentPriceChange(pkg.id, e.target.value)}
                             className="w-28 h-8"
