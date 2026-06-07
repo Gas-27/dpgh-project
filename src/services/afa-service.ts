@@ -34,7 +34,7 @@ interface AFARegistrationResponse {
 }
 
 /**
- * Register a customer for AFA with the provider API
+ * Register a customer for AFA with the provider API via Edge Function
  */
 export const registerAFA = async (
   data: AFARegistrationRequest,
@@ -50,33 +50,33 @@ export const registerAFA = async (
       };
     }
 
-    // Call AFA provider API
-    const response = await fetch(`${AFA_API_URL}/register`, {
+    // Get current user for userId
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Call Supabase Edge Function
+    const response = await fetch('/api/afa-registration', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AFA_API_KEY}`,
-        'X-Store-ID': storeId,
-        'X-Store-Type': storeType,
       },
       body: JSON.stringify({
-        name: data.customer_name,
-        phone: data.customer_phone,
-        id_number: data.customer_id,
-        dob: data.date_of_birth,
-        town: data.town,
-        occupation: data.occupation,
-        region: data.region,
-        crop: data.crop,
-        package_id: data.package_id,
-        amount: data.amount,
-        timestamp: new Date().toISOString(),
+        fullName: data.customer_name,
+        phoneNumber: data.customer_phone,
+        idNumber: data.customer_id || '',
+        dateOfBirth: data.date_of_birth || '',
+        town: data.town || '',
+        occupation: data.occupation || '',
+        region: data.region || '',
+        cropProduce: data.crop || '',
+        userId: user?.id,
+        agentStoreId: storeType === 'agent' ? storeId : undefined,
+        subagentStoreId: storeType === 'subagent' ? storeId : undefined,
       }),
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-      const error = await response.json();
-      
       // Log API error for admin debugging
       console.log('[v0] Logging AFA registration API error');
       await logAPIError({
@@ -87,65 +87,33 @@ export const registerAFA = async (
         agent_store_id: storeType === 'agent' ? storeId : undefined,
         subagent_store_id: storeType === 'subagent' ? storeId : undefined,
         error_type: 'AFA_REGISTRATION_FAILED',
-        error_message: error.message || 'Failed to register with AFA provider',
-        api_endpoint: `${AFA_API_URL}/register`,
+        error_message: result.error || 'Failed to register with AFA provider',
+        api_endpoint: '/api/afa-registration',
         http_status_code: response.status,
         request_payload: {
-          name: data.customer_name,
-          phone: data.customer_phone,
-          id_number: data.customer_id,
-          dob: data.date_of_birth,
+          fullName: data.customer_name,
+          phoneNumber: data.customer_phone,
+          idNumber: data.customer_id,
+          dateOfBirth: data.date_of_birth,
           town: data.town,
           occupation: data.occupation,
           region: data.region,
-          crop: data.crop,
-          package_id: data.package_id,
-          amount: data.amount,
+          cropProduce: data.crop,
         },
-        response_payload: error,
+        response_payload: result,
       });
       
       return {
         success: false,
-        message: error.message || 'Failed to register with AFA provider',
-      };
-    }
-
-    const result = await response.json();
-
-    // Store registration in database
-    const { data: registration, error: dbError } = await supabase
-      .from('afa_registrations')
-      .insert({
-        customer_name: data.customer_name,
-        customer_phone: data.customer_phone,
-        customer_id: data.customer_id,
-        date_of_birth: data.date_of_birth,
-        town: data.town,
-        occupation: data.occupation,
-        region: data.region,
-        crop: data.crop,
-        afa_ref_id: result.ref_id,
-        registration_status: 'pending',
-        afa_package_id: data.package_id,
-        ...(storeType === 'agent' && { agent_store_id: storeId }),
-        ...(storeType === 'subagent' && { subagent_store_id: storeId }),
-      })
-      .select();
-
-    if (dbError) {
-      console.error('[AFA] Database error:', dbError);
-      return {
-        success: false,
-        message: 'Failed to save registration',
+        message: result.error || 'Failed to register with AFA provider',
       };
     }
 
     return {
       success: true,
-      ref_id: result.ref_id,
-      message: 'Registration submitted successfully. Awaiting verification.',
-      data: registration,
+      ref_id: result.registrationId,
+      message: result.message || 'Registration submitted successfully. Awaiting verification.',
+      data: result.data,
     };
   } catch (error) {
     console.error('[AFA] Registration error:', error);
@@ -161,18 +129,16 @@ export const registerAFA = async (
       subagent_store_id: storeType === 'subagent' ? storeId : undefined,
       error_type: error instanceof Error && error.message.includes('fetch') ? 'NETWORK_ERROR' : 'EXCEPTION_ERROR',
       error_message: error instanceof Error ? error.message : 'Unknown error occurred',
-      api_endpoint: `${AFA_API_URL}/register`,
+      api_endpoint: '/api/afa-registration',
       request_payload: {
-        name: data.customer_name,
-        phone: data.customer_phone,
-        id_number: data.customer_id,
-        dob: data.date_of_birth,
+        fullName: data.customer_name,
+        phoneNumber: data.customer_phone,
+        idNumber: data.customer_id,
+        dateOfBirth: data.date_of_birth,
         town: data.town,
         occupation: data.occupation,
         region: data.region,
-        crop: data.crop,
-        package_id: data.package_id,
-        amount: data.amount,
+        cropProduce: data.crop,
       },
     });
     
