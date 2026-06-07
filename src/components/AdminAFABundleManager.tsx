@@ -100,12 +100,15 @@ export default function AdminAFABundleManager() {
           updated_at: new Date().toISOString(),
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[v0] Supabase error updating afa_settings:", error);
+        throw error;
+      }
       toast({ title: 'Success', description: 'AFA settings updated' });
       setEditingSettings(false);
     } catch (err) {
-      console.error('Error updating settings:', err);
-      toast({ title: 'Error', description: 'Failed to update settings', variant: 'destructive' });
+      console.error("[v0] Error updating settings:", err);
+      toast({ title: 'Error', description: `Failed to update settings: ${err instanceof Error ? err.message : 'Unknown error'}`, variant: 'destructive' });
     } finally {
       setSettingsLoading(false);
     }
