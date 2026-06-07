@@ -1,5 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
-import { logAPIError } from '@/hooks/useAPIErrorLogging';
+import { supabase } from './supabase/client';
 
 /**
  * AFA Service - Handles integration with AFA provider API
@@ -9,9 +8,9 @@ import { logAPIError } from '@/hooks/useAPIErrorLogging';
  * - AFA_WEBHOOK_SECRET: Secret for validating webhook signatures
  */
 
-const AFA_API_KEY = import.meta.env.VITE_AFA_API_KEY || '';
-const AFA_API_URL = import.meta.env.VITE_AFA_API_URL || 'https://api.afa-provider.com';
-const AFA_WEBHOOK_SECRET = import.meta.env.VITE_AFA_WEBHOOK_SECRET || '';
+const AFA_API_KEY = process.env.VITE_AFA_API_KEY || '';
+const AFA_API_URL = process.env.VITE_AFA_API_URL || 'https://api.afa-provider.com';
+const AFA_WEBHOOK_SECRET = process.env.VITE_AFA_WEBHOOK_SECRET || '';
 
 interface AFARegistrationRequest {
   customer_name: string;
@@ -76,35 +75,6 @@ export const registerAFA = async (
 
     if (!response.ok) {
       const error = await response.json();
-      
-      // Log API error for admin debugging
-      console.log('[v0] Logging AFA registration API error');
-      await logAPIError({
-        customer_number: data.customer_phone,
-        network: 'afa',
-        size_gb: 0,
-        amount: data.amount,
-        agent_store_id: storeType === 'agent' ? storeId : undefined,
-        subagent_store_id: storeType === 'subagent' ? storeId : undefined,
-        error_type: 'AFA_REGISTRATION_FAILED',
-        error_message: error.message || 'Failed to register with AFA provider',
-        api_endpoint: `${AFA_API_URL}/register`,
-        http_status_code: response.status,
-        request_payload: {
-          name: data.customer_name,
-          phone: data.customer_phone,
-          id_number: data.customer_id,
-          dob: data.date_of_birth,
-          town: data.town,
-          occupation: data.occupation,
-          region: data.region,
-          crop: data.crop,
-          package_id: data.package_id,
-          amount: data.amount,
-        },
-        response_payload: error,
-      });
-      
       return {
         success: false,
         message: error.message || 'Failed to register with AFA provider',
@@ -149,33 +119,6 @@ export const registerAFA = async (
     };
   } catch (error) {
     console.error('[AFA] Registration error:', error);
-    
-    // Log network/exception error for admin debugging
-    console.log('[v0] Logging AFA registration exception error');
-    await logAPIError({
-      customer_number: data.customer_phone,
-      network: 'afa',
-      size_gb: 0,
-      amount: data.amount,
-      agent_store_id: storeType === 'agent' ? storeId : undefined,
-      subagent_store_id: storeType === 'subagent' ? storeId : undefined,
-      error_type: error instanceof Error && error.message.includes('fetch') ? 'NETWORK_ERROR' : 'EXCEPTION_ERROR',
-      error_message: error instanceof Error ? error.message : 'Unknown error occurred',
-      api_endpoint: `${AFA_API_URL}/register`,
-      request_payload: {
-        name: data.customer_name,
-        phone: data.customer_phone,
-        id_number: data.customer_id,
-        dob: data.date_of_birth,
-        town: data.town,
-        occupation: data.occupation,
-        region: data.region,
-        crop: data.crop,
-        package_id: data.package_id,
-        amount: data.amount,
-      },
-    });
-    
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -245,8 +188,7 @@ export const handleAFAWebhook = async (
 ): Promise<{ success: boolean; message: string }> => {
   try {
     // Validate webhook signature
-    const isValid = await validateWebhookSignature(payload, signature);
-    if (!isValid) {
+    if (!validateWebhookSignature(payload, signature)) {
       return {
         success: false,
         message: 'Invalid webhook signature',
@@ -296,25 +238,20 @@ export const handleAFAWebhook = async (
 /**
  * Validate webhook signature from AFA provider
  */
-const validateWebhookSignature = async (payload: any, signature: string): Promise<boolean> => {
+const validateWebhookSignature = (payload: any, signature: string): boolean => {
   if (!AFA_WEBHOOK_SECRET) {
     console.warn('[AFA] Webhook secret not configured');
     return false;
   }
 
-  // Use Web Crypto API available in browser
-  const encoder = new TextEncoder();
-  const data = encoder.encode(JSON.stringify(payload));
-  const keyData = encoder.encode(AFA_WEBHOOK_SECRET);
-  
-  const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const hash = await crypto.subtle.sign('HMAC', key, data);
-  
-  // Convert to hex string
-  const hashArray = Array.from(new Uint8Array(hash));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  // Create HMAC signature
+  const crypto = require('crypto');
+  const hash = crypto
+    .createHmac('sha256', AFA_WEBHOOK_SECRET)
+    .update(JSON.stringify(payload))
+    .digest('hex');
 
-  return hashHex === signature;
+  return hash === signature;
 };
 
 /**
