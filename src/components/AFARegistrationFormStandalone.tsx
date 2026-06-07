@@ -96,17 +96,17 @@ export default function AFARegistrationFormStandalone() {
       }
     }
 
-    // Auto-format date of birth: YY/MM/DD
+    // Auto-format date of birth: YYYY/MM/DD
     if (name === 'date_of_birth') {
       const digitsOnly = value.replace(/[^\d]/g, '');
-      if (digitsOnly.length <= 6) {
+      if (digitsOnly.length <= 8) {
         let formatted = '';
         if (digitsOnly.length >= 1) {
-          formatted = digitsOnly.substring(0, 2);
-          if (digitsOnly.length >= 3) {
-            formatted += '/' + digitsOnly.substring(2, 4);
-            if (digitsOnly.length >= 5) {
-              formatted += '/' + digitsOnly.substring(4, 6);
+          formatted = digitsOnly.substring(0, 4);
+          if (digitsOnly.length >= 5) {
+            formatted += '/' + digitsOnly.substring(4, 6);
+            if (digitsOnly.length >= 7) {
+              formatted += '/' + digitsOnly.substring(6, 8);
             }
           }
         }
@@ -309,12 +309,12 @@ export default function AFARegistrationFormStandalone() {
               type="text"
               value={formData.date_of_birth}
               onChange={handleChange}
-              placeholder="yy/mm/dd"
+              placeholder="yyyy/mm/dd"
               disabled={loading}
               required
-              maxLength={8}
+              maxLength={10}
             />
-            <p className="text-xs text-muted-foreground">Format: YY/MM/DD (auto-formatted as you type)</p>
+            <p className="text-xs text-muted-foreground">Format: YYYY/MM/DD (auto-formatted as you type)</p>
           </div>
 
           {/* Town */}
