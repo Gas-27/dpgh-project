@@ -971,6 +971,23 @@ const AdminDashboard = () => {
     return () => clearTimeout(debounceTimer);
   }, [topupSearchTerm]);
 
+  // ======================== Real-time order status listener ========================
+  useEffect(() => {
+    const channel = supabase
+      .channel("order-updates")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders" },
+        (payload) => {
+          console.log("[v0] Order status updated:", payload.new);
+          // Refresh orders when any order status changes
+          refreshData();
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   // ======================== Withdrawal email listener ========================
   useEffect(() => {
     const channel = supabase
