@@ -431,7 +431,7 @@ const AdminDashboard = () => {
         setTopupHistory(data ?? []);
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
-        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, agent_stores(store_name, id), subagent_stores(store_name, id, agent_store_id)", { column: "created_at", ascending: false }, 1000);
         setOrders(data ?? []);
       } else if (tabValue === "agents") {
         const data = await fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 1000);
@@ -1624,9 +1624,9 @@ const AdminDashboard = () => {
                         <TableBody>
                           {paginated.length === 0 ? <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
                             paginated.map((order) => {
-                              // Determine source
-                              const agentStore = order.agent_store_id ? agents.find(a => a.id === order.agent_store_id) : null;
-                              const subagentStore = order.subagent_store_id ? subagents.find(s => s.id === order.subagent_store_id) : null;
+                              // Determine source from the order's related data
+                              const subagentStore = order.subagent_stores;
+                              const agentStore = order.agent_stores;
                               let sourceType = "Main Site";
                               let sourceLabel = "Direct";
                               let sourceBadgeClass = "bg-blue-500/10 text-blue-400 border-blue-500/30";
@@ -1654,7 +1654,7 @@ const AdminDashboard = () => {
                                     className={`text-xs cursor-pointer hover:opacity-80 ${sourceBadgeClass}`}
                                     onClick={() => {
                                       if (subagentStore) {
-                                        // For subagent, get contact from parent agent
+                                        // For subagent, get parent agent info from agents array
                                         const parentAgent = agents.find(a => a.id === subagentStore.agent_store_id);
                                         setSourceInfo({
                                           type: "Subagent Store",
