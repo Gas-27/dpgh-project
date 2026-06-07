@@ -32,7 +32,7 @@ export default function AFARegistrationForm({
   const [formData, setFormData] = useState({
     customer_name: '',
     customer_phone: '',
-    ghana_card: '',
+    customer_id: '',
     date_of_birth: '',
     town: '',
     occupation: '',
@@ -66,7 +66,7 @@ export default function AFARegistrationForm({
     let finalValue = value;
 
     // Auto-format Ghana card number: GHA-XXXXXXXXX-X
-    if (name === 'ghana_card') {
+    if (name === 'customer_id') {
       const digitsOnly = value.replace(/[^\d]/g, '');
       if (digitsOnly.length <= 10) {
         if (digitsOnly.length <= 9) {
@@ -134,7 +134,7 @@ export default function AFARegistrationForm({
         setFormData({
           customer_name: '',
           customer_phone: '',
-          ghana_card: '',
+          customer_id: '',
           date_of_birth: '',
           town: '',
           occupation: '',
@@ -228,11 +228,11 @@ export default function AFARegistrationForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ghana_card">Ghana Card Number *</Label>
+            <Label htmlFor="customer_id">Ghana Card Number *</Label>
             <Input
-              id="ghana_card"
-              name="ghana_card"
-              value={formData.ghana_card}
+              id="customer_id"
+              name="customer_id"
+              value={formData.customer_id}
               onChange={handleChange}
               placeholder="Enter 10 digits"
               disabled={loading}

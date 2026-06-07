@@ -53,6 +53,9 @@ export const registerAFA = async (
     // Get current user for userId
     const { data: { user } } = await supabase.auth.getUser();
 
+    console.log('[v0] AFA Registration - User:', user?.id);
+    console.log('[v0] AFA Registration - Form Data:', data);
+
     // Call Supabase Edge Function
     const response = await fetch('/api/afa-registration', {
       method: 'POST',
@@ -75,6 +78,7 @@ export const registerAFA = async (
     });
 
     const result = await response.json();
+    console.log('[v0] AFA Registration - Response:', response.status, result);
 
     if (!response.ok) {
       // Log API error for admin debugging
