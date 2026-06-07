@@ -2057,7 +2057,7 @@ const AdminDashboard = () => {
                                 <TableCell className="text-primary">{t.agent_stores?.topup_reference ?? "—"}</TableCell>
                                 <TableCell>{t.agent_stores?.momo_name ?? "—"}</TableCell>
                                 <TableCell>GH₵ {Number(t.amount || 0).toFixed(2)}</TableCell>
-                                <TableCell>GH₵ {(t.agent_stores?.wallet_balance ? Number(t.agent_stores.wallet_balance).toFixed(2) : "—")}</TableCell>
+                                <TableCell>GH₵ {(t.agent_stores?.wallet_balance ? Number(t.agent_stores.wallet_balance || 0).toFixed(2) : "—")}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
