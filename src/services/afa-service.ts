@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { logAPIError } from '@/hooks/useAPIErrorLogging';
 
 /**
  * AFA Service - Handles integration with AFA provider API
@@ -34,7 +33,7 @@ interface AFARegistrationResponse {
 }
 
 /**
- * Register a customer for AFA with the provider API via Edge Function
+ * Register a customer for AFA with the provider API
  */
 export const registerAFA = async (
   data: AFARegistrationRequest,
@@ -50,102 +49,76 @@ export const registerAFA = async (
       };
     }
 
-    // Get current user for userId
-    const { data: { user } } = await supabase.auth.getUser();
-
-    console.log('[v0] AFA Registration - User:', user?.id);
-    console.log('[v0] AFA Registration - Form Data:', data);
-
-    // Call Supabase Edge Function
-    const response = await fetch('/api/afa-registration', {
+    // Call AFA provider API
+    const response = await fetch(`${AFA_API_URL}/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AFA_API_KEY}`,
+        'X-Store-ID': storeId,
+        'X-Store-Type': storeType,
       },
       body: JSON.stringify({
-        fullName: data.customer_name,
-        phoneNumber: data.customer_phone,
-        idNumber: data.customer_id || '',
-        dateOfBirth: data.date_of_birth || '',
-        town: data.town || '',
-        occupation: data.occupation || '',
-        region: data.region || '',
-        cropProduce: data.crop || '',
-        userId: user?.id,
-        agentStoreId: storeType === 'agent' ? storeId : undefined,
-        subagentStoreId: storeType === 'subagent' ? storeId : undefined,
+        name: data.customer_name,
+        phone: data.customer_phone,
+        id_number: data.customer_id,
+        dob: data.date_of_birth,
+        town: data.town,
+        occupation: data.occupation,
+        region: data.region,
+        crop: data.crop,
+        package_id: data.package_id,
+        amount: data.amount,
+        timestamp: new Date().toISOString(),
       }),
     });
 
-    const result = await response.json();
-    console.log('[v0] AFA Registration - Response:', response.status, result);
-
     if (!response.ok) {
-      // Log API error for admin debugging
-      console.log('[v0] Logging AFA registration API error');
-      await logAPIError({
-        customer_number: data.customer_phone,
-        network: 'afa',
-        size_gb: 0,
-        amount: data.amount,
-        agent_store_id: storeType === 'agent' ? storeId : undefined,
-        subagent_store_id: storeType === 'subagent' ? storeId : undefined,
-        error_type: 'AFA_REGISTRATION_FAILED',
-        error_message: result.error || 'Failed to register with AFA provider',
-        api_endpoint: '/api/afa-registration',
-        http_status_code: response.status,
-        request_payload: {
-          fullName: data.customer_name,
-          phoneNumber: data.customer_phone,
-          idNumber: data.customer_id,
-          dateOfBirth: data.date_of_birth,
-          town: data.town,
-          occupation: data.occupation,
-          region: data.region,
-          cropProduce: data.crop,
-        },
-        response_payload: result,
-      });
-      
+      const error = await response.json();
       return {
         success: false,
-        message: result.error || 'Failed to register with AFA provider',
+        message: error.message || 'Failed to register with AFA provider',
+      };
+    }
+
+    const result = await response.json();
+
+    // Store registration in database
+    const { data: registration, error: dbError } = await supabase
+      .from('afa_registrations')
+      .insert({
+        customer_name: data.customer_name,
+        customer_phone: data.customer_phone,
+        customer_id: data.customer_id,
+        date_of_birth: data.date_of_birth,
+        town: data.town,
+        occupation: data.occupation,
+        region: data.region,
+        crop: data.crop,
+        afa_ref_id: result.ref_id,
+        registration_status: 'pending',
+        afa_package_id: data.package_id,
+        ...(storeType === 'agent' && { agent_store_id: storeId }),
+        ...(storeType === 'subagent' && { subagent_store_id: storeId }),
+      })
+      .select();
+
+    if (dbError) {
+      console.error('[AFA] Database error:', dbError);
+      return {
+        success: false,
+        message: 'Failed to save registration',
       };
     }
 
     return {
       success: true,
-      ref_id: result.registrationId,
-      message: result.message || 'Registration submitted successfully. Awaiting verification.',
-      data: result.data,
+      ref_id: result.ref_id,
+      message: 'Registration submitted successfully. Awaiting verification.',
+      data: registration,
     };
   } catch (error) {
     console.error('[AFA] Registration error:', error);
-    
-    // Log network/exception error for admin debugging
-    console.log('[v0] Logging AFA registration exception error');
-    await logAPIError({
-      customer_number: data.customer_phone,
-      network: 'afa',
-      size_gb: 0,
-      amount: data.amount,
-      agent_store_id: storeType === 'agent' ? storeId : undefined,
-      subagent_store_id: storeType === 'subagent' ? storeId : undefined,
-      error_type: error instanceof Error && error.message.includes('fetch') ? 'NETWORK_ERROR' : 'EXCEPTION_ERROR',
-      error_message: error instanceof Error ? error.message : 'Unknown error occurred',
-      api_endpoint: '/api/afa-registration',
-      request_payload: {
-        fullName: data.customer_name,
-        phoneNumber: data.customer_phone,
-        idNumber: data.customer_id,
-        dateOfBirth: data.date_of_birth,
-        town: data.town,
-        occupation: data.occupation,
-        region: data.region,
-        cropProduce: data.crop,
-      },
-    });
-    
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -215,8 +188,7 @@ export const handleAFAWebhook = async (
 ): Promise<{ success: boolean; message: string }> => {
   try {
     // Validate webhook signature
-    const isValid = await validateWebhookSignature(payload, signature);
-    if (!isValid) {
+    if (!validateWebhookSignature(payload, signature)) {
       return {
         success: false,
         message: 'Invalid webhook signature',
@@ -266,25 +238,20 @@ export const handleAFAWebhook = async (
 /**
  * Validate webhook signature from AFA provider
  */
-const validateWebhookSignature = async (payload: any, signature: string): Promise<boolean> => {
+const validateWebhookSignature = (payload: any, signature: string): boolean => {
   if (!AFA_WEBHOOK_SECRET) {
     console.warn('[AFA] Webhook secret not configured');
     return false;
   }
 
-  // Use Web Crypto API available in browser
-  const encoder = new TextEncoder();
-  const data = encoder.encode(JSON.stringify(payload));
-  const keyData = encoder.encode(AFA_WEBHOOK_SECRET);
-  
-  const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const hash = await crypto.subtle.sign('HMAC', key, data);
-  
-  // Convert to hex string
-  const hashArray = Array.from(new Uint8Array(hash));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  // Create HMAC signature
+  const crypto = require('crypto');
+  const hash = crypto
+    .createHmac('sha256', AFA_WEBHOOK_SECRET)
+    .update(JSON.stringify(payload))
+    .digest('hex');
 
-  return hashHex === signature;
+  return hash === signature;
 };
 
 /**
