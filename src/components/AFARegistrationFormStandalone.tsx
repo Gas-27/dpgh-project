@@ -96,6 +96,24 @@ export default function AFARegistrationFormStandalone() {
       }
     }
 
+    // Auto-format date of birth: YY/MM/DD
+    if (name === 'date_of_birth') {
+      const digitsOnly = value.replace(/[^\d]/g, '');
+      if (digitsOnly.length <= 6) {
+        let formatted = '';
+        if (digitsOnly.length >= 1) {
+          formatted = digitsOnly.substring(0, 2);
+          if (digitsOnly.length >= 3) {
+            formatted += '/' + digitsOnly.substring(2, 4);
+            if (digitsOnly.length >= 5) {
+              formatted += '/' + digitsOnly.substring(4, 6);
+            }
+          }
+        }
+        finalValue = formatted;
+      }
+    }
+
     setFormData((prev) => ({ ...prev, [name]: finalValue }));
     setError('');
   };
@@ -288,12 +306,15 @@ export default function AFARegistrationFormStandalone() {
             <Input
               id="date_of_birth"
               name="date_of_birth"
-              type="date"
+              type="text"
               value={formData.date_of_birth}
               onChange={handleChange}
+              placeholder="yy/mm/dd"
               disabled={loading}
               required
+              maxLength={8}
             />
+            <p className="text-xs text-muted-foreground">Format: YY/MM/DD (auto-formatted as you type)</p>
           </div>
 
           {/* Town */}
