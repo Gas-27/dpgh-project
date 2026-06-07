@@ -2834,7 +2834,7 @@ const AdminDashboard = () => {
                           Save
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Current fee: GH₵{(agentRegistrationFee || 0).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">Current fee: GH₵{Number(agentRegistrationFee || 0).toFixed(2)}</p>
                     </div>
 
                     {/* AFA Registration Fee section removed - moved to dedicated AFA tab */}
@@ -2995,7 +2995,7 @@ const AdminDashboard = () => {
                           <Input
                             type="number"
                             step="0.01"
-                            placeholder={`Default: ${(pkg.agent_price || 0).toFixed(2)}`}
+                            placeholder={`Default: ${Number(pkg.agent_price || 0).toFixed(2)}`}
                             value={agentCustomPrices[pkg.id] || ""}
                             onChange={(e) => handleAgentPriceChange(pkg.id, e.target.value)}
                             className="w-28 h-8"
