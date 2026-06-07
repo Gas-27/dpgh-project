@@ -85,48 +85,28 @@ export default function AgentAFAPriceManager() {
       try {
         const { data: afaSettings } = await supabase
           .from("afa_settings")
-          .select("bundle_price, registration_fee")
+          .select("base_registration_price")
           .single();
         
         console.log("[v0] AFA settings loaded in agent pricing:", afaSettings);
-        // Use registration_fee if available, fallback to bundle_price for compatibility
-        const minPrice = afaSettings?.registration_fee || afaSettings?.bundle_price;
-        if (minPrice) {
-          setMinBundlePrice(minPrice);
+        if (afaSettings?.base_registration_price) {
+          setMinBundlePrice(afaSettings.base_registration_price);
         }
       } catch (err) {
-        console.log("[v0] AFA settings not found, using default minimum of 50");
-        setMinBundlePrice(50.00);
+        console.log("[v0] AFA settings not found, using default minimum of 14");
+        setMinBundlePrice(14.00);
       }
 
-      // Fetch available AFA packages
-      const { data: pkgsData, error: pkgsError } = await supabase
-        .from("afa_packages")
-        .select("*")
-        .eq("is_active", true)
-        .order("name");
-
-      if (pkgsError) throw pkgsError;
-
-      // Fetch agent's current prices
-      const { data: pricesData, error: pricesError } = await supabase
+      // Fetch agent's current AFA registration price
+      const { data: priceData } = await supabase
         .from("agent_afa_prices")
-        .select("*")
-        .eq("agent_store_id", store.id);
+        .select("registration_price")
+        .eq("agent_store_id", store.id)
+        .single();
 
-      if (pricesError) throw pricesError;
-
-      // Merge data
-      const packagesWithPrices = (pkgsData || []).map((pkg) => {
-        const existingPrice = (pricesData || []).find((p) => p.afa_package_id === pkg.id);
-        return {
-          ...pkg,
-          existing_price: existingPrice,
-        };
-      });
-
-      setPackages(pkgsData || []);
-      setAgentPrices(pricesData || []);
+      if (priceData?.registration_price) {
+        setAgentBundlePrice(priceData.registration_price);
+      }
     } catch (err) {
       console.error("Failed to fetch data:", err);
       toast({ title: "Error", description: "Failed to load pricing data", variant: "destructive" });
@@ -136,17 +116,45 @@ export default function AgentAFAPriceManager() {
   };
 
   const handleSaveBundlePrice = async () => {
-    const minimumPrice = minBundlePrice !== null ? minBundlePrice : 50;
+    const minimumPrice = minBundlePrice !== null ? minBundlePrice : 14;
     if (agentBundlePrice < minimumPrice) {
       toast({
         title: "Price too low",
-        description: `AFA Bundle price must be at least GH₵${minimumPrice.toFixed(2)}`,
+        description: `AFA registration price must be at least GH₵${minimumPrice.toFixed(2)}`,
         variant: "destructive",
       });
       return;
     }
 
     if (!agentStore) return;
+
+    setSavingBundle(true);
+    try {
+      // Upsert agent AFA registration price
+      const { error } = await supabase
+        .from("agent_afa_prices")
+        .upsert({
+          agent_store_id: agentStore.id,
+          registration_price: agentBundlePrice,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `AFA registration price updated to GH₵${agentBundlePrice.toFixed(2)}`,
+      });
+    } catch (err) {
+      console.error("Error saving bundle price:", err);
+      toast({
+        title: "Error",
+        description: "Failed to save AFA registration price",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingBundle(false);
+    }
+  };
 
     setSavingBundle(true);
     try {
@@ -190,91 +198,8 @@ export default function AgentAFAPriceManager() {
   };
 
   const handleSubmit = async () => {
-    if (formData.sell_price <= 0) {
-      toast({ title: "Error", description: "Please enter a valid price", variant: "destructive" });
-      return;
-    }
-
-    const pkg = packages.find((p) => p.id === editingPackageId);
-    if (!pkg) return;
-
-    // Validate price is within limits if set
-    if (pkg.min_price && formData.sell_price < pkg.min_price) {
-      toast({
-        title: "Error",
-        description: `Price must be at least GHS ${pkg.min_price.toFixed(2)}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (pkg.max_price && formData.sell_price > pkg.max_price) {
-      toast({
-        title: "Error",
-        description: `Price cannot exceed GHS ${pkg.max_price.toFixed(2)}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData.user) {
-        toast({ title: "Error", description: "Not authenticated", variant: "destructive" });
-        return;
-      }
-
-      const { data: agentStore } = await supabase
-        .from("agent_stores")
-        .select("id")
-        .eq("user_id", authData.user.id)
-        .single();
-
-      if (!agentStore) {
-        toast({ title: "Error", description: "Agent store not found", variant: "destructive" });
-        return;
-      }
-
-      const commissionAmount = formData.sell_price * (pkg.commission_percent / 100);
-
-      const existingPrice = agentPrices.find((p) => p.afa_package_id === editingPackageId);
-
-      if (existingPrice) {
-        // Update existing price
-        const { error } = await supabase
-          .from("agent_afa_prices")
-          .update({
-            sell_price: formData.sell_price,
-            commission_amount: commissionAmount,
-          })
-          .eq("id", existingPrice.id);
-
-        if (error) throw error;
-        toast({ title: "Success", description: "AFA price updated successfully" });
-      } else {
-        // Create new price
-        const { error } = await supabase.from("agent_afa_prices").insert([
-          {
-            agent_store_id: agentStore.id,
-            afa_package_id: editingPackageId,
-            sell_price: formData.sell_price,
-            commission_amount: commissionAmount,
-          },
-        ]);
-
-        if (error) throw error;
-        toast({ title: "Success", description: "AFA price set successfully" });
-      }
-
-      setShowDialog(false);
-      fetchData();
-    } catch (err) {
-      console.error("Failed to save price:", err);
-      toast({ title: "Error", description: (err as any).message || "Failed to save price", variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-    }
+    // This is no longer needed for simple registration
+    return;
   };
 
   if (loading) {
@@ -297,32 +222,32 @@ export default function AgentAFAPriceManager() {
             AFA Bundle Registration Price
           </CardTitle>
           <CardDescription>
-            Set the price customers must pay to register for AFA. Minimum price set by admin: GH₵{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '50.00'}
+            Set the price customers must pay to register for AFA. Minimum price set by admin: GH₵{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '14.00'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-sm font-medium">Admin Minimum Price</Label>
-              <div className="text-2xl font-bold text-green-600 mt-2">GH₵{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '50.00'}</div>
+              <div className="text-2xl font-bold text-green-600 mt-2">GH₵{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '14.00'}</div>
             </div>
             <div>
               <Label htmlFor="bundlePrice" className="text-sm font-medium">Your Asking Price (GH₵)</Label>
               <Input
                 id="bundlePrice"
                 type="number"
-                min={minBundlePrice || 50}
+                min={minBundlePrice || 14}
                 step="0.01"
                 value={agentBundlePrice || ""}
                 onChange={(e) => setAgentBundlePrice(Number(e.target.value) || 0)}
                 className="mt-2"
-                placeholder={`Minimum: ${minBundlePrice !== null ? minBundlePrice.toFixed(2) : '50.00'}`}
+                placeholder={`Minimum: ${minBundlePrice !== null ? minBundlePrice.toFixed(2) : '14.00'}`}
               />
             </div>
             <div className="flex flex-col justify-end">
               <Button 
                 onClick={handleSaveBundlePrice}
-                disabled={savingBundle || agentBundlePrice < (minBundlePrice !== null ? minBundlePrice : 50)}
+                disabled={savingBundle || agentBundlePrice < (minBundlePrice !== null ? minBundlePrice : 14)}
                 className="w-full"
               >
                 {savingBundle ? (
@@ -336,162 +261,13 @@ export default function AgentAFAPriceManager() {
               </Button>
             </div>
           </div>
-          {agentBundlePrice > 0 && agentBundlePrice >= (minBundlePrice !== null ? minBundlePrice : 50) && (
+          {agentBundlePrice > 0 && agentBundlePrice >= (minBundlePrice !== null ? minBundlePrice : 14) && (
             <div className="text-sm text-green-700 bg-green-50 p-3 rounded">
               Your customers will pay GH₵{agentBundlePrice.toFixed(2)} to register for AFA
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* AFA Packages Pricing */}
-      {packages.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-blue-600" />
-              AFA Package Pricing
-            </CardTitle>
-            <CardDescription>
-              Set individual prices for each AFA package. Customers see these prices on your storefront.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Package Name</TableHead>
-              <TableHead>Admin Base Price</TableHead>
-              <TableHead>Your Selling Price</TableHead>
-              <TableHead>Commission</TableHead>
-              <TableHead>Your Profit</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {packages.map((pkg) => {
-              const agentPrice = agentPrices.find((p) => p.afa_package_id === pkg.id);
-              const sellPrice = agentPrice?.sell_price || 0;
-              const commission = agentPrice?.commission_amount || (pkg.base_price * pkg.commission_percent) / 100;
-              const profit = sellPrice - pkg.base_price;
-
-              return (
-                <TableRow key={pkg.id}>
-                  <TableCell className="font-medium">{pkg.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4 text-green-600" />
-                      {pkg.base_price.toFixed(2)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {agentPrice ? (
-                      <Badge variant="default">{sellPrice.toFixed(2)}</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground">
-                        Not set
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="h-4 w-4 text-blue-600" />
-                      {commission.toFixed(2)} ({pkg.commission_percent}%)
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className={profit > 0 ? "text-green-600 font-semibold" : "text-muted-foreground"}>
-                      {profit.toFixed(2)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm" onClick={() => handleOpenDialog(pkg.id)}>
-                      <Edit2 className="h-4 w-4 mr-1" />
-                      {agentPrice ? "Edit" : "Set Price"}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Price Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Set AFA Selling Price</DialogTitle>
-            <DialogDescription>
-              {packages.find((p) => p.id === editingPackageId)?.name || "Package"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {editingPackageId && (
-              <div className="bg-muted p-4 rounded-lg space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Admin Base Price:</span>
-                  <span className="font-semibold">
-                    {packages.find((p) => p.id === editingPackageId)?.base_price.toFixed(2)}
-                  </span>
-                </div>
-                {packages.find((p) => p.id === editingPackageId)?.min_price && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Minimum Price:</span>
-                    <span className="font-semibold">
-                      {packages.find((p) => p.id === editingPackageId)?.min_price?.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-                {packages.find((p) => p.id === editingPackageId)?.max_price && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Maximum Price:</span>
-                    <span className="font-semibold">
-                      {packages.find((p) => p.id === editingPackageId)?.max_price?.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div>
-              <Label htmlFor="sell_price">Your Selling Price (GHS) *</Label>
-              <Input
-                id="sell_price"
-                type="number"
-                step="0.01"
-                placeholder="50.00"
-                value={formData.sell_price || ""}
-                onChange={(e) => setFormData({ sell_price: parseFloat(e.target.value) || 0 })}
-              />
-              {editingPackageId && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Your profit per sale:{" "}
-                  <span className="font-semibold">
-                    {(
-                      (formData.sell_price || 0) - (packages.find((p) => p.id === editingPackageId)?.base_price || 0)
-                    ).toFixed(2)}{" "}
-                    GHS
-                  </span>
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-2 justify-end pt-4">
-              <Button variant="outline" onClick={() => setShowDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit} disabled={submitting}>
-                {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Save Price
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
