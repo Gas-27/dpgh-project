@@ -485,15 +485,14 @@ const AdminDashboard = () => {
       try {
         const { data: afaSettings } = await supabase
           .from("afa_settings")
-          .select("registration_fee")
-          .eq("id", 1)
+          .select("base_registration_price")
           .single();
-        if (afaSettings?.registration_fee) {
-          setAfaRegistrationFee(afaSettings.registration_fee);
+        if (afaSettings?.base_registration_price) {
+          setAfaRegistrationFee(afaSettings.base_registration_price);
         }
       } catch (afaError) {
         console.log("[v0] AFA settings not found, using default");
-        setAfaRegistrationFee(50);
+        setAfaRegistrationFee(14);
       }
       
       setDataLoading(false);
@@ -517,7 +516,7 @@ const AdminDashboard = () => {
       // Save AFA fee
       const { error: afaErr } = await supabase
         .from("afa_settings")
-        .upsert({ id: 1, registration_fee: afaRegistrationFee });
+        .upsert({ base_registration_price: afaRegistrationFee });
       
       if (afaErr) throw afaErr;
       
@@ -2835,7 +2834,7 @@ const AdminDashboard = () => {
                           Save
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Current fee: GH₵{agentRegistrationFee.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">Current fee: GH₵{(agentRegistrationFee || 0).toFixed(2)}</p>
                     </div>
 
                     {/* AFA Registration Fee section removed - moved to dedicated AFA tab */}
