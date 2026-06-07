@@ -30,9 +30,9 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
         
         if (error) {
           console.log("[v0] AFABundlesInfo error:", error.message);
-          setRegistrationFee(50);
+          setRegistrationFee(15);
         } else {
-          setRegistrationFee(data?.registration_fee || 50);
+          setRegistrationFee(data?.registration_fee || 15);
           setRegistrationEnabled(data?.registration_enabled !== false);
         }
 
@@ -51,7 +51,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
         }
       } catch (err) {
         console.log('[v0] Error loading AFA fees:', err);
-        setRegistrationFee(50);
+        setRegistrationFee(15);
         setRegistrationEnabled(true);
       } finally {
         setLoading(false);
@@ -73,7 +73,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
         (payload) => {
           console.log('[v0] AFA settings updated:', payload);
           if (payload.new) {
-            setRegistrationFee(payload.new.registration_fee || 50);
+            setRegistrationFee(payload.new.registration_fee || 15);
             setRegistrationEnabled(payload.new.registration_enabled !== false);
           }
         }

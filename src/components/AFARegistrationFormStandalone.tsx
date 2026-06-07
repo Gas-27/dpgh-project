@@ -59,21 +59,21 @@ export default function AFARegistrationFormStandalone() {
 
         if (error) {
           console.error('[v0] Error loading AFA settings:', error);
-          setRegistrationFee(50);
+          setRegistrationFee(15);
           return;
         }
 
         if (data) {
-          setRegistrationFee(data.registration_fee || 50);
+          setRegistrationFee(data.registration_fee || 15);
           if (!data.registration_enabled) {
             setError('AFA registration is currently disabled');
           }
         } else {
-          setRegistrationFee(50);
+          setRegistrationFee(15);
         }
       } catch (err) {
         console.error('[v0] Error loading registration fee:', err);
-        setRegistrationFee(50);
+        setRegistrationFee(15);
       }
     };
 

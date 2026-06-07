@@ -44,7 +44,7 @@ export default function AdminAFABundleManager() {
   const [registrations, setRegistrations] = useState<AFARegistration[]>([]);
   const [settings, setSettings] = useState<AFASettings>({
     id: '00000000-0000-0000-0000-000000000001',
-    registration_fee: 50,
+    registration_fee: 15,
     agent_commission_percent: 10,
     registration_enabled: true,
   });
