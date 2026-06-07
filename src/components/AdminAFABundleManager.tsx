@@ -210,8 +210,8 @@ export default function AdminAFABundleManager() {
                   <Label className="text-base">AFA Registration Status</Label>
                   <p className="text-sm text-muted-foreground mt-1">
                     {settings.registration_enabled ? 'Currently accepting registrations' : 'Registrations disabled'}
-                  </span>
-                </Label>
+                  </p>
+                </div>
                 <Switch
                   checked={settings.registration_enabled}
                   onCheckedChange={(checked) => setSettings({ ...settings, registration_enabled: checked })}
