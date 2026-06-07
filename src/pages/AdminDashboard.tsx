@@ -1630,7 +1630,7 @@ const AdminDashboard = () => {
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
-                                <TableCell>GH₵ {Number(order.amount).toFixed(2)}</TableCell>
+                                <TableCell>GH₵ {Number(order.amount || 0).toFixed(2)}</TableCell>
                                 <TableCell>
                                   <Badge 
                                     variant="outline" 
@@ -1758,8 +1758,8 @@ const AdminDashboard = () => {
                               <p className="text-sm text-muted-foreground">WhatsApp: {agent.whatsapp_number}</p>
                               <p className="text-sm text-muted-foreground">Support: {agent.support_number}</p>
                               <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} • {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
-                              <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(agent.wallet_balance).toFixed(2)}</span></p>
-                              <p className="text-xs text-muted-foreground">Subagent Profit: <span className="font-bold text-purple-400">GH₵ {Number(agent.subagent_commission_balance ?? 0).toFixed(2)}</span></p>
+                              <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(agent.wallet_balance || 0).toFixed(2)}</span></p>
+                              <p className="text-xs text-muted-foreground">Subagent Profit: <span className="font-bold text-purple-400">GH₵ {Number(agent.subagent_commission_balance || 0).toFixed(2)}</span></p>
                               {agent.approved && <Link to={`/store/${storeSlug(agent.store_name)}`} className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</Link>}
                             </div>
                             <div className="flex flex-col gap-2">
@@ -1995,7 +1995,7 @@ const AdminDashboard = () => {
                         <div><p className="text-muted-foreground">Store</p><p className="font-bold text-foreground">{topupAgent.store_name}</p></div>
                         <div><p className="text-muted-foreground">Reference</p><p className="font-bold text-primary">{topupAgent.topup_reference}</p></div>
                         <div><p className="text-muted-foreground">MoMo</p><p className="font-bold text-foreground">{topupAgent.momo_name}</p></div>
-                        <div><p className="text-muted-foreground">Balance</p><p className="font-bold text-green-400">GH₵ {Number(topupAgent.wallet_balance).toFixed(2)}</p></div>
+                        <div><p className="text-muted-foreground">Balance</p><p className="font-bold text-green-400">GH₵ {Number(topupAgent.wallet_balance || 0).toFixed(2)}</p></div>
                       </div>
                       <div className="flex gap-2 items-end">
                         <div className="flex-1 space-y-1"><Label>Amount to Credit (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 50.00" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} /></div>
@@ -2056,7 +2056,7 @@ const AdminDashboard = () => {
                                 <TableCell className="font-medium">{t.agent_stores?.store_name ?? "—"}</TableCell>
                                 <TableCell className="text-primary">{t.agent_stores?.topup_reference ?? "—"}</TableCell>
                                 <TableCell>{t.agent_stores?.momo_name ?? "—"}</TableCell>
-                                <TableCell>GH₵ {Number(t.amount).toFixed(2)}</TableCell>
+                                <TableCell>GH₵ {Number(t.amount || 0).toFixed(2)}</TableCell>
                                 <TableCell>GH₵ {(t.agent_stores?.wallet_balance ? Number(t.agent_stores.wallet_balance).toFixed(2) : "—")}</TableCell>
                               </TableRow>
                             ))}
@@ -2125,8 +2125,8 @@ const AdminDashboard = () => {
                                   <TableCell className="font-medium">{storeName}</TableCell>
                                   <TableCell><Badge className={isSubagentWithdrawal ? "bg-orange-600/20 text-orange-400 border-orange-600/30" : "bg-cyan-600/20 text-cyan-400 border-cyan-600/30"}>{isSubagentWithdrawal ? "Subagent" : "Agent"}</Badge></TableCell>
                                   <TableCell><Badge className={isSubagentProfit ? "bg-purple-600/20 text-purple-400 border-purple-600/30" : "bg-blue-600/20 text-blue-400 border-blue-600/30"}>{isSubagentProfit ? "Subagent Profit" : "Wallet"}</Badge></TableCell>
-                                  <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
-                                  <TableCell className="font-bold text-green-400">GH₵ {Number(walletBalance).toFixed(2)}</TableCell>
+                                  <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount || 0).toFixed(2)}</TableCell>
+                                  <TableCell className="font-bold text-green-400">GH₵ {Number(walletBalance || 0).toFixed(2)}</TableCell>
                                   <TableCell>{momoName || "—"}</TableCell>
                                   <TableCell className="font-mono">{momoNumber || "—"}</TableCell>
                                   <TableCell className="uppercase text-sm">{momoNetwork || "—"}</TableCell>
@@ -2712,7 +2712,7 @@ const AdminDashboard = () => {
                                           <p><span className="font-mono text-muted-foreground">Order ID:</span> {error.order_id || 'N/A'}</p>
                                           <p><span className="font-mono text-muted-foreground">Phone:</span> {error.customer_number}</p>
                                           <p><span className="font-mono text-muted-foreground">Network:</span> {error.network}</p>
-                                          <p><span className="font-mono text-muted-foreground">Size:</span> {error.size_gb}GB @ GH₵{Number(error.amount).toFixed(2)}</p>
+                                          <p><span className="font-mono text-muted-foreground">Size:</span> {error.size_gb}GB @ GH₵{Number(error.amount || 0).toFixed(2)}</p>
                                         </div>
                                       </div>
                                       <div>
