@@ -12,7 +12,7 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
-import AFAStandaloneRegistration from "@/components/AFAStandaloneRegistration";
+import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
@@ -1544,9 +1544,16 @@ const AgentStorefront = () => {
           </Card>
         </div>
       ) : activeCategory === "afa" ? (
-        <div className="container pb-20">
-          <AFAStandaloneRegistration
-            agentStoreId={store?.id}
+        <div className="w-full pb-20">
+          <AFAPackagesDisplay
+            onRegisterClick={(packageId, packageName, price) => {
+              setPaymentPkg({
+                id: packageId,
+                size_gb: 0,
+                price,
+                network: "mtn"
+              });
+            }}
             themeColor={primaryColor}
           />
         </div>
