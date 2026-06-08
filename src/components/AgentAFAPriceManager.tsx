@@ -66,7 +66,7 @@ export default function AgentAFAPriceManager() {
         return;
       }
 
-      // Get agent store ID and AFA bundle price
+      // Get agent store with afa_bundle_price
       const { data: store } = await supabase
         .from("agent_stores")
         .select("id, store_name, afa_bundle_price")
@@ -81,31 +81,17 @@ export default function AgentAFAPriceManager() {
       setAgentStore(store as AgentStore);
       setAgentBundlePrice(store.afa_bundle_price || 0);
 
-      // Get AFA settings to show minimum price
-      try {
-        const { data: afaSettings } = await supabase
-          .from("afa_settings")
-          .select("base_registration_price")
-          .single();
-        
-        console.log("[v0] AFA settings loaded in agent pricing:", afaSettings);
-        if (afaSettings?.base_registration_price) {
-          setMinBundlePrice(afaSettings.base_registration_price);
-        }
-      } catch (err) {
-        console.log("[v0] AFA settings not found, using default minimum of 14");
+      // Get AFA settings - fetch first row with base_registration_price
+      const { data: afaSettings } = await supabase
+        .from("afa_settings")
+        .select("base_registration_price")
+        .order("created_at", { ascending: true })
+        .limit(1);
+      
+      if (afaSettings && afaSettings.length > 0 && afaSettings[0].base_registration_price) {
+        setMinBundlePrice(afaSettings[0].base_registration_price);
+      } else {
         setMinBundlePrice(14.00);
-      }
-
-      // Fetch agent's current AFA registration price
-      const { data: priceData } = await supabase
-        .from("agent_stores")
-        .select("afa_bundle_price")
-        .eq("agent_store_id", store.id)
-        .single();
-
-      if (priceData?.afa_bundle_price) {
-        setAgentBundlePrice(priceData.afa_bundle_price);
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);
@@ -130,16 +116,19 @@ export default function AgentAFAPriceManager() {
 
     setSavingBundle(true);
     try {
-      // Upsert agent AFA registration price
+      // Upsert on agent_stores table using id as unique key
       const { error } = await supabase
         .from("agent_stores")
         .upsert({
-          agent_store_id: agentStore.id,
-          registration_price: agentBundlePrice,
+          id: agentStore.id,
+          afa_bundle_price: agentBundlePrice,
+        }, {
+          onConflict: "id"
         });
 
       if (error) throw error;
 
+      setAgentBundlePrice(agentBundlePrice);
       toast({
         title: "Success",
         description: `AFA registration price updated to GH₵${agentBundlePrice.toFixed(2)}`,
