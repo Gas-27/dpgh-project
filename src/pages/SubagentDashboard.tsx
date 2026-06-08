@@ -1230,19 +1230,43 @@ const SubagentDashboard = () => {
         throw new Error("Failed to deduct wallet balance: " + walletError.message);
       }
       
-      // Create order with wallet payment method
-      // Include agent_store_id so it shows on storefront and for proper tracking
+      // Get package info to calculate profit properly
+      const { data: pkgData } = await supabase
+        .from("data_packages")
+        .select("agent_price, price")
+        .eq("id", buyingPkg.id)
+        .single();
+      
+      const adminBasePrice = pkgData?.agent_price ? Number(pkgData.agent_price) : 0;
+      
+      // Get agent's custom price for this package
+      const { data: agentPriceData } = await supabase
+        .from("agent_package_prices")
+        .select("base_price")
+        .eq("agent_store_id", subagentStore.agent_store_id)
+        .eq("package_id", buyingPkg.id)
+        .maybeSingle();
+      
+      const agentBasePrice = agentPriceData?.base_price ? Number(agentPriceData.base_price) : adminBasePrice;
+      
+      // Calculate profit: what subagent earns (price they pay - what agent pays admin)
+      const subagentProfit = price - agentBasePrice;
+      
+      // Calculate agent commission: what agent earns from subagent (agent base price - admin price)
+      const agentCommission = agentBasePrice - adminBasePrice;
+      
+      // Create order with proper pricing
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
         package_id: buyingPkg.id,
         subagent_store_id: subagentStore.id,
-        agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
+        agent_store_id: subagentStore.agent_store_id,
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
         size_gb: buyingPkg.size_gb,
         amount: price,
-        base_price: price,
+        base_price: agentBasePrice,
         selling_price: price,
-        profit: 0, // Subagent buying at cost, no profit
+        profit: subagentProfit,
         payment_method: "wallet",
         status: "paid",
         fulfillment_status: "pending"
@@ -1255,6 +1279,25 @@ const SubagentDashboard = () => {
           .update({ wallet_balance: currentBalance })
           .eq("id", subagentStore.id);
         throw orderError;
+      }
+      
+      // Credit agent commission if applicable
+      if (agentCommission > 0 && subagentStore.agent_store_id) {
+        const { data: agentStore } = await supabase
+          .from("agent_stores")
+          .select("subagent_commission_balance")
+          .eq("id", subagentStore.agent_store_id)
+          .single();
+        
+        if (agentStore) {
+          const newAgentBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
+          await supabase
+            .from("agent_stores")
+            .update({ subagent_commission_balance: newAgentBalance })
+            .eq("id", subagentStore.agent_store_id);
+          
+          console.log(`[v0] Credited agent ${subagentStore.agent_store_id} commission: +${agentCommission}, new balance=${newAgentBalance}`);
+        }
       }
       
       // Trigger fulfillment for the order
