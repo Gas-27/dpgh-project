@@ -1571,7 +1571,7 @@ const Packages = () => {
             </Card>
           </div>
         ) : activeCategory === "afa" ? (
-          <div className="container pb-20">
+          <div className="w-full pb-20">
             <AFAPackagesDisplay
               onRegisterClick={(packageId, packageName, price) => {
                 setPaymentPkg({

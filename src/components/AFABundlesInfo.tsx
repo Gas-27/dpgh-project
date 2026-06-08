@@ -103,9 +103,9 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       {/* AFA Info Marketing Section */}
-      <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 border-blue-200 dark:border-blue-800">
+      <Card className="w-full bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 border-blue-200 dark:border-blue-800 rounded-none md:rounded-lg"
         <CardContent className="p-4 md:p-6 space-y-4">
           <div>
             <h3 className="text-lg md:text-xl font-bold text-blue-900 dark:text-blue-100 mb-3 md:mb-4">🎉 What is AFA Registration?</h3>
@@ -153,7 +153,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
       </Card>
 
       {/* MTN AFA Benefits & Offers Section */}
-      <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950">
+      <Card className="w-full border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 rounded-none md:rounded-lg">
         <CardContent className="p-4 md:p-6 space-y-4 md:space-y-6">
           <h3 className="text-lg md:text-xl font-bold text-green-900 dark:text-green-100">🎉 MTN AFA Benefits & Offers</h3>
           <p className="text-xs md:text-sm text-green-800 dark:text-green-200">Once your MTN number is registered on AFA, you can enjoy:</p>
@@ -217,7 +217,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
       </Card>
 
       {/* AFA Registration Card - Like Package Cards */}
-      <Card className="overflow-hidden border-0 shadow-lg">
+      <Card className="w-full overflow-hidden border-0 shadow-lg rounded-none md:rounded-lg">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 md:p-8 text-white">
           <div className="flex items-start justify-between mb-4 gap-3">
             <div className="flex items-start gap-3 flex-1">
