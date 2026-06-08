@@ -26,6 +26,7 @@ interface FlyerGeneratorProps {
     supportNumber: string;
     packages: DataPackage[];
     agentPrices: Record<string, number>;
+    basePrices?: Record<string, number>;
     topupReference?: string;
 }
 
@@ -79,7 +80,7 @@ const FlyerGenerator = ({
         return () => window.removeEventListener("resize", calcScale);
     }, []);
 
-    const getPrice = useCallback((pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price, [agentPrices]);
+    const getPrice = useCallback((pkg: DataPackage) => agentPrices[pkg.id] ?? basePrices?.[pkg.id] ?? pkg.price, [agentPrices, basePrices]);
 
     // Get packages by network
     const mtnPackages = packages.filter(p => p.network === "mtn" && p.active !== false);

@@ -2828,6 +2828,7 @@ const SubagentDashboard = () => {
                 supportNumber={subagentStore.support_number || ""}
                 packages={packages}
                 agentPrices={subagentPrices}
+                basePrices={basePrices}
                 topupReference={subagentStore.topup_reference || ""}
               />
             )}
