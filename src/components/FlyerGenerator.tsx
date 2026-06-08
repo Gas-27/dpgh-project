@@ -49,6 +49,7 @@ const FlyerGenerator = ({
     supportNumber,
     packages,
     agentPrices,
+    basePrices,
     topupReference,
 }: FlyerGeneratorProps) => {
     const { toast } = useToast();
