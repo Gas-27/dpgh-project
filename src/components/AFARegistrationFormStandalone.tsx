@@ -300,7 +300,6 @@ export default function AFARegistrationFormStandalone() {
             />
             <p className="text-xs text-muted-foreground">Format: 10 digits starting with 0 (e.g., 0241234567)</p>
           </div>
-          </div>
 
           {/* Ghana Card Number */}
           <div className="space-y-2">
