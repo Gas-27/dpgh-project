@@ -246,9 +246,9 @@ export default function AFAPackagesDisplay({
                 <p className="text-3xl font-bold">₵{bundlePrice.toFixed(2)}</p>
               )}
             </div>
-            {agentBundlePrice > 0 && bundlePrice > 0 && (
+            {/* {agentBundlePrice > 0 && bundlePrice > 0 && (
               <p className="text-sm text-green-600 mt-2">Your markup: ₵{(agentBundlePrice - bundlePrice).toFixed(2)}</p>
-            )}
+            )} */}
           </CardContent>
         </Card>
       )}
