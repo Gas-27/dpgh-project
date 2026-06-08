@@ -89,18 +89,9 @@ export default function AFARegistrationFormStandalone() {
     const { name, value } = e.target;
     let finalValue = value;
 
-    // Auto-format phone number: 0XXX-XXX-XXXX (10 digits max)
+    // Phone number: store only digits, no formatting
     if (name === 'customer_phone') {
-      const digitsOnly = value.replace(/[^\d]/g, '');
-      if (digitsOnly.length <= 10) {
-        if (digitsOnly.length <= 4) {
-          finalValue = digitsOnly;
-        } else if (digitsOnly.length <= 7) {
-          finalValue = digitsOnly.substring(0, 4) + '-' + digitsOnly.substring(4);
-        } else {
-          finalValue = digitsOnly.substring(0, 4) + '-' + digitsOnly.substring(4, 7) + '-' + digitsOnly.substring(7);
-        }
-      }
+      finalValue = value.replace(/[^\d]/g, '').slice(0, 10);
     }
 
     // Auto-format Ghana card number: GHA-XXXXXXXXX-X
@@ -186,22 +177,21 @@ export default function AFARegistrationFormStandalone() {
       
       const callbackUrl = typeof window !== 'undefined' ? window.location.href : '';
       
-      // Extract clean phone number (digits only) and Ghana card (digits only)
-      const cleanPhoneNumber = formData.customer_phone.replace(/[^\d]/g, '');
+      // Extract clean Ghana card (digits only)
       const cleanGhanaCard = formData.ghana_card.replace(/[^\d]/g, '');
       
       const response = await supabase.functions.invoke('AFA-registration', {
         body: {
           fullName: formData.customer_name,
-          phoneNumber: cleanPhoneNumber,
+          phoneNumber: formData.customer_phone,
           idNumber: cleanGhanaCard,
           dateOfBirth: formData.date_of_birth,
           town: formData.town,
           occupation: 'Farmer',
           region: formData.region,
           cropProduce: formData.crop,
-          agentStoreId: null, // Can be passed from props if needed
-          subagentStoreId: null, // Can be passed from props if needed
+          agentStoreId: null,
+          subagentStoreId: null,
           callbackUrl: callbackUrl,
         },
       });
@@ -300,9 +290,9 @@ export default function AFARegistrationFormStandalone() {
               type="tel"
               value={formData.customer_phone}
               onChange={handleChange}
-              placeholder="0XXX-XXX-XXXX"
+              placeholder="0241234567"
               disabled={loading}
-              maxLength={14}
+              maxLength={10}
               required
             />
             <p className="text-xs text-muted-foreground">Format: 10 digits starting with 0 (e.g., 0241234567)</p>
