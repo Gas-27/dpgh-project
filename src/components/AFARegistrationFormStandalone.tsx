@@ -8,12 +8,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, AlertCircle, Info } from 'lucide-react';
+import { Loader2, AlertCircle, Info, Calendar } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DayPicker } from 'react-day-picker';
+import { format } from 'date-fns';
+import 'react-day-picker/dist/style.css';
 
 export default function AFARegistrationFormStandalone() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [registrationFee, setRegistrationFee] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -93,24 +98,6 @@ export default function AFARegistrationFormStandalone() {
         } else {
           finalValue = 'GHA-' + digitsOnly.substring(0, 9) + '-' + digitsOnly.substring(9);
         }
-      }
-    }
-
-    // Auto-format date of birth: YYYY/MM/DD
-    if (name === 'date_of_birth') {
-      const digitsOnly = value.replace(/[^\d]/g, '');
-      if (digitsOnly.length <= 8) {
-        let formatted = '';
-        if (digitsOnly.length >= 1) {
-          formatted = digitsOnly.substring(0, 4);
-          if (digitsOnly.length >= 5) {
-            formatted += '/' + digitsOnly.substring(4, 6);
-            if (digitsOnly.length >= 7) {
-              formatted += '/' + digitsOnly.substring(6, 8);
-            }
-          }
-        }
-        finalValue = formatted;
       }
     }
 
@@ -303,18 +290,36 @@ export default function AFARegistrationFormStandalone() {
           {/* Date of Birth */}
           <div className="space-y-2">
             <Label htmlFor="date_of_birth">Date of Birth * <span className="text-xs text-muted-foreground">(same as on your Ghana card)</span></Label>
-            <Input
-              id="date_of_birth"
-              name="date_of_birth"
-              type="text"
-              value={formData.date_of_birth}
-              onChange={handleChange}
-              placeholder="yyyy/mm/dd"
-              disabled={loading}
-              required
-              maxLength={10}
-            />
-            <p className="text-xs text-muted-foreground">Format: YYYY/MM/DD (auto-formatted as you type)</p>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                  disabled={loading}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, 'yyyy/MM/dd') : 'Select date of birth'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <DayPicker
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    if (date) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        date_of_birth: format(date, 'yyyy/MM/dd'),
+                      }));
+                    }
+                  }}
+                  disabled={(date) => date > new Date()}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">Click to select your date of birth</p>
           </div>
 
           {/* Town */}
