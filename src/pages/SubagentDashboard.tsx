@@ -1249,8 +1249,8 @@ const SubagentDashboard = () => {
       
       const agentBasePrice = agentPriceData?.base_price ? Number(agentPriceData.base_price) : adminBasePrice;
       
-      // Calculate profit: what subagent earns (price they pay - what agent pays admin)
-      const subagentProfit = price - agentBasePrice;
+      // When subagent buys from wallet, they buy at cost (agentBasePrice), so no profit for them
+      const subagentProfit = 0;
       
       // Calculate agent commission: what agent earns from subagent (agent base price - admin price)
       const agentCommission = agentBasePrice - adminBasePrice;
@@ -1263,9 +1263,9 @@ const SubagentDashboard = () => {
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
         size_gb: buyingPkg.size_gb,
-        amount: price,
+        amount: agentBasePrice,
         base_price: agentBasePrice,
-        selling_price: price,
+        selling_price: agentBasePrice,
         profit: subagentProfit,
         payment_method: "wallet",
         status: "paid",
@@ -2330,7 +2330,7 @@ const SubagentDashboard = () => {
                             <p className="text-xs text-muted-foreground">Total Data</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                            <p className="text-2xl font-bold text-yellow-500">GH₵ {totalCost.toFixed(2)}</p>
+                            <p className="text-2xl font-bold text-yellow-500">GH�� {totalCost.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">Total Cost</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
