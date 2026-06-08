@@ -184,6 +184,8 @@ export default function AFARegistrationFormStandalone() {
       // Call the Supabase edge function to initialize payment
       console.log('[v0] Calling AFA registration edge function...');
       
+      const callbackUrl = typeof window !== 'undefined' ? window.location.href : '';
+      
       const response = await supabase.functions.invoke('AFA-registration', {
         body: {
           fullName: formData.customer_name,
@@ -196,6 +198,7 @@ export default function AFARegistrationFormStandalone() {
           cropProduce: formData.crop,
           agentStoreId: null, // Can be passed from props if needed
           subagentStoreId: null, // Can be passed from props if needed
+          callbackUrl: callbackUrl,
         },
       });
 
