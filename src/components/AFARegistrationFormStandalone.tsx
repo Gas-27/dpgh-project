@@ -89,6 +89,20 @@ export default function AFARegistrationFormStandalone() {
     const { name, value } = e.target;
     let finalValue = value;
 
+    // Auto-format phone number: 0XXX-XXX-XXXX (10 digits max)
+    if (name === 'customer_phone') {
+      const digitsOnly = value.replace(/[^\d]/g, '');
+      if (digitsOnly.length <= 10) {
+        if (digitsOnly.length <= 4) {
+          finalValue = digitsOnly;
+        } else if (digitsOnly.length <= 7) {
+          finalValue = digitsOnly.substring(0, 4) + '-' + digitsOnly.substring(4);
+        } else {
+          finalValue = digitsOnly.substring(0, 4) + '-' + digitsOnly.substring(4, 7) + '-' + digitsOnly.substring(7);
+        }
+      }
+    }
+
     // Auto-format Ghana card number: GHA-XXXXXXXXX-X
     if (name === 'ghana_card') {
       const digitsOnly = value.replace(/[^\d]/g, '');
@@ -125,6 +139,20 @@ export default function AFARegistrationFormStandalone() {
 
       if (!formData.customer_phone.trim()) {
         setError('Phone number is required');
+        setLoading(false);
+        return;
+      }
+
+      // Validate phone number: exactly 10 digits and starts with 0
+      const phoneDigitsOnly = formData.customer_phone.replace(/[^\d]/g, '');
+      if (phoneDigitsOnly.length !== 10) {
+        setError('Phone number must be exactly 10 digits');
+        setLoading(false);
+        return;
+      }
+
+      if (!phoneDigitsOnly.startsWith('0')) {
+        setError('Phone number must start with 0');
         setLoading(false);
         return;
       }
@@ -258,17 +286,20 @@ export default function AFARegistrationFormStandalone() {
 
           {/* Phone Number */}
           <div className="space-y-2">
-            <Label htmlFor="customer_phone">Phone Number *</Label>
+            <Label htmlFor="customer_phone">Phone Number * <span className="text-xs text-muted-foreground">(10 digits, must start with 0)</span></Label>
             <Input
               id="customer_phone"
               name="customer_phone"
               type="tel"
               value={formData.customer_phone}
               onChange={handleChange}
-              placeholder="e.g., 0241234567"
+              placeholder="0XXX-XXX-XXXX"
               disabled={loading}
+              maxLength={14}
               required
             />
+            <p className="text-xs text-muted-foreground">Format: 10 digits starting with 0 (e.g., 0241234567)</p>
+          </div>
           </div>
 
           {/* Ghana Card Number */}

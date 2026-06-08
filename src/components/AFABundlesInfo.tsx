@@ -106,17 +106,17 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
     <div className="space-y-6">
       {/* AFA Info Marketing Section */}
       <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 border-blue-200 dark:border-blue-800">
-        <CardContent className="p-6 space-y-4">
+        <CardContent className="p-4 md:p-6 space-y-4">
           <div>
-            <h3 className="text-xl font-bold text-blue-900 dark:text-blue-100 mb-4">🎉 What is AFA Registration?</h3>
-            <p className="text-blue-800 dark:text-blue-200 mb-4">
+            <h3 className="text-lg md:text-xl font-bold text-blue-900 dark:text-blue-100 mb-3 md:mb-4">🎉 What is AFA Registration?</h3>
+            <p className="text-blue-800 dark:text-blue-200 text-sm md:text-base mb-4 leading-relaxed">
               AFA Registration activates your MTN number for the MTN AFA platform, giving you access to special call and bundle offers not available to regular users. 📱🔥
             </p>
           </div>
 
           <div>
-            <h4 className="font-bold text-blue-900 dark:text-blue-100 mb-3">🎁 What do you get after activation?</h4>
-            <ul className="space-y-2 text-blue-800 dark:text-blue-200 text-sm">
+            <h4 className="font-bold text-blue-900 dark:text-blue-100 mb-2 md:mb-3 text-sm md:text-base">🎁 What do you get after activation?</h4>
+            <ul className="space-y-2 text-blue-800 dark:text-blue-200 text-xs md:text-sm">
               <li className="flex items-center gap-2">
                 <span>✅</span>
                 <span>220 MTN call minutes</span>
@@ -140,13 +140,13 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
             </ul>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-blue-900 dark:text-blue-200">
+          <div className="bg-white dark:bg-slate-900 rounded-lg p-3 md:p-4 border border-blue-200 dark:border-blue-800">
+            <p className="text-xs md:text-sm text-blue-900 dark:text-blue-200">
               💡 <strong>If you make a lot of calls, AFA can help you save money while staying connected to friends, family, customers, and colleagues.</strong>
             </p>
           </div>
 
-          <p className="text-blue-900 dark:text-blue-100 font-semibold">
+          <p className="text-blue-900 dark:text-blue-100 font-semibold text-sm md:text-base">
             🚀 Register once and start enjoying exclusive AFA benefits today!
           </p>
         </CardContent>
@@ -154,14 +154,14 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
 
       {/* MTN AFA Benefits & Offers Section */}
       <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950">
-        <CardContent className="p-6 space-y-6">
-          <h3 className="text-lg font-bold text-green-900 dark:text-green-100">🎉 MTN AFA Benefits & Offers</h3>
-          <p className="text-sm text-green-800 dark:text-green-200">Once your MTN number is registered on AFA, you can enjoy:</p>
+        <CardContent className="p-4 md:p-6 space-y-4 md:space-y-6">
+          <h3 className="text-lg md:text-xl font-bold text-green-900 dark:text-green-100">🎉 MTN AFA Benefits & Offers</h3>
+          <p className="text-xs md:text-sm text-green-800 dark:text-green-200">Once your MTN number is registered on AFA, you can enjoy:</p>
 
           {/* Voice Bundle */}
           <div className="space-y-2">
-            <h4 className="font-semibold text-green-900 dark:text-green-100">📞 Voice Bundle (Most Popular)</h4>
-            <ul className="space-y-1 text-sm text-green-800 dark:text-green-200 ml-4">
+            <h4 className="font-semibold text-green-900 dark:text-green-100 text-sm md:text-base">📞 Voice Bundle (Most Popular)</h4>
+            <ul className="space-y-1 text-xs md:text-sm text-green-800 dark:text-green-200 ml-4">
               <li>• 200 MTN minutes</li>
               <li>• 20 minutes to other networks</li>
               <li>• 1,000 MTN SMS</li>
@@ -172,8 +172,8 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
 
           {/* Voice + Data Bundle */}
           <div className="space-y-2">
-            <h4 className="font-semibold text-green-900 dark:text-green-100">📱 Voice + Data Bundle</h4>
-            <ul className="space-y-1 text-sm text-green-800 dark:text-green-200 ml-4">
+            <h4 className="font-semibold text-green-900 dark:text-green-100 text-sm md:text-base">📱 Voice + Data Bundle</h4>
+            <ul className="space-y-1 text-xs md:text-sm text-green-800 dark:text-green-200 ml-4">
               <li>• 140 MTN minutes</li>
               <li>• 20 minutes to other networks</li>
               <li>• 150MB data</li>
@@ -185,21 +185,21 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
 
           {/* AFA Voice Packages */}
           <div className="space-y-2">
-            <h4 className="font-semibold text-green-900 dark:text-green-100">💰 AFA Voice Packages</h4>
-            <div className="grid grid-cols-2 gap-2 text-sm text-green-800 dark:text-green-200 ml-4">
-              <div>• GH₵6 → 220 minutes</div>
-              <div>• GH₵12 → 440 minutes</div>
-              <div>• GH₵18 → 660 minutes</div>
-              <div>• GH₵24 → 880 minutes</div>
-              <div>• GH₵30 → 1,100 minutes</div>
-              <div>• GH₵36 → 1,320 minutes</div>
+            <h4 className="font-semibold text-green-900 dark:text-green-100 text-sm md:text-base">💰 AFA Voice Packages</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs md:text-sm text-green-800 dark:text-green-200 ml-4">
+              <div>• GH₵6 → 220 min</div>
+              <div>• GH₵12 → 440 min</div>
+              <div>• GH₵18 → 660 min</div>
+              <div>• GH₵24 → 880 min</div>
+              <div>• GH₵30 → 1,100 min</div>
+              <div>• GH₵36 → 1,320 min</div>
             </div>
           </div>
 
           {/* Extra Benefits */}
-          <div className="space-y-2 bg-white dark:bg-slate-900 rounded-lg p-4 border border-green-200 dark:border-green-800">
-            <h4 className="font-semibold text-green-900 dark:text-green-100">🔥 Extra Benefits</h4>
-            <ul className="space-y-1 text-sm text-green-800 dark:text-green-200">
+          <div className="space-y-2 bg-white dark:bg-slate-900 rounded-lg p-3 md:p-4 border border-green-200 dark:border-green-800">
+            <h4 className="font-semibold text-green-900 dark:text-green-100 text-sm md:text-base">🔥 Extra Benefits</h4>
+            <ul className="space-y-1 text-xs md:text-sm text-green-800 dark:text-green-200">
               <li>✅ Free calls between AFA members</li>
               <li>✅ Cheaper voice rates</li>
               <li>✅ Special MTN offers unavailable to regular users</li>
@@ -209,7 +209,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
           </div>
 
           <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-3 border border-blue-300 dark:border-blue-700">
-            <p className="text-sm text-blue-900 dark:text-blue-100 font-semibold">
+            <p className="text-xs md:text-sm text-blue-900 dark:text-blue-100 font-semibold">
               📞 Dial *1848# after registration to access AFA bundles.
             </p>
           </div>
@@ -218,39 +218,39 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
 
       {/* AFA Registration Card - Like Package Cards */}
       <Card className="overflow-hidden border-0 shadow-lg">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white rounded-t-lg">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Zap className="h-6 w-6" />
-              <div>
-                <h3 className="text-xl font-bold">AFA REGISTRATION</h3>
-                <p className="text-blue-100 text-sm">(Both Reg. & Verification)</p>
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 md:p-8 text-white">
+          <div className="flex items-start justify-between mb-4 gap-3">
+            <div className="flex items-start gap-3 flex-1">
+              <Zap className="h-5 w-5 md:h-6 md:w-6 flex-shrink-0 mt-1" />
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg md:text-xl font-bold">AFA REGISTRATION</h3>
+                <p className="text-blue-100 text-xs md:text-sm">(Both Registration & Verification)</p>
               </div>
             </div>
           </div>
           
           <div className="space-y-4">
-            <p className="text-blue-100">
+            <p className="text-blue-100 text-sm md:text-base leading-relaxed">
               Join the Agriculture and Farming Association to access training, market linkages, and exclusive member benefits
             </p>
             
-            <div className="text-center py-4">
-              <p className="text-blue-100 mb-2">Registration Fee</p>
+            <div className="text-center py-4 md:py-6">
+              <p className="text-blue-100 mb-2 text-xs md:text-sm">Registration Fee</p>
               {showAgentPrice && agentBundlePrice ? (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-lg text-blue-100 line-through">₵{registrationFee?.toFixed(2)}</span>
-                    <span className="text-sm text-blue-200">(Base Price)</span>
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <span className="text-base md:text-lg text-blue-100 line-through">₵{registrationFee?.toFixed(2)}</span>
+                    <span className="text-xs md:text-sm text-blue-200">(Base Price)</span>
                   </div>
-                  <p className="text-4xl font-bold">
+                  <p className="text-3xl md:text-4xl font-bold">
                     ₵{agentBundlePrice.toFixed(2)}
                   </p>
-                  <p className="text-sm text-blue-200">
+                  <p className="text-xs md:text-sm text-blue-200">
                     Your markup: ₵{(agentBundlePrice - (registrationFee || 0)).toFixed(2)}
                   </p>
                 </div>
               ) : (
-                <p className="text-4xl font-bold">
+                <p className="text-3xl md:text-4xl font-bold">
                   {loading ? '...' : `₵${registrationFee?.toFixed(2)}`}
                 </p>
               )}
@@ -258,7 +258,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
 
             <Button
               onClick={() => setShowForm(!showForm)}
-              className="w-full bg-white text-blue-600 hover:bg-blue-50 font-semibold py-6 rounded-full"
+              className="w-full bg-white text-blue-600 hover:bg-blue-50 font-semibold py-5 md:py-6 rounded-full text-sm md:text-base"
               size="lg"
             >
               {showForm ? 'Hide Form' : 'Register'}
@@ -268,7 +268,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
 
         {/* Registration Form - Toggleable */}
         {showForm && (
-          <CardContent className="p-6">
+          <CardContent className="p-4 md:p-6 space-y-4">
             <AFARegistrationFormStandalone 
               key="afa-form" 
               registrationFee={agentBundlePrice || registrationFee || 50}
