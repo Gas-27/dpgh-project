@@ -105,7 +105,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
   return (
     <div className="space-y-6 w-full">
       {/* AFA Info Marketing Section */}
-      <Card className="w-full bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 border-blue-200 dark:border-blue-800 rounded-none md:rounded-lg"
+      <Card className="w-full bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 border-blue-200 dark:border-blue-800 rounded-none md:rounded-lg">
         <CardContent className="p-4 md:p-6 space-y-4">
           <div>
             <h3 className="text-lg md:text-xl font-bold text-blue-900 dark:text-blue-100 mb-3 md:mb-4">🎉 What is AFA Registration?</h3>
