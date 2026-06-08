@@ -298,7 +298,7 @@ export default function AFARegistrationFormStandalone() {
                   disabled={loading}
                 >
                   <Calendar className="mr-2 h-4 w-4" />
-                  {selectedDate ? format(selectedDate, 'yyyy/MM/dd') : 'Select date of birth'}
+                  {selectedDate ? format(selectedDate, 'yyyy-MM-dd') : 'Select date of birth'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -310,16 +310,20 @@ export default function AFARegistrationFormStandalone() {
                     if (date) {
                       setFormData((prev) => ({
                         ...prev,
-                        date_of_birth: format(date, 'yyyy/MM/dd'),
+                        date_of_birth: format(date, 'yyyy-MM-dd'),
                       }));
                     }
                   }}
                   disabled={(date) => date > new Date()}
+                  captionLayout="dropdown-buttons"
+                  showOutsideDays={false}
                   initialFocus
+                  fromYear={1930}
+                  toYear={new Date().getFullYear()}
                 />
               </PopoverContent>
             </Popover>
-            <p className="text-xs text-muted-foreground">Click to select your date of birth</p>
+            <p className="text-xs text-muted-foreground">Click to select your date of birth (yyyy-MM-dd)</p>
           </div>
 
           {/* Town */}
