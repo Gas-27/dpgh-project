@@ -116,15 +116,13 @@ export default function AgentAFAPriceManager() {
 
     setSavingBundle(true);
     try {
-      // Upsert on agent_stores table using id as unique key
+      // Update agent store's afa_bundle_price
       const { error } = await supabase
         .from("agent_stores")
-        .upsert({
-          id: agentStore.id,
+        .update({
           afa_bundle_price: agentBundlePrice,
-        }, {
-          onConflict: "id"
-        });
+        })
+        .eq("id", agentStore.id);
 
       if (error) throw error;
 
