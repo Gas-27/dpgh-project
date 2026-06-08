@@ -186,11 +186,15 @@ export default function AFARegistrationFormStandalone() {
       
       const callbackUrl = typeof window !== 'undefined' ? window.location.href : '';
       
+      // Extract clean phone number (digits only) and Ghana card (digits only)
+      const cleanPhoneNumber = formData.customer_phone.replace(/[^\d]/g, '');
+      const cleanGhanaCard = formData.ghana_card.replace(/[^\d]/g, '');
+      
       const response = await supabase.functions.invoke('AFA-registration', {
         body: {
           fullName: formData.customer_name,
-          phoneNumber: formData.customer_phone,
-          idNumber: formData.ghana_card,
+          phoneNumber: cleanPhoneNumber,
+          idNumber: cleanGhanaCard,
           dateOfBirth: formData.date_of_birth,
           town: formData.town,
           occupation: 'Farmer',
@@ -310,12 +314,13 @@ export default function AFARegistrationFormStandalone() {
             <Input
               id="ghana_card"
               name="ghana_card"
+              type="text"
               value={formData.ghana_card}
               onChange={handleChange}
               placeholder="GHA-XXXXXXXXX-X"
               disabled={loading}
               required
-              maxLength={14}
+              maxLength={19}
             />
             <p className="text-xs text-muted-foreground">Format: GHA-XXXXXXXXX-X (auto-formatted as you type)</p>
           </div>
