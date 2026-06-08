@@ -1264,9 +1264,9 @@ const SubagentDashboard = () => {
         network: buyingPkg.network,
         size_gb: buyingPkg.size_gb,
         amount: agentBasePrice,
-        base_price: agentBasePrice,
+        base_price: adminBasePrice,
         selling_price: agentBasePrice,
-        profit: subagentProfit,
+        profit: agentCommission,
         payment_method: "wallet",
         status: "paid",
         fulfillment_status: "pending"
@@ -1282,22 +1282,40 @@ const SubagentDashboard = () => {
       }
       
       // Credit agent commission if applicable
+      console.log(`[v0] Wallet purchase - agentCommission=${agentCommission}, agentBasePrice=${agentBasePrice}, adminBasePrice=${adminBasePrice}`);
+      
       if (agentCommission > 0 && subagentStore.agent_store_id) {
-        const { data: agentStore } = await supabase
-          .from("agent_stores")
-          .select("subagent_commission_balance")
-          .eq("id", subagentStore.agent_store_id)
-          .single();
-        
-        if (agentStore) {
-          const newAgentBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
-          await supabase
+        try {
+          const { data: agentStore, error: agentFetchErr } = await supabase
             .from("agent_stores")
-            .update({ subagent_commission_balance: newAgentBalance })
-            .eq("id", subagentStore.agent_store_id);
+            .select("subagent_commission_balance")
+            .eq("id", subagentStore.agent_store_id)
+            .single();
           
-          console.log(`[v0] Credited agent ${subagentStore.agent_store_id} commission: +${agentCommission}, new balance=${newAgentBalance}`);
+          if (agentFetchErr) {
+            console.error(`[v0] Failed to fetch agent store:`, agentFetchErr);
+          }
+          
+          if (agentStore) {
+            const newAgentBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
+            const { error: updateErr } = await supabase
+              .from("agent_stores")
+              .update({ subagent_commission_balance: newAgentBalance })
+              .eq("id", subagentStore.agent_store_id);
+            
+            if (updateErr) {
+              console.error(`[v0] Failed to update agent commission:`, updateErr);
+            } else {
+              console.log(`[v0] Credited agent ${subagentStore.agent_store_id} commission: +${agentCommission}, new balance=${newAgentBalance}`);
+            }
+          } else {
+            console.warn(`[v0] Agent store not found for ID: ${subagentStore.agent_store_id}`);
+          }
+        } catch (commissionErr) {
+          console.error(`[v0] Error crediting agent commission:`, commissionErr);
         }
+      } else {
+        console.log(`[v0] No agent commission to credit. Commission=${agentCommission}, hasAgentStore=${!!subagentStore.agent_store_id}`);
       }
       
       // Trigger fulfillment for the order
