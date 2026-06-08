@@ -277,6 +277,21 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
         )}
       </Card>
 
+      {/* Registration Approval Timeline */}
+      <Card className="w-full border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 rounded-none md:rounded-lg">
+        <CardContent className="p-4 md:p-6">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">⏱️</div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-amber-900 dark:text-amber-100 text-sm md:text-base mb-2">Registration Approval Timeline</h4>
+              <p className="text-xs md:text-sm text-amber-800 dark:text-amber-200">
+                After successful payment, your AFA registration will be processed and approved by MTN within <strong>24 to 72 hours</strong>. You will receive a confirmation SMS once your registration is activated. Please ensure your phone is reachable during this period.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Registration Form - Outside Card if needed */}
       {showForm && false && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
