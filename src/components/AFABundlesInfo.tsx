@@ -272,6 +272,8 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
             <AFARegistrationFormStandalone 
               key="afa-form" 
               registrationFee={agentBundlePrice || registrationFee || 50}
+              agentStoreId={agentId}
+              agentBundlePrice={agentBundlePrice}
             />
           </CardContent>
         )}

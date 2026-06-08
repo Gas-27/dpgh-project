@@ -14,10 +14,17 @@ import { DayPicker } from 'react-day-picker';
 import { format } from 'date-fns';
 import 'react-day-picker/dist/style.css';
 
-export default function AFARegistrationFormStandalone() {
+export default function AFARegistrationFormStandalone({ 
+  registrationFee = 50,
+  agentStoreId,
+  agentBundlePrice
+}: {
+  registrationFee?: number;
+  agentStoreId?: string;
+  agentBundlePrice?: number;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [registrationFee, setRegistrationFee] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
 
@@ -187,7 +194,7 @@ export default function AFARegistrationFormStandalone() {
           occupation: 'Farmer',
           region: formData.region,
           cropProduce: formData.crop,
-          agentStoreId: null,
+          agentStoreId: agentStoreId || null,
           subagentStoreId: null,
           callbackUrl: callbackUrl,
         },

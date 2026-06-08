@@ -1546,12 +1546,15 @@ const AgentStorefront = () => {
       ) : activeCategory === "afa" ? (
         <div className="w-full pb-20">
           <AFAPackagesDisplay
+            agentStoreId={store?.id}
             onRegisterClick={(packageId, packageName, price) => {
               setPaymentPkg({
                 id: packageId,
                 size_gb: 0,
-                price,
-                network: "mtn"
+                price: store?.afa_bundle_price || price,
+                network: "mtn",
+                callbackUrl: typeof window !== 'undefined' ? window.location.href : '',
+                agentStoreId: store?.id
               });
             }}
             themeColor={primaryColor}
