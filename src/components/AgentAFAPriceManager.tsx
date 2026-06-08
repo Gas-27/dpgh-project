@@ -104,8 +104,8 @@ export default function AgentAFAPriceManager() {
         .eq("agent_store_id", store.id)
         .single();
 
-      if (priceData?.registration_price) {
-        setAgentBundlePrice(priceData.registration_price);
+      if (priceData?.afa_bundle_price) {
+        setAgentBundlePrice(priceData.afa_bundle_price);
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);
@@ -132,7 +132,7 @@ export default function AgentAFAPriceManager() {
     try {
       // Upsert agent AFA registration price
       const { error } = await supabase
-        .from("agent_afa_prices")
+        .from("agent_stores")
         .upsert({
           agent_store_id: agentStore.id,
           registration_price: agentBundlePrice,
