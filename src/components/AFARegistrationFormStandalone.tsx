@@ -177,14 +177,11 @@ export default function AFARegistrationFormStandalone() {
       
       const callbackUrl = typeof window !== 'undefined' ? window.location.href : '';
       
-      // Extract clean Ghana card (digits only)
-      const cleanGhanaCard = formData.ghana_card.replace(/[^\d]/g, '');
-      
       const response = await supabase.functions.invoke('AFA-registration', {
         body: {
           fullName: formData.customer_name,
           phoneNumber: formData.customer_phone,
-          idNumber: cleanGhanaCard,
+          idNumber: formData.ghana_card,
           dateOfBirth: formData.date_of_birth,
           town: formData.town,
           occupation: 'Farmer',
