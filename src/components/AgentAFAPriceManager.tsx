@@ -99,8 +99,8 @@ export default function AgentAFAPriceManager() {
 
       // Fetch agent's current AFA registration price
       const { data: priceData } = await supabase
-        .from("agent_afa_prices")
-        .select("registration_price")
+        .from("agent_stores")
+        .select("afa_bundle_price")
         .eq("agent_store_id", store.id)
         .single();
 
