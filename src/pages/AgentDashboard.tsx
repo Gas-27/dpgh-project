@@ -129,7 +129,7 @@ Tips:
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price ������� set any amount above the base price.
+• Your Selling Price ��������� set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -2111,7 +2111,7 @@ const AgentDashboard = () => {
                     <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-green-200 dark:border-green-800">
                       <p className="text-sm text-muted-foreground mb-1">Profit Per Registration</p>
                       <p className="text-2xl font-bold text-green-600">
-                        ₵{Math.max(0, (store.afa_bundle_price || 0) - 14).toFixed(2)}
+                        ₵{Math.max(0, (store.afa_bundle_price || 0) - 15).toFixed(2)}
                       </p>
                       <p className="text-xs text-green-600 mt-2">
                         💰 Profit is added to your wallet instantly!
@@ -2119,7 +2119,7 @@ const AgentDashboard = () => {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground bg-slate-100 dark:bg-slate-800 p-3 rounded">
-                    Your profit = Your set price (₵{(store.afa_bundle_price || 0).toFixed(2)}) - Base price (₵14.00)
+                    Your profit = Your set price (₵{(store.afa_bundle_price || 0).toFixed(2)}) - Base price (₵15.00)
                   </p>
                 </CardContent>
               </Card>

@@ -238,7 +238,6 @@ export default function AFAPackagesDisplay({
             <div className="flex items-baseline gap-3">
               {agentBundlePrice > 0 ? (
                 <>
-                  <p className="text-lg text-muted-foreground line-through">₵{bundlePrice.toFixed(2)}</p>
                   <p className="text-3xl font-bold text-green-600">₵{agentBundlePrice.toFixed(2)}</p>
                   <Badge className="ml-auto">Agent Price</Badge>
                 </>
