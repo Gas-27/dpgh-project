@@ -71,10 +71,6 @@ export default function SubagentYouTubeSection() {
 
   const embedUrl = youtubeUrl ? `https://www.youtube.com/embed/${extractYouTubeId(youtubeUrl)}` : null;
 
-  if (loading || !embedUrl) {
-    return null;
-  }
-
   return (
     <Card className="w-full">
       <CardHeader>
@@ -84,17 +80,27 @@ export default function SubagentYouTubeSection() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="aspect-video bg-black rounded-lg overflow-hidden">
-          <iframe
-            width="100%"
-            height="100%"
-            src={embedUrl}
-            title="Subagent Training Video"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
+        {loading ? (
+          <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        ) : embedUrl ? (
+          <div className="aspect-video bg-black rounded-lg overflow-hidden">
+            <iframe
+              width="100%"
+              height="100%"
+              src={embedUrl}
+              title="Subagent Training Video"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        ) : (
+          <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+            <p className="text-muted-foreground text-center">No training video available yet. Please check back soon.</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

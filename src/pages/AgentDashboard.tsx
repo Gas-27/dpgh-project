@@ -1351,6 +1351,9 @@ const AgentDashboard = () => {
               )}
             </Card>
             
+            {/* TRAINING VIDEOS */}
+            <AgentYouTubeSection />
+
             {/* Date Filter for Stats */}
             <div className="flex flex-wrap items-center gap-2 bg-card p-3 rounded-lg border border-border">
               <span className="text-sm font-medium">Filter Stats & Orders:</span>
@@ -2188,10 +2191,9 @@ const AgentDashboard = () => {
             )}
             
             <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>
                 <TabsTrigger value="registrations">Bundle Registrations</TabsTrigger>
-                <TabsTrigger value="training">Training</TabsTrigger>
               </TabsList>
 
               <TabsContent value="pricing" className="space-y-6 mt-4">
@@ -2200,10 +2202,6 @@ const AgentDashboard = () => {
 
               <TabsContent value="registrations" className="space-y-6 mt-4">
                 {store && <AgentAFABundleRegistrations agentStoreId={store.id} primaryColor={themeColors?.primaryColor || "#000000"} />}
-              </TabsContent>
-
-              <TabsContent value="training" className="space-y-6 mt-4">
-                <AgentYouTubeSection />
               </TabsContent>
             </Tabs>
           </TabsContent>

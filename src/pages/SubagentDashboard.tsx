@@ -1616,6 +1616,9 @@ const SubagentDashboard = () => {
               )}
             </Card>
 
+            {/* TRAINING VIDEOS */}
+            <SubagentYouTubeSection />
+
             {/* Date Filter for Stats */}
             <div className="flex flex-wrap items-center gap-2 bg-card p-3 rounded-lg border border-border">
               <span className="text-sm font-medium">Filter Stats & Orders:</span>
@@ -2833,11 +2836,6 @@ const SubagentDashboard = () => {
                 topupReference={subagentStore.topup_reference || ""}
               />
             )}
-          </TabsContent>
-
-          {/* TRAINING */}
-          <TabsContent value="training" className="mt-0 space-y-6">
-            <SubagentYouTubeSection />
           </TabsContent>
 
           {/* SETTINGS */}
