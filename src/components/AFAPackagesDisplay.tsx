@@ -104,8 +104,10 @@ export default function AFAPackagesDisplay({
         },
         (payload) => {
           console.log('[v0] Agent store changed, refreshing bundle price:', payload);
-          if (payload.new?.afa_bundle_price) {
-            setAgentBundlePrice(payload.new.afa_bundle_price);
+          if (payload.new && 'afa_bundle_price' in payload.new) {
+            const newPrice = payload.new.afa_bundle_price ?? 0;
+            console.log('[v0] Setting new agent bundle price:', newPrice);
+            setAgentBundlePrice(newPrice);
           }
         }
       )
@@ -115,6 +117,36 @@ export default function AFAPackagesDisplay({
       subscription.unsubscribe();
     };
   }, [agentStoreId]);
+
+  // Subscribe to subagent_stores updates
+  useEffect(() => {
+    if (!subagentStoreId) return;
+
+    const subscription = supabase
+      .channel(`subagent_stores_${subagentStoreId}_afa`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'subagent_stores',
+          filter: `id=eq.${subagentStoreId}`,
+        },
+        (payload) => {
+          console.log('[v0] Subagent store changed, refreshing bundle price:', payload);
+          if (payload.new && 'afa_bundle_price' in payload.new) {
+            const newPrice = payload.new.afa_bundle_price ?? 0;
+            console.log('[v0] Setting new subagent bundle price:', newPrice);
+            setAgentBundlePrice(newPrice);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [subagentStoreId]);
 
   const fetchAFAData = async () => {
     setLoading(true);
@@ -156,7 +188,9 @@ export default function AFAPackagesDisplay({
           .select("afa_bundle_price")
           .eq("id", agentStoreId)
           .single();
-        setAgentBundlePrice(agentData?.afa_bundle_price || adminBundlePrice);
+        const agentPrice = agentData?.afa_bundle_price ?? null;
+        console.log("[v0] Agent AFA bundle price fetched:", { agentStoreId, agentPrice, adminBundlePrice });
+        setAgentBundlePrice(agentPrice !== null ? agentPrice : adminBundlePrice);
 
         const { data: priceData } = await supabase
           .from("agent_afa_prices")
@@ -177,7 +211,9 @@ export default function AFAPackagesDisplay({
           .select("afa_bundle_price")
           .eq("id", subagentStoreId)
           .single();
-        setAgentBundlePrice(subagentData?.afa_bundle_price || adminBundlePrice);
+        const subagentPrice = subagentData?.afa_bundle_price ?? null;
+        console.log("[v0] Subagent AFA bundle price fetched:", { subagentStoreId, subagentPrice, adminBundlePrice });
+        setAgentBundlePrice(subagentPrice !== null ? subagentPrice : adminBundlePrice);
 
         const { data: priceData } = await supabase
           .from("subagent_afa_prices")
