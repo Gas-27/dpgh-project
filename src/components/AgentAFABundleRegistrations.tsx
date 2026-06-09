@@ -39,13 +39,31 @@ export default function AgentAFABundleRegistrations({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegistration, setSelectedRegistration] = useState<AFARegistration | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [agentBundlePrice, setAgentBundlePrice] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
     loadRegistrations();
+    loadAgentPrice();
     const interval = setInterval(loadRegistrations, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, [agentStoreId]);
+
+  const loadAgentPrice = async () => {
+    try {
+      const { data } = await supabase
+        .from('agent_stores')
+        .select('afa_bundle_price')
+        .eq('id', agentStoreId)
+        .single();
+      
+      if (data) {
+        setAgentBundlePrice(data.afa_bundle_price || 0);
+      }
+    } catch (err) {
+      console.error('[v0] Failed to load agent bundle price:', err);
+    }
+  };
 
   const loadRegistrations = async () => {
     try {
@@ -257,6 +275,8 @@ export default function AgentAFABundleRegistrations({
                     <TableHead>Phone</TableHead>
                     <TableHead>Region</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead>Your Price</TableHead>
+                    <TableHead>Profit</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -271,6 +291,8 @@ export default function AgentAFABundleRegistrations({
                       <TableCell className="text-sm">{reg.customer_phone}</TableCell>
                       <TableCell className="text-sm">{reg.region}</TableCell>
                       <TableCell className="text-sm font-medium">GH₵{reg.amount_paid.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm font-medium text-blue-600">GH₵{agentBundlePrice.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm font-bold text-green-600">GH₵{Math.max(0, agentBundlePrice - 15).toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge
                           variant={reg.registration_status === 'completed' ? 'default' : reg.registration_status === 'pending' ? 'secondary' : 'destructive'}

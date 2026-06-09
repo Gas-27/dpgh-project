@@ -2114,7 +2114,7 @@ const AgentDashboard = () => {
                         ₵{Math.max(0, (store.afa_bundle_price || 0) - 15).toFixed(2)}
                       </p>
                       <p className="text-xs text-green-600 mt-2">
-                        💰 Profit is added to your wallet instantly!
+                        Your profit is automatically credited to your wallet when registrations are completed.
                       </p>
                     </div>
                   </div>
