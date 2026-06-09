@@ -129,7 +129,7 @@ Tips:
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price ������������� set any amount above the base price.
+• Your Selling Price ��������������� set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -478,11 +478,15 @@ const AgentDashboard = () => {
   const refetchStoreData = async () => {
     console.log("[v0] Refetching store data after price save");
     const effectiveUserId = impersonatedUserId || user?.id;
-    if (!effectiveUserId) return;
+    if (!effectiveUserId) {
+      console.error("[v0] No user ID available for refetch");
+      return;
+    }
     try {
-      const { data: sd } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
+      const { data: sd, error } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
+      console.log("[v0] Refetch query result:", { userId: effectiveUserId, error, hasData: !!sd, afa_bundle_price: sd?.afa_bundle_price });
       if (sd) {
-        console.log("[v0] Store data refreshed with new afa_bundle_price:", sd.afa_bundle_price);
+        console.log("[v0] Store data refreshed with new afa_bundle_price:", { id: sd.id, afa_bundle_price: sd.afa_bundle_price });
         setStore(sd as AgentStore);
       }
     } catch (err) {

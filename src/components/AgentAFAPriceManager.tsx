@@ -130,9 +130,9 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
           afa_bundle_price: agentBundlePrice,
         })
         .eq("id", agentStore.id)
-        .select("id, afa_bundle_price");
+        .select("id, afa_bundle_price, user_id");
 
-      console.log("[v0] Update response:", { data: updateData, error: updateError });
+      console.log("[v0] Update response:", { data: updateData, error: updateError, storeId: agentStore.id });
       
       if (updateError) {
         console.error("[v0] Update error details:", updateError);
@@ -146,7 +146,15 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
 
       // Use the returned data directly instead of fetching again
       const updatedPrice = updateData[0].afa_bundle_price;
-      console.log("[v0] Price saved successfully:", { newPrice: updatedPrice });
+      console.log("[v0] Price saved successfully:", { newPrice: updatedPrice, storeId: updateData[0].id, userId: updateData[0].user_id });
+      
+      // Immediately verify the write by fetching it back
+      const { data: verifyData } = await supabase
+        .from("agent_stores")
+        .select("id, afa_bundle_price")
+        .eq("id", agentStore.id)
+        .single();
+      console.log("[v0] Verification fetch after update:", { id: verifyData?.id, afa_bundle_price: verifyData?.afa_bundle_price });
       
       if (updatedPrice !== null && updatedPrice !== undefined) {
         setAgentBundlePrice(updatedPrice);
