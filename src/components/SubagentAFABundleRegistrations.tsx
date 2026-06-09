@@ -74,10 +74,10 @@ export default function SubagentAFABundleRegistrations({
   const filteredRegistrations = registrations.filter((reg) => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      reg.customer_name.toLowerCase().includes(searchLower) ||
-      reg.customer_phone.includes(searchTerm) ||
-      reg.ghana_card.includes(searchTerm) ||
-      reg.region.toLowerCase().includes(searchLower)
+      (reg.customer_name?.toLowerCase().includes(searchLower) || false) ||
+      (reg.customer_phone?.includes(searchTerm) || false) ||
+      (reg.ghana_card?.includes(searchTerm) || false) ||
+      (reg.region?.toLowerCase().includes(searchLower) || false)
     );
   });
 
