@@ -79,7 +79,9 @@ export default function AgentAFAPriceManager() {
       }
 
       setAgentStore(store as AgentStore);
-      setAgentBundlePrice(store.afa_bundle_price || 0);
+      const bundlePrice = store.afa_bundle_price || 0;
+      setAgentBundlePrice(bundlePrice);
+      console.log("[v0] Agent store loaded:", { storeId: store.id, afa_bundle_price: bundlePrice });
 
       // Get AFA settings - fetch first row with base_registration_price
       const { data: afaSettings } = await supabase
@@ -115,26 +117,33 @@ export default function AgentAFAPriceManager() {
     if (!agentStore) return;
 
     setSavingBundle(true);
+    console.log("[v0] Saving AFA bundle price:", { agentStoreId: agentStore.id, newPrice: agentBundlePrice });
     try {
       // Update agent store's afa_bundle_price
-      const { error } = await supabase
+      const { data: updateData, error } = await supabase
         .from("agent_stores")
         .update({
           afa_bundle_price: agentBundlePrice,
         })
-        .eq("id", agentStore.id);
+        .eq("id", agentStore.id)
+        .select();
 
+      console.log("[v0] Update response:", { data: updateData, error });
       if (error) throw error;
 
       // Refresh agent store data to confirm the update
-      const { data: updatedStore } = await supabase
+      const { data: updatedStore, error: fetchError } = await supabase
         .from("agent_stores")
         .select("afa_bundle_price")
         .eq("id", agentStore.id)
         .single();
 
+      console.log("[v0] Refresh response:", { data: updatedStore, error: fetchError });
+      
       if (updatedStore) {
-        setAgentBundlePrice(updatedStore.afa_bundle_price || 0);
+        const newPrice = updatedStore.afa_bundle_price || 0;
+        console.log("[v0] Setting new price:", newPrice);
+        setAgentBundlePrice(newPrice);
       }
 
       toast({
@@ -142,7 +151,7 @@ export default function AgentAFAPriceManager() {
         description: `AFA registration price updated to GH₵${agentBundlePrice.toFixed(2)}`,
       });
     } catch (err) {
-      console.error("Error saving bundle price:", err);
+      console.error("[v0] Error saving bundle price:", err);
       toast({
         title: "Error",
         description: "Failed to save AFA registration price",
