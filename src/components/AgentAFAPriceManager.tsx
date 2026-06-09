@@ -60,20 +60,55 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
     fetchData();
   }, []);
 
+  // Subscribe to real-time price updates for current agent only
+  useEffect(() => {
+    if (!agentStore?.id) return;
+
+    console.log("[v0] AgentAFAPriceManager: Setting up real-time subscription for store:", agentStore.id);
+    const subscription = supabase
+      .channel(`agent_stores_${agentStore.id}_price_updates`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'agent_stores',
+          filter: `id=eq.${agentStore.id}`,
+        },
+        (payload) => {
+          console.log("[v0] AgentAFAPriceManager: Store updated via realtime:", { storeId: agentStore.id, payload });
+          if (payload.new && 'afa_bundle_price' in payload.new) {
+            const newPrice = payload.new.afa_bundle_price ?? 0;
+            console.log("[v0] AgentAFAPriceManager: Updating price from realtime:", newPrice);
+            setAgentBundlePrice(newPrice);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("[v0] AgentAFAPriceManager: Subscription status:", status);
+      });
+
+    return () => {
+      console.log("[v0] AgentAFAPriceManager: Unsubscribing from price updates");
+      subscription.unsubscribe();
+    };
+  }, [agentStore?.id]); // Empty dependency - this might cause stale data across different user sessions
+
   const fetchData = async () => {
     setLoading(true);
     try {
       // Get authenticated user
       const { data: authData } = await supabase.auth.getUser();
+      console.log("[v0] AgentAFAPriceManager: Current authenticated user:", authData.user?.id);
       if (!authData.user) {
         toast({ title: "Error", description: "Not authenticated", variant: "destructive" });
         return;
       }
 
-      // Get agent store with afa_bundle_price
+      // Get agent store with afa_bundle_price - scoped to current user only
       const { data: store } = await supabase
         .from("agent_stores")
-        .select("id, store_name, afa_bundle_price")
+        .select("id, store_name, afa_bundle_price, user_id")
         .eq("user_id", authData.user.id)
         .single();
 
@@ -82,10 +117,11 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
         return;
       }
 
+      console.log("[v0] AgentAFAPriceManager: Fetched store for user:", { userId: authData.user.id, storeId: store.id, afa_bundle_price: store.afa_bundle_price });
       setAgentStore(store as AgentStore);
       const bundlePrice = store.afa_bundle_price || 0;
       setAgentBundlePrice(bundlePrice);
-      console.log("[v0] Agent store loaded:", { storeId: store.id, afa_bundle_price: bundlePrice });
+      console.log("[v0] Agent store loaded:", { storeId: store.id, userId: store.user_id, afa_bundle_price: bundlePrice });
 
       // Get AFA settings - fetch first row with base_registration_price
       const { data: afaSettings } = await supabase
