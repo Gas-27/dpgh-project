@@ -476,8 +476,9 @@ const AgentDashboard = () => {
   };
 
   const refetchStoreData = async () => {
-    console.log("[v0] Refetching store data after price save");
+    console.log("[v0] refetchStoreData called");
     const effectiveUserId = impersonatedUserId || user?.id;
+    console.log("[v0] Refetching store data after price save for user:", { effectiveUserId, impersonatedUserId, currentUserId: user?.id });
     if (!effectiveUserId) {
       console.error("[v0] No user ID available for refetch");
       return;
@@ -496,6 +497,7 @@ const AgentDashboard = () => {
 
   const fetchAllData = async () => {
     const effectiveUserId = impersonatedUserId || user?.id;
+    console.log('[v0] fetchAllData called for user:', { effectiveUserId, impersonatedUserId, currentUserId: user?.id });
     if (!effectiveUserId) return;
     const { data: sd, error: se } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
     if (se) { console.error(se); setLoading(false); return; }
@@ -592,11 +594,14 @@ const AgentDashboard = () => {
 
   // Subscribe to real-time changes in agent_stores for bundle price and other updates
   useEffect(() => {
-    if (!store?.id) return;
+    if (!store?.id) {
+      console.log('[v0] No store ID yet, subscription not set up:', store?.id);
+      return;
+    }
 
     console.log('[v0] Setting up realtime subscription for store:', store.id);
     const subscription = supabase
-      .channel(`agent_stores_${store.id}_realtime`)
+      .channel(`agent_stores_${store.id}_dashboard_updates`)
       .on(
         'postgres_changes',
         {
@@ -606,19 +611,19 @@ const AgentDashboard = () => {
           filter: `id=eq.${store.id}`,
         },
         (payload) => {
-          console.log('[v0] Agent store updated via realtime:', payload);
+          console.log('[v0] Agent store updated via realtime for store', store.id, ':', payload);
           if (payload.new) {
-            console.log('[v0] Updating store state with new data:', payload.new);
+            console.log('[v0] Updating store state with new data from realtime:', payload.new);
             setStore(prev => prev ? { ...prev, ...payload.new } : null);
           }
         }
       )
       .subscribe((status, err) => {
-        console.log('[v0] Subscription status:', status, err);
+        console.log('[v0] Subscription status for store', store.id, ':', status, err);
       });
 
     return () => {
-      console.log('[v0] Unsubscribing from realtime channel');
+      console.log('[v0] Unsubscribing from realtime channel for store', store.id);
       subscription.unsubscribe();
     };
   }, [store?.id]);
@@ -663,7 +668,11 @@ const AgentDashboard = () => {
     const subagentIds = subagents.map(s => s.id);
     
     const c1 = supabase.channel("agent-store-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "agent_stores", filter: `id=eq.${store.id}` }, () => fetchAllData())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "agent_stores", filter: `id=eq.${store.id}` }, (payload) => {
+        console.log('[v0] Agent store UPDATE received for store', store.id, 'via channel. Payload:', payload);
+        console.log('[v0] Current authenticated user calling fetchAllData');
+        fetchAllData();
+      })
       .subscribe();
     const c2 = supabase.channel("withdrawal-changes")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "withdrawal_requests", filter: `agent_store_id=eq.${store.id}` }, (p) => {
