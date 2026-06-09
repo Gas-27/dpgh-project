@@ -45,8 +45,12 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
             .single();
           
           console.log("[v0] Agent AFA bundle price:", agentStore);
-          if (agentStore?.afa_bundle_price) {
+          // If agent has set a custom price, use it; otherwise leave as null to fall back to admin fee
+          if (agentStore?.afa_bundle_price !== null && agentStore?.afa_bundle_price !== undefined) {
             setAgentBundlePrice(agentStore.afa_bundle_price);
+          } else {
+            // Agent hasn't set a price, so use null to trigger fallback to admin registration fee
+            setAgentBundlePrice(null);
           }
         }
       } catch (err) {
@@ -95,8 +99,11 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
           },
           (payload) => {
             console.log('[v0] Agent store bundle price updated:', payload);
-            if (payload.new?.afa_bundle_price) {
-              setAgentBundlePrice(payload.new.afa_bundle_price);
+            if (payload.new && 'afa_bundle_price' in payload.new) {
+              // Agent might have updated their price to any value, including null
+              const newPrice = payload.new.afa_bundle_price;
+              console.log('[v0] Setting agent bundle price to:', newPrice);
+              setAgentBundlePrice(newPrice);
             }
           }
         )
