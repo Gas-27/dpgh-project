@@ -32,6 +32,7 @@ import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
+import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
@@ -129,7 +130,7 @@ Tips:
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price ����������������� set any amount above the base price.
+• Your Selling Price ������������������� set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -2187,9 +2188,10 @@ const AgentDashboard = () => {
             )}
             
             <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>
                 <TabsTrigger value="registrations">Bundle Registrations</TabsTrigger>
+                <TabsTrigger value="training">Training</TabsTrigger>
               </TabsList>
 
               <TabsContent value="pricing" className="space-y-6 mt-4">
@@ -2198,6 +2200,10 @@ const AgentDashboard = () => {
 
               <TabsContent value="registrations" className="space-y-6 mt-4">
                 {store && <AgentAFABundleRegistrations agentStoreId={store.id} primaryColor={themeColors?.primaryColor || "#000000"} />}
+              </TabsContent>
+
+              <TabsContent value="training" className="space-y-6 mt-4">
+                <AgentYouTubeSection />
               </TabsContent>
             </Tabs>
           </TabsContent>

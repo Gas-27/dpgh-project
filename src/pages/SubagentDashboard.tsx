@@ -22,6 +22,7 @@ import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
+import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import { DOMAINS } from "@/config/domains";
 
 interface SubagentStore {
@@ -2832,6 +2833,11 @@ const SubagentDashboard = () => {
                 topupReference={subagentStore.topup_reference || ""}
               />
             )}
+          </TabsContent>
+
+          {/* TRAINING */}
+          <TabsContent value="training" className="mt-0 space-y-6">
+            <SubagentYouTubeSection />
           </TabsContent>
 
           {/* SETTINGS */}

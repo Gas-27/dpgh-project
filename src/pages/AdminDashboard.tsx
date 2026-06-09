@@ -15,13 +15,14 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import AdminAFABundleManager from "@/components/AdminAFABundleManager";
+import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import { DOMAINS } from "@/config/domains";
 import {
@@ -1500,6 +1501,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>
             <TabsTrigger value="afa" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> AFA</TabsTrigger>
             <TabsTrigger value="afa_bundles" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> AFA Bundles</TabsTrigger>
+            <TabsTrigger value="afa_youtube" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Play className="h-3 w-3 md:h-4 md:w-4" /> Videos</TabsTrigger>
             <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>
             <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
           </TabsList>
@@ -2622,6 +2624,12 @@ const AdminDashboard = () => {
             {canSee("afa_bundles") && (
               <TabsContent value="afa_bundles" className="space-y-6">
                 <AdminAFABundleManager />
+              </TabsContent>
+            )}
+
+            {canSee("afa_youtube") && (
+              <TabsContent value="afa_youtube" className="space-y-6">
+                <AdminYouTubeUrlManager />
               </TabsContent>
             )}
 
