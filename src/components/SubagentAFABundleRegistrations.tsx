@@ -102,7 +102,7 @@ export default function SubagentAFABundleRegistrations({
       'Region',
       'Crop',
       'Amount Paid',
-      'Status',
+      'Payment Status',
     ];
 
     const rows = filteredRegistrations.map((reg) => [
@@ -231,7 +231,7 @@ export default function SubagentAFABundleRegistrations({
                     <TableHead>Phone</TableHead>
                     <TableHead>Region</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Payment Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>

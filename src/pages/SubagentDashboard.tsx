@@ -1739,7 +1739,7 @@ const SubagentDashboard = () => {
                             <TableHead>Selling Price</TableHead>
                             <TableHead>Base Cost</TableHead>
                             <TableHead>Profit</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Payment Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>

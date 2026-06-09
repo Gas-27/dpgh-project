@@ -120,7 +120,7 @@ export default function AgentAFABundleRegistrations({
       'Region',
       'Crop',
       'Amount Paid',
-      'Status',
+      'Payment Status',
     ];
 
     const rows = filteredRegistrations.map((reg) => [
@@ -277,7 +277,7 @@ export default function AgentAFABundleRegistrations({
                     <TableHead>Amount</TableHead>
                     <TableHead>Your Price</TableHead>
                     <TableHead>Profit</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Payment Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
