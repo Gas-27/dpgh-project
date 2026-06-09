@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
+import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
@@ -1673,6 +1674,7 @@ const AgentStorefront = () => {
         />
       )}
       <PaymentVerifier />
+      <AFARegistrationSuccess />
 
       {/* Report Complaint Dialog */}
       {reportOrder && (

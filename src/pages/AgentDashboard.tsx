@@ -2093,6 +2093,38 @@ const AgentDashboard = () => {
 
           {/* ============================= AFA BUNDLES ============================= */}
           <TabsContent value="afa" className="mt-0 space-y-6">
+            {/* AFA Profit Card */}
+            {store && (
+              <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-blue-600" />
+                    Your AFA Bundle Profit
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p className="text-sm text-muted-foreground mb-1">Your Set Price</p>
+                      <p className="text-2xl font-bold text-blue-600">₵{(store.afa_bundle_price || 0).toFixed(2)}</p>
+                    </div>
+                    <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-sm text-muted-foreground mb-1">Profit Per Registration</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        ₵{Math.max(0, (store.afa_bundle_price || 0) - 14).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-green-600 mt-2">
+                        💰 Profit is added to your wallet instantly!
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground bg-slate-100 dark:bg-slate-800 p-3 rounded">
+                    Your profit = Your set price (₵{(store.afa_bundle_price || 0).toFixed(2)}) - Base price (₵14.00)
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            
             <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>

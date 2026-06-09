@@ -238,15 +238,8 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
               <p className="text-blue-100 mb-2 text-xs md:text-sm">Registration Fee</p>
               {showAgentPrice && agentBundlePrice ? (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
-                    <span className="text-base md:text-lg text-blue-100 line-through">₵{registrationFee?.toFixed(2)}</span>
-                    <span className="text-xs md:text-sm text-blue-200">(Base Price)</span>
-                  </div>
                   <p className="text-3xl md:text-4xl font-bold">
                     ₵{agentBundlePrice.toFixed(2)}
-                  </p>
-                  <p className="text-xs md:text-sm text-blue-200">
-                    Your markup: ₵{(agentBundlePrice - (registrationFee || 0)).toFixed(2)}
                   </p>
                 </div>
               ) : (
