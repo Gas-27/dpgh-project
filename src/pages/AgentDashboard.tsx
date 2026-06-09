@@ -570,6 +570,34 @@ const AgentDashboard = () => {
   };
 
   useEffect(() => { if (user || isImpersonating) fetchAllData(); }, [user, isImpersonating, impersonatedUserId]);
+
+  // Subscribe to real-time changes in agent_stores for bundle price and other updates
+  useEffect(() => {
+    if (!store?.id) return;
+
+    const subscription = supabase
+      .channel(`agent_stores_${store.id}_realtime`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'agent_stores',
+          filter: `id=eq.${store.id}`,
+        },
+        (payload) => {
+          console.log('[v0] Agent store updated via realtime:', payload);
+          if (payload.new) {
+            setStore(prev => prev ? { ...prev, ...payload.new } : null);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [store?.id]);
   
   // Check for pending wallet topup from URL params or sessionStorage
   useEffect(() => {
