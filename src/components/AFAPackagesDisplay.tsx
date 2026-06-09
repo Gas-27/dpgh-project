@@ -138,7 +138,7 @@ export default function AFAPackagesDisplay({
           .select("registration_fee, registration_enabled")
           .single();
         if (afaSettings?.registration_fee) {
-          adminBundlePrice = 15; // Always display 15 cedis as base price
+          adminBundlePrice = afaSettings.registration_fee;
           setBundlePrice(adminBundlePrice);
         }
         if (afaSettings?.registration_enabled !== undefined) {
