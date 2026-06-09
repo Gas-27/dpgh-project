@@ -126,7 +126,17 @@ export default function AgentAFAPriceManager() {
 
       if (error) throw error;
 
-      setAgentBundlePrice(agentBundlePrice);
+      // Refresh agent store data to confirm the update
+      const { data: updatedStore } = await supabase
+        .from("agent_stores")
+        .select("afa_bundle_price")
+        .eq("id", agentStore.id)
+        .single();
+
+      if (updatedStore) {
+        setAgentBundlePrice(updatedStore.afa_bundle_price || 0);
+      }
+
       toast({
         title: "Success",
         description: `AFA registration price updated to GH₵${agentBundlePrice.toFixed(2)}`,
