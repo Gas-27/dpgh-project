@@ -123,31 +123,35 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
     setSavingBundle(true);
     console.log("[v0] Saving AFA bundle price:", { agentStoreId: agentStore.id, newPrice: agentBundlePrice });
     try {
-      // Update agent store's afa_bundle_price
-      const { data: updateData, error } = await supabase
+      // Update agent store's afa_bundle_price with detailed response handling
+      const { data: updateData, error: updateError } = await supabase
         .from("agent_stores")
         .update({
           afa_bundle_price: agentBundlePrice,
         })
         .eq("id", agentStore.id)
-        .select();
+        .select("id, afa_bundle_price");
 
-      console.log("[v0] Update response:", { data: updateData, error });
-      if (error) throw error;
-
-      // Refresh agent store data to confirm the update
-      const { data: updatedStore, error: fetchError } = await supabase
-        .from("agent_stores")
-        .select("afa_bundle_price")
-        .eq("id", agentStore.id)
-        .single();
-
-      console.log("[v0] Refresh response:", { data: updatedStore, error: fetchError });
+      console.log("[v0] Update response:", { data: updateData, error: updateError });
       
-      if (updatedStore) {
-        const newPrice = updatedStore.afa_bundle_price || 0;
-        console.log("[v0] Setting new price:", newPrice);
-        setAgentBundlePrice(newPrice);
+      if (updateError) {
+        console.error("[v0] Update error details:", updateError);
+        throw updateError;
+      }
+
+      if (!updateData || updateData.length === 0) {
+        console.error("[v0] No data returned from update");
+        throw new Error("Failed to update price - no data returned");
+      }
+
+      // Use the returned data directly instead of fetching again
+      const updatedPrice = updateData[0].afa_bundle_price;
+      console.log("[v0] Price saved successfully:", { newPrice: updatedPrice });
+      
+      if (updatedPrice !== null && updatedPrice !== undefined) {
+        setAgentBundlePrice(updatedPrice);
+      } else {
+        console.warn("[v0] Saved price is null, keeping current value:", agentBundlePrice);
       }
 
       toast({
@@ -164,7 +168,7 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
       console.error("[v0] Error saving bundle price:", err);
       toast({
         title: "Error",
-        description: "Failed to save AFA registration price",
+        description: `Failed to save AFA registration price: ${err instanceof Error ? err.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
