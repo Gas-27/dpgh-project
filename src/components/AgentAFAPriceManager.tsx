@@ -59,10 +59,19 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
   // Fetch data when component mounts and whenever authenticated user changes
   useEffect(() => {
     const checkUserAndFetch = async () => {
+      // Get the current user's ID
       const { data: authData } = await supabase.auth.getUser();
-      console.log("[v0] AgentAFAPriceManager: Current user is:", authData.user?.id);
+      const currentUserId = authData.user?.id;
+      
+      if (!currentUserId) {
+        console.error("[v0] AgentAFAPriceManager: No authenticated user found");
+        return;
+      }
+
+      console.log("[v0] AgentAFAPriceManager: Fetching data for authenticated user:", currentUserId);
       fetchData();
     };
+    
     checkUserAndFetch();
   }, []);
 
@@ -167,9 +176,13 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
       if (!updateData || updateData.length === 0) throw new Error("Failed to update price");
 
       const updatedPrice = updateData[0].afa_bundle_price;
-      if (updatedPrice !== null && updatedPrice !== undefined) {
-        setAgentBundlePrice(updatedPrice);
-      }
+      console.log("[v0] Price saved successfully to database:", { storeId: updateData[0].id, newPrice: updatedPrice });
+      
+      // Update local state with the saved value
+      setAgentBundlePrice(updatedPrice || 0);
+      
+      // Update the agent store state with the new price
+      setAgentStore(prev => prev ? { ...prev, afa_bundle_price: updatedPrice } : null);
 
       toast({
         title: "Success",
