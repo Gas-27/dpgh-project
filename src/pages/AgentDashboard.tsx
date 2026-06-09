@@ -129,7 +129,7 @@ Tips:
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price ��������������� set any amount above the base price.
+• Your Selling Price ����������������� set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -476,28 +476,29 @@ const AgentDashboard = () => {
   };
 
   const refetchStoreData = async () => {
-    console.log("[v0] refetchStoreData called");
+    console.log("[v0] refetchStoreData called - fetching fresh store data from database");
     const effectiveUserId = impersonatedUserId || user?.id;
-    console.log("[v0] Refetching store data after price save for user:", { effectiveUserId, impersonatedUserId, currentUserId: user?.id });
     if (!effectiveUserId) {
       console.error("[v0] No user ID available for refetch");
       return;
     }
     try {
       const { data: sd, error } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
-      console.log("[v0] Refetch query result:", { userId: effectiveUserId, error, hasData: !!sd, afa_bundle_price: sd?.afa_bundle_price });
+      if (error) {
+        console.error("[v0] Error refetching store:", error);
+        return;
+      }
       if (sd) {
-        console.log("[v0] Store data refreshed with new afa_bundle_price:", { id: sd.id, afa_bundle_price: sd.afa_bundle_price });
+        console.log("[v0] Store refetched successfully:", { id: sd.id, afa_bundle_price: sd.afa_bundle_price });
         setStore(sd as AgentStore);
       }
     } catch (err) {
-      console.error("[v0] Error refetching store data:", err);
+      console.error("[v0] Exception refetching store:", err);
     }
   };
 
   const fetchAllData = async () => {
     const effectiveUserId = impersonatedUserId || user?.id;
-    console.log('[v0] fetchAllData called for user:', { effectiveUserId, impersonatedUserId, currentUserId: user?.id });
     if (!effectiveUserId) return;
     const { data: sd, error: se } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
     if (se) { console.error(se); setLoading(false); return; }
@@ -668,9 +669,8 @@ const AgentDashboard = () => {
     const subagentIds = subagents.map(s => s.id);
     
     const c1 = supabase.channel("agent-store-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "agent_stores", filter: `id=eq.${store.id}` }, (payload) => {
-        console.log('[v0] Agent store UPDATE received for store', store.id, 'via channel. Payload:', payload);
-        console.log('[v0] Current authenticated user calling fetchAllData');
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "agent_stores", filter: `id=eq.${store.id}` }, () => {
+        console.log('[v0] Agent store UPDATE received via realtime for store:', store.id);
         fetchAllData();
       })
       .subscribe();

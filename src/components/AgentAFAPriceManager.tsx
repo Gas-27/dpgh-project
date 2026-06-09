@@ -56,8 +56,14 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
     sell_price: 0,
   });
 
+  // Fetch data when component mounts and whenever authenticated user changes
   useEffect(() => {
-    fetchData();
+    const checkUserAndFetch = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      console.log("[v0] AgentAFAPriceManager: Current user is:", authData.user?.id);
+      fetchData();
+    };
+    checkUserAndFetch();
   }, []);
 
   // Subscribe to real-time price updates for current agent only
@@ -76,30 +82,24 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
           filter: `id=eq.${agentStore.id}`,
         },
         (payload) => {
-          console.log("[v0] AgentAFAPriceManager: Store updated via realtime:", { storeId: agentStore.id, payload });
           if (payload.new && 'afa_bundle_price' in payload.new) {
             const newPrice = payload.new.afa_bundle_price ?? 0;
-            console.log("[v0] AgentAFAPriceManager: Updating price from realtime:", newPrice);
             setAgentBundlePrice(newPrice);
           }
         }
       )
-      .subscribe((status) => {
-        console.log("[v0] AgentAFAPriceManager: Subscription status:", status);
-      });
+      .subscribe();
 
     return () => {
-      console.log("[v0] AgentAFAPriceManager: Unsubscribing from price updates");
       subscription.unsubscribe();
     };
-  }, [agentStore?.id]); // Empty dependency - this might cause stale data across different user sessions
+  }, [agentStore?.id]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       // Get authenticated user
       const { data: authData } = await supabase.auth.getUser();
-      console.log("[v0] AgentAFAPriceManager: Current authenticated user:", authData.user?.id);
       if (!authData.user) {
         toast({ title: "Error", description: "Not authenticated", variant: "destructive" });
         return;
@@ -117,11 +117,9 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
         return;
       }
 
-      console.log("[v0] AgentAFAPriceManager: Fetched store for user:", { userId: authData.user.id, storeId: store.id, afa_bundle_price: store.afa_bundle_price });
       setAgentStore(store as AgentStore);
       const bundlePrice = store.afa_bundle_price || 0;
       setAgentBundlePrice(bundlePrice);
-      console.log("[v0] Agent store loaded:", { storeId: store.id, userId: store.user_id, afa_bundle_price: bundlePrice });
 
       // Get AFA settings - fetch first row with base_registration_price
       const { data: afaSettings } = await supabase
@@ -157,45 +155,20 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
     if (!agentStore) return;
 
     setSavingBundle(true);
-    console.log("[v0] Saving AFA bundle price:", { agentStoreId: agentStore.id, newPrice: agentBundlePrice });
     try {
-      // Update agent store's afa_bundle_price with detailed response handling
+      // Update agent store's afa_bundle_price
       const { data: updateData, error: updateError } = await supabase
         .from("agent_stores")
-        .update({
-          afa_bundle_price: agentBundlePrice,
-        })
+        .update({ afa_bundle_price: agentBundlePrice })
         .eq("id", agentStore.id)
-        .select("id, afa_bundle_price, user_id");
-
-      console.log("[v0] Update response:", { data: updateData, error: updateError, storeId: agentStore.id });
+        .select("id, afa_bundle_price");
       
-      if (updateError) {
-        console.error("[v0] Update error details:", updateError);
-        throw updateError;
-      }
+      if (updateError) throw updateError;
+      if (!updateData || updateData.length === 0) throw new Error("Failed to update price");
 
-      if (!updateData || updateData.length === 0) {
-        console.error("[v0] No data returned from update");
-        throw new Error("Failed to update price - no data returned");
-      }
-
-      // Use the returned data directly instead of fetching again
       const updatedPrice = updateData[0].afa_bundle_price;
-      console.log("[v0] Price saved successfully:", { newPrice: updatedPrice, storeId: updateData[0].id, userId: updateData[0].user_id });
-      
-      // Immediately verify the write by fetching it back
-      const { data: verifyData } = await supabase
-        .from("agent_stores")
-        .select("id, afa_bundle_price")
-        .eq("id", agentStore.id)
-        .single();
-      console.log("[v0] Verification fetch after update:", { id: verifyData?.id, afa_bundle_price: verifyData?.afa_bundle_price });
-      
       if (updatedPrice !== null && updatedPrice !== undefined) {
         setAgentBundlePrice(updatedPrice);
-      } else {
-        console.warn("[v0] Saved price is null, keeping current value:", agentBundlePrice);
       }
 
       toast({
@@ -205,11 +178,10 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
 
       // Notify parent component to refresh data
       if (onPriceSaved) {
-        console.log("[v0] Calling onPriceSaved callback");
         onPriceSaved();
       }
     } catch (err) {
-      console.error("[v0] Error saving bundle price:", err);
+      console.error("Error saving bundle price:", err);
       toast({
         title: "Error",
         description: `Failed to save AFA registration price: ${err instanceof Error ? err.message : 'Unknown error'}`,
