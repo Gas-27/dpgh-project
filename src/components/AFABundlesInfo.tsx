@@ -60,8 +60,8 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
 
     loadFee();
 
-    // Subscribe to real-time changes
-    const subscription = supabase
+    // Subscribe to real-time changes in afa_settings
+    const afaSettingsSubscription = supabase
       .channel('afa_settings_changes')
       .on(
         'postgres_changes',
@@ -80,8 +80,34 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
       )
       .subscribe();
 
+    // Subscribe to real-time changes in agent_stores for bundle price updates
+    let agentStoresSubscription: any = null;
+    if (agentId && showAgentPrice) {
+      agentStoresSubscription = supabase
+        .channel(`agent_stores_${agentId}_bundle`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'agent_stores',
+            filter: `id=eq.${agentId}`,
+          },
+          (payload) => {
+            console.log('[v0] Agent store bundle price updated:', payload);
+            if (payload.new?.afa_bundle_price) {
+              setAgentBundlePrice(payload.new.afa_bundle_price);
+            }
+          }
+        )
+        .subscribe();
+    }
+
     return () => {
-      subscription.unsubscribe();
+      afaSettingsSubscription.unsubscribe();
+      if (agentStoresSubscription) {
+        agentStoresSubscription.unsubscribe();
+      }
     };
   }, [agentId, showAgentPrice]);
 

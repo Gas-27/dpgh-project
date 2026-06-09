@@ -34,6 +34,62 @@ export default function AFABundleSection({
     loadAFABundlePrice();
   }, [agentStoreId, subagentStoreId]);
 
+  // Subscribe to real-time changes in agent_stores for bundle price updates
+  useEffect(() => {
+    if (!agentStoreId) return;
+
+    const subscription = supabase
+      .channel(`agent_stores_${agentStoreId}_realtime`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'agent_stores',
+          filter: `id=eq.${agentStoreId}`,
+        },
+        (payload) => {
+          console.log('[v0] Agent store updated, refreshing bundle price:', payload);
+          if (payload.new?.afa_bundle_price) {
+            setAgentBundlePrice(payload.new.afa_bundle_price);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [agentStoreId]);
+
+  // Subscribe to real-time changes in subagent_stores for bundle price updates
+  useEffect(() => {
+    if (!subagentStoreId) return;
+
+    const subscription = supabase
+      .channel(`subagent_stores_${subagentStoreId}_realtime`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'subagent_stores',
+          filter: `id=eq.${subagentStoreId}`,
+        },
+        (payload) => {
+          console.log('[v0] Subagent store updated, refreshing bundle price:', payload);
+          if (payload.new?.afa_bundle_price) {
+            setAgentBundlePrice(payload.new.afa_bundle_price);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [subagentStoreId]);
+
   const loadAFABundlePrice = async () => {
     try {
       if (agentStoreId) {
