@@ -92,8 +92,9 @@ export default function AFAPackagesDisplay({
   useEffect(() => {
     if (!agentStoreId) return;
 
+    console.log('[v0] AFAPackagesDisplay: Setting up agent subscription for', agentStoreId);
     const subscription = supabase
-      .channel(`agent_stores_${agentStoreId}`)
+      .channel(`agent_stores_${agentStoreId}_afa_pricing`)
       .on(
         'postgres_changes',
         {
@@ -103,17 +104,20 @@ export default function AFAPackagesDisplay({
           filter: `id=eq.${agentStoreId}`,
         },
         (payload) => {
-          console.log('[v0] Agent store changed, refreshing bundle price:', payload);
+          console.log('[v0] AFAPackagesDisplay: Agent store changed for', agentStoreId, ':', payload);
           if (payload.new && 'afa_bundle_price' in payload.new) {
             const newPrice = payload.new.afa_bundle_price ?? 0;
-            console.log('[v0] Setting new agent bundle price:', newPrice);
+            console.log('[v0] AFAPackagesDisplay: Setting new agent bundle price for', agentStoreId, ':', newPrice);
             setAgentBundlePrice(newPrice);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[v0] AFAPackagesDisplay: Agent subscription status:', status);
+      });
 
     return () => {
+      console.log('[v0] AFAPackagesDisplay: Unsubscribing from agent channel');
       subscription.unsubscribe();
     };
   }, [agentStoreId]);
@@ -122,8 +126,9 @@ export default function AFAPackagesDisplay({
   useEffect(() => {
     if (!subagentStoreId) return;
 
+    console.log('[v0] AFAPackagesDisplay: Setting up subagent subscription for', subagentStoreId);
     const subscription = supabase
-      .channel(`subagent_stores_${subagentStoreId}_afa`)
+      .channel(`subagent_stores_${subagentStoreId}_afa_pricing`)
       .on(
         'postgres_changes',
         {
@@ -133,17 +138,20 @@ export default function AFAPackagesDisplay({
           filter: `id=eq.${subagentStoreId}`,
         },
         (payload) => {
-          console.log('[v0] Subagent store changed, refreshing bundle price:', payload);
+          console.log('[v0] AFAPackagesDisplay: Subagent store changed for', subagentStoreId, ':', payload);
           if (payload.new && 'afa_bundle_price' in payload.new) {
             const newPrice = payload.new.afa_bundle_price ?? 0;
-            console.log('[v0] Setting new subagent bundle price:', newPrice);
+            console.log('[v0] AFAPackagesDisplay: Setting new subagent bundle price for', subagentStoreId, ':', newPrice);
             setAgentBundlePrice(newPrice);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[v0] AFAPackagesDisplay: Subagent subscription status:', status);
+      });
 
     return () => {
+      console.log('[v0] AFAPackagesDisplay: Unsubscribing from subagent channel');
       subscription.unsubscribe();
     };
   }, [subagentStoreId]);
