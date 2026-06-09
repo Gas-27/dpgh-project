@@ -129,7 +129,7 @@ Tips:
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price ����������� set any amount above the base price.
+• Your Selling Price ������������� set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -473,6 +473,21 @@ const AgentDashboard = () => {
     
     // Also store the subagent profit separately for display (from database)
     setSubagentProfitForAgent(storedSubagentCommission);
+  };
+
+  const refetchStoreData = async () => {
+    console.log("[v0] Refetching store data after price save");
+    const effectiveUserId = impersonatedUserId || user?.id;
+    if (!effectiveUserId) return;
+    try {
+      const { data: sd } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
+      if (sd) {
+        console.log("[v0] Store data refreshed with new afa_bundle_price:", sd.afa_bundle_price);
+        setStore(sd as AgentStore);
+      }
+    } catch (err) {
+      console.error("[v0] Error refetching store data:", err);
+    }
   };
 
   const fetchAllData = async () => {
@@ -2165,7 +2180,7 @@ const AgentDashboard = () => {
               </TabsList>
 
               <TabsContent value="pricing" className="space-y-6 mt-4">
-                <AgentAFAPriceManager />
+                <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
               </TabsContent>
 
               <TabsContent value="registrations" className="space-y-6 mt-4">
@@ -2187,7 +2202,7 @@ const AgentDashboard = () => {
           {buyStep === "phone" ? (
             <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`pl-10 ${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus /></div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={() => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } if (!phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { const detected = detectNetwork(buyPhone); toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } setBuyStep("confirm"); }}>Continue</Button></div>
           ) : (
-            <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div><div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠️ You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="wallet"><span className="flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet (GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span></SelectItem><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" />Paystack (+ charges)</span></SelectItem></SelectContent></Select></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
+            <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div><div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠�� You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="wallet"><span className="flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet (GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span></SelectItem><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" />Paystack (+ charges)</span></SelectItem></SelectContent></Select></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
           )}
         </DialogContent>
       </Dialog>

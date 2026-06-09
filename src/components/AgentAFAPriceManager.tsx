@@ -8,8 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+
+interface AgentAFAPriceManagerProps {
+  onPriceSaved?: () => void;
+}
 import { Edit2, Loader2, DollarSign, TrendingUp, AlertCircle, Zap } from "lucide-react";
 
 interface AFAPackage {
@@ -35,7 +38,7 @@ interface AgentAFAPrice {
   package_name?: string;
 }
 
-export default function AgentAFAPriceManager() {
+export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceManagerProps) {
   const [packages, setPackages] = useState<AFAPackage[]>([]);
   const [agentPrices, setAgentPrices] = useState<AgentAFAPrice[]>([]);
   const [agentStore, setAgentStore] = useState<AgentStore | null>(null);
@@ -150,6 +153,12 @@ export default function AgentAFAPriceManager() {
         title: "Success",
         description: `AFA registration price updated to GH₵${agentBundlePrice.toFixed(2)}`,
       });
+
+      // Notify parent component to refresh data
+      if (onPriceSaved) {
+        console.log("[v0] Calling onPriceSaved callback");
+        onPriceSaved();
+      }
     } catch (err) {
       console.error("[v0] Error saving bundle price:", err);
       toast({
