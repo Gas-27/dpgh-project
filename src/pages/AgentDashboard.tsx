@@ -575,6 +575,7 @@ const AgentDashboard = () => {
   useEffect(() => {
     if (!store?.id) return;
 
+    console.log('[v0] Setting up realtime subscription for store:', store.id);
     const subscription = supabase
       .channel(`agent_stores_${store.id}_realtime`)
       .on(
@@ -588,13 +589,17 @@ const AgentDashboard = () => {
         (payload) => {
           console.log('[v0] Agent store updated via realtime:', payload);
           if (payload.new) {
+            console.log('[v0] Updating store state with new data:', payload.new);
             setStore(prev => prev ? { ...prev, ...payload.new } : null);
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log('[v0] Subscription status:', status, err);
+      });
 
     return () => {
+      console.log('[v0] Unsubscribing from realtime channel');
       subscription.unsubscribe();
     };
   }, [store?.id]);
