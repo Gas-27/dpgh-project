@@ -16,6 +16,7 @@ interface Video {
 export default function SubagentYouTubeSection() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
   useEffect(() => {
     fetchYouTubeSettings();
@@ -80,6 +81,7 @@ export default function SubagentYouTubeSection() {
         }
         
         setVideos(fetchedVideos);
+        setCurrentVideoIndex(0);
       }
     } catch (error) {
       console.error('Error fetching videos:', error);
@@ -110,15 +112,12 @@ export default function SubagentYouTubeSection() {
     return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
   };
 
-  const scroll = (direction: 'left' | 'right') => {
-    const container = document.getElementById('subagent-videos-scroll');
-    if (container) {
-      const scrollAmount = 400;
-      container.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-    }
+  const handlePrevious = () => {
+    setCurrentVideoIndex(prev => prev === 0 ? videos.length - 1 : prev - 1);
+  };
+
+  const handleNext = () => {
+    setCurrentVideoIndex(prev => prev === videos.length - 1 ? 0 : prev + 1);
   };
 
   if (loading) {
@@ -143,6 +142,8 @@ export default function SubagentYouTubeSection() {
     );
   }
 
+  const currentVideo = videos[currentVideoIndex];
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -153,65 +154,64 @@ export default function SubagentYouTubeSection() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* Horizontal Scroll Container */}
-          <div className="relative">
+          {/* Video Title */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">{currentVideo.title}</h3>
             {videos.length > 1 && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full p-1"
-                  onClick={() => scroll('left')}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full p-1"
-                  onClick={() => scroll('right')}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </>
+              <span className="text-sm text-muted-foreground">
+                {currentVideoIndex + 1} of {videos.length}
+              </span>
             )}
-
-            <div
-              id="subagent-videos-scroll"
-              className="flex gap-4 overflow-x-auto scroll-smooth pb-4 px-2"
-              style={{ scrollBehavior: 'smooth' }}
-            >
-              {videos.map(video => (
-                <div key={video.id} className="flex-shrink-0 w-full sm:w-96">
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold truncate">{video.title || 'Untitled Video'}</p>
-                    <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                      <iframe
-                        width="100%"
-                        height="100%"
-                        src={getEmbedUrl(video.url) || ''}
-                        title={video.title || 'Training Video'}
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
-          {/* Video Indicators */}
+          {/* Video Player */}
+          <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
+            <iframe
+              width="100%"
+              height="100%"
+              src={getEmbedUrl(currentVideo.url) || ''}
+              title={currentVideo.title}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+
+          {/* Navigation Controls */}
           {videos.length > 1 && (
-            <div className="flex justify-center gap-2 pt-2">
-              {videos.map((_, index) => (
-                <div
-                  key={index}
-                  className="h-2 rounded-full bg-muted"
-                  style={{ width: `${Math.min(100, 8 * videos.length)}px` }}
-                />
-              ))}
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevious}
+                className="flex items-center gap-2"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </Button>
+
+              <div className="flex gap-2 flex-wrap justify-center">
+                {videos.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentVideoIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === currentVideoIndex ? 'bg-primary w-6' : 'bg-muted-foreground'
+                    }`}
+                    aria-label={`Go to video ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNext}
+                className="flex items-center gap-2"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </Button>
             </div>
           )}
         </div>
