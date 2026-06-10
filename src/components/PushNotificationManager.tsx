@@ -36,6 +36,23 @@ export default function PushNotificationManager() {
 
   useEffect(() => {
     fetchData();
+    
+    // Setup realtime listener for new subscriptions
+    const channel = supabase
+      .channel("push_subscriptions_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "push_subscriptions" },
+        () => {
+          console.log("[v0] Push subscriptions changed, refetching...");
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, []);
 
   const fetchData = async () => {
