@@ -303,6 +303,7 @@ const AgentDashboard = () => {
   });
   const [savingStore, setSavingStore] = useState(false);
   const [profitStats, setProfitStats] = useState<ProfitStats>({ totalRevenue: 0, totalCost: 0, totalProfit: 0, availableForWithdrawal: 0 });
+  const [specialMTNPricing, setSpecialMTNPricing] = useState<{ tier1_agent_price: number; tier2_agent_price: number; tier3_agent_price: number; tier4_agent_price: number } | null>(null);
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
@@ -520,7 +521,7 @@ const AgentDashboard = () => {
   momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
   });
 
-      const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR] = await Promise.all([
+      const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR, specialMTNR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
@@ -528,6 +529,7 @@ const AgentDashboard = () => {
         supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
+        supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
       ]);
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
@@ -545,6 +547,24 @@ const AgentDashboard = () => {
       const subPm: Record<string, number> = {};
       (subagentPriceR.data ?? []).forEach((p: any) => { subPm[p.package_id] = p.base_price; });
       setSubagentBasePrices(subPm);
+      
+      // Set Special MTN Mashup pricing
+      if (specialMTNR.data) {
+        setSpecialMTNPricing({
+          tier1_agent_price: specialMTNR.data.tier_1_price || 6.00,
+          tier2_agent_price: specialMTNR.data.tier_2_price || 13.00,
+          tier3_agent_price: specialMTNR.data.tier_3_price || 25.00,
+          tier4_agent_price: specialMTNR.data.tier_4_price || 35.00,
+        });
+      } else {
+        setSpecialMTNPricing({
+          tier1_agent_price: 6.00,
+          tier2_agent_price: 13.00,
+          tier3_agent_price: 25.00,
+          tier4_agent_price: 35.00,
+        });
+      }
+      
       const os = (orderR.data as Order[]) ?? [];
       setOrders(os);
       const wd = (wdR.data as WithdrawalRequest[]) ?? [];
