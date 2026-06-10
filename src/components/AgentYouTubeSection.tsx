@@ -42,11 +42,44 @@ export default function AgentYouTubeSection() {
     try {
       const { data } = await supabase
         .from('afa_settings')
-        .select('agent_videos')
+        .select(`
+          agent_video_1_title, agent_video_1_url,
+          agent_video_2_title, agent_video_2_url,
+          agent_video_3_title, agent_video_3_url
+        `)
         .single();
 
-      if (data?.agent_videos) {
-        setVideos(data.agent_videos as Video[]);
+      if (data) {
+        const fetchedVideos: Video[] = [];
+        
+        if (data.agent_video_1_url) {
+          fetchedVideos.push({
+            id: '1',
+            title: data.agent_video_1_title || 'Video 1',
+            url: data.agent_video_1_url,
+            type: 'agent',
+          });
+        }
+        
+        if (data.agent_video_2_url) {
+          fetchedVideos.push({
+            id: '2',
+            title: data.agent_video_2_title || 'Video 2',
+            url: data.agent_video_2_url,
+            type: 'agent',
+          });
+        }
+        
+        if (data.agent_video_3_url) {
+          fetchedVideos.push({
+            id: '3',
+            title: data.agent_video_3_title || 'Video 3',
+            url: data.agent_video_3_url,
+            type: 'agent',
+          });
+        }
+        
+        setVideos(fetchedVideos);
       }
     } catch (error) {
       console.error('Error fetching videos:', error);

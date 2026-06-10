@@ -5,33 +5,36 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, AlertCircle, Check, Play, Plus, Trash2, Eye } from 'lucide-react';
+import { Loader2, Save, Play, Trash2 } from 'lucide-react';
 
-interface Video {
-  id: string;
+interface VideoSettings {
   title: string;
   url: string;
-  type: 'agent' | 'subagent';
-}
-
-interface YouTubeSettings {
-  agent_videos: Video[];
-  subagent_videos: Video[];
 }
 
 export default function AdminYouTubeUrlManager() {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<YouTubeSettings>({
-    agent_videos: [],
-    subagent_videos: [],
-  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [changed, setChanged] = useState(false);
-  const [previewId, setPreviewId] = useState<string | null>(null);
+  
+  // Agent videos
+  const [agentVideos, setAgentVideos] = useState<VideoSettings[]>([
+    { title: '', url: '' },
+    { title: '', url: '' },
+    { title: '', url: '' },
+  ]);
+
+  // Subagent videos
+  const [subagentVideos, setSubagentVideos] = useState<VideoSettings[]>([
+    { title: '', url: '' },
+    { title: '', url: '' },
+    { title: '', url: '' },
+  ]);
+
+  const [previewingAgent, setPreviewingAgent] = useState<number | null>(null);
+  const [previewingSubagent, setPreviewingSubagent] = useState<number | null>(null);
 
   useEffect(() => {
     fetchYouTubeSettings();
@@ -40,25 +43,70 @@ export default function AdminYouTubeUrlManager() {
   const fetchYouTubeSettings = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('afa_settings')
-        .select('agent_videos, subagent_videos')
+        .select(`
+          agent_video_1_title, agent_video_1_url,
+          agent_video_2_title, agent_video_2_url,
+          agent_video_3_title, agent_video_3_url,
+          subagent_video_1_title, subagent_video_1_url,
+          subagent_video_2_title, subagent_video_2_url,
+          subagent_video_3_title, subagent_video_3_url
+        `)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Fetch error:', error);
-      }
-
       if (data) {
-        setSettings({
-          agent_videos: data.agent_videos || [],
-          subagent_videos: data.subagent_videos || [],
-        });
+        setAgentVideos([
+          { title: data.agent_video_1_title || '', url: data.agent_video_1_url || '' },
+          { title: data.agent_video_2_title || '', url: data.agent_video_2_url || '' },
+          { title: data.agent_video_3_title || '', url: data.agent_video_3_url || '' },
+        ]);
+
+        setSubagentVideos([
+          { title: data.subagent_video_1_title || '', url: data.subagent_video_1_url || '' },
+          { title: data.subagent_video_2_title || '', url: data.subagent_video_2_url || '' },
+          { title: data.subagent_video_3_title || '', url: data.subagent_video_3_url || '' },
+        ]);
       }
     } catch (error) {
       console.error('Error fetching YouTube settings:', error);
+      toast({ title: 'Error', description: 'Failed to load video settings', variant: 'destructive' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updateData: Record<string, string | null> = {
+        agent_video_1_title: agentVideos[0]?.title || null,
+        agent_video_1_url: agentVideos[0]?.url || null,
+        agent_video_2_title: agentVideos[1]?.title || null,
+        agent_video_2_url: agentVideos[1]?.url || null,
+        agent_video_3_title: agentVideos[2]?.title || null,
+        agent_video_3_url: agentVideos[2]?.url || null,
+        subagent_video_1_title: subagentVideos[0]?.title || null,
+        subagent_video_1_url: subagentVideos[0]?.url || null,
+        subagent_video_2_title: subagentVideos[1]?.title || null,
+        subagent_video_2_url: subagentVideos[1]?.url || null,
+        subagent_video_3_title: subagentVideos[2]?.title || null,
+        subagent_video_3_url: subagentVideos[2]?.url || null,
+      };
+
+      const { error } = await supabase
+        .from('afa_settings')
+        .update(updateData)
+        .eq('id', (await supabase.from('afa_settings').select('id').single()).data?.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Success', description: 'Training videos updated successfully' });
+    } catch (error) {
+      console.error('Error saving YouTube settings:', error);
+      toast({ title: 'Error', description: 'Failed to save video settings', variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -68,241 +116,122 @@ export default function AdminYouTubeUrlManager() {
       /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
       /^([a-zA-Z0-9_-]{11})$/,
     ];
-
     for (const pattern of patterns) {
       const match = url.match(pattern);
-      if (match && match[1]) {
-        return match[1];
-      }
+      if (match && match[1]) return match[1];
     }
     return null;
   };
 
-  const getEmbedUrl = (url: string | null): string | null => {
-    if (!url) return null;
+  const getEmbedUrl = (url: string): string | null => {
     const videoId = extractYouTubeId(url);
     return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
   };
 
-  const addVideo = (type: 'agent' | 'subagent') => {
-    const newVideo: Video = {
-      id: Date.now().toString(),
-      title: '',
-      url: '',
-      type,
-    };
-    setSettings(prev => ({
-      ...prev,
-      [type === 'agent' ? 'agent_videos' : 'subagent_videos']: [
-        ...prev[type === 'agent' ? 'agent_videos' : 'subagent_videos'],
-        newVideo,
-      ],
-    }));
-    setChanged(true);
-  };
+  const VideoInput = ({
+    videos,
+    setVideos,
+    title,
+    isAgent,
+  }: {
+    videos: VideoSettings[];
+    setVideos: (v: VideoSettings[]) => void;
+    title: string;
+    isAgent: boolean;
+  }) => (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Play className="w-5 h-5" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {videos.map((video, index) => (
+          <div key={index} className="space-y-4 border-b pb-4 last:border-0">
+            <p className="text-sm font-semibold text-muted-foreground">Video {index + 1}</p>
 
-  const updateVideo = (id: string, type: 'agent' | 'subagent', field: string, value: string) => {
-    const key = type === 'agent' ? 'agent_videos' : 'subagent_videos';
-    setSettings(prev => ({
-      ...prev,
-      [key]: prev[key].map(video =>
-        video.id === id ? { ...video, [field]: value } : video
-      ),
-    }));
-    setChanged(true);
-  };
+            <div className="space-y-2">
+              <Label className="text-sm">Title</Label>
+              <Input
+                placeholder={`Enter video title (optional)`}
+                value={video.title}
+                onChange={(e) => {
+                  const updated = [...videos];
+                  updated[index].title = e.target.value;
+                  setVideos(updated);
+                }}
+              />
+            </div>
 
-  const deleteVideo = (id: string, type: 'agent' | 'subagent') => {
-    const key = type === 'agent' ? 'agent_videos' : 'subagent_videos';
-    setSettings(prev => ({
-      ...prev,
-      [key]: prev[key].filter(video => video.id !== id),
-    }));
-    setChanged(true);
-  };
+            <div className="space-y-2">
+              <Label className="text-sm">YouTube URL</Label>
+              <Input
+                placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                value={video.url}
+                onChange={(e) => {
+                  const updated = [...videos];
+                  updated[index].url = e.target.value;
+                  setVideos(updated);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Supported: Full URL, Short URL, Embed URL, or Video ID
+              </p>
+            </div>
 
-  const saveSettings = async () => {
-    setSaving(true);
-    try {
-      // First get the existing afa_settings record
-      const { data: existingData } = await supabase
-        .from('afa_settings')
-        .select('id')
-        .single();
-
-      if (existingData) {
-        const { error } = await supabase
-          .from('afa_settings')
-          .update({
-            agent_videos: settings.agent_videos,
-            subagent_videos: settings.subagent_videos,
-          })
-          .eq('id', existingData.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('afa_settings')
-          .insert({
-            agent_videos: settings.agent_videos,
-            subagent_videos: settings.subagent_videos,
-          });
-
-        if (error) throw error;
-      }
-
-      setChanged(false);
-      toast({
-        title: 'Success',
-        description: 'YouTube videos updated successfully',
-      });
-    } catch (error) {
-      console.error('Error saving YouTube settings:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save YouTube settings',
-        variant: 'destructive',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
+            {/* Live Preview */}
+            {video.url && getEmbedUrl(video.url) && (
+              <div className="space-y-2">
+                <Label className="text-sm">Preview</Label>
+                <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    src={getEmbedUrl(video.url) || ''}
+                    title={`Preview - ${video.title || 'Video'}`}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin" />
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-6 h-6 animate-spin" />
+      </div>
     );
   }
 
-  const renderVideoList = (videos: Video[], type: 'agent' | 'subagent') => (
-    <div className="space-y-4">
-      {videos.map(video => (
-        <div key={video.id} className="border rounded-lg p-4 space-y-3">
-          <div className="flex justify-between items-start">
-            <div className="flex-1 space-y-3">
-              <div>
-                <Label className="text-xs text-muted-foreground">Video Title</Label>
-                <Input
-                  placeholder="e.g., Getting Started, How to Register, etc."
-                  value={video.title}
-                  onChange={(e) => updateVideo(video.id, type, 'title', e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">YouTube URL</Label>
-                <Input
-                  placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                  value={video.url}
-                  onChange={(e) => updateVideo(video.id, type, 'url', e.target.value)}
-                  className="mt-1 font-mono text-sm"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 ml-2">
-              {video.url && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setPreviewId(previewId === video.id ? null : video.id)}
-                >
-                  <Eye className="w-4 h-4" />
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => deleteVideo(video.id, type)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          {previewId === video.id && video.url && (
-            <div className="mt-4 space-y-2">
-              <p className="text-sm font-medium">Preview:</p>
-              <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={getEmbedUrl(video.url) || ''}
-                  title={video.title || 'YouTube Preview'}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-      <Button
-        onClick={() => addVideo(type)}
-        variant="outline"
-        className="w-full"
-      >
-        <Plus className="w-4 h-4 mr-2" />
-        Add Video
-      </Button>
-    </div>
-  );
-
   return (
     <div className="space-y-6">
-      {/* Agent Videos */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Play className="w-5 h-5" />
-            Agent Training Videos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {renderVideoList(settings.agent_videos, 'agent')}
-        </CardContent>
-      </Card>
-
-      {/* Subagent Videos */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Play className="w-5 h-5" />
-            Subagent Training Videos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {renderVideoList(settings.subagent_videos, 'subagent')}
-        </CardContent>
-      </Card>
-
-      {changed && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            You have unsaved changes. Click Save to apply them.
-          </AlertDescription>
-        </Alert>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <VideoInput videos={agentVideos} setVideos={setAgentVideos} title="Agent Training Videos" isAgent={true} />
+        <VideoInput videos={subagentVideos} setVideos={setSubagentVideos} title="Subagent Training Videos" isAgent={false} />
+      </div>
 
       <Button
-        onClick={saveSettings}
-        disabled={!changed || saving}
-        className="w-full"
+        onClick={handleSave}
+        disabled={saving}
         size="lg"
+        className="w-full"
       >
         {saving ? (
           <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Saving...
           </>
         ) : (
           <>
-            <Save className="w-4 h-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
             Save All Videos
           </>
         )}

@@ -42,11 +42,44 @@ export default function SubagentYouTubeSection() {
     try {
       const { data } = await supabase
         .from('afa_settings')
-        .select('subagent_videos')
+        .select(`
+          subagent_video_1_title, subagent_video_1_url,
+          subagent_video_2_title, subagent_video_2_url,
+          subagent_video_3_title, subagent_video_3_url
+        `)
         .single();
 
-      if (data?.subagent_videos) {
-        setVideos(data.subagent_videos as Video[]);
+      if (data) {
+        const fetchedVideos: Video[] = [];
+        
+        if (data.subagent_video_1_url) {
+          fetchedVideos.push({
+            id: '1',
+            title: data.subagent_video_1_title || 'Video 1',
+            url: data.subagent_video_1_url,
+            type: 'subagent',
+          });
+        }
+        
+        if (data.subagent_video_2_url) {
+          fetchedVideos.push({
+            id: '2',
+            title: data.subagent_video_2_title || 'Video 2',
+            url: data.subagent_video_2_url,
+            type: 'subagent',
+          });
+        }
+        
+        if (data.subagent_video_3_url) {
+          fetchedVideos.push({
+            id: '3',
+            title: data.subagent_video_3_title || 'Video 3',
+            url: data.subagent_video_3_url,
+            type: 'subagent',
+          });
+        }
+        
+        setVideos(fetchedVideos);
       }
     } catch (error) {
       console.error('Error fetching videos:', error);
