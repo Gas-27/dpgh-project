@@ -1174,8 +1174,10 @@ const AdminDashboard = () => {
     try {
       let query = supabase.from("orders").select("*");
       
+      // Only apply filters if they're not "all"
       if (network !== "all") {
-        query = query.eq("network", network.toUpperCase());
+        // Convert to lowercase to match database values
+        query = query.ilike("network", network);
       }
       if (fulfillment !== "all") {
         query = query.eq("fulfillment_status", fulfillment);
@@ -1184,7 +1186,7 @@ const AdminDashboard = () => {
         query = query.eq("status", paymentStatus);
       }
       
-      const { data, error } = await query.order("created_at", { ascending: false });
+      const { data, error } = await query.order("created_at", { ascending: false }).limit(1000);
       
       if (error) {
         console.error("[v0] Error querying orders:", error);
@@ -1192,6 +1194,7 @@ const AdminDashboard = () => {
         return;
       }
       
+      console.log("[v0] Filtered orders from DB:", data?.length || 0, "with filters:", { network, fulfillment, paymentStatus });
       setFilteredOrdersFromDB(data || []);
     } catch (error) {
       console.error("[v0] Error querying orders from DB:", error);
@@ -1594,7 +1597,11 @@ const AdminDashboard = () => {
               <div className="flex gap-2 flex-wrap">
                 <Select value={orderNetworkFilter} onValueChange={(value) => {
                   setOrderNetworkFilter(value);
-                  queryOrdersFromDB(value, orderFulfillmentFilter, orderPaymentStatusFilter);
+                  if (value === "all" && orderFulfillmentFilter === "all" && orderPaymentStatusFilter === "all") {
+                    setFilteredOrdersFromDB([]);
+                  } else {
+                    queryOrdersFromDB(value, orderFulfillmentFilter, orderPaymentStatusFilter);
+                  }
                 }}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Network" /></SelectTrigger>
                   <SelectContent>
@@ -1607,7 +1614,11 @@ const AdminDashboard = () => {
 
                 <Select value={orderFulfillmentFilter} onValueChange={(value) => {
                   setOrderFulfillmentFilter(value);
-                  queryOrdersFromDB(orderNetworkFilter, value, orderPaymentStatusFilter);
+                  if (orderNetworkFilter === "all" && value === "all" && orderPaymentStatusFilter === "all") {
+                    setFilteredOrdersFromDB([]);
+                  } else {
+                    queryOrdersFromDB(orderNetworkFilter, value, orderPaymentStatusFilter);
+                  }
                 }}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Fulfillment" /></SelectTrigger>
                   <SelectContent>
@@ -1620,7 +1631,11 @@ const AdminDashboard = () => {
 
                 <Select value={orderPaymentStatusFilter} onValueChange={(value) => {
                   setOrderPaymentStatusFilter(value);
-                  queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, value);
+                  if (orderNetworkFilter === "all" && orderFulfillmentFilter === "all" && value === "all") {
+                    setFilteredOrdersFromDB([]);
+                  } else {
+                    queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, value);
+                  }
                 }}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Payment" /></SelectTrigger>
                   <SelectContent>
