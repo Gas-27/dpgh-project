@@ -1483,19 +1483,57 @@ const AgentDashboard = () => {
             </Card>)}
             <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}</Button>))}</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {filteredPackages.map(pkg => {
-                const ap = Number(pkg.agent_price);
-                const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - ap) < pendingWithdrawalAmount;
-                return (<Card key={pkg.id} className={`border-border transition-all ${wouldUnderflow ? "opacity-50" : "hover:border-primary/50"}`}>
-                  <CardContent className="p-4 text-center space-y-3"><div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><Wifi className="h-5 w-5 text-primary" /></div><p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p><p className="text-lg font-bold text-primary">GH₵ {ap.toFixed(2)}</p><p className="text-xs text-muted-foreground">Agent Price</p>{wouldUnderflow ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}<Button variant="hero" size="sm" className="w-full" onClick={() => openBuyDialog(pkg)} disabled={wouldUnderflow}>Buy Now</Button></CardContent></Card>);
-              })}
+              {networkFilter === "special" ? (
+                // Special MTN Mashup Packages
+                [
+                  { tier: 1, mins: 125, gb: 0.36, price: specialMTNPricing?.tier1_agent_price || 6.00, label: "125 mins + 0.36GB" },
+                  { tier: 2, mins: 360, gb: 0.87, price: specialMTNPricing?.tier2_agent_price || 13.00, label: "360 mins + 0.87GB" },
+                  { tier: 3, mins: 700, gb: 1.6, price: specialMTNPricing?.tier3_agent_price || 25.00, label: "700 mins + 1.6GB" },
+                  { tier: 4, mins: 1000, gb: 2.6, price: specialMTNPricing?.tier4_agent_price || 35.00, label: "1000 mins + 2.6GB" },
+                ].map((pkg) => {
+                  const price = Number(pkg.price);
+                  const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
+                  return (
+                    <Card key={`special-${pkg.tier}`} className="border-amber-600/50 bg-amber-50/5 hover:border-amber-500/50 transition-all">
+                      <CardContent className="p-4 text-center space-y-3">
+                        <div className="h-10 w-10 rounded-full bg-amber-600/20 flex items-center justify-center mx-auto">
+                          <Zap className="h-5 w-5 text-amber-500" />
+                        </div>
+                        <div>
+                          <p className="font-display text-xs text-amber-500 uppercase tracking-wide mb-1">Special Mashup</p>
+                          <p className="font-display text-lg font-bold text-foreground">{pkg.label}</p>
+                        </div>
+                        <p className="text-lg font-bold text-amber-500">GH₵ {price.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">Agent Price</p>
+                        {wouldUnderflow ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}
+                        <Button variant="hero" size="sm" className="w-full bg-amber-600 hover:bg-amber-700" onClick={() => openBuyDialog({
+                          id: `special-mtn-${pkg.tier}`,
+                          network: "special-mtn",
+                          size_gb: pkg.gb,
+                          agent_price: price,
+                          price: price,
+                          data_type: "minutes_data"
+                        } as any)} disabled={wouldUnderflow}>Buy Now</Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              ) : (
+                // Regular Network Packages
+                filteredPackages.map(pkg => {
+                  const ap = Number(pkg.agent_price);
+                  const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - ap) < pendingWithdrawalAmount;
+                  return (<Card key={pkg.id} className={`border-border transition-all ${wouldUnderflow ? "opacity-50" : "hover:border-primary/50"}`}>
+                    <CardContent className="p-4 text-center space-y-3"><div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><Wifi className="h-5 w-5 text-primary" /></div><p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p><p className="text-lg font-bold text-primary">GH₵ {ap.toFixed(2)}</p><p className="text-xs text-muted-foreground">Agent Price</p>{wouldUnderflow ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}<Button variant="hero" size="sm" className="w-full" onClick={() => openBuyDialog(pkg)} disabled={wouldUnderflow}>Buy Now</Button></CardContent></Card>);
+                })
+              )}
             </div>
           </TabsContent>
 
           {/* ============================= STORE PRICES ============================= */}
           <TabsContent value="store" className="space-y-4 mt-0">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}</Button>))}</div>
+            <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel", "special"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}</Button>))}</div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Markup:</span>
                 <Input type="number" placeholder="+10" value={markupPercent} onChange={e => setMarkupPercent(e.target.value)} className="w-20 h-8 text-sm" />
@@ -2222,11 +2260,21 @@ const AgentDashboard = () => {
 
       <Dialog open={buyDialogOpen} onOpenChange={v => !v && setBuyDialogOpen(false)}>
         <DialogContent className="sm:max-w-md border-border bg-card">
-          <DialogHeader><DialogTitle className="font-display text-xl">Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</DialogTitle><DialogDescription>Purchase data at agent price</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy Special MTN Mashup (${buyPkg?.size_gb}GB)` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
           {buyStep === "phone" ? (
             <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`pl-10 ${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus /></div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={() => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } if (!phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { const detected = detectNetwork(buyPhone); toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } setBuyStep("confirm"); }}>Continue</Button></div>
           ) : (
-            <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div><div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠�� You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="wallet"><span className="flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet (GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span></SelectItem><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" />Paystack (+ charges)</span></SelectItem></SelectContent></Select></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
+            <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">{buyPkg?.network === "special-mtn" ? (
+              <>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold text-amber-500">Special MTN Mashup</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Details</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPhone}</span></div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>
+              </>
+            )}<div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠�� You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="wallet"><span className="flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet (GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span></SelectItem><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" />Paystack (+ charges)</span></SelectItem></SelectContent></Select></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
           )}
         </DialogContent>
       </Dialog>
