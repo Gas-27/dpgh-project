@@ -43,7 +43,7 @@ export default function AdminYouTubeUrlManager() {
   const fetchYouTubeSettings = async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('afa_settings')
         .select(`
           agent_video_1_title, agent_video_1_url,
@@ -53,19 +53,26 @@ export default function AdminYouTubeUrlManager() {
           subagent_video_2_title, subagent_video_2_url,
           subagent_video_3_title, subagent_video_3_url
         `)
-        .single();
+        .limit(1);
 
-      if (data) {
+      if (error) {
+        console.error('Error fetching YouTube settings:', error);
+        toast({ title: 'Error', description: 'Failed to load video settings', variant: 'destructive' });
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const record = data[0];
         setAgentVideos([
-          { title: data.agent_video_1_title || '', url: data.agent_video_1_url || '' },
-          { title: data.agent_video_2_title || '', url: data.agent_video_2_url || '' },
-          { title: data.agent_video_3_title || '', url: data.agent_video_3_url || '' },
+          { title: record.agent_video_1_title || '', url: record.agent_video_1_url || '' },
+          { title: record.agent_video_2_title || '', url: record.agent_video_2_url || '' },
+          { title: record.agent_video_3_title || '', url: record.agent_video_3_url || '' },
         ]);
 
         setSubagentVideos([
-          { title: data.subagent_video_1_title || '', url: data.subagent_video_1_url || '' },
-          { title: data.subagent_video_2_title || '', url: data.subagent_video_2_url || '' },
-          { title: data.subagent_video_3_title || '', url: data.subagent_video_3_url || '' },
+          { title: record.subagent_video_1_title || '', url: record.subagent_video_1_url || '' },
+          { title: record.subagent_video_2_title || '', url: record.subagent_video_2_url || '' },
+          { title: record.subagent_video_3_title || '', url: record.subagent_video_3_url || '' },
         ]);
       }
     } catch (error) {
@@ -79,6 +86,19 @@ export default function AdminYouTubeUrlManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // First, get the afa_settings ID
+      const { data: settingsData, error: idError } = await supabase
+        .from('afa_settings')
+        .select('id')
+        .limit(1);
+
+      if (idError || !settingsData || settingsData.length === 0) {
+        toast({ title: 'Error', description: 'AFA settings not found', variant: 'destructive' });
+        return;
+      }
+
+      const settingsId = settingsData[0].id;
+
       const updateData: Record<string, string | null> = {
         agent_video_1_title: agentVideos[0]?.title || null,
         agent_video_1_url: agentVideos[0]?.url || null,
@@ -97,7 +117,7 @@ export default function AdminYouTubeUrlManager() {
       const { error } = await supabase
         .from('afa_settings')
         .update(updateData)
-        .eq('id', (await supabase.from('afa_settings').select('id').single()).data?.id);
+        .eq('id', settingsId);
 
       if (error) throw error;
 

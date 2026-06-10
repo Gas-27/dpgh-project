@@ -182,7 +182,7 @@ export default function SubagentYouTubeSection() {
               style={{ scrollBehavior: 'smooth' }}
             >
               {videos.map(video => (
-                <div key={video.id} className="flex-shrink-0 w-96">
+                <div key={video.id} className="flex-shrink-0 w-full sm:w-96">
                   <div className="space-y-2">
                     <p className="text-sm font-semibold truncate">{video.title || 'Untitled Video'}</p>
                     <div className="aspect-video bg-black rounded-lg overflow-hidden">
