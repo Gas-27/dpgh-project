@@ -802,22 +802,43 @@ const AgentStorefront = () => {
 
   useEffect(() => { if (store?.id) fetchNotifications(); }, [store?.id, fetchNotifications]);
 
-  // Fetch Special MTN Mashup pricing
+  // Fetch Special MTN Mashup pricing (agent-specific with fallback to admin)
   useEffect(() => {
     const fetchSpecialMTNPricing = async () => {
       try {
-        const { data } = await supabase
-          .from("afa_settings")
-          .select("special_mtn_mashup_1_agent_price, special_mtn_mashup_2_agent_price, special_mtn_mashup_3_agent_price, special_mtn_mashup_4_agent_price")
+        const { data: user } = await supabase.auth.getUser();
+        if (!user?.user?.id) return;
+
+        // Try to get agent-specific pricing first
+        const { data: agentPricing } = await supabase
+          .from("agent_special_mtn_mashup_pricing")
+          .select("tier_1_price, tier_2_price, tier_3_price, tier_4_price")
+          .eq("agent_id", user.user.id)
           .single();
-        
-        if (data) {
+
+        if (agentPricing && (agentPricing.tier_1_price || agentPricing.tier_2_price || agentPricing.tier_3_price || agentPricing.tier_4_price)) {
+          // Use agent-specific pricing
           setSpecialMTNPricing({
-            tier1_agent_price: data.special_mtn_mashup_1_agent_price || 6.00,
-            tier2_agent_price: data.special_mtn_mashup_2_agent_price || 13.00,
-            tier3_agent_price: data.special_mtn_mashup_3_agent_price || 25.00,
-            tier4_agent_price: data.special_mtn_mashup_4_agent_price || 35.00,
+            tier1_agent_price: agentPricing.tier_1_price || 6.00,
+            tier2_agent_price: agentPricing.tier_2_price || 13.00,
+            tier3_agent_price: agentPricing.tier_3_price || 25.00,
+            tier4_agent_price: agentPricing.tier_4_price || 35.00,
           });
+        } else {
+          // Fallback to admin pricing
+          const { data: adminSettings } = await supabase
+            .from("afa_settings")
+            .select("special_mtn_mashup_1_agent_price, special_mtn_mashup_2_agent_price, special_mtn_mashup_3_agent_price, special_mtn_mashup_4_agent_price")
+            .single();
+          
+          if (adminSettings) {
+            setSpecialMTNPricing({
+              tier1_agent_price: adminSettings.special_mtn_mashup_1_agent_price || 6.00,
+              tier2_agent_price: adminSettings.special_mtn_mashup_2_agent_price || 13.00,
+              tier3_agent_price: adminSettings.special_mtn_mashup_3_agent_price || 25.00,
+              tier4_agent_price: adminSettings.special_mtn_mashup_4_agent_price || 35.00,
+            });
+          }
         }
       } catch (error) {
         console.error("[v0] Error fetching Special MTN pricing:", error);
