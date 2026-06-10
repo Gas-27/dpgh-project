@@ -26,11 +26,12 @@ export function useDatabaseSearch<T>(
     setError(null);
 
     try {
-      // Use ilike for case-insensitive search
+      // Use ilike for case-insensitive search, sorted by created_at descending (newest first)
       const { data, error: searchError } = await supabase
         .from(table)
         .select(selectColumns)
         .ilike(searchColumn, `%${query}%`)
+        .order('created_at', { ascending: false })
         .limit(100);
 
       if (searchError) {
