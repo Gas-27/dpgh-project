@@ -88,6 +88,16 @@ export default function SpecialMTNMashupPricingManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Fetch the actual ID from afa_settings first
+      const { data: settingsData } = await supabase
+        .from('afa_settings')
+        .select('id')
+        .single();
+
+      if (!settingsData?.id) {
+        throw new Error('Settings record not found');
+      }
+
       const { error } = await supabase
         .from('afa_settings')
         .update({
@@ -104,7 +114,7 @@ export default function SpecialMTNMashupPricingManager() {
           special_mtn_mashup_4_agent_price: parseFloat(pricing.tier4_agent_price),
           special_mtn_mashup_4_enabled: pricing.tier4_enabled,
         })
-        .eq('id', '1');
+        .eq('id', settingsData.id);
 
       if (error) throw error;
       toast({ title: 'Success', description: 'Special MTN Mashup pricing saved' });

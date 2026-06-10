@@ -1,104 +1,147 @@
-# Critical Fixes Applied - June 2, 2026
+# Special MTN Mashup - Bug Fixes & Issues
 
-## Issues Fixed
+## Issue 1: Admin Dashboard - UUID Validation Error ✅ FIXED IN CODE
 
-### 1. Browser Crash - `net::ERR_INSUFFICIENT_RESOURCES`
-**Root Cause:** Realtime subscriptions were triggering full data refreshes multiple times per second, overwhelming the browser with simultaneous Supabase queries.
+**Error**: "Invalid input syntax for type uuid: "1""
 
-**Solution:**
-- Disabled realtime subscriptions on Admin Dashboard
-- Simplified `refreshData()` to only load packages and app settings (not all data)
-- Removed auto-retry loop that was polling every 30 seconds
-- Reduced initial page load from 8 parallel queries to 2 queries
+**Root Cause**: Component used hardcoded string `'1'` instead of fetching the actual UUID from afa_settings table.
 
-**Impact:** 
-- Page now loads instantly
-- Browser stays responsive
-- No more resource exhaustion errors
-- 10x performance improvement
+**Fix Applied**: Updated `SpecialMTNMashupPricingManager.tsx` to fetch the real settings ID before saving.
 
-### 2. 406 Not Acceptable Error on `admin_permissions`
-**Root Cause:** Query was using incorrect SELECT syntax.
+**File Changed**: `/src/components/SpecialMTNMashupPricingManager.tsx` (lines 88-117)
 
-**Solution:** Removed malformed permission queries during optimization.
+**Status**: ✅ Code fix deployed, build verified
 
-**Impact:** All API queries now use valid Supabase syntax.
+---
 
-## Architecture Changes
+## Issue 2: Agent Dashboard - Permission Denied ⏳ REQUIRES SQL FIX
 
-### Before (Problematic)
+**Error**: "permission denied for table users"
+
+**Root Cause**: RLS policy checks `auth.users.raw_user_meta_data->>'role'` which requires querying auth.users table. Agents can't access this table, causing policy check to fail.
+
+**SQL Fix Required** - Run in Supabase SQL Editor:
+
+```sql
+-- Drop existing policy
+DROP POLICY IF EXISTS "agents_own_special_mtn_pricing" ON agent_special_mtn_mashup_pricing;
+
+-- Agent policy - only their own data
+CREATE POLICY "agents_own_special_mtn_pricing" ON agent_special_mtn_mashup_pricing
+  FOR ALL
+  USING (auth.uid() = agent_id)
+  WITH CHECK (auth.uid() = agent_id);
+
+-- Admin policy - manage all agent pricing
+CREATE POLICY "admins_can_manage_all_agent_pricing" ON agent_special_mtn_mashup_pricing
+  FOR ALL
+  USING (
+    EXISTS(
+      SELECT 1 FROM auth.users 
+      WHERE auth.users.id = auth.uid() 
+      AND auth.users.raw_user_meta_data->>'role' = 'admin'
+    )
+  );
 ```
-Page Load → Fetch data for 8 tables
-           → Subscribe to realtime updates
-           → On every change: fetch counts + all data again
-           → Every 30 seconds: retry pending orders
-Result: 50-100 queries per second flooding browser
+
+**Why This Works**: 
+- First policy uses simple comparison (no table query needed)
+- Second policy only runs for admin checks
+- Agents get immediate access, admins get override access
+
+**Status**: ⏳ Awaiting SQL execution
+
+---
+
+## Issue 3: Minimum Price Enforcement ✅ IMPLEMENTED
+
+**Implementation**: Added validation to prevent agents from setting prices below admin base prices.
+
+**Features Added**:
+1. **Pre-save validation**: Checks all 4 tiers before allowing save
+2. **User-friendly errors**: Shows minimum price for each tier that's too low
+3. **Visual feedback**: Input borders turn red when price is below minimum
+4. **Inline hints**: Displays minimum price requirement below input
+
+**How It Works**:
+- Agent sets a price lower than admin base → Input border turns red
+- Agent tries to save → Toast notification shows specific minimum price
+- Save is blocked until all prices meet minimum requirements
+- Clear messaging helps agents understand pricing constraints
+
+**File Modified**: `/src/components/AgentSpecialMTNPricingManager.tsx`
+
+**Status**: ✅ Code implemented and tested, build verified
+
+---
+
+## Summary of All Fixes
+
+| Issue | Status | Action |
+|-------|--------|--------|
+| Admin UUID validation error | ✅ Fixed in code | Test Admin Dashboard save |
+| Agent permission denied (RLS) | ⏳ Requires SQL | Run SQL fix in Supabase |
+| Agent minimum price enforcement | ✅ Implemented | Agents now see red border + error when price too low |
+
+---
+
+## What Changed
+
+### Admin Component - SpecialMTNMashupPricingManager.tsx
+- ✅ Fetches real UUID from afa_settings before saving
+- ✅ No more hardcoded '1' string ID
+
+### Agent Component - AgentSpecialMTNPricingManager.tsx
+- ✅ Added price validation before save
+- ✅ Checks all 4 tiers against admin base prices
+- ✅ Red border on input if price too low
+- ✅ Helpful error message shows minimum
+- ✅ Toast notification prevents invalid saves
+
+---
+
+## Your Action Items
+
+### Step 1: Run SQL Fix (CRITICAL)
+Copy and run in Supabase > SQL Editor:
+
+```sql
+DROP POLICY IF EXISTS "agents_own_special_mtn_pricing" ON agent_special_mtn_mashup_pricing;
+
+CREATE POLICY "agents_own_special_mtn_pricing" ON agent_special_mtn_mashup_pricing
+  FOR ALL
+  USING (auth.uid() = agent_id)
+  WITH CHECK (auth.uid() = agent_id);
+
+CREATE POLICY "admins_can_manage_all_agent_pricing" ON agent_special_mtn_mashup_pricing
+  FOR ALL
+  USING (
+    EXISTS(
+      SELECT 1 FROM auth.users 
+      WHERE auth.users.id = auth.uid() 
+      AND auth.users.raw_user_meta_data->>'role' = 'admin'
+    )
+  );
 ```
 
-### After (Optimized)
-```
-Page Load → Load ONLY packages + app settings (2 queries)
-           ↓
-User clicks tab → Load that tab's data on-demand (lazy loading)
-           ↓
-No background refreshes - vastly reduced database load
-Result: <5 queries on initial load, <20 on full interaction
-```
+### Step 2: Test
+1. **Admin Dashboard**: Go to Prices tab → Special MTN Mashup → Change a price → Click Save
+   - Should work now (no UUID error)
 
-## What's Still Working
+2. **Agent Dashboard**: Go to Store Prices → Special Packages → Set prices → Click Save
+   - Should work now (no permission error)
+   - Try setting a price below admin base (e.g., 5 instead of 6)
+   - Should show red border + error preventing save
 
-- Admin Dashboard loads instantly
-- All tabs available and functional
-- Data loads when you click each tab (lazy loading)
-- Search bars query database directly
-- AFA registration form with all improvements
-- Agent and Subagent dashboards functional
+### Step 3: Verify
+- Admin pricing saves successfully
+- Agent pricing saves successfully  
+- Agent cannot save prices below admin minimum
+- Visual feedback shows when prices are too low
 
-## What Changed in Code
+---
 
-### AdminDashboard.tsx
-1. `refreshData()` - Now only loads packages and app settings
-2. Removed `useOptimizedRealtime()` hook (commented out)
-3. Removed auto-retry pending orders interval
-4. Kept lazy loading (`handleTabChange`) intact
+## Build Status
+✅ All code changes compiled successfully
+✅ Ready for testing once SQL fix is applied
 
-### No Changes Needed
-- AgentDashboard.tsx - Minimal impact from its refresh interval
-- SubagentDashboard.tsx - Minimal impact from its refresh interval
-- All other pages working normally
-
-## Performance Metrics
-
-| Metric | Before | After |
-|--------|--------|-------|
-| Initial Page Load | 2-5 seconds | <500ms |
-| Database Queries/sec | 50-100 | <1 |
-| Browser Memory | Increasing | Stable |
-| CPU Usage | High | Low |
-| ERR_INSUFFICIENT_RESOURCES | Constant | None |
-
-## Testing Checklist
-
-- [x] Admin Dashboard loads without errors
-- [x] Can click and view Withdrawals tab
-- [x] Can click and view Orders tab
-- [x] Can click and view Agents tab
-- [x] Search bars work (database search)
-- [x] AFA registration form works
-- [x] No console errors about ERR_INSUFFICIENT_RESOURCES
-- [x] Page stays responsive
-- [x] Build succeeds
-
-## Deployment Status
-
-✅ All fixes committed to `subagent-system-build` branch
-✅ Ready for production deployment
-✅ Vercel preview will auto-rebuild
-
-## Next Steps
-
-If you still experience issues:
-1. Hard refresh browser (Ctrl+Shift+R)
-2. Clear cache if needed
-3. Check browser DevTools console for errors
-4. Contact support if issues persist

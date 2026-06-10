@@ -116,6 +116,45 @@ export default function AgentSpecialMTNPricingManager() {
       return;
     }
 
+    // Validate prices are not below admin base prices
+    const tier1Price = parseFloat(agentPricing.tier1_price);
+    const tier2Price = parseFloat(agentPricing.tier2_price);
+    const tier3Price = parseFloat(agentPricing.tier3_price);
+    const tier4Price = parseFloat(agentPricing.tier4_price);
+
+    if (tier1Price < adminBasePrices.tier1) {
+      toast({
+        title: 'Price Too Low',
+        description: `Tier 1 price cannot be below admin base (GH₵ ${adminBasePrices.tier1.toFixed(2)})`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (tier2Price < adminBasePrices.tier2) {
+      toast({
+        title: 'Price Too Low',
+        description: `Tier 2 price cannot be below admin base (GH₵ ${adminBasePrices.tier2.toFixed(2)})`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (tier3Price < adminBasePrices.tier3) {
+      toast({
+        title: 'Price Too Low',
+        description: `Tier 3 price cannot be below admin base (GH₵ ${adminBasePrices.tier3.toFixed(2)})`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (tier4Price < adminBasePrices.tier4) {
+      toast({
+        title: 'Price Too Low',
+        description: `Tier 4 price cannot be below admin base (GH₵ ${adminBasePrices.tier4.toFixed(2)})`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       // Check if agent has existing pricing
@@ -130,10 +169,10 @@ export default function AgentSpecialMTNPricingManager() {
         const { error } = await supabase
           .from('agent_special_mtn_mashup_pricing')
           .update({
-            tier_1_price: parseFloat(agentPricing.tier1_price),
-            tier_2_price: parseFloat(agentPricing.tier2_price),
-            tier_3_price: parseFloat(agentPricing.tier3_price),
-            tier_4_price: parseFloat(agentPricing.tier4_price),
+            tier_1_price: tier1Price,
+            tier_2_price: tier2Price,
+            tier_3_price: tier3Price,
+            tier_4_price: tier4Price,
             updated_at: new Date().toISOString(),
           })
           .eq('agent_id', userId);
@@ -145,16 +184,16 @@ export default function AgentSpecialMTNPricingManager() {
           .from('agent_special_mtn_mashup_pricing')
           .insert({
             agent_id: userId,
-            tier_1_price: parseFloat(agentPricing.tier1_price),
-            tier_2_price: parseFloat(agentPricing.tier2_price),
-            tier_3_price: parseFloat(agentPricing.tier3_price),
-            tier_4_price: parseFloat(agentPricing.tier4_price),
+            tier_1_price: tier1Price,
+            tier_2_price: tier2Price,
+            tier_3_price: tier3Price,
+            tier_4_price: tier4Price,
           });
 
         if (error) throw error;
       }
 
-      toast({ title: 'Special MTN Mashup pricing saved!' });
+      toast({ title: 'Success!', description: 'Special MTN Mashup pricing saved!' });
     } catch (error: any) {
       console.error('[v0] Error saving prices:', error);
       toast({
@@ -200,7 +239,11 @@ export default function AgentSpecialMTNPricingManager() {
                 step="0.01"
                 value={agentPricing.tier1_price}
                 onChange={(e) => setAgentPricing({ ...agentPricing, tier1_price: e.target.value })}
+                className={parseFloat(agentPricing.tier1_price) < adminBasePrices.tier1 ? 'border-red-500' : ''}
               />
+              {parseFloat(agentPricing.tier1_price) < adminBasePrices.tier1 && (
+                <p className="text-xs text-red-500">Minimum price: GH₵ {adminBasePrices.tier1.toFixed(2)}</p>
+              )}
             </div>
           </div>
 
@@ -217,7 +260,11 @@ export default function AgentSpecialMTNPricingManager() {
                 step="0.01"
                 value={agentPricing.tier2_price}
                 onChange={(e) => setAgentPricing({ ...agentPricing, tier2_price: e.target.value })}
+                className={parseFloat(agentPricing.tier2_price) < adminBasePrices.tier2 ? 'border-red-500' : ''}
               />
+              {parseFloat(agentPricing.tier2_price) < adminBasePrices.tier2 && (
+                <p className="text-xs text-red-500">Minimum price: GH₵ {adminBasePrices.tier2.toFixed(2)}</p>
+              )}
             </div>
           </div>
 
@@ -234,7 +281,11 @@ export default function AgentSpecialMTNPricingManager() {
                 step="0.01"
                 value={agentPricing.tier3_price}
                 onChange={(e) => setAgentPricing({ ...agentPricing, tier3_price: e.target.value })}
+                className={parseFloat(agentPricing.tier3_price) < adminBasePrices.tier3 ? 'border-red-500' : ''}
               />
+              {parseFloat(agentPricing.tier3_price) < adminBasePrices.tier3 && (
+                <p className="text-xs text-red-500">Minimum price: GH₵ {adminBasePrices.tier3.toFixed(2)}</p>
+              )}
             </div>
           </div>
 
@@ -251,7 +302,11 @@ export default function AgentSpecialMTNPricingManager() {
                 step="0.01"
                 value={agentPricing.tier4_price}
                 onChange={(e) => setAgentPricing({ ...agentPricing, tier4_price: e.target.value })}
+                className={parseFloat(agentPricing.tier4_price) < adminBasePrices.tier4 ? 'border-red-500' : ''}
               />
+              {parseFloat(agentPricing.tier4_price) < adminBasePrices.tier4 && (
+                <p className="text-xs text-red-500">Minimum price: GH₵ {adminBasePrices.tier4.toFixed(2)}</p>
+              )}
             </div>
           </div>
         </div>
