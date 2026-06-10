@@ -36,11 +36,12 @@ export default async function handler(req, res) {
       VAPID_PRIVATE_KEY
     );
 
-    // Get all subscriptions from database
+    // Get all subscriptions from database - explicitly set high limit to get all
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { data: subscriptions, error: fetchError } = await supabase
       .from("push_subscriptions")
-      .select("*");
+      .select("*")
+      .limit(10000);
 
     if (fetchError) {
       console.error("Error fetching subscriptions:", fetchError);
@@ -50,6 +51,8 @@ export default async function handler(req, res) {
     if (!subscriptions || subscriptions.length === 0) {
       return res.status(200).json({ success: true, sent: 0, message: "No subscribers found" });
     }
+
+    console.log(`[v0] Sending notifications to ${subscriptions.length} subscribers`);
 
     const payload = JSON.stringify({
       title,
