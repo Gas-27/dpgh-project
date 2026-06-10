@@ -40,11 +40,12 @@ export default function PushNotificationManager() {
 
   const fetchData = async () => {
     try {
-      // Fetch push subscriptions - no limit to get all subscribers
+      // Fetch push subscriptions - explicitly set high limit to get all subscribers
       const { data: subs, error: subsError } = await supabase
         .from("push_subscriptions")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(10000);
       
       if (subsError) {
         console.error("[v0] Error fetching subscriptions:", subsError);
