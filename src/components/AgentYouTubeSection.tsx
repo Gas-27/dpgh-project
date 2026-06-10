@@ -175,8 +175,8 @@ export default function AgentYouTubeSection() {
             )}
           </div>
 
-          {/* Video Player - Increased Size */}
-          <div className="w-full bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '16 / 9', minHeight: '500px' }}>
+          {/* Video Player - Responsive Size */}
+          <div className="w-full bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '16 / 9', minHeight: 'clamp(250px, 50vw, 500px)' }}>
             <iframe
               width="100%"
               height="100%"
