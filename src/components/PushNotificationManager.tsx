@@ -40,13 +40,20 @@ export default function PushNotificationManager() {
 
   const fetchData = async () => {
     try {
-      // Fetch push subscriptions
-      const { data: subs } = await supabase
+      // Fetch push subscriptions - no limit to get all subscribers
+      const { data: subs, error: subsError } = await supabase
         .from("push_subscriptions")
         .select("*")
         .order("created_at", { ascending: false });
       
-      if (subs) setSubscriptions(subs);
+      if (subsError) {
+        console.error("[v0] Error fetching subscriptions:", subsError);
+      }
+      
+      if (subs) {
+        console.log("[v0] Fetched", subs.length, "PWA subscribers");
+        setSubscriptions(subs);
+      }
 
       // Fetch sent notifications
       const { data: notifs } = await supabase
@@ -57,7 +64,7 @@ export default function PushNotificationManager() {
       
       if (notifs) setSentNotifications(notifs);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("[v0] Error fetching data:", error);
     } finally {
       setLoading(false);
     }
