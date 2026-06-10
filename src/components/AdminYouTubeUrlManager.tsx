@@ -43,6 +43,7 @@ export default function AdminYouTubeUrlManager() {
   const fetchYouTubeSettings = async () => {
     setLoading(true);
     try {
+      console.log('[v0] Fetching YouTube settings from afa_settings');
       const { data, error } = await supabase
         .from('afa_settings')
         .select(`
@@ -56,12 +57,13 @@ export default function AdminYouTubeUrlManager() {
         .limit(1);
 
       if (error) {
-        console.error('Error fetching YouTube settings:', error);
+        console.error('[v0] Error fetching YouTube settings:', error);
         toast({ title: 'Error', description: 'Failed to load video settings', variant: 'destructive' });
         return;
       }
 
       if (data && data.length > 0) {
+        console.log('[v0] YouTube settings loaded:', data[0]);
         const record = data[0];
         setAgentVideos([
           { title: record.agent_video_1_title || '', url: record.agent_video_1_url || '' },
@@ -74,9 +76,11 @@ export default function AdminYouTubeUrlManager() {
           { title: record.subagent_video_2_title || '', url: record.subagent_video_2_url || '' },
           { title: record.subagent_video_3_title || '', url: record.subagent_video_3_url || '' },
         ]);
+      } else {
+        console.log('[v0] No afa_settings records found');
       }
     } catch (error) {
-      console.error('Error fetching YouTube settings:', error);
+      console.error('[v0] Error fetching YouTube settings:', error);
       toast({ title: 'Error', description: 'Failed to load video settings', variant: 'destructive' });
     } finally {
       setLoading(false);

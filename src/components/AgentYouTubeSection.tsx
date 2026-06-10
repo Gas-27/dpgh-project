@@ -20,23 +20,34 @@ export default function AgentYouTubeSection() {
 
   useEffect(() => {
     fetchYouTubeSettings();
-    setupRealtimeListener();
-  }, []);
 
-  const setupRealtimeListener = () => {
-    const subscription = supabase
-      .channel('afa_settings_agent_youtube')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'afa_settings' },
-        () => fetchYouTubeSettings()
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
+    // Setup realtime listener
+    let subscription: any;
+    const setupListener = async () => {
+      subscription = supabase
+        .channel(`afa_settings_agent_youtube_${Date.now()}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'afa_settings' },
+          () => {
+            console.log('[v0] Detected YouTube settings update');
+            fetchYouTubeSettings();
+          }
+        )
+        .subscribe((status: string) => {
+          console.log('[v0] Realtime subscription status:', status);
+        });
     };
-  };
+
+    setupListener();
+
+    // Cleanup on unmount
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, []);
 
   const fetchYouTubeSettings = async () => {
     setLoading(true);
@@ -153,7 +164,7 @@ export default function AgentYouTubeSection() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Video Title */}
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">{currentVideo.title}</h3>
@@ -164,8 +175,8 @@ export default function AgentYouTubeSection() {
             )}
           </div>
 
-          {/* Video Player */}
-          <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
+          {/* Video Player - Increased Size */}
+          <div className="w-full bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '16 / 9', minHeight: '500px' }}>
             <iframe
               width="100%"
               height="100%"
@@ -174,6 +185,7 @@ export default function AgentYouTubeSection() {
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
+              style={{ display: 'block' }}
             />
           </div>
 
