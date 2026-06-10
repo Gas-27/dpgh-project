@@ -24,6 +24,7 @@ import PushNotificationManager from "@/components/PushNotificationManager";
 import AdminAFABundleManager from "@/components/AdminAFABundleManager";
 import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
+import SpecialMTNMashupPricingManager from "@/components/SpecialMTNMashupPricingManager";
 import { DOMAINS } from "@/config/domains";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
@@ -1655,6 +1656,9 @@ const AdminDashboard = () => {
                   </TableBody>
                 </Table>
               </Card>
+
+              {/* Special MTN Mashup Pricing Manager */}
+              <SpecialMTNMashupPricingManager />
             </TabsContent>
           )}
 
