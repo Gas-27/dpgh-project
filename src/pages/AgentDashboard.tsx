@@ -34,6 +34,7 @@ import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import ComplaintsManager from "@/components/ComplaintsManager";
+import AgentSpecialMTNPricingManager from "@/components/AgentSpecialMTNPricingManager";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
 } from "@/components/ui/sheet";
@@ -1509,6 +1510,12 @@ const AgentDashboard = () => {
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
             <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
               <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = cur - pkg.agent_price; return (<TableRow key={pkg.id}><TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
+            
+            {/* Special MTN Mashup Pricing Manager */}
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold mb-4">Special Packages</h3>
+              <AgentSpecialMTNPricingManager />
+            </div>
           </TabsContent>
 
           {/* ============================= FLYER GENERATOR ============================= */}

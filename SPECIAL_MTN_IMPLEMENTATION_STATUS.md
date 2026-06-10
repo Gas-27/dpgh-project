@@ -19,65 +19,39 @@
    - Real-time fetch from afa_settings
    - Save with proper error handling and toasts
 
-### Component Structure
-```
-SpecialMTNMashupPricingManager.tsx (199 lines)
-├── State management for pricing and enabled flags
-├── Supabase queries (fetch and update)
-├── 4 Tier display with enable/disable
-├── User and Agent Base Price inputs
-└── Save button with loading state
-```
+---
+
+## ✅ Phase 2: Agent Pricing Management - COMPLETE
+
+### What Was Done
+1. **Created New Component**: `AgentSpecialMTNPricingManager.tsx` (272 lines)
+   - Displays admin base prices for reference
+   - Allows agents to set custom prices per tier
+   - Full Supabase integration with agent_special_mtn_mashup_pricing table
+   - RLS policies ensure data privacy
+
+2. **Integrated into Agent Dashboard**
+   - Added to "Store Prices" tab (line 1513)
+   - Positioned after regular data packages pricing
+   - Labeled "Special Packages" section
+   - Seamless integration with existing agent pricing UI
+
+3. **Features**
+   - Shows admin base price for each tier (informational)
+   - Input fields for agent's custom pricing
+   - Automatic fallback to admin prices if agent hasn't customized
+   - Create or update pricing based on existing records
+   - Real-time fetch and save with proper error handling
+
+4. **Database Integration**
+   - ✅ SQL schema applied successfully (screenshots confirmed)
+   - ✅ agent_special_mtn_mashup_pricing table created
+   - ✅ RLS policies configured
+   - ✅ Index created for performance
 
 ---
 
-## 🔴 REQUIRED: Run This SQL in Supabase
-
-Copy and run this in your Supabase SQL Editor before proceeding:
-
-```sql
--- Add enable/disable columns
-ALTER TABLE afa_settings
-ADD COLUMN IF NOT EXISTS special_mtn_mashup_1_enabled BOOLEAN DEFAULT true,
-ADD COLUMN IF NOT EXISTS special_mtn_mashup_2_enabled BOOLEAN DEFAULT true,
-ADD COLUMN IF NOT EXISTS special_mtn_mashup_3_enabled BOOLEAN DEFAULT true,
-ADD COLUMN IF NOT EXISTS special_mtn_mashup_4_enabled BOOLEAN DEFAULT true;
-
--- Create agent pricing table
-CREATE TABLE IF NOT EXISTS agent_special_mtn_mashup_pricing (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  agent_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  tier_1_price DECIMAL(10, 2),
-  tier_2_price DECIMAL(10, 2),
-  tier_3_price DECIMAL(10, 2),
-  tier_4_price DECIMAL(10, 2),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(agent_id)
-);
-
--- Enable RLS
-ALTER TABLE agent_special_mtn_mashup_pricing ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy
-CREATE POLICY "agents_own_special_mtn_pricing" ON agent_special_mtn_mashup_pricing
-  FOR ALL
-  USING (auth.uid() = agent_id OR EXISTS(SELECT 1 FROM auth.users WHERE id = auth.uid() AND raw_user_meta_data->>'role' = 'admin'));
-
--- Index for performance
-CREATE INDEX IF NOT EXISTS idx_agent_special_mtn_agent_id ON agent_special_mtn_mashup_pricing(agent_id);
-```
-
----
-
-## 📋 Next Steps (Phase 2 & Beyond)
-
-### Phase 2: Agent Pricing Management
-**Task**: Create component for agents to set their own Special MTN Mashup pricing
-- [ ] Create `AgentSpecialMTNPricingManager.tsx` component
-- [ ] Add to Agent Dashboard
-- [ ] Allow agents to view admin base prices and set markup
-- [ ] Store in `agent_special_mtn_mashup_pricing` table
+## 📋 Remaining Phases (Phase 3 & 4)
 
 ### Phase 3: Packages Page Integration  
 **Task**: Display Special MTN Mashup on user-facing packages page
@@ -85,12 +59,14 @@ CREATE INDEX IF NOT EXISTS idx_agent_special_mtn_agent_id ON agent_special_mtn_m
 - [ ] Display 4 amber/golden cards with tier specs
 - [ ] Show user prices from `afa_settings`
 - [ ] Implement BUY NOW functionality
+- [ ] Only show enabled tiers
 
 ### Phase 4: Agent Storefront Integration
 **Task**: Display Special MTN Mashup on agent storefronts
 - [ ] Add "Special MTN Mashup" button to AgentStorefront
 - [ ] Display 4 amber/golden cards
-- [ ] Use agent-specific prices (from agent table or admin defaults)
+- [ ] Use agent-specific prices (from agent_special_mtn_mashup_pricing table)
+- [ ] Fallback to admin prices if agent hasn't customized
 - [ ] Implement BUY NOW functionality
 
 ---
@@ -120,13 +96,15 @@ All tiers are fixed and pre-defined:
 ## 📁 Files Modified/Created
 
 ### Created
-- ✅ `/src/components/SpecialMTNMashupPricingManager.tsx` (199 lines)
+- ✅ `/src/components/SpecialMTNMashupPricingManager.tsx` (199 lines) - Admin pricing manager
+- ✅ `/src/components/AgentSpecialMTNPricingManager.tsx` (272 lines) - Agent pricing customizer
 
 ### Modified  
 - ✅ `/src/pages/AdminDashboard.tsx` (added import and component usage in Prices tab)
+- ✅ `/src/pages/AgentDashboard.tsx` (added import and component usage in Store tab)
 
-### To Be Created
-- 🔄 `/src/components/AgentSpecialMTNPricingManager.tsx`
+### To Be Created (Phase 3 & 4)
+- 🔄 `/src/components/SpecialMTNMashupDisplay.tsx` - Display component for packages/storefront
 - 🔄 Updates to `PackagesPage.tsx`
 - 🔄 Updates to `AgentStorefront.tsx`
 
@@ -136,22 +114,27 @@ All tiers are fixed and pre-defined:
 
 ✅ Clean component-based architecture  
 ✅ Proper Supabase integration with RLS  
-✅ Enable/disable per tier  
-✅ Separate user and agent pricing  
+✅ Enable/disable per tier (admin)  
+✅ Agent custom pricing system  
+✅ Admin base price reference display  
+✅ Automatic price fallback logic  
 ✅ Real-time data fetching and syncing  
 ✅ Error handling and user feedback  
-✅ Consistent with existing admin UI patterns  
+✅ Consistent with existing UI patterns  
 ✅ Full type safety with TypeScript  
 
 ---
 
-## 🚀 Deployment Ready
+## 🚀 Current Status
 
-The current implementation is:
-- ✅ Built and tested
-- ✅ No console errors
-- ✅ Proper error handling
-- ✅ RLS policies in place
-- ⏳ Waiting for: SQL schema to be applied in Supabase
+- ✅ Database schema created and applied
+- ✅ Admin pricing manager implemented
+- ✅ Agent pricing manager implemented  
+- ✅ Both components built and tested
+- ✅ Both integrated into dashboards
+- ⏳ Ready for Phase 3: Packages display implementation
 
-**Next**: Run the SQL above, then proceed with Phase 2!
+**Build Status**: Succeeds with zero errors
+
+**Next Step**: Create Phase 3 display component for Packages and Agent Storefront pages
+
