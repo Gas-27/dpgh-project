@@ -239,6 +239,19 @@ const AdminDashboard = () => {
   });
   const [freeDataSaving, setFreeDataSaving] = useState(false);
 
+  // Special MTN Mashup Pricing
+  const [specialMTNPricing, setSpecialMTNPricing] = useState({
+    tier1_user_price: "6.00",
+    tier1_agent_price: "6.00",
+    tier2_user_price: "13.00",
+    tier2_agent_price: "13.00",
+    tier3_user_price: "25.00",
+    tier3_agent_price: "25.00",
+    tier4_user_price: "35.00",
+    tier4_agent_price: "35.00",
+  });
+  const [savingSpecialMTN, setSavingSpecialMTN] = useState(false);
+
   // ======================== Data fetching (initial) ========================
   const fetchData = async () => {
     setDataLoading(true);
@@ -557,6 +570,66 @@ const AdminDashboard = () => {
     setFreeDataSaving(false);
   };
   
+  // Save special MTN mashup pricing
+  const saveSpecialMTNPricing = async () => {
+    setSavingSpecialMTN(true);
+    try {
+      const { error } = await supabase
+        .from("afa_settings")
+        .update({
+          special_mtn_mashup_1_user_price: parseFloat(specialMTNPricing.tier1_user_price),
+          special_mtn_mashup_1_agent_price: parseFloat(specialMTNPricing.tier1_agent_price),
+          special_mtn_mashup_2_user_price: parseFloat(specialMTNPricing.tier2_user_price),
+          special_mtn_mashup_2_agent_price: parseFloat(specialMTNPricing.tier2_agent_price),
+          special_mtn_mashup_3_user_price: parseFloat(specialMTNPricing.tier3_user_price),
+          special_mtn_mashup_3_agent_price: parseFloat(specialMTNPricing.tier3_agent_price),
+          special_mtn_mashup_4_user_price: parseFloat(specialMTNPricing.tier4_user_price),
+          special_mtn_mashup_4_agent_price: parseFloat(specialMTNPricing.tier4_agent_price),
+        })
+        .eq("id", "1");
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({ title: "Special MTN Mashup pricing saved!" });
+    } catch (error: any) {
+      console.error("[v0] Error saving Special MTN pricing:", error);
+      toast({ 
+        title: "Error", 
+        description: error?.message || "Failed to save pricing",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingSpecialMTN(false);
+    }
+  };
+
+  // Fetch special MTN mashup pricing
+  const fetchSpecialMTNPricing = async () => {
+    try {
+      const { data } = await supabase
+        .from("afa_settings")
+        .select("special_mtn_mashup_1_user_price, special_mtn_mashup_1_agent_price, special_mtn_mashup_2_user_price, special_mtn_mashup_2_agent_price, special_mtn_mashup_3_user_price, special_mtn_mashup_3_agent_price, special_mtn_mashup_4_user_price, special_mtn_mashup_4_agent_price")
+        .single();
+      
+      if (data) {
+        setSpecialMTNPricing({
+          tier1_user_price: String(data.special_mtn_mashup_1_user_price || "6.00"),
+          tier1_agent_price: String(data.special_mtn_mashup_1_agent_price || "6.00"),
+          tier2_user_price: String(data.special_mtn_mashup_2_user_price || "13.00"),
+          tier2_agent_price: String(data.special_mtn_mashup_2_agent_price || "13.00"),
+          tier3_user_price: String(data.special_mtn_mashup_3_user_price || "25.00"),
+          tier3_agent_price: String(data.special_mtn_mashup_3_agent_price || "25.00"),
+          tier4_user_price: String(data.special_mtn_mashup_4_user_price || "35.00"),
+          tier4_agent_price: String(data.special_mtn_mashup_4_agent_price || "35.00"),
+        });
+      }
+    } catch (error) {
+      console.error("[v0] Error fetching Special MTN pricing:", error);
+    }
+  };
+  
   // Fetch notifications
   const fetchNotifications = async () => {
     const { data } = await supabase
@@ -824,6 +897,7 @@ const AdminDashboard = () => {
     fetchData();
     fetchSpinConfig();
     fetchNotifications();
+    fetchSpecialMTNPricing();
     if (currentUser?.id) {
       fetchCurrentUserPermissions(currentUser.id);
     }
@@ -2721,6 +2795,130 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* AFA Registration Fee section removed - moved to dedicated AFA tab */}
+
+                    {/* Special MTN Mashup Pricing */}
+                    <Card className="border-border bg-yellow-50/5 border-yellow-500/30">
+                      <CardHeader>
+                        <CardTitle className="font-display text-lg flex items-center gap-2">
+                          <span className="text-xl">⚡</span> Special MTN Mashup Pricing
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">Set pricing for the 4 Special MTN Mashup packages</p>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Tier 1: 125 mins + 0.36GB */}
+                        <div className="border p-4 rounded-lg space-y-4">
+                          <div className="font-semibold text-amber-600">Tier 1: 125 mins + 0.36GB</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>User Price (GH₵)</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                value={specialMTNPricing.tier1_user_price}
+                                onChange={(e) => setSpecialMTNPricing({...specialMTNPricing, tier1_user_price: e.target.value})}
+                                placeholder="6.00"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Agent Price (GH₵)</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                value={specialMTNPricing.tier1_agent_price}
+                                onChange={(e) => setSpecialMTNPricing({...specialMTNPricing, tier1_agent_price: e.target.value})}
+                                placeholder="6.00"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tier 2: 360 mins + 0.87GB */}
+                        <div className="border p-4 rounded-lg space-y-4">
+                          <div className="font-semibold text-amber-600">Tier 2: 360 mins + 0.87GB</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>User Price (GH₵)</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                value={specialMTNPricing.tier2_user_price}
+                                onChange={(e) => setSpecialMTNPricing({...specialMTNPricing, tier2_user_price: e.target.value})}
+                                placeholder="13.00"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Agent Price (GH₵)</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                value={specialMTNPricing.tier2_agent_price}
+                                onChange={(e) => setSpecialMTNPricing({...specialMTNPricing, tier2_agent_price: e.target.value})}
+                                placeholder="13.00"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tier 3: 700 mins + 1.6GB */}
+                        <div className="border p-4 rounded-lg space-y-4">
+                          <div className="font-semibold text-amber-600">Tier 3: 700 mins + 1.6GB</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>User Price (GH₵)</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                value={specialMTNPricing.tier3_user_price}
+                                onChange={(e) => setSpecialMTNPricing({...specialMTNPricing, tier3_user_price: e.target.value})}
+                                placeholder="25.00"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Agent Price (GH₵)</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                value={specialMTNPricing.tier3_agent_price}
+                                onChange={(e) => setSpecialMTNPricing({...specialMTNPricing, tier3_agent_price: e.target.value})}
+                                placeholder="25.00"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tier 4: 1000 mins + 2.6GB */}
+                        <div className="border p-4 rounded-lg space-y-4">
+                          <div className="font-semibold text-amber-600">Tier 4: 1000 mins + 2.6GB</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>User Price (GH₵)</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                value={specialMTNPricing.tier4_user_price}
+                                onChange={(e) => setSpecialMTNPricing({...specialMTNPricing, tier4_user_price: e.target.value})}
+                                placeholder="35.00"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Agent Price (GH₵)</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                value={specialMTNPricing.tier4_agent_price}
+                                onChange={(e) => setSpecialMTNPricing({...specialMTNPricing, tier4_agent_price: e.target.value})}
+                                placeholder="35.00"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button onClick={saveSpecialMTNPricing} disabled={savingSpecialMTN} className="w-full">
+                          {savingSpecialMTN ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                          Save Special MTN Mashup Pricing
+                        </Button>
+                      </CardContent>
+                    </Card>
 
                     {/* Free Data Offer Settings */}
                     <Card className="border-border">

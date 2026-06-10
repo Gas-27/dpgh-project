@@ -1057,6 +1057,13 @@ const Packages = () => {
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
+  const [specialMTNTab, setSpecialMTNTab] = useState(false);
+  const [specialMTNPricing, setSpecialMTNPricing] = useState({
+    tier1_user_price: 6.00,
+    tier2_user_price: 13.00,
+    tier3_user_price: 25.00,
+    tier4_user_price: 35.00,
+  });
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
     chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
@@ -1164,6 +1171,31 @@ const Packages = () => {
       supabase.removeChannel(packagesChannel);
       supabase.removeChannel(siteConfigChannel);
     };
+  }, []);
+
+  // Fetch Special MTN Mashup pricing
+  useEffect(() => {
+    const fetchSpecialMTNPricing = async () => {
+      try {
+        const { data } = await supabase
+          .from("afa_settings")
+          .select("special_mtn_mashup_1_user_price, special_mtn_mashup_2_user_price, special_mtn_mashup_3_user_price, special_mtn_mashup_4_user_price")
+          .single();
+        
+        if (data) {
+          setSpecialMTNPricing({
+            tier1_user_price: data.special_mtn_mashup_1_user_price || 6.00,
+            tier2_user_price: data.special_mtn_mashup_2_user_price || 13.00,
+            tier3_user_price: data.special_mtn_mashup_3_user_price || 25.00,
+            tier4_user_price: data.special_mtn_mashup_4_user_price || 35.00,
+          });
+        }
+      } catch (error) {
+        console.error("[v0] Error fetching Special MTN pricing:", error);
+      }
+    };
+    
+    fetchSpecialMTNPricing();
   }, []);
 
   useEffect(() => {
@@ -1342,25 +1374,110 @@ const Packages = () => {
               </Card>
             </div>
 
-            <div className="flex justify-center gap-3 mb-8">
+            <div className="flex justify-center gap-3 mb-8 flex-wrap">
               {(Object.keys(networkConfig) as Network[]).map((net) => (
-                <Button key={net} variant={selectedNetwork === net ? "hero" : "outline"} onClick={() => setSelectedNetwork(net)} className="font-semibold">{networkConfig[net].label}</Button>
+                <Button key={net} variant={selectedNetwork === net && !specialMTNTab ? "hero" : "outline"} onClick={() => { setSelectedNetwork(net); setSpecialMTNTab(false); }} className="font-semibold">{networkConfig[net].label}</Button>
               ))}
+              <Button variant={specialMTNTab ? "hero" : "outline"} onClick={() => setSpecialMTNTab(true)} className="font-semibold bg-amber-500/90 hover:bg-amber-600 text-white border-0">Special MTN Mashup</Button>
             </div>
 
-            {loading ? <div className="text-center text-muted-foreground">Loading packages���</div> : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {filtered.map((pkg) => (
-                  <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={{ background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
-                    <CardContent className="p-4 text-center space-y-2">
-                      <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
-                      <p className={`text-sm font-semibold uppercase tracking-wide ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
-                      <p className="text-xl font-bold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
-                      <Button variant="secondary" size="sm" className="w-full mt-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
-                    </CardContent>
-                  </Card>
-                ))}
+            {specialMTNTab ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {/* Tier 1: 125 mins + 0.36GB */}
+                <Card className="bg-gradient-to-br from-amber-400 to-amber-500 border-0 shadow-lg overflow-hidden">
+                  <CardContent className="p-4 text-center space-y-3">
+                    <div className="bg-white/20 rounded-lg p-3">
+                      <p className="text-white font-semibold text-sm">Special MTN Mashup</p>
+                      <p className="text-white text-xs opacity-90">Data Bundle</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-white opacity-80">125mins + 0.36GB - GHS {Number(specialMTNPricing.tier1_user_price).toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-white">125mins + 0.36GB</p>
+                      <p className="text-sm text-white">Only GHS {Number(specialMTNPricing.tier1_user_price).toFixed(2)} - Valid forever</p>
+                    </div>
+                    <div className="space-y-2 text-xs text-white">
+                      <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
+                      <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
+                    </div>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-1", network: "mtn", size_gb: 0.36, price: specialMTNPricing.tier1_user_price } as any); }}>BUY NOW</Button>
+                  </CardContent>
+                </Card>
+
+                {/* Tier 2: 360 mins + 0.87GB */}
+                <Card className="bg-gradient-to-br from-amber-400 to-amber-500 border-0 shadow-lg overflow-hidden">
+                  <CardContent className="p-4 text-center space-y-3">
+                    <div className="bg-white/20 rounded-lg p-3">
+                      <p className="text-white font-semibold text-sm">Special MTN Mashup</p>
+                      <p className="text-white text-xs opacity-90">Data Bundle</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-white opacity-80">360mins + 0.87GB - GHS {Number(specialMTNPricing.tier2_user_price).toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-white">360mins + 0.87GB</p>
+                      <p className="text-sm text-white">Only GHS {Number(specialMTNPricing.tier2_user_price).toFixed(2)} - Valid forever</p>
+                    </div>
+                    <div className="space-y-2 text-xs text-white">
+                      <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
+                      <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
+                    </div>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-2", network: "mtn", size_gb: 0.87, price: specialMTNPricing.tier2_user_price } as any); }}>BUY NOW</Button>
+                  </CardContent>
+                </Card>
+
+                {/* Tier 3: 700 mins + 1.6GB */}
+                <Card className="bg-gradient-to-br from-amber-400 to-amber-500 border-0 shadow-lg overflow-hidden">
+                  <CardContent className="p-4 text-center space-y-3">
+                    <div className="bg-white/20 rounded-lg p-3">
+                      <p className="text-white font-semibold text-sm">Special MTN Mashup</p>
+                      <p className="text-white text-xs opacity-90">Data Bundle</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-white opacity-80">700mins + 1.6GB - GHS {Number(specialMTNPricing.tier3_user_price).toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-white">700mins + 1.6GB</p>
+                      <p className="text-sm text-white">Only GHS {Number(specialMTNPricing.tier3_user_price).toFixed(2)} - Valid forever</p>
+                    </div>
+                    <div className="space-y-2 text-xs text-white">
+                      <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
+                      <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
+                    </div>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-3", network: "mtn", size_gb: 1.6, price: specialMTNPricing.tier3_user_price } as any); }}>BUY NOW</Button>
+                  </CardContent>
+                </Card>
+
+                {/* Tier 4: 1000 mins + 2.6GB */}
+                <Card className="bg-gradient-to-br from-amber-400 to-amber-500 border-0 shadow-lg overflow-hidden">
+                  <CardContent className="p-4 text-center space-y-3">
+                    <div className="bg-white/20 rounded-lg p-3">
+                      <p className="text-white font-semibold text-sm">Special MTN Mashup</p>
+                      <p className="text-white text-xs opacity-90">Data Bundle</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-white opacity-80">1000mins + 2.6GB - GHS {Number(specialMTNPricing.tier4_user_price).toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-white">1000mins + 2.6GB</p>
+                      <p className="text-sm text-white">Only GHS {Number(specialMTNPricing.tier4_user_price).toFixed(2)} - Valid forever</p>
+                    </div>
+                    <div className="space-y-2 text-xs text-white">
+                      <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
+                      <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
+                    </div>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-4", network: "mtn", size_gb: 2.6, price: specialMTNPricing.tier4_user_price } as any); }}>BUY NOW</Button>
+                  </CardContent>
+                </Card>
               </div>
+            ) : (
+              loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {filtered.map((pkg) => (
+                    <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={{ background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
+                      <CardContent className="p-4 text-center space-y-2">
+                        <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
+                        <p className={`text-sm font-semibold uppercase tracking-wide ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
+                        <p className="text-xl font-bold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
+                        <Button variant="secondary" size="sm" className="w-full mt-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
             )}
           </>
         ) : activeCategory === "bulk" ? (
