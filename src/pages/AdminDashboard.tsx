@@ -80,6 +80,8 @@ const AdminDashboard = () => {
   const [subagents, setSubagents] = useState<any[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrdersFromDB, setFilteredOrdersFromDB] = useState<Order[]>([]);
+  const [isFilteringOrders, setIsFilteringOrders] = useState(false);
   const [apiErrors, setAPIErrors] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [topupHistory, setTopupHistory] = useState<TopupRecord[]>([]);
@@ -1167,6 +1169,38 @@ const AdminDashboard = () => {
   };
 
   // ======================== Orders ========================
+  const queryOrdersFromDB = async (network: string, fulfillment: string, paymentStatus: string) => {
+    setIsFilteringOrders(true);
+    try {
+      let query = supabase.from("orders").select("*");
+      
+      if (network !== "all") {
+        query = query.eq("network", network.toUpperCase());
+      }
+      if (fulfillment !== "all") {
+        query = query.eq("fulfillment_status", fulfillment);
+      }
+      if (paymentStatus !== "all") {
+        query = query.eq("status", paymentStatus);
+      }
+      
+      const { data, error } = await query.order("created_at", { ascending: false });
+      
+      if (error) {
+        console.error("[v0] Error querying orders:", error);
+        toast({ title: "Error", description: "Failed to filter orders", variant: "destructive" });
+        return;
+      }
+      
+      setFilteredOrdersFromDB(data || []);
+    } catch (error) {
+      console.error("[v0] Error querying orders from DB:", error);
+      toast({ title: "Error", description: "Failed to filter orders", variant: "destructive" });
+    } finally {
+      setIsFilteringOrders(false);
+    }
+  };
+
   const retryOrder = async (orderId: string) => {
     if (retryingOrders.has(orderId)) return;
     setRetryingOrders((prev) => new Set(prev).add(orderId));
@@ -1412,17 +1446,10 @@ const AdminDashboard = () => {
   // Use database search results if searching, otherwise use local users (first 100)
   const filteredUsers = userSearchTerm.length > 0 ? profileSearch.results : users;
   
-  // Use database search results if searching, otherwise use local data
-  const filteredOrders = (orderSearchTerm.length > 0 ? orderSearch.results : orders)
-    .filter((order) => {
-      const matchesNetwork = orderNetworkFilter === "all" || order.network.toUpperCase() === orderNetworkFilter.toUpperCase();
-      const matchesFulfillment = orderFulfillmentFilter === "all" || order.fulfillment_status === orderFulfillmentFilter;
-      const matchesPayment = orderPaymentStatusFilter === "all" || order.status === orderPaymentStatusFilter;
-      return matchesNetwork && matchesFulfillment && matchesPayment;
-    })
-    .filter((order) => orderNetworkFilter === "all" ? true : order.network.toLowerCase() === orderNetworkFilter.toLowerCase())
-    .filter((order) => orderFulfillmentFilter === "all" ? true : order.fulfillment_status.toLowerCase() === orderFulfillmentFilter.toLowerCase())
-    .filter((order) => orderPaymentStatusFilter === "all" ? true : order.status.toLowerCase() === orderPaymentStatusFilter.toLowerCase());
+  // Use database filtered results if filters are active, otherwise use search results
+  const filteredOrders = (orderNetworkFilter !== "all" || orderFulfillmentFilter !== "all" || orderPaymentStatusFilter !== "all")
+    ? filteredOrdersFromDB
+    : (orderSearchTerm.length > 0 ? orderSearch.results : orders);
   
   const filteredWithdrawals = withdrawals
     .filter((withdrawal) => {
@@ -1492,16 +1519,11 @@ const AdminDashboard = () => {
               )}
             </TabsTrigger>
             <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>
-            <TabsTrigger value="api_errors" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
-              <AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> API Errors
-              {apiErrors.length > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{apiErrors.length}</Badge>}
-            </TabsTrigger>
             <TabsTrigger value="notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Notify</TabsTrigger>
             <TabsTrigger value="push" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Smartphone className="h-3 w-3 md:h-4 md:w-4" /> Push</TabsTrigger>
             <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>
             <TabsTrigger value="afa" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> AFA</TabsTrigger>
             <TabsTrigger value="afa_bundles" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> AFA Bundles</TabsTrigger>
-            <TabsTrigger value="afa_youtube" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Play className="h-3 w-3 md:h-4 md:w-4" /> Videos</TabsTrigger>
             <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>
             <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
           </TabsList>
@@ -1570,7 +1592,10 @@ const AdminDashboard = () => {
               
               {/* Order Filters */}
               <div className="flex gap-2 flex-wrap">
-                <Select value={orderNetworkFilter} onValueChange={setOrderNetworkFilter}>
+                <Select value={orderNetworkFilter} onValueChange={(value) => {
+                  setOrderNetworkFilter(value);
+                  queryOrdersFromDB(value, orderFulfillmentFilter, orderPaymentStatusFilter);
+                }}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Network" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Networks</SelectItem>
@@ -1580,7 +1605,10 @@ const AdminDashboard = () => {
                   </SelectContent>
                 </Select>
 
-                <Select value={orderFulfillmentFilter} onValueChange={setOrderFulfillmentFilter}>
+                <Select value={orderFulfillmentFilter} onValueChange={(value) => {
+                  setOrderFulfillmentFilter(value);
+                  queryOrdersFromDB(orderNetworkFilter, value, orderPaymentStatusFilter);
+                }}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Fulfillment" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
@@ -1590,7 +1618,10 @@ const AdminDashboard = () => {
                   </SelectContent>
                 </Select>
 
-                <Select value={orderPaymentStatusFilter} onValueChange={setOrderPaymentStatusFilter}>
+                <Select value={orderPaymentStatusFilter} onValueChange={(value) => {
+                  setOrderPaymentStatusFilter(value);
+                  queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, value);
+                }}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Payment" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Payment Status</SelectItem>
@@ -2639,194 +2670,6 @@ const AdminDashboard = () => {
               </TabsContent>
             )}
 
-            {/* API ERRORS TAB */}
-            <TabsContent value="api_errors" className="space-y-4">
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="font-display flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-destructive" /> API Error Logs
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">Failed API requests that couldn't reach the data service. Resolve issues to retry.</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {apiErrors.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                      <p>No API errors - all systems operational!</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium">
-                            <span className="text-destructive font-bold">{apiErrors.length} error{apiErrors.length !== 1 ? 's' : ''}</span> - Failed API requests needing retry
-                          </p>
-                        </div>
-                        <Button 
-                          onClick={async () => {
-                            setRetryingAllOrders(true);
-                            toast({ title: 'Retrying all failed orders...', description: 'This may take a few minutes' });
-                            const result = await retryAllFailedOrders();
-                            if (result.success) {
-                              toast({ 
-                                title: 'Retry Complete',
-                                description: `Succeeded: ${result.succeeded}, Failed: ${result.failed}`,
-                                variant: result.failed > 0 ? 'destructive' : 'default'
-                              });
-                              // Reload the errors list
-                              const logs = await getAPIErrorLogs({ resolved: false, limit: 1000 });
-                              setAPIErrors(logs ?? []);
-                            } else {
-                              toast({ title: 'Error', description: result.error, variant: 'destructive' });
-                            }
-                            setRetryingAllOrders(false);
-                          }}
-                          disabled={retryingAllOrders}
-                          className="gap-2"
-                        >
-                          {retryingAllOrders && <Loader2 className="h-4 w-4 animate-spin" />}
-                          <RefreshCw className="h-4 w-4" />
-                          Retry All
-                        </Button>
-                      </div>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Time</TableHead>
-                            <TableHead>Error Type</TableHead>
-                            <TableHead>Customer</TableHead>
-                            <TableHead>Network</TableHead>
-                            <TableHead>Size</TableHead>
-                            <TableHead>Message</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {apiErrors.slice(0, 50).map((error: any) => (
-                            <TableRow key={error.id}>
-                              <TableCell className="text-xs whitespace-nowrap">
-                                {new Date(error.created_at).toLocaleString()}
-                              </TableCell>
-                              <TableCell className="text-sm">
-                                <Badge variant="outline" className="bg-destructive/10 text-destructive">
-                                  {error.error_type}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="font-medium">{error.customer_number}</TableCell>
-                              <TableCell className="uppercase text-xs">{error.network}</TableCell>
-                              <TableCell>{error.size_gb}GB</TableCell>
-                              <TableCell className="text-xs max-w-xs truncate" title={error.error_message}>
-                                {error.error_message}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={error.resolved ? "outline" : "destructive"}>
-                                  {error.resolved ? "Resolved" : "Pending"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="space-x-2">
-                                <Dialog>
-                                  <DialogContent className="max-w-2xl max-h-96 overflow-y-auto">
-                                    <DialogHeader>
-                                      <DialogTitle>API Error Details</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <div>
-                                        <p className="font-semibold text-sm mb-1">Order Information</p>
-                                        <div className="text-xs space-y-1 bg-muted p-3 rounded">
-                                          <p><span className="font-mono text-muted-foreground">Order ID:</span> {error.order_id || 'N/A'}</p>
-                                          <p><span className="font-mono text-muted-foreground">Phone:</span> {error.customer_number}</p>
-                                          <p><span className="font-mono text-muted-foreground">Network:</span> {error.network}</p>
-                                          <p><span className="font-mono text-muted-foreground">Size:</span> {error.size_gb}GB @ GH₵{Number(error.amount || 0).toFixed(2)}</p>
-                                        </div>
-                                      </div>
-                                      <div>
-                                        <p className="font-semibold text-sm mb-1">Error Details</p>
-                                        <div className="text-xs space-y-1 bg-muted p-3 rounded font-mono">
-                                          <p><span className="text-muted-foreground">Type:</span> {error.error_type}</p>
-                                          <p><span className="text-muted-foreground">HTTP Status:</span> {error.http_status_code || 'N/A'}</p>
-                                          <p><span className="text-muted-foreground">Endpoint:</span> {error.api_endpoint}</p>
-                                          <p className="break-words"><span className="text-muted-foreground">Message:</span> {error.error_message}</p>
-                                        </div>
-                                      </div>
-                                      {error.request_payload && (
-                                        <div>
-                                          <p className="font-semibold text-sm mb-1">Request Sent</p>
-                                          <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-32">
-                                            {JSON.stringify(error.request_payload, null, 2)}
-                                          </pre>
-                                        </div>
-                                      )}
-                                      {error.response_payload && (
-                                        <div>
-                                          <p className="font-semibold text-sm mb-1">Response Received</p>
-                                          <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-32">
-                                            {JSON.stringify(error.response_payload, null, 2)}
-                                          </pre>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={async () => {
-                                    setRetryingOrders(prev => new Set(prev).add(error.id));
-                                    const result = await retryFailedOrder(error);
-                                    if (result.success) {
-                                      setAPIErrors(prev => prev.filter(e => e.id !== error.id));
-                                      toast({ title: 'Order retried successfully', description: 'Order has been reprocessed' });
-                                    } else {
-                                      toast({ title: 'Retry failed', description: result.error, variant: 'destructive' });
-                                    }
-                                    setRetryingOrders(prev => {
-                                      const newSet = new Set(prev);
-                                      newSet.delete(error.id);
-                                      return newSet;
-                                    });
-                                  }}
-                                  disabled={retryingOrders.has(error.id) || error.resolved}
-                                  title="Retry this order"
-                                >
-                                  {retryingOrders.has(error.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  onClick={async () => {
-                                    await markErrorAsResolved(error.id, 'Manually resolved by admin');
-                                    setAPIErrors(prev => prev.filter(e => e.id !== error.id));
-                                    toast({ title: 'Error marked as resolved' });
-                                  }}
-                                  disabled={error.resolved}
-                                  title="Mark as resolved"
-                                >
-                                  <Check className="h-3 w-3" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  onClick={async () => {
-                                    await deleteAPIError(error.id);
-                                    setAPIErrors(prev => prev.filter(e => e.id !== error.id));
-                                    toast({ title: 'Error deleted' });
-                                  }}
-                                  title="Delete this error"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
             {canSee("settings") && (
               <TabsContent value="settings" className="space-y-6">
                 <Card className="border-border">
