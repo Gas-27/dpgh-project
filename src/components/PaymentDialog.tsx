@@ -157,9 +157,19 @@ const PaymentDialog = ({
       return;
     }
 
-    // Check if phone matches the selected network
+    // Special MTN Mashup: Only MTN numbers allowed
     const selectedNetwork = network || packageInfo?.network || "";
-    if (selectedNetwork && !phoneMatchesNetwork(phone, selectedNetwork)) {
+    if ((selectedNetwork === "special-mtn" || selectedNetwork === "special") && detectedNetwork !== "mtn") {
+      toast({
+        title: "MTN Only",
+        description: `Special MTN Mashup is only available for MTN numbers. Your number appears to be ${detectedNetwork.toUpperCase()}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if phone matches the selected network
+    if (selectedNetwork && selectedNetwork !== "special-mtn" && selectedNetwork !== "special" && !phoneMatchesNetwork(phone, selectedNetwork)) {
       toast({
         title: "Network mismatch",
         description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork.toUpperCase()} package`,
