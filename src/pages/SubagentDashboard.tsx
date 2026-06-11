@@ -1183,8 +1183,9 @@ const SubagentDashboard = () => {
       return;
     }
     
-    // Validate phone matches selected network
-    if (!phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
+    // Validate phone matches selected network (allow mtn to buy mtn_mashup)
+    const isValidForMTNMashup = buyingPkg.network === "mtn_mashup" && detectNetwork(buyCustomerNumber) === "mtn";
+    if (!isValidForMTNMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
       const detected = detectNetwork(buyCustomerNumber);
       toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
       return;
@@ -1887,7 +1888,8 @@ const SubagentDashboard = () => {
                             toast({ title: "Error", description: "Phone number must be exactly 10 digits", variant: "destructive" });
                             return;
                           }
-                          if (!phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
+                          const isValidForMTNMashup = buyingPkg.network === "mtn_mashup" && detectNetwork(buyCustomerNumber) === "mtn";
+                          if (!isValidForMTNMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
                             const detected = detectNetwork(buyCustomerNumber);
                             toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
                             return;

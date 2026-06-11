@@ -159,7 +159,7 @@ const PaymentDialog = ({
 
     // Special MTN Mashup: Only MTN numbers allowed
     const selectedNetwork = network || packageInfo?.network || "";
-    if ((selectedNetwork === "special-mtn" || selectedNetwork === "special") && detectedNetwork !== "mtn") {
+    if (selectedNetwork === "mtn_mashup" && detectedNetwork !== "mtn") {
       toast({
         title: "MTN Only",
         description: `Special MTN Mashup is only available for MTN numbers. Your number appears to be ${detectedNetwork.toUpperCase()}.`,
@@ -168,8 +168,9 @@ const PaymentDialog = ({
       return;
     }
 
-    // Check if phone matches the selected network
-    if (selectedNetwork && selectedNetwork !== "special-mtn" && selectedNetwork !== "special" && !phoneMatchesNetwork(phone, selectedNetwork)) {
+    // Check if phone matches the selected network (allow mtn to buy mtn_mashup)
+    const isValidForMTNMashup = selectedNetwork === "mtn_mashup" && detectedNetwork === "mtn";
+    if (selectedNetwork && selectedNetwork !== "mtn_mashup" && !isValidForMTNMashup && !phoneMatchesNetwork(phone, selectedNetwork)) {
       toast({
         title: "Network mismatch",
         description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork.toUpperCase()} package`,
