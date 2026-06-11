@@ -1530,6 +1530,7 @@ const AgentDashboard = () => {
                           id: `special-mtn-${pkg.tier}`,
                           network: "special-mtn",
                           size_gb: pkg.gb,
+                          mins: pkg.mins,
                           agent_price: price,
                           price: price,
                           data_type: "minutes_data"
@@ -2280,14 +2281,15 @@ const AgentDashboard = () => {
 
       <Dialog open={buyDialogOpen} onOpenChange={v => !v && setBuyDialogOpen(false)}>
         <DialogContent className="sm:max-w-md border-border bg-card">
-          <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy Special MTN Mashup (${buyPkg?.size_gb}GB)` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy ${(buyPkg as any).mins || 0} mins + ${buyPkg?.size_gb}GB` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
           {buyStep === "phone" ? (
             <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`pl-10 ${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus /></div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={() => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } if (!phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { const detected = detectNetwork(buyPhone); toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } setBuyStep("confirm"); }}>Continue</Button></div>
           ) : (
             <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">{buyPkg?.network === "special-mtn" ? (
               <>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold text-amber-500">Special MTN Mashup</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Details</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPhone}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Details</span><span className="font-semibold">{(buyPkg as any).mins || 0} mins + {buyPkg?.size_gb}GB</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>
               </>
             ) : (
               <>

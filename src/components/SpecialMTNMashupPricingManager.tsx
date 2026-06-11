@@ -88,8 +88,7 @@ export default function SpecialMTNMashupPricingManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Simply update without using ID filter - just update the table
-      // Since there's only one afa_settings record, update all of them
+      // Update afa_settings - filter by id IS NOT NULL (matches all UUIDs)
       const { error } = await supabase
         .from('afa_settings')
         .update({
@@ -106,11 +105,10 @@ export default function SpecialMTNMashupPricingManager() {
           special_mtn_mashup_4_agent_price: parseFloat(pricing.tier4_agent_price),
           special_mtn_mashup_4_enabled: pricing.tier4_enabled,
         })
-        .gt('id', '0'); // Update where id > '0' (all records)
+        .not('id', 'is', null);
 
       if (error) throw error;
       
-      console.log('[v0] Special MTN pricing saved successfully');
       toast({ title: 'Success', description: 'Special MTN Mashup pricing saved' });
     } catch (error: any) {
       console.error('[v0] Error saving Special MTN pricing:', error);
