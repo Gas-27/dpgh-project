@@ -34,6 +34,8 @@ interface DataPackage {
   id: string;
   network: string;
   size_gb: number;
+  size_gb_text?: string;
+  mins?: number;
   price: number;
 }
 
@@ -1064,6 +1066,7 @@ const Packages = () => {
     tier3_user_price: 25.00,
     tier4_user_price: 35.00,
   });
+  const [specialMTNPackages, setSpecialMTNPackages] = useState<DataPackage[]>([]);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
     chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
@@ -1107,8 +1110,8 @@ const Packages = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch packages with caching
-    supabase.from("data_packages").select("id,network,size_gb,price").eq("active", true).order("size_gb", { ascending: true })
+    // Fetch packages with caching - include size_gb_text for mtn_mashup packages
+    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price").eq("active", true).order("size_gb", { ascending: true })
       .then(({ data }) => { setPackages(data ?? []); setLoading(false); });
   }, []);
 
@@ -1118,7 +1121,7 @@ const Packages = () => {
     async () => {
       const { data, error } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,price")
+        .select("id,network,size_gb,size_gb_text,price")
         .eq("active", true)
         .order("size_gb", { ascending: true });
       if (error) throw error;
@@ -1143,7 +1146,7 @@ const Packages = () => {
         { event: "*", schema: "public", table: "data_packages" },
         async () => {
           // Simply invalidate the cache and let it refetch
-          const { data } = await supabase.from("data_packages").select("id,network,size_gb,price").eq("active", true).order("size_gb", { ascending: true });
+          const { data } = await supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price").eq("active", true).order("size_gb", { ascending: true });
           if (data) setPackages(data);
         }
       )
@@ -1179,18 +1182,18 @@ const Packages = () => {
       try {
         const { data } = await supabase
           .from("data_packages")
-          .select("user_price, mins")
-          .eq("network", "mtn")
-          .like("package_name", "Special MTN Mashup%")
+          .select("id, user_price, agent_price, mins, size_gb_text, is_active")
+          .eq("network", "mtn_mashup")
           .order("mins", { ascending: true });
         
-        if (data && data.length === 4) {
+        if (data && data.length >= 4) {
           setSpecialMTNPricing({
             tier1_user_price: data[0].user_price || 6.00,
             tier2_user_price: data[1].user_price || 13.00,
             tier3_user_price: data[2].user_price || 25.00,
             tier4_user_price: data[3].user_price || 35.00,
           });
+          setSpecialMTNPackages(data as any);
         }
       } catch (error) {
         console.error("[v0] Error fetching Special MTN pricing:", error);
@@ -1401,7 +1404,7 @@ const Packages = () => {
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
                     </div>
-                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-1", network: "mtn", size_gb: 0.36, mins: 125, price: specialMTNPricing.tier1_user_price } as any); }}>BUY NOW</Button>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { if(specialMTNPackages[0]) setPaymentPkg({ ...specialMTNPackages[0], network: "mtn_mashup", price: specialMTNPricing.tier1_user_price } as any); }}>BUY NOW</Button>
                   </CardContent>
                 </Card>
 
@@ -1421,7 +1424,7 @@ const Packages = () => {
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
                     </div>
-                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-2", network: "mtn", size_gb: 0.87, mins: 360, price: specialMTNPricing.tier2_user_price } as any); }}>BUY NOW</Button>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { if(specialMTNPackages[1]) setPaymentPkg({ ...specialMTNPackages[1], network: "mtn_mashup", price: specialMTNPricing.tier2_user_price } as any); }}>BUY NOW</Button>
                   </CardContent>
                 </Card>
 
@@ -1441,7 +1444,7 @@ const Packages = () => {
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
                     </div>
-                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-3", network: "mtn", size_gb: 1.6, mins: 700, price: specialMTNPricing.tier3_user_price } as any); }}>BUY NOW</Button>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { if(specialMTNPackages[2]) setPaymentPkg({ ...specialMTNPackages[2], network: "mtn_mashup", price: specialMTNPricing.tier3_user_price } as any); }}>BUY NOW</Button>
                   </CardContent>
                 </Card>
 
@@ -1461,7 +1464,7 @@ const Packages = () => {
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
                     </div>
-                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-4", network: "mtn", size_gb: 2.6, mins: 1000, price: specialMTNPricing.tier4_user_price } as any); }}>BUY NOW</Button>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { if(specialMTNPackages[3]) setPaymentPkg({ ...specialMTNPackages[3], network: "mtn_mashup", price: specialMTNPricing.tier4_user_price } as any); }}>BUY NOW</Button>
                   </CardContent>
                 </Card>
               </div>
@@ -1471,7 +1474,7 @@ const Packages = () => {
                   {filtered.map((pkg) => (
                     <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={{ background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
                       <CardContent className="p-4 text-center space-y-2">
-                        <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
+                        <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
                         <p className={`text-sm font-semibold uppercase tracking-wide ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
                         <p className="text-xl font-bold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
                         <Button variant="secondary" size="sm" className="w-full mt-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
