@@ -88,20 +88,8 @@ export default function SpecialMTNMashupPricingManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Get the first afa_settings record with its ID
-      const { data: settingsData, error: fetchError } = await supabase
-        .from('afa_settings')
-        .select('id')
-        .maybeSingle();
-
-      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-      
-      if (!settingsData) {
-        throw new Error('Settings record not found. Please create an afa_settings record first.');
-      }
-
-      console.log('[v0] Updating afa_settings with ID:', settingsData.id, 'Type:', typeof settingsData.id);
-
+      // Simply update without using ID filter - just update the table
+      // Since there's only one afa_settings record, update all of them
       const { error } = await supabase
         .from('afa_settings')
         .update({
@@ -118,7 +106,7 @@ export default function SpecialMTNMashupPricingManager() {
           special_mtn_mashup_4_agent_price: parseFloat(pricing.tier4_agent_price),
           special_mtn_mashup_4_enabled: pricing.tier4_enabled,
         })
-        .eq('id', settingsData.id);
+        .gt('id', '0'); // Update where id > '0' (all records)
 
       if (error) throw error;
       
