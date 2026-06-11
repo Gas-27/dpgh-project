@@ -1399,7 +1399,7 @@ const Packages = () => {
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
                     </div>
-                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-1", network: "mtn", size_gb: 0.36, price: specialMTNPricing.tier1_user_price } as any); }}>BUY NOW</Button>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-1", network: "mtn", size_gb: 0.36, mins: 125, price: specialMTNPricing.tier1_user_price } as any); }}>BUY NOW</Button>
                   </CardContent>
                 </Card>
 
@@ -1419,7 +1419,7 @@ const Packages = () => {
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
                     </div>
-                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-2", network: "mtn", size_gb: 0.87, price: specialMTNPricing.tier2_user_price } as any); }}>BUY NOW</Button>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-2", network: "mtn", size_gb: 0.87, mins: 360, price: specialMTNPricing.tier2_user_price } as any); }}>BUY NOW</Button>
                   </CardContent>
                 </Card>
 
@@ -1439,7 +1439,7 @@ const Packages = () => {
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
                     </div>
-                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-3", network: "mtn", size_gb: 1.6, price: specialMTNPricing.tier3_user_price } as any); }}>BUY NOW</Button>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-3", network: "mtn", size_gb: 1.6, mins: 700, price: specialMTNPricing.tier3_user_price } as any); }}>BUY NOW</Button>
                   </CardContent>
                 </Card>
 
@@ -1459,7 +1459,7 @@ const Packages = () => {
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
                       <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
                     </div>
-                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-4", network: "mtn", size_gb: 2.6, price: specialMTNPricing.tier4_user_price } as any); }}>BUY NOW</Button>
+                    <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => { setPaymentPkg({ id: "special-mtn-4", network: "mtn", size_gb: 2.6, mins: 1000, price: specialMTNPricing.tier4_user_price } as any); }}>BUY NOW</Button>
                   </CardContent>
                 </Card>
               </div>
@@ -1705,7 +1705,7 @@ const Packages = () => {
       </div>
 
       {paymentPkg && (
-        <PaymentDialog open={!!paymentPkg} onOpenChange={(v) => !v && setPaymentPkg(null)} packageName={`${paymentPkg.size_gb}GB`} network={selectedNetwork} price={Number(paymentPkg.price)} packageId={paymentPkg.id} />
+        <PaymentDialog open={!!paymentPkg} onOpenChange={(v) => !v && setPaymentPkg(null)} packageName={`${(paymentPkg as any).mins ? (paymentPkg as any).mins + " mins + " : ""}${paymentPkg.size_gb}GB`} network={selectedNetwork} price={Number(paymentPkg.price)} packageId={paymentPkg.id} />
       )}
       <PaymentVerifier />
 
