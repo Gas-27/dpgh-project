@@ -1247,10 +1247,10 @@ const AgentStorefront = () => {
               {["mtn", "airteltigo", "telecel"].map((net) => (
                 <Button
                   key={net}
-                  variant={networkFilter === net && !specialMTNTab ? "hero" : "outline"}
+                  variant={networkFilter === net ? "hero" : "outline"}
                   size="sm"
                   className="min-w-[100px]"
-                  onClick={() => { setNetworkFilter(net); setSpecialMTNTab(false); }}
+                  onClick={() => setNetworkFilter(net)}
                 >
                   {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
                 </Button>

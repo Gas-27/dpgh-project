@@ -303,7 +303,6 @@ const AgentDashboard = () => {
   });
   const [savingStore, setSavingStore] = useState(false);
   const [profitStats, setProfitStats] = useState<ProfitStats>({ totalRevenue: 0, totalCost: 0, totalProfit: 0, availableForWithdrawal: 0 });
-  const [specialMTNPricing, setSpecialMTNPricing] = useState<{ tier1_agent_price: number; tier2_agent_price: number; tier3_agent_price: number; tier4_agent_price: number } | null>(null);
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
@@ -1508,53 +1507,27 @@ const AgentDashboard = () => {
             {store && (<Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GH₵ {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GH₵ {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
-            <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel", "special"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}</Button>))}</div>
+            <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}</Button>))}</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {networkFilter === "special" ? (
-                // Special MTN Mashup Packages
-                [
-                  { tier: 1, mins: 125, gb: 0.36, price: specialMTNPricing?.tier1_agent_price || 6.00, label: "125 mins + 0.36GB" },
-                  { tier: 2, mins: 360, gb: 0.87, price: specialMTNPricing?.tier2_agent_price || 13.00, label: "360 mins + 0.87GB" },
-                  { tier: 3, mins: 700, gb: 1.6, price: specialMTNPricing?.tier3_agent_price || 25.00, label: "700 mins + 1.6GB" },
-                  { tier: 4, mins: 1000, gb: 2.6, price: specialMTNPricing?.tier4_agent_price || 35.00, label: "1000 mins + 2.6GB" },
-                ].map((pkg) => {
-                  const price = Number(pkg.price);
-                  const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
-                  return (
-                    <Card key={`special-${pkg.tier}`} className="border-amber-600/50 bg-amber-50/5 hover:border-amber-500/50 transition-all">
-                      <CardContent className="p-4 text-center space-y-3">
-                        <div className="h-10 w-10 rounded-full bg-amber-600/20 flex items-center justify-center mx-auto">
-                          <Zap className="h-5 w-5 text-amber-500" />
-                        </div>
-                        <div>
-                          <p className="font-display text-xs text-amber-500 uppercase tracking-wide mb-1">Special Mashup</p>
-                          <p className="font-display text-lg font-bold text-foreground">{pkg.label}</p>
-                        </div>
-                        <p className="text-lg font-bold text-amber-500">GH₵ {price.toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">Agent Price</p>
-                        {wouldUnderflow ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}
-                        <Button variant="hero" size="sm" className="w-full bg-amber-600 hover:bg-amber-700" onClick={() => openBuyDialog({
-                          id: `special-mtn-${pkg.tier}`,
-                          network: "special-mtn",
-                          size_gb: pkg.gb,
-                          mins: pkg.mins,
-                          agent_price: price,
-                          price: price,
-                          data_type: "minutes_data"
-                        } as any)} disabled={wouldUnderflow}>Buy Now</Button>
-                      </CardContent>
-                    </Card>
-                  );
-                })
-              ) : (
-                // Regular Network Packages
-                filteredPackages.map(pkg => {
-                  const ap = Number(pkg.agent_price);
-                  const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - ap) < pendingWithdrawalAmount;
-                  return (<Card key={pkg.id} className={`border-border transition-all ${wouldUnderflow ? "opacity-50" : "hover:border-primary/50"}`}>
-                    <CardContent className="p-4 text-center space-y-3"><div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><Wifi className="h-5 w-5 text-primary" /></div><p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p><p className="text-lg font-bold text-primary">GH₵ {ap.toFixed(2)}</p><p className="text-xs text-muted-foreground">Agent Price</p>{wouldUnderflow ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}<Button variant="hero" size="sm" className="w-full" onClick={() => openBuyDialog(pkg)} disabled={wouldUnderflow}>Buy Now</Button></CardContent></Card>);
-                })
-              )}
+              {packages.filter(p => p.network === networkFilter).map((pkg) => {
+                const price = Number(pkg.agent_price || pkg.price);
+                const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
+                return (
+                  <Card key={pkg.id} className={networkFilter === "mtn_mashup" ? "border-amber-600/50 bg-amber-50/5 hover:border-amber-500/50 transition-all" : "border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all"}>
+                    <CardContent className="p-4 text-center space-y-3">
+                      {networkFilter === "mtn_mashup" && <div className="h-10 w-10 rounded-full bg-amber-600/20 flex items-center justify-center mx-auto"><Zap className="h-5 w-5 text-amber-500" /></div>}
+                      <div>
+                        {networkFilter === "mtn_mashup" && <p className="font-display text-xs text-amber-500 uppercase tracking-wide mb-1">Special Mashup</p>}
+                        <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                      </div>
+                      <p className={`text-lg font-bold ${networkFilter === "mtn_mashup" ? "text-amber-500" : "text-cyan-400"}`}>GH₵ {price.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">Agent Price</p>
+                      {wouldUnderflow ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}
+                      <Button variant="hero" size="sm" className={`w-full ${networkFilter === "mtn_mashup" ? "bg-amber-600 hover:bg-amber-700" : "bg-cyan-600 hover:bg-cyan-700"}`} onClick={() => openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow}>Buy Now</Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </TabsContent>
 
