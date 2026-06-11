@@ -49,33 +49,33 @@ export default function SpecialMTNMashupPricingManager() {
   const fetchPricing = async () => {
     try {
       setLoading(true);
+      // Fetch Special MTN packages from data_packages table
       const { data, error } = await supabase
-        .from('afa_settings')
-        .select(
-          'special_mtn_mashup_1_user_price, special_mtn_mashup_1_agent_price, special_mtn_mashup_1_enabled, ' +
-          'special_mtn_mashup_2_user_price, special_mtn_mashup_2_agent_price, special_mtn_mashup_2_enabled, ' +
-          'special_mtn_mashup_3_user_price, special_mtn_mashup_3_agent_price, special_mtn_mashup_3_enabled, ' +
-          'special_mtn_mashup_4_user_price, special_mtn_mashup_4_agent_price, special_mtn_mashup_4_enabled'
-        )
-        .single();
+        .from('data_packages')
+        .select('id, user_price, agent_price, is_active, mins')
+        .eq('network', 'mtn')
+        .like('package_name', 'Special MTN Mashup%')
+        .order('mins', { ascending: true });
 
       if (error) throw error;
 
-      if (data) {
+      if (data && data.length === 4) {
         setPricing({
-          tier1_user_price: String(data.special_mtn_mashup_1_user_price || '6.00'),
-          tier1_agent_price: String(data.special_mtn_mashup_1_agent_price || '6.00'),
-          tier1_enabled: data.special_mtn_mashup_1_enabled !== false,
-          tier2_user_price: String(data.special_mtn_mashup_2_user_price || '13.00'),
-          tier2_agent_price: String(data.special_mtn_mashup_2_agent_price || '13.00'),
-          tier2_enabled: data.special_mtn_mashup_2_enabled !== false,
-          tier3_user_price: String(data.special_mtn_mashup_3_user_price || '25.00'),
-          tier3_agent_price: String(data.special_mtn_mashup_3_agent_price || '25.00'),
-          tier3_enabled: data.special_mtn_mashup_3_enabled !== false,
-          tier4_user_price: String(data.special_mtn_mashup_4_user_price || '35.00'),
-          tier4_agent_price: String(data.special_mtn_mashup_4_agent_price || '35.00'),
-          tier4_enabled: data.special_mtn_mashup_4_enabled !== false,
+          tier1_user_price: String(data[0].user_price || '6.00'),
+          tier1_agent_price: String(data[0].agent_price || '6.00'),
+          tier1_enabled: data[0].is_active !== false,
+          tier2_user_price: String(data[1].user_price || '13.00'),
+          tier2_agent_price: String(data[1].agent_price || '13.00'),
+          tier2_enabled: data[1].is_active !== false,
+          tier3_user_price: String(data[2].user_price || '25.00'),
+          tier3_agent_price: String(data[2].agent_price || '25.00'),
+          tier3_enabled: data[2].is_active !== false,
+          tier4_user_price: String(data[3].user_price || '35.00'),
+          tier4_agent_price: String(data[3].agent_price || '35.00'),
+          tier4_enabled: data[3].is_active !== false,
         });
+        // Store package IDs for updating later
+        (window as any).specialMTNPackageIds = data.map(d => d.id);
       }
     } catch (error) {
       console.error('[v0] Error fetching Special MTN pricing:', error);
@@ -88,26 +88,24 @@ export default function SpecialMTNMashupPricingManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Directly update the first (only) record - no WHERE clause needed
-      const { error } = await supabase
-        .from('afa_settings')
-        .update({
-          special_mtn_mashup_1_user_price: parseFloat(pricing.tier1_user_price),
-          special_mtn_mashup_1_agent_price: parseFloat(pricing.tier1_agent_price),
-          special_mtn_mashup_1_enabled: pricing.tier1_enabled,
-          special_mtn_mashup_2_user_price: parseFloat(pricing.tier2_user_price),
-          special_mtn_mashup_2_agent_price: parseFloat(pricing.tier2_agent_price),
-          special_mtn_mashup_2_enabled: pricing.tier2_enabled,
-          special_mtn_mashup_3_user_price: parseFloat(pricing.tier3_user_price),
-          special_mtn_mashup_3_agent_price: parseFloat(pricing.tier3_agent_price),
-          special_mtn_mashup_3_enabled: pricing.tier3_enabled,
-          special_mtn_mashup_4_user_price: parseFloat(pricing.tier4_user_price),
-          special_mtn_mashup_4_agent_price: parseFloat(pricing.tier4_agent_price),
-          special_mtn_mashup_4_enabled: pricing.tier4_enabled,
-        })
-        .is('id', null, { negate: true }); // Match all non-null IDs
+      const ids = (window as any).specialMTNPackageIds || [];
+      
+      // Update each tier package individually
+      const updates = [
+        { id: ids[0], user_price: parseFloat(pricing.tier1_user_price), agent_price: parseFloat(pricing.tier1_agent_price), is_active: pricing.tier1_enabled },
+        { id: ids[1], user_price: parseFloat(pricing.tier2_user_price), agent_price: parseFloat(pricing.tier2_agent_price), is_active: pricing.tier2_enabled },
+        { id: ids[2], user_price: parseFloat(pricing.tier3_user_price), agent_price: parseFloat(pricing.tier3_agent_price), is_active: pricing.tier3_enabled },
+        { id: ids[3], user_price: parseFloat(pricing.tier4_user_price), agent_price: parseFloat(pricing.tier4_agent_price), is_active: pricing.tier4_enabled },
+      ];
 
-      if (error) throw error;
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('data_packages')
+          .update({ user_price: update.user_price, agent_price: update.agent_price, is_active: update.is_active })
+          .eq('id', update.id);
+        
+        if (error) throw error;
+      }
       
       toast({ title: 'Success', description: 'Special MTN Mashup pricing saved' });
     } catch (error: any) {

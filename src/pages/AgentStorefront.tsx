@@ -825,18 +825,20 @@ const AgentStorefront = () => {
             tier4_agent_price: agentPricing.tier_4_price || 35.00,
           });
         } else {
-          // Fallback to admin pricing
-          const { data: adminSettings } = await supabase
-            .from("afa_settings")
-            .select("special_mtn_mashup_1_agent_price, special_mtn_mashup_2_agent_price, special_mtn_mashup_3_agent_price, special_mtn_mashup_4_agent_price")
-            .single();
+          // Fallback to data_packages
+          const { data: packages } = await supabase
+            .from("data_packages")
+            .select("agent_price, mins")
+            .eq("network", "mtn")
+            .like("package_name", "Special MTN Mashup%")
+            .order("mins", { ascending: true });
           
-          if (adminSettings) {
+          if (packages && packages.length === 4) {
             setSpecialMTNPricing({
-              tier1_agent_price: adminSettings.special_mtn_mashup_1_agent_price || 6.00,
-              tier2_agent_price: adminSettings.special_mtn_mashup_2_agent_price || 13.00,
-              tier3_agent_price: adminSettings.special_mtn_mashup_3_agent_price || 25.00,
-              tier4_agent_price: adminSettings.special_mtn_mashup_4_agent_price || 35.00,
+              tier1_agent_price: packages[0].agent_price || 6.00,
+              tier2_agent_price: packages[1].agent_price || 13.00,
+              tier3_agent_price: packages[2].agent_price || 25.00,
+              tier4_agent_price: packages[3].agent_price || 35.00,
             });
           }
         }

@@ -619,27 +619,30 @@ const AdminDashboard = () => {
   // Fetch special MTN mashup pricing
   const fetchSpecialMTNPricing = async () => {
     try {
+      // Fetch Special MTN packages from data_packages table
       const { data } = await supabase
-        .from("afa_settings")
-        .select("special_mtn_mashup_1_user_price, special_mtn_mashup_1_agent_price, special_mtn_mashup_1_enabled, special_mtn_mashup_2_user_price, special_mtn_mashup_2_agent_price, special_mtn_mashup_2_enabled, special_mtn_mashup_3_user_price, special_mtn_mashup_3_agent_price, special_mtn_mashup_3_enabled, special_mtn_mashup_4_user_price, special_mtn_mashup_4_agent_price, special_mtn_mashup_4_enabled")
-        .single();
+        .from("data_packages")
+        .select("id, package_name, user_price, agent_price, is_active, mins")
+        .eq("network", "mtn")
+        .like("package_name", "Special MTN Mashup%")
+        .order("mins", { ascending: true });
       
-      if (data) {
+      if (data && data.length === 4) {
         setSpecialMTNPricing({
-          tier1_user_price: String(data.special_mtn_mashup_1_user_price || "6.00"),
-          tier1_agent_price: String(data.special_mtn_mashup_1_agent_price || "6.00"),
-          tier2_user_price: String(data.special_mtn_mashup_2_user_price || "13.00"),
-          tier2_agent_price: String(data.special_mtn_mashup_2_agent_price || "13.00"),
-          tier3_user_price: String(data.special_mtn_mashup_3_user_price || "25.00"),
-          tier3_agent_price: String(data.special_mtn_mashup_3_agent_price || "25.00"),
-          tier4_user_price: String(data.special_mtn_mashup_4_user_price || "35.00"),
-          tier4_agent_price: String(data.special_mtn_mashup_4_agent_price || "35.00"),
+          tier1_user_price: String(data[0].user_price || "6.00"),
+          tier1_agent_price: String(data[0].agent_price || "6.00"),
+          tier2_user_price: String(data[1].user_price || "13.00"),
+          tier2_agent_price: String(data[1].agent_price || "13.00"),
+          tier3_user_price: String(data[2].user_price || "25.00"),
+          tier3_agent_price: String(data[2].agent_price || "25.00"),
+          tier4_user_price: String(data[3].user_price || "35.00"),
+          tier4_agent_price: String(data[3].agent_price || "35.00"),
         });
         setSpecialMTNEnabled({
-          tier1: data.special_mtn_mashup_1_enabled !== false,
-          tier2: data.special_mtn_mashup_2_enabled !== false,
-          tier3: data.special_mtn_mashup_3_enabled !== false,
-          tier4: data.special_mtn_mashup_4_enabled !== false,
+          tier1: data[0].is_active !== false,
+          tier2: data[1].is_active !== false,
+          tier3: data[2].is_active !== false,
+          tier4: data[3].is_active !== false,
         });
       }
     } catch (error) {

@@ -1178,16 +1178,18 @@ const Packages = () => {
     const fetchSpecialMTNPricing = async () => {
       try {
         const { data } = await supabase
-          .from("afa_settings")
-          .select("special_mtn_mashup_1_user_price, special_mtn_mashup_2_user_price, special_mtn_mashup_3_user_price, special_mtn_mashup_4_user_price")
-          .single();
+          .from("data_packages")
+          .select("user_price, mins")
+          .eq("network", "mtn")
+          .like("package_name", "Special MTN Mashup%")
+          .order("mins", { ascending: true });
         
-        if (data) {
+        if (data && data.length === 4) {
           setSpecialMTNPricing({
-            tier1_user_price: data.special_mtn_mashup_1_user_price || 6.00,
-            tier2_user_price: data.special_mtn_mashup_2_user_price || 13.00,
-            tier3_user_price: data.special_mtn_mashup_3_user_price || 25.00,
-            tier4_user_price: data.special_mtn_mashup_4_user_price || 35.00,
+            tier1_user_price: data[0].user_price || 6.00,
+            tier2_user_price: data[1].user_price || 13.00,
+            tier3_user_price: data[2].user_price || 25.00,
+            tier4_user_price: data[3].user_price || 35.00,
           });
         }
       } catch (error) {
