@@ -995,7 +995,7 @@ const AgentDashboard = () => {
       if (Number(store.wallet_balance) < ap) { toast({ title: "Insufficient balance", variant: "destructive" }); setBuyLoading(false); return; }
       const { error: we } = await supabase.from("agent_stores").update({ wallet_balance: Number(store.wallet_balance) - ap }).eq("id", store.id);
       if (we) { toast({ title: "Error", description: we.message, variant: "destructive" }); setBuyLoading(false); return; }
-      const { data: od, error: oe } = await supabase.from("orders").insert({ customer_number: buyPhone.trim(), network: buyPkg.network, size_gb: buyPkg.size_gb, mins: (buyPkg as any).mins || 0, amount: ap, package_id: buyPkg.network === "special-mtn" ? "special-mtn-package" : buyPkg.id, agent_store_id: store.id, status: "paid", fulfillment_status: "pending", payment_method: "wallet" }).select("id").single();
+      const { data: od, error: oe } = await supabase.from("orders").insert({ customer_number: buyPhone.trim(), network: buyPkg.network, size_gb: buyPkg.size_gb, amount: ap, package_id: buyPkg.network === "special-mtn" ? "special-mtn-package" : buyPkg.id, agent_store_id: store.id, status: "paid", fulfillment_status: "pending", payment_method: "wallet" }).select("id").single();
       if (oe) { toast({ title: "Order error", description: oe.message, variant: "destructive" }); setBuyLoading(false); return; }
       await supabase.functions.invoke("fulfill-order", { body: { order_id: od.id } });
       setStore({ ...store, wallet_balance: Number(store.wallet_balance) - ap });
@@ -1005,7 +1005,7 @@ const AgentDashboard = () => {
       try {
         const email = user?.email || `agent-${store.id}@datapluggh.com`;
         const total = Math.round((ap + (ap * 1.95 / 100)) * 100) / 100;
-        const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { email, amount: total, phone: buyPhone.trim(), callback_url: `${window.location.origin}/agent?payment=verifying`, metadata: { package_id: buyPkg.network === "special-mtn" ? "special-mtn-package" : buyPkg.id, network: buyPkg.network, package_name: `${(buyPkg as any).mins ? (buyPkg as any).mins + " mins + " : ""}${buyPkg.size_gb}GB`, agent_store_id: store.id, payment_method: "paystack", use_agent_price: true, mins: (buyPkg as any).mins || 0 } } });
+        const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { email, amount: total, phone: buyPhone.trim(), callback_url: `${window.location.origin}/agent?payment=verifying`, metadata: { package_id: buyPkg.network === "special-mtn" ? "special-mtn-package" : buyPkg.id, network: buyPkg.network, package_name: `${(buyPkg as any).mins ? (buyPkg as any).mins + " mins + " : ""}${buyPkg.size_gb}GB`, agent_store_id: store.id, payment_method: "paystack", use_agent_price: true } } });
         if (error) throw error;
         if (data?.authorization_url) window.location.href = data.authorization_url; else throw new Error(data?.error || "Failed to initialize payment");
       } catch (e: any) { toast({ title: "Payment Error", description: e.message, variant: "destructive" }); }
@@ -1865,7 +1865,6 @@ const AgentDashboard = () => {
                                     customer_number: recipient.phone,
                                     network: bulkNetwork,
                                     size_gb: recipient.size,
-                                    mins: (pkg as any).mins || 0,
                                     amount: price,
                                     base_price: price,
                                     selling_price: price,
