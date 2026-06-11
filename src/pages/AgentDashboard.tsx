@@ -546,23 +546,6 @@ const AgentDashboard = () => {
       (subagentPriceR.data ?? []).forEach((p: any) => { subPm[p.package_id] = p.base_price; });
       setSubagentBasePrices(subPm);
       
-      // Set Special MTN Mashup pricing
-      if (specialMTNR.data) {
-        setSpecialMTNPricing({
-          tier1_agent_price: specialMTNR.data.tier_1_price || 6.00,
-          tier2_agent_price: specialMTNR.data.tier_2_price || 13.00,
-          tier3_agent_price: specialMTNR.data.tier_3_price || 25.00,
-          tier4_agent_price: specialMTNR.data.tier_4_price || 35.00,
-        });
-      } else {
-        setSpecialMTNPricing({
-          tier1_agent_price: 6.00,
-          tier2_agent_price: 13.00,
-          tier3_agent_price: 25.00,
-          tier4_agent_price: 35.00,
-        });
-      }
-      
       const os = (orderR.data as Order[]) ?? [];
       setOrders(os);
       const wd = (wdR.data as WithdrawalRequest[]) ?? [];
