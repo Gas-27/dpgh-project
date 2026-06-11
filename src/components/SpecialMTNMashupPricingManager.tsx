@@ -88,29 +88,26 @@ export default function SpecialMTNMashupPricingManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updateData = {
-        special_mtn_mashup_1_user_price: parseFloat(pricing.tier1_user_price),
-        special_mtn_mashup_1_agent_price: parseFloat(pricing.tier1_agent_price),
-        special_mtn_mashup_1_enabled: pricing.tier1_enabled,
-        special_mtn_mashup_2_user_price: parseFloat(pricing.tier2_user_price),
-        special_mtn_mashup_2_agent_price: parseFloat(pricing.tier2_agent_price),
-        special_mtn_mashup_2_enabled: pricing.tier2_enabled,
-        special_mtn_mashup_3_user_price: parseFloat(pricing.tier3_user_price),
-        special_mtn_mashup_3_agent_price: parseFloat(pricing.tier3_agent_price),
-        special_mtn_mashup_3_enabled: pricing.tier3_enabled,
-        special_mtn_mashup_4_user_price: parseFloat(pricing.tier4_user_price),
-        special_mtn_mashup_4_agent_price: parseFloat(pricing.tier4_agent_price),
-        special_mtn_mashup_4_enabled: pricing.tier4_enabled,
-      };
-
-      // Simply update all records (there's only one)
-      const { count, error } = await supabase
+      // Directly update the first (only) record - no WHERE clause needed
+      const { error } = await supabase
         .from('afa_settings')
-        .update(updateData)
-        .gte('id', '00000000-0000-0000-0000-000000000000');
+        .update({
+          special_mtn_mashup_1_user_price: parseFloat(pricing.tier1_user_price),
+          special_mtn_mashup_1_agent_price: parseFloat(pricing.tier1_agent_price),
+          special_mtn_mashup_1_enabled: pricing.tier1_enabled,
+          special_mtn_mashup_2_user_price: parseFloat(pricing.tier2_user_price),
+          special_mtn_mashup_2_agent_price: parseFloat(pricing.tier2_agent_price),
+          special_mtn_mashup_2_enabled: pricing.tier2_enabled,
+          special_mtn_mashup_3_user_price: parseFloat(pricing.tier3_user_price),
+          special_mtn_mashup_3_agent_price: parseFloat(pricing.tier3_agent_price),
+          special_mtn_mashup_3_enabled: pricing.tier3_enabled,
+          special_mtn_mashup_4_user_price: parseFloat(pricing.tier4_user_price),
+          special_mtn_mashup_4_agent_price: parseFloat(pricing.tier4_agent_price),
+          special_mtn_mashup_4_enabled: pricing.tier4_enabled,
+        })
+        .is('id', null, { negate: true }); // Match all non-null IDs
 
       if (error) throw error;
-      if (!count || count === 0) throw new Error('No records updated. afa_settings table may be empty.');
       
       toast({ title: 'Success', description: 'Special MTN Mashup pricing saved' });
     } catch (error: any) {

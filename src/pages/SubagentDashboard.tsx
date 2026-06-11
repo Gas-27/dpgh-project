@@ -1234,12 +1234,13 @@ const SubagentDashboard = () => {
       // Create order with wallet payment method
       // Include agent_store_id so it shows on storefront and for proper tracking
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
-        package_id: buyingPkg.id,
+        package_id: buyingPkg.network === "special-mtn" ? "special-mtn-package" : buyingPkg.id,
         subagent_store_id: subagentStore.id,
         agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
         size_gb: buyingPkg.size_gb,
+        mins: (buyingPkg as any).mins || 0,
         amount: price,
         base_price: price,
         selling_price: price,
@@ -2363,12 +2364,13 @@ const SubagentDashboard = () => {
                                 try {
                                   // Create order with agent_store_id for tracking
                                   const { data: orderData, error: orderError } = await supabase.from("orders").insert({
-                                    package_id: pkg.id,
+                                    package_id: pkg.network === "special-mtn" ? "special-mtn-package" : pkg.id,
                                     subagent_store_id: subagentStore.id,
                                     agent_store_id: subagentStore.agent_store_id,
                                     customer_number: recipient.phone,
                                     network: bulkNetwork,
                                     size_gb: recipient.size,
+                                    mins: (pkg as any).mins || 0,
                                     amount: price,
                                     base_price: price,
                                     selling_price: price,
