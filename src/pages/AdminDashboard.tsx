@@ -24,7 +24,6 @@ import PushNotificationManager from "@/components/PushNotificationManager";
 import AdminAFABundleManager from "@/components/AdminAFABundleManager";
 import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
-import SpecialMTNMashupPricingManager from "@/components/SpecialMTNMashupPricingManager";
 import { DOMAINS } from "@/config/domains";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
@@ -1630,9 +1629,9 @@ const AdminDashboard = () => {
             <TabsContent value="prices" className="space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex gap-2">
-                  {["mtn", "airteltigo", "telecel"].map((net) => (
+                  {["mtn", "airteltigo", "telecel", "mtn_mashup"].map((net) => (
                     <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
-                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}
                     </Button>
                   ))}
                 </div>
@@ -1659,9 +1658,6 @@ const AdminDashboard = () => {
                   </TableBody>
                 </Table>
               </Card>
-
-              {/* Special MTN Mashup Pricing Manager */}
-              <SpecialMTNMashupPricingManager />
             </TabsContent>
           )}
 
