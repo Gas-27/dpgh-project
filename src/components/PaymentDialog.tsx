@@ -22,7 +22,7 @@ interface PaymentDialogProps {
   isOpen?: boolean;
   onOpenChange: (open: boolean) => void;
   packageName?: string;
-  package?: { id: string; network: string; size_gb: number };
+  package?: { id: string; network: string; size_gb: number; size_gb_text?: string; user_price?: number; agent_price?: number };
   network?: string;
   price: number;
   packageId?: string;
@@ -76,7 +76,8 @@ const PaymentDialog = ({
 
   // Support both prop patterns
   const isDialogOpen = open ?? isOpen ?? false;
-  const displayPackageName = packageName || (pkg ? `${pkg.size_gb}GB` : "");
+  const displayPackageName = packageName || (pkg ? (pkg.network === "mtn_mashup" && pkg.size_gb_text ? pkg.size_gb_text : `${pkg.size_gb}GB`) : "");
+  const packageInfo = pkg;
   const network = networkProp || pkg?.network || "";
   const actualPackageId = packageId || pkg?.id || "";
   const actualStoreId = agentStoreId || storeId || "";

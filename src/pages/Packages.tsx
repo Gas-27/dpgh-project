@@ -1592,7 +1592,7 @@ const Packages = () => {
       </div>
 
       {paymentPkg && (
-        <PaymentDialog open={!!paymentPkg} onOpenChange={(v) => !v && setPaymentPkg(null)} packageName={`${(paymentPkg as any).mins ? (paymentPkg as any).mins + " mins + " : ""}${paymentPkg.size_gb}GB`} network={selectedNetwork} price={Number(paymentPkg.price)} packageId={paymentPkg.id} />
+        <PaymentDialog open={!!paymentPkg} onOpenChange={(v) => !v && setPaymentPkg(null)} package={paymentPkg as any} packageName={`${(paymentPkg as any).mins ? (paymentPkg as any).mins + " mins + " : ""}${(paymentPkg as any).size_gb_text || paymentPkg.size_gb + "GB"}`} network={paymentPkg.network} price={Number(paymentPkg.price)} packageId={paymentPkg.id} />
       )}
       <PaymentVerifier />
 
