@@ -1356,31 +1356,33 @@ const Packages = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filtered.map((pkg) => {
                   const isMTNMashup = selectedNetwork === "mtn_mashup";
+                  const networkColor = networkConfig[selectedNetwork as keyof typeof networkConfig]?.color || "text-cyan-400";
                   return (
                     <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
-                      <CardContent className="p-5 text-center space-y-3 text-white">
-                        {isMTNMashup && (
-                          <div className="bg-white/20 rounded-lg p-2 mb-2">
-                            <p className="font-semibold text-sm">Special MTN Mashup</p>
-                            <p className="text-xs opacity-90">Data Bundle</p>
-                          </div>
-                        )}
-                        <div>
-                          {isMTNMashup && <p className="text-xs opacity-80 mb-1">{pkg.size_gb_text} - GH₵ {Number(pkg.price).toFixed(2)}</p>}
-                          <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                        </div>
+                      <CardContent className="p-4 text-center space-y-3">
                         {isMTNMashup ? (
                           <>
+                            <div className="bg-white/20 rounded-lg p-2 mb-2">
+                              <p className="font-semibold text-sm text-white">Special MTN Mashup</p>
+                              <p className="text-xs opacity-90 text-white">Data Bundle</p>
+                            </div>
+                            <p className="text-xs opacity-80 text-white mb-1">{pkg.size_gb_text} - GH₵ {Number(pkg.price).toFixed(2)}</p>
+                            <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text}</p>
                             <p className="text-sm font-medium text-white">Only GH₵ {Number(pkg.price).toFixed(2)} - Valid forever</p>
                             <div className="space-y-1 text-xs text-white">
                               <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
                               <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
                             </div>
+                            <Button variant="secondary" size="sm" className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
                           </>
                         ) : (
-                          <p className="text-xl font-bold text-white">GH₵{Number(pkg.price).toFixed(2)}</p>
+                          <>
+                            <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
+                            <p className={`text-sm font-semibold uppercase tracking-wide ${networkColor}`}>{networkConfig[selectedNetwork as keyof typeof networkConfig]?.label || "Bundle"}</p>
+                            <p className="text-xl font-bold text-white">GH₵{Number(pkg.price).toFixed(2)}</p>
+                            <Button variant="secondary" size="sm" className="w-full mt-2 font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
+                          </>
                         )}
-                        <Button variant="secondary" size="sm" className={`w-full mt-2 font-medium ${isMTNMashup ? "bg-orange-700 hover:bg-orange-800 text-white border-0" : "bg-white/10 hover:bg-white/20 text-white border border-white/20"}`} onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
                       </CardContent>
                     </Card>
                   );
