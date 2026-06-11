@@ -1059,14 +1059,6 @@ const Packages = () => {
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
-  const [specialMTNTab, setSpecialMTNTab] = useState(false);
-  const [specialMTNPricing, setSpecialMTNPricing] = useState({
-    tier1_user_price: 6.00,
-    tier2_user_price: 13.00,
-    tier3_user_price: 25.00,
-    tier4_user_price: 35.00,
-  });
-  const [specialMTNPackages, setSpecialMTNPackages] = useState<DataPackage[]>([]);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
     chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
@@ -1178,34 +1170,8 @@ const Packages = () => {
 
   // Fetch Special MTN Mashup pricing
   useEffect(() => {
-    const fetchSpecialMTNPricing = async () => {
-      try {
-        const { data } = await supabase
-          .from("data_packages")
-          .select("id, user_price, agent_price, mins, size_gb_text, is_active")
-          .eq("network", "mtn_mashup")
-          .order("mins", { ascending: true });
-        
-        if (data && data.length >= 4) {
-          setSpecialMTNPricing({
-            tier1_user_price: data[0].user_price || 6.00,
-            tier2_user_price: data[1].user_price || 13.00,
-            tier3_user_price: data[2].user_price || 25.00,
-            tier4_user_price: data[3].user_price || 35.00,
-          });
-          setSpecialMTNPackages(data as any);
-        }
-      } catch (error) {
-        console.error("[v0] Error fetching Special MTN pricing:", error);
-      }
-    };
-    
-    fetchSpecialMTNPricing();
-  }, []);
-
-  useEffect(() => {
     const n = searchParams.get("network");
-    if (n === "mtn" || n === "airteltigo" || n === "telecel") setSelectedNetwork(n);
+    if (n === "mtn" || n === "airteltigo" || n === "telecel" || n === "mtn_mashup") setSelectedNetwork(n as any);
   }, [searchParams]);
 
   const filtered = useMemo(() => packages.filter(p => p.network === selectedNetwork), [packages, selectedNetwork]);
@@ -1381,49 +1347,24 @@ const Packages = () => {
 
             <div className="flex justify-center gap-3 mb-8 flex-wrap">
               {(Object.keys(networkConfig) as Network[]).map((net) => (
-                <Button key={net} variant={selectedNetwork === net && !specialMTNTab ? "hero" : "outline"} onClick={() => { setSelectedNetwork(net); setSpecialMTNTab(false); }} className="font-semibold">{networkConfig[net].label}</Button>
+                <Button key={net} variant={selectedNetwork === net ? "hero" : "outline"} onClick={() => setSelectedNetwork(net)} className="font-semibold">{networkConfig[net].label}</Button>
               ))}
-              <Button variant={specialMTNTab ? "hero" : "outline"} onClick={() => setSpecialMTNTab(true)} className="font-semibold bg-amber-500/90 hover:bg-amber-600 text-white border-0">Special MTN Mashup</Button>
+              <Button variant={selectedNetwork === "mtn_mashup" ? "hero" : "outline"} onClick={() => setSelectedNetwork("mtn_mashup" as any)} className="font-semibold bg-amber-500/90 hover:bg-amber-600 text-white border-0">Special MTN Mashup</Button>
             </div>
 
-            {specialMTNTab ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {specialMTNPackages.map((pkg) => (
-                  <Card key={pkg.id} className="bg-gradient-to-br from-amber-400 to-amber-500 border-0 shadow-lg overflow-hidden">
-                    <CardContent className="p-4 text-center space-y-3">
-                      <div className="bg-white/20 rounded-lg p-3">
-                        <p className="text-white font-semibold text-sm">Special MTN Mashup</p>
-                        <p className="text-white text-xs opacity-90">Data Bundle</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-white opacity-80">{pkg.size_gb_text} - GHS {Number(pkg.user_price).toFixed(2)}</p>
-                        <p className="text-2xl font-bold text-white">{pkg.size_gb_text}</p>
-                        <p className="text-sm text-white">Only GHS {Number(pkg.user_price).toFixed(2)} - Valid forever</p>
-                      </div>
-                      <div className="space-y-2 text-xs text-white">
-                        <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
-                        <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />24/7 support</div>
-                      </div>
-                      <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg" onClick={() => setPaymentPkg({ ...pkg, network: "mtn_mashup", price: pkg.user_price } as any)}>BUY NOW</Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {filtered.map((pkg) => (
-                    <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={{ background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
-                      <CardContent className="p-4 text-center space-y-2">
-                        <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                        <p className={`text-sm font-semibold uppercase tracking-wide ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
+            {loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {filtered.map((pkg) => (
+                  <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={{ background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
+                    <CardContent className="p-4 text-center space-y-2">
+                      <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                      <p className={`text-sm font-semibold uppercase tracking-wide ${networkConfig[selectedNetwork as keyof typeof networkConfig]?.color || "text-white"}`}>{networkConfig[selectedNetwork as keyof typeof networkConfig]?.label || "Special Bundle"}</p>
                         <p className="text-xl font-bold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
                         <Button variant="secondary" size="sm" className="w-full mt-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
-              )
             )}
           </>
         ) : activeCategory === "bulk" ? (
