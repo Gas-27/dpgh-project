@@ -968,7 +968,14 @@ const AgentDashboard = () => {
   setSavingStore(false);
   };
 
-  const openBuyDialog = (pkg: DataPackage) => { setBuyPkg(pkg); setBuyPhone(""); setBuyStep("phone"); setBuyPaymentMethod("wallet"); setBuyDialogOpen(true); };
+  const openBuyDialog = (pkg: DataPackage) => { 
+    console.log('[v0] Opening buy dialog with package:', pkg);
+    setBuyPkg(pkg); 
+    setBuyPhone(""); 
+    setBuyStep("phone"); 
+    setBuyPaymentMethod("wallet"); 
+    setBuyDialogOpen(true); 
+  };
 
   const handleBuyConfirm = async () => {
     if (!store || !buyPkg) return; setBuyLoading(true);

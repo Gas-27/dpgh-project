@@ -88,24 +88,39 @@ export default function SpecialMTNMashupPricingManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Update afa_settings - filter by id IS NOT NULL (matches all UUIDs)
+      // Fetch the actual ID first to use in upsert
+      const { data: existingSettings } = await supabase
+        .from('afa_settings')
+        .select('id')
+        .limit(1);
+
+      if (!existingSettings || existingSettings.length === 0) {
+        throw new Error('No afa_settings record found. Please create one first.');
+      }
+
+      const settingsId = existingSettings[0].id;
+
+      // Use upsert with explicit ID to avoid WHERE clause issues with UUIDs
       const { error } = await supabase
         .from('afa_settings')
-        .update({
-          special_mtn_mashup_1_user_price: parseFloat(pricing.tier1_user_price),
-          special_mtn_mashup_1_agent_price: parseFloat(pricing.tier1_agent_price),
-          special_mtn_mashup_1_enabled: pricing.tier1_enabled,
-          special_mtn_mashup_2_user_price: parseFloat(pricing.tier2_user_price),
-          special_mtn_mashup_2_agent_price: parseFloat(pricing.tier2_agent_price),
-          special_mtn_mashup_2_enabled: pricing.tier2_enabled,
-          special_mtn_mashup_3_user_price: parseFloat(pricing.tier3_user_price),
-          special_mtn_mashup_3_agent_price: parseFloat(pricing.tier3_agent_price),
-          special_mtn_mashup_3_enabled: pricing.tier3_enabled,
-          special_mtn_mashup_4_user_price: parseFloat(pricing.tier4_user_price),
-          special_mtn_mashup_4_agent_price: parseFloat(pricing.tier4_agent_price),
-          special_mtn_mashup_4_enabled: pricing.tier4_enabled,
-        })
-        .not('id', 'is', null);
+        .upsert(
+          {
+            id: settingsId,
+            special_mtn_mashup_1_user_price: parseFloat(pricing.tier1_user_price),
+            special_mtn_mashup_1_agent_price: parseFloat(pricing.tier1_agent_price),
+            special_mtn_mashup_1_enabled: pricing.tier1_enabled,
+            special_mtn_mashup_2_user_price: parseFloat(pricing.tier2_user_price),
+            special_mtn_mashup_2_agent_price: parseFloat(pricing.tier2_agent_price),
+            special_mtn_mashup_2_enabled: pricing.tier2_enabled,
+            special_mtn_mashup_3_user_price: parseFloat(pricing.tier3_user_price),
+            special_mtn_mashup_3_agent_price: parseFloat(pricing.tier3_agent_price),
+            special_mtn_mashup_3_enabled: pricing.tier3_enabled,
+            special_mtn_mashup_4_user_price: parseFloat(pricing.tier4_user_price),
+            special_mtn_mashup_4_agent_price: parseFloat(pricing.tier4_agent_price),
+            special_mtn_mashup_4_enabled: pricing.tier4_enabled,
+          },
+          { onConflict: 'id' }
+        );
 
       if (error) throw error;
       
