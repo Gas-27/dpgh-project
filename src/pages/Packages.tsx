@@ -185,27 +185,42 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 60000;
   let step = 1, msg = "", note: string | null = null;
 
-  // 🔁 CHANGED: delivery threshold from 90 minutes to 300 minutes
-  if (elapsed >= 300) {
-    step = 4; msg = "Your data bundle has been delivered successfully.";
-    note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
-      : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
-        : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
-  } else if (elapsed >= 60) {
-    step = 3;
-    msg = order.network === "mtn" ? "Expecting your data soon. Check MTN / MTNUP2U messages."
-      : order.network === "airteltigo" ? "Expecting your data soon. Check AirtelTigo iShare / BigTime."
-        : order.network === "telecel" ? "Expecting your data soon. Check Telecel messages." : "Expecting your data soon.";
-    note = "Order is now with the network. Any further delay is from them.";
-  } else if (elapsed >= 15) {
-    step = 3; msg = "Your order can be delivered any moment. Report only if it shows 'Delivered' but you didn't receive.";
-  } else if (elapsed >= 12) {
-    step = 3; msg = `Waiting for validation from ${formatNetworkName(order.network)}…`;
-  } else if (elapsed >= 9) {
-    step = 2; msg = `Order sent to ${formatNetworkName(order.network)} for validation.`;
-    note = "Delay from here is from the network.";
+  // Special handling for mtn_mashup
+  if (order.network === "mtn_mashup") {
+    if (elapsed >= 5 * 60) { // 5 hours
+      step = 4; msg = "Your data bundle has been delivered successfully.";
+      note = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
+    } else if (elapsed >= 2) {
+      step = 2; msg = "Your order is being processed. Delivery estimate: 10 minutes to 5 hours.";
+      note = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
+    } else {
+      msg = "Order being processed…";
+      note = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
+    }
   } else {
-    msg = "Order being processed…";
+    // Original logic for other networks
+    // 🔁 CHANGED: delivery threshold from 90 minutes to 300 minutes
+    if (elapsed >= 300) {
+      step = 4; msg = "Your data bundle has been delivered successfully.";
+      note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
+        : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
+          : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
+    } else if (elapsed >= 60) {
+      step = 3;
+      msg = order.network === "mtn" ? "Expecting your data soon. Check MTN / MTNUP2U messages."
+        : order.network === "airteltigo" ? "Expecting your data soon. Check AirtelTigo iShare / BigTime."
+          : order.network === "telecel" ? "Expecting your data soon. Check Telecel messages." : "Expecting your data soon.";
+      note = "Order is now with the network. Any further delay is from them.";
+    } else if (elapsed >= 15) {
+      step = 3; msg = "Your order can be delivered any moment. Report only if it shows 'Delivered' but you didn't receive.";
+    } else if (elapsed >= 12) {
+      step = 3; msg = `Waiting for validation from ${formatNetworkName(order.network)}…`;
+    } else if (elapsed >= 9) {
+      step = 2; msg = `Order sent to ${formatNetworkName(order.network)} for validation.`;
+      note = "Delay from here is from the network.";
+    } else {
+      msg = "Order being processed…";
+    }
   }
 
   const getDetailedReportMessage = (): string => {
