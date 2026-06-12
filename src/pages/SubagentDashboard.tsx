@@ -1236,7 +1236,6 @@ const SubagentDashboard = () => {
       // Include agent_store_id so it shows on storefront and for proper tracking
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
         package_id: buyingPkg.id,
-        size_gb_text: buyingPkg.network === "mtn_mashup" ? buyingPkg.size_gb_text : null,
         subagent_store_id: subagentStore.id,
         agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
         customer_number: buyCustomerNumber,
@@ -2368,7 +2367,6 @@ const SubagentDashboard = () => {
                                   // Create order with agent_store_id for tracking
                                   const { data: orderData, error: orderError } = await supabase.from("orders").insert({
                                     package_id: pkg.id,
-                                    size_gb_text: pkg.network === "mtn_mashup" ? pkg.size_gb_text : null,
                                     subagent_store_id: subagentStore.id,
                                     agent_store_id: subagentStore.agent_store_id,
                                     customer_number: recipient.phone,

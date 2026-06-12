@@ -64,7 +64,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     }
 
     const markup = parseFloat(markupPercent) / 100;
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" ? "Telecel" : "Special MTN Mashup";
     
     filteredPackages.forEach(pkg => {
       // Use agent_price as the base (this already has admin's custom price if set)
@@ -159,14 +159,14 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
-          {["mtn", "airteltigo", "telecel"].map(net => (
+          {["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (
             <Button
               key={net}
               variant={networkFilter === net ? "hero" : "outline"}
               size="sm"
               onClick={() => setNetworkFilter(net)}
             >
-              {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+              {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}
             </Button>
           ))}
         </div>
@@ -194,7 +194,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
         <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br /> 💡 Markup Explanation (Remember to click save after applying markup)</p>
         <p className="text-xs text-muted-foreground mt-2">
-          Markup changes all subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (agent cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).
+          Markup changes all subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (agent cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" ? "Telecel" : "Special MTN Mashup"}</strong>).
         </p>
       </div>
 
