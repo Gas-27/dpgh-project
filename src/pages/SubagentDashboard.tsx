@@ -1240,7 +1240,7 @@ const SubagentDashboard = () => {
         agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
-        size_gb: buyingPkg.network === "mtn_mashup" ? (buyingPkg as any).size_gb_text : buyingPkg.size_gb,
+        size_gb: buyingPkg.size_gb,
         amount: price,
         base_price: price,
         selling_price: price,
