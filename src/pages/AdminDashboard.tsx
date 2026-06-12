@@ -1531,7 +1531,18 @@ const AdminDashboard = () => {
   // ======================== Helpers ========================
   const canSee = (section: Section) => currentUserSections.includes(section);
 
-  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const filteredPackages = packages.filter((p) => p.network === networkFilter).sort((a, b) => {
+    // For mtn_mashup, show mins+GB packages first
+    if (networkFilter === "mtn_mashup") {
+      const aHasMins = (a.size_gb_text || "").includes("mins");
+      const bHasMins = (b.size_gb_text || "").includes("mins");
+      if (aHasMins && !bHasMins) return -1;
+      if (!aHasMins && bHasMins) return 1;
+      return Number(b.price) - Number(a.price);
+    }
+    // For other networks, sort by price descending
+    return Number(b.price) - Number(a.price);
+  });
   const storeSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");

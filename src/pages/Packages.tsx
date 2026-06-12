@@ -1174,7 +1174,22 @@ const Packages = () => {
     if (n === "mtn" || n === "airteltigo" || n === "telecel" || n === "mtn_mashup") setSelectedNetwork(n as any);
   }, [searchParams]);
 
-  const filtered = useMemo(() => packages.filter(p => p.network === selectedNetwork).sort((a, b) => Number(b.price) - Number(a.price)), [packages, selectedNetwork]);
+  const filtered = useMemo(() => {
+    const filtered = packages.filter(p => p.network === selectedNetwork);
+    // For mtn_mashup, show mins+GB packages first, then GB-only packages
+    if (selectedNetwork === "mtn_mashup") {
+      return filtered.sort((a, b) => {
+        const aHasMins = (a.size_gb_text || "").includes("mins");
+        const bHasMins = (b.size_gb_text || "").includes("mins");
+        if (aHasMins && !bHasMins) return -1;
+        if (!aHasMins && bHasMins) return 1;
+        // If both have mins or both don't, sort by price descending
+        return Number(b.price) - Number(a.price);
+      });
+    }
+    // For other networks, sort by price descending
+    return filtered.sort((a, b) => Number(b.price) - Number(a.price));
+  }, [packages, selectedNetwork]);
 
   const searchOrders = async () => {
     if (!searchQuery.trim()) return;

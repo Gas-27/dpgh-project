@@ -917,7 +917,15 @@ const AgentDashboard = () => {
     }
     const multiplier = 1 + percent / 100;
     const newEdited: Record<string, number> = { ...editedPrices };
-    const currentNetworkPackages = packages.filter(p => p.network === networkFilter);
+    const currentNetworkPackages = packages.filter(p => p.network === networkFilter).sort((a, b) => {
+      if (networkFilter === "mtn_mashup") {
+        const aHasMins = (a.size_gb_text || "").includes("mins");
+        const bHasMins = (b.size_gb_text || "").includes("mins");
+        if (aHasMins && !bHasMins) return -1;
+        if (!aHasMins && bHasMins) return 1;
+      }
+      return Number(b.price) - Number(a.price);
+    });
     let appliedCount = 0;
     for (const pkg of currentNetworkPackages) {
       const basePrice = pkg.agent_price;
@@ -1182,7 +1190,15 @@ const AgentDashboard = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isAdmin) { if (!store) return <Navigate to="/agent-onboarding" replace />; if (!store.approved) return <Navigate to="/pending-approval" replace />; }
 
-  const filteredPackages = packages.filter(p => p.network === networkFilter);
+  const filteredPackages = packages.filter(p => p.network === networkFilter).sort((a, b) => {
+    if (networkFilter === "mtn_mashup") {
+      const aHasMins = (a.size_gb_text || "").includes("mins");
+      const bHasMins = (b.size_gb_text || "").includes("mins");
+      if (aHasMins && !bHasMins) return -1;
+      if (!aHasMins && bHasMins) return 1;
+    }
+    return Number(b.price) - Number(a.price);
+  });
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
   const storeUrl = store ? DOMAINS.getAgentStoreUrl(store.store_name) : "";
   const storeName = store?.store_name || "DATA PLUG .STORE";
@@ -1493,7 +1509,15 @@ const AgentDashboard = () => {
             </Card>)}
             <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}</Button>))}</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {packages.filter(p => p.network === networkFilter).map((pkg) => {
+              {packages.filter(p => p.network === networkFilter).sort((a, b) => {
+                if (networkFilter === "mtn_mashup") {
+                  const aHasMins = (a.size_gb_text || "").includes("mins");
+                  const bHasMins = (b.size_gb_text || "").includes("mins");
+                  if (aHasMins && !bHasMins) return -1;
+                  if (!aHasMins && bHasMins) return 1;
+                }
+                return Number(b.price) - Number(a.price);
+              }).map((pkg) => {
                 const price = Number(pkg.agent_price || pkg.price);
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
                 return (
