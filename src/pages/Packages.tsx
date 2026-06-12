@@ -1218,6 +1218,7 @@ const Packages = () => {
     }));
     
     setOrders(enrichedOrders as Order[]);
+    setSearching(false);
   };
 
   const clearSearch = () => { setSearchQuery(""); setOrders([]); setSearchPerformed(false); };

@@ -262,11 +262,11 @@ const SubagentOrderTrackingCard = ({
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  const contactMessage = `Order from ${orderDate}\nNetwork: ${order.network?.toUpperCase()}\nData: ${order.size_gb}GB\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
+  const contactMessage = `Order from ${orderDate}\nNetwork: ${order.network?.toUpperCase()}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
   const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
-    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${order.network?.toUpperCase()}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
+    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${order.network?.toUpperCase()}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
@@ -689,7 +689,7 @@ export function SubagentStorefront() {
     // Search subagent orders first
     let subagentQuery = supabase
       .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at, package_id")
       .eq("subagent_store_id", store?.id);
 
     if (noSpaces.length === 36 && raw.includes("-")) {
@@ -707,7 +707,7 @@ export function SubagentStorefront() {
     if (store?.agent_store_id) {
       let agentQuery = supabase
         .from("orders")
-        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at")
+        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at, package_id")
         .eq("agent_store_id", store.agent_store_id)
         .is("subagent_store_id", null); // Only direct agent orders
 
@@ -726,7 +726,16 @@ export function SubagentStorefront() {
     // Sort all orders by date descending
     allOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
-    setOrders(allOrders);
+    // For mtn_mashup orders, fetch size_gb_text from packages
+    const enrichedOrders = await Promise.all(allOrders.map(async (order: any) => {
+      if (order.network === "mtn_mashup" && order.package_id) {
+        const { data: pkg } = await supabase.from("packages").select("size_gb_text").eq("id", order.package_id).single();
+        return { ...order, size_gb_text: pkg?.size_gb_text };
+      }
+      return order;
+    }));
+    
+    setOrders(enrichedOrders);
     setSearching(false);
   }, [searchQuery, store?.id, store?.agent_store_id]);
 
@@ -934,7 +943,7 @@ export function SubagentStorefront() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-mono text-sm">{order.customer_number}</p>
-                            <p className="text-xs text-muted-foreground">{order.size_gb}GB {formatNetworkName(order.network)} - GH₵{Number(order.amount).toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">{(order as any).size_gb_text || order.size_gb + "GB"} {formatNetworkName(order.network)} - GH₵{Number(order.amount).toFixed(2)}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             {getStatusIcon(order.status)}

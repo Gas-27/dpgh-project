@@ -296,11 +296,11 @@ const OrderTrackingCard = ({
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${order.size_gb}GB\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
+  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
   const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
-    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
+    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
@@ -532,7 +532,7 @@ const NotificationModal = ({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────��──────────────────────────────────────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain();
@@ -840,7 +840,7 @@ const AgentStorefront = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at");
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at, package_id");
 
     // If it looks like a UUID, search by ID directly
     if (noSpaces.length === 36 && raw.includes("-")) {
@@ -853,7 +853,15 @@ const AgentStorefront = () => {
 
     const { data, error } = await query.order("created_at", { ascending: false });
     if (!error && data) {
-      setOrders(data as Order[]);
+      // For mtn_mashup orders, fetch size_gb_text from packages
+      const enrichedOrders = await Promise.all(data.map(async (order: any) => {
+        if (order.network === "mtn_mashup" && order.package_id) {
+          const { data: pkg } = await supabase.from("packages").select("size_gb_text").eq("id", order.package_id).single();
+          return { ...order, size_gb_text: pkg?.size_gb_text };
+        }
+        return order;
+      }));
+      setOrders(enrichedOrders as Order[]);
     } else {
       setOrders([]);
       if (error) console.error("Order search error:", error);
@@ -1200,7 +1208,7 @@ const AgentStorefront = () => {
                                   <span className="uppercase text-muted-foreground">
                                     {order.network}
                                   </span>
-                                  <span className="font-display font-bold">{order.size_gb}GB</span>
+                                  <span className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
                                   <span className="text-primary">
                                     GH₵ {Number(order.amount).toFixed(2)}
                                   </span>

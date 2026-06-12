@@ -1576,7 +1576,7 @@ const SubagentDashboard = () => {
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
             <div>
-              <p className="text-sm font-semibold text-foreground">Your Subagent Store</p>
+              <p className="text-sm font-semibold text-foreground">Your Store Link</p>
               <p className="text-xs text-muted-foreground">{storeUrl || "Store URL not available"}</p>
             </div>
             <div className="flex gap-2">
