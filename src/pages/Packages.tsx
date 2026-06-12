@@ -1174,7 +1174,7 @@ const Packages = () => {
     if (n === "mtn" || n === "airteltigo" || n === "telecel" || n === "mtn_mashup") setSelectedNetwork(n as any);
   }, [searchParams]);
 
-  const filtered = useMemo(() => packages.filter(p => p.network === selectedNetwork), [packages, selectedNetwork]);
+  const filtered = useMemo(() => packages.filter(p => p.network === selectedNetwork).sort((a, b) => Number(b.price) - Number(a.price)), [packages, selectedNetwork]);
 
   const searchOrders = async () => {
     if (!searchQuery.trim()) return;
