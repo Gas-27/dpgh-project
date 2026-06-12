@@ -110,6 +110,18 @@ Deno.serve(async (req) => {
     // Map network and capacity
     const networkKey = NETWORK_MAP[existingOrder.network?.toLowerCase()] || "YELLO";
     const capacity = Number(existingOrder.size_gb);
+    
+    // For mtn_mashup, fetch the package to get size_gb_text
+    let sizeGbText = null;
+    if (existingOrder.network === "mtn_mashup" && existingOrder.package_id) {
+      const { data: pkg } = await supabase
+        .from("packages")
+        .select("size_gb_text")
+        .eq("id", existingOrder.package_id)
+        .single();
+      sizeGbText = pkg?.size_gb_text || null;
+    }
+    
     if (isNaN(capacity) || capacity <= 0) {
       await supabase
         .from("orders")
@@ -121,24 +133,51 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Fulfilling order ${order_id}: recipient=${phone}, capacity=${capacity}GB, networkKey=${networkKey}`);
+    console.log(`Fulfilling order ${order_id}: recipient=${phone}, capacity=${capacity}GB, network=${existingOrder.network}`);
 
-    // Call GHDATE CONNECT API
-    const apiUrl = `${ghdateApiUrl}/api/purchase`;
-    const requestBody = {
-      network: networkKey,
-      phone: phone,
-      amount: capacity,
-    };
-
-    const apiRes = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${ghdateApiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // Call API based on network type
+    let apiUrl: string;
+    let requestBody: Record<string, any>;
+    let apiRes: Response;
+    
+    if (existingOrder.network === "mtn_mashup") {
+      // Use Dakazina API for mtn_mashup
+      apiUrl = "https://reseller.dakazinabusinessconsult.com/api/v1/buy-data-package";
+      requestBody = {
+        "recipient_msisdn": phone,
+        "shared_bundle": sizeGbText,
+        "network_id": 7,
+        ...(order_id && { "incoming_api_ref": order_id }),
+      };
+      const dakazinApiKey = Deno.env.get("DAKAZINA_API_KEY");
+      if (!dakazinApiKey) {
+        throw new Error("DAKAZINA_API_KEY not configured");
+      }
+      apiRes = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${dakazinApiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+    } else {
+      // Use GHDATE API for other networks
+      apiUrl = `${ghdateApiUrl}/api/purchase`;
+      requestBody = {
+        network: networkKey,
+        phone: phone,
+        amount: capacity,
+      };
+      apiRes = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${ghdateApiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+    }
 
     const rawResponse = await apiRes.text();
     let parsedResponse = null;
