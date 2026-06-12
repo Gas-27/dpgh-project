@@ -234,7 +234,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
 Order Details:
 - Order Date: ${orderDate}
 - Network: ${networkName}
-- Data: ${order.size_gb}GB
+- Data: ${order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}
 - Amount: ${amountFormatted}
 - Customer Number: ${order.customer_number}
 - Order Status: ${orderStatus}
@@ -1197,7 +1197,7 @@ const Packages = () => {
     let q = searchQuery.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
     q = q.replace(/\s/g, "");
-    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,created_at");
+    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,created_at,packages(size_gb_text)");
     // If query is a UUID (contains hyphens), search by ID; otherwise search by phone number (without spaces)
     if (q.length === 36 && q.includes("-")) {
       query = query.eq("id", q);
@@ -1327,7 +1327,7 @@ const Packages = () => {
                                     </div>
                                     <div className="flex items-center gap-3 text-sm">
                                       <span className="uppercase text-muted-foreground">{order.network}</span>
-                                      <span className="font-bold">{order.size_gb}GB</span>
+                                      <span className="font-bold">{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</span>
                                       <span className="text-primary">GH₵ {Number(order.amount).toFixed(2)}</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>

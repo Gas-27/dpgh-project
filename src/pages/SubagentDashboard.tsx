@@ -1772,7 +1772,7 @@ const SubagentDashboard = () => {
                                 <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
                                 <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                                <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                                <TableCell className="font-display font-bold">{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</TableCell>
                                 <TableCell className="font-semibold">GH₵{Number(sellPrice).toFixed(2)}</TableCell>
                                 <TableCell className="text-muted-foreground">GH₵{Number(baseCost).toFixed(2)}</TableCell>
                                 <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
@@ -1992,7 +1992,7 @@ const SubagentDashboard = () => {
                             <TableRow key={order.id}>
                               <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
                               <TableCell>{order.network.toUpperCase()}</TableCell>
-                              <TableCell>{order.size_gb}GB</TableCell>
+                              <TableCell>{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</TableCell>
                               <TableCell className="font-semibold">GH₵{Number(sellPrice).toFixed(2)}</TableCell>
                               <TableCell className="text-muted-foreground">GH₵{Number(baseCost).toFixed(2)}</TableCell>
                               <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
