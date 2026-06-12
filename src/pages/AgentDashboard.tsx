@@ -978,7 +978,9 @@ const AgentDashboard = () => {
       if (we) { toast({ title: "Error", description: we.message, variant: "destructive" }); setBuyLoading(false); return; }
       const { data: od, error: oe } = await supabase.from("orders").insert({ customer_number: buyPhone.trim(), network: buyPkg.network, size_gb: buyPkg.size_gb, amount: ap, package_id: buyPkg.id, agent_store_id: store.id, status: "paid", fulfillment_status: "pending", payment_method: "wallet" }).select("id").single();
       if (oe) { toast({ title: "Order error", description: oe.message, variant: "destructive" }); setBuyLoading(false); return; }
-      await supabase.functions.invoke("fulfill-order", { body: { order_id: od.id } });
+      console.log("[v0] Wallet order created, invoking fulfill-order for order:", od.id, "network:", buyPkg.network);
+      const { data: fulfillData, error: fulfillError } = await supabase.functions.invoke("fulfill-order", { body: { order_id: od.id } });
+      if (fulfillError) { console.log("[v0] Fulfill-order error:", fulfillError); toast({ title: "Fulfillment error", description: fulfillError.message || "Order created but fulfillment failed", variant: "destructive" }); }
       setStore({ ...store, wallet_balance: Number(store.wallet_balance) - ap });
       toast({ title: "Order placed!" }); setBuyDialogOpen(false);
       fetchAllData();

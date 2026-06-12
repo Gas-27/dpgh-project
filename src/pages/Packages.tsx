@@ -1369,7 +1369,7 @@ const Packages = () => {
                             <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text}</p>
                             <p className="text-sm font-medium text-white">GH₵ {Number(pkg.price).toFixed(2)} - Valid forever</p>
                             <div className="space-y-1 text-xs text-white">
-                              <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No expiry date</div>
+                              <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />You will receive no SMS when data is delivered so check your current balance before purchase</div>
                             </div>
                             <Button variant="secondary" size="sm" className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
                           </>
