@@ -232,53 +232,67 @@ const OrderTrackingCard = ({
   const elapsedMinutes = elapsedMs / 60_000;
 
   // ── Step logic ──
-  // Step 4 (Delivered) only after 200 minutes
   let currentStep = 1;
   let statusMessage = "";
   let extraNote: string | null = null;
 
-  if (elapsedMinutes >= 200) {
-    currentStep = 4;
-    statusMessage = "Your data bundle has been delivered successfully.";
-    if (order.network === "mtn")
-      extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
-    else if (order.network === "airteltigo")
-      extraNote =
-        "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
-    else if (order.network === "telecel")
-      extraNote = "Please check your Telecel messages for delivery confirmation.";
-    else extraNote = "Please check your messages for delivery confirmation.";
-  } else if (elapsedMinutes >= 60) {
-    currentStep = 3;
-    if (order.network === "mtn")
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
-    else if (order.network === "airteltigo")
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
-    else if (order.network === "telecel")
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
-    else
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your messages for delivery confirmation.";
-    extraNote =
-      "The order has left our system and is now with the network you bought the data from. All delays from now are from them.";
-  } else if (elapsedMinutes >= 15) {
-    currentStep = 3;
-    statusMessage =
-      "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
-  } else if (elapsedMinutes >= 12) {
-    currentStep = 3;
-    statusMessage = `Waiting for validation from ${formatNetworkName(order.network)}...`;
-  } else if (elapsedMinutes >= 9) {
-    currentStep = 2;
-    statusMessage = `Order sent to ${formatNetworkName(order.network)} for validation`;
-    extraNote =
-      "Now waiting for validation from the network to deliver your data. All delay now is from the network you bought the data from.";
+  // Special handling for mtn_mashup
+  if (order.network === "mtn_mashup") {
+    if (elapsedMinutes >= 300) { // 5 hours
+      currentStep = 4;
+      statusMessage = "Your data bundle has been delivered successfully.";
+      extraNote = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
+    } else if (elapsedMinutes >= 2) {
+      currentStep = 2;
+      statusMessage = "Expect delivery within 10 minutes to 5 hours.";
+      extraNote = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
+    } else {
+      statusMessage = "Order being processed...";
+      extraNote = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
+    }
   } else {
-    currentStep = 1;
-    statusMessage = "Order being processed...";
+    // Original logic for other networks
+    // Step 4 (Delivered) only after 200 minutes
+    if (elapsedMinutes >= 200) {
+      currentStep = 4;
+      statusMessage = "Your data bundle has been delivered successfully.";
+      if (order.network === "mtn")
+        extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
+      else if (order.network === "airteltigo")
+        extraNote =
+          "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+      else if (order.network === "telecel")
+        extraNote = "Please check your Telecel messages for delivery confirmation.";
+      else extraNote = "Please check your messages for delivery confirmation.";
+    } else if (elapsedMinutes >= 60) {
+      currentStep = 3;
+      if (order.network === "mtn")
+        statusMessage =
+          "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
+      else if (order.network === "airteltigo")
+        statusMessage =
+          "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
+      else if (order.network === "telecel")
+        statusMessage =
+          "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
+      else
+        statusMessage =
+          "Please be expecting your data any moment from now. Check your messages for delivery confirmation.";
+      extraNote =
+        "The order has left our system and is now with the network you bought the data from. All delays from now are from them.";
+    } else if (elapsedMinutes >= 15) {
+      currentStep = 3;
+      statusMessage =
+        "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
+    } else if (elapsedMinutes >= 12) {
+      currentStep = 3;
+      statusMessage = `Waiting for validation from ${formatNetworkName(order.network)}...`;
+    } else if (elapsedMinutes >= 9) {
+      currentStep = 2;
+      statusMessage = `Order sent to ${formatNetworkName(order.network)} for validation`;
+      extraNote =
+        "Now waiting for validation from the network to deliver your data. All delay now is from the network you bought the data from.";
+    }
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();

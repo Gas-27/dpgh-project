@@ -191,7 +191,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
       step = 4; msg = "Your data bundle has been delivered successfully.";
       note = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
     } else if (elapsed >= 2) {
-      step = 2; msg = "Your order is being processed. Delivery estimate: 10 minutes to 5 hours.";
+      step = 2; msg = "Expect delivery within 10 minutes to 5 hours.";
       note = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
     } else {
       msg = "Order being processed…";
