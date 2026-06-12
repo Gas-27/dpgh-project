@@ -11,6 +11,7 @@ const NETWORK_MAP: Record<string, string> = {
   mtn: "mtn",
   telecel: "telecel",
   airteltigo: "airteltigo",
+  mtn_mashup: "mtn", // Special MTN Mashup uses MTN network
 };
 
 Deno.serve(async (req) => {
