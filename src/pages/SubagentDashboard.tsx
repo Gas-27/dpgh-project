@@ -557,6 +557,15 @@ const SubagentDashboard = () => {
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
         ]);
 
+        // Enrich mtn_mashup orders with size_gb_text
+        const enrichedOrders2 = await Promise.all((ordersResult.data || []).map(async (order: any) => {
+          if (order.network === "mtn_mashup" && order.package_id) {
+            const { data: pkg } = await supabase.from("packages").select("size_gb_text").eq("id", order.package_id).single();
+            return { ...order, size_gb_text: pkg?.size_gb_text };
+          }
+          return order;
+        }));
+
         setOrders(ordersResult.data || []);
         setWithdrawals(withdrawResult.data || []);
         setPackages(packagesResult.data || []);
@@ -626,11 +635,19 @@ const SubagentDashboard = () => {
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
         supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
         supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
-      ]);
+        ]);
 
-      setOrders(ordersResult.data || []);
-      setWithdrawals(withdrawResult.data || []);
-      setPackages(packagesResult.data || []);
+        // Enrich mtn_mashup orders with size_gb_text
+        const enrichedOrders = await Promise.all((ordersResult.data || []).map(async (order: any) => {
+          if (order.network === "mtn_mashup" && order.package_id) {
+            const { data: pkg } = await supabase.from("packages").select("size_gb_text").eq("id", order.package_id).single();
+            return { ...order, size_gb_text: pkg?.size_gb_text };
+          }
+          return order;
+        }));
+        setOrders(enrichedOrders);
+        setWithdrawals(withdrawResult.data || []);
+        setPackages(packagesResult.data || []);
       setTopupHistory(topupsResult.data || []);
       if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
       

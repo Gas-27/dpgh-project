@@ -234,7 +234,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
 Order Details:
 - Order Date: ${orderDate}
 - Network: ${networkName}
-- Data: ${order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}
+- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}
 - Amount: ${amountFormatted}
 - Customer Number: ${order.customer_number}
 - Order Status: ${orderStatus}
@@ -1197,7 +1197,7 @@ const Packages = () => {
     let q = searchQuery.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
     q = q.replace(/\s/g, "");
-    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,created_at,packages(size_gb_text)");
+    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,created_at,package_id");
     // If query is a UUID (contains hyphens), search by ID; otherwise search by phone number (without spaces)
     if (q.length === 36 && q.includes("-")) {
       query = query.eq("id", q);
@@ -1206,8 +1206,18 @@ const Packages = () => {
       query = query.ilike("customer_number", `%${q}%`);
     }
     const { data, error } = await query.order("created_at", { ascending: false });
-    setOrders(!error && data ? data as Order[] : []);
-    setSearching(false);
+    if (error || !data) { setOrders([]); setSearching(false); return; }
+    
+    // For mtn_mashup orders, fetch size_gb_text from packages
+    const enrichedOrders = await Promise.all(data.map(async (order: any) => {
+      if (order.network === "mtn_mashup" && order.package_id) {
+        const { data: pkg } = await supabase.from("packages").select("size_gb_text").eq("id", order.package_id).single();
+        return { ...order, size_gb_text: pkg?.size_gb_text };
+      }
+      return order;
+    }));
+    
+    setOrders(enrichedOrders as Order[]);
   };
 
   const clearSearch = () => { setSearchQuery(""); setOrders([]); setSearchPerformed(false); };
@@ -1327,7 +1337,7 @@ const Packages = () => {
                                     </div>
                                     <div className="flex items-center gap-3 text-sm">
                                       <span className="uppercase text-muted-foreground">{order.network}</span>
-                                      <span className="font-bold">{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</span>
+                                      <span className="font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
                                       <span className="text-primary">GH₵ {Number(order.amount).toFixed(2)}</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
