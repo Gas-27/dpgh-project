@@ -158,7 +158,7 @@ const SubagentDashboard = () => {
   const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string; store_name?: string } | null>(null);
   
   // Bulk Orders
-  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
+  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo" | "mtn_mashup">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
@@ -2185,6 +2185,7 @@ const SubagentDashboard = () => {
                     <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
                     <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
                     <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
+                    <Button variant={bulkNetwork === "mtn_mashup" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn_mashup" ? "bg-amber-500 hover:bg-amber-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn_mashup")}>Special MTN Mashup</Button>
                   </div>
                 </div>
 
@@ -2237,7 +2238,7 @@ const SubagentDashboard = () => {
                     <p className="font-semibold text-yellow-500">Format: 0241234567 2 (phone then GB size per line)</p>
                     <p className="text-sm text-muted-foreground">Or use the global package below if all numbers get the same bundle.</p>
                     <p className="text-xs text-muted-foreground">
-                      Valid prefixes: {bulkNetwork === "mtn" ? "024, 025, 053, 054, 055, 059" : bulkNetwork === "telecel" ? "020, 050" : "026, 027, 056, 057"}
+                      Valid prefixes: {bulkNetwork === "mtn" ? "024, 025, 053, 054, 055, 059" : bulkNetwork === "telecel" ? "020, 050" : bulkNetwork === "airteltigo" ? "026, 027, 056, 057" : "024, 025, 053, 054, 055, 059"}
                     </p>
                   </div>
                 </div>
@@ -2481,14 +2482,14 @@ const SubagentDashboard = () => {
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex gap-2 flex-wrap">
-                    {["mtn", "airteltigo", "telecel"].map(net => (
+                    {["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (
                       <Button 
                         key={net} 
                         variant={networkFilter === net ? "hero" : "outline"} 
                         size="sm" 
                         onClick={() => setNetworkFilter(net)}
                       >
-                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}
                       </Button>
                     ))}
                   </div>
