@@ -1234,13 +1234,17 @@ const SubagentDashboard = () => {
       
       // Create order with wallet payment method
       // Include agent_store_id so it shows on storefront and for proper tracking
+      // Extract size_gb the same way verify-payment does: match first numeric value
+      const packageName = buyingPkg.size_gb_text || buyingPkg.size_gb?.toString() || "";
+      const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
+      const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyingPkg.size_gb;
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
         package_id: buyingPkg.id,
         subagent_store_id: subagentStore.id,
         agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
-        size_gb: buyingPkg.size_gb,
+        size_gb: extractedSize,
         amount: price,
         base_price: price,
         selling_price: price,
