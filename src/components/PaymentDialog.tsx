@@ -201,7 +201,7 @@ const PaymentDialog = ({
       price,
       network,
       phone,
-      packageInfo: pkg ? { id: pkg.id, network: pkg.network, size_gb: pkg.size_gb } : null,
+      packageInfo: pkg ? { id: pkg.id, network: pkg.network, size_gb: pkg.size_gb, size_gb_text: pkg.size_gb_text, data_package_id: pkg.data_package_id } : null,
     });
     
     // Validate package ID before proceeding
@@ -211,6 +211,24 @@ const PaymentDialog = ({
       setPaymentError(errorMsg);
       toast({
         title: "Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // For mashup networks, validate that data_package_id exists
+    const selectedNetwork = network || packageInfo?.network || "";
+    if ((selectedNetwork === "mtn_mashup" || selectedNetwork === "mashup") && !packageInfo?.data_package_id) {
+      console.error("[v0] Payment failed: data_package_id missing for mashup network", {
+        network: selectedNetwork,
+        packageInfo,
+        dataPackageIdValue: packageInfo?.data_package_id,
+      });
+      const errorMsg = `Error: Package data is incomplete. data_package_id is missing for ${selectedNetwork} package. Please refresh and try again.`;
+      setPaymentError(errorMsg);
+      toast({
+        title: "Package Data Error",
         description: errorMsg,
         variant: "destructive",
       });
@@ -256,20 +274,32 @@ const PaymentDialog = ({
 
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
 
+      const metadataToSend = {
+        package_id: actualPackageId,
+        network,
+        package_name: displayPackageName,
+        agent_store_id: actualStoreId || null,
+        subagent_store_id: subagentStoreId || null,
+        ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
+        ...(packageInfo?.data_package_id && { data_package_id: packageInfo.data_package_id }),
+      };
+
+      console.log("[v0] ===== METADATA VALUES BEFORE PAYSTACK =====");
+      console.log("[v0] Network:", network);
+      console.log("[v0] Package ID (our database):", actualPackageId);
+      console.log("[v0] Package Info object:", packageInfo);
+      console.log("[v0] size_gb_text value:", packageInfo?.size_gb_text);
+      console.log("[v0] data_package_id value:", packageInfo?.data_package_id);
+      console.log("[v0] ===== COMPLETE METADATA =====");
+      console.log("[v0] Metadata:", JSON.stringify(metadataToSend, null, 2));
+      console.log("[v0] ===== END METADATA =====");
+
       console.log("[v0] Calling initialize-payment with:", {
         email: userEmail,
         amount: price,
         phone: normalizedPhone,
         callback_url: callbackUrl,
-        metadata: {
-          package_id: actualPackageId,
-          network,
-          package_name: displayPackageName,
-          agent_store_id: actualStoreId || null,
-          subagent_store_id: subagentStoreId || null,
-          ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
-          ...(packageInfo?.data_package_id && { data_package_id: packageInfo.data_package_id }),
-        },
+        metadata: metadataToSend,
       });
 
       let data, error;
@@ -286,15 +316,7 @@ const PaymentDialog = ({
                 amount: price,
                 phone: normalizedPhone,
                 callback_url: callbackUrl,
-                metadata: {
-                  package_id: actualPackageId,
-                  network,
-                  package_name: displayPackageName,
-                  agent_store_id: actualStoreId || null,
-                  subagent_store_id: subagentStoreId || null,
-                  ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
-                  ...(packageInfo?.data_package_id && { data_package_id: packageInfo.data_package_id }),
-                },
+                metadata: metadataToSend,
               },
             }
           );
