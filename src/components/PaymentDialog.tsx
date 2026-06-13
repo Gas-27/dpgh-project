@@ -169,9 +169,9 @@ const PaymentDialog = ({
       return;
     }
 
-    // Check if phone matches the selected network (allow mtn to buy mtn_mashup)
-    const isValidForMTNMashup = selectedNetwork === "mtn_mashup" && detectedNetwork === "mtn";
-    if (selectedNetwork && selectedNetwork !== "mtn_mashup" && !isValidForMTNMashup && !phoneMatchesNetwork(phone, selectedNetwork)) {
+    // Check if phone matches the selected network (allow mtn to buy mtn_mashup and mashup)
+    const isValidForMTNMashup = (selectedNetwork === "mtn_mashup" || selectedNetwork === "mashup") && detectedNetwork === "mtn";
+    if (selectedNetwork && selectedNetwork !== "mtn_mashup" && selectedNetwork !== "mashup" && !isValidForMTNMashup && !phoneMatchesNetwork(phone, selectedNetwork)) {
       toast({
         title: "Network mismatch",
         description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork.toUpperCase()} package`,
