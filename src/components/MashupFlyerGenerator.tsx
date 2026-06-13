@@ -226,8 +226,7 @@ const MashupFlyerGenerator = ({
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 40, height: 40, background: "#fbbf24", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>⚡</div>
               <span style={{ fontSize: 18, fontWeight: 900, color: "#fff", letterSpacing: 0.5 }}>
-                <span style={{ color: "#fff" }}>DATA PLUG</span>
-                <span style={{ color: "#0099ff" }}>.STORE</span>
+                {storeName}
               </span>
             </div>
             <div style={{ display: "flex", gap: 20, alignItems: "center", fontSize: 13, color: "#999" }}>
