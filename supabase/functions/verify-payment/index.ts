@@ -310,6 +310,7 @@ Deno.serve(async (req) => {
     const packageName = metadata.package_name || "";
     const agentStoreId = metadata.agent_store_id || null;
     const subagentStoreId = metadata.subagent_store_id || null;
+    const dataPackageId = metadata.data_package_id || null;
 
     const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
@@ -431,6 +432,7 @@ Deno.serve(async (req) => {
       profit_credited: false,
       agent_store_id: null,
       subagent_store_id: null,
+      ...(dataPackageId && { data_package_id: dataPackageId }),
     };
     
     if (agentStoreId) {

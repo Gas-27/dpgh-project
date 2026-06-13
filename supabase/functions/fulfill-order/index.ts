@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // 🔴 CRITICAL: Check if this order has already been fulfilled
     const { data: existingOrder } = await supabase
       .from("orders")
-      .select("id, fulfillment_status, status, customer_number, network, size_gb, package_id")
+      .select("id, fulfillment_status, status, customer_number, network, size_gb, package_id, data_package_id")
       .eq("id", order_id)
       .single();
 
@@ -111,17 +111,19 @@ Deno.serve(async (req) => {
     const networkKey = NETWORK_MAP[existingOrder.network?.toLowerCase()] || "YELLO";
     const capacity = Number(existingOrder.size_gb);
     
-    // For mtn_mashup and mashup, fetch the package to get size_gb_text and data_package_id
+    // For mtn_mashup and mashup, use data_package_id from order or fetch from package
+    let dataPackageId = existingOrder.data_package_id;
     let sizeGbText = null;
-    let dataPackageId = null;
-    if ((existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup") && existingOrder.package_id) {
+    
+    if (!dataPackageId && (existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup") && existingOrder.package_id) {
+      // Fallback: fetch from data_packages table if not stored in order
       const { data: pkg } = await supabase
         .from("data_packages")
         .select("data_package_id, size_gb_text")
         .eq("id", existingOrder.package_id)
         .single();
-      sizeGbText = pkg?.size_gb_text || null;
       dataPackageId = pkg?.data_package_id || null;
+      sizeGbText = pkg?.size_gb_text || null;
     }
     
     if (isNaN(capacity) || capacity <= 0) {
