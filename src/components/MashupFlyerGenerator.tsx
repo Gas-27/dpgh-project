@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, Loader2, Share2, RotateCcw } from "lucide-react";
+import { Download, Loader2, Share2, RotateCcw, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { toPng } from "html-to-image";
 import { Zap } from "lucide-react";
@@ -30,10 +30,10 @@ interface MashupFlyerGeneratorProps {
 }
 
 const DEFAULT_MASHUP_COLORS = {
-  bg: "#1a1a1a",
+  bg: "#0f0f0f",
   accent: "#fbbf24",
   text: "#ffffff",
-  buttonBg: "#2563eb",
+  buttonBg: "#ea580c",
 };
 
 const FLYER_W = 1080;
@@ -161,81 +161,91 @@ const MashupFlyerGenerator = ({
               style={{
                 width: FLYER_W,
                 height: FLYER_H,
-                transform: `scale(${flyerScale})`,
-                transformOrigin: 'top center',
                 backgroundColor: flyerColors.bg,
               }}
-              className="relative text-white p-6 space-y-6 flex flex-col"
+              className="relative text-white flex flex-col"
             >
-              {/* Header */}
-              <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold">{storeName}</h1>
-                <p className="text-sm opacity-75">Special MTN Mashup Data</p>
+              {/* Header Section with branding */}
+              <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-gray-700">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-8 w-8" style={{ color: flyerColors.accent }} />
+                  <div>
+                    <div className="text-2xl font-bold">{storeName.split(' ').slice(0, 2).join(' ')}</div>
+                    <div className="text-xs opacity-75">{storeName.split(' ').slice(2).join(' ')}</div>
+                  </div>
+                </div>
+                <div className="bg-cyan-500 text-black px-3 py-1 rounded text-xs font-bold">Dashboard</div>
               </div>
 
-              {/* USSD Code Section */}
-              <div className="border-2 border-yellow-500 rounded-lg p-4 text-center space-y-2">
-                <div className="text-xs font-semibold text-yellow-400">USSD CODE</div>
-                <div className="text-3xl font-bold" style={{ color: flyerColors.accent }}>*380*455#</div>
-                <div className="text-xs">Dial to purchase instantly.</div>
-              </div>
+              {/* Top Info Section - 4 boxes in a row */}
+              <div className="px-6 pt-4 grid grid-cols-4 gap-3 mb-4">
+                {/* USSD Code */}
+                <div className="border-2 border-yellow-500 rounded-lg p-3 text-center">
+                  <div className="text-yellow-400 text-xs font-bold mb-1">USSD CODE</div>
+                  <div className="text-sm font-bold" style={{ color: flyerColors.accent }}>*380*455#</div>
+                  <div className="text-xs opacity-75 mt-1">Dial to purchase</div>
+                </div>
 
-              {/* Access Code Section */}
-              <div className="border-2 border-green-500 rounded-lg p-4 text-center space-y-2">
-                <div className="text-xs font-semibold text-green-400">ACCESS CODE</div>
-                <div className="text-3xl font-bold">{topupReference || "0"}</div>
-                <div className="text-xs">Required for all purchases.</div>
-              </div>
+                {/* Access Code */}
+                <div className="border-2 border-green-500 rounded-lg p-3 text-center">
+                  <div className="text-green-400 text-xs font-bold mb-1">ACCESS CODE</div>
+                  <div className="text-sm font-bold">{topupReference || "0"}</div>
+                  <div className="text-xs opacity-75 mt-1">Required</div>
+                </div>
 
-              {/* Contact Section */}
-              <div className="border-2 border-green-500 rounded-lg p-4 space-y-2">
-                <div className="text-center">
-                  <div className="text-xs font-semibold text-green-400 mb-2">NEED HELP OR HAVE QUESTIONS?</div>
-                  <div className="text-2xl font-bold">{supportNumber}</div>
-                  <div className="text-xs mt-2">Contact us directly on WhatsApp or Call.</div>
+                {/* Help */}
+                <div className="border-2 border-green-500 rounded-lg p-3 text-center">
+                  <div className="text-green-400 text-xs font-bold mb-1">NEED HELP?</div>
+                  <MessageCircle className="h-4 w-4 mx-auto mb-1" style={{ color: flyerColors.accent }} />
+                  <div className="text-xs opacity-75">WhatsApp or Call</div>
+                </div>
+
+                {/* Contact */}
+                <div className="border-2 border-green-500 rounded-lg p-3 text-center">
+                  <div className="text-green-400 text-xs font-bold mb-1">CONTACT</div>
+                  <div className="text-sm font-bold">{supportNumber}</div>
+                  <div className="text-xs opacity-75 mt-1">24/7 Support</div>
                 </div>
               </div>
 
-              {/* Packages Grid */}
-              <div className="grid grid-cols-2 gap-3 flex-1">
-                {mashupPkgs.slice(0, 8).map((pkg, idx) => (
-                  <div
-                    key={pkg.id || idx}
-                    className="border-2 rounded-lg p-3 text-center space-y-2"
-                    style={{ borderColor: flyerColors.accent }}
-                  >
-                    <div className="flex justify-between items-start">
-                      <Zap className="h-4 w-4" style={{ color: flyerColors.accent }} />
-                      <span
-                        className="text-xs font-bold px-2 py-1 rounded"
-                        style={{ backgroundColor: flyerColors.accent, color: '#000' }}
-                      >
-                        Express
-                      </span>
-                    </div>
-                    <div>
-                      <div className="text-xs opacity-75 uppercase">Special Mashup</div>
-                      <div className="text-lg font-bold">{pkg.display}</div>
-                    </div>
+              {/* Packages Grid - 4 columns x 2 rows (8 packages) */}
+              <div className="px-6 pb-6 flex-1 overflow-hidden">
+                <div className="grid grid-cols-4 gap-3 h-full">
+                  {mashupPkgs.slice(0, 8).map((pkg, idx) => (
                     <div
-                      className="text-2xl font-bold"
-                      style={{ color: flyerColors.accent }}
+                      key={pkg.id || idx}
+                      className="border-2 rounded-lg p-3 flex flex-col items-center justify-between relative"
+                      style={{ borderColor: flyerColors.accent }}
                     >
-                      GHC {pkg.price.toFixed(2)}
-                    </div>
-                    <button
-                      className="w-full py-2 rounded font-bold text-sm"
-                      style={{ backgroundColor: flyerColors.buttonBg, color: '#fff' }}
-                    >
-                      Buy Now
-                    </button>
-                  </div>
-                ))}
-              </div>
+                      {/* Express Badge */}
+                      <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded">
+                        Express
+                      </div>
 
-              {/* Footer */}
-              <div className="text-center text-xs opacity-50">
-                {storeUrl}
+                      {/* Zap Icon */}
+                      <Zap className="h-6 w-6 mt-2" style={{ color: flyerColors.accent }} />
+
+                      {/* Package Info */}
+                      <div className="text-center flex-1 flex flex-col justify-center my-2">
+                        <div className="text-xs opacity-75 uppercase font-semibold">Special Mashup</div>
+                        <div className="text-sm font-bold">{pkg.display}</div>
+                      </div>
+
+                      {/* Price */}
+                      <div className="text-lg font-bold mb-2" style={{ color: flyerColors.accent }}>
+                        GHC {pkg.price.toFixed(2)}
+                      </div>
+
+                      {/* Buy Button */}
+                      <button
+                        className="w-full py-1.5 rounded font-bold text-xs text-white"
+                        style={{ backgroundColor: flyerColors.buttonBg }}
+                      >
+                        Buy Now
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
