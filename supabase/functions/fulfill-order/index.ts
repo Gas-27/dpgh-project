@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // 🔴 CRITICAL: Check if this order has already been fulfilled
     const { data: existingOrder } = await supabase
       .from("orders")
-      .select("id, fulfillment_status, status, customer_number, network, size_gb")
+      .select("id, fulfillment_status, status, customer_number, network, size_gb, package_id")
       .eq("id", order_id)
       .single();
 
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
         "recipient_msisdn": phone,
         "shared_bundle": sizeGbText,
         "network_id": 7,
-        "package_id": existingOrder.package_id,
+        "package_id": Number(existingOrder.package_id),
         ...(order_id && { "incoming_api_ref": order_id }),
       };
       const dakazinApiKey = Deno.env.get("DAKAZINA_API_KEY");
