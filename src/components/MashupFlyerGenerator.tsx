@@ -50,7 +50,7 @@ const MashupFlyerGenerator = ({
 
   useEffect(() => {
     const ussdText = `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${topupReference}`;
-    setShareText(`🎉 Special MTN Mashup Data from ${storeName}!\n\n⚡ Express Data Delivery\n💨 Instant • Affordable • Reliable${ussdText}\n\nVisit: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
+    setShareText(`🎉 Special MTN Mashup Data from ${storeName}!\n\n⚡ Express Data Delivery\n💨 Instant • Affordable • Reliable${ussdText}\n\nVisit store: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
   }, [storeName, storeUrl, whatsappNumber, topupReference]);
 
   useEffect(() => {
@@ -129,17 +129,16 @@ const MashupFlyerGenerator = ({
       });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], "mashup-flyer.png", { type: "image/png" });
-      const fullShareText = `${shareText}\n\nWhatsApp: ${whatsappNumber}\n\nStore: ${storeUrl}`;
 
       if (navigator.share) {
         await navigator.share({
           title: "Special MTN Mashup Flyer",
-          text: fullShareText,
+          text: shareText,
           files: [file],
         });
         toast({ title: "Shared successfully!" });
       } else {
-        await navigator.clipboard.writeText(fullShareText);
+        await navigator.clipboard.writeText(shareText);
         toast({
           title: "Text copied!",
           description: "Share text copied. You can now share the image manually.",
