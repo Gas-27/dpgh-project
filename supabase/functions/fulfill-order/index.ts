@@ -143,24 +143,21 @@ Deno.serve(async (req) => {
     let apiRes: Response;
     
     if (existingOrder.network === "mtn_mashup") {
-      // Use Dakazina API for mtn_mashup
-      apiUrl = "https://reseller.dakazinabusinessconsult.com/api/v1/buy-data-package";
+      // Use Datahubnet API for mtn_mashup
+      apiUrl = "https://www.datahubnet.online/api/v1/special-offers/";
       requestBody = {
-        "recipient_msisdn": phone,
-        "shared_bundle": sizeGbText,
-        "network_id": 7,
+        "phone_number": phone,
         "package_id": Number(packageIdFromTable),
-        ...(order_id && { "incoming_api_ref": order_id }),
       };
-      const dakazinApiKey = Deno.env.get("DAKAZINA_API_KEY");
-      if (!dakazinApiKey) {
-        throw new Error("DAKAZINA_API_KEY not configured");
+      const datahubnetApiKey = Deno.env.get("DATAHUBNET_API_KEY");
+      if (!datahubnetApiKey) {
+        throw new Error("DATAHUBNET_API_KEY not configured");
       }
       apiRes = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${dakazinApiKey}`,
+          "Authorization": `Bearer ${datahubnetApiKey}`,
         },
         body: JSON.stringify(requestBody),
       });
