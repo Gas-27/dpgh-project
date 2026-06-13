@@ -339,9 +339,10 @@ Deno.serve(async (req) => {
     );
 
     // Fetch package base data
+    const selectFields = "agent_price, price, size_gb, network";
     const { data: packageData, error: packageError } = await supabaseClient
       .from("packages")
-      .select("data_package_id, agent_price, price, size_gb, network")
+      .select(selectFields + (metadata.network === "mtn_mashup" ? ", data_package_id" : ""))
       .eq("id", metadata.package_id)
       .single();
 
@@ -468,7 +469,7 @@ Deno.serve(async (req) => {
           price_type: priceType,
           base_amount: baseAmount,
           fee_amount: feeAmount,
-          data_package_id: packageData.data_package_id,
+          ...(metadata.network === "mtn_mashup" && { data_package_id: packageData.data_package_id }),
         },
       }),
     });
