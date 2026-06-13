@@ -111,32 +111,48 @@ const MashupFlyerGenerator = ({
     if (!flyerRef.current) return;
     setGenerating(true);
     try {
-      const dataUrl = await toPng(flyerRef.current, {
+      // Clone the node to avoid scaling issues
+      const node = flyerRef.current;
+      
+      // Generate at full resolution
+      const dataUrl = await toPng(node, {
         quality: 1,
         pixelRatio: 1,
         width: FLYER_W,
         height: FLYER_H,
-        style: { transform: "none", transformOrigin: "top left" },
+        style: {
+          transform: "none",
+          transformOrigin: "top left",
+        },
         canvasWidth: FLYER_W,
         canvasHeight: FLYER_H,
       });
-
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], "mashup-flyer.png", { type: "image/png" });
       const fullShareText = `${shareText}\n\nWhatsApp: ${whatsappNumber}\n\nStore: ${storeUrl}`;
 
-      // Try to open WhatsApp directly with the text
-      const encodedText = encodeURIComponent(fullShareText);
-      window.open(`https://wa.me/?text=${encodedText}`, "_blank");
-      
-      // Also download the image
-      const link = document.createElement("a");
-      link.download = `${storeName.replace(/\s+/g, "-")}-mashup-flyer.png`;
-      link.href = dataUrl;
-      link.click();
-      
-      toast({ title: "Opening WhatsApp...", description: "You can now share the image manually." });
-    } catch (error) {
-      console.error("Error sharing flyer:", error);
-      toast({ title: "Error", description: "Could not generate flyer for sharing.", variant: "destructive" });
+      if (navigator.share) {
+        await navigator.share({
+          title: "Special MTN Mashup Flyer",
+          text: fullShareText,
+          files: [file],
+        });
+        toast({ title: "Shared successfully!" });
+      } else {
+        await navigator.clipboard.writeText(fullShareText);
+        toast({
+          title: "Text copied!",
+          description: "Share text copied. You can now share the image manually.",
+        });
+        const link = document.createElement("a");
+        link.download = "mashup-flyer.png";
+        link.href = dataUrl;
+        link.click();
+      }
+    } catch (error: any) {
+      if (error.name !== "AbortError") {
+        toast({ title: "Error", description: "Could not share flyer.", variant: "destructive" });
+      }
     } finally {
       setGenerating(false);
     }
