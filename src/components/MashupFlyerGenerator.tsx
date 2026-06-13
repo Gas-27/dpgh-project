@@ -142,17 +142,6 @@ const MashupFlyerGenerator = ({
     }
   };
 
-  // Package card component
-  const PkgCard = ({ size, price }: { size: string; price: number }) => (
-    <div style={{ background: "#2a2a3e", border: "2px solid rgba(251, 191, 36, 0.5)", borderRadius: 12, padding: "12px 8px", textAlign: "center", position: "relative" }}>
-      <div style={{ position: "absolute", top: 4, right: 4, background: "#fbbf24", color: "#000", fontSize: 10, fontWeight: 800, padding: "4px 8px", borderRadius: 4 }}>Express</div>
-      <div style={{ fontSize: 28, color: "#fbbf24", marginBottom: 6, marginTop: 2 }}>⚡</div>
-      <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700, textTransform: "uppercase", marginBottom: 4 }}>Special Mashup</div>
-      <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", marginBottom: 4 }}>{size}</div>
-      <div style={{ fontSize: 18, fontWeight: 800, color: "#fbbf24", marginBottom: 6 }}>GHC {price.toFixed(2)}</div>
-      <div style={{ background: "#fbbf24", color: "#000", borderRadius: 6, padding: "8px 0", fontSize: 12, fontWeight: 800 }}>BUY NOW</div>
-    </div>
-  );
 
   return (
     <div className="space-y-4">
@@ -217,79 +206,100 @@ const MashupFlyerGenerator = ({
           }}
         >
           {/* TOP HEADER */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px", backgroundColor: "#0a0a0a", borderBottom: "1px solid #1e1e1e" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 32px", backgroundColor: "#000", borderBottom: "2px solid #1a1a1a" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 36, height: 36, background: "#fbbf24", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>⚡</div>
-              <span style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: 0.5 }}>{storeName.toUpperCase()}</span>
+              <div style={{ width: 40, height: 40, background: "#fbbf24", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>⚡</div>
+              <span style={{ fontSize: 18, fontWeight: 900, color: "#fff", letterSpacing: 0.5 }}>
+                <span style={{ color: "#fff" }}>DATA PLUG</span>
+                <span style={{ color: "#0099ff" }}>.STORE</span>
+              </span>
             </div>
-            <span style={{ fontSize: 13, color: "#0066cc", fontWeight: 700, padding: "5px 14px", background: "#0066cc20", borderRadius: 7, border: "1px solid #0066cc40" }}>Agent Dashboard</span>
-          </div>
-
-          {/* INFO HEADER - 4 boxes */}
-          <div style={{ display: "flex", alignItems: "stretch", padding: "16px 32px", gap: 16, backgroundColor: "#0a0a0a" }}>
-            {/* USSD Code */}
-            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "#111", border: "1.5px solid #333", borderRadius: 12 }}>
-              <div style={{ width: 48, height: 48, background: "#222", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>📲</div>
-              <div>
-                <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>USSD CODE</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", marginTop: 2, fontFamily: "monospace" }}>*380*455#</div>
-                <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Dial to purchase instantly.</div>
-              </div>
-            </div>
-
-            {/* Access Code */}
-            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "#111", border: "1.5px solid #333", borderRadius: 12 }}>
-              <div style={{ width: 48, height: 48, background: "#222", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>🔐</div>
-              <div>
-                <div style={{ fontSize: 11, color: "#10b981", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>ACCESS CODE</div>
-                <div style={{ fontSize: 36, fontWeight: 900, color: "#fff", marginTop: 0, fontFamily: "monospace" }}>{topupReference}</div>
-                <div style={{ fontSize: 11, color: "#666", marginTop: 0 }}>Required for all purchases.</div>
-              </div>
-            </div>
-
-            {/* Help */}
-            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "#111", border: "1.5px solid #333", borderRadius: 12 }}>
-              <div style={{ width: 48, height: 48, background: "#10b981", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>💬</div>
-              <div>
-                <div style={{ fontSize: 13, color: "#10b981", fontWeight: 800, textTransform: "uppercase" }}>NEED HELP OR HAVE</div>
-                <div style={{ fontSize: 13, color: "#10b981", fontWeight: 800, textTransform: "uppercase" }}>QUESTIONS?</div>
-                <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>Contact us on WhatsApp or Call.</div>
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div style={{ flex: 1.2, display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", padding: "16px 20px", background: "#111", border: "1.5px solid #333", borderRadius: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                <div style={{ width: 40, height: 40, background: "#16a34a", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>📞</div>
-                <span style={{ fontSize: 26, fontWeight: 900, color: "#fff", fontFamily: "monospace" }}>{supportNumber}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#25D366", borderRadius: 20, padding: "8px 18px", width: "100%" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>💬 Chat on WhatsApp</span>
-              </div>
+            <div style={{ display: "flex", gap: 20, alignItems: "center", fontSize: 13, color: "#999" }}>
+              <span>Packages</span>
+              <span>Services</span>
+              <span>Become an Agent</span>
+              <span style={{ background: "#0099ff", color: "#fff", padding: "8px 16px", borderRadius: 6, fontWeight: 700 }}>Agent Dashboard</span>
+              <span>Sign Out</span>
             </div>
           </div>
 
-          {/* TITLE */}
-          <div style={{ textAlign: "center", padding: "30px 20px 14px" }}>
-            <div style={{ fontSize: 46, fontWeight: 900, color: "#fff", letterSpacing: -1, textTransform: "uppercase" }}>SPECIAL MTN MASHUP</div>
-            <div style={{ fontSize: 18, color: "#777", marginTop: 6 }}>Express • Fast • Reliable.</div>
+          {/* INFO BOXES - 4 boxes in a row */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, padding: "20px 32px", backgroundColor: "#000" }}>
+            {/* USSD CODE */}
+            <div style={{ border: "2px solid #333", borderRadius: 12, padding: "16px", textAlign: "center", backgroundColor: "#0a0a0a" }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>📲</div>
+              <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>USSD CODE</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", marginBottom: 8, fontFamily: "monospace" }}>*380*455#</div>
+              <div style={{ fontSize: 12, color: "#888" }}>Dial to purchase instantly.</div>
+            </div>
+
+            {/* ACCESS CODE */}
+            <div style={{ border: "2px solid #333", borderRadius: 12, padding: "16px", textAlign: "center", backgroundColor: "#0a0a0a" }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🔐</div>
+              <div style={{ fontSize: 11, color: "#10b981", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>ACCESS CODE</div>
+              <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", marginBottom: 8, fontFamily: "monospace" }}>{topupReference}</div>
+              <div style={{ fontSize: 12, color: "#888" }}>Required for all purchases.</div>
+            </div>
+
+            {/* HELP */}
+            <div style={{ border: "2px solid #333", borderRadius: 12, padding: "16px", textAlign: "center", backgroundColor: "#0a0a0a" }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
+              <div style={{ fontSize: 11, color: "#10b981", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>NEED HELP OR HAVE</div>
+              <div style={{ fontSize: 11, color: "#10b981", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>QUESTIONS?</div>
+              <div style={{ fontSize: 12, color: "#888" }}>Contact us on WhatsApp or Call.</div>
+            </div>
+
+            {/* CONTACT */}
+            <div style={{ border: "2px solid #333", borderRadius: 12, padding: "16px", textAlign: "center", backgroundColor: "#0a0a0a" }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>📞</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#fff", marginBottom: 8, fontFamily: "monospace" }}>{supportNumber}</div>
+              <div style={{ background: "#10b981", color: "#fff", padding: "8px 12px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>💬 Chat on WhatsApp</div>
+            </div>
           </div>
 
-          {/* PACKAGES GRID */}
-          <div style={{ margin: "0 20px 16px", border: "2px solid rgba(251, 191, 36, 0.3)", borderRadius: 14, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 22px", backgroundColor: "#0e0b00", borderBottom: "1px solid rgba(251, 191, 36, 0.2)" }}>
-              <span style={{ fontSize: 22, fontWeight: 900, color: "#fbbf24", letterSpacing: 1, textTransform: "uppercase" }}>MASHUP DATA BUNDLES</span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: "#fbbf24", border: "2px solid #fbbf24", borderRadius: 20, padding: "4px 16px" }}>Express</span>
-            </div>
-            <div style={{ backgroundColor: "#0a0800", padding: "10px 10px 12px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 7 }}>
+          {/* PACKAGES GRID - 4 columns */}
+          <div style={{ margin: "20px 32px", padding: "0" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
               {mashupPkgs.map(({ id, size, price }) => (
-                <PkgCard key={id} size={size} price={price} />
+                <div
+                  key={id}
+                  style={{
+                    border: "2px solid #333",
+                    borderRadius: 12,
+                    padding: "16px",
+                    textAlign: "center",
+                    backgroundColor: "#0a0a0a",
+                    position: "relative",
+                  }}
+                >
+                  {/* Express Badge */}
+                  <div style={{ position: "absolute", top: 8, right: 8, background: "#fbbf24", color: "#000", fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 4 }}>
+                    Express
+                  </div>
+
+                  {/* Zap Icon */}
+                  <div style={{ fontSize: 28, marginBottom: 12, marginTop: 4 }}>⚡</div>
+
+                  {/* Label */}
+                  <div style={{ fontSize: 12, color: "#fbbf24", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Special Mashup</div>
+
+                  {/* Size */}
+                  <div style={{ fontSize: 18, fontWeight: 900, color: "#fff", marginBottom: 8 }}>{size}</div>
+
+                  {/* Price */}
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "#fbbf24", marginBottom: 12 }}>GHC {price.toFixed(2)}</div>
+
+                  {/* Buy Now Button */}
+                  <button style={{ width: "100%", background: "#fbbf24", color: "#000", border: "none", borderRadius: 6, padding: "10px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                    Buy Now
+                  </button>
+                </div>
               ))}
             </div>
           </div>
 
           {/* FOOTER */}
-          <div style={{ textAlign: "center", fontSize: 12, color: "#666", marginTop: 10, paddingBottom: 10 }}>
+          <div style={{ textAlign: "center", fontSize: 12, color: "#666", padding: "20px 32px" }}>
             Output: {FLYER_W} × {FLYER_H} px. Contact shown: {supportNumber}
           </div>
         </div>
