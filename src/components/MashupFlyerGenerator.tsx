@@ -150,7 +150,7 @@ const MashupFlyerGenerator = ({
       </Card>
 
       {/* FLYER PREVIEW */}
-      <div ref={flyerContainerRef} className="flex justify-center bg-gray-900 rounded-lg overflow-x-auto p-4">
+      <div ref={flyerContainerRef} className="flex justify-center bg-gray-900 rounded-lg overflow-auto p-2 md:p-4">
         <div
           ref={flyerRef}
           style={{
@@ -160,12 +160,15 @@ const MashupFlyerGenerator = ({
             transformOrigin: "top center",
             backgroundColor: "#1a1a2e",
           }}
-          className="relative font-sans"
+          className="relative font-sans flex flex-col"
         >
           {/* HEADER */}
           <div className="flex items-center justify-between px-8 py-6 border-b border-gray-600" style={{ backgroundColor: "#0f0f1e" }}>
-            <div className="text-2xl font-bold text-white">
-              ⚡ {storeName}
+            <div className="text-2xl font-bold text-white flex items-center gap-2">
+              <span className="text-3xl">⚡</span>
+              <div>
+                <div>{storeName}</div>
+              </div>
             </div>
             <div className="bg-cyan-500 text-black px-4 py-2 rounded text-xs font-bold">
               Dashboard
@@ -173,72 +176,72 @@ const MashupFlyerGenerator = ({
           </div>
 
           {/* INFO BOXES - 4 columns */}
-          <div className="grid grid-cols-4 gap-3 px-4 py-6">
+          <div className="grid grid-cols-4 gap-3 px-6 py-6" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
             {/* USSD CODE */}
-            <div className="border-2 border-yellow-500 rounded-lg p-3 text-center" style={{ backgroundColor: "rgba(251, 191, 36, 0.05)" }}>
-              <div className="text-yellow-400 text-2xl mb-1">📲</div>
-              <div className="text-yellow-400 text-xs font-bold">USSD CODE</div>
-              <div className="text-white font-bold text-sm mt-1">*380*455#</div>
-              <div className="text-gray-400 text-xs mt-1">Dial to purchase instantly.</div>
+            <div className="border-2 border-yellow-500 rounded-lg p-4 text-center" style={{ backgroundColor: "rgba(251, 191, 36, 0.05)" }}>
+              <div className="text-yellow-400 text-3xl mb-2">📲</div>
+              <div className="text-yellow-400 text-xs font-bold uppercase mb-2">USSD CODE</div>
+              <div className="text-white font-bold text-base mb-1">*380*455#</div>
+              <div className="text-gray-400 text-xs">Dial to purchase instantly.</div>
             </div>
 
             {/* ACCESS CODE */}
-            <div className="border-2 border-green-500 rounded-lg p-3 text-center" style={{ backgroundColor: "rgba(16, 185, 129, 0.05)" }}>
-              <div className="text-green-400 text-2xl mb-1">🔐</div>
-              <div className="text-green-400 text-xs font-bold">ACCESS CODE</div>
-              <div className="text-white font-bold text-sm mt-1">{topupReference}</div>
-              <div className="text-gray-400 text-xs mt-1">Required for all purchases.</div>
+            <div className="border-2 border-green-500 rounded-lg p-4 text-center" style={{ backgroundColor: "rgba(16, 185, 129, 0.05)" }}>
+              <div className="text-green-400 text-3xl mb-2">🔐</div>
+              <div className="text-green-400 text-xs font-bold uppercase mb-2">ACCESS CODE</div>
+              <div className="text-white font-bold text-base mb-1">{topupReference}</div>
+              <div className="text-gray-400 text-xs">Required for all purchases.</div>
             </div>
 
             {/* HELP */}
-            <div className="border-2 border-green-500 rounded-lg p-3 text-center" style={{ backgroundColor: "rgba(16, 185, 129, 0.05)" }}>
-              <div className="text-green-400 text-2xl mb-1">💬</div>
-              <div className="text-green-400 text-xs font-bold">NEED HELP OR HAVE</div>
-              <div className="text-green-400 text-xs font-bold">QUESTIONS?</div>
+            <div className="border-2 border-green-500 rounded-lg p-4 text-center" style={{ backgroundColor: "rgba(16, 185, 129, 0.05)" }}>
+              <div className="text-green-400 text-3xl mb-2">💬</div>
+              <div className="text-green-400 text-xs font-bold uppercase mb-2">NEED HELP OR HAVE</div>
+              <div className="text-green-400 text-xs font-bold uppercase">QUESTIONS?</div>
               <div className="text-gray-400 text-xs mt-1">Contact us on WhatsApp or Call.</div>
             </div>
 
             {/* CONTACT */}
-            <div className="border-2 border-green-500 rounded-lg p-3 text-center" style={{ backgroundColor: "rgba(16, 185, 129, 0.05)" }}>
-              <div className="text-green-400 text-2xl mb-1">📞</div>
-              <div className="text-white font-bold text-sm">{supportNumber}</div>
-              <button className="mt-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded w-full">
+            <div className="border-2 border-green-500 rounded-lg p-4 text-center" style={{ backgroundColor: "rgba(16, 185, 129, 0.05)" }}>
+              <div className="text-green-400 text-3xl mb-2">📞</div>
+              <div className="text-white font-bold text-base">{supportNumber}</div>
+              <button className="mt-2 bg-green-500 text-white text-xs font-bold px-3 py-2 rounded w-full hover:bg-green-600">
                 💬 Chat on WhatsApp
               </button>
             </div>
           </div>
 
-          {/* PACKAGES GRID - 4 columns */}
-          <div className="px-4 pb-6">
-            <div className="grid grid-cols-4 gap-3">
+          {/* PACKAGES GRID - 4 columns x multiple rows */}
+          <div className="px-6 pb-6 flex-1 overflow-hidden">
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
               {mashupPkgs.map((pkg, idx) => (
                 <div
                   key={pkg.id || idx}
-                  className="rounded-lg p-3 text-center border-2 relative"
+                  className="rounded-lg p-4 text-center border-2 relative"
                   style={{
                     backgroundColor: "#2a2a3e",
-                    borderColor: "rgba(251, 191, 36, 0.3)",
+                    borderColor: "rgba(251, 191, 36, 0.5)",
                   }}
                 >
                   {/* Express Badge */}
-                  <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded">
+                  <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">
                     Express
                   </div>
 
                   {/* Zap Icon */}
-                  <div className="text-yellow-400 text-2xl mb-2">⚡</div>
+                  <div className="text-yellow-400 text-3xl mb-2 mt-2">⚡</div>
 
                   {/* Label */}
-                  <div className="text-yellow-400 text-xs font-bold mb-1">SPECIAL MASHUP</div>
+                  <div className="text-yellow-400 text-xs font-bold uppercase mb-2">Special Mashup</div>
 
                   {/* Size */}
-                  <div className="text-white font-bold text-sm mb-2">{pkg.size}</div>
+                  <div className="text-white font-bold text-base mb-3">{pkg.size}</div>
 
                   {/* Price */}
-                  <div className="text-yellow-400 font-bold text-base mb-2">GHC {pkg.price.toFixed(2)}</div>
+                  <div className="text-yellow-400 font-bold text-lg mb-3">GHC {pkg.price.toFixed(2)}</div>
 
                   {/* Buy Now Button */}
-                  <button className="w-full bg-yellow-500 text-black font-bold py-1 rounded text-xs hover:bg-yellow-600">
+                  <button className="w-full bg-yellow-500 text-black font-bold py-2 rounded text-sm hover:bg-yellow-600">
                     Buy Now
                   </button>
                 </div>
@@ -247,7 +250,7 @@ const MashupFlyerGenerator = ({
           </div>
 
           {/* FOOTER */}
-          <div className="absolute bottom-2 left-0 right-0 text-center text-gray-500 text-xs">
+          <div className="absolute bottom-4 left-0 right-0 text-center text-gray-500 text-xs px-4">
             Output: {FLYER_W} × {FLYER_H} px. Contact shown: {supportNumber}
           </div>
         </div>
