@@ -1085,7 +1085,7 @@ const SubagentDashboard = () => {
     setThemeColors({ ...themeColors, gridColumns: newVal });
   };
 
-  const filteredPackages = packages.filter(p => p.network === networkFilter);
+  const filteredPackages = packages.filter(p => networkFilter === "mtn_mashup" ? (p.network === "mtn_mashup" || p.network === "mashup") : p.network === networkFilter);
 
   const handlePriceChange = (packageId: string, value: string) => {
     // Allow empty string for clearing the box - store as string for display

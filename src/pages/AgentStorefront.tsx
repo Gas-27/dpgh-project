@@ -876,7 +876,7 @@ const AgentStorefront = () => {
   };
 
   // ── Render helpers ──
-  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const filteredPackages = packages.filter((p) => networkFilter === "mtn_mashup" ? (p.network === "mtn_mashup" || p.network === "mashup") : p.network === networkFilter);
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 

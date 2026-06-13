@@ -1531,7 +1531,7 @@ const AdminDashboard = () => {
   // ======================== Helpers ========================
   const canSee = (section: Section) => currentUserSections.includes(section);
 
-  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const filteredPackages = packages.filter((p) => networkFilter === "mtn_mashup" ? (p.network === "mtn_mashup" || p.network === "mashup") : p.network === networkFilter);
   const storeSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
