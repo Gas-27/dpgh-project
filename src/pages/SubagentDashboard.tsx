@@ -22,6 +22,7 @@ import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
+import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import { DOMAINS } from "@/config/domains";
 
@@ -1357,6 +1358,7 @@ const SubagentDashboard = () => {
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "topup", label: "Top Up", icon: Wallet },
     { id: "flyer", label: "Flyer Generator", icon: Image },
+    { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "settings", label: "Settings", icon: Settings },
@@ -2860,6 +2862,22 @@ const SubagentDashboard = () => {
                 agentPrices={subagentPrices}
                 basePrices={basePrices}
                 topupReference={subagentStore.topup_reference || ""}
+              />
+            )}
+          </TabsContent>
+
+          {/* MTN MASHUP FLYER */}
+          <TabsContent value="mashup-flyer" className="mt-0 space-y-6">
+            {subagentStore && (
+              <MashupFlyerGenerator
+                storeName={subagentStore.store_name}
+                storeUrl={`${window.location.origin}/subagent/${subagentStore.id}`}
+                whatsappNumber={subagentStore.whatsapp_number || ""}
+                supportNumber={subagentStore.support_number || ""}
+                packages={packages}
+                agentPrices={subagentPrices}
+                topupReference={topupReference}
+                isSubagent={true}
               />
             )}
           </TabsContent>

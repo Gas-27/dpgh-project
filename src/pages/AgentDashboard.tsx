@@ -34,6 +34,7 @@ import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import ComplaintsManager from "@/components/ComplaintsManager";
+import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
 } from "@/components/ui/sheet";
@@ -76,6 +77,7 @@ const menuItems = [
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
   { id: "afa", label: "AFA Bundles", icon: Zap },
   { id: "flyer", label: "Flyer Generator", icon: Image },
+  { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
   { id: "topup", label: "Top Up", icon: Coins },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -1904,6 +1906,22 @@ const AgentDashboard = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ============================= MASHUP FLYER ============================= */}
+          <TabsContent value="mashup-flyer" className="space-y-6 mt-0">
+            {store && (
+              <MashupFlyerGenerator
+                storeName={store.store_name}
+                storeUrl={`${window.location.origin}/store/${store.id}`}
+                whatsappNumber={store.whatsapp_number}
+                supportNumber={store.support_number}
+                packages={packages}
+                agentPrices={agentPrices}
+                topupReference={store.topup_reference}
+                isSubagent={false}
+              />
+            )}
           </TabsContent>
 
           {/* ============================= WITHDRAW ============================= */}
