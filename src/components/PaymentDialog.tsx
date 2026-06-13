@@ -267,7 +267,8 @@ const PaymentDialog = ({
           package_name: displayPackageName,
           agent_store_id: actualStoreId || null,
           subagent_store_id: subagentStoreId || null,
-          ...(network === "mtn_mashup" && packageInfo?.size_gb_text ? { sizeGbText: packageInfo.size_gb_text } : {}),
+          ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
+          ...(packageInfo?.id && { data_package_id: packageInfo.id }),
         },
       });
 
@@ -291,7 +292,8 @@ const PaymentDialog = ({
                   package_name: displayPackageName,
                   agent_store_id: actualStoreId || null,
                   subagent_store_id: subagentStoreId || null,
-                  ...(network === "mtn_mashup" && packageInfo?.size_gb_text ? { sizeGbText: packageInfo.size_gb_text } : {}),
+                  ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
+                  ...(packageInfo?.id && { data_package_id: packageInfo.id }),
                 },
               },
             }
