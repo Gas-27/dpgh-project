@@ -120,29 +120,23 @@ const MashupFlyerGenerator = ({
         canvasWidth: FLYER_W,
         canvasHeight: FLYER_H,
       });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], "mashup-flyer.png", { type: "image/png" });
+
       const fullShareText = `${shareText}\n\nWhatsApp: ${whatsappNumber}\n\nStore: ${storeUrl}`;
 
-      if (navigator.share) {
-        await navigator.share({
-          title: "Special MTN Mashup Flyer",
-          text: fullShareText,
-          files: [file],
-        });
-        toast({ title: "Shared successfully!" });
-      } else {
-        await navigator.clipboard.writeText(fullShareText);
-        toast({ title: "Text copied!", description: "Share text copied. You can now share the image manually." });
-        const link = document.createElement("a");
-        link.download = "mashup-flyer.png";
-        link.href = dataUrl;
-        link.click();
-      }
-    } catch (error: any) {
-      if (error.name !== "AbortError") {
-        toast({ title: "Error", description: "Could not share flyer.", variant: "destructive" });
-      }
+      // Try to open WhatsApp directly with the text
+      const encodedText = encodeURIComponent(fullShareText);
+      window.open(`https://wa.me/?text=${encodedText}`, "_blank");
+      
+      // Also download the image
+      const link = document.createElement("a");
+      link.download = `${storeName.replace(/\s+/g, "-")}-mashup-flyer.png`;
+      link.href = dataUrl;
+      link.click();
+      
+      toast({ title: "Opening WhatsApp...", description: "You can now share the image manually." });
+    } catch (error) {
+      console.error("Error sharing flyer:", error);
+      toast({ title: "Error", description: "Could not generate flyer for sharing.", variant: "destructive" });
     } finally {
       setGenerating(false);
     }
@@ -287,7 +281,7 @@ const MashupFlyerGenerator = ({
               <span style={{ fontSize: 22, fontWeight: 900, color: "#fbbf24", letterSpacing: 1, textTransform: "uppercase" }}>MASHUP DATA BUNDLES</span>
               <span style={{ fontSize: 14, fontWeight: 800, color: "#fbbf24", border: "2px solid #fbbf24", borderRadius: 20, padding: "4px 16px" }}>Express</span>
             </div>
-            <div style={{ backgroundColor: "#0a0800", padding: "10px 10px 12px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 7 }}>
+            <div style={{ backgroundColor: "#0a0800", padding: "10px 10px 12px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 7 }}>
               {mashupPkgs.map(({ id, size, price }) => (
                 <PkgCard key={id} size={size} price={price} />
               ))}
