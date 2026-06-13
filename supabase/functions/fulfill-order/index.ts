@@ -147,6 +147,7 @@ Deno.serve(async (req) => {
         "recipient_msisdn": phone,
         "shared_bundle": sizeGbText,
         "network_id": 7,
+        "package_id": existingOrder.package_id,
         ...(order_id && { "incoming_api_ref": order_id }),
       };
       const dakazinApiKey = Deno.env.get("DAKAZINA_API_KEY");
