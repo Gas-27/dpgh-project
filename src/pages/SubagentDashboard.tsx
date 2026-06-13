@@ -1910,7 +1910,7 @@ const SubagentDashboard = () => {
                             return;
                           }
                           const isValidForMTNMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detectNetwork(buyCustomerNumber) === "mtn";
-                          if (!isValidForMTNMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
+    if (!isValidForMTNMashup && buyingPkg.network !== "mashup" && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
                             const detected = detectNetwork(buyCustomerNumber);
                             toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
                             return;
