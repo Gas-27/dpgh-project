@@ -1000,7 +1000,7 @@ const AgentDashboard = () => {
       try {
         const email = user?.email || `agent-${store.id}@datapluggh.com`;
         const total = Math.round((ap + (ap * 1.95 / 100)) * 100) / 100;
-        const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { email, amount: total, phone: buyPhone.trim(), callback_url: `${window.location.origin}/agent?payment=verifying`, metadata: { package_id: buyPkg.id, network: buyPkg.network, package_name: `${(buyPkg as any).mins ? (buyPkg as any).mins + " mins + " : ""}${buyPkg.network === "mtn_mashup" ? buyPkg.size_gb_text : buyPkg.size_gb + "GB"}`, agent_store_id: store.id, payment_method: "paystack", use_agent_price: true, ...(buyPkg.network === "mtn_mashup" && buyPkg.size_gb_text ? { sizeGbText: buyPkg.size_gb_text } : {}) } } });
+        const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { email, amount: total, phone: buyPhone.trim(), callback_url: `${window.location.origin}/agent?payment=verifying`, metadata: { package_id: buyPkg.id, network: buyPkg.network, package_name: `${(buyPkg as any).mins ? (buyPkg as any).mins + " mins + " : ""}${buyPkg.network === "mtn_mashup" ? buyPkg.size_gb_text : buyPkg.size_gb + "GB"}`, agent_store_id: store.id, payment_method: "paystack", use_agent_price: true, ...(buyPkg.network === "mtn_mashup" ? { sizeGbText: buyPkg.size_gb_text, data_package_id: (buyPkg as any).data_package_id } : {}) } } });
         if (error) throw error;
         if (data?.authorization_url) window.location.href = data.authorization_url; else throw new Error(data?.error || "Failed to initialize payment");
       } catch (e: any) { toast({ title: "Payment Error", description: e.message, variant: "destructive" }); }

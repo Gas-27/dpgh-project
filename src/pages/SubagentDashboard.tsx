@@ -1926,11 +1926,12 @@ const SubagentDashboard = () => {
                                 metadata: {
                                   package_id: buyingPkg.id,
                                   network: buyingPkg.network,
-                                  package_name: `${buyingPkg.size_gb}GB`,
+                                  package_name: `${buyingPkg.network === "mtn_mashup" ? (buyingPkg as any).size_gb_text : buyingPkg.size_gb + "GB"}`,
                                   subagent_store_id: subagentStore?.id,
                                   agent_store_id: subagentStore?.agent_store_id,
                                   payment_method: "paystack",
                                   is_subagent_order: true,
+                                  ...(buyingPkg.network === "mtn_mashup" && { data_package_id: (buyingPkg as any).data_package_id }),
                                 },
                               },
                             });
