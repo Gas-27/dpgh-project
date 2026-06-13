@@ -1388,7 +1388,8 @@ const Packages = () => {
                       <CardContent className="p-4 text-center space-y-3">
                         {isMTNMashup ? (
                           <>
-                            <div className="bg-white/20 rounded-lg p-2 mb-2">
+                            <div className="relative bg-white/20 rounded-lg p-2 mb-2">
+                              {pkg.network === "mtn_mashup" && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
                               <p className="font-semibold text-sm text-white">Special MTN Mashup</p>
                               <p className="text-xs opacity-90 text-white">Data Bundle</p>
                             </div>

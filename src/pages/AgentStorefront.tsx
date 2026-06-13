@@ -1320,6 +1320,7 @@ const AgentStorefront = () => {
                       className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group w-full"
                       style={{ background: cardBackground }}
                     >
+                      {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold z-10">Express</div>}
                       <CardContent className={`${getPadding()} text-center space-y-1 sm:space-y-2 w-full`}>
                         <p
                           className={`${getGbFontSize()} font-bold break-words`}

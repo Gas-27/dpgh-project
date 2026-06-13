@@ -1510,7 +1510,8 @@ const AgentDashboard = () => {
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
                 return (
                   <Card key={pkg.id} className={networkFilter === "mtn_mashup" ? "border-amber-600/50 bg-amber-50/5 hover:border-amber-500/50 transition-all" : "border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all"}>
-                    <CardContent className="p-4 text-center space-y-3">
+                    <CardContent className="p-4 text-center space-y-3 relative">
+                      {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
                       {networkFilter === "mtn_mashup" && <div className="h-10 w-10 rounded-full bg-amber-600/20 flex items-center justify-center mx-auto"><Zap className="h-5 w-5 text-amber-500" /></div>}
                       <div>
                         {networkFilter === "mtn_mashup" && <p className="font-display text-xs text-amber-500 uppercase tracking-wide mb-1">Special Mashup</p>}

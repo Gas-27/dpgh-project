@@ -1845,9 +1845,10 @@ const SubagentDashboard = () => {
               {filteredPackages.map(pkg => {
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;
                 return (
-                  <Card key={pkg.id} className="border-border transition-all hover:border-primary/50">
+                  <Card key={pkg.id} className="border-border transition-all hover:border-primary/50 relative">
+                    {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
                     <CardContent className="p-4 text-center space-y-3">
-                      <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p>
+                      <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb}GB</p>
                       <p className="text-lg font-bold text-primary">GH₵ {Number(basePrice).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Base Price</p>
                       <Button variant="hero" size="sm" className="w-full" onClick={() => setBuyingPkg(pkg)}>Buy Now</Button>
