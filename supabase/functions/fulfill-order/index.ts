@@ -111,17 +111,17 @@ Deno.serve(async (req) => {
     const networkKey = NETWORK_MAP[existingOrder.network?.toLowerCase()] || "YELLO";
     const capacity = Number(existingOrder.size_gb);
     
-    // For mtn_mashup, fetch the package to get size_gb_text and data_package_id
+    // For mtn_mashup and mashup, fetch the package to get size_gb_text and data_package_id
     let sizeGbText = null;
-    let packageIdFromTable = null;
-    if (existingOrder.network === "mtn_mashup" && existingOrder.package_id) {
+    let dataPackageId = null;
+    if ((existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup") && existingOrder.package_id) {
       const { data: pkg } = await supabase
-        .from("packages")
+        .from("data_packages")
         .select("data_package_id, size_gb_text")
         .eq("id", existingOrder.package_id)
         .single();
       sizeGbText = pkg?.size_gb_text || null;
-      packageIdFromTable = pkg?.data_package_id || null;
+      dataPackageId = pkg?.data_package_id || null;
     }
     
     if (isNaN(capacity) || capacity <= 0) {
@@ -142,12 +142,12 @@ Deno.serve(async (req) => {
     let requestBody: Record<string, any>;
     let apiRes: Response;
     
-    if (existingOrder.network === "mtn_mashup") {
-      // Use Datahubnet API for mtn_mashup
+    if (existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup") {
+      // Use Datahubnet API for mtn_mashup and mashup
       apiUrl = "https://www.datahubnet.online/api/v1/special-offers/";
       requestBody = {
         "phone_number": phone,
-        "package_id": Number(packageIdFromTable),
+        "package_id": Number(dataPackageId),
       };
       const datahubnetApiKey = Deno.env.get("DATAHUBNET_API_KEY");
       if (!datahubnetApiKey) {

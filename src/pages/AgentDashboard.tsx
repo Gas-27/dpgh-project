@@ -547,11 +547,11 @@ const AgentDashboard = () => {
       setSubagentBasePrices(subPm);
       
       const os = (orderR.data as Order[]) ?? [];
-      // Enrich mtn_mashup orders with size_gb_text
+      // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
       const enrichedOrders = await Promise.all(os.map(async (order: any) => {
-        if (order.network === "mtn_mashup" && order.package_id) {
-          const { data: pkg } = await supabase.from("packages").select("size_gb_text").eq("id", order.package_id).single();
-          return { ...order, size_gb_text: pkg?.size_gb_text };
+        if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
+          const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+          return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
         }
         return order;
       }));
@@ -1000,7 +1000,7 @@ const AgentDashboard = () => {
       try {
         const email = user?.email || `agent-${store.id}@datapluggh.com`;
         const total = Math.round((ap + (ap * 1.95 / 100)) * 100) / 100;
-        const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { email, amount: total, phone: buyPhone.trim(), callback_url: `${window.location.origin}/agent?payment=verifying`, metadata: { package_id: buyPkg.id, network: buyPkg.network, package_name: `${(buyPkg as any).mins ? (buyPkg as any).mins + " mins + " : ""}${buyPkg.network === "mtn_mashup" ? buyPkg.size_gb_text : buyPkg.size_gb + "GB"}`, agent_store_id: store.id, payment_method: "paystack", use_agent_price: true, ...(buyPkg.network === "mtn_mashup" ? { sizeGbText: buyPkg.size_gb_text, data_package_id: (buyPkg as any).data_package_id } : {}) } } });
+        const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { email, amount: total, phone: buyPhone.trim(), callback_url: `${window.location.origin}/agent?payment=verifying`, metadata: { package_id: buyPkg.id, network: buyPkg.network, package_name: `${(buyPkg as any).mins ? (buyPkg as any).mins + " mins + " : ""}${(buyPkg.network === "mtn_mashup" || buyPkg.network === "mashup") ? buyPkg.size_gb_text : buyPkg.size_gb + "GB"}`, agent_store_id: store.id, payment_method: "paystack", use_agent_price: true, ...((buyPkg.network === "mtn_mashup" || buyPkg.network === "mashup") ? { sizeGbText: buyPkg.size_gb_text, data_package_id: (buyPkg as any).data_package_id } : {}) } } });
         if (error) throw error;
         if (data?.authorization_url) window.location.href = data.authorization_url; else throw new Error(data?.error || "Failed to initialize payment");
       } catch (e: any) { toast({ title: "Payment Error", description: e.message, variant: "destructive" }); }

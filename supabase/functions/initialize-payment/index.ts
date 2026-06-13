@@ -468,7 +468,7 @@ Deno.serve(async (req) => {
           price_type: priceType,
           base_amount: baseAmount,
           fee_amount: feeAmount,
-          ...(packageData.network === "mtn_mashup" && { data_package_id: metadata?.data_package_id || packageData.data_package_id }),
+          ...(packageData.network === "mtn_mashup" || packageData.network === "mashup") && { data_package_id: metadata?.data_package_id || packageData.data_package_id },
         },
       }),
     });

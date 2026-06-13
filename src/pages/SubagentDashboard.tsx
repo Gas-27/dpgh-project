@@ -557,11 +557,11 @@ const SubagentDashboard = () => {
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
         ]);
 
-        // Enrich mtn_mashup orders with size_gb_text
+        // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
         const enrichedOrders2 = await Promise.all((ordersResult.data || []).map(async (order: any) => {
-          if (order.network === "mtn_mashup" && order.package_id) {
-            const { data: pkg } = await supabase.from("packages").select("size_gb_text").eq("id", order.package_id).single();
-            return { ...order, size_gb_text: pkg?.size_gb_text };
+          if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
+            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+            return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
           }
           return order;
         }));
@@ -637,11 +637,11 @@ const SubagentDashboard = () => {
         supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
         ]);
 
-        // Enrich mtn_mashup orders with size_gb_text
+        // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
         const enrichedOrders = await Promise.all((ordersResult.data || []).map(async (order: any) => {
-          if (order.network === "mtn_mashup" && order.package_id) {
-            const { data: pkg } = await supabase.from("packages").select("size_gb_text").eq("id", order.package_id).single();
-            return { ...order, size_gb_text: pkg?.size_gb_text };
+          if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
+            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+            return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
           }
           return order;
         }));
@@ -1926,12 +1926,12 @@ const SubagentDashboard = () => {
                                 metadata: {
                                   package_id: buyingPkg.id,
                                   network: buyingPkg.network,
-                                  package_name: `${buyingPkg.network === "mtn_mashup" ? (buyingPkg as any).size_gb_text : buyingPkg.size_gb + "GB"}`,
+                                  package_name: `${(buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") ? (buyingPkg as any).size_gb_text : buyingPkg.size_gb + "GB"}`,
                                   subagent_store_id: subagentStore?.id,
                                   agent_store_id: subagentStore?.agent_store_id,
                                   payment_method: "paystack",
                                   is_subagent_order: true,
-                                  ...(buyingPkg.network === "mtn_mashup" && { data_package_id: (buyingPkg as any).data_package_id }),
+                                  ...((buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && { data_package_id: (buyingPkg as any).data_package_id }),
                                 },
                               },
                             });
