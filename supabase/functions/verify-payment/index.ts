@@ -496,7 +496,7 @@ Deno.serve(async (req) => {
       const fulfillPayload: Record<string, any> = { order_id: orderId };
       
       // For mashup packages, also pass data_package_id explicitly
-      if (network === "mashup" && dataPackageId) {
+      if ((network === "mashup" || network === "mtn_mashup") && dataPackageId) {
         fulfillPayload.data_package_id = dataPackageId;
         console.log(`[v0] Paystack fulfill-order - Mashup detected, passing data_package_id: ${dataPackageId}`);
       }

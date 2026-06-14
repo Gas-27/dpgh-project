@@ -1259,7 +1259,7 @@ const SubagentDashboard = () => {
       
       // For mashup packages, get datahubnet ID from the hardcoded mapping
       let dataPackageId = undefined;
-      if (buyingPkg.network === "mashup" && buyingPkg.size_gb_text) {
+      if ((buyingPkg.network === "mashup" || buyingPkg.network === "mtn_mashup") && buyingPkg.size_gb_text) {
         // Map size_gb_text to datahubnet ID
         const mashupMapping: Record<string, number> = {
           "1.7GB": 14,

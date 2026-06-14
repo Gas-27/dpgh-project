@@ -234,7 +234,7 @@ const PaymentDialog = ({
     
     // For mashup network ONLY (not mtn_mashup), validate that we can find a datahubnet ID
     const selectedNetwork = network || packageInfo?.network || "";
-    if (selectedNetwork === "mashup") {
+    if (selectedNetwork === "mashup" || selectedNetwork === "mtn_mashup") {
       // Use inline mapping exactly like wallet purchases
       const mashupMapping: Record<string, number> = {
         "1.7GB": 14,
@@ -307,7 +307,7 @@ const PaymentDialog = ({
       // For mashup network, get datahubnet ID using inline mapping (same as wallet purchases)
       let datahubnetId = undefined;
       
-      if (network === "mashup" && packageInfo?.size_gb_text) {
+      if ((network === "mashup" || network === "mtn_mashup") && packageInfo?.size_gb_text) {
         // Use inline mapping exactly like wallet purchases do
         const mashupMapping: Record<string, number> = {
           "1.7GB": 14,
@@ -319,7 +319,7 @@ const PaymentDialog = ({
           "15.3GB": 19,
         };
         datahubnetId = mashupMapping[packageInfo.size_gb_text];
-        console.log("[v0] Paystack Mashup - size_gb_text:", packageInfo.size_gb_text, "-> package_id:", datahubnetId);
+        console.log("[v0] Paystack Mashup - network:", network, "size_gb_text:", packageInfo.size_gb_text, "-> package_id:", datahubnetId);
       }
 
       const metadataToSend = {
