@@ -2893,7 +2893,7 @@ const SubagentDashboard = () => {
                 supportNumber={subagentStore.support_number || ""}
                 packages={packages}
                 agentPrices={subagentPrices}
-                topupReference={topupReference}
+                topupReference={subagentStore.topup_reference || ""}
                 isSubagent={true}
               />
             )}
