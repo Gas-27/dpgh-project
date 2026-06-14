@@ -990,7 +990,35 @@ const AgentDashboard = () => {
       const packageName = buyPkg.size_gb_text || buyPkg.size_gb?.toString() || "";
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
       const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyPkg.size_gb;
-      const { data: od, error: oe } = await supabase.from("orders").insert({ customer_number: buyPhone.trim(), network: buyPkg.network, size_gb: extractedSize, amount: ap, package_id: buyPkg.id, agent_store_id: store.id, status: "paid", fulfillment_status: "pending", payment_method: "wallet" }).select("id").single();
+      
+      // For mashup packages, get datahubnet ID from the hardcoded mapping
+      let dataPackageId = undefined;
+      if (buyPkg.network === "mashup" && buyPkg.size_gb_text) {
+        // Map size_gb_text to datahubnet ID
+        const mashupMapping: Record<string, number> = {
+          "1.7GB": 14,
+          "5.1GB": 3,
+          "2.6 GB + 1,077 mins": 16,
+          "8.2GB": 17,
+          "11.9GB": 18,
+          "3.61GB + 1485Mins": 20,
+          "15.3GB": 19,
+        };
+        dataPackageId = mashupMapping[buyPkg.size_gb_text];
+      }
+      
+      const { data: od, error: oe } = await supabase.from("orders").insert({ 
+        customer_number: buyPhone.trim(), 
+        network: buyPkg.network, 
+        size_gb: extractedSize, 
+        amount: ap, 
+        package_id: buyPkg.id, 
+        agent_store_id: store.id, 
+        status: "paid", 
+        fulfillment_status: "pending", 
+        payment_method: "wallet",
+        ...(dataPackageId && { data_package_id: dataPackageId })
+      }).select("id").single();
       if (oe) { toast({ title: "Order error", description: oe.message, variant: "destructive" }); setBuyLoading(false); return; }
       console.log("[v0] Wallet order created, invoking fulfill-order for order:", od.id, "network:", buyPkg.network);
       const { data: fulfillData, error: fulfillError } = await supabase.functions.invoke("fulfill-order", { body: { order_id: od.id } });

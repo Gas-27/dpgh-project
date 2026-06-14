@@ -1256,6 +1256,23 @@ const SubagentDashboard = () => {
       const packageName = buyingPkg.size_gb_text || buyingPkg.size_gb?.toString() || "";
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
       const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyingPkg.size_gb;
+      
+      // For mashup packages, get datahubnet ID from the hardcoded mapping
+      let dataPackageId = undefined;
+      if (buyingPkg.network === "mashup" && buyingPkg.size_gb_text) {
+        // Map size_gb_text to datahubnet ID
+        const mashupMapping: Record<string, number> = {
+          "1.7GB": 14,
+          "5.1GB": 3,
+          "2.6 GB + 1,077 mins": 16,
+          "8.2GB": 17,
+          "11.9GB": 18,
+          "3.61GB + 1485Mins": 20,
+          "15.3GB": 19,
+        };
+        dataPackageId = mashupMapping[buyingPkg.size_gb_text];
+      }
+      
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
         package_id: buyingPkg.id,
         subagent_store_id: subagentStore.id,
@@ -1269,7 +1286,8 @@ const SubagentDashboard = () => {
         profit: 0, // Subagent buying at cost, no profit
         payment_method: "wallet",
         status: "paid",
-        fulfillment_status: "pending"
+        fulfillment_status: "pending",
+        ...(dataPackageId && { data_package_id: dataPackageId })
       }).select("id").single();
       
       if (orderError) {
