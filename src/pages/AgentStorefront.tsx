@@ -1315,6 +1315,8 @@ const AgentStorefront = () => {
               {filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
                 const isMTNMashup = networkFilter === "mtn_mashup" || networkFilter === "mashup";
+                // Show Express badge only on specific mtn_mashup packages (matching flyer image)
+                const showExpress = pkg.network === "mtn_mashup" && ["360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
                 return (
                   <Card
                       key={pkg.id}
@@ -1325,7 +1327,7 @@ const AgentStorefront = () => {
                         <>
                           <CardContent className="p-4 text-center space-y-3">
                             <div className="relative bg-white/20 rounded-lg p-2 mb-2">
-                              {(pkg.network === "mtn_mashup" || pkg.network === "mashup") && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
+                              {showExpress && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
                               <p className="font-semibold text-sm text-white">Special MTN Mashup</p>
                               <p className="text-xs opacity-90 text-white">Data Bundle</p>
                             </div>
