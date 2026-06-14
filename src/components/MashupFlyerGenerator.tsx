@@ -76,6 +76,8 @@ const MashupFlyerGenerator = ({
     id: p.id,
     size: p.size_gb_text || `${p.size_gb}GB`,
     price: getPrice(p),
+    // Show Express badge on specific packages matching the flyer image
+    showExpress: ["360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(p.size_gb_text || "")
   }));
 
   const downloadFlyer = async () => {
@@ -274,7 +276,7 @@ const MashupFlyerGenerator = ({
           {/* PACKAGES GRID - 4 columns */}
           <div style={{ margin: "20px 32px", padding: "0" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-              {mashupPkgs.map(({ id, size, price }) => (
+              {mashupPkgs.map(({ id, size, price, showExpress }) => (
                 <div
                   key={id}
                   style={{
@@ -286,6 +288,13 @@ const MashupFlyerGenerator = ({
                     position: "relative",
                   }}
                 >
+                  {/* Express Badge - Only on specific packages */}
+                  {showExpress && (
+                    <div style={{ position: "absolute", top: 8, right: 8, background: "#fbbf24", color: "#000", fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 4 }}>
+                      Express
+                    </div>
+                  )}
+
                   {/* Zap Icon */}
                   <div style={{ fontSize: 28, marginBottom: 12, marginTop: 4 }}>⚡</div>
 

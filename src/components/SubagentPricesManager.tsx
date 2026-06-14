@@ -231,7 +231,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                   
                   return (
                     <TableRow key={pkg.id}>
-                      <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                      <TableCell className="font-display font-bold">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
                       <TableCell className="text-muted-foreground">GH₵ {Number(basePrice).toFixed(2)}</TableCell>
                       <TableCell>
                         <div className="space-y-1">
