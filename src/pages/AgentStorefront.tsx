@@ -532,7 +532,7 @@ const NotificationModal = ({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�������────────────────────────��──────────────────────────────────────────────────
+// ─���������────────────────────────��──────────────────────────────────────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain();
@@ -1314,7 +1314,7 @@ const AgentStorefront = () => {
             >
               {filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
-                const isMTNMashup = networkFilter === "mtn_mashup" || networkFilter === "mashup";
+                const isMTNMashup = pkg.network === "mtn_mashup";
                 // Show Express badge only on specific mtn_mashup packages (matching flyer image)
                 const showExpress = pkg.network === "mtn_mashup" && ["360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
                 return (
