@@ -1286,8 +1286,7 @@ const SubagentDashboard = () => {
         profit: 0, // Subagent buying at cost, no profit
         payment_method: "wallet",
         status: "paid",
-        fulfillment_status: "pending",
-        ...(dataPackageId && { data_package_id: dataPackageId })
+        fulfillment_status: "pending"
       }).select("id").single();
       
       if (orderError) {
@@ -1303,7 +1302,7 @@ const SubagentDashboard = () => {
       if (orderData?.id) {
         try {
           await supabase.functions.invoke("fulfill-order", {
-            body: { order_id: orderData.id }
+            body: { order_id: orderData.id, data_package_id: dataPackageId }
           });
         } catch (fulfillErr) {
           console.error("Fulfillment trigger error:", fulfillErr);
@@ -1977,7 +1976,7 @@ const SubagentDashboard = () => {
                       Wallet Balance: GH₵ {availableWalletBalance.toFixed(2)}
                       {pendingWithdrawalAmount > 0 && (
                         <div className="text-yellow-400 text-xs mt-1">
-                          (GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal)
+                          (GH�� {pendingWithdrawalAmount.toFixed(2)} pending withdrawal)
                         </div>
                       )}
                     </p>
