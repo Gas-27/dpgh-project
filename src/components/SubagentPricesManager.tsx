@@ -220,39 +220,25 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                 </TableRow>
               ) : (
                 filteredPackages.map(pkg => {
-                  // Use agent_price as the base (this already has admin's custom price if set)
                   const basePrice = pkg.agent_price || pkg.price;
-                  // Show: edited price > saved base price > default to basePrice (admin's price)
                   const displayPrice = editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? basePrice;
-                  const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
-                  const hasSavedPrice = savedBasePrices[pkg.id] !== undefined;
-                  const sellingPrice = Number(displayPrice) || basePrice;
-                  const profit = sellingPrice - basePrice;
+                  const profit = Number(displayPrice) - basePrice;
                   
                   return (
                     <TableRow key={pkg.id}>
                       <TableCell className="font-display font-bold">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
                       <TableCell className="text-muted-foreground">GH₵ {Number(basePrice).toFixed(2)}</TableCell>
                       <TableCell>
-                        <div className="space-y-1">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min={basePrice}
-                            placeholder={`GH₵ ${basePrice.toFixed(2)}`}
-                            value={displayPrice === basePrice ? "" : displayPrice}
-                            onChange={e => handlePriceChange(pkg.id, e.target.value)}
-                            className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !editedPrices[pkg.id] ? "border-green-500" : ""}`}
-                          />
-                          {isInvalid && (
-                            <p className="text-xs text-red-500">Min: GH₵ {basePrice.toFixed(2)}</p>
-                          )}
-                          {hasSavedPrice && !editedPrices[pkg.id] && (
-                            <p className="text-xs text-green-500">Saved</p>
-                          )}
-                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={basePrice}
+                          value={displayPrice}
+                          onChange={e => handlePriceChange(pkg.id, e.target.value)}
+                          className="w-24 h-8"
+                        />
                       </TableCell>
-                      <TableCell className="font-semibold text-green-400">
+                      <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
                         GH₵ {profit.toFixed(2)}
                       </TableCell>
                     </TableRow>
