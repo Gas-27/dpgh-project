@@ -49,8 +49,8 @@ const MashupFlyerGenerator = ({
   const [shareText, setShareText] = useState("");
 
   useEffect(() => {
-    const ussdText = `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${topupReference}`;
-    setShareText(`🎉 Special MTN Mashup Data from ${storeName}!\n\n⚡ Express Data Delivery\n💨 Instant • Affordable • Reliable${ussdText}\n\nVisit store: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
+    const ussdText = topupReference && topupReference !== "0" ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${topupReference}` : "";
+    setShareText(`🎉 Special MTN Mashup Data from ${storeName}!\n\n⚡ Express Data Delivery\n💨 Instant • Affordable • Reliable${ussdText}\n\nVisit: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
   }, [storeName, storeUrl, whatsappNumber, topupReference]);
 
   useEffect(() => {
