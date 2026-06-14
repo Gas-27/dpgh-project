@@ -17,6 +17,8 @@ interface DataPackage {
   network: string;
   size_gb: number;
   price: number;
+  data_package_id?: string;
+  size_gb_text?: string;
 }
 
 const QuickBuyWidget = () => {
@@ -32,7 +34,7 @@ const QuickBuyWidget = () => {
     const fetch = async () => {
       const { data } = await supabase
         .from("data_packages")
-        .select("id, network, size_gb, price")
+        .select("id, network, size_gb, price, data_package_id, size_gb_text")
         .eq("active", true)
         .order("size_gb");
       setPackages(data ?? []);
@@ -118,10 +120,9 @@ const QuickBuyWidget = () => {
         <PaymentDialog
           open={!!paymentPkg}
           onOpenChange={(v) => !v && setPaymentPkg(null)}
-          packageName={`${paymentPkg.size_gb}GB`}
+          package={paymentPkg}
           network={selectedNetwork}
           price={Number(paymentPkg.price)}
-          packageId={paymentPkg.id}
         />
       )}
     </>

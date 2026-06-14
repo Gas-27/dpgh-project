@@ -1699,10 +1699,9 @@ const AgentStorefront = () => {
         <PaymentDialog
           open={!!paymentPkg}
           onOpenChange={(v) => !v && setPaymentPkg(null)}
-          packageName={`${paymentPkg.size_gb}GB`}
+          package={paymentPkg}
           network={networkFilter}
           price={Number(selectedPaymentPrice)}
-          packageId={paymentPkg.id}
           agentStoreId={store.id}
         />
       )}
