@@ -240,9 +240,13 @@ const PaymentDialog = ({
         "1.7GB": 14,
         "5.1GB": 3,
         "2.6 GB + 1,077 mins": 16,
+        "1077mins + 2.6GB": 16, // Alternative format
+        "1077 mins + 2.6GB": 16, // Alternative format
         "8.2GB": 17,
         "11.9GB": 18,
         "3.61GB + 1485Mins": 20,
+        "1485mins + 3.61GB": 20, // Alternative format
+        "1485 mins + 3.61GB": 20, // Alternative format
         "15.3GB": 19,
       };
       const datahubnetId = packageInfo?.size_gb_text ? mashupMapping[packageInfo.size_gb_text] : undefined;
@@ -313,9 +317,13 @@ const PaymentDialog = ({
           "1.7GB": 14,
           "5.1GB": 3,
           "2.6 GB + 1,077 mins": 16,
+          "1077mins + 2.6GB": 16, // Alternative format
+          "1077 mins + 2.6GB": 16, // Alternative format
           "8.2GB": 17,
           "11.9GB": 18,
           "3.61GB + 1485Mins": 20,
+          "1485mins + 3.61GB": 20, // Alternative format
+          "1485 mins + 3.61GB": 20, // Alternative format
           "15.3GB": 19,
         };
         datahubnetId = mashupMapping[packageInfo.size_gb_text];

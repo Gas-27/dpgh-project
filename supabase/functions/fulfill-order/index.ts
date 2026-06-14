@@ -111,19 +111,32 @@ Deno.serve(async (req) => {
     const networkKey = NETWORK_MAP[existingOrder.network?.toLowerCase()] || "YELLO";
     const capacity = Number(existingOrder.size_gb);
     
-    // For mtn_mashup and mashup, use data_package_id from order or fetch from package
+    // For mtn_mashup and mashup, use data_package_id from order or derive from package size
     let dataPackageId = existingOrder.data_package_id;
     let sizeGbText = null;
     
-    if (!dataPackageId && (existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup") && existingOrder.package_id) {
-      // Fallback: fetch from data_packages table if not stored in order
-      const { data: pkg } = await supabase
-        .from("data_packages")
-        .select("data_package_id, size_gb_text")
-        .eq("id", existingOrder.package_id)
-        .single();
-      dataPackageId = pkg?.data_package_id || null;
-      sizeGbText = pkg?.size_gb_text || null;
+    if (!dataPackageId && (existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup")) {
+      // Fallback: try to derive from size_gb or fetch from data_packages table
+      sizeGbText = existingOrder.size_gb_text;
+      
+      // Try importing the datahubnet mappings to use the hardcoded IDs
+      try {
+        const { getDatahubnetPackageId } = await import("../../src/lib/datahubnet-mappings.ts");
+        dataPackageId = getDatahubnetPackageId(sizeGbText, capacity, existingOrder.package_id);
+      } catch (e) {
+        console.log("[v0] Could not import datahubnet mappings, falling back to database lookup");
+      }
+      
+      // If still not found, try fetching from data_packages table as last resort
+      if (!dataPackageId && existingOrder.package_id) {
+        const { data: pkg } = await supabase
+          .from("data_packages")
+          .select("data_package_id, size_gb_text")
+          .eq("id", existingOrder.package_id)
+          .single();
+        dataPackageId = pkg?.data_package_id || null;
+        sizeGbText = pkg?.size_gb_text || null;
+      }
     }
     
     if (isNaN(capacity) || capacity <= 0) {

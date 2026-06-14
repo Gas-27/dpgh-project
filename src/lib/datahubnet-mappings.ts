@@ -13,6 +13,13 @@ export const DATAHUBNET_MASHUP_IDS: Record<string, number> = {
   "11.9": 18, // 11.9GB MASHUP
   "3.61": 20, // 3.61GB + 1485 mins
   "15.3": 19, // 15.3GB MASHUP
+  // Alternative text formats
+  "2.6 GB + 1,077 mins": 16,
+  "1077mins + 2.6GB": 16,
+  "1077 mins + 2.6GB": 16,
+  "3.61GB + 1485Mins": 20,
+  "1485mins + 3.61GB": 20,
+  "1485 mins + 3.61GB": 20,
 };
 
 /**
