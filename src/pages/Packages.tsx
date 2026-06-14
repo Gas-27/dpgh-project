@@ -186,17 +186,17 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 60000;
   let step = 1, msg = "", note: string | null = null;
 
-  // Special handling for mtn_mashup
-  if (order.network === "mtn_mashup") {
+  // Special handling for mtn_mashup and mashup
+  if (order.network === "mtn_mashup" || order.network === "mashup") {
     if (elapsed >= 5 * 60) { // 5 hours
       step = 4; msg = "Your data bundle has been delivered successfully.";
-      note = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
+      note = "No SMS will be sent. Check your current balance in the MTN app (MTN Mashup Voice menu or Mtn app) to confirm the increase.";
     } else if (elapsed >= 2) {
       step = 2; msg = "Expect delivery within 10 minutes to 5 hours.";
-      note = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
+      note = "No SMS will be sent. After delivery, check your balance in the MTN app (MTN Mashup Voice menu or Mtn app) to see the increase.";
     } else {
       msg = "Order being processed…";
-      note = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
+      note = "No SMS will be sent. After delivery, check your balance in the MTN app (MTN Mashup Voice menu or Mtn app) to see the increase.";
     }
   } else {
     // Original logic for other networks
@@ -270,9 +270,15 @@ Please investigate and assist. Thank you.`;
       <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
         <p className="text-sm font-medium">{msg}</p>
         {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-600/20">{note}</p>}
+        {/* Display order_status for mashup and mtn_mashup */}
+        {(order.network === "mashup" || order.network === "mtn_mashup") && order.fulfillment_status && (
+          <div className="mt-3 pt-3 border-t border-green-600/20">
+            <p className="text-xs font-medium text-green-400">Order Status: <span className="text-green-300">{order.fulfillment_status}</span></p>
+          </div>
+        )}
       </div>
-      {/* Report button now appears after 300 minutes */}
-      {elapsed >= 300 && elapsed < 3030 && !complaintStatus && (
+      {/* Report button now appears after 300 minutes - NOT for mashup/mtn_mashup */}
+      {elapsed >= 300 && elapsed < 3030 && !complaintStatus && order.network !== "mashup" && order.network !== "mtn_mashup" && (
         <Button 
           variant="outline" 
           size="sm" 
