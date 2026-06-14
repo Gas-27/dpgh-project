@@ -217,15 +217,15 @@ const PaymentDialog = ({
       return;
     }
     
-    // For mashup networks, validate that data_package_id exists
+    // For mashup network ONLY (not mtn_mashup), validate that data_package_id exists
     const selectedNetwork = network || packageInfo?.network || "";
-    if ((selectedNetwork === "mtn_mashup" || selectedNetwork === "mashup") && !packageInfo?.data_package_id) {
+    if (selectedNetwork === "mashup" && !packageInfo?.data_package_id) {
       console.error("[v0] Payment failed: data_package_id missing for mashup network", {
         network: selectedNetwork,
         packageInfo,
         dataPackageIdValue: packageInfo?.data_package_id,
       });
-      const errorMsg = `Error: Package data is incomplete. data_package_id is missing for ${selectedNetwork} package. Please refresh and try again.`;
+      const errorMsg = `Error: Package data is incomplete. data_package_id is missing for mashup package. Please refresh and try again.`;
       setPaymentError(errorMsg);
       toast({
         title: "Package Data Error",
