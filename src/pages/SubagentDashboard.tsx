@@ -2888,7 +2888,7 @@ const SubagentDashboard = () => {
             {subagentStore && (
               <MashupFlyerGenerator
                 storeName={subagentStore.store_name}
-                storeUrl={`${window.location.origin}/subagent/${subagentStore.id}`}
+                storeUrl={storeUrl}
                 whatsappNumber={subagentStore.whatsapp_number || ""}
                 supportNumber={subagentStore.support_number || ""}
                 packages={packages}
