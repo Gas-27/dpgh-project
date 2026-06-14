@@ -1232,13 +1232,39 @@ export function SubagentStorefront() {
             ) : (
               filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
+                const isMTNMashup = pkg.network === "mtn_mashup";
                 return (
-                  <Card key={pkg.id} className="border-border hover:border-primary/50 transition-all cursor-pointer" style={{ background: cardBg }} onClick={() => { setPaymentPkg(pkg); setPaymentOpen(true); }}>
+                  <Card 
+                    key={pkg.id} 
+                    className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer" 
+                    style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBg, borderColor: "var(--border)" }}
+                    onClick={() => { setPaymentPkg(pkg); setPaymentOpen(true); }}
+                  >
                     <CardContent className="p-4 text-center space-y-2">
-                      <Badge style={{ background: getNetworkColor(pkg.network), color: "#000" }}>{formatNetworkName(pkg.network)}</Badge>
-                      <p className="text-2xl font-bold" style={{ color: primaryColor }}>{pkg.size_gb}<span className="text-base text-muted-foreground">GB</span></p>
-                      <p className="text-lg font-semibold text-green-400">GH₵ {Number(price).toFixed(2)}</p>
-                      <Button size="sm" className="w-full" style={{ background: primaryColor, color: primaryForeground }}>Buy Now</Button>
+                      {isMTNMashup ? (
+                        <>
+                          <div className="relative">
+                            <Badge className="bg-yellow-400 text-black">Express</Badge>
+                          </div>
+                          <div className="relative bg-white/20 rounded-lg p-2 mb-2">
+                            <p className="font-semibold text-sm text-white">Special MTN Mashup</p>
+                            <p className="text-xs opacity-90 text-white">Data Bundle</p>
+                          </div>
+                          <p className="text-3xl font-bold text-white">{pkg.size_gb_text}</p>
+                          <p className="text-sm font-medium text-white">GH₵ {Number(price).toFixed(2)} - Valid forever</p>
+                          <div className="space-y-1 text-xs text-white flex items-center justify-center gap-2">
+                            <Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.
+                          </div>
+                          <Button size="sm" className="w-full bg-orange-700 hover:bg-orange-800 text-white border-0 font-medium">Buy Now</Button>
+                        </>
+                      ) : (
+                        <>
+                          <Badge style={{ background: getNetworkColor(pkg.network), color: "#000" }}>{formatNetworkName(pkg.network)}</Badge>
+                          <p className="text-2xl font-bold" style={{ color: primaryColor }}>{pkg.size_gb}<span className="text-base text-muted-foreground">GB</span></p>
+                          <p className="text-lg font-semibold text-green-400">GH₵ {Number(price).toFixed(2)}</p>
+                          <Button size="sm" className="w-full" style={{ background: primaryColor, color: primaryForeground }}>Buy Now</Button>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 );

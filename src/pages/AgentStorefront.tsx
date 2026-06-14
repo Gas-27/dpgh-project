@@ -1314,48 +1314,68 @@ const AgentStorefront = () => {
             >
               {filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
+                const isMTNMashup = networkFilter === "mtn_mashup";
                 return (
                   <Card
                       key={pkg.id}
                       className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group w-full"
-                      style={{ background: cardBackground }}
+                      style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBackground }}
                     >
-                      {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold z-10">Express</div>}
-                      <CardContent className={`${getPadding()} text-center space-y-1 sm:space-y-2 w-full`}>
-                        <p
-                          className={`${getGbFontSize()} font-bold break-words`}
-                          style={{ color: gbTextColor }}
-                        >
-                          {pkg.size_gb}GB
-                        </p>
-                        <p
-                          className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words"
-                          style={{ color: getNetworkLabelColor(networkFilter) }}
-                        >
-                          {formatNetworkName(networkFilter)}
-                        </p>
-                        <p
-                          className={`${getPriceFontSize()} font-bold break-words`}
-                          style={{ color: priceTextColor }}
-                        >
-                          GHC{Number(price).toFixed(2)}
-                        </p>
-                        <Button
-                          variant="secondary"
-                          size={getButtonSize() === "xs" ? "sm" : (getButtonSize() as any)}
-                          className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap"
-                          style={{
-                            backgroundColor: buttonBgColor,
-                            color: buttonTextColor,
-                            borderColor: buttonBorderColor,
-                            borderWidth: "1px",
-                            borderStyle: "solid",
-                          }}
-                          onClick={() => setPaymentPkg(pkg)}
-                        >
-                          Buy Now
-                        </Button>
-                      </CardContent>
+                      {isMTNMashup ? (
+                        <>
+                          {pkg.network === "mtn_mashup" && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
+                          <CardContent className="p-4 text-center space-y-3">
+                            <div className="relative bg-white/20 rounded-lg p-2 mb-2">
+                              <p className="font-semibold text-sm text-white">Special MTN Mashup</p>
+                              <p className="text-xs opacity-90 text-white">Data Bundle</p>
+                            </div>
+                            <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text}</p>
+                            <p className="text-sm font-medium text-white">GH₵ {Number(price).toFixed(2)} - Valid forever</p>
+                            <div className="space-y-1 text-xs text-white">
+                              <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
+                            </div>
+                            <Button variant="secondary" size="sm" className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
+                          </CardContent>
+                        </>
+                      ) : (
+                        <>
+                          <CardContent className={`${getPadding()} text-center space-y-1 sm:space-y-2 w-full`}>
+                            <p
+                              className={`${getGbFontSize()} font-bold break-words`}
+                              style={{ color: gbTextColor }}
+                            >
+                              {pkg.size_gb}GB
+                            </p>
+                            <p
+                              className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words"
+                              style={{ color: getNetworkLabelColor(networkFilter) }}
+                            >
+                              {formatNetworkName(networkFilter)}
+                            </p>
+                            <p
+                              className={`${getPriceFontSize()} font-bold break-words`}
+                              style={{ color: priceTextColor }}
+                            >
+                              GHC{Number(price).toFixed(2)}
+                            </p>
+                            <Button
+                              variant="secondary"
+                              size={getButtonSize() === "xs" ? "sm" : (getButtonSize() as any)}
+                              className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap"
+                              style={{
+                                backgroundColor: buttonBgColor,
+                                color: buttonTextColor,
+                                borderColor: buttonBorderColor,
+                                borderWidth: "1px",
+                                borderStyle: "solid",
+                              }}
+                              onClick={() => setPaymentPkg(pkg)}
+                            >
+                              Buy Now
+                            </Button>
+                          </CardContent>
+                        </>
+                      )}
                     </Card>
                   );
                 })}
