@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork } from "@/lib/phoneUtils";
+import { getDatahubnetPackageId } from "@/lib/datahubnet-mappings";
 
 interface PaymentDialogProps {
   open?: boolean;
@@ -232,22 +233,26 @@ const PaymentDialog = ({
       return;
     }
     
-    // For mashup network ONLY (not mtn_mashup), validate that data_package_id exists
+    // For mashup network ONLY (not mtn_mashup), validate that we can find a datahubnet ID
     const selectedNetwork = network || packageInfo?.network || "";
-    if (selectedNetwork === "mashup" && !packageInfo?.data_package_id) {
-      console.error("[v0] Payment failed: data_package_id missing for mashup network", {
-        network: selectedNetwork,
-        packageInfo,
-        dataPackageIdValue: packageInfo?.data_package_id,
-      });
-      const errorMsg = `Error: Package data is incomplete. data_package_id is missing for mashup package. Please refresh and try again.`;
-      setPaymentError(errorMsg);
-      toast({
-        title: "Package Data Error",
-        description: errorMsg,
-        variant: "destructive",
-      });
-      return;
+    if (selectedNetwork === "mashup") {
+      const datahubnetId = getDatahubnetPackageId(packageInfo?.size_gb_text, packageInfo?.size_gb, actualPackageId);
+      if (!datahubnetId) {
+        console.error("[v0] Payment failed: Could not find datahubnet ID for mashup package", {
+          network: selectedNetwork,
+          packageInfo,
+          sizeGbText: packageInfo?.size_gb_text,
+          sizeGb: packageInfo?.size_gb,
+        });
+        const errorMsg = `Error: Unable to process mashup package. Package configuration missing. Please contact support.`;
+        setPaymentError(errorMsg);
+        toast({
+          title: "Package Configuration Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
+        return;
+      }
     }
     
     // Validate price is not 0 or undefined
@@ -289,6 +294,11 @@ const PaymentDialog = ({
 
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
 
+      // For mashup network, use hardcoded datahubnet ID mapping
+      const datahubnetId = network === "mashup" 
+        ? getDatahubnetPackageId(packageInfo?.size_gb_text, packageInfo?.size_gb, actualPackageId)
+        : undefined;
+
       const metadataToSend = {
         package_id: actualPackageId,
         network,
@@ -296,15 +306,15 @@ const PaymentDialog = ({
         agent_store_id: actualStoreId || null,
         subagent_store_id: subagentStoreId || null,
         ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
-        ...(packageInfo?.data_package_id && { data_package_id: packageInfo.data_package_id }),
+        ...(datahubnetId && { data_package_id: datahubnetId }),
       };
 
       console.log("[v0] ===== METADATA VALUES BEFORE PAYSTACK =====");
       console.log("[v0] Network:", network);
       console.log("[v0] Package ID (our database):", actualPackageId);
-      console.log("[v0] Package Info object:", packageInfo);
-      console.log("[v0] size_gb_text value:", packageInfo?.size_gb_text);
-      console.log("[v0] data_package_id value:", packageInfo?.data_package_id);
+      console.log("[v0] Package size_gb:", packageInfo?.size_gb);
+      console.log("[v0] Package size_gb_text:", packageInfo?.size_gb_text);
+      console.log("[v0] Datahubnet ID (from mapping):", datahubnetId);
       console.log("[v0] ===== COMPLETE METADATA =====");
       console.log("[v0] Metadata:", JSON.stringify(metadataToSend, null, 2));
       console.log("[v0] ===== END METADATA =====");
