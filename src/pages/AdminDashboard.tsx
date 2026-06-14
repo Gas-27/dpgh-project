@@ -1702,6 +1702,8 @@ const AdminDashboard = () => {
                     <SelectItem value="mtn">MTN</SelectItem>
                     <SelectItem value="airtel">AirtelTigo</SelectItem>
                     <SelectItem value="telecel">Telecel</SelectItem>
+                    <SelectItem value="mtn_mashup">Special MTN Mashup</SelectItem>
+                    <SelectItem value="mashup">Mashup</SelectItem>
                   </SelectContent>
                 </Select>
 
