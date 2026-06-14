@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const PAYSTACK_FEE_PERCENT = 1.98;
-const PACKAGES_PER_PAGE = 5;
+const PACKAGES_PER_PAGE = 6;
 
 // Detect network from phone number prefix
 function detectNetworkFromPhone(phone: string): string {
