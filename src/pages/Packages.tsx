@@ -185,21 +185,51 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
 
   const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 60000;
   let step = 1, msg = "", note: string | null = null;
+  const [latestOrderStatus, setLatestOrderStatus] = useState<string>(order.order_status || "pending");
 
-  // Special handling for mtn_mashup and mashup
+  // For mashup and mtn_mashup: Poll database for order_status changes
+  useEffect(() => {
+    if (order.network === "mtn_mashup" || order.network === "mashup") {
+      const pollOrderStatus = async () => {
+        try {
+          const { data } = await supabase
+            .from("orders")
+            .select("order_status")
+            .eq("id", order.id)
+            .single();
+          
+          if (data) {
+            setLatestOrderStatus(data.order_status);
+            console.log("[v0] Mashup order_status:", data.order_status);
+          }
+        } catch (e) {
+          console.error("[v0] Error fetching order_status:", e);
+        }
+      };
+
+      pollOrderStatus();
+      const interval = setInterval(pollOrderStatus, 3000); // Poll every 3 seconds
+      return () => clearInterval(interval);
+    }
+  }, [order.id, order.network]);
+
+  // Special handling for mtn_mashup and mashup - DATABASE DRIVEN (not time-based)
   if (order.network === "mtn_mashup" || order.network === "mashup") {
-    if (elapsed >= 5 * 60) { // 5 hours
-      step = 4; msg = "Your data bundle has been delivered successfully.";
+    if (latestOrderStatus === "delivered" || latestOrderStatus === "completed") {
+      step = 3; // Only 3 steps for mashup: Order Placed -> Network Validation -> Delivered
+      msg = "Your data bundle has been delivered successfully.";
       note = "No SMS will be sent. Check your current balance in the MTN app (MTN Mashup Voice menu or Mtn app) to confirm the increase.";
-    } else if (elapsed >= 2) {
-      step = 2; msg = "Expect delivery within 10 minutes to 5 hours.";
+    } else if (latestOrderStatus === "processing") {
+      step = 2;
+      msg = "Your order is being validated and processed by the network.";
       note = "No SMS will be sent. After delivery, check your balance in the MTN app (MTN Mashup Voice menu or Mtn app) to see the increase.";
     } else {
-      msg = "Order being processed…";
+      step = 1;
+      msg = "Your order has been placed successfully.";
       note = "No SMS will be sent. After delivery, check your balance in the MTN app (MTN Mashup Voice menu or Mtn app) to see the increase.";
     }
   } else {
-    // Original logic for other networks
+    // Original logic for other networks (time-based)
     // 🔁 CHANGED: delivery threshold from 90 minutes to 300 minutes
     if (elapsed >= 300) {
       step = 4; msg = "Your data bundle has been delivered successfully.";
@@ -248,7 +278,10 @@ Please investigate and assist. Thank you.`;
   const waLink = `https://wa.me/233200511211?text=${encodeURIComponent(reportMessage)}`;
   const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${encodeURIComponent("Order Support - Delivered but not received")}&body=${encodeURIComponent(reportMessage)}`;
 
-  const labels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
+  // For mashup/mtn_mashup: only 3 steps. For other networks: 4 steps
+  const labels = (order.network === "mtn_mashup" || order.network === "mashup") 
+    ? ["Order Placed", "Network Validation", "Delivered"]
+    : ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
 
   if (step === 4) return (
     <div className="space-y-4">
@@ -270,10 +303,10 @@ Please investigate and assist. Thank you.`;
       <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
         <p className="text-sm font-medium">{msg}</p>
         {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-600/20">{note}</p>}
-        {/* Display order_status for mashup and mtn_mashup */}
-        {(order.network === "mashup" || order.network === "mtn_mashup") && order.fulfillment_status && (
+        {/* Display order_status for mashup and mtn_mashup from database */}
+        {(order.network === "mashup" || order.network === "mtn_mashup") && (
           <div className="mt-3 pt-3 border-t border-green-600/20">
-            <p className="text-xs font-medium text-green-400">Order Status: <span className="text-green-300">{order.fulfillment_status}</span></p>
+            <p className="text-xs font-medium text-green-400">Database Status: <span className="text-green-300 capitalize">{latestOrderStatus}</span></p>
           </div>
         )}
       </div>
@@ -336,11 +369,6 @@ Please investigate and assist. Thank you.`;
         {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-primary/20">{note}</p>}
         {step === 1 && elapsed < 8 && <p className="text-xs text-muted-foreground mt-1">Estimated time remaining: {Math.max(0, Math.ceil(8 - elapsed))} min(s)</p>}
       </div>
-      {elapsed >= 132 && (
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <a href={mailtoLink}><Mail className="h-4 w-4 mr-2" />Contact Support</a>
-        </Button>
-      )}
     </div>
   );
 };
