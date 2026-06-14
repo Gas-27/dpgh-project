@@ -993,6 +993,7 @@ const AgentDashboard = () => {
       
       // For mashup packages, get datahubnet ID from the hardcoded mapping
       let dataPackageId = undefined;
+      console.log("[v0] Wallet purchase - buyPkg details:", { network: buyPkg.network, size_gb_text: buyPkg.size_gb_text, size_gb: buyPkg.size_gb, allKeys: Object.keys(buyPkg) });
       if (buyPkg.network === "mashup" && buyPkg.size_gb_text) {
         // Map size_gb_text to datahubnet ID
         const mashupMapping: Record<string, number> = {
@@ -1005,6 +1006,9 @@ const AgentDashboard = () => {
           "15.3GB": 19,
         };
         dataPackageId = mashupMapping[buyPkg.size_gb_text];
+        console.log("[v0] Mashup mapping lookup - size_gb_text:", buyPkg.size_gb_text, "result:", dataPackageId);
+      } else {
+        console.log("[v0] Not a mashup or missing size_gb_text - network:", buyPkg.network);
       }
       
       const { data: od, error: oe } = await supabase.from("orders").insert({ 
