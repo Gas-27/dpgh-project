@@ -225,7 +225,8 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
 
   // Special handling for mtn_mashup and mashup - DATABASE DRIVEN (not time-based)
   if (order.network === "mtn_mashup" || order.network === "mashup") {
-    if (latestOrderStatus === "delivered" || latestOrderStatus === "completed") {
+    const normalizedStatus = latestOrderStatus?.toLowerCase().trim();
+    if (normalizedStatus === "delivered" || normalizedStatus === "completed") {
       step = 3; // Only 3 steps for mashup: Order Placed -> Network Validation -> Delivered
       msg = "Your data bundle has been delivered successfully.";
       note = "No SMS notification will be sent. Check your current Mashup Data or Voice balance NOW OR BEFORE purchase , then check again after delivery to confirm the bundle has been credited.";
