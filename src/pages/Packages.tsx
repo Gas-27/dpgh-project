@@ -183,9 +183,10 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     return () => clearInterval(interval);
   }, [order.id]);
 
-  const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 60000;
+  const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 1000; // in seconds
   let step = 1, msg = "", note: string | null = null;
   const [latestOrderStatus, setLatestOrderStatus] = useState<string>(order.order_status || "pending");
+  const [hasMovedToNetworkValidation, setHasMovedToNetworkValidation] = useState(false);
 
   // For mashup and mtn_mashup: Poll database for order_status changes
   useEffect(() => {
@@ -213,40 +214,51 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     }
   }, [order.id, order.network]);
 
+  // Timer to move from "Order Placed" to "Network Validation" after 5 seconds
+  useEffect(() => {
+    if (order.network === "mtn_mashup" || order.network === "mashup") {
+      if (elapsed >= 5 && !hasMovedToNetworkValidation) {
+        setHasMovedToNetworkValidation(true);
+      }
+    }
+  }, [elapsed, hasMovedToNetworkValidation, order.network]);
+
   // Special handling for mtn_mashup and mashup - DATABASE DRIVEN (not time-based)
   if (order.network === "mtn_mashup" || order.network === "mashup") {
     if (latestOrderStatus === "delivered" || latestOrderStatus === "completed") {
       step = 3; // Only 3 steps for mashup: Order Placed -> Network Validation -> Delivered
       msg = "Your data bundle has been delivered successfully.";
-      note = "No SMS will be sent. Check your current balance in the MTN app (MTN Mashup Voice menu or Mtn app) to confirm the increase.";
-    } else if (latestOrderStatus === "processing") {
+      note = "No SMS notification will be sent. Check your current Mashup Data or Voice balance NOW OR BEFORE purchase , then check again after delivery to confirm the bundle has been credited.";
+    } else if (elapsed >= 5 || hasMovedToNetworkValidation) {
+      // Move to Network Validation after 5 seconds and stay until order_status changes to "delivered"
       step = 2;
       msg = "Your order is being validated and processed by the network.";
-      note = "No SMS will be sent. After delivery, check your balance in the MTN app (MTN Mashup Voice menu or Mtn app) to see the increase.";
+      note = "No SMS notification will be sent. Check your current Mashup Data or Voice balance NOW OR BEFORE purchase , then check again after delivery to confirm the bundle has been credited.";
     } else {
+      // Order Placed - stay for 5 seconds
       step = 1;
       msg = "Your order has been placed successfully.";
-      note = "No SMS will be sent. After delivery, check your balance in the MTN app (MTN Mashup Voice menu or Mtn app) to see the increase.";
+      note = "No SMS notification will be sent. Check your current Mashup Data or Voice balance NOW OR BEFORE purchase , then check again after delivery to confirm the bundle has been credited.";
     }
   } else {
     // Original logic for other networks (time-based)
     // 🔁 CHANGED: delivery threshold from 90 minutes to 300 minutes
-    if (elapsed >= 300) {
+    if (elapsed >= 300 * 60) {
       step = 4; msg = "Your data bundle has been delivered successfully.";
       note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
         : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
           : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
-    } else if (elapsed >= 60) {
+    } else if (elapsed >= 60 * 60) {
       step = 3;
       msg = order.network === "mtn" ? "Expecting your data soon. Check MTN / MTNUP2U messages."
         : order.network === "airteltigo" ? "Expecting your data soon. Check AirtelTigo iShare / BigTime."
           : order.network === "telecel" ? "Expecting your data soon. Check Telecel messages." : "Expecting your data soon.";
       note = "Order is now with the network. Any further delay is from them.";
-    } else if (elapsed >= 15) {
+    } else if (elapsed >= 15 * 60) {
       step = 3; msg = "Your order can be delivered any moment. Report only if it shows 'Delivered' but you didn't receive.";
-    } else if (elapsed >= 12) {
+    } else if (elapsed >= 12 * 60) {
       step = 3; msg = `Waiting for validation from ${formatNetworkName(order.network)}…`;
-    } else if (elapsed >= 9) {
+    } else if (elapsed >= 9 * 60) {
       step = 2; msg = `Order sent to ${formatNetworkName(order.network)} for validation.`;
       note = "Delay from here is from the network.";
     } else {
