@@ -1944,7 +1944,7 @@ const AgentDashboard = () => {
             {store && (
               <MashupFlyerGenerator
                 storeName={store.store_name}
-                storeUrl={`${window.location.origin}/store/${store.id}`}
+                storeUrl={storeUrl}
                 whatsappNumber={store.whatsapp_number}
                 supportNumber={store.support_number}
                 packages={packages}
