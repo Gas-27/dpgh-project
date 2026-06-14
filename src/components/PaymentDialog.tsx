@@ -235,7 +235,18 @@ const PaymentDialog = ({
     // For mashup network ONLY (not mtn_mashup), validate that we can find a datahubnet ID
     const selectedNetwork = network || packageInfo?.network || "";
     if (selectedNetwork === "mashup") {
-      const datahubnetId = getDatahubnetPackageId(packageInfo?.size_gb_text, packageInfo?.size_gb, actualPackageId);
+      // Use inline mapping exactly like wallet purchases
+      const mashupMapping: Record<string, number> = {
+        "1.7GB": 14,
+        "5.1GB": 3,
+        "2.6 GB + 1,077 mins": 16,
+        "8.2GB": 17,
+        "11.9GB": 18,
+        "3.61GB + 1485Mins": 20,
+        "15.3GB": 19,
+      };
+      const datahubnetId = packageInfo?.size_gb_text ? mashupMapping[packageInfo.size_gb_text] : undefined;
+      
       if (!datahubnetId) {
         console.error("[v0] Payment failed: Could not find datahubnet ID for mashup package", {
           network: selectedNetwork,
