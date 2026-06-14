@@ -82,6 +82,21 @@ const PaymentDialog = ({
   const actualPackageId = packageId || pkg?.id || "";
   const actualStoreId = agentStoreId || storeId || "";
 
+  // 🔍 DEBUG LOGGING - Log all incoming package data
+  useEffect(() => {
+    if (pkg) {
+      console.log("[v0] ===== PAYMENT DIALOG PACKAGE INFO =====");
+      console.log("[v0] Full pkg object:", JSON.stringify(pkg, null, 2));
+      console.log("[v0] pkg.id:", pkg.id);
+      console.log("[v0] pkg.network:", pkg.network);
+      console.log("[v0] pkg.size_gb:", pkg.size_gb);
+      console.log("[v0] pkg.price:", pkg.price);
+      console.log("[v0] pkg.data_package_id:", pkg.data_package_id);
+      console.log("[v0] pkg.size_gb_text:", pkg.size_gb_text);
+      console.log("[v0] ===== END PACKAGE INFO =====");
+    }
+  }, [pkg]);
+
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
 
