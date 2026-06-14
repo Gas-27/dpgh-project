@@ -1629,9 +1629,9 @@ const AdminDashboard = () => {
             <TabsContent value="prices" className="space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex gap-2">
-                  {["mtn", "airteltigo", "telecel", "mtn_mashup"].map((net) => (
+                  {["mtn", "airteltigo", "telecel", "mtn_mashup", "mashup"].map((net) => (
                     <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
-                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}
+                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : net === "mtn_mashup" ? "Special MTN Mashup" : "Mashup"}
                     </Button>
                   ))}
                 </div>

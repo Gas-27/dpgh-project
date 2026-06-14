@@ -263,10 +263,6 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
           </div>
           
           <div className="space-y-4">
-            <p className="text-blue-100 text-sm md:text-base leading-relaxed">
-              Join the Agriculture and Farming Association to access training, market linkages, and exclusive member benefits
-            </p>
-            
             <div className="text-center py-4 md:py-6">
               <p className="text-blue-100 mb-2 text-xs md:text-sm">Registration Fee</p>
               {showAgentPrice && agentBundlePrice ? (
