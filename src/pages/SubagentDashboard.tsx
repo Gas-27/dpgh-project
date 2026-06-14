@@ -373,7 +373,7 @@ const SubagentDashboard = () => {
 
           // Update ONLY orders display - never touches user edits
           if (ordersRes.data) {
-            setAllCompletedOrders(ordersRes.data as any[]);
+            setOrders(ordersRes.data as any[]);
           }
         } catch (error) {
           console.error("[v0] Background refresh error:", error);
