@@ -309,15 +309,18 @@ const PaymentDialog = ({
         ...(datahubnetId && { data_package_id: datahubnetId }),
       };
 
-      console.log("[v0] ===== METADATA VALUES BEFORE PAYSTACK =====");
+      console.log("[v0] ===== PAYMENT SENDING TO PAYSTACK =====");
       console.log("[v0] Network:", network);
-      console.log("[v0] Package ID (our database):", actualPackageId);
+      console.log("[v0] Package full object:", packageInfo);
+      console.log("[v0] Package ID:", actualPackageId);
       console.log("[v0] Package size_gb:", packageInfo?.size_gb);
       console.log("[v0] Package size_gb_text:", packageInfo?.size_gb_text);
-      console.log("[v0] Datahubnet ID (from mapping):", datahubnetId);
+      console.log("[v0] Datahubnet ID from mapping:", datahubnetId);
+      console.log("[v0] ALL METADATA KEYS:", Object.keys(metadataToSend));
+      console.log("[v0] data_package_id IN METADATA:", metadataToSend.data_package_id);
       console.log("[v0] ===== COMPLETE METADATA =====");
-      console.log("[v0] Metadata:", JSON.stringify(metadataToSend, null, 2));
-      console.log("[v0] ===== END METADATA =====");
+      console.log("[v0]", JSON.stringify(metadataToSend, null, 2));
+      console.log("[v0] ===== END METADATA =====");;
 
       console.log("[v0] Calling initialize-payment with:", {
         email: userEmail,
