@@ -295,9 +295,31 @@ const PaymentDialog = ({
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
 
       // For mashup network, use hardcoded datahubnet ID mapping
-      const datahubnetId = network === "mashup" 
-        ? getDatahubnetPackageId(packageInfo?.size_gb_text, packageInfo?.size_gb, actualPackageId)
-        : undefined;
+      let datahubnetId = undefined;
+      
+      console.log("[v0] ===== MAPPING LOOKUP DEBUG =====");
+      console.log("[v0] network:", network);
+      console.log("[v0] packageInfo?.size_gb_text:", packageInfo?.size_gb_text);
+      console.log("[v0] packageInfo?.size_gb:", packageInfo?.size_gb);
+      console.log("[v0] packageInfo full object keys:", packageInfo ? Object.keys(packageInfo) : "NO PACKAGE INFO");
+      
+      if (network === "mashup") {
+        console.log("[v0] Mashup detected - attempting lookup");
+        
+        // Try all possible fields that might contain the size
+        const sizeText = packageInfo?.size_gb_text || 
+                        packageInfo?.sizeText || 
+                        packageInfo?.display_name ||
+                        null;
+        
+        console.log("[v0] size_text being used for lookup:", sizeText);
+        
+        datahubnetId = getDatahubnetPackageId(sizeText, packageInfo?.size_gb, actualPackageId);
+        console.log("[v0] Datahubnet ID from mapping:", datahubnetId);
+      } else {
+        console.log("[v0] Not mashup network, skipping mapping lookup");
+      }
+      console.log("[v0] ===== END MAPPING DEBUG =====");
 
       const metadataToSend = {
         package_id: actualPackageId,
