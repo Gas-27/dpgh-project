@@ -532,7 +532,7 @@ const NotificationModal = ({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─���────────────────────────��──────────────────────────────────────────────────
+// ─�����────────────────────────��──────────────────────────────────────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain();
@@ -1284,6 +1284,14 @@ const AgentStorefront = () => {
                 onClick={() => setNetworkFilter("mtn_mashup" as any)}
               >
                 Special MTN Mashup
+              </Button>
+              <Button
+                variant={networkFilter === "mashup" ? "hero" : "outline"}
+                size="sm"
+                className="min-w-[100px] bg-orange-500/90 hover:bg-orange-600 text-white border-0"
+                onClick={() => setNetworkFilter("mashup" as any)}
+              >
+                Mashup
               </Button>
             </div>
           </div>
