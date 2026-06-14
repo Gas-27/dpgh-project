@@ -432,7 +432,8 @@ Deno.serve(async (req) => {
       profit_credited: false,
       agent_store_id: null,
       subagent_store_id: null,
-      ...(dataPackageId && { data_package_id: dataPackageId }),
+      // Store data_package_id in metadata for mashup packages
+      metadata: dataPackageId ? { data_package_id: dataPackageId } : null,
     };
     
     if (agentStoreId) {
