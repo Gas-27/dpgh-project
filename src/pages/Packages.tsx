@@ -363,11 +363,13 @@ Please investigate and assist. Thank you.`;
         <div className="flex justify-between">
           {labels.map((l, i) => {
             const n = i + 1;
-            const icon = n < step ? <Check className="h-4 w-4 text-green-400" /> : n === step ? <Loader2 className="h-4 w-4 text-primary animate-spin" /> : <Clock className="h-4 w-4 text-muted-foreground" />;
+            // For mashup/mtn_mashup at delivered (step 3), show check mark instead of loader
+            const isMashupDelivered = (order.network === "mashup" || order.network === "mtn_mashup") && step === 3 && n === step;
+            const icon = n < step ? <Check className="h-4 w-4 text-green-400" /> : n === step && !isMashupDelivered ? <Loader2 className="h-4 w-4 text-primary animate-spin" /> : n === step && isMashupDelivered ? <Check className="h-4 w-4 text-green-400" /> : <Clock className="h-4 w-4 text-muted-foreground" />;
             return (
               <div key={i} className="flex flex-col items-center flex-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${n < step ? "bg-green-600/20" : n === step ? "bg-primary/20 border border-primary/50" : "bg-muted"}`}>{icon}</div>
-                <span className={`text-xs text-center mt-1 ${n === step ? "text-primary font-medium" : "text-muted-foreground"}`}>{l}</span>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${n < step ? "bg-green-600/20" : n === step ? isMashupDelivered ? "bg-green-600/20" : "bg-primary/20 border border-primary/50" : "bg-muted"}`}>{icon}</div>
+                <span className={`text-xs text-center mt-1 ${n === step ? isMashupDelivered ? "text-green-400 font-medium" : "text-primary font-medium" : "text-muted-foreground"}`}>{l}</span>
               </div>
             );
           })}
