@@ -492,13 +492,21 @@ Deno.serve(async (req) => {
     // Fulfill the order (non-blocking)
     try {
       const fulfillUrl = `${supabaseUrl}/functions/v1/fulfill-order`;
+      const fulfillPayload: Record<string, any> = { order_id: orderId };
+      
+      // For mashup packages, also pass data_package_id explicitly
+      if (network === "mashup" && dataPackageId) {
+        fulfillPayload.data_package_id = dataPackageId;
+        console.log(`[v0] Paystack fulfill-order - Mashup detected, passing data_package_id: ${dataPackageId}`);
+      }
+      
       await fetch(fulfillUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
         },
-        body: JSON.stringify({ order_id: orderId }),
+        body: JSON.stringify(fulfillPayload),
       });
     } catch (fulfillErr) {
       console.error("Fulfillment attempt error:", fulfillErr);
