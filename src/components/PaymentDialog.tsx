@@ -16,7 +16,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork } from "@/lib/phoneUtils";
-import { getDatahubnetPackageId } from "@/lib/datahubnet-mappings";
 
 interface PaymentDialogProps {
   open?: boolean;
@@ -294,32 +293,23 @@ const PaymentDialog = ({
 
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
 
-      // For mashup network, use hardcoded datahubnet ID mapping
+      // For mashup network, get datahubnet ID using inline mapping (same as wallet purchases)
       let datahubnetId = undefined;
       
-      console.log("[v0] ===== MAPPING LOOKUP DEBUG =====");
-      console.log("[v0] network:", network);
-      console.log("[v0] packageInfo?.size_gb_text:", packageInfo?.size_gb_text);
-      console.log("[v0] packageInfo?.size_gb:", packageInfo?.size_gb);
-      console.log("[v0] packageInfo full object keys:", packageInfo ? Object.keys(packageInfo) : "NO PACKAGE INFO");
-      
-      if (network === "mashup") {
-        console.log("[v0] Mashup detected - attempting lookup");
-        
-        // Try all possible fields that might contain the size
-        const sizeText = packageInfo?.size_gb_text || 
-                        packageInfo?.sizeText || 
-                        packageInfo?.display_name ||
-                        null;
-        
-        console.log("[v0] size_text being used for lookup:", sizeText);
-        
-        datahubnetId = getDatahubnetPackageId(sizeText, packageInfo?.size_gb, actualPackageId);
-        console.log("[v0] Datahubnet ID from mapping:", datahubnetId);
-      } else {
-        console.log("[v0] Not mashup network, skipping mapping lookup");
+      if (network === "mashup" && packageInfo?.size_gb_text) {
+        // Use inline mapping exactly like wallet purchases do
+        const mashupMapping: Record<string, number> = {
+          "1.7GB": 14,
+          "5.1GB": 3,
+          "2.6 GB + 1,077 mins": 16,
+          "8.2GB": 17,
+          "11.9GB": 18,
+          "3.61GB + 1485Mins": 20,
+          "15.3GB": 19,
+        };
+        datahubnetId = mashupMapping[packageInfo.size_gb_text];
+        console.log("[v0] Paystack Mashup - size_gb_text:", packageInfo.size_gb_text, "-> package_id:", datahubnetId);
       }
-      console.log("[v0] ===== END MAPPING DEBUG =====");
 
       const metadataToSend = {
         package_id: actualPackageId,
