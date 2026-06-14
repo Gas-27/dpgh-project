@@ -222,8 +222,8 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                 filteredPackages.map(pkg => {
                   // Use agent_price as the base (this already has admin's custom price if set)
                   const basePrice = pkg.agent_price || pkg.price;
-                  // Show: edited price > saved base price > default to agent's cost + 10%
-                  const displayPrice = editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? (basePrice * 1.1);
+                  // Only show: edited price > saved base price. If neither exists, show empty
+                  const displayPrice = editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? "";
                   const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
                   const hasSavedPrice = savedBasePrices[pkg.id] !== undefined;
                   return (
@@ -236,6 +236,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                             type="number"
                             step="0.01"
                             min={basePrice}
+                            placeholder="Not set"
                             value={displayPrice}
                             onChange={e => handlePriceChange(pkg.id, e.target.value)}
                             className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !editedPrices[pkg.id] ? "border-green-500" : ""}`}
@@ -249,7 +250,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                         </div>
                       </TableCell>
                       <TableCell className="font-semibold text-green-400">
-                        GH₵ {(displayPrice - basePrice).toFixed(2)}
+                        {displayPrice && displayPrice !== "" ? `GH₵ ${(Number(displayPrice) - basePrice).toFixed(2)}` : "—"}
                       </TableCell>
                     </TableRow>
                   );
