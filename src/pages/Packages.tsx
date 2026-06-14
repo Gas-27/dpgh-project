@@ -10,6 +10,7 @@ import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
+import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
@@ -338,7 +339,7 @@ Please investigate and assist. Thank you.`;
   );
 };
 
-// ──────────────────────────────────────────────�� Spin Wheel Popup (unchanged) ──
+// ──────────────────────────────────────────────��� Spin Wheel Popup (unchanged) ──
 interface SpinWheelPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1746,6 +1747,8 @@ const Packages = () => {
           </div>
         </DraggableFAB>
       )}
+
+      <AFARegistrationSuccess />
     </div>
   );
 };
