@@ -970,7 +970,7 @@ export function SubagentStorefront() {
 
         {/* Network Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-2 items-center">
-          {["mtn", "airteltigo", "telecel", "mtn_mashup", "mashup"].map((net) => (
+          {["mtn", "airteltigo", "telecel", "mtn_mashup"].map((net) => (
             <Button
               key={net}
               variant={networkFilter === net && !showBulkOrders ? "default" : "outline"}
