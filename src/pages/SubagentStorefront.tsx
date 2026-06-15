@@ -746,7 +746,13 @@ export function SubagentStorefront() {
   };
 
   // Helpers
-  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const filteredPackages = packages.filter((p) => {
+    // For mtn_mashup filter, also include "mashup" network packages from database
+    if (networkFilter === "mtn_mashup") {
+      return p.network === "mtn_mashup" || p.network === "mashup";
+    }
+    return p.network === networkFilter;
+  });
   const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
@@ -1232,9 +1238,9 @@ export function SubagentStorefront() {
             ) : (
               filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
-                const isMTNMashup = pkg.network === "mtn_mashup";
+                const isMTNMashup = pkg.network === "mtn_mashup" || pkg.network === "mashup";
                 // Show Express badge only on specific mtn_mashup packages (matching flyer image)
-                const showExpress = pkg.network === "mtn_mashup" && ["360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
+                const showExpress = isMTNMashup && ["360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
                 return (
                   <Card 
                     key={pkg.id} 
