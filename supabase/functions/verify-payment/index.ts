@@ -311,7 +311,6 @@ Deno.serve(async (req) => {
     const sizeGbText = metadata.size_gb_text || "";
     const agentStoreId = metadata.agent_store_id || null;
     const subagentStoreId = metadata.subagent_store_id || null;
-    const dataPackageId = metadata.data_package_id || null;
 
     const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
@@ -434,8 +433,6 @@ Deno.serve(async (req) => {
       profit_credited: false,
       agent_store_id: null,
       subagent_store_id: null,
-      // Store data_package_id for mashup packages
-      data_package_id: dataPackageId || null,
     };
     
     if (agentStoreId) {
@@ -495,21 +492,13 @@ Deno.serve(async (req) => {
     // Fulfill the order (non-blocking)
     try {
       const fulfillUrl = `${supabaseUrl}/functions/v1/fulfill-order`;
-      const fulfillPayload: Record<string, any> = { order_id: orderId };
-      
-      // For mashup packages, also pass data_package_id explicitly
-      if ((network === "mashup" || network === "mtn_mashup") && dataPackageId) {
-        fulfillPayload.data_package_id = dataPackageId;
-        console.log(`[v0] Paystack fulfill-order - Mashup detected, passing data_package_id: ${dataPackageId}`);
-      }
-      
       await fetch(fulfillUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
         },
-        body: JSON.stringify(fulfillPayload),
+        body: JSON.stringify({ order_id: orderId }),
       });
     } catch (fulfillErr) {
       console.error("Fulfillment attempt error:", fulfillErr);
