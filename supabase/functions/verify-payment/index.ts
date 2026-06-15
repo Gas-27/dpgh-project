@@ -313,7 +313,18 @@ Deno.serve(async (req) => {
     const subagentStoreId = metadata.subagent_store_id || null;
 
     const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
-    const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
+    let sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
+    
+    // For mashup packages, extract the correct GB value from sizeGbText (not packageName which may have minutes)
+    if ((network === "mashup" || network === "mtn_mashup") && sizeGbText) {
+      // Extract GB value from formats like "2.6 GB + 1,077 mins" or "1077mins + 2.6GB"
+      const gbMatch = sizeGbText.match(/(\d+(?:\.\d+)?)\s*GB/i);
+      if (gbMatch) {
+        sizeGb = parseFloat(gbMatch[1]);
+        console.log(`[v0] Mashup package detected - extracted sizeGb: ${sizeGb} from sizeGbText: "${sizeGbText}"`);
+      }
+    }
+    
     const amount = txData.amount / 100;
 
     const { data: existing } = await supabase
