@@ -14,6 +14,45 @@ const NETWORK_MAP: Record<string, string> = {
   mtn_mashup: "mtn", // Special MTN Mashup uses MTN network
 };
 
+// Datahubnet Mashup Package ID Mappings - embedded directly for Deno compatibility
+const DATAHUBNET_MASHUP_IDS: Record<string, number> = {
+  "1.7": 14,
+  "3": 3,
+  "2.6": 16,
+  "8.2": 17,
+  "11.9": 18,
+  "3.61": 20,
+  "15.3": 19,
+  "2.6 GB + 1,077 mins": 16,
+  "1077mins + 2.6GB": 16,
+  "1077 mins + 2.6GB": 16,
+  "3.61GB + 1485Mins": 20,
+  "1485mins + 3.61GB": 20,
+  "1485 mins + 3.61GB": 20,
+};
+
+// Get the datahubnet package ID for a mashup package
+function getDatahubnetPackageId(sizeGbText?: string, sizeGb?: number): number | undefined {
+  if (sizeGbText) {
+    const normalized = sizeGbText.toLowerCase().trim();
+    
+    if (normalized.includes("1.7")) return DATAHUBNET_MASHUP_IDS["1.7"];
+    if (normalized.includes("5.1")) return DATAHUBNET_MASHUP_IDS["3"];
+    if (normalized.includes("2.6")) return DATAHUBNET_MASHUP_IDS["2.6"];
+    if (normalized.includes("8.2")) return DATAHUBNET_MASHUP_IDS["8.2"];
+    if (normalized.includes("11.9")) return DATAHUBNET_MASHUP_IDS["11.9"];
+    if (normalized.includes("3.61")) return DATAHUBNET_MASHUP_IDS["3.61"];
+    if (normalized.includes("15.3")) return DATAHUBNET_MASHUP_IDS["15.3"];
+  }
+
+  if (sizeGb !== undefined) {
+    const rounded = sizeGb.toFixed(1);
+    return DATAHUBNET_MASHUP_IDS[rounded];
+  }
+
+  return undefined;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -111,24 +150,26 @@ Deno.serve(async (req) => {
     const networkKey = NETWORK_MAP[existingOrder.network?.toLowerCase()] || "YELLO";
     const capacity = Number(existingOrder.size_gb);
     
-    // For mtn_mashup and mashup, use data_package_id from order or derive from package size
+    // For mtn_mashup and mashup, use datahubnet package ID from size_gb_text
     let dataPackageId = existingOrder.data_package_id;
     let sizeGbText = null;
     
     if (!dataPackageId && (existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup")) {
-      // Fallback: try to derive from size_gb or fetch from data_packages table
       sizeGbText = existingOrder.size_gb_text;
+      console.log(`[v0] Looking up datahubnet ID for mashup: sizeGbText="${sizeGbText}", sizeGb=${existingOrder.size_gb}`);
       
-      // Try importing the datahubnet mappings to use the hardcoded IDs
-      try {
-        const { getDatahubnetPackageId } = await import("../../src/lib/datahubnet-mappings.ts");
-        dataPackageId = getDatahubnetPackageId(sizeGbText, capacity, existingOrder.package_id);
-      } catch (e) {
-        console.log("[v0] Could not import datahubnet mappings, falling back to database lookup");
+      // Use the embedded function to get the datahubnet ID
+      dataPackageId = getDatahubnetPackageId(sizeGbText, Number(existingOrder.size_gb));
+      
+      if (dataPackageId) {
+        console.log(`[v0] Found datahubnet ID: ${dataPackageId} for mashup package`);
+      } else {
+        console.error(`[v0] Could not find datahubnet ID for mashup package: "${sizeGbText}" (size_gb: ${existingOrder.size_gb})`);
       }
       
       // If still not found, try fetching from data_packages table as last resort
       if (!dataPackageId && existingOrder.package_id) {
+        console.log(`[v0] Trying to fetch from data_packages table for package_id: ${existingOrder.package_id}`);
         const { data: pkg } = await supabase
           .from("data_packages")
           .select("data_package_id, size_gb_text")
@@ -136,6 +177,9 @@ Deno.serve(async (req) => {
           .single();
         dataPackageId = pkg?.data_package_id || null;
         sizeGbText = pkg?.size_gb_text || null;
+        if (dataPackageId) {
+          console.log(`[v0] Found from data_packages: data_package_id=${dataPackageId}`);
+        }
       }
     }
     
@@ -159,6 +203,21 @@ Deno.serve(async (req) => {
     
     if (existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup") {
       // Use Datahubnet API for mtn_mashup and mashup
+      if (!dataPackageId) {
+        console.error(`[v0] ERROR: No datahubnet package ID found for mashup order. sizeGbText="${sizeGbText}", sizeGb=${capacity}`);
+        await supabase
+          .from("orders")
+          .update({ 
+            fulfillment_status: "failed", 
+            api_response: "Package configuration missing. Please contact support." 
+          })
+          .eq("id", order_id);
+        return new Response(JSON.stringify({ success: false, error: "Unable to process mashup package. Package configuration missing. Please contact support." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
       apiUrl = "https://www.datahubnet.online/api/v1/special-offers/";
       requestBody = {
         "phone_number": phone,
