@@ -8,9 +8,9 @@ import PaymentDialog from "@/components/PaymentDialog";
 
 const networks = [
   { id: "mtn", name: "MTN", color: "bg-mtn text-primary-foreground" },
-  { id: "airteltigo", name: "AirtelTigo", color: "bg-telecel text-foreground" },
+  { id: "airteltigo", name: "AT", color: "bg-telecel text-foreground" },
   { id: "telecel", name: "Telecel", color: "bg-telecel text-foreground" },
-  { id: "mtn_mashup", name: "MTN Mashup", color: "bg-orange-500 text-foreground" },
+  { id: "mtn_mashup", name: "Mashup", color: "bg-orange-500 text-foreground" },
 ];
 
 interface DataPackage {
@@ -76,13 +76,13 @@ const QuickBuyWidget = () => {
           <h3 className="font-display text-lg font-semibold text-foreground">Quick Buy</h3>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-4 gap-1 sm:gap-2">
           {networks.map((n) => (
             <button
               key={n.id}
               type="button"
               onClick={() => { setSelectedNetwork(n.id); setSelectedPlan(null); }}
-              className={`rounded-lg px-2 sm:px-3 py-2 text-xs font-semibold transition-all ${
+              className={`rounded-lg px-1 sm:px-2 py-2 text-xs font-semibold transition-all ${
                 selectedNetwork === n.id
                   ? `${n.color} shadow-md`
                   : "bg-secondary text-muted-foreground hover:text-foreground"
