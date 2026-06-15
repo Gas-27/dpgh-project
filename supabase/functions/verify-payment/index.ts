@@ -308,6 +308,7 @@ Deno.serve(async (req) => {
     const packageId = metadata.package_id || "";
     const network = metadata.network || "";
     const packageName = metadata.package_name || "";
+    const sizeGbText = metadata.size_gb_text || "";
     const agentStoreId = metadata.agent_store_id || null;
     const subagentStoreId = metadata.subagent_store_id || null;
     const dataPackageId = metadata.data_package_id || null;
@@ -422,6 +423,7 @@ Deno.serve(async (req) => {
       package_id: packageId,
       network,
       size_gb: sizeGb,
+      size_gb_text: sizeGbText || null,
       amount,
       status: "paid",
       fulfillment_status: "pending",
@@ -432,8 +434,8 @@ Deno.serve(async (req) => {
       profit_credited: false,
       agent_store_id: null,
       subagent_store_id: null,
-      // Store data_package_id in metadata for mashup packages
-      metadata: dataPackageId ? { data_package_id: dataPackageId } : null,
+      // Store data_package_id for mashup packages
+      data_package_id: dataPackageId || null,
     };
     
     if (agentStoreId) {
