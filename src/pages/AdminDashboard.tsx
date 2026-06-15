@@ -3087,14 +3087,15 @@ const AdminDashboard = () => {
           ) : (
             <div className="space-y-4 pt-2">
               <div className="flex gap-2 flex-wrap">
-                {["mtn", "airteltigo", "telecel"].map((net) => (
+                {["mtn", "airteltigo", "telecel", "mtn_mashup"].map((net) => (
                   <Button
                     key={net}
                     variant={agentPriceNetworkFilter === net ? "hero" : "outline"}
                     size="sm"
                     onClick={() => setAgentPriceNetworkFilter(net)}
+                    className={net === "mtn_mashup" ? "bg-amber-500 hover:bg-amber-600 text-white border-0" : ""}
                   >
-                    {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                    {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "MTN Special Mashup"}
                   </Button>
                 ))}
               </div>
@@ -3116,10 +3117,15 @@ const AdminDashboard = () => {
                 </TableHeader>
                 <TableBody>
                   {packages
-                    .filter(pkg => pkg.network === agentPriceNetworkFilter && pkg.active)
+                    .filter(pkg => {
+                      if (agentPriceNetworkFilter === "mtn_mashup") {
+                        return (pkg.network === "mtn_mashup" || pkg.network === "mashup") && pkg.active;
+                      }
+                      return pkg.network === agentPriceNetworkFilter && pkg.active;
+                    })
                     .map((pkg) => (
                       <TableRow key={pkg.id}>
-                        <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                        <TableCell className="font-display font-bold">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
                         <TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <Input
