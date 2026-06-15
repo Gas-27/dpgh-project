@@ -10,6 +10,7 @@ const networks = [
   { id: "mtn", name: "MTN", color: "bg-mtn text-primary-foreground" },
   { id: "airteltigo", name: "AirtelTigo", color: "bg-telecel text-foreground" },
   { id: "telecel", name: "Telecel", color: "bg-telecel text-foreground" },
+  { id: "mtn_mashup", name: "MTN Mashup", color: "bg-orange-500 text-foreground" },
 ];
 
 interface DataPackage {
@@ -36,6 +37,7 @@ const QuickBuyWidget = () => {
         .from("data_packages")
         .select("id, network, size_gb, price, data_package_id, size_gb_text")
         .eq("active", true)
+        .in("network", ["mtn", "airteltigo", "telecel", "mtn_mashup", "mashup"])
         .order("size_gb");
       setPackages(data ?? []);
       setLoading(false);
@@ -44,7 +46,13 @@ const QuickBuyWidget = () => {
   }, []);
 
   const filteredPlans = useMemo(
-    () => packages.filter((p) => p.network === selectedNetwork).slice(0, 4),
+    () => {
+      if (selectedNetwork === "mtn_mashup") {
+        // For mtn_mashup, also include mashup packages
+        return packages.filter((p) => p.network === "mtn_mashup" || p.network === "mashup").slice(0, 4);
+      }
+      return packages.filter((p) => p.network === selectedNetwork).slice(0, 4);
+    },
     [packages, selectedNetwork],
   );
 
@@ -68,13 +76,13 @@ const QuickBuyWidget = () => {
           <h3 className="font-display text-lg font-semibold text-foreground">Quick Buy</h3>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 md:grid-cols-4">
           {networks.map((n) => (
             <button
               key={n.id}
               type="button"
               onClick={() => { setSelectedNetwork(n.id); setSelectedPlan(null); }}
-              className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+              className={`rounded-lg px-2 sm:px-3 py-2 text-xs font-semibold transition-all ${
                 selectedNetwork === n.id
                   ? `${n.color} shadow-md`
                   : "bg-secondary text-muted-foreground hover:text-foreground"
@@ -104,7 +112,9 @@ const QuickBuyWidget = () => {
                     : "border-border hover:border-primary/40"
                 }`}
               >
-                <p className="font-display text-lg font-bold text-foreground">{plan.size_gb}GB</p>
+                <p className="font-display text-base sm:text-lg font-bold text-foreground">
+                  {plan.network === "mtn_mashup" || plan.network === "mashup" ? plan.size_gb_text : `${plan.size_gb}GB`}
+                </p>
                 <p className="text-xs text-muted-foreground">GH₵ {Number(plan.price).toFixed(2)}</p>
               </button>
             ))}
