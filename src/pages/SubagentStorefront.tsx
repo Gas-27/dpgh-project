@@ -969,7 +969,7 @@ export function SubagentStorefront() {
         </Card>
 
         {/* Network Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2 items-center">
+        <div className="flex flex-wrap gap-2 pb-2 items-center">
           {["mtn", "airteltigo", "telecel", "mtn_mashup"].map((net) => (
             <Button
               key={net}
@@ -977,19 +977,19 @@ export function SubagentStorefront() {
               size="sm"
               onClick={() => { setNetworkFilter(net); setShowBulkOrders(false); }}
               style={networkFilter === net && !showBulkOrders ? { background: getNetworkColor(net), color: "#000" } : {}}
-              className="whitespace-nowrap"
+              className="whitespace-nowrap flex-shrink-0"
             >
               <Wifi className="h-4 w-4 mr-1" />
               {formatNetworkName(net)}
             </Button>
           ))}
-          <div className="h-6 w-px bg-border"></div>
+          <div className="h-6 w-px bg-border flex-shrink-0"></div>
           <Button
             variant={showBulkOrders ? "default" : "outline"}
             size="sm"
             onClick={() => setShowBulkOrders(!showBulkOrders)}
             style={showBulkOrders ? { background: primaryColor, color: primaryForeground } : {}}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap flex-shrink-0"
           >
             <Layers className="h-4 w-4 mr-1" />
             Bulk Orders
@@ -1014,10 +1014,10 @@ export function SubagentStorefront() {
                   <span className="flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold" style={{ backgroundColor: primaryColor, color: primaryForeground }}>1</span>
                   <span className="font-semibold text-lg">SELECT NETWORK</span>
                 </div>
-                <div className="flex gap-3 flex-wrap">
-                  <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-6 py-4 text-base font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
-                  <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-6 py-4 text-base font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
-                  <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-6 py-4 text-base font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
+                <div className="flex gap-3 flex-wrap justify-center">
+                  <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-4 sm:px-6 py-2 sm:py-4 text-sm sm:text-base font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
+                  <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-4 sm:px-6 py-2 sm:py-4 text-sm sm:text-base font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
+                  <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-4 sm:px-6 py-2 sm:py-4 text-sm sm:text-base font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
                 </div>
               </div>
 
@@ -1117,21 +1117,21 @@ export function SubagentStorefront() {
                   
                   return (
                     <>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold">{parsed.length}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+                        <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-xl sm:text-2xl font-bold">{parsed.length}</p>
                           <p className="text-xs text-muted-foreground">Valid Recipients</p>
                         </div>
-                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold">{totalGb}GB</p>
+                        <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-xl sm:text-2xl font-bold">{totalGb}GB</p>
                           <p className="text-xs text-muted-foreground">Total Data</p>
                         </div>
-                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold" style={{ color: primaryColor }}>GH₵ {totalCost.toFixed(2)}</p>
+                        <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-xl sm:text-2xl font-bold" style={{ color: primaryColor }}>GH₵ {totalCost.toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">Data Cost</p>
                         </div>
-                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold text-green-500">GH₵ {grandTotal.toFixed(2)}</p>
+                        <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-xl sm:text-2xl font-bold text-green-500">GH₵ {grandTotal.toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">Total (incl. fees)</p>
                         </div>
                       </div>
@@ -1223,7 +1223,7 @@ export function SubagentStorefront() {
               </div>
             </a>
           )}
-          <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 250px), 1fr))` }}>
             {filteredPackages.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -1238,7 +1238,7 @@ export function SubagentStorefront() {
                 return (
                   <Card 
                     key={pkg.id} 
-                    className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer" 
+                    className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer w-full" 
                     style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBg, borderColor: "var(--border)" }}
                     onClick={() => { setPaymentPkg(pkg); setPaymentOpen(true); }}
                   >
@@ -1250,7 +1250,7 @@ export function SubagentStorefront() {
                             <p className="font-semibold text-sm text-white">Special MTN Mashup</p>
                             <p className="text-xs opacity-90 text-white">Data Bundle</p>
                           </div>
-                          <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text}</p>
+                          <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text}</p>
                           <p className="text-sm font-medium text-white">GH₵ {Number(price).toFixed(2)} - Valid forever</p>
                           <div className="space-y-1 text-xs text-white">
                             <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
