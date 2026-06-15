@@ -108,6 +108,7 @@ const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
+  if (network === "mtn_mashup" || network === "mashup") return "MTN Special Mashup";
   return network;
 };
 
@@ -983,10 +984,10 @@ export function SubagentStorefront() {
               size="sm"
               onClick={() => { setNetworkFilter(net); setShowBulkOrders(false); }}
               style={networkFilter === net && !showBulkOrders ? { background: getNetworkColor(net), color: "#000" } : {}}
-              className="whitespace-nowrap flex-shrink-0"
+              className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
-              {formatNetworkName(net)}
+              {net === "mtn_mashup" ? "MTN Special Mashup" : formatNetworkName(net)}
             </Button>
           ))}
           <div className="h-6 w-px bg-border flex-shrink-0"></div>
@@ -995,7 +996,7 @@ export function SubagentStorefront() {
             size="sm"
             onClick={() => setShowBulkOrders(!showBulkOrders)}
             style={showBulkOrders ? { background: primaryColor, color: primaryForeground } : {}}
-            className="whitespace-nowrap flex-shrink-0"
+            className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
           >
             <Layers className="h-4 w-4 mr-1" />
             Bulk Orders

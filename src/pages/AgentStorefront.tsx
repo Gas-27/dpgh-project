@@ -120,6 +120,7 @@ const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
+  if (network === "mtn_mashup" || network === "mashup") return "MTN Special Mashup";
   return network;
 };
 
@@ -532,7 +533,7 @@ const NotificationModal = ({
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─���������────────────────────────��──────────────────────────────────────────────────
+// ─�����������────────────────────────��──────────────────────────────────────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain();
@@ -1269,21 +1270,21 @@ const AgentStorefront = () => {
               {["mtn", "airteltigo", "telecel"].map((net) => (
                 <Button
                   key={net}
-                  variant={networkFilter === net ? "hero" : "outline"}
+                  variant={networkFilter === net ? "default" : "outline"}
                   size="sm"
-                  className="min-w-[100px]"
+                  className="text-xs sm:text-sm"
                   onClick={() => setNetworkFilter(net)}
                 >
                   {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
                 </Button>
               ))}
               <Button
-                variant={networkFilter === "mtn_mashup" ? "hero" : "outline"}
+                variant={networkFilter === "mtn_mashup" ? "default" : "outline"}
                 size="sm"
-                className="min-w-[160px] bg-amber-500/90 hover:bg-amber-600 text-white border-0"
+                className="text-xs sm:text-sm bg-amber-500 hover:bg-amber-600 text-white border-0"
                 onClick={() => setNetworkFilter("mtn_mashup" as any)}
               >
-                Special MTN Mashup
+                MTN Special Mashup
               </Button>
             </div>
           </div>
@@ -1309,12 +1310,12 @@ const AgentStorefront = () => {
           {/* Packages grid */}
           <div className="container pb-20">
             <div
-              className="grid gap-3 sm:gap-4"
-              style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}
+              className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+              style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 250px), 1fr))` }}
             >
               {filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
-                const isMTNMashup = pkg.network === "mtn_mashup";
+                const isMTNMashup = pkg.network === "mtn_mashup" || pkg.network === "mashup";
                 // Show Express badge only on specific mtn_mashup packages (matching flyer image)
                 const showExpress = pkg.network === "mtn_mashup" && ["360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
                 return (
