@@ -234,7 +234,9 @@ const PaymentDialog = ({
     
     // For mashup network ONLY (not mtn_mashup), validate that we can find a datahubnet ID
     const selectedNetwork = network || packageInfo?.network || "";
-    if (selectedNetwork === "mashup" || selectedNetwork === "mtn_mashup") {
+    // Only validate datahubnet IDs for "mashup" network (which uses datahubnet)
+    // MTN_MASHUP uses Dakazina provider, not datahubnet, so skip this validation for it
+    if (selectedNetwork === "mashup") {
       // Use inline mapping exactly like wallet purchases
       const mashupMapping: Record<string, number> = {
         "1.7GB": 14,
@@ -313,10 +315,11 @@ const PaymentDialog = ({
 
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
 
-      // For mashup network, get datahubnet ID using inline mapping (same as wallet purchases)
+      // For mashup network ONLY, get datahubnet ID using inline mapping
+      // MTN_MASHUP uses Dakazina provider, not datahubnet, so don't lookup ID for it
       let datahubnetId = undefined;
       
-      if ((network === "mashup" || network === "mtn_mashup") && packageInfo?.size_gb_text) {
+      if (network === "mashup" && packageInfo?.size_gb_text) {
         // Use inline mapping exactly like wallet purchases do
         const mashupMapping: Record<string, number> = {
           "1.7GB": 14,
