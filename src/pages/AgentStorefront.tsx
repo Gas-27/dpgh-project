@@ -1326,18 +1326,18 @@ const AgentStorefront = () => {
                     >
                       {isMTNMashup ? (
                         <>
-                          <CardContent className="p-4 text-center space-y-3">
-                            <div className="relative bg-white/20 rounded-lg p-2 mb-2">
-                              {showExpress && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
-                              <p className="font-semibold text-sm text-white">Special MTN Mashup</p>
+                          <CardContent className="p-6 text-center space-y-4">
+                            <div className="relative bg-white/20 rounded-lg p-3 mb-3">
+                              {showExpress && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold">Express</div>}
+                              <p className="font-semibold text-base text-white">Special MTN Mashup</p>
                               <p className="text-xs opacity-90 text-white">Data Bundle</p>
                             </div>
-                            <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text}</p>
-                            <p className="text-sm font-medium text-white">GH₵ {Number(price).toFixed(2)} - Valid forever</p>
-                            <div className="space-y-1 text-xs text-white">
+                            <p className="text-4xl md:text-5xl font-bold text-white">{pkg.size_gb_text}</p>
+                            <p className="text-base font-medium text-white">GH₵ {Number(price).toFixed(2)} - Valid forever</p>
+                            <div className="space-y-2 text-sm text-white">
                               <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
                             </div>
-                            <Button variant="secondary" size="sm" className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
+                            <Button variant="secondary" size="lg" className="w-full font-semibold bg-orange-700 hover:bg-orange-800 text-white border-0" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
                           </CardContent>
                         </>
                       ) : (
