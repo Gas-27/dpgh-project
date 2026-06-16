@@ -84,17 +84,38 @@
 }
 
 @layer components {
-  /* Glass morphism effect */
+  /* Glass morphism effect - Refined with minimal opacity */
   .glass {
-    @apply backdrop-blur-md bg-white/[0.08] border border-white/[0.15] rounded-xl;
+    @apply backdrop-blur-md bg-white/[0.03] border border-white/[0.10] rounded-xl;
   }
 
   .glass-sm {
-    @apply backdrop-blur-md bg-white/[0.06] border border-white/[0.12] rounded-lg;
+    @apply backdrop-blur-md bg-white/[0.02] border border-white/[0.08] rounded-lg;
   }
 
   .glass-lg {
-    @apply backdrop-blur-xl bg-white/[0.10] border border-white/[0.18] rounded-2xl;
+    @apply backdrop-blur-xl bg-white/[0.04] border border-white/[0.12] rounded-2xl;
+  }
+
+  /* Colored glass variants with accent borders */
+  .glass-blue {
+    @apply backdrop-blur-md bg-blue-500/[0.08] border border-blue-400/[0.30] rounded-2xl;
+  }
+
+  .glass-green {
+    @apply backdrop-blur-md bg-green-500/[0.08] border border-green-400/[0.30] rounded-2xl;
+  }
+
+  .glass-purple {
+    @apply backdrop-blur-md bg-purple-500/[0.08] border border-purple-400/[0.30] rounded-2xl;
+  }
+
+  .glass-orange {
+    @apply backdrop-blur-md bg-orange-500/[0.08] border border-orange-400/[0.30] rounded-2xl;
+  }
+
+  .glass-cyan {
+    @apply backdrop-blur-md bg-cyan-500/[0.08] border border-cyan-400/[0.30] rounded-2xl;
   }
 
   /* Smooth transitions */
@@ -103,7 +124,12 @@
   }
 
   .smooth-hover {
-    @apply smooth-transition hover:scale-105 hover:shadow-2xl;
+    @apply smooth-transition hover:bg-white/[0.08] hover:border-white/[0.15];
+  }
+
+  /* Refined glass button */
+  .glass-button-refined {
+    @apply backdrop-blur-md bg-white/[0.02] border border-white/[0.10] rounded-xl px-4 py-2 smooth-transition hover:bg-white/[0.06] hover:border-white/[0.15];
   }
 
   /* Glow effects */
