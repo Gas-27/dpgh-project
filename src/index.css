@@ -65,6 +65,7 @@
     background: url('/ios-wallpaper.png') center/cover fixed no-repeat;
     background-attachment: fixed;
     background-size: cover;
+    animation: wallpaperFloat 8s ease-in-out infinite;
   }
 
   body {
@@ -93,34 +94,34 @@
 }
 
 @layer components {
-  /* iOS-style Glass morphism - Transparent with strong blur */
+  /* iOS-style Glass morphism - Fully transparent with blur only */
   .glass {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(20px) saturate(150%);
     -webkit-backdrop-filter: blur(20px) saturate(150%);
     border-radius: 1.5rem;
   }
 
   .glass-sm {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.10);
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border-radius: 1.25rem;
   }
 
   .glass-lg {
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.14);
     backdrop-filter: blur(24px) saturate(160%);
     -webkit-backdrop-filter: blur(24px) saturate(160%);
     border-radius: 1.75rem;
   }
 
   .glass-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.10);
     backdrop-filter: blur(20px) saturate(150%);
     -webkit-backdrop-filter: blur(20px) saturate(150%);
     border-radius: 1.5rem;
@@ -141,21 +142,23 @@
     transform: translateY(-2px);
   }
 
-  /* Glass button style */
+  /* Glass button style - Fully transparent */
   .glass-button {
     padding: 0.625rem 1.5rem;
     border-radius: 1.125rem;
     font-weight: 600;
-    background: rgba(190, 220, 255, 0.08);
-    border: 1px solid rgba(190, 220, 255, 0.18);
+    background: transparent;
+    border: 1px solid rgba(190, 220, 255, 0.12);
     backdrop-filter: blur(20px) saturate(150%);
     -webkit-backdrop-filter: blur(20px) saturate(150%);
     transition: all 0.3s ease-out;
+    color: hsl(0, 0%, 98%);
   }
 
   .glass-button:hover {
-    background: rgba(190, 220, 255, 0.15);
-    box-shadow: 0 8px 32px rgba(190, 220, 255, 0.2), inset 0 0 20px rgba(190, 220, 255, 0.08);
+    background: rgba(190, 220, 255, 0.08);
+    border: 1px solid rgba(190, 220, 255, 0.20);
+    box-shadow: 0 8px 32px rgba(190, 220, 255, 0.15);
     transform: translateY(-2px);
   }
 
@@ -184,10 +187,10 @@
     background-clip: text;
   }
 
-  /* Frosted glass input */
+  /* Frosted glass input - Fully transparent */
   .glass-input {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.10);
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border-radius: 1.125rem;
@@ -202,15 +205,15 @@
 
   .glass-input:focus {
     outline: none;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(190, 220, 255, 0.20);
-    box-shadow: 0 0 20px rgba(190, 220, 255, 0.12), inset 0 0 10px rgba(190, 220, 255, 0.06);
+    background: rgba(190, 220, 255, 0.05);
+    border: 1px solid rgba(190, 220, 255, 0.18);
+    box-shadow: 0 0 20px rgba(190, 220, 255, 0.10);
   }
 
-  /* Glass panel/container */
+  /* Glass panel/container - Fully transparent */
   .glass-panel {
-    background: rgba(20, 30, 50, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.10);
     backdrop-filter: blur(20px) saturate(150%);
     -webkit-backdrop-filter: blur(20px) saturate(150%);
     border-radius: 1.5rem;
@@ -277,18 +280,18 @@
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
   }
 
-  /* Glass variant for darker elements */
+  /* Glass variant for darker elements - Fully transparent */
   .glass-dark {
-    background: rgba(20, 30, 50, 0.20);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.10);
     backdrop-filter: blur(20px) saturate(140%);
     -webkit-backdrop-filter: blur(20px) saturate(140%);
   }
 
-  /* Glass variant for lighter elements */
+  /* Glass variant for lighter elements - Fully transparent */
   .glass-light {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(20px) saturate(160%);
     -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
@@ -343,5 +346,16 @@
   }
   50% {
     opacity: 1.2;
+  }
+}
+
+@keyframes wallpaperFloat {
+  0%, 100% {
+    background-position: center;
+    transform: scale(1);
+  }
+  50% {
+    background-position: center center;
+    transform: scale(1.02);
   }
 }
