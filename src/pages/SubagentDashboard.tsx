@@ -1326,6 +1326,41 @@ const SubagentDashboard = () => {
         throw orderError;
       }
       
+      // ADD AGENT PROFIT for wallet purchases
+      // Agent profit = subagent_price (what they charge subagent) - admin_agent_price (what admin charges agent)
+      if (subagentStore.agent_store_id) {
+        try {
+          // Get admin base price (agent_price field in packages)
+          const adminBasePrice = buyingPkg.agent_price ? Number(buyingPkg.agent_price) : 0;
+          const agentProfit = price - adminBasePrice;
+          
+          console.log(`[v0] Wallet purchase - Subagent price: ${price}, Admin agent price: ${adminBasePrice}, Agent profit: ${agentProfit}`);
+          
+          if (agentProfit > 0) {
+            // Get agent's current wallet balance
+            const { data: agentStore, error: agentFetchError } = await supabase
+              .from("agent_stores")
+              .select("wallet_balance")
+              .eq("id", subagentStore.agent_store_id)
+              .single();
+            
+            if (agentStore && !agentFetchError) {
+              const newAgentBalance = (agentStore.wallet_balance || 0) + agentProfit;
+              
+              await supabase
+                .from("agent_stores")
+                .update({ wallet_balance: newAgentBalance })
+                .eq("id", subagentStore.agent_store_id);
+              
+              console.log(`[v0] Added agent profit: +${agentProfit} to wallet (new balance: ${newAgentBalance})`);
+            }
+          }
+        } catch (profitErr) {
+          console.error("[v0] Error adding agent profit:", profitErr);
+          // Don't throw - order already created successfully, just log the error
+        }
+      }
+      
       // Trigger fulfillment for the order
       if (orderData?.id) {
         try {
