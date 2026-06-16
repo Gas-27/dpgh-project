@@ -1325,44 +1325,6 @@ const SubagentDashboard = () => {
           .eq("id", subagentStore.id);
         throw orderError;
       }
-
-      // ADD AGENT COMMISSION for wallet purchases
-      // Agent earns: agent_base_price - admin_base_price
-      if (subagentStore.agent_store_id) {
-        try {
-          // Get the agent's current commission balance
-          const { data: agentStore, error: agentFetchError } = await supabase
-            .from("agent_stores")
-            .select("subagent_commission_balance")
-            .eq("id", subagentStore.agent_store_id)
-            .single();
-          
-          if (agentStore && !agentFetchError) {
-            // Get the admin base price for this package
-            const { data: pkgData } = await supabase
-              .from("packages")
-              .select("price")
-              .eq("id", buyingPkg.id)
-              .single();
-            
-            const adminBasePrice = pkgData?.price || 0;
-            const agentCommission = price - adminBasePrice;
-            
-            if (agentCommission > 0) {
-              const newAgentBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
-              await supabase
-                .from("agent_stores")
-                .update({ subagent_commission_balance: newAgentBalance })
-                .eq("id", subagentStore.agent_store_id);
-              
-              console.log(`[v0] Credited agent ${subagentStore.agent_store_id} wallet commission: +${agentCommission}, new balance=${newAgentBalance}`);
-            }
-          }
-        } catch (commissionErr) {
-          console.error("Error adding agent commission:", commissionErr);
-          // Don't throw - order already created successfully, just log the commission error
-        }
-      }
       
       // Trigger fulfillment for the order
       if (orderData?.id) {
