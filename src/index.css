@@ -61,20 +61,17 @@
     @apply border-border;
   }
 
-  body {
-    @apply text-foreground antialiased;
+  html {
+    height: 100%;
+    width: 100%;
     background: url('/site-background.png') center/cover fixed no-repeat;
-    position: relative;
   }
 
-  /* Overlay for depth */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
+  body {
+    @apply text-foreground antialiased;
     background: transparent;
-    pointer-events: none;
-    z-index: 0;
+    position: relative;
+    min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
