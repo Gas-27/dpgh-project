@@ -2003,6 +2003,7 @@ const SubagentDashboard = () => {
                           <TableHead>Customer</TableHead>
                           <TableHead>Network</TableHead>
                           <TableHead>Data</TableHead>
+                          <TableHead>Payment Method</TableHead>
                           <TableHead>Selling Price</TableHead>
                           <TableHead>Base Cost</TableHead>
                           <TableHead>Profit</TableHead>
@@ -2031,6 +2032,7 @@ const SubagentDashboard = () => {
                               <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
                               <TableCell>{order.network.toUpperCase()}</TableCell>
                               <TableCell>{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</TableCell>
+                              <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
                               <TableCell className="font-semibold">GH₵{Number(sellPrice).toFixed(2)}</TableCell>
                               <TableCell className="text-muted-foreground">GH₵{Number(baseCost).toFixed(2)}</TableCell>
                               <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
