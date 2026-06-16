@@ -1784,6 +1784,8 @@ const SubagentDashboard = () => {
                             <TableHead>Selling Price</TableHead>
                             <TableHead>Base Cost</TableHead>
                             <TableHead>Profit</TableHead>
+                            <TableHead>Payment Method</TableHead>
+                            <TableHead>Order Status</TableHead>
                             <TableHead>Payment Status</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1813,6 +1815,12 @@ const SubagentDashboard = () => {
                                 <TableCell className="text-muted-foreground">GH₵{Number(baseCost).toFixed(2)}</TableCell>
                                 <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
                                   GH₵{Number(profit).toFixed(2)}
+                                </TableCell>
+                                <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
+                                <TableCell className="capitalize text-sm">
+                                  <Badge variant="outline" className="text-xs">
+                                    {order.fulfillment_status || "pending"}
+                                  </Badge>
                                 </TableCell>
                                 <TableCell>
                                   <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
@@ -2717,9 +2725,9 @@ const SubagentDashboard = () => {
                       </div>
                       <div
                         className="grid gap-2 mt-3"
-                        style={{ gridTemplateColumns: `repeat(${Math.min(themeColors.gridColumns, 4)}, minmax(0, 1fr))` }}
+                        style={{ gridTemplateColumns: `repeat(1, minmax(0, 1fr))` }}
                       >
-                        {Array.from({ length: Math.min(themeColors.gridColumns * 2, 8) }).map((_, i) => (
+                        {Array.from({ length: 2 }).map((_, i) => (
                           <div
                             key={i}
                             className="rounded-lg p-2 text-center text-xs"
@@ -2740,7 +2748,7 @@ const SubagentDashboard = () => {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 text-center">
-                    {themeColors.gridColumns} column{themeColors.gridColumns !== 1 ? "s" : ""} per row - Changes apply live after saving
+                    1 column per row - Changes apply live after saving
                   </p>
                 </CardContent>
               </Card>
