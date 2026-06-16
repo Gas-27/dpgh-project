@@ -1317,7 +1317,7 @@ const AgentStorefront = () => {
                 const price = getPrice(pkg);
                 const isMTNMashup = pkg.network === "mtn_mashup" || pkg.network === "mashup";
                 // Show Express badge only on specific mtn_mashup packages (matching flyer image)
-                const showExpress = pkg.network === "mtn_mashup" && ["360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
+                const showExpress = pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
                 return (
                   <Card
                       key={pkg.id}
