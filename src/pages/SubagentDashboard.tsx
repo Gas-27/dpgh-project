@@ -26,6 +26,34 @@ import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import { DOMAINS } from "@/config/domains";
 
+// Helper function to get current order stage
+function getOrderStage(order: any): string {
+  const elapsed = (Date.now() - new Date(order.created_at).getTime()) / 1000;
+  const orderStatus = order.order_status?.toLowerCase().trim() || "";
+  const isMashup = order.network === "mtn_mashup" || order.network === "mashup";
+  
+  if (isMashup) {
+    if (orderStatus === "delivered" || orderStatus === "completed") {
+      return "Order Delivered";
+    } else if (elapsed >= 5) {
+      return "Network Validation";
+    } else {
+      return "Order Placed";
+    }
+  } else {
+    // Standard networks (time-based)
+    if (elapsed >= 300 * 60) {
+      return "Order Delivered";
+    } else if (elapsed >= 60 * 60) {
+      return "Network Validation";
+    } else if (elapsed >= 9 * 60) {
+      return "Sent to Network";
+    } else {
+      return "Order Placed";
+    }
+  }
+}
+
 interface SubagentStore {
   id: string;
   store_name: string;
@@ -1819,7 +1847,7 @@ const SubagentDashboard = () => {
                                 <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
                                 <TableCell className="capitalize text-sm">
                                   <Badge variant="outline" className="text-xs">
-                                    {order.fulfillment_status || "pending"}
+                                    {getOrderStage(order)}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
@@ -2048,7 +2076,7 @@ const SubagentDashboard = () => {
                               </TableCell>
                               <TableCell>
                                 <Badge variant={order.fulfillment_status === "delivered" ? "default" : "secondary"}>
-                                  {order.fulfillment_status}
+                                  {getOrderStage(order)}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
