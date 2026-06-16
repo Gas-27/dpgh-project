@@ -2225,6 +2225,76 @@ const AgentDashboard = () => {
                   </div>
                 </div>
 
+                {/* Subagent Fee Settings */}
+                {store?.allow_subagent_registration && (
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-6">
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <p className="font-semibold text-green-400 mb-2">Subagent Registration Fee</p>
+                          <p className="text-sm text-muted-foreground mb-4">Charge a one-time registration fee for new subagents. Turn off to allow free registration.</p>
+                        </div>
+                        <Switch 
+                          checked={store?.subagent_fee_enabled || false}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              const { error } = await supabase
+                                .from('agent_stores')
+                                .update({ subagent_fee_enabled: checked })
+                                .eq('id', store?.id);
+                              if (error) throw error;
+                              setStore(prev => prev ? { ...prev, subagent_fee_enabled: checked } : null);
+                              toast({ title: checked ? "Fee enabled" : "Fee disabled" });
+                            } catch (error) {
+                              console.error('Error updating fee setting:', error);
+                              toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
+                            }
+                          }}
+                        />
+                      </div>
+
+                      {store?.subagent_fee_enabled && (
+                        <div className="border-t border-green-500/20 pt-4">
+                          <Label className="text-sm font-semibold mb-2 block">Fee Amount (GH₵)</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="e.g., 10.00"
+                              value={store?.subagent_fee_amount || 0}
+                              onChange={(e) => {
+                                const value = Number(e.target.value) || 0;
+                                setStore(prev => prev ? { ...prev, subagent_fee_amount: value } : null);
+                              }}
+                              className="flex-1"
+                            />
+                            <Button 
+                              onClick={async () => {
+                                try {
+                                  const { error } = await supabase
+                                    .from('agent_stores')
+                                    .update({ subagent_fee_amount: store?.subagent_fee_amount || 0 })
+                                    .eq('id', store?.id);
+                                  if (error) throw error;
+                                  toast({ title: "Fee updated", description: `Registration fee set to GH₵ ${store?.subagent_fee_amount?.toFixed(2)}` });
+                                } catch (error) {
+                                  console.error('Error updating fee:', error);
+                                  toast({ title: "Error", description: "Failed to update fee", variant: "destructive" });
+                                }
+                              }}
+                              className="gap-2"
+                            >
+                              <Save className="h-4 w-4" /> Save Fee
+                            </Button>
+                          </div>
+                          <p className="text-xs text-green-400 mt-2">Subagents will need to pay this amount to register under your store.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <SubagentsList
                   agentStoreId={store?.id || ""}
                   subagents={subagents}
