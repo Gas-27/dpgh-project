@@ -1337,22 +1337,22 @@ const SubagentDashboard = () => {
           console.log(`[v0] Wallet purchase - Subagent price: ${price}, Admin agent price: ${adminBasePrice}, Agent profit: ${agentProfit}`);
           
           if (agentProfit > 0) {
-            // Get agent's current wallet balance
+            // Get agent's current subagent commission balance (Profit from Subagents)
             const { data: agentStore, error: agentFetchError } = await supabase
               .from("agent_stores")
-              .select("wallet_balance")
+              .select("subagent_commission_balance")
               .eq("id", subagentStore.agent_store_id)
               .single();
             
             if (agentStore && !agentFetchError) {
-              const newAgentBalance = (agentStore.wallet_balance || 0) + agentProfit;
+              const newCommissionBalance = (agentStore.subagent_commission_balance || 0) + agentProfit;
               
               await supabase
                 .from("agent_stores")
-                .update({ wallet_balance: newAgentBalance })
+                .update({ subagent_commission_balance: newCommissionBalance })
                 .eq("id", subagentStore.agent_store_id);
               
-              console.log(`[v0] Added agent profit: +${agentProfit} to wallet (new balance: ${newAgentBalance})`);
+              console.log(`[v0] Added agent profit: +${agentProfit} to Profit from Subagents (new balance: ${newCommissionBalance})`);
             }
           }
         } catch (profitErr) {
