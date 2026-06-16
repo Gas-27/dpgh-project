@@ -2676,44 +2676,12 @@ const SubagentDashboard = () => {
 
                   <div className="border-t border-border pt-4">
                     <Label className="mb-2 block font-semibold flex items-center gap-2">
-                      <LayoutGrid className="h-4 w-4 text-primary" /> Grid Columns
+                      <LayoutGrid className="h-4 w-4 text-primary" /> Grid Layout
                     </Label>
                     <div className="flex items-center gap-2 max-w-xs">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={() => changeColumns(-1)}
-                        disabled={themeColors.gridColumns <= 1}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={6}
-                        value={themeColors.gridColumns}
-                        onChange={e => {
-                          const v = parseInt(e.target.value);
-                          if (!isNaN(v) && v >= 1 && v <= 6) setThemeColors({ ...themeColors, gridColumns: v });
-                        }}
-                        className="w-16 text-center font-bold"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={() => changeColumns(1)}
-                        disabled={themeColors.gridColumns >= 6}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                      <span className="text-sm font-semibold">1 column per row (Fixed)</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Controls how many packages are shown per row on your storefront.
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">Display is locked to single column for optimal mobile experience.</p>
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t border-border">

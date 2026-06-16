@@ -992,58 +992,68 @@ const AgentStorefront = () => {
         </div>
       </header>
 
-      {/* Store URL Banner - Shows branded store link */}
+      {/* Store URL Banner - Redesigned for better appeal */}
       {store && (
-        <div className="bg-background/50 border-b border-border/50 px-4 py-3">
-          <div className="container flex items-center justify-between gap-4 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <LinkIcon className="h-4 w-4" />
-              <span>Share store link to more people:</span>
-              <code 
-                className="bg-background px-2 py-1 rounded font-mono text-foreground font-semibold"
-                style={{ color: primaryColor }}
-              >
-                {DOMAINS.getAgentStoreUrl(store.store_name).replace('https://', '')}
-              </code>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button 
-                size="sm" 
-                variant="ghost"
-                onClick={() => {
-                  const url = DOMAINS.getAgentStoreUrl(store.store_name);
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `${store.store_name} - Data Store`,
-                      text: `Buy affordable data bundles from ${store.store_name}`,
-                      url: url,
-                    }).catch(() => {});
-                  } else {
-                    navigator.clipboard.writeText(url);
-                    toast({
-                      title: "Link copied!",
-                      description: "Store link copied to clipboard",
-                    });
-                  }
-                }}
-                title="Share store link"
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
-              <Button 
-                size="sm" 
-                variant="ghost"
-                onClick={() => {
-                  const url = DOMAINS.getAgentStoreUrl(store.store_name);
-                  navigator.clipboard.writeText(url);
-                  toast({
-                    title: "Link copied!",
-                    description: "Store link copied to clipboard",
-                  });
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
+        <div className="relative px-4 py-6 overflow-hidden">
+          <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)` }} />
+          <div className="container mx-auto max-w-3xl relative z-10">
+            <div className="rounded-xl border-2 p-6 backdrop-blur-sm" style={{ borderColor: `${primaryColor}40`, backgroundColor: `${primaryColor}08` }}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+                    <Share2 className="h-3 w-3" /> Share Your Store
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-3">Spread the word and earn more! Share this link with your network:</p>
+                  <code 
+                    className="block w-full rounded-lg px-3 py-2 font-mono text-sm font-semibold break-all"
+                    style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, border: `1px solid ${primaryColor}30` }}
+                  >
+                    {DOMAINS.getAgentStoreUrl(store.store_name).replace('https://', '')}
+                  </code>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+                  <Button 
+                    size="sm" 
+                    className="flex-1 sm:flex-auto rounded-lg font-semibold"
+                    style={{ backgroundColor: primaryColor, color: primaryForeground }}
+                    onClick={() => {
+                      const url = DOMAINS.getAgentStoreUrl(store.store_name);
+                      if (navigator.share) {
+                        navigator.share({
+                          title: `${store.store_name} - Data Store`,
+                          text: `Buy affordable data bundles from ${store.store_name}`,
+                          url: url,
+                        }).catch(() => {});
+                      } else {
+                        navigator.clipboard.writeText(url);
+                        toast({
+                          title: "Link copied!",
+                          description: "Store link copied to clipboard",
+                        });
+                      }
+                    }}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="flex-1 sm:flex-auto rounded-lg"
+                    onClick={() => {
+                      const url = DOMAINS.getAgentStoreUrl(store.store_name);
+                      navigator.clipboard.writeText(url);
+                      toast({
+                        title: "Link copied!",
+                        description: "Store link copied to clipboard",
+                      });
+                    }}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1310,8 +1320,8 @@ const AgentStorefront = () => {
           {/* Packages grid */}
           <div className="container pb-20">
             <div
-              className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-              style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 250px), 1fr))` }}
+              className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+              style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 300px), 1fr))` }}
             >
               {filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
