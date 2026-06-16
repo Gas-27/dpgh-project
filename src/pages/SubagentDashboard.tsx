@@ -1103,7 +1103,7 @@ const SubagentDashboard = () => {
     }
 
     const markup = parseFloat(markupPercent) / 100;
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" ? "Telecel" : "MTN Special Mashup";
     
     filteredPackages.forEach(pkg => {
       const basePrice = basePrices[pkg.id] || pkg.price || 0;
@@ -1854,9 +1854,9 @@ const SubagentDashboard = () => {
               </CardContent>
             </Card>
             <div className="flex gap-2 flex-wrap">
-              {["mtn", "airteltigo", "telecel"].map(net => (
-                <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
-                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+              {["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (
+                <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)} className={net === "mtn_mashup" ? "bg-amber-500 hover:bg-amber-600 text-white border-0" : ""}>
+                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "MTN Special Mashup"}
                 </Button>
               ))}
             </div>
@@ -2611,7 +2611,7 @@ const SubagentDashboard = () => {
                         ) : (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                              No packages for {networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                              No packages for {networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" ? "Telecel" : "MTN Special Mashup"}
                             </TableCell>
                           </TableRow>
                         )}
