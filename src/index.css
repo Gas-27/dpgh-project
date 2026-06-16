@@ -73,16 +73,13 @@
     overflow-x: hidden;
   }
 
-  /* Subtle animated overlay for depth */
+  /* Removed dark overlay to show wallpaper clearly */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at 20% 50%, rgba(190, 220, 255, 0.04) 0%, transparent 60%),
-                radial-gradient(circle at 80% 80%, rgba(190, 220, 255, 0.02) 0%, transparent 60%);
     pointer-events: none;
     z-index: 0;
-    animation: backgroundShift 15s ease-in-out infinite;
   }
 
   h1, h2, h3, h4, h5, h6 {
