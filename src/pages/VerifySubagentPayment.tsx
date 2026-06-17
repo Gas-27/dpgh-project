@@ -55,6 +55,20 @@ export default function VerifySubagentPayment() {
         setMessage("Payment confirmed! Approving your account...");
         setApprovalMessage("Your account is being set up...");
 
+        // Get the registration record
+        const { data: registration, error: regError } = await supabase
+          .from("subagent_registrations")
+          .select("*")
+          .eq("id", registrationId)
+          .single();
+
+        if (regError || !registration) {
+          console.error("[v0] Registration not found:", regError);
+          throw new Error("Registration record not found");
+        }
+
+        console.log("[v0] Registration record found:", registration);
+
         // Update registration record to mark as paid
         const { error: regUpdateError } = await supabase
           .from("subagent_registrations")
