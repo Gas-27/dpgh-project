@@ -2259,12 +2259,11 @@ const AgentDashboard = () => {
                           <div className="flex gap-2">
                             <Input
                               type="number"
-                              min="0"
                               step="0.01"
                               placeholder="e.g., 10.00"
-                              value={store?.subagent_fee_amount || 0}
+                              value={store?.subagent_fee_amount || ""}
                               onChange={(e) => {
-                                const value = Number(e.target.value) || 0;
+                                const value = e.target.value === "" ? 0 : Number(e.target.value);
                                 setStore(prev => prev ? { ...prev, subagent_fee_amount: value } : null);
                               }}
                               className="flex-1"
