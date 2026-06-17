@@ -392,11 +392,4 @@ export default function SubagentRegistration() {
       </div>
     </div>
   );
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
 }
