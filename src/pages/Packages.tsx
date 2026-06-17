@@ -1239,7 +1239,12 @@ const Packages = () => {
     if (n === "mtn" || n === "airteltigo" || n === "telecel" || n === "mtn_mashup") setSelectedNetwork(n as any);
   }, [searchParams]);
 
-  const filtered = useMemo(() => packages.filter(p => p.network === selectedNetwork), [packages, selectedNetwork]);
+  const filtered = useMemo(() => packages.filter(p => {
+    if (selectedNetwork === "mtn_mashup") {
+      return p.network === "mtn_mashup" || p.network === "mashup";
+    }
+    return p.network === selectedNetwork;
+  }), [packages, selectedNetwork]);
 
   const searchOrders = async () => {
     if (!searchQuery.trim()) return;

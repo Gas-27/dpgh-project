@@ -67,9 +67,9 @@ const MashupFlyerGenerator = ({
 
   const getPrice = useCallback((pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price, [agentPrices]);
 
-  // Get mashup packages (mtn_mashup network only) sorted by size
+  // Get mashup packages (both mtn_mashup and mashup networks) sorted by size
   const mashupPackages = packages
-    .filter(p => p.network === "mtn_mashup" && p.active !== false)
+    .filter(p => (p.network === "mtn_mashup" || p.network === "mashup") && p.active !== false)
     .sort((a, b) => (a.size_gb || 0) - (b.size_gb || 0));
 
   const mashupPkgs = mashupPackages.map(p => ({

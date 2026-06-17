@@ -47,7 +47,12 @@ const QuickBuyWidget = () => {
 
   const filteredPlans = useMemo(
     () => {
-      return packages.filter((p) => p.network === selectedNetwork).slice(0, 4);
+      return packages.filter((p) => {
+        if (selectedNetwork === "mtn_mashup") {
+          return (p.network === "mtn_mashup" || p.network === "mashup");
+        }
+        return p.network === selectedNetwork;
+      }).slice(0, 4);
     },
     [packages, selectedNetwork],
   );

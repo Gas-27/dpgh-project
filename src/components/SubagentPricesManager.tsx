@@ -47,7 +47,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     fetchSavedPrices();
   }, [agentStoreId]);
 
-  const filteredPackages = packages.filter(p => p.network === networkFilter && p.active !== false);
+  const filteredPackages = packages.filter(p => {
+    const networkMatch = networkFilter === "mtn_mashup" 
+      ? (p.network === "mtn_mashup" || p.network === "mashup")
+      : p.network === networkFilter;
+    return networkMatch && p.active !== false;
+  });
 
   const handlePriceChange = (packageId: string, value: string) => {
     // Allow empty string for clearing the box - store as string for display

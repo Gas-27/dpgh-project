@@ -878,7 +878,13 @@ const AgentStorefront = () => {
   };
 
   // ── Render helpers ──
-  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const filteredPackages = packages.filter((p) => {
+    if (networkFilter === "mtn_mashup") {
+      // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
+      return p.network === "mtn_mashup" || p.network === "mashup";
+    }
+    return p.network === networkFilter;
+  });
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 

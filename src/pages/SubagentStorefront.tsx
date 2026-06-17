@@ -749,9 +749,9 @@ export function SubagentStorefront() {
 
   // Helpers
   const filteredPackages = packages.filter((p) => {
-    // For mtn_mashup filter, also include "mashup" network packages from database
+    // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
     if (networkFilter === "mtn_mashup") {
-      return p.network === networkFilter;
+      return p.network === "mtn_mashup" || p.network === "mashup";
     }
     return p.network === networkFilter;
   });
