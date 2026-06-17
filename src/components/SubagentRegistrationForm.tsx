@@ -178,6 +178,91 @@ export default function SubagentRegistrationForm({
     try {
       setLoading(true);
 
+      // Check if agent has fees enabled
+      if (agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0) {
+        console.log("[v0] Fees enabled, initiating payment:", agentStore.subagent_fee_amount);
+
+        // Create a temporary registration record to store the data
+        const { data: registration, error: regError } = await supabase
+          .from("subagent_registrations")
+          .insert({
+            agent_store_id: agentStoreId,
+            email: formData.email,
+            phone_number: formData.supportNumber,
+            business_name: formData.storeName,
+            fee_amount: agentStore.subagent_fee_amount,
+            payment_required: true,
+            payment_status: "pending",
+            status: "pending_payment",
+            registration_data: {
+              password: formData.password,
+              storeName: formData.storeName,
+              whatsappNumber: formData.whatsappNumber,
+              supportNumber: formData.supportNumber,
+              momoName: formData.momoName,
+              momoNumber: formData.momoNumber,
+              momoNetwork: formData.momoNetwork,
+            }
+          })
+          .select()
+          .single();
+
+        if (regError) {
+          console.error("[v0] Error creating registration:", regError);
+          throw regError;
+        }
+
+        console.log("[v0] Registration record created:", registration.id);
+
+        // Initialize Paystack payment
+        const paystackSecretKey = import.meta.env.VITE_PAYSTACK_SECRET_KEY;
+        if (!paystackSecretKey) {
+          throw new Error("Paystack configuration missing. Please contact support.");
+        }
+
+        const response = await fetch("https://api.paystack.co/transaction/initialize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${paystackSecretKey}`
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            amount: Math.round(agentStore.subagent_fee_amount * 100), // Convert to pesewas
+            metadata: {
+              subagent_registration_id: registration.id,
+              agent_store_id: agentStoreId,
+              type: "subagent_registration_fee"
+            }
+          })
+        });
+
+        const paymentData = await response.json();
+        console.log("[v0] Paystack response:", paymentData);
+
+        if (!paymentData.status) {
+          throw new Error(paymentData.message || "Payment initialization failed");
+        }
+
+        // Store the payment reference
+        await supabase
+          .from("subagent_registrations")
+          .update({
+            payment_reference: paymentData.data.reference,
+            payment_status: "processing"
+          })
+          .eq("id", registration.id);
+
+        console.log("[v0] Redirecting to Paystack:", paymentData.data.authorization_url);
+
+        // Redirect to Paystack checkout
+        window.location.href = paymentData.data.authorization_url;
+        return;
+      }
+
+      // No fees - create account directly
+      console.log("[v0] No fees, creating account directly");
+
       // Sign up the user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -230,7 +315,6 @@ export default function SubagentRegistrationForm({
           });
 
         if (roleError && roleError.code !== "PGRST116") {
-          // PGRST116 is "no rows found" which is expected if role doesn't exist
           console.error("[v0] Error creating user role:", roleError);
           throw new Error("Failed to create user role: " + roleError.message);
         }
@@ -245,7 +329,7 @@ export default function SubagentRegistrationForm({
 
       toast({
         title: "✅ Registration Successful!",
-        description: "Your subagent account has been created.",
+        description: "Your agent account has been created.",
       });
 
       // Close the modal first
@@ -257,10 +341,10 @@ export default function SubagentRegistrationForm({
         window.location.href = DOMAINS.getSubagentDashboardUrl();
       }, 500);
     } catch (error: any) {
-      console.error("Registration error:", error);
+      console.error("[v0] Registration error:", error);
       toast({
         title: "Registration Failed",
-        description: error.message || "Failed to create subagent account",
+        description: error.message || "Failed to create agent account",
         variant: "destructive",
       });
     } finally {
