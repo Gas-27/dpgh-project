@@ -27,6 +27,7 @@ const SubagentDashboard = lazy(() => import("./pages/SubagentDashboard"));
 const SubagentLogin = lazy(() => import("./pages/SubagentLogin"));
 const SubagentStorefront = lazy(() => import("./pages/SubagentStorefront"));
 const SubagentRegistration = lazy(() => import("./pages/SubagentRegistration"));
+const SubagentApprovalPayment = lazy(() => import("./pages/SubagentApprovalPayment"));
 const VerifySubagentPayment = lazy(() => import("./pages/VerifySubagentPayment"));
 
 const queryClient = new QueryClient({
@@ -123,6 +124,7 @@ const App = () => {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/agent-registration-callback" element={<AgentRegistrationCallback />} />
                   <Route path="/subagent-registration/:agentStoreId" element={<SubagentRegistration />} />
+                  <Route path="/subagent-approval-payment" element={<SubagentApprovalPayment />} />
                   <Route path="/verify-subagent-payment" element={<VerifySubagentPayment />} />
                   <Route
                     path="/admin"

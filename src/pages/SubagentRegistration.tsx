@@ -97,104 +97,38 @@ export default function SubagentRegistration() {
     try {
       const feeAmount = agent?.subagent_fee_enabled ? agent.subagent_fee_amount : 0;
 
-      // If fee is required, go straight to payment
+      // Create registration record
+      const { data: newReg, error } = await supabase
+        .from("subagent_registrations")
+        .insert({
+          agent_store_id: agentStoreId,
+          phone_number: formData.phone,
+          email: formData.email,
+          business_name: formData.businessName,
+          fee_amount: feeAmount,
+          payment_required: feeAmount > 0,
+          payment_status: feeAmount > 0 ? "pending" : "free",
+          status: feeAmount > 0 ? "pending_payment" : "approved"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setRegistration(newReg);
+      
       if (feeAmount > 0) {
-        // Create temporary registration for payment tracking only
-        const { data: newReg, error } = await supabase
-          .from("subagent_registrations")
-          .insert({
-            agent_store_id: agentStoreId,
-            phone_number: formData.phone,
-            email: formData.email,
-            business_name: formData.businessName,
-            fee_amount: feeAmount,
-            payment_required: true,
-            payment_status: "pending",
-            status: "pending_payment"
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        setRegistration(newReg);
-        
-        // Go to payment
-        await handlePayment(newReg, feeAmount);
+        // Redirect to approval/payment page
+        navigate(`/subagent-approval-payment?registration_id=${newReg.id}`);
       } else {
-        // If no fee, create account directly
-        const { data: newReg, error } = await supabase
-          .from("subagent_registrations")
-          .insert({
-            agent_store_id: agentStoreId,
-            phone_number: formData.phone,
-            email: formData.email,
-            business_name: formData.businessName,
-            fee_amount: 0,
-            payment_required: false,
-            payment_status: "free",
-            status: "approved"
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        
+        // If no fee, auto-approve and redirect to verify
         toast({ title: "Success", description: "Your agent account has been created!" });
-        navigate(`/verify-subagent-payment?reference=free&regId=${newReg.id}`);
+        navigate(`/verify-subagent-payment?reference=free&registration_id=${newReg.id}`);
       }
     } catch (error) {
       console.error("Error initiating registration:", error);
       toast({ title: "Error", description: "Failed to process registration", variant: "destructive" });
     } finally {
       setProcessing(false);
-    }
-  };
-
-  const handlePayment = async (reg: Registration, amount: number) => {
-    if (!agent) return;
-
-    setPaymentProcessing(true);
-    try {
-      // Initialize Paystack payment
-      const response = await fetch("https://api.paystack.co/transaction/initialize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_PAYSTACK_SECRET_KEY}`
-        },
-        body: JSON.stringify({
-          email: formData.email || `agent-${reg.id}@dataplyug.com`,
-          amount: Math.round(amount * 100), // Convert to pesewas
-          metadata: {
-            subagent_registration_id: reg.id,
-            agent_store_id: agent.id,
-            base_amount: amount,
-            type: "subagent_registration"
-          }
-        })
-      });
-
-      const data = await response.json();
-
-      if (!data.status) {
-        throw new Error(data.message || "Payment initialization failed");
-      }
-
-      // Store the payment reference
-      await supabase
-        .from("subagent_registrations")
-        .update({
-          payment_reference: data.data.reference,
-          payment_status: "pending"
-        })
-        .eq("id", reg.id);
-
-      // Redirect to Paystack checkout
-      window.location.href = data.data.authorization_url;
-    } catch (error) {
-      console.error("Payment error:", error);
-      toast({ title: "Error", description: "Failed to initialize payment", variant: "destructive" });
-      setPaymentProcessing(false);
     }
   };
 
