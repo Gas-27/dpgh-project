@@ -91,15 +91,11 @@ export default function SubagentRegistration() {
 
   const handleInitiateRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agentStoreId) return;
+    if (!agentStoreId || !agent) return;
 
     setProcessing(true);
     try {
-      const feeAmount = agent?.subagent_fee_enabled ? agent.subagent_fee_amount : 0;
-      
-      console.log("[v0] SubagentRegistration - agent:", agent);
-      console.log("[v0] SubagentRegistration - subagent_fee_enabled:", agent?.subagent_fee_enabled);
-      console.log("[v0] SubagentRegistration - feeAmount:", feeAmount);
+      const feeAmount = agent.subagent_fee_enabled ? agent.subagent_fee_amount : 0;
 
       // Create registration record
       const { data: newReg, error } = await supabase
@@ -118,42 +114,44 @@ export default function SubagentRegistration() {
         .single();
 
       if (error) throw error;
-      setRegistration(newReg);
-      
+
       if (feeAmount > 0) {
-        // Redirect to approval/payment page
-        console.log("[v0] Redirecting to approval page with registration_id:", newReg.id);
-        navigate(`/subagent-approval-payment?registration_id=${newReg.id}`);
+        // Show success toast and redirect to approval page
+        toast({ 
+          title: "Registration Created", 
+          description: "Please complete payment to activate your account",
+          className: "bg-green-50 border-green-200"
+        });
+        
+        // Wait a bit for toast to show, then navigate
+        setTimeout(() => {
+          navigate(`/subagent-approval-payment?registration_id=${newReg.id}`, { replace: true });
+        }, 500);
       } else {
-        console.log("[v0] No fee - redirecting directly to dashboard");
+        // No fee required - auto-approve and redirect to dashboard
         await supabase
           .from("subagent_registrations")
           .update({ status: "approved", payment_status: "free" })
           .eq("id", newReg.id);
         
-        toast({ title: "Success", description: "Your subagent account has been created!" });
+        toast({ 
+          title: "Success!", 
+          description: "Your subagent account has been created and is ready to use",
+          className: "bg-green-50 border-green-200"
+        });
         
-        // Get the subagent store ID to redirect properly
-        const { data: subagentStore } = await supabase
-          .from("subagent_stores")
-          .select("id")
-          .eq("agent_store_id", agentStoreId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-        
-        if (subagentStore?.id) {
-          sessionStorage.setItem("newSubagentStoreId", subagentStore.id);
-        }
-        
-        // Redirect directly to dashboard
-        const dashboardUrl = `${window.location.origin}/subagent-dashboard`;
-        window.location.href = dashboardUrl;
+        // Redirect to dashboard after brief delay
+        setTimeout(() => {
+          window.location.href = `${window.location.origin}/subagent-dashboard`;
+        }, 1000);
       }
     } catch (error) {
       console.error("Error initiating registration:", error);
-      toast({ title: "Error", description: "Failed to process registration", variant: "destructive" });
-    } finally {
+      toast({ 
+        title: "Error", 
+        description: "Failed to process registration. Please try again.",
+        variant: "destructive" 
+      });
       setProcessing(false);
     }
   };

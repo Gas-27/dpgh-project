@@ -139,6 +139,17 @@ export default function SubagentApprovalPayment() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading payment details...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!registration || !agent) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background p-4">
