@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { DOMAINS } from "@/config/domains";
 
 export default function VerifySubagentPayment() {
   const [searchParams] = useSearchParams();
@@ -13,7 +14,6 @@ export default function VerifySubagentPayment() {
 
   const [status, setStatus] = useState<"loading" | "success" | "failed" | "verifying">("verifying");
   const [message, setMessage] = useState("Verifying payment...");
-  const [subagentData, setSubagentData] = useState<any>(null);
 
   useEffect(() => {
     const verifyPayment = async () => {
@@ -26,87 +26,143 @@ export default function VerifySubagentPayment() {
           return;
         }
 
-        // Verify payment with Paystack
-        const response = await fetch(
-          `https://api.paystack.co/transaction/verify/${reference}`,
+        console.log("[v0] Verifying subagent payment with reference:", reference);
+
+        // Call the edge function to verify payment
+        const { data, error } = await supabase.functions.invoke(
+          "verify-registration-payment",
           {
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_PAYSTACK_SECRET_KEY}`
-            }
+            body: { reference },
           }
         );
 
-        const data = await response.json();
+        console.log("[v0] Verification response:", { data, error });
 
-        if (!data.status || data.data.status !== "success") {
+        if (error || !data?.success) {
           setStatus("failed");
-          setMessage("Payment verification failed");
+          setMessage("Payment verification failed. Please contact support.");
+          console.error("[v0] Payment verification error:", error || data);
           return;
         }
 
-        // Payment successful - update registration
-        const metadata = data.data.metadata;
-        const { registrationId } = metadata;
+        // Payment verified - now create the subagent account
+        try {
+          const metadata = data.metadata;
+          const registrationId = metadata?.subagent_registration_id;
+          const agentStoreId = metadata?.agent_store_id;
 
-        // Update registration status
-        const { data: updated, error } = await supabase
-          .from("subagent_registrations")
-          .update({
-            payment_status: "paid",
-            status: "approved"
-          })
-          .eq("id", registrationId)
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        // Create subagent account
-        if (updated) {
-          try {
-            const { error: subagentError } = await supabase
-              .from("subagent_stores")
-              .insert({
-                agent_store_id: metadata.agent_store_id,
-                phone_number: metadata.phone_number,
-                store_name: metadata.phone_number,
-                wallet_balance: 0,
-                approved: true,
-                base_price_multiplier: 0.15 // Default 15% markup
-              });
-
-            if (subagentError) {
-              console.error("Error creating subagent:", subagentError);
-              // Don't fail - registration is already approved
-            }
-
-            setSubagentData(updated);
-            setStatus("success");
-            setMessage("Payment confirmed! Your subagent account has been created.");
-
-            // Redirect to subagent dashboard after 3 seconds
-            setTimeout(() => {
-              navigate("/subagent-dashboard");
-            }, 3000);
-          } catch (err) {
-            console.error("Account creation error:", err);
-            setStatus("success");
-            setMessage("Payment confirmed! Redirecting to your dashboard...");
-            setTimeout(() => {
-              navigate("/subagent-dashboard");
-            }, 2000);
+          if (!registrationId) {
+            throw new Error("Missing registration ID in payment metadata");
           }
+
+          console.log("[v0] Creating subagent account from registration:", registrationId);
+
+          // Get the registration record
+          const { data: registration, error: regError } = await supabase
+            .from("subagent_registrations")
+            .select("*")
+            .eq("id", registrationId)
+            .single();
+
+          if (regError || !registration) {
+            throw new Error("Registration record not found");
+          }
+
+          const registrationData = registration.registration_data || {};
+
+          // Create auth user
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: registration.email,
+            password: registrationData.password || Math.random().toString(36).slice(-8),
+            options: {
+              data: {
+                role: "subagent",
+              },
+            },
+          });
+
+          if (authError) throw authError;
+          if (!authData.user?.id) throw new Error("Failed to create user account");
+
+          console.log("[v0] User account created:", authData.user.id);
+
+          // Create subagent store
+          const { data: storeData, error: storeError } = await supabase
+            .from("subagent_stores")
+            .insert({
+              user_id: authData.user.id,
+              agent_store_id: agentStoreId,
+              store_name: registrationData.storeName || registration.business_name,
+              whatsapp_number: registrationData.whatsappNumber,
+              support_number: registrationData.supportNumber || registration.phone_number,
+              momo_name: registrationData.momoName,
+              momo_number: registrationData.momoNumber,
+              momo_network: registrationData.momoNetwork,
+              wallet_balance: 0,
+              approved: true,
+            })
+            .select()
+            .single();
+
+          if (storeError) throw storeError;
+
+          console.log("[v0] Subagent store created:", storeData);
+
+          // Assign subagent role
+          const { error: roleError } = await supabase
+            .from("user_roles")
+            .insert({
+              user_id: authData.user.id,
+              role: "subagent",
+            });
+
+          if (roleError && roleError.code !== "PGRST116") {
+            console.error("[v0] Error creating user role:", roleError);
+            throw new Error("Failed to create user role");
+          }
+
+          // Update registration record
+          await supabase
+            .from("subagent_registrations")
+            .update({
+              payment_status: "paid",
+              status: "approved",
+              user_id: authData.user.id,
+            })
+            .eq("id", registrationId);
+
+          console.log("[v0] Subagent registration completed successfully");
+
+          setStatus("success");
+          setMessage("Payment confirmed! Your subagent account has been created.");
+
+          // Store data for dashboard redirect
+          sessionStorage.setItem("newSubagentStoreId", storeData.id);
+          sessionStorage.setItem("newSubagentEmail", registration.email);
+
+          // Redirect to subagent dashboard after 3 seconds
+          setTimeout(() => {
+            window.location.href = DOMAINS.getSubagentDashboardUrl();
+          }, 3000);
+        } catch (err: any) {
+          console.error("[v0] Account creation error:", err);
+          setStatus("failed");
+          setMessage("Payment verified but account creation failed. Please contact support.");
         }
       } catch (error) {
-        console.error("Payment verification error:", error);
+        console.error("[v0] Payment verification error:", error);
         setStatus("failed");
         setMessage("An error occurred during payment verification");
-        toast({ title: "Error", description: "Failed to verify payment", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "Failed to verify payment",
+          variant: "destructive",
+        });
       }
     };
 
     verifyPayment();
-  }, [searchParams, navigate, toast]);
+  }, [searchParams, toast]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
