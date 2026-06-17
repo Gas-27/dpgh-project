@@ -55,20 +55,6 @@ export default function VerifySubagentPayment() {
         setMessage("Payment confirmed! Approving your account...");
         setApprovalMessage("Your account is being set up...");
 
-        // Get the registration record
-        const { data: registration, error: regError } = await supabase
-          .from("subagent_registrations")
-          .select("*")
-          .eq("id", registrationId)
-          .single();
-
-        if (regError || !registration) {
-          console.error("[v0] Registration not found:", regError);
-          throw new Error("Registration record not found");
-        }
-
-        console.log("[v0] Registration record found:", registration);
-
         // Update registration record to mark as paid
         const { error: regUpdateError } = await supabase
           .from("subagent_registrations")
@@ -100,24 +86,8 @@ export default function VerifySubagentPayment() {
           console.log("[v0] Subagent store approved:", storeId);
         }
 
-        // Add registration fee to agent wallet
-        console.log("[v0] Adding registration fee to agent wallet:", registration.fee_amount);
-        
-        const { data: agentStore } = await supabase
-          .from("agent_stores")
-          .select("wallet_balance")
-          .eq("id", registration.agent_store_id)
-          .single();
-
-        if (agentStore && registration.fee_amount > 0) {
-          const newBalance = (agentStore.wallet_balance || 0) + registration.fee_amount;
-          await supabase
-            .from("agent_stores")
-            .update({ wallet_balance: newBalance })
-            .eq("id", registration.agent_store_id);
-          
-          console.log("[v0] Agent wallet updated. Added:", registration.fee_amount, "New balance:", newBalance);
-        }
+        // NOTE: Registration fee is already added to agent wallet by verify-payment edge function
+        // Do NOT add it again here to avoid double-crediting
 
         console.log("[v0] Account approval completed");
 

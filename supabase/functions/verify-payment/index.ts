@@ -218,6 +218,25 @@ Deno.serve(async (req) => {
 
       console.log(`[VERIFY] Subagent registration ${registrationId} payment verified`);
 
+      // Add registration fee to agent wallet
+      console.log(`[VERIFY] Adding registration fee to agent wallet: ${registration.fee_amount}`);
+      
+      const { data: agentStore } = await supabase
+        .from("agent_stores")
+        .select("wallet_balance")
+        .eq("id", agentStoreId)
+        .single();
+
+      if (agentStore && registration.fee_amount > 0) {
+        const newBalance = (agentStore.wallet_balance || 0) + registration.fee_amount;
+        await supabase
+          .from("agent_stores")
+          .update({ wallet_balance: newBalance })
+          .eq("id", agentStoreId);
+        
+        console.log(`[VERIFY] Agent wallet updated. Added: ${registration.fee_amount}, New balance: ${newBalance}`);
+      }
+
       return new Response(JSON.stringify({
         success: true,
         message: "Registration payment verified successfully",
