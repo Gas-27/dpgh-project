@@ -12,16 +12,18 @@ export default function VerifySubagentPayment() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [status, setStatus] = useState<"loading" | "success" | "failed" | "verifying">("verifying");
+  const [status, setStatus] = useState<"loading" | "success" | "failed" | "verifying" | "approving">("verifying");
   const [message, setMessage] = useState("Verifying payment...");
+  const [approvalMessage, setApprovalMessage] = useState("");
 
   useEffect(() => {
     const verifyPayment = async () => {
       try {
         const reference = searchParams.get("reference");
         const registrationId = searchParams.get("registration_id");
+        const storeId = searchParams.get("store_id");
 
-        console.log("[v0] Verify page loaded with:", { reference, registrationId });
+        console.log("[v0] Verify page loaded with:", { reference, registrationId, storeId });
 
         if (!reference || !registrationId) {
           setStatus("failed");
@@ -48,7 +50,10 @@ export default function VerifySubagentPayment() {
           return;
         }
 
-        console.log("[v0] Payment verified, now creating subagent account");
+        console.log("[v0] Payment verified successfully");
+        setStatus("approving");
+        setMessage("Payment confirmed! Approving your account...");
+        setApprovalMessage("Your account is being set up...");
 
         // Get the registration record
         const { data: registration, error: regError } = await supabase
@@ -58,93 +63,44 @@ export default function VerifySubagentPayment() {
           .single();
 
         if (regError || !registration) {
-          setStatus("failed");
-          setMessage("Registration record not found");
           console.error("[v0] Registration not found:", regError);
-          return;
+          throw new Error("Registration record not found");
         }
 
         console.log("[v0] Registration record found:", registration);
 
-        const registrationData = registration.registration_data || {};
-
-        // Create auth user
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: registration.email,
-          password: registrationData.password || Math.random().toString(36).slice(-8),
-          options: {
-            data: {
-              role: "subagent",
-            },
-          },
-        });
-
-        if (authError) {
-          console.error("[v0] Auth error:", authError);
-          setStatus("failed");
-          setMessage("Failed to create user account. Please contact support.");
-          return;
-        }
-
-        if (!authData.user?.id) {
-          setStatus("failed");
-          setMessage("Failed to create user account");
-          return;
-        }
-
-        console.log("[v0] User account created:", authData.user.id);
-
-        // Create subagent store
-        const { data: storeData, error: storeError } = await supabase
-          .from("subagent_stores")
-          .insert({
-            user_id: authData.user.id,
-            agent_store_id: registration.agent_store_id,
-            store_name: registrationData.storeName || registration.business_name,
-            whatsapp_number: registrationData.whatsappNumber,
-            support_number: registrationData.supportNumber || registration.phone_number,
-            momo_name: registrationData.momoName,
-            momo_number: registrationData.momoNumber,
-            momo_network: registrationData.momoNetwork,
-            wallet_balance: 0,
-            approved: true,
-          })
-          .select()
-          .single();
-
-        if (storeError) {
-          console.error("[v0] Store creation error:", storeError);
-          setStatus("failed");
-          setMessage("Failed to create subagent store. Please contact support.");
-          return;
-        }
-
-        console.log("[v0] Subagent store created:", storeData);
-
-        // Assign subagent role
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: authData.user.id,
-            role: "subagent",
-          });
-
-        if (roleError && roleError.code !== "PGRST116") {
-          console.error("[v0] Role creation error:", roleError);
-        }
-
-        // Update registration to mark as completed
-        await supabase
+        // Update registration record to mark as paid
+        const { error: regUpdateError } = await supabase
           .from("subagent_registrations")
           .update({
-            status: "completed",
-            user_id: authData.user.id,
+            payment_status: "paid",
+            status: "approved",
+            payment_reference: reference,
           })
           .eq("id", registrationId);
 
-        console.log("[v0] Subagent registration completed successfully");
+        if (regUpdateError) {
+          console.error("[v0] Failed to update registration:", regUpdateError);
+        }
 
-        // Add fee to agent wallet
+        // Approve the subagent store
+        if (storeId) {
+          const { error: storeUpdateError } = await supabase
+            .from("subagent_stores")
+            .update({
+              approved: true,
+            })
+            .eq("id", storeId);
+
+          if (storeUpdateError) {
+            console.error("[v0] Failed to approve store:", storeUpdateError);
+            throw new Error("Failed to approve store");
+          }
+
+          console.log("[v0] Subagent store approved:", storeId);
+        }
+
+        // Add registration fee to agent wallet
         console.log("[v0] Adding registration fee to agent wallet:", registration.fee_amount);
         
         const { data: agentStore } = await supabase
@@ -153,27 +109,31 @@ export default function VerifySubagentPayment() {
           .eq("id", registration.agent_store_id)
           .single();
 
-        if (agentStore) {
+        if (agentStore && registration.fee_amount > 0) {
           const newBalance = (agentStore.wallet_balance || 0) + registration.fee_amount;
           await supabase
             .from("agent_stores")
             .update({ wallet_balance: newBalance })
             .eq("id", registration.agent_store_id);
           
-          console.log("[v0] Agent wallet updated. New balance:", newBalance);
+          console.log("[v0] Agent wallet updated. Added:", registration.fee_amount, "New balance:", newBalance);
         }
 
+        console.log("[v0] Account approval completed");
+
         setStatus("success");
-        setMessage("Payment confirmed! Your subagent account has been created.");
+        setMessage("Payment Confirmed!");
+        setApprovalMessage("Your subagent account has been approved and is ready to use.");
 
-        // Store data for dashboard reference
-        sessionStorage.setItem("newSubagentStoreId", storeData.id);
-        sessionStorage.setItem("newSubagentEmail", registration.email);
+        // Store data for dashboard
+        if (storeId) {
+          sessionStorage.setItem("newSubagentStoreId", storeId);
+        }
 
-        // Redirect to subagent dashboard after 2 seconds
+        // Redirect to dashboard after 3 seconds
         setTimeout(() => {
           window.location.href = DOMAINS.getSubagentDashboardUrl();
-        }, 2000);
+        }, 3000);
       } catch (error) {
         console.error("[v0] Payment verification error:", error);
         setStatus("failed");
@@ -195,26 +155,34 @@ export default function VerifySubagentPayment() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">
             {status === "success"
-              ? "Payment Successful"
+              ? "Account Approved"
               : status === "failed"
               ? "Payment Failed"
+              : status === "approving"
+              ? "Setting Up Your Account"
               : "Verifying Payment"}
           </CardTitle>
         </CardHeader>
 
         <CardContent className="text-center space-y-6">
           <div className="flex justify-center">
-            {status === "verifying" && <Loader2 className="h-16 w-16 animate-spin text-primary" />}
+            {(status === "verifying" || status === "approving") && (
+              <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            )}
             {status === "success" && <CheckCircle className="h-16 w-16 text-green-500" />}
             {status === "failed" && <AlertCircle className="h-16 w-16 text-red-500" />}
           </div>
 
           <p className="text-lg text-muted-foreground">{message}</p>
 
+          {approvalMessage && (
+            <p className="text-sm text-muted-foreground">{approvalMessage}</p>
+          )}
+
           {status === "success" && (
-            <div className="text-sm text-muted-foreground">
-              <p className="mb-2">Your subagent account is ready!</p>
-              <p>Redirecting to your dashboard in a few moments...</p>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p className="font-semibold text-green-400">Your account is ready!</p>
+              <p>Redirecting to your dashboard...</p>
             </div>
           )}
 

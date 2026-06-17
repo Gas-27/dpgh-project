@@ -178,15 +178,82 @@ export default function SubagentRegistrationForm({
     try {
       setLoading(true);
 
-      // Check if agent has fees enabled
+      // Step 1: Always create the user account and subagent store first
+      console.log("[v0] Creating user account and subagent store first");
+
+      // Sign up the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            role: "subagent",
+          },
+        },
+      });
+
+      if (authError) throw authError;
+      if (!authData.user?.id) throw new Error("Failed to create user account");
+
+      console.log("[v0] User account created:", authData.user.id);
+
+      // Create subagent store
+      const approvalStatus = agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 ? false : true;
+      
+      const { data: storeData, error: storeError } = await supabase
+        .from("subagent_stores")
+        .insert({
+          user_id: authData.user.id,
+          agent_store_id: agentStoreId,
+          store_name: formData.storeName,
+          whatsapp_number: formData.whatsappNumber,
+          support_number: formData.supportNumber,
+          momo_name: formData.momoName,
+          momo_number: formData.momoNumber,
+          momo_network: formData.momoNetwork,
+          wallet_balance: 0,
+          approved: approvalStatus, // Only auto-approve if no fees required
+        })
+        .select()
+        .single();
+
+      if (storeError) throw storeError;
+
+      console.log("[v0] Subagent store created:", storeData.id);
+
+      // Assign subagent role
+      const { data: existingRole } = await supabase
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .eq("role", "subagent")
+        .single();
+
+      if (!existingRole) {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({
+            user_id: authData.user.id,
+            role: "subagent",
+          });
+
+        if (roleError && roleError.code !== "PGRST116") {
+          throw new Error("Failed to create user role");
+        }
+      }
+
+      console.log("[v0] User role assigned");
+
+      // Step 2: Check if fees are required
       if (agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0) {
         console.log("[v0] Fees enabled, initiating payment:", agentStore.subagent_fee_amount);
 
-        // Create a temporary registration record to store the data
+        // Create a registration record for payment tracking
         const { data: registration, error: regError } = await supabase
           .from("subagent_registrations")
           .insert({
             agent_store_id: agentStoreId,
+            user_id: authData.user.id,
             email: formData.email,
             phone_number: formData.supportNumber,
             business_name: formData.storeName,
@@ -214,10 +281,10 @@ export default function SubagentRegistrationForm({
 
         console.log("[v0] Registration record created:", registration.id);
 
-        // Call the Supabase edge function to initialize payment (same as PaymentDialog)
-        const callbackUrl = `${window.location.origin}/verify-subagent-payment?registration_id=${registration.id}`;
+        // Call the edge function to initialize payment
+        const callbackUrl = `${window.location.origin}/verify-subagent-payment?registration_id=${registration.id}&user_id=${authData.user.id}&store_id=${storeData.id}`;
         
-        console.log("[v0] Calling initialize-payment edge function with:", {
+        console.log("[v0] Calling initialize-payment with:", {
           email: formData.email,
           amount: agentStore.subagent_fee_amount,
           phone: formData.supportNumber,
@@ -226,6 +293,8 @@ export default function SubagentRegistrationForm({
             type: "subagent_registration_fee",
             subagent_registration_id: registration.id,
             agent_store_id: agentStoreId,
+            user_id: authData.user.id,
+            store_id: storeData.id,
           }
         });
 
@@ -241,6 +310,8 @@ export default function SubagentRegistrationForm({
                 type: "subagent_registration_fee",
                 subagent_registration_id: registration.id,
                 agent_store_id: agentStoreId,
+                user_id: authData.user.id,
+                store_id: storeData.id,
               }
             },
           }
@@ -254,10 +325,10 @@ export default function SubagentRegistrationForm({
         }
 
         if (!data?.authorization_url) {
-          throw new Error("Failed to get payment URL from Paystack - no authorization URL returned");
+          throw new Error("Failed to get payment URL");
         }
 
-        // Store the payment reference
+        // Update registration with payment reference
         await supabase
           .from("subagent_registrations")
           .update({
@@ -273,84 +344,20 @@ export default function SubagentRegistrationForm({
         return;
       }
 
-      // No fees - create account directly
-      console.log("[v0] No fees, creating account directly");
+      // No fees - account is already approved
+      console.log("[v0] No fees required, account created and approved");
 
-      // Sign up the user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            role: "subagent",
-          },
-        },
-      });
-
-      if (authError) throw authError;
-      if (!authData.user?.id) throw new Error("Failed to create user account");
-
-      // Create subagent store (auto-approved) with exact store name
-      const { data: storeData, error: storeError } = await supabase
-        .from("subagent_stores")
-        .insert({
-          user_id: authData.user.id,
-          agent_store_id: agentStoreId,
-          store_name: formData.storeName,
-          whatsapp_number: formData.whatsappNumber,
-          support_number: formData.supportNumber,
-          momo_name: formData.momoName,
-          momo_number: formData.momoNumber,
-          momo_network: formData.momoNetwork,
-          wallet_balance: 0,
-          approved: true,
-        })
-        .select()
-        .single();
-
-      if (storeError) throw storeError;
-
-      // Check if user already has subagent role
-      const { data: existingRole, error: checkError } = await supabase
-        .from("user_roles")
-        .select("id")
-        .eq("user_id", authData.user.id)
-        .eq("role", "subagent")
-        .single();
-
-      // Only insert if role doesn't exist
-      if (!existingRole) {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: authData.user.id,
-            role: "subagent",
-          });
-
-        if (roleError && roleError.code !== "PGRST116") {
-          console.error("[v0] Error creating user role:", roleError);
-          throw new Error("Failed to create user role: " + roleError.message);
-        }
-      }
-
-      console.log("[v0] Subagent store created:", storeData);
-      console.log("[v0] User role verified for subagent");
-
-      // Store the subagent store ID in sessionStorage for the dashboard
       sessionStorage.setItem("newSubagentStoreId", storeData.id);
       sessionStorage.setItem("newSubagentEmail", formData.email);
 
       toast({
-        title: "✅ Registration Successful!",
-        description: "Your agent account has been created.",
+        title: "✅ Account Created!",
+        description: "Your agent account has been created and is ready to use.",
       });
 
-      // Close the modal first
       if (onClose) onClose();
 
-      // Wait for modal to close and auth to fully update, then redirect
       setTimeout(() => {
-        // Redirect to agentsstore.shop domain for subagent dashboard
         window.location.href = DOMAINS.getSubagentDashboardUrl();
       }, 500);
     } catch (error: any) {
