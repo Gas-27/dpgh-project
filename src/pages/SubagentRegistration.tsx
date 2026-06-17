@@ -114,20 +114,25 @@ export default function SubagentRegistration() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("[v0] Registration error:", error);
+        throw error;
+      }
+
+      console.log("[v0] Registration created:", newReg.id);
+      setRegistration(newReg);
 
       if (feeAmount > 0) {
         // Show success toast and redirect to approval page
         toast({ 
-          title: "Registration Created", 
-          description: "Please complete payment to activate your account",
+          title: "Account Created!", 
+          description: "Proceeding to payment...",
           className: "bg-green-50 border-green-200"
         });
         
-        // Wait a bit for toast to show, then navigate
-        setTimeout(() => {
-          navigate(`/subagent-approval-payment?registration_id=${newReg.id}`, { replace: true });
-        }, 500);
+        console.log("[v0] Redirecting to approval page:", `/subagent-approval-payment?registration_id=${newReg.id}`);
+        // Redirect immediately to approval page
+        navigate(`/subagent-approval-payment?registration_id=${newReg.id}`, { replace: true });
       } else {
         // No fee required - auto-approve and redirect to dashboard
         await supabase
@@ -137,25 +142,27 @@ export default function SubagentRegistration() {
         
         toast({ 
           title: "Success!", 
-          description: "Your subagent account has been created and is ready to use",
+          description: "Your subagent account is ready to use",
           className: "bg-green-50 border-green-200"
         });
         
-        // Redirect to dashboard after brief delay
-        setTimeout(() => {
-          window.location.href = `${window.location.origin}/subagent-dashboard`;
-        }, 1000);
+        console.log("[v0] Redirecting to dashboard");
+        // Redirect to dashboard
+        window.location.href = `${window.location.origin}/subagent-dashboard`;
       }
     } catch (error) {
-      console.error("Error initiating registration:", error);
+      console.error("[v0] Registration error:", error);
+      setProcessing(false);
       
       const errorMessage = error instanceof Error ? error.message : String(error);
       let displayMessage = "Failed to process registration. Please try again.";
       
       if (errorMessage.includes("already")) {
-        displayMessage = "This email or phone is already registered. Please use a different one.";
+        displayMessage = "This email or phone is already registered as a subagent. Please use a different one or contact support.";
       } else if (errorMessage.includes("schema") || errorMessage.includes("user_id")) {
         displayMessage = "A technical error occurred. Please contact support.";
+      } else if (errorMessage.includes("not found")) {
+        displayMessage = "Registration data is incomplete. Please try again.";
       }
       
       toast({ 
@@ -163,7 +170,6 @@ export default function SubagentRegistration() {
         description: displayMessage,
         variant: "destructive" 
       });
-      setProcessing(false);
     }
   };
 
