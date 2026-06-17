@@ -30,7 +30,7 @@ export default function VerifySubagentPayment() {
 
         // Call the edge function to verify payment
         const { data, error } = await supabase.functions.invoke(
-          "verify-registration-payment",
+          "verify-payment",
           {
             body: { reference },
           }
@@ -45,110 +45,22 @@ export default function VerifySubagentPayment() {
           return;
         }
 
-        // Payment verified - now create the subagent account
-        try {
-          const metadata = data.metadata;
-          const registrationId = metadata?.subagent_registration_id;
-          const agentStoreId = metadata?.agent_store_id;
+        // Payment verified and account created on the edge function
+        console.log("[v0] Subagent account created successfully:", data);
 
-          if (!registrationId) {
-            throw new Error("Missing registration ID in payment metadata");
-          }
+        setStatus("success");
+        setMessage("Payment confirmed! Your subagent account has been created.");
 
-          console.log("[v0] Creating subagent account from registration:", registrationId);
-
-          // Get the registration record
-          const { data: registration, error: regError } = await supabase
-            .from("subagent_registrations")
-            .select("*")
-            .eq("id", registrationId)
-            .single();
-
-          if (regError || !registration) {
-            throw new Error("Registration record not found");
-          }
-
-          const registrationData = registration.registration_data || {};
-
-          // Create auth user
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: registration.email,
-            password: registrationData.password || Math.random().toString(36).slice(-8),
-            options: {
-              data: {
-                role: "subagent",
-              },
-            },
-          });
-
-          if (authError) throw authError;
-          if (!authData.user?.id) throw new Error("Failed to create user account");
-
-          console.log("[v0] User account created:", authData.user.id);
-
-          // Create subagent store
-          const { data: storeData, error: storeError } = await supabase
-            .from("subagent_stores")
-            .insert({
-              user_id: authData.user.id,
-              agent_store_id: agentStoreId,
-              store_name: registrationData.storeName || registration.business_name,
-              whatsapp_number: registrationData.whatsappNumber,
-              support_number: registrationData.supportNumber || registration.phone_number,
-              momo_name: registrationData.momoName,
-              momo_number: registrationData.momoNumber,
-              momo_network: registrationData.momoNetwork,
-              wallet_balance: 0,
-              approved: true,
-            })
-            .select()
-            .single();
-
-          if (storeError) throw storeError;
-
-          console.log("[v0] Subagent store created:", storeData);
-
-          // Assign subagent role
-          const { error: roleError } = await supabase
-            .from("user_roles")
-            .insert({
-              user_id: authData.user.id,
-              role: "subagent",
-            });
-
-          if (roleError && roleError.code !== "PGRST116") {
-            console.error("[v0] Error creating user role:", roleError);
-            throw new Error("Failed to create user role");
-          }
-
-          // Update registration record
-          await supabase
-            .from("subagent_registrations")
-            .update({
-              payment_status: "paid",
-              status: "approved",
-              user_id: authData.user.id,
-            })
-            .eq("id", registrationId);
-
-          console.log("[v0] Subagent registration completed successfully");
-
-          setStatus("success");
-          setMessage("Payment confirmed! Your subagent account has been created.");
-
-          // Store data for dashboard redirect
-          sessionStorage.setItem("newSubagentStoreId", storeData.id);
-          sessionStorage.setItem("newSubagentEmail", registration.email);
-
-          // Redirect to subagent dashboard after 3 seconds
-          setTimeout(() => {
-            window.location.href = DOMAINS.getSubagentDashboardUrl();
-          }, 3000);
-        } catch (err: any) {
-          console.error("[v0] Account creation error:", err);
-          setStatus("failed");
-          setMessage("Payment verified but account creation failed. Please contact support.");
+        // Store data for dashboard reference
+        if (data.metadata) {
+          sessionStorage.setItem("newSubagentStoreId", data.subagent_store_id);
+          sessionStorage.setItem("newSubagentEmail", data.metadata.email);
         }
+
+        // Redirect to subagent dashboard after 2 seconds
+        setTimeout(() => {
+          window.location.href = DOMAINS.getSubagentDashboardUrl();
+        }, 2000);
       } catch (error) {
         console.error("[v0] Payment verification error:", error);
         setStatus("failed");
