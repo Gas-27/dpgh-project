@@ -32,6 +32,8 @@ export default function SubagentRegistrationForm({
   const [showPassword, setShowPassword] = useState(false);
   const [storeNameError, setStoreNameError] = useState("");
   const [checkingStoreName, setCheckingStoreName] = useState(false);
+  const [agentStore, setAgentStore] = useState<any>(null);
+  const [fetchingStore, setFetchingStore] = useState(true);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -87,6 +89,31 @@ export default function SubagentRegistrationForm({
   const handleSelectChange = (value: string) => {
     setFormData(prev => ({ ...prev, momoNetwork: value }));
   };
+
+  // Fetch agent store data to check if fees are enabled
+  useEffect(() => {
+    const fetchAgentStore = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("agent_stores")
+          .select("id, store_name, subagent_fee_enabled, subagent_fee_amount")
+          .eq("id", agentStoreId)
+          .single();
+
+        if (error) throw error;
+        setAgentStore(data);
+        console.log("[v0] Agent store loaded:", data);
+      } catch (error) {
+        console.error("[v0] Error fetching agent store:", error);
+      } finally {
+        setFetchingStore(false);
+      }
+    };
+
+    if (agentStoreId) {
+      fetchAgentStore();
+    }
+  }, [agentStoreId]);
 
   const validateForm = async () => {
     if (!formData.email || !formData.password || !formData.storeName || 
