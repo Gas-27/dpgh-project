@@ -184,8 +184,6 @@ const SubagentDashboard = () => {
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
-  const [afaRegistrationHistory, setAfaRegistrationHistory] = useState<{ id: string; amount: number; created_at: string }[]>([]);
-  const [subagentRegistrationHistory, setSubagentRegistrationHistory] = useState<{ id: string; amount: number; created_at: string }[]>([]);
   const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string; store_name?: string } | null>(null);
   
   // Bulk Orders
@@ -264,7 +262,8 @@ const SubagentDashboard = () => {
     const syncWalletBalance = async () => {
       if (!subagentStore?.id) return;
       
-      // Calculate wallet: Profit + Topups + AFA Registration + Subagent Registration - COMPLETED Withdrawals - Wallet Purchases
+      // Calculate wallet: Profit + Topups - COMPLETED Withdrawals - Wallet Purchases
+      // Backend automatically adds AFA registration profit and subagent registration fees
       const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
       const profit = completedOrders.reduce((sum, order) => {
         if (order.profit) return sum + Number(order.profit);
@@ -272,13 +271,11 @@ const SubagentDashboard = () => {
         return sum + (Number(order.selling_price || order.amount) - baseCost);
       }, 0);
       const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-      const afaProfit = afaRegistrationHistory.reduce((s, a) => s + Number(a.amount || 0), 0);
-      const subagentProfit = subagentRegistrationHistory.reduce((s, s2) => s + Number(s2.amount || 0), 0);
       // Only subtract COMPLETED withdrawals from the stored balance
       const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
       // Subtract purchases made with wallet (from buy data and bulk order sections)
       const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
-      const calculatedBalance = profit + topups + afaProfit + subagentProfit - completedWithdrawals - walletPurchases;
+      const calculatedBalance = profit + topups - completedWithdrawals - walletPurchases;
       
       // Only sync if the balance has changed from last sync
       if (lastSyncedBalanceRef.current === calculatedBalance) return;
@@ -295,7 +292,7 @@ const SubagentDashboard = () => {
     };
     
     syncWalletBalance();
-  }, [orders.length, topupHistory.length, afaRegistrationHistory.length, subagentRegistrationHistory.length, withdrawals.length, subagentStore?.id]);
+  }, [orders.length, topupHistory.length, withdrawals.length, subagentStore?.id]);
 
   // Real-time wallet balance updates
   useEffect(() => {
@@ -478,8 +475,6 @@ const SubagentDashboard = () => {
         setWithdrawals(withdrawResult.data || []);
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
-        setAfaRegistrationHistory(afaRegistrationsResult.data || []);
-        setSubagentRegistrationHistory(subagentRegistrationsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
         
         // Build admin custom price map (admin's price to agents - NOT for subagents)
@@ -604,8 +599,6 @@ const SubagentDashboard = () => {
         setWithdrawals(withdrawResult.data || []);
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
-        setAfaRegistrationHistory(afaRegistrationsResult.data || []);
-        setSubagentRegistrationHistory(subagentRegistrationsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
         
         // Build admin custom price map (admin's price to agents - NOT for subagents)
@@ -661,9 +654,7 @@ const SubagentDashboard = () => {
           adminCustomPricesResult,
           subagentPricesResult,
           topupsResult,
-          agentInfoResult,
-          afaRegistrationsResult,
-          subagentRegistrationsResult
+          agentInfoResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -672,9 +663,7 @@ const SubagentDashboard = () => {
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
-          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
-          supabase.from("afa_registrations").select("id, amount, created_at").eq("agent_store_id", store.agent_store_id).order("created_at", { ascending: false }),
-          supabase.from("subagent_registrations").select("id, fee_amount, created_at").eq("agent_store_id", store.agent_store_id).eq("payment_status", "paid").order("created_at", { ascending: false })
+          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
         ]);
 
         // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
@@ -689,8 +678,6 @@ const SubagentDashboard = () => {
         setWithdrawals(withdrawResult.data || []);
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
-        setAfaRegistrationHistory(afaRegistrationsResult.data || []);
-        setSubagentRegistrationHistory(subagentRegistrationsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
       
       // Build admin custom price map (admin's price to agents - NOT for subagents)
