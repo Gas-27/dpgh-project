@@ -130,6 +130,62 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Handle subagent_registration_fee payments - they send amount directly
+    if (metadata?.type === "subagent_registration_fee") {
+      if (!requestedAmount || !email || !metadata?.subagent_registration_id || !metadata?.agent_store_id) {
+        return new Response(JSON.stringify({ error: "Missing required fields for subagent registration" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
+      if (!PAYSTACK_SECRET_KEY) {
+        return new Response(JSON.stringify({ error: "Paystack not configured" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const amountInPesewas = Math.round(Number(requestedAmount) * 100);
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url,
+          metadata: {
+            ...metadata,
+            phone,
+          },
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack error:", result);
+        return new Response(JSON.stringify({ error: result.message || "Payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: requestedAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Handle wallet_topup payments - they send amount directly
     if (metadata?.type === "wallet_topup") {
       if (!requestedAmount || !email || !metadata?.agent_store_id) {
