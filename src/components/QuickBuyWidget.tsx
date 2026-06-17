@@ -47,10 +47,6 @@ const QuickBuyWidget = () => {
 
   const filteredPlans = useMemo(
     () => {
-      if (selectedNetwork === "mtn_mashup") {
-        // For mtn_mashup, also include mashup packages
-        return packages.filter((p) => p.network === "mtn_mashup" || p.network === "mashup").slice(0, 4);
-      }
       return packages.filter((p) => p.network === selectedNetwork).slice(0, 4);
     },
     [packages, selectedNetwork],

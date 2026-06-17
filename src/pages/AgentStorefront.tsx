@@ -120,7 +120,8 @@ const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
-  if (network === "mtn_mashup" || network === "mashup") return "MTN Special Mashup";
+  if (network === "mtn_mashup") return "MTN Special Mashup";
+  if (network === "mashup") return "Mashup";
   return network;
 };
 
@@ -877,7 +878,7 @@ const AgentStorefront = () => {
   };
 
   // ── Render helpers ──
-  const filteredPackages = packages.filter((p) => networkFilter === "mtn_mashup" ? (p.network === "mtn_mashup" || p.network === "mashup") : p.network === networkFilter);
+  const filteredPackages = packages.filter((p) => p.network === networkFilter);
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
