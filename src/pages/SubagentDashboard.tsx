@@ -1007,6 +1007,7 @@ const SubagentDashboard = () => {
           whatsapp_number: storeForm.whatsapp_number,
           support_number: storeForm.support_number,
           whatsapp_group: storeForm.whatsapp_group || null,
+          show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon ?? true,
           momo_name: storeForm.momo_name,
           momo_number: storeForm.momo_number,
           momo_network: storeForm.momo_network,
