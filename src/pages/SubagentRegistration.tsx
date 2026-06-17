@@ -120,9 +120,30 @@ export default function SubagentRegistration() {
         // Redirect to approval/payment page
         navigate(`/subagent-approval-payment?registration_id=${newReg.id}`);
       } else {
-        // If no fee, auto-approve and redirect to verify
-        toast({ title: "Success", description: "Your agent account has been created!" });
-        navigate(`/verify-subagent-payment?reference=free&registration_id=${newReg.id}`);
+        // If no fee, auto-approve and redirect to dashboard
+        await supabase
+          .from("subagent_registrations")
+          .update({ status: "approved", payment_status: "free" })
+          .eq("id", newReg.id);
+        
+        toast({ title: "Success", description: "Your subagent account has been created!" });
+        
+        // Get the subagent store ID to redirect properly
+        const { data: subagentStore } = await supabase
+          .from("subagent_stores")
+          .select("id")
+          .eq("agent_store_id", agentStoreId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (subagentStore?.id) {
+          sessionStorage.setItem("newSubagentStoreId", subagentStore.id);
+        }
+        
+        // Redirect directly to dashboard
+        const dashboardUrl = `${window.location.origin}/subagent-dashboard`;
+        window.location.href = dashboardUrl;
       }
     } catch (error) {
       console.error("Error initiating registration:", error);

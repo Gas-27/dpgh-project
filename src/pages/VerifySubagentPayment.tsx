@@ -84,20 +84,38 @@ export default function VerifySubagentPayment() {
         }
 
         // Approve the subagent store
-        if (storeId) {
-          const { error: storeUpdateError } = await supabase
+        if (registration.agent_store_id) {
+          // Get or create subagent store for this registration
+          const { data: existingStore } = await supabase
             .from("subagent_stores")
-            .update({
-              approved: true,
-            })
-            .eq("id", storeId);
+            .select("id")
+            .eq("agent_store_id", registration.agent_store_id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
 
-          if (storeUpdateError) {
-            console.error("[v0] Failed to approve store:", storeUpdateError);
-            throw new Error("Failed to approve store");
+          let subagentStoreId = existingStore?.id;
+
+          // If no store exists yet, create one
+          if (!subagentStoreId) {
+            const { data: newStore, error: storeCreateError } = await supabase
+              .from("subagent_stores")
+              .insert({
+                agent_store_id: registration.agent_store_id,
+                approved: true,
+                wallet_balance: 0
+              })
+              .select("id")
+              .single();
+
+            if (!storeCreateError && newStore) {
+              subagentStoreId = newStore.id;
+            }
           }
 
-          console.log("[v0] Subagent store approved:", storeId);
+          if (subagentStoreId) {
+            sessionStorage.setItem("newSubagentStoreId", subagentStoreId);
+          }
         }
 
         // NOTE: Registration fee is already added to agent wallet by verify-payment edge function
@@ -109,15 +127,10 @@ export default function VerifySubagentPayment() {
         setMessage("Payment Confirmed!");
         setApprovalMessage("Your subagent account has been approved and is ready to use.");
 
-        // Store data for dashboard
-        if (storeId) {
-          sessionStorage.setItem("newSubagentStoreId", storeId);
-        }
-
-        // Redirect to dashboard after 3 seconds
+        // Redirect to dashboard after 2 seconds
         setTimeout(() => {
-          window.location.href = DOMAINS.getSubagentDashboardUrl();
-        }, 3000);
+          window.location.href = `${window.location.origin}/subagent-dashboard`;
+        }, 2000);
       } catch (error) {
         console.error("[v0] Payment verification error:", error);
         setStatus("failed");
