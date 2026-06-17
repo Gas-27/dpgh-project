@@ -491,15 +491,23 @@ Deno.serve(async (req) => {
       }
 
     } else if (agentStoreId) {
-      // AGENT ORDER (direct sale)
+      // AGENT ORDER (direct sale) - ONLY if explicitly set
+      // Do NOT auto-assign agentStoreId from metadata to prevent accidentally crediting agents for main site orders
       sellingPrice = amount;
       basePriceForOrder = adminBasePrice;
       profitForOrder = sellingPrice - basePriceForOrder;
+      
+      console.log(`[v0] Agent order: agentStoreId=${agentStoreId}, profit=${profitForOrder}`);
     } else {
-      // DIRECT/ADMIN ORDER
+      // DIRECT/ADMIN ORDER (no agent, no subagent) - main site orders
       sellingPrice = amount;
       basePriceForOrder = adminBasePrice;
       profitForOrder = 0;
+      
+      // Force clear agent_store_id to prevent accidental crediting
+      agentStoreId = null;
+      
+      console.log(`[v0] Main site order: no agent, profit=0`);
     }
 
     // Build the new order
@@ -521,10 +529,9 @@ Deno.serve(async (req) => {
       subagent_store_id: null,
     };
     
-    if (agentStoreId) {
-      orderInsert.agent_store_id = agentStoreId;
-    }
+    // ONLY assign agent/subagent if they are explicitly provided AND valid
     if (subagentStoreId) {
+      // Subagent order - credit subagent wallet
       orderInsert.subagent_store_id = subagentStoreId;
       
       const { data: subagentStore } = await supabase
@@ -536,7 +543,11 @@ Deno.serve(async (req) => {
       if (subagentStore?.agent_store_id) {
         orderInsert.agent_store_id = subagentStore.agent_store_id;
       }
+    } else if (agentStoreId) {
+      // Direct agent order - assign only if this is explicitly a direct agent sale
+      orderInsert.agent_store_id = agentStoreId;
     }
+    // else: main site order, leave both as null
 
     let orderId = "";
 
