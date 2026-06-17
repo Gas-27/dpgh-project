@@ -158,6 +158,9 @@ Deno.serve(async (req) => {
     // =====================================
     // SUBAGENT REGISTRATION PAYMENT HANDLER
     // =====================================
+    // =====================================
+    // SUBAGENT REGISTRATION FEE PAYMENT
+    // =====================================
     if (paymentType === "subagent_registration_fee") {
       const registrationId = metadata.subagent_registration_id;
       const agentStoreId = metadata.agent_store_id;
@@ -184,113 +187,45 @@ Deno.serve(async (req) => {
       }
 
       // Check if already processed
-      if (registration.user_id) {
+      if (registration.payment_status === "paid" || registration.status === "approved") {
         return new Response(JSON.stringify({
           success: true,
-          message: "Subagent account already created",
+          message: "Registration payment already verified",
           already_processed: true,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const registrationData = registration.registration_data || {};
-
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: registration.email,
-        password: registrationData.password || Math.random().toString(36).slice(-8),
-        options: {
-          data: {
-            role: "subagent",
-          },
-        },
-      });
-
-      if (authError) {
-        console.error("Auth signup error:", authError);
-        return new Response(JSON.stringify({ error: "Failed to create user account", details: authError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      if (!authData.user?.id) {
-        return new Response(JSON.stringify({ error: "Failed to create user account" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      console.log(`[verify-payment] User account created: ${authData.user.id}`);
-
-      // Create subagent store
-      const { data: storeData, error: storeError } = await supabase
-        .from("subagent_stores")
-        .insert({
-          user_id: authData.user.id,
-          agent_store_id: agentStoreId,
-          store_name: registrationData.storeName || registration.business_name,
-          whatsapp_number: registrationData.whatsappNumber,
-          support_number: registrationData.supportNumber || registration.phone_number,
-          momo_name: registrationData.momoName,
-          momo_number: registrationData.momoNumber,
-          momo_network: registrationData.momoNetwork,
-          wallet_balance: 0,
-          approved: true,
-        })
-        .select()
-        .single();
-
-      if (storeError) {
-        console.error("Subagent store creation error:", storeError);
-        return new Response(JSON.stringify({ error: "Failed to create subagent store", details: storeError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      console.log(`[verify-payment] Subagent store created: ${storeData.id}`);
-
-      // Assign subagent role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: authData.user.id,
-          role: "subagent",
-        });
-
-      if (roleError && roleError.code !== "PGRST116") {
-        console.error("Role creation error:", roleError);
-      }
-
-      // Update registration record
+      // Mark as paid - frontend will handle account creation
       const { error: updateError } = await supabase
         .from("subagent_registrations")
         .update({
           payment_status: "paid",
-          status: "approved",
-          user_id: authData.user.id,
+          status: "paid",
           payment_reference: reference,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", registrationId);
 
       if (updateError) {
-        console.error("Registration update error:", updateError);
+        console.error("Failed to update registration:", updateError);
+        return new Response(JSON.stringify({ error: "Failed to verify registration" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      console.log(`[verify-payment] Subagent registration completed for ${registration.email}`);
+      console.log(`[VERIFY] Subagent registration ${registrationId} payment verified`);
 
       return new Response(JSON.stringify({
         success: true,
-        message: "Payment confirmed! Your subagent account has been created.",
-        user_id: authData.user.id,
-        subagent_store_id: storeData.id,
-        metadata: {
-          email: registration.email,
-          store_name: storeData.store_name,
-        }
+        message: "Registration payment verified successfully",
+        type: "subagent_registration_fee",
+        registration_id: registrationId,
+        verified: true,
       }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
