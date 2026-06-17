@@ -214,49 +214,62 @@ export default function SubagentRegistrationForm({
 
         console.log("[v0] Registration record created:", registration.id);
 
-        // Initialize Paystack payment
-        const paystackSecretKey = import.meta.env.VITE_PAYSTACK_SECRET_KEY;
-        if (!paystackSecretKey) {
-          throw new Error("Paystack configuration missing. Please contact support.");
-        }
-
-        const response = await fetch("https://api.paystack.co/transaction/initialize", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${paystackSecretKey}`
-          },
-          body: JSON.stringify({
-            email: formData.email,
-            amount: Math.round(agentStore.subagent_fee_amount * 100), // Convert to pesewas
-            metadata: {
-              subagent_registration_id: registration.id,
-              agent_store_id: agentStoreId,
-              type: "subagent_registration_fee"
-            }
-          })
+        // Call the Supabase edge function to initialize payment (same as PaymentDialog)
+        const callbackUrl = `${window.location.origin}/verify-subagent-payment?registration_id=${registration.id}`;
+        
+        console.log("[v0] Calling initialize-payment edge function with:", {
+          email: formData.email,
+          amount: agentStore.subagent_fee_amount,
+          phone: formData.supportNumber,
+          callback_url: callbackUrl,
+          metadata: {
+            type: "subagent_registration_fee",
+            subagent_registration_id: registration.id,
+            agent_store_id: agentStoreId,
+          }
         });
 
-        const paymentData = await response.json();
-        console.log("[v0] Paystack response:", paymentData);
+        const { data, error } = await supabase.functions.invoke(
+          "initialize-payment",
+          {
+            body: {
+              email: formData.email,
+              amount: agentStore.subagent_fee_amount,
+              phone: formData.supportNumber,
+              callback_url: callbackUrl,
+              metadata: {
+                type: "subagent_registration_fee",
+                subagent_registration_id: registration.id,
+                agent_store_id: agentStoreId,
+              }
+            },
+          }
+        );
 
-        if (!paymentData.status) {
-          throw new Error(paymentData.message || "Payment initialization failed");
+        console.log("[v0] initialize-payment response:", { data, error });
+
+        if (error) {
+          console.error("[v0] Payment initialization error:", error);
+          throw error;
+        }
+
+        if (!data?.authorization_url) {
+          throw new Error("Failed to get payment URL from Paystack - no authorization URL returned");
         }
 
         // Store the payment reference
         await supabase
           .from("subagent_registrations")
           .update({
-            payment_reference: paymentData.data.reference,
+            payment_reference: data.reference,
             payment_status: "processing"
           })
           .eq("id", registration.id);
 
-        console.log("[v0] Redirecting to Paystack:", paymentData.data.authorization_url);
+        console.log("[v0] Redirecting to Paystack:", data.authorization_url);
 
         // Redirect to Paystack checkout
-        window.location.href = paymentData.data.authorization_url;
+        window.location.href = data.authorization_url;
         return;
       }
 
