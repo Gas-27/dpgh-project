@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Wifi, Search, Package, CheckCircle, Clock, XCircle, X,
-  Loader2, Check, Mail, MessageCircle, Rocket, Gift, Trophy, UserPlus, Layers, FileSpreadsheet, RotateCcw, Phone,
+  Loader2, Check, Mail, MessageCircle, Rocket, Gift, Trophy, UserPlus, Layers, FileSpreadsheet, RotateCcw, Phone, Eye, EyeOff, AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -1106,6 +1106,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
 // ─────────────────────────────────────────────────── Packages Page (UPDATED: phone search strips spaces) ──
 const Packages = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const [packages, setPackages] = useState<DataPackage[]>([]);
@@ -1122,6 +1123,7 @@ const Packages = () => {
   const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services" | "bulk">("data");
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
   const [spinConfig, setSpinConfig] = useState<{
@@ -1704,7 +1706,7 @@ const Packages = () => {
               <UserPlus className="h-6 w-6 text-primary" /> Become an Agent
             </DialogTitle>
             <DialogDescription>
-              Start your own data business today
+              Start your own data business today with {store?.store_name || "us"}
             </DialogDescription>
           </DialogHeader>
           
@@ -1717,50 +1719,109 @@ const Packages = () => {
                 <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Get your own personalized storefront link</p>
                 <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Set your own selling prices and profit margins</p>
                 <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Sell data, airtime, utilities, result checker, digital products & more</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Manage your own subagents from your dashboard</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Set prices for your subagents</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Earn commissions from subagent sales</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Use the free flyer generator to promote your business</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Track orders, transactions, customers & earnings easily</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Withdraw your earnings anytime</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Enjoy instant automated order processing 24/7</p>
               </div>
             </div>
             
             <div className="border-t border-border" />
             
-            {/* Benefits */}
-            <div className="space-y-3">
-              <h3 className="font-semibold text-lg">Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> No capital required to start</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Your own branded storefront</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Set your own profit margins</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Automated order processing</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Withdraw earnings anytime</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Manage subagents under you</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Earn from subagent sales too</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Full business dashboard included</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Run your business from your phone</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Multiple products & services</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Free flyer generator included</p>
-                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> No experience needed</p>
+            {/* Registration Fee (if enabled) */}
+            {store?.subagent_fee_enabled && (
+              <>
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-blue-400 mb-1">Registration Fee Required</p>
+                      <p className="text-sm text-muted-foreground">
+                        To complete your registration, you need to pay a one-time fee of <span className="font-bold text-blue-300">GH₵ {store.subagent_fee_amount.toFixed(2)}</span>. Your agent account will be created immediately after successful payment.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-border" />
+              </>
+            )}
+            
+            {/* Registration Form */}
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (store?.id) {
+                navigate(`/subagent-registration/${store.id}`);
+                setShowBecomeAgent(false);
+              }
+            }} className="space-y-4">
+              <div>
+                <Label htmlFor="reg-phone" className="text-sm font-semibold">Phone Number</Label>
+                <Input
+                  id="reg-phone"
+                  type="tel"
+                  placeholder="0201234567"
+                  required
+                  className="mt-1.5"
+                />
               </div>
-            </div>
-            
-            <div className="border-t border-border" />
-            
-            {/* CTA */}
-            <div className="space-y-3 text-center">
-              <Button variant="hero" size="lg" className="w-full" asChild>
-                <Link to="/signup">
-                  <UserPlus className="h-5 w-5 mr-2" /> Sign Up as Agent Now
-                </Link>
+
+              <div>
+                <Label htmlFor="reg-email" className="text-sm font-semibold">Email (Optional)</Label>
+                <Input
+                  id="reg-email"
+                  type="email"
+                  placeholder="your@email.com"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="reg-business" className="text-sm font-semibold">Business Name (Optional)</Label>
+                <Input
+                  id="reg-business"
+                  placeholder="Your business name"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="reg-password" className="text-sm font-semibold">Password</Label>
+                <div className="relative mt-1.5">
+                  <Input
+                    id="reg-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Create a strong password"
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full gap-2"
+                size="lg"
+              >
+                {store?.subagent_fee_enabled 
+                  ? `Pay GH₵ ${store.subagent_fee_amount.toFixed(2)} to Register` 
+                  : "Create My Agent Account"
+                }
               </Button>
-              <p className="text-sm text-muted-foreground">
-                Already have an account? <Link to="/login" className="text-primary hover:underline">Login here</Link>
-              </p>
-            </div>
+            </form>
+
+            {!store?.subagent_fee_enabled && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+                <CheckCircle className="h-5 w-5 text-green-400 mx-auto mb-2" />
+                <p className="text-sm text-green-400">Registration is FREE with this store!</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
