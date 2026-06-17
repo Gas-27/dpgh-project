@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 interface AgentStore {
   id: string;
@@ -39,9 +40,12 @@ export default function SubagentRegistration() {
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [formData, setFormData] = useState({ phone: "", email: "", businessName: "" });
+  const [formData, setFormData] = useState({ phone: "", email: "", businessName: "", password: "" });
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "success" | "failed">("idle");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showBenefitsModal, setShowBenefitsModal] = useState(true);
+  const [agreeToBenefits, setAgreeToBenefits] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -93,22 +97,9 @@ export default function SubagentRegistration() {
     try {
       const feeAmount = agent?.subagent_fee_enabled ? agent.subagent_fee_amount : 0;
 
-      // Create or update registration
-      if (registration?.id) {
-        const { error } = await supabase
-          .from("subagent_registrations")
-          .update({
-            phone_number: formData.phone,
-            email: formData.email,
-            business_name: formData.businessName,
-            fee_amount: feeAmount,
-            payment_required: feeAmount > 0,
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", registration.id);
-
-        if (error) throw error;
-      } else {
+      // If fee is required, go straight to payment
+      if (feeAmount > 0) {
+        // Create temporary registration for payment tracking only
         const { data: newReg, error } = await supabase
           .from("subagent_registrations")
           .insert({
@@ -117,32 +108,50 @@ export default function SubagentRegistration() {
             email: formData.email,
             business_name: formData.businessName,
             fee_amount: feeAmount,
-            payment_required: feeAmount > 0,
-            payment_status: feeAmount > 0 ? "pending" : "free"
+            payment_required: true,
+            payment_status: "pending",
+            status: "pending_payment"
           })
           .select()
           .single();
 
         if (error) throw error;
         setRegistration(newReg);
-      }
+        
+        // Go to payment
+        await handlePayment(newReg, feeAmount);
+      } else {
+        // If no fee, create account directly
+        const { data: newReg, error } = await supabase
+          .from("subagent_registrations")
+          .insert({
+            agent_store_id: agentStoreId,
+            phone_number: formData.phone,
+            email: formData.email,
+            business_name: formData.businessName,
+            fee_amount: 0,
+            payment_required: false,
+            payment_status: "free",
+            status: "approved"
+          })
+          .select()
+          .single();
 
-      toast({ title: "Saved", description: "Registration details saved" });
-
-      // If fee is required, process payment
-      if (feeAmount > 0) {
-        handlePayment();
+        if (error) throw error;
+        
+        toast({ title: "Success", description: "Your agent account has been created!" });
+        navigate(`/verify-subagent-payment?reference=free&regId=${newReg.id}`);
       }
     } catch (error) {
-      console.error("Error saving registration:", error);
-      toast({ title: "Error", description: "Failed to save registration", variant: "destructive" });
+      console.error("Error initiating registration:", error);
+      toast({ title: "Error", description: "Failed to process registration", variant: "destructive" });
     } finally {
       setProcessing(false);
     }
   };
 
-  const handlePayment = async () => {
-    if (!registration || !agent) return;
+  const handlePayment = async (reg: Registration, amount: number) => {
+    if (!agent) return;
 
     setPaymentProcessing(true);
     try {
@@ -154,13 +163,13 @@ export default function SubagentRegistration() {
           Authorization: `Bearer ${import.meta.env.VITE_PAYSTACK_SECRET_KEY}`
         },
         body: JSON.stringify({
-          email: formData.email || `subagent-${registration.id}@dataplyug.com`,
-          amount: Math.round(agent.subagent_fee_amount * 100), // Convert to pesewas
+          email: formData.email || `agent-${reg.id}@dataplyug.com`,
+          amount: Math.round(amount * 100), // Convert to pesewas
           metadata: {
-            registration_id: registration.id,
+            subagent_registration_id: reg.id,
             agent_store_id: agent.id,
-            phone_number: formData.phone,
-            type: "subagent_registration_fee"
+            base_amount: amount,
+            type: "subagent_registration"
           }
         })
       });
@@ -178,7 +187,7 @@ export default function SubagentRegistration() {
           payment_reference: data.data.reference,
           payment_status: "pending"
         })
-        .eq("id", registration.id);
+        .eq("id", reg.id);
 
       // Redirect to Paystack checkout
       window.location.href = data.data.authorization_url;
@@ -214,89 +223,175 @@ export default function SubagentRegistration() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-2xl mx-auto">
-        <Card className="border-border">
-          <CardHeader className="border-b">
-            <CardTitle className="text-2xl">Become a {agent.store_name} Subagent</CardTitle>
-            <CardDescription>Complete your registration to start selling under this store</CardDescription>
-          </CardHeader>
+      {/* Benefits Modal */}
+      <Dialog open={showBenefitsModal} onOpenChange={setShowBenefitsModal}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">Become an Agent</DialogTitle>
+            <DialogDescription>
+              Expand your business and start earning with our platform
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">What You Can Do as an Agent</h3>
+              <div className="space-y-2 text-sm">
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Sell data bundles with your own profit margins</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Get your own personalized storefront link to share</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Recruit other agents under you and earn commissions</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Set prices for agents working under you</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Manage your agents from your personal dashboard</p>
+              </div>
+            </div>
+            
+            <div className="border-t border-border" />
+            
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Benefits</h3>
+              <div className="space-y-2 text-sm">
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Set your own prices and profit margins</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Withdraw your earnings anytime</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Automated order processing 24/7</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Earn commissions from agents you recruit</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Full support and business tools included</p>
+              </div>
+            </div>
+            
+            <div className="border-t border-border" />
+            
+            <Button 
+              onClick={() => {
+                setShowBenefitsModal(false);
+                setAgreeToBenefits(true);
+              }}
+              size="lg" 
+              className="w-full"
+            >
+              Continue to Registration
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-          <CardContent className="pt-6 space-y-6">
-            {/* Fee Information */}
-            {agent.subagent_fee_enabled && (
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-semibold text-blue-400 mb-1">Registration Fee</p>
-                    <p className="text-sm text-muted-foreground">
-                      A one-time registration fee of <span className="font-bold text-blue-300">GH₵ {agent.subagent_fee_amount.toFixed(2)}</span> is required to proceed.
-                    </p>
+      <div className="max-w-2xl mx-auto">
+        {!showBenefitsModal && (
+          <Card className="border-border">
+            <CardHeader className="border-b">
+              <CardTitle className="text-2xl">Become an Agent with {agent?.store_name}</CardTitle>
+              <CardDescription>Complete your registration to start selling</CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-6 space-y-6">
+              {/* Fee Information */}
+              {agent?.subagent_fee_enabled && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-blue-400 mb-1">Registration Fee Required</p>
+                      <p className="text-sm text-muted-foreground">
+                        To complete your registration, you need to pay a one-time fee of <span className="font-bold text-blue-300">GH₵ {agent.subagent_fee_amount.toFixed(2)}</span>. Your agent account will be created immediately after successful payment.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Registration Form */}
-            <form onSubmit={handleInitiateRegistration} className="space-y-4">
-              <div>
-                <Label htmlFor="phone" className="text-sm font-semibold">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="0201234567"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  required
-                  className="mt-1.5"
-                />
-              </div>
+              {/* Registration Form */}
+              <form onSubmit={handleInitiateRegistration} className="space-y-4">
+                <div>
+                  <Label htmlFor="phone" className="text-sm font-semibold">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="0201234567"
+                    value={formData.phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    required
+                    className="mt-1.5"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="email" className="text-sm font-semibold">Email (Optional)</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="mt-1.5"
-                />
-              </div>
+                <div>
+                  <Label htmlFor="email" className="text-sm font-semibold">Email (Optional)</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    className="mt-1.5"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="business" className="text-sm font-semibold">Business Name (Optional)</Label>
-                <Input
-                  id="business"
-                  placeholder="Your business name"
-                  value={formData.businessName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
-                  className="mt-1.5"
-                />
-              </div>
+                <div>
+                  <Label htmlFor="business" className="text-sm font-semibold">Business Name (Optional)</Label>
+                  <Input
+                    id="business"
+                    placeholder="Your business name"
+                    value={formData.businessName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
+                    className="mt-1.5"
+                  />
+                </div>
 
-              <Button
-                type="submit"
-                disabled={processing || paymentProcessing || !formData.phone}
-                className="w-full gap-2"
-                size="lg"
-              >
-                {processing || paymentProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {agent.subagent_fee_enabled ? "Processing Payment..." : "Registering..."}
-                  </>
-                ) : (
-                  agent.subagent_fee_enabled ? `Pay GH₵ ${agent.subagent_fee_amount.toFixed(2)} to Register` : "Register as Subagent"
-                )}
-              </Button>
-            </form>
+                <div>
+                  <Label htmlFor="password" className="text-sm font-semibold">Password</Label>
+                  <div className="relative mt-1.5">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a strong password"
+                      value={formData.password}
+                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      required
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-            {/* Fee Waiver Note */}
-            {!agent.subagent_fee_enabled && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
-                <CheckCircle className="h-5 w-5 text-green-400 mx-auto mb-2" />
-                <p className="text-sm text-green-400">Registration is FREE with this store!</p>
+                <Button
+                  type="submit"
+                  disabled={processing || paymentProcessing || !formData.phone || !formData.password}
+                  className="w-full gap-2"
+                  size="lg"
+                >
+                  {processing || paymentProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {agent?.subagent_fee_enabled ? "Processing Payment..." : "Creating Account..."}
+                    </>
+                  ) : (
+                    agent?.subagent_fee_enabled ? `Pay GH₵ ${agent.subagent_fee_amount.toFixed(2)} to Register` : "Create My Agent Account"
+                  )}
+                </Button>
+              </form>
+
+              {/* Fee Waiver Note */}
+              {!agent?.subagent_fee_enabled && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+                  <CheckCircle className="h-5 w-5 text-green-400 mx-auto mb-2" />
+                  <p className="text-sm text-green-400">Registration is FREE with this store!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
               </div>
             )}
           </CardContent>
