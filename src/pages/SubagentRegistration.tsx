@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
 interface AgentStore {
   id: string;
@@ -40,12 +40,11 @@ export default function SubagentRegistration() {
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [formData, setFormData] = useState({ phone: "", email: "", businessName: "", password: "" });
+  const [formData, setFormData] = useState({ phone: "", email: "", businessName: "" });
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "success" | "failed">("idle");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showBenefitsModal, setShowBenefitsModal] = useState(true);
   const [agreeToBenefits, setAgreeToBenefits] = useState(false);
+  const [showBenefitsModal, setShowBenefitsModal] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -147,9 +146,19 @@ export default function SubagentRegistration() {
       }
     } catch (error) {
       console.error("Error initiating registration:", error);
+      
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      let displayMessage = "Failed to process registration. Please try again.";
+      
+      if (errorMessage.includes("already")) {
+        displayMessage = "This email or phone is already registered. Please use a different one.";
+      } else if (errorMessage.includes("schema") || errorMessage.includes("user_id")) {
+        displayMessage = "A technical error occurred. Please contact support.";
+      }
+      
       toast({ 
-        title: "Error", 
-        description: "Failed to process registration. Please try again.",
+        title: "Registration Error", 
+        description: displayMessage,
         variant: "destructive" 
       });
       setProcessing(false);
@@ -294,35 +303,9 @@ export default function SubagentRegistration() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="password" className="text-sm font-semibold">Password</Label>
-                  <div className="relative mt-1.5">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create a strong password"
-                      value={formData.password}
-                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                      required
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
                 <Button
                   type="submit"
-                  disabled={processing || paymentProcessing || !formData.phone || !formData.password}
+                  disabled={processing || !formData.phone}
                   className="w-full gap-2"
                   size="lg"
                 >
