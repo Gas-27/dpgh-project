@@ -262,7 +262,10 @@ const SubagentDashboard = () => {
     const syncWalletBalance = async () => {
       if (!subagentStore?.id) return;
       
-      // Calculate the correct wallet balance: Profit + Topups - COMPLETED Withdrawals - Wallet Purchases
+      // Calculate the correct wallet balance: Profit - COMPLETED Withdrawals - Wallet Purchases
+      // NOTE: Do NOT include topups in balance calculation!
+      // Topups are only tracked in subagent_wallet_topups table for history, but should NOT affect calculated balance
+      // Balance is only earned through: completed orders (profit) and manual paystack top-ups
       // Pending withdrawals should NOT be deducted from the DB balance - they are just "reserved"
       const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
       const profit = completedOrders.reduce((sum, order) => {
@@ -270,12 +273,13 @@ const SubagentDashboard = () => {
         const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
         return sum + (Number(order.selling_price || order.amount) - baseCost);
       }, 0);
-      const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
+      // Get manual paystack topups (this is the correct way - from wallet_topups NOT profit calculations)
+      const manualTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
       // Only subtract COMPLETED withdrawals from the stored balance
       const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
       // Subtract purchases made with wallet (from buy data and bulk order sections)
       const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
-      const calculatedBalance = profit + topups - completedWithdrawals - walletPurchases;
+      const calculatedBalance = profit + manualTopups - completedWithdrawals - walletPurchases;
       
       // Only sync if the balance has changed from last sync
       if (lastSyncedBalanceRef.current === calculatedBalance) return;
