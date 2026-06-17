@@ -156,92 +156,106 @@ export default function SubagentApprovalPayment() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-md mx-auto">
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Clock className="h-6 w-6" />
-              Approval Pending
-            </CardTitle>
-            <CardDescription>Complete your payment to activate your account</CardDescription>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 md:p-8 flex items-center justify-center">
+      <div className="max-w-md w-full">
+        <Card className="shadow-lg border-primary/20">
+          <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10 pb-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 rounded-full p-3">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl">Activate Your Store</CardTitle>
+                  <CardDescription className="text-sm">Complete payment to go live</CardDescription>
+                </div>
+              </div>
+            </div>
           </CardHeader>
 
           <CardContent className="pt-6 space-y-6">
+            {/* Agent Info */}
+            <div className="bg-muted/50 rounded-lg p-4 border border-border/50">
+              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">Agent Store</p>
+              <p className="font-semibold text-lg text-foreground">{agent.store_name}</p>
+            </div>
+
             {/* Registration Details */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Registration Details</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between items-start">
-                  <span className="text-muted-foreground">Agent Store:</span>
-                  <span className="font-medium text-right">{agent.store_name}</span>
+              <h3 className="font-semibold text-foreground">Your Details</h3>
+              <div className="grid gap-4 text-sm">
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-md border border-border/50">
+                  <span className="text-muted-foreground">Business:</span>
+                  <span className="font-medium text-foreground">{registration.business_name || "—"}</span>
                 </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-muted-foreground">Business Name:</span>
-                  <span className="font-medium text-right">{registration.business_name || "Not provided"}</span>
-                </div>
-                <div className="flex justify-between items-start">
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-md border border-border/50">
                   <span className="text-muted-foreground">Email:</span>
-                  <span className="font-medium text-right break-words">{registration.email}</span>
+                  <span className="font-medium text-foreground text-xs truncate">{registration.email}</span>
                 </div>
-                <div className="flex justify-between items-start">
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-md border border-border/50">
                   <span className="text-muted-foreground">Phone:</span>
-                  <span className="font-medium text-right">{registration.phone_number}</span>
+                  <span className="font-medium text-foreground">{registration.phone_number}</span>
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-border" />
-
-            {/* Payment Information */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <CreditCard className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-semibold text-blue-400 mb-2">Registration Fee</p>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Pay the registration fee to activate your subagent store account and start selling.
-                  </p>
-                  <div className="text-2xl font-bold text-blue-300">
-                    GH₵ {registration.fee_amount.toFixed(2)}
-                  </div>
-                </div>
+            {/* Payment Amount */}
+            <div className="bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border border-primary/30 rounded-lg p-5 space-y-3">
+              <div className="flex items-center gap-2 mb-3">
+                <CreditCard className="h-5 w-5 text-primary" />
+                <p className="text-sm font-semibold text-primary">Registration Fee</p>
               </div>
+              <div className="text-3xl font-bold text-primary">
+                GH₵ {registration.fee_amount.toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                One-time payment to activate your subagent store
+              </p>
             </div>
 
             {/* Payment Button */}
-            <Button
-              onClick={handlePayment}
-              disabled={paymentProcessing}
-              size="lg"
-              className="w-full"
-            >
-              {paymentProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Pay with Paystack
-                </>
-              )}
-            </Button>
+            <div className="space-y-3">
+              <Button
+                onClick={handlePayment}
+                disabled={paymentProcessing}
+                size="lg"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 text-base"
+              >
+                {paymentProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing Payment...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Pay Now with Paystack
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => navigate(-1)}
+                variant="outline"
+                size="lg"
+                className="w-full"
+              >
+                Go Back
+              </Button>
+            </div>
 
-            {/* Info Messages */}
-            <div className="space-y-3 text-sm">
-              <div className="flex items-start gap-2 text-muted-foreground">
+            {/* Trust Indicators */}
+            <div className="border-t pt-4 space-y-2">
+              <div className="flex items-start gap-2 text-sm">
                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Secure payment powered by Paystack</span>
+                <span className="text-muted-foreground">Secure payment with Paystack</span>
               </div>
-              <div className="flex items-start gap-2 text-muted-foreground">
+              <div className="flex items-start gap-2 text-sm">
                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>Your account will be activated immediately after payment</span>
+                <span className="text-muted-foreground">Instant account activation</span>
               </div>
-              <div className="flex items-start gap-2 text-muted-foreground">
+              <div className="flex items-start gap-2 text-sm">
                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>You can start selling right away</span>
+                <span className="text-muted-foreground">Start selling immediately</span>
               </div>
             </div>
           </CardContent>

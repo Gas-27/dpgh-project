@@ -96,6 +96,10 @@ export default function SubagentRegistration() {
     setProcessing(true);
     try {
       const feeAmount = agent?.subagent_fee_enabled ? agent.subagent_fee_amount : 0;
+      
+      console.log("[v0] SubagentRegistration - agent:", agent);
+      console.log("[v0] SubagentRegistration - subagent_fee_enabled:", agent?.subagent_fee_enabled);
+      console.log("[v0] SubagentRegistration - feeAmount:", feeAmount);
 
       // Create registration record
       const { data: newReg, error } = await supabase
@@ -118,9 +122,10 @@ export default function SubagentRegistration() {
       
       if (feeAmount > 0) {
         // Redirect to approval/payment page
+        console.log("[v0] Redirecting to approval page with registration_id:", newReg.id);
         navigate(`/subagent-approval-payment?registration_id=${newReg.id}`);
       } else {
-        // If no fee, auto-approve and redirect to dashboard
+        console.log("[v0] No fee - redirecting directly to dashboard");
         await supabase
           .from("subagent_registrations")
           .update({ status: "approved", payment_status: "free" })
