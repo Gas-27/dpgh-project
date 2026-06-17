@@ -244,6 +244,21 @@ export default function SubagentRegistrationForm({
   return (
     <Card className="border-border bg-card/50">
       <CardContent className="p-6 md:p-8 space-y-6">
+        {/* Fee Information Alert */}
+        {!fetchingStore && agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 && (
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-blue-400 mb-1">Registration Fee Required</p>
+                <p className="text-sm text-muted-foreground">
+                  To complete your registration as an agent, you need to pay a one-time fee of <span className="font-bold text-blue-300">GH₵ {agentStore.subagent_fee_amount.toFixed(2)}</span>. Your agent account will be created immediately after successful payment.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleRegister} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email Address</Label>
@@ -254,7 +269,7 @@ export default function SubagentRegistrationForm({
               className="bg-background border-border"
               value={formData.email}
               onChange={handleInputChange}
-              disabled={loading}
+              disabled={loading || fetchingStore}
             />
           </div>
 
@@ -268,13 +283,13 @@ export default function SubagentRegistrationForm({
                 className="bg-background border-border pr-10"
                 value={formData.password}
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={loading || fetchingStore}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                disabled={loading}
+                disabled={loading || fetchingStore}
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -294,7 +309,7 @@ export default function SubagentRegistrationForm({
               value={formData.storeName}
               onChange={handleInputChange}
               onBlur={checkStoreNameAvailability}
-              disabled={loading || checkingStoreName}
+              disabled={loading || checkingStoreName || fetchingStore}
             />
             {storeNameError && (
               <p className="text-sm text-red-500">{storeNameError}</p>
@@ -311,7 +326,7 @@ export default function SubagentRegistrationForm({
                 className="bg-background border-border"
                 value={formData.supportNumber}
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={loading || fetchingStore}
               />
             </div>
 
@@ -324,7 +339,7 @@ export default function SubagentRegistrationForm({
                 className="bg-background border-border"
                 value={formData.whatsappNumber}
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={loading || fetchingStore}
               />
             </div>
           </div>
@@ -338,7 +353,7 @@ export default function SubagentRegistrationForm({
                 className="bg-background border-border"
                 value={formData.momoName}
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={loading || fetchingStore}
               />
             </div>
 
@@ -351,7 +366,7 @@ export default function SubagentRegistrationForm({
                 className="bg-background border-border"
                 value={formData.momoNumber}
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={loading || fetchingStore}
               />
             </div>
           </div>
@@ -377,15 +392,17 @@ export default function SubagentRegistrationForm({
               background: primaryColor,
               color: primaryForeground,
             }}
-            disabled={loading || checkingStoreName || !!storeNameError}
+            disabled={loading || checkingStoreName || !!storeNameError || fetchingStore}
           >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Creating Account...
+                {agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 ? "Processing Payment..." : "Creating Account..."}
               </>
             ) : (
-              "Create Agent Account"
+              agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0
+                ? `Pay GH₵ ${agentStore.subagent_fee_amount.toFixed(2)} to Create Agent Account`
+                : "Create Agent Account"
             )}
           </Button>
 
