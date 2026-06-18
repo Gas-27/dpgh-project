@@ -499,21 +499,11 @@ export function SubagentStorefront() {
   // ── Update page metadata when store loads ──
   useEffect(() => {
     if (store?.store_name) {
-      // Generate preview image URL
-      const previewParams = new URLSearchParams({
-        storeId: store.id,
-        storeType: 'subagent',
-        storeName: store.store_name,
-        storeTier: store.store_tier || 'standard',
-        storeEmail: store.store_email || '',
-        storePhone: store.store_phone || '',
-        address: store.address || '',
-      });
-      
-      const previewImageUrl = `/api/store-preview?${previewParams.toString()}`;
-      updatePageMetadata(store.store_name, undefined, previewImageUrl);
+      // Generate icon image URL with first letter of store name
+      const iconImageUrl = `/api/store-icon?name=${encodeURIComponent(store.store_name)}&color=667eea`;
+      updatePageMetadata(store.store_name, undefined, iconImageUrl);
     }
-  }, [store?.store_name, store?.id, store?.store_tier, store?.store_email, store?.store_phone, store?.address]);
+  }, [store?.store_name]);
 
   // Fetch store by name
   useEffect(() => {
