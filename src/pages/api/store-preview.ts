@@ -1,32 +1,36 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { storeId, storeType } = req.query;
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { storeId, storeType, storeName, storeTier, storeEmail, storePhone, address } = req.query;
 
   if (!storeId || !storeType) {
     return res.status(400).json({ error: 'Missing storeId or storeType' });
   }
 
-  // Generate SVG preview image
-  const storeName = (req.query.storeName as string) || 'Data Store';
-  const storeTier = (req.query.storeTier as string) || 'Standard';
-  const storeEmail = (req.query.storeEmail as string) || '';
-  const storePhone = (req.query.storePhone as string) || '';
-  const address = (req.query.address as string) || '';
+  try {
+    // Generate SVG preview image
+    const svg = generatePreviewSVG({
+      storeName: (storeName as string) || 'Data Store',
+      storeTier: (storeTier as string) || 'Standard',
+      storeEmail: (storeEmail as string) || '',
+      storePhone: (storePhone as string) || '',
+      address: (address as string) || '',
+      storeType: storeType as string,
+    });
 
-  const svg = generatePreviewSVG({
-    storeName,
-    storeTier,
-    storeEmail,
-    storePhone,
-    address,
-    storeType: storeType as string,
-  });
-
-  // Set response headers for SVG
-  res.setHeader('Content-Type', 'image/svg+xml');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
-  res.send(svg);
+    // Set response headers for SVG - optimized for social media crawlers
+    // SVG is actually better supported by social media now
+    res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=604800'); // 1 week cache
+    res.setHeader('Content-Disposition', 'inline; filename="store-preview.svg"');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    
+    return res.status(200).send(svg);
+  } catch (error) {
+    console.error('[v0] Store preview generation error:', error);
+    return res.status(500).send('Failed to generate store preview');
+  }
 }
 
 interface PreviewParams {
