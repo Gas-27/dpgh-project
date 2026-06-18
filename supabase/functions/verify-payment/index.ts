@@ -456,39 +456,9 @@ Deno.serve(async (req) => {
       basePriceForOrder = agentPriceToSubagent;
       profitForOrder = sellingPrice - basePriceForOrder;
 
-      // CREDIT SUBAGENT PROFIT
-      if (subagentStore && profitForOrder > 0) {
-        const newWalletBalance = (Number(subagentStore.wallet_balance) || 0) + profitForOrder;
-        await supabase
-          .from("subagent_stores")
-          .update({ wallet_balance: newWalletBalance })
-          .eq("id", subagentStoreId);
-        
-        console.log(`[v0] Credited subagent ${subagentStoreId}: +${profitForOrder}, new balance=${newWalletBalance}`);
-      }
-
-      // CREDIT AGENT COMMISSION (base_price - admin_agent_price)
-      if (subagentStore?.agent_store_id && packageId) {
-        const agentCommission = basePriceForOrder - adminBasePrice;
-        
-        if (agentCommission > 0) {
-          const { data: agentStore } = await supabase
-            .from("agent_stores")
-            .select("subagent_commission_balance")
-            .eq("id", subagentStore.agent_store_id)
-            .single();
-          
-          if (agentStore) {
-            const newBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
-            await supabase
-              .from("agent_stores")
-              .update({ subagent_commission_balance: newBalance })
-              .eq("id", subagentStore.agent_store_id);
-            
-            console.log(`[v0] Credited agent ${subagentStore.agent_store_id}: +${agentCommission}, new balance=${newBalance}`);
-          }
-        }
-      }
+      // NOTE: Wallet credits are handled by Paystack webhook ONLY
+      // Do NOT credit wallet here - webhook handles all wallet updates to avoid double-crediting
+      console.log(`[v0] Subagent order - wallet credit delegated to webhook. Profit: ${profitForOrder}`);
 
     } else if (agentStoreId) {
       // AGENT ORDER (direct sale) - ONLY if explicitly set
