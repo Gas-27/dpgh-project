@@ -499,9 +499,7 @@ export function SubagentStorefront() {
   // ── Update page metadata when store loads ──
   useEffect(() => {
     if (store?.store_name) {
-      // Generate icon image URL with first letter of store name
-      const iconImageUrl = `/api/store-icon?name=${encodeURIComponent(store.store_name)}&color=667eea`;
-      updatePageMetadata(store.store_name, undefined, iconImageUrl);
+      updatePageMetadata(store.store_name);
     }
   }, [store?.store_name]);
 
