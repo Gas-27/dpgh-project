@@ -253,46 +253,10 @@ const SubagentDashboard = () => {
     }
   }, [user?.id, isImpersonating, impersonatedUserId, impersonatedStoreId]);
 
-  // Sync calculated wallet balance to database when data changes
-  // Use a ref to track if we've synced to prevent infinite loops
-  const hasSyncedRef = useRef(false);
-  const lastSyncedBalanceRef = useRef<number | null>(null);
-  
-  useEffect(() => {
-    const syncWalletBalance = async () => {
-      if (!subagentStore?.id) return;
-      
-      // Calculate wallet: Profit + Topups - COMPLETED Withdrawals - Wallet Purchases
-      // Backend automatically adds AFA registration profit and subagent registration fees
-      const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
-      const profit = completedOrders.reduce((sum, order) => {
-        if (order.profit) return sum + Number(order.profit);
-        const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
-        return sum + (Number(order.selling_price || order.amount) - baseCost);
-      }, 0);
-      const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-      // Only subtract COMPLETED withdrawals from the stored balance
-      const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-      // Subtract purchases made with wallet (from buy data and bulk order sections)
-      const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
-      const calculatedBalance = profit + topups - completedWithdrawals - walletPurchases;
-      
-      // Only sync if the balance has changed from last sync
-      if (lastSyncedBalanceRef.current === calculatedBalance) return;
-      
-      // Update the database
-      const { error } = await supabase
-        .from("subagent_stores")
-        .update({ wallet_balance: calculatedBalance })
-        .eq("id", subagentStore.id);
-      
-      if (!error) {
-        lastSyncedBalanceRef.current = calculatedBalance;
-      }
-    };
-    
-    syncWalletBalance();
-  }, [orders.length, topupHistory.length, withdrawals.length, subagentStore?.id]);
+  // NOTE: DISABLED frontend wallet sync
+  // Wallet balance should ONLY be updated by the backend (verify-payment, webhook, admin actions)
+  // Frontend recalculations can cause phantom money due to race conditions
+  // The database is the source of truth - we only READ the wallet_balance here
 
   // Real-time wallet balance updates
   useEffect(() => {
@@ -365,55 +329,9 @@ const SubagentDashboard = () => {
     };
   }, [subagentStore?.id]);
 
-  // Background auto-refresh every 5 seconds (silent, no page flicker)
-  // ONLY refreshes: wallet balance, profit, and orders - does NOT touch form data
-  useEffect(() => {
-    if (!subagentStore?.id) return;
-    
-    const intervalId = setInterval(() => {
-      // Silently refresh ONLY display data in background
-      const refreshBackgroundData = async () => {
-        try {
-          // Only fetch wallet balance and orders (most important data)
-          // Do NOT set loading state to avoid UI flicker
-          // Do NOT touch form data (storeForm) - only update display state
-          const [storeRes, ordersRes] = await Promise.all([
-            supabase
-              .from("subagent_stores")
-              .select("wallet_balance, id")
-              .eq("id", subagentStore.id)
-              .single(),
-            supabase
-              .from("orders")
-              .select("*")
-              .eq("subagent_store_id", subagentStore.id)
-              .order("created_at", { ascending: false })
-          ]);
-
-          // Update ONLY wallet balance display - never touches storeForm
-          if (storeRes.data && storeRes.data.wallet_balance !== undefined) {
-            setSubagentStore((prev) =>
-              prev
-                ? { ...prev, wallet_balance: storeRes.data.wallet_balance }
-                : prev
-            );
-          }
-
-          // Update ONLY orders display - never touches user edits
-          if (ordersRes.data) {
-            setOrders(ordersRes.data as any[]);
-          }
-        } catch (error) {
-          console.error("[v0] Background refresh error:", error);
-          // Fail silently - no error toast to avoid interrupting user edits
-        }
-      };
-
-      refreshBackgroundData();
-    }, 1000); // Refresh every 1 second
-
-    return () => clearInterval(intervalId);
-  }, [subagentStore?.id]);
+  // NOTE: Disabled background auto-refresh interval
+  // This was causing excessive database queries and phantom wallet increases
+  // Real-time subscriptions below handle all necessary updates
 
   const fetchData = async (userId?: string, storeId?: string) => {
     try {
