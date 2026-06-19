@@ -22,7 +22,8 @@ import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
-import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
+// COMMENTED OUT: mashup packages deactivated
+// import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import { DOMAINS } from "@/config/domains";
 
@@ -1448,7 +1449,8 @@ const SubagentDashboard = () => {
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "topup", label: "Top Up", icon: Wallet },
     { id: "flyer", label: "Flyer Generator", icon: Image },
-    { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
+    // COMMENTED OUT: mashup packages deactivated
+  // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "settings", label: "Settings", icon: Settings },
@@ -2604,15 +2606,16 @@ const SubagentDashboard = () => {
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
+                  {/* COMMENTED OUT: mashup packages deactivated */}
                   <div className="flex gap-2 flex-wrap">
-                    {["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (
+                    {["mtn", "airteltigo", "telecel"].map(net => (
                       <Button 
                         key={net} 
                         variant={networkFilter === net ? "hero" : "outline"} 
                         size="sm" 
                         onClick={() => setNetworkFilter(net)}
                       >
-                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}
+                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
                       </Button>
                     ))}
                   </div>
@@ -2934,6 +2937,7 @@ const SubagentDashboard = () => {
             )}
           </TabsContent>
 
+          {/* COMMENTED OUT: mashup packages deactivated
           {/* MTN MASHUP FLYER */}
           <TabsContent value="mashup-flyer" className="mt-0 space-y-6">
             {subagentStore && (
@@ -2949,6 +2953,7 @@ const SubagentDashboard = () => {
               />
             )}
           </TabsContent>
+          */}
 
           {/* SETTINGS */}
           <TabsContent value="settings" className="mt-0 space-y-6">
