@@ -79,12 +79,12 @@ export default function VerifySubagentPayment() {
         setMessage("Payment Confirmed!");
         setApprovalMessage("Your subagent account has been approved and is ready to use.");
 
-        // Redirect to subagent dashboard after 3 seconds to allow store data to sync
-        const dashboardUrl = DOMAINS.getSubagentDashboardUrl();
-        console.log("[v0] Redirecting to subagent dashboard:", dashboardUrl);
+        // Redirect to subagent login page after 3 seconds
+        const loginUrl = DOMAINS.getSubagentLoginUrl();
+        console.log("[v0] Redirecting to subagent login:", loginUrl);
 
         setTimeout(() => {
-          window.location.href = dashboardUrl;
+          window.location.href = loginUrl;
         }, 3000);
       } catch (error) {
         console.error("[v0] Payment verification error:", error);

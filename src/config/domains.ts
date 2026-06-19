@@ -43,4 +43,9 @@ export const DOMAINS = {
   getSubagentDashboardUrl: () => {
     return `https://${DOMAINS.SUBAGENT_STORE}/dashboard`;
   },
+
+  // Get subagent login URL
+  getSubagentLoginUrl: () => {
+    return `https://${DOMAINS.SUBAGENT_STORE}/login`;
+  },
 };
