@@ -79,6 +79,23 @@ export default function VerifySubagentPayment() {
         setMessage("Payment Confirmed!");
         setApprovalMessage("Your subagent account has been approved and is ready to use.");
 
+        // Fetch the newly created subagent store
+        const { data: newStore } = await supabase
+          .from("subagent_stores")
+          .select("id, store_name")
+          .eq("user_id", registration.user_id)
+          .eq("approved", true)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (newStore?.id) {
+          console.log("[v0] Store found:", newStore.id, newStore.store_name);
+          // Store the store ID in localStorage so the dashboard can access it
+          localStorage.setItem("admin_impersonate_store_id", newStore.id);
+          localStorage.setItem("admin_impersonate_store", newStore.store_name);
+        }
+
         // Redirect to subagent dashboard after 2 seconds
         const dashboardUrl = DOMAINS.getSubagentDashboardUrl();
         console.log("[v0] Redirecting to subagent dashboard:", dashboardUrl);
