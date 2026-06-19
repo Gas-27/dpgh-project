@@ -188,10 +188,10 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   const [latestOrderStatus, setLatestOrderStatus] = useState<string>(order.order_status || "pending");
   const [hasMovedToNetworkValidation, setHasMovedToNetworkValidation] = useState(false);
 
-    // COMMENTED OUT: mashup packages deactivated
-    // For mashup and mtn_mashup: Poll database for order_status changes
-    // Standard networks use time-based logic, mashup uses database polling
-    if (false && (order.network === "mtn_mashup" || order.network === "mashup")) {
+  // COMMENTED OUT: mashup packages deactivated
+  // For mashup and mtn_mashup: Poll database for order_status changes
+  // Standard networks use time-based logic, mashup uses database polling
+  if (false && (order.network === "mtn_mashup" || order.network === "mashup")) {
       const pollOrderStatus = async () => {
         try {
           const { data } = await supabase
@@ -1441,7 +1441,7 @@ const Packages = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filtered.map((pkg) => {
                   // COMMENTED OUT: mashup packages deactivated
-      const isMTNMashup = false; // selectedNetwork === "mtn_mashup";
+                  const isMTNMashup = false; // selectedNetwork === "mtn_mashup";
                   const networkColor = networkConfig[selectedNetwork as keyof typeof networkConfig]?.color || "text-cyan-400";
                   return (
                     <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
