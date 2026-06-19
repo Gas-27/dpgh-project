@@ -1589,17 +1589,17 @@ const AgentDashboard = () => {
                 const price = Number(pkg.agent_price || pkg.price);
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
                 return (
-                      {/* COMMENTED OUT: mashup packages deactivated */}
-                      <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
-                        {/* {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>} */}
-                        {/* {networkFilter === "mtn_mashup" && <div className="h-10 w-10 rounded-full bg-amber-600/20 flex items-center justify-center mx-auto"><Zap className="h-5 w-5 text-amber-500" /></div>} */}
-                        {/* {networkFilter === "mtn_mashup" && <p className="font-display text-xs text-amber-500 uppercase tracking-wide mb-1">Special Mashup</p>} */}
-                        <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                      </div>
-                        <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
+                  // COMMENTED OUT: mashup packages deactivated
+                  <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
+                    {/* {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>} */}
+                    {/* {networkFilter === "mtn_mashup" && <div className="h-10 w-10 rounded-full bg-amber-600/20 flex items-center justify-center mx-auto"><Zap className="h-5 w-5 text-amber-500" /></div>} */}
+                    {/* {networkFilter === "mtn_mashup" && <p className="font-display text-xs text-amber-500 uppercase tracking-wide mb-1">Special Mashup</p>} */}
+                    <CardContent>
+                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                      <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
                       {wouldUnderflow ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}
-                        <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700" onClick={() => openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow}>Buy Now</Button>
+                      <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700" onClick={() => openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow}>Buy Now</Button>
                     </CardContent>
                   </Card>
                 );
@@ -1874,7 +1874,7 @@ const AgentDashboard = () => {
                         
                         {walletBalance < totalCost && parsed.length > 0 && (
                           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-500 text-sm">
-                            Insufficient wallet balance. You need GH₵ {(totalCost - walletBalance).toFixed(2)} more.
+                            Insufficient wallet balance. You need GH��� {(totalCost - walletBalance).toFixed(2)} more.
                           </div>
                         )}
                         
