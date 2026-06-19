@@ -34,7 +34,6 @@ import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import ComplaintsManager from "@/components/ComplaintsManager";
-import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
 } from "@/components/ui/sheet";

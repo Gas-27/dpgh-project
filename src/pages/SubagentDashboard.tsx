@@ -1937,9 +1937,9 @@ const SubagentDashboard = () => {
               </CardContent>
             </Card>
             <div className="flex gap-2 flex-wrap">
-              {["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (
-                <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)} className={net === "mtn_mashup" ? "bg-amber-500 hover:bg-amber-600 text-white border-0" : ""}>
-                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "MTN Special Mashup"}
+              {["mtn", "airteltigo", "telecel"].map(net => (
+                <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
+                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
                 </Button>
               ))}
             </div>
@@ -1948,7 +1948,6 @@ const SubagentDashboard = () => {
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;
                 return (
                   <Card key={pkg.id} className="border-border transition-all hover:border-primary/50 relative">
-                    {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
                     <CardContent className="p-4 text-center space-y-3">
                       <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb}GB</p>
                       <p className="text-lg font-bold text-primary">GH₵ {Number(basePrice).toFixed(2)}</p>
@@ -2311,7 +2310,6 @@ const SubagentDashboard = () => {
                     <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
                     <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
                     <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
-                    <Button variant={bulkNetwork === "mtn_mashup" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn_mashup" ? "bg-amber-500 hover:bg-amber-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn_mashup")}>//Special MTN Mashup</Button>
                   </div>
                 </div> 
 
