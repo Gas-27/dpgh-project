@@ -1577,7 +1577,7 @@ const AgentDashboard = () => {
             {store && (<Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GH₵ {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GH₵ {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
-            <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}</Button>))}</div>
+            <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : //"Special MTN Mashup"}</Button>))}</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {packages.filter(p => {
                 // COMMENTED OUT: mashup packages deactivated
@@ -2425,7 +2425,7 @@ const AgentDashboard = () => {
           ) : (
             <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">{buyPkg?.network === "special-mtn" ? (
               <>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold text-amber-500">Special MTN Mashup</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold text-amber-500">//Special MTN Mashup</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Details</span><span className="font-semibold">{(buyPkg as any).mins || 0} mins + {buyPkg?.size_gb}GB</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>
               </>
