@@ -55,6 +55,19 @@ export default function VerifySubagentPayment() {
         setMessage("Payment confirmed! Approving your account...");
         setApprovalMessage("Your account is being set up...");
 
+        // Update registration status to completed
+        const { error: updateError } = await supabase
+          .from("subagent_registrations")
+          .update({ status: "completed" })
+          .eq("id", registrationId);
+
+        if (updateError) {
+          console.error("[v0] Failed to update registration status:", updateError);
+          throw new Error("Failed to update registration status");
+        }
+
+        console.log("[v0] Registration status updated to completed");
+
         // Get the registration record
         const { data: registration, error: regError } = await supabase
           .from("subagent_registrations")
@@ -68,10 +81,7 @@ export default function VerifySubagentPayment() {
         }
 
         console.log("[v0] Registration record found:", registration);
-
-        // DO NOT update registration here - verify-payment already did this
-        // Including the store creation
-        console.log("[v0] Store and registration already created by verify-payment edge function");
+        console.log("[v0] Store and registration created by verify-payment edge function");
 
         console.log("[v0] Account approval completed");
 
