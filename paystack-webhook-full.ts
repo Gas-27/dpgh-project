@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     // =====================================
     // SUBAGENT REGISTRATION PAYMENT HANDLER
     // =====================================
-    if (paymentType === "subagent_registration_fee") {
+    if (paymentType === "subagent_registration") {
       const subagentRegistrationId = metadata.subagent_registration_id;
       const agentStoreId = metadata.agent_store_id;
       const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
