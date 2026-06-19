@@ -120,10 +120,10 @@ Deno.serve(async (req) => {
 
       console.log(`Processing subagent registration payment for registration: ${subagentRegistrationId}, agent: ${agentStoreId}`);
 
-      // Check if registration payment already processed
+      // Check if registration payment already processed and get full registration data
       const { data: existingRegistration } = await supabaseClient
         .from("subagent_registrations")
-        .select("id, status, payment_status")
+        .select("*")
         .eq("id", subagentRegistrationId)
         .maybeSingle();
 
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
         .update({
           payment_status: "paid",
           payment_reference: reference,
-          status: "approved",
+          status: "completed",
           updated_at: new Date().toISOString(),
         })
         .eq("id", subagentRegistrationId)
