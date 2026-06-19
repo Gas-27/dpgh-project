@@ -2307,7 +2307,7 @@ const AgentDashboard = () => {
                               <Save className="h-4 w-4" /> Save Fee
                             </Button>
                           </div>
-                          <p className="text-xs text-green-400 mt-2">Subagents will need to pay this amount to register under your store.The money is added to your wallet automatically when they pay</p>
+                          <p className="text-xs text-green-400 mt-2">Subagents will need to pay this amount to register under your store.The money is added to your my wallet automatically when they pay</p>
                         </div>
                       )}
                     </div>
