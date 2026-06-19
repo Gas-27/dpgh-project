@@ -730,15 +730,16 @@ export function SubagentStorefront() {
     // Sort all orders by date descending
     allOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
+    const enrichedOrders = allOrders.map((order) => {
       // COMMENTED OUT: mashup packages deactivated
       // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
       // This enriches the order with package details
       if (false && (order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
-        const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+        const { data: pkg } = supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
         return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
       }
       return order;
-    }));
+    });
     
     setOrders(enrichedOrders);
     setSearching(false);

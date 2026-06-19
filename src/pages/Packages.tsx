@@ -191,7 +191,8 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   // COMMENTED OUT: mashup packages deactivated
   // For mashup and mtn_mashup: Poll database for order_status changes
   // Standard networks use time-based logic, mashup uses database polling
-  if (false && (order.network === "mtn_mashup" || order.network === "mashup")) {
+  useEffect(() => {
+    if (false && (order.network === "mtn_mashup" || order.network === "mashup")) {
       const pollOrderStatus = async () => {
         try {
           const { data } = await supabase
