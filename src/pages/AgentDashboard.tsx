@@ -1610,8 +1610,19 @@ const AgentDashboard = () => {
           {/* ============================= STORE PRICES ============================= */}
           <TabsContent value="store" className="space-y-4 mt-0">
             <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* COMMENTED OUT: mashup packages deactivated */}
-            <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}</Button>))}</div>
+              {/* Network filter buttons */}
+              <div className="flex gap-2 flex-wrap">
+                {["mtn", "airteltigo", "telecel"].map(net => (
+                  <Button 
+                    key={net} 
+                    variant={networkFilter === net ? "hero" : "outline"} 
+                    size="sm" 
+                    onClick={() => setNetworkFilter(net)}
+                  >
+                    {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                  </Button>
+                ))}
+              </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Markup:</span>
                 <Input type="number" placeholder="+10" value={markupPercent} onChange={e => setMarkupPercent(e.target.value)} className="w-20 h-8 text-sm" />
