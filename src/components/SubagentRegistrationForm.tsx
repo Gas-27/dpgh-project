@@ -197,29 +197,15 @@ export default function SubagentRegistrationForm({
 
       console.log("[v0] User account created:", authData.user.id);
 
-      // Create subagent store
-      const approvalStatus = agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 ? false : true;
-      
-      const { data: storeData, error: storeError } = await supabase
-        .from("subagent_stores")
-        .insert({
-          user_id: authData.user.id,
-          agent_store_id: agentStoreId,
-          store_name: formData.storeName,
-          whatsapp_number: formData.whatsappNumber,
-          support_number: formData.supportNumber,
-          momo_name: formData.momoName,
-          momo_number: formData.momoNumber,
-          momo_network: formData.momoNetwork,
-          wallet_balance: 0,
-          approved: approvalStatus, // Only auto-approve if no fees required
-        })
-        .select()
-        .single();
+      // COMMENTED OUT: Store creation moved to webhook after payment
+      // const approvalStatus = agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 ? false : true;
+      // const { data: storeData, error: storeError } = await supabase
+      //   .from("subagent_stores")
+      //   .insert({...})
+      //   .select()
+      //   .single();
 
-      if (storeError) throw storeError;
-
-      console.log("[v0] Subagent store created:", storeData.id);
+      const storeData = { id: null }; // Placeholder since we're not creating it yet
 
       // Assign subagent role
       const { data: existingRole } = await supabase
@@ -262,13 +248,12 @@ export default function SubagentRegistrationForm({
             payment_status: "pending",
             status: "pending_payment",
             registration_data: {
-              password: formData.password,
-              storeName: formData.storeName,
-              whatsappNumber: formData.whatsappNumber,
-              supportNumber: formData.supportNumber,
-              momoName: formData.momoName,
-              momoNumber: formData.momoNumber,
-              momoNetwork: formData.momoNetwork,
+              store_name: formData.storeName,
+              whatsapp_number: formData.whatsappNumber,
+              support_number: formData.supportNumber,
+              momo_name: formData.momoName,
+              momo_number: formData.momoNumber,
+              momo_network: formData.momoNetwork,
             }
           })
           .select()
@@ -344,11 +329,36 @@ export default function SubagentRegistrationForm({
         return;
       }
 
-      // No fees - account is already approved
-      console.log("[v0] No fees required, account created and approved");
+      // No fees - still need to trigger webhook to create store with approved: true
+      console.log("[v0] No fees required, user account created - now creating approved store");
 
-      sessionStorage.setItem("newSubagentStoreId", storeData.id);
-      sessionStorage.setItem("newSubagentEmail", formData.email);
+      // Call edge function to create the store immediately
+      const callbackUrl = `${window.location.origin}/verify-subagent-payment?user_id=${authData.user.id}`;
+      
+      const { data, error } = await supabase.functions.invoke(
+        "initialize-payment",
+        {
+          body: {
+            email: formData.email,
+            amount: 0, // Zero amount for no-fee registration
+            phone: formData.supportNumber,
+            callback_url: callbackUrl,
+            metadata: {
+              type: "subagent_registration_no_fee",
+              agent_store_id: agentStoreId,
+              user_id: authData.user.id,
+              store_name: formData.storeName,
+              store_data: formData,
+              create_approved_store: true,
+            }
+          },
+        }
+      );
+
+      if (error) {
+        console.error("[v0] Error creating approved store:", error);
+        throw error;
+      }
 
       toast({
         title: "✅ Account Created!",
