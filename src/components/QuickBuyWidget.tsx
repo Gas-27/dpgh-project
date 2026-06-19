@@ -10,7 +10,8 @@ const networks = [
   { id: "mtn", name: "MTN", color: "bg-mtn text-primary-foreground" },
   { id: "airteltigo", name: "AT", color: "bg-telecel text-foreground" },
   { id: "telecel", name: "Telecel", color: "bg-telecel text-foreground" },
-  { id: "mtn_mashup", name: "Mashup", color: "bg-orange-500 text-foreground" },
+  // COMMENTED OUT: mashup packages deactivated
+  // { id: "mtn_mashup", name: "Mashup", color: "bg-orange-500 text-foreground" },
 ];
 
 interface DataPackage {
@@ -37,7 +38,7 @@ const QuickBuyWidget = () => {
         .from("data_packages")
         .select("id, network, size_gb, price, data_package_id, size_gb_text")
         .eq("active", true)
-        .in("network", ["mtn", "airteltigo", "telecel", "mtn_mashup", "mashup"])
+        .in("network", ["mtn", "airteltigo", "telecel"]) // COMMENTED OUT: mashup packages deactivated
         .order("size_gb");
       setPackages(data ?? []);
       setLoading(false);
@@ -48,9 +49,10 @@ const QuickBuyWidget = () => {
   const filteredPlans = useMemo(
     () => {
       return packages.filter((p) => {
-        if (selectedNetwork === "mtn_mashup") {
-          return (p.network === "mtn_mashup" || p.network === "mashup");
-        }
+        // COMMENTED OUT: mashup packages deactivated
+        // if (selectedNetwork === "mtn_mashup") {
+        //   return (p.network === "mtn_mashup" || p.network === "mashup");
+        // }
         return p.network === selectedNetwork;
       }).slice(0, 4);
     },
@@ -114,7 +116,7 @@ const QuickBuyWidget = () => {
                 }`}
               >
                 <p className="font-display text-base sm:text-lg font-bold text-foreground">
-                  {plan.network === "mtn_mashup" || plan.network === "mashup" ? plan.size_gb_text : `${plan.size_gb}GB`}
+                  {`${plan.size_gb}GB`}
                 </p>
                 <p className="text-xs text-muted-foreground">GH₵ {Number(plan.price).toFixed(2)}</p>
               </button>

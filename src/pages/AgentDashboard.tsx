@@ -46,7 +46,8 @@ import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/ph
 function getOrderStage(order: any): string {
   const elapsed = (Date.now() - new Date(order.created_at).getTime()) / 1000;
   const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  const isMashup = order.network === "mtn_mashup" || order.network === "mashup";
+  // COMMENTED OUT: mashup packages deactivated
+  const isMashup = false; // order.network === "mtn_mashup" || order.network === "mashup";
   
   if (isMashup) {
     if (orderStatus === "delivered" || orderStatus === "completed") {
@@ -105,7 +106,8 @@ const menuItems = [
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
   { id: "afa", label: "AFA Bundles", icon: Zap },
   { id: "flyer", label: "Flyer Generator", icon: Image },
-  { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
+  // COMMENTED OUT: mashup packages deactivated
+  // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
   { id: "topup", label: "Top Up", icon: Coins },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -956,8 +958,9 @@ const AgentDashboard = () => {
     const multiplier = 1 + percent / 100;
     const newEdited: Record<string, number> = { ...editedPrices };
     const currentNetworkPackages = packages.filter(p => {
-      if (networkFilter === "mtn_mashup") {
-        return p.network === "mtn_mashup" || p.network === "mashup";
+                // COMMENTED OUT: mashup packages deactivated
+                if (false && networkFilter === "mtn_mashup") {
+                  return p.network === "mtn_mashup" || p.network === "mashup";
       }
       return p.network === networkFilter;
     });
@@ -1577,7 +1580,8 @@ const AgentDashboard = () => {
             <div className="flex gap-2 flex-wrap">{["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (<Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>{net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}</Button>))}</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {packages.filter(p => {
-                if (networkFilter === "mtn_mashup") {
+                // COMMENTED OUT: mashup packages deactivated
+                if (false && networkFilter === "mtn_mashup") {
                   return p.network === "mtn_mashup" || p.network === "mashup";
                 }
                 return p.network === networkFilter;
@@ -1585,18 +1589,17 @@ const AgentDashboard = () => {
                 const price = Number(pkg.agent_price || pkg.price);
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
                 return (
-                  <Card key={pkg.id} className={networkFilter === "mtn_mashup" ? "border-amber-600/50 bg-amber-50/5 hover:border-amber-500/50 transition-all" : "border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all"}>
-                    <CardContent className="p-4 text-center space-y-3 relative">
-                      {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
-                      {networkFilter === "mtn_mashup" && <div className="h-10 w-10 rounded-full bg-amber-600/20 flex items-center justify-center mx-auto"><Zap className="h-5 w-5 text-amber-500" /></div>}
-                      <div>
-                        {networkFilter === "mtn_mashup" && <p className="font-display text-xs text-amber-500 uppercase tracking-wide mb-1">Special Mashup</p>}
+                      {/* COMMENTED OUT: mashup packages deactivated */}
+                      <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
+                        {/* {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>} */}
+                        {/* {networkFilter === "mtn_mashup" && <div className="h-10 w-10 rounded-full bg-amber-600/20 flex items-center justify-center mx-auto"><Zap className="h-5 w-5 text-amber-500" /></div>} */}
+                        {/* {networkFilter === "mtn_mashup" && <p className="font-display text-xs text-amber-500 uppercase tracking-wide mb-1">Special Mashup</p>} */}
                         <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
                       </div>
-                      <p className={`text-lg font-bold ${networkFilter === "mtn_mashup" ? "text-amber-500" : "text-cyan-400"}`}>GH₵ {price.toFixed(2)}</p>
+                        <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
                       {wouldUnderflow ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}
-                      <Button variant="hero" size="sm" className={`w-full ${networkFilter === "mtn_mashup" ? "bg-amber-600 hover:bg-amber-700" : "bg-cyan-600 hover:bg-cyan-700"}`} onClick={() => openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow}>Buy Now</Button>
+                        <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700" onClick={() => openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow}>Buy Now</Button>
                     </CardContent>
                   </Card>
                 );
@@ -1983,7 +1986,8 @@ const AgentDashboard = () => {
           </TabsContent>
 
           {/* ============================= MASHUP FLYER ============================= */}
-          <TabsContent value="mashup-flyer" className="space-y-6 mt-0">
+                {/* COMMENTED OUT: mashup packages deactivated
+                <TabsContent value="mashup-flyer" className="space-y-6 mt-0">
             {store && (
               <MashupFlyerGenerator
                 storeName={store.store_name}

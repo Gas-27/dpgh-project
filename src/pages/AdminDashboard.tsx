@@ -1629,9 +1629,10 @@ const AdminDashboard = () => {
             <TabsContent value="prices" className="space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex gap-2">
-                  {["mtn", "airteltigo", "telecel", "mtn_mashup", "mashup"].map((net) => (
+                  {/* COMMENTED OUT: mashup packages deactivated */}
+                  {["mtn", "airteltigo", "telecel"].map((net) => (
                     <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
-                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : net === "mtn_mashup" ? "Special MTN Mashup" : "Mashup"}
+                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
                     </Button>
                   ))}
                 </div>
@@ -1702,8 +1703,10 @@ const AdminDashboard = () => {
                     <SelectItem value="mtn">MTN</SelectItem>
                     <SelectItem value="airtel">AirtelTigo</SelectItem>
                     <SelectItem value="telecel">Telecel</SelectItem>
-                    <SelectItem value="mtn_mashup">Special MTN Mashup</SelectItem>
-                    <SelectItem value="mashup">Mashup</SelectItem>
+                {/* COMMENTED OUT: mashup packages deactivated
+                <SelectItem value="mtn_mashup">Special MTN Mashup</SelectItem>
+                <SelectItem value="mashup">Mashup</SelectItem>
+                */}
                   </SelectContent>
                 </Select>
 
@@ -3087,7 +3090,8 @@ const AdminDashboard = () => {
           ) : (
             <div className="space-y-4 pt-2">
               <div className="flex gap-2 flex-wrap">
-                {["mtn", "airteltigo", "telecel", "mtn_mashup"].map((net) => (
+                {/* COMMENTED OUT: mashup packages deactivated */}
+                {["mtn", "airteltigo", "telecel"].map((net) => (
                   <Button
                     key={net}
                     variant={agentPriceNetworkFilter === net ? "hero" : "outline"}
