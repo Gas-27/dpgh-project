@@ -2311,9 +2311,9 @@ const SubagentDashboard = () => {
                     <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
                     <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
                     <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
-                    <Button variant={bulkNetwork === "mtn_mashup" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn_mashup" ? "bg-amber-500 hover:bg-amber-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn_mashup")}>Special MTN Mashup</Button>
+                    <Button variant={bulkNetwork === "mtn_mashup" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn_mashup" ? "bg-amber-500 hover:bg-amber-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn_mashup")}>//Special MTN Mashup</Button>
                   </div>
-                </div>
+                </div> 
 
                 {/* Step 2: Recipients */}
                 <div className="space-y-3">
