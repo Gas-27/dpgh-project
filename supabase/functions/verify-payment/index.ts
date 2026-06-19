@@ -158,10 +158,7 @@ Deno.serve(async (req) => {
     // =====================================
     // SUBAGENT REGISTRATION PAYMENT HANDLER
     // =====================================
-    // =====================================
-    // SUBAGENT REGISTRATION FEE PAYMENT
-    // =====================================
-    if (paymentType === "subagent_registration_fee") {
+    if (paymentType === "subagent_registration") {
       const registrationId = metadata.subagent_registration_id;
       const agentStoreId = metadata.agent_store_id;
 
