@@ -1000,7 +1000,8 @@ export function SubagentStorefront() {
 
         {/* Network Tabs */}
         <div className="flex flex-wrap gap-2 pb-2 items-center">
-          {["mtn", "airteltigo", "telecel"].map((net) => ( {/* COMMENTED OUT: "mtn_mashup" deactivated */}
+          {/* COMMENTED OUT: "mtn_mashup" deactivated */}
+        {["mtn", "airteltigo", "telecel"].map((net) => (
             <Button
               key={net}
               variant={networkFilter === net && !showBulkOrders ? "default" : "outline"}
@@ -1010,8 +1011,7 @@ export function SubagentStorefront() {
               className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
-              {/* COMMENTED OUT: mashup deactivated - {net === "mtn_mashup" ? "MTN Special Mashup" : formatNetworkName(net)} */}
-        {formatNetworkName(net)}
+              {formatNetworkName(net)}
             </Button>
           ))}
           <div className="h-6 w-px bg-border flex-shrink-0"></div>
