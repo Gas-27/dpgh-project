@@ -197,12 +197,42 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Mark as paid - frontend will handle account creation
+      // Create the subagent store NOW with approved: true
+      const storeData = registration.registration_data || {};
+      
+      const { data: newStore, error: storeError } = await supabase
+        .from("subagent_stores")
+        .insert({
+          user_id: registration.user_id,
+          agent_store_id: registration.agent_store_id,
+          store_name: storeData.store_name || registration.business_name,
+          whatsapp_number: storeData.whatsapp_number || "",
+          support_number: storeData.support_number || registration.phone_number,
+          momo_name: storeData.momo_name || "",
+          momo_number: storeData.momo_number || "",
+          momo_network: storeData.momo_network || "mtn",
+          wallet_balance: 0,
+          approved: true
+        })
+        .select("id")
+        .single();
+
+      if (storeError) {
+        console.error("Failed to create subagent store:", storeError);
+        return new Response(JSON.stringify({ error: "Failed to create subagent store", details: storeError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log(`[VERIFY] Subagent store created: ${newStore.id}`);
+
+      // Mark registration as paid and approved
       const { error: updateError } = await supabase
         .from("subagent_registrations")
         .update({
           payment_status: "paid",
-          status: "paid",
+          status: "completed",
           payment_reference: reference,
           updated_at: new Date().toISOString(),
         })
@@ -216,13 +246,14 @@ Deno.serve(async (req) => {
         });
       }
 
-      console.log(`[VERIFY] Subagent registration ${registrationId} payment verified`);
+      console.log(`[VERIFY] Subagent registration ${registrationId} payment verified and store created`);
 
       return new Response(JSON.stringify({
         success: true,
         message: "Registration payment verified successfully",
         type: "subagent_registration_fee",
         registration_id: registrationId,
+        subagent_store_id: newStore.id,
         verified: true,
       }), {
         status: 200,

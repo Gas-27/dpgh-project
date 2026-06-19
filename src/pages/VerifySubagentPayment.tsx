@@ -83,43 +83,8 @@ export default function VerifySubagentPayment() {
           console.error("[v0] Failed to update registration:", regUpdateError);
         }
 
-        // Approve the subagent store
-        if (registration.agent_store_id) {
-          // Get or create subagent store for this registration
-          const { data: existingStore } = await supabase
-            .from("subagent_stores")
-            .select("id")
-            .eq("agent_store_id", registration.agent_store_id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
-
-          let subagentStoreId = existingStore?.id;
-
-          // If no store exists yet, create one
-          if (!subagentStoreId) {
-            const { data: newStore, error: storeCreateError } = await supabase
-              .from("subagent_stores")
-              .insert({
-                agent_store_id: registration.agent_store_id,
-                approved: true,
-                wallet_balance: 0
-              })
-              .select("id")
-              .single();
-
-            if (!storeCreateError && newStore) {
-              subagentStoreId = newStore.id;
-            }
-          }
-
-          if (subagentStoreId) {
-            sessionStorage.setItem("newSubagentStoreId", subagentStoreId);
-          }
-        }
-
-        // NOTE: Registration fee is already added to agent wallet by verify-payment edge function
-        // Do NOT add it again here to avoid double-crediting
+        // Store is already created by verify-payment edge function
+        console.log("[v0] Subagent store already created by edge function");
 
         console.log("[v0] Account approval completed");
 
