@@ -329,36 +329,29 @@ export default function SubagentRegistrationForm({
         return;
       }
 
-      // No fees - still need to trigger webhook to create store with approved: true
-      console.log("[v0] No fees required, user account created - now creating approved store");
+      // No fees - create the store immediately with approved: true
+      console.log("[v0] No fees required, creating approved subagent store");
 
-      // Call edge function to create the store immediately
-      const callbackUrl = `${window.location.origin}/verify-subagent-payment?user_id=${authData.user.id}`;
-      
-      const { data, error } = await supabase.functions.invoke(
-        "initialize-payment",
-        {
-          body: {
-            email: formData.email,
-            amount: 0, // Zero amount for no-fee registration
-            phone: formData.supportNumber,
-            callback_url: callbackUrl,
-            metadata: {
-              type: "subagent_registration_no_fee",
-              agent_store_id: agentStoreId,
-              user_id: authData.user.id,
-              store_name: formData.storeName,
-              store_data: formData,
-              create_approved_store: true,
-            }
-          },
-        }
-      );
+      const { data: storeData, error: storeError } = await supabase
+        .from("subagent_stores")
+        .insert({
+          user_id: authData.user.id,
+          agent_store_id: agentStoreId,
+          store_name: formData.storeName,
+          whatsapp_number: formData.whatsappNumber,
+          support_number: formData.supportNumber,
+          momo_name: formData.momoName,
+          momo_number: formData.momoNumber,
+          momo_network: formData.momoNetwork,
+          wallet_balance: 0,
+          approved: true, // Auto-approve for no-fee registration
+        })
+        .select()
+        .single();
 
-      if (error) {
-        console.error("[v0] Error creating approved store:", error);
-        throw error;
-      }
+      if (storeError) throw storeError;
+
+      console.log("[v0] Approved subagent store created:", storeData.id);
 
       toast({
         title: "✅ Account Created!",
