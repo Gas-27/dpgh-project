@@ -2938,7 +2938,7 @@ const SubagentDashboard = () => {
           </TabsContent>
 
           {/* COMMENTED OUT: mashup packages deactivated
-          {/* MTN MASHUP FLYER */}
+          MTN MASHUP FLYER
           <TabsContent value="mashup-flyer" className="mt-0 space-y-6">
             {subagentStore && (
               <MashupFlyerGenerator
