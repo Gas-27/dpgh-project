@@ -127,9 +127,23 @@ export default function VerifySubagentPayment() {
         setMessage("Payment Confirmed!");
         setApprovalMessage("Your subagent account has been approved and is ready to use.");
 
-        // Redirect to dashboard after 2 seconds
+        // Get store name to redirect to subagent storefront
+        const { data: store, error: storeError } = await supabase
+          .from("subagent_stores")
+          .select("store_name")
+          .eq("id", subagentStoreId)
+          .single();
+
+        let redirectUrl = DOMAINS.getSubagentDashboardUrl();
+        if (store && store.store_name) {
+          redirectUrl = DOMAINS.getSubagentStoreUrl(store.store_name);
+        }
+
+        console.log("[v0] Redirecting to subagent storefront:", redirectUrl);
+
+        // Redirect to subagent storefront after 2 seconds
         setTimeout(() => {
-          window.location.href = `${window.location.origin}/subagent-dashboard`;
+          window.location.href = redirectUrl;
         }, 2000);
       } catch (error) {
         console.error("[v0] Payment verification error:", error);
