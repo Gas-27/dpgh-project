@@ -2,7 +2,7 @@ import { createContext, createElement, useCallback, useContext, useEffect, useMe
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-export type AppRole = "admin" | "agent" | "user" | "subagent";
+export type AppRole = "admin" | "agent" | "user" | "subagent" | "sub_subagent";
 
 interface AuthContextValue {
   user: User | null;
@@ -12,6 +12,7 @@ interface AuthContextValue {
   isAdmin: boolean;
   isAgent: boolean;
   isSubagent: boolean;
+  isSubSubagent: boolean;
   signOut: () => Promise<void>;
   getDashboardRoute: () => string;
 }
@@ -97,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = roles.includes("admin");
   const isAgent = roles.includes("agent");
   const isSubagent = roles.includes("subagent");
+  const isSubSubagent = roles.includes("sub_subagent");
 
   // Track whether user has a pending (unapproved) agent store
   const [hasPendingAgentStore, setHasPendingAgentStore] = useState(false);
@@ -124,7 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getDashboardRoute = useCallback(() => {
     if (roles.includes("admin")) return "/admin";
     if (roles.includes("agent")) return "/agent";
-    if (roles.includes("subagent")) return "/subagent";
+    if (roles.includes("sub_subagent")) return "/sub-subagent-dashboard";
+    if (roles.includes("subagent")) return "/subagent-dashboard";
     if (hasPendingAgentStore) return "/pending-approval";
     return "/";
   }, [roles, hasPendingAgentStore]);
@@ -138,10 +141,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin,
       isAgent,
       isSubagent,
+      isSubSubagent,
       signOut,
       getDashboardRoute,
     }),
-    [user, roles, loading, hasRole, isAdmin, isAgent, isSubagent, signOut, getDashboardRoute],
+    [user, roles, loading, hasRole, isAdmin, isAgent, isSubagent, isSubSubagent, signOut, getDashboardRoute],
   );
 
   return createElement(AuthContext.Provider, { value }, children);

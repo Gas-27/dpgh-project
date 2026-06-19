@@ -188,6 +188,11 @@ const SubagentDashboard = () => {
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
   const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string; store_name?: string } | null>(null);
   
+  // Sub-Subagents
+  const [subSubagents, setSubSubagents] = useState<any[]>([]);
+  const [subSubagentFormOpen, setSubSubagentFormOpen] = useState(false);
+  const [loadingSubSubagents, setLoadingSubSubagents] = useState(false);
+  
   // Bulk Orders
   // COMMENTED OUT: mashup packages deactivated
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
@@ -462,7 +467,8 @@ const SubagentDashboard = () => {
           adminCustomPricesResult,
           subagentPricesResult,
           topupsResult,
-          agentInfoResult
+          agentInfoResult,
+          subSubagentsResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -471,7 +477,8 @@ const SubagentDashboard = () => {
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
-          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
+          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
+          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -479,6 +486,7 @@ const SubagentDashboard = () => {
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
+        setSubSubagents(subSubagentsResult.data || []);
         
         // Build admin custom price map (admin's price to agents - NOT for subagents)
         const adminPriceMap: Record<string, number> = {};
@@ -2952,6 +2960,56 @@ const SubagentDashboard = () => {
             )}
           </TabsContent>
           */}
+
+          {/* SUB-SUBAGENTS */}
+          <TabsContent value="sub-subagents" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Sub-Subagents</CardTitle>
+                <Dialog open={subSubagentFormOpen} onOpenChange={setSubSubagentFormOpen}>
+                  <Button className="mr-4" onClick={() => setSubSubagentFormOpen(true)}>
+                    <Plus className="h-4 w-4 mr-1" /> Add Sub-Subagent
+                  </Button>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {subSubagents.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-6">No sub-subagents yet. Click "Add Sub-Subagent" to create one.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Store Name</TableCell>
+                          <TableCell>Top Reference</TableCell>
+                          <TableCell>Wallet Balance</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell>Created</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {subSubagents.map(subSubagent => (
+                          <TableRow key={subSubagent.id}>
+                            <TableCell className="font-semibold">{subSubagent.store_name}</TableCell>
+                            <TableCell className="font-mono text-sm">{subSubagent.top_reference}</TableCell>
+                            <TableCell>GH₵ {(subSubagent.wallet_balance || 0).toFixed(2)}</TableCell>
+                            <TableCell>
+                              <Badge variant={subSubagent.approved ? "default" : "secondary"}>
+                                {subSubagent.approved ? "Active" : "Pending"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {new Date(subSubagent.created_at).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* SETTINGS */}
           <TabsContent value="settings" className="mt-0 space-y-6">

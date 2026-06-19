@@ -29,6 +29,7 @@ const SubagentStorefront = lazy(() => import("./pages/SubagentStorefront"));
 const SubagentRegistration = lazy(() => import("./pages/SubagentRegistration"));
 const SubagentApprovalPayment = lazy(() => import("./pages/SubagentApprovalPayment"));
 const VerifySubagentPayment = lazy(() => import("./pages/VerifySubagentPayment"));
+const SubSubagentDashboard = lazy(() => import("./pages/SubSubagentDashboard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -104,6 +105,14 @@ const App = () => {
                       </AuthGuard>
                     }
                   />
+                  <Route
+                    path="/sub-subagent-dashboard"
+                    element={
+                      <AuthGuard requiredRole="sub_subagent">
+                        <SubSubagentDashboard />
+                      </AuthGuard>
+                    }
+                  />
                   <Route path="/:storeName" element={<SubagentStorefront />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
@@ -124,6 +133,7 @@ const App = () => {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/agent-registration-callback" element={<AgentRegistrationCallback />} />
                   <Route path="/subagent-registration/:agentStoreId" element={<SubagentRegistration />} />
+                  <Route path="/sub-subagent-registration/:subagentStoreId" element={<SubagentRegistration />} />
                   <Route path="/subagent-approval-payment" element={<SubagentApprovalPayment />} />
                   <Route path="/verify-subagent-payment" element={<VerifySubagentPayment />} />
                   <Route
