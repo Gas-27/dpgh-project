@@ -196,6 +196,8 @@ const SubagentDashboard = () => {
   const [selectedSubSubagentId, setSelectedSubSubagentId] = useState<string | null>(null);
   const [subSubagentPrices, setSubSubagentPrices] = useState<Record<string, number>>({});
   const [tempSubSubagentPrices, setTempSubSubagentPrices] = useState<Record<string, number>>({});
+  const [subSubagentProfitForSubagent, setSubSubagentProfitForSubagent] = useState<number>(0);
+  const [subSubagentOrdersCount, setSubSubagentOrdersCount] = useState<number>(0);
   
   // Bulk Orders
   // COMMENTED OUT: mashup packages deactivated
@@ -490,7 +492,30 @@ const SubagentDashboard = () => {
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
-        setSubSubagents(subSubagentsResult.data || []);
+        
+        // Fetch sub-subagent orders and calculate profits
+        const subSubagentsData = subSubagentsResult.data || [];
+        setSubSubagents(subSubagentsData);
+        
+        if (subSubagentsData.length > 0) {
+          const subSubagentIds = subSubagentsData.map(s => s.id);
+          const { data: subSubagentOrders } = await supabase
+            .from("orders")
+            .select("*")
+            .in("sub_subagent_store_id", subSubagentIds);
+          
+          const subSubagentOrdersList = subSubagentOrders || [];
+          setSubSubagentOrdersCount(subSubagentOrdersList.length);
+          
+          // Calculate profit: difference between what sub-subagent charged (order_price) vs what we charged them (package price)
+          let totalProfit = 0;
+          subSubagentOrdersList.forEach(order => {
+            const profit = (Number(order.order_price) || 0) - (Number(order.package_price) || 0);
+            if (profit > 0) totalProfit += profit;
+          });
+          
+          setSubSubagentProfitForSubagent(totalProfit);
+        }
         
         // Build admin custom price map (admin's price to agents - NOT for subagents)
         const adminPriceMap: Record<string, number> = {};
@@ -3022,36 +3047,82 @@ const SubagentDashboard = () => {
 
           {/* SUB-SUBAGENTS */}
           <TabsContent value="sub-subagents" className="mt-0 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-2">Total Sub-Subagents</p>
+                  <p className="text-3xl font-bold">{subSubagents.length}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-2">Total Profit from Sub-Subagents</p>
+                  <p className="text-3xl font-bold text-green-400">GH₵ {subSubagentProfitForSubagent?.toFixed(2) || "0.00"}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-2">Total Orders from Sub-Subagents</p>
+                  <p className="text-3xl font-bold text-blue-400">{subSubagentOrdersCount || 0}</p>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Sub-Subagents</CardTitle>
-                <Dialog open={subSubagentFormOpen} onOpenChange={setSubSubagentFormOpen}>
-                  <Button className="mr-4" onClick={() => setSubSubagentFormOpen(true)}>
-                    <Plus className="h-4 w-4 mr-1" /> Add Sub-Subagent
-                  </Button>
-                </Dialog>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Users className="h-5 w-5" /> Your Sub-Subagents
+                </CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className="font-semibold text-blue-400 mb-2">Allow Sub-Subagent Registration</p>
+                      <p className="text-sm text-muted-foreground mb-4">When enabled, a "Become a Sub-Subagent" button will appear on your storefront.</p>
+                    </div>
+                    <Switch 
+                      checked={subagentStore?.allow_sub_subagent_registration || false}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          const { error } = await supabase
+                            .from('subagent_stores')
+                            .update({ allow_sub_subagent_registration: checked })
+                            .eq('id', subagentStore?.id);
+                          if (error) throw error;
+                          setSubagentStore(prev => prev ? { ...prev, allow_sub_subagent_registration: checked } : null);
+                          toast({ title: checked ? "Registration enabled" : "Registration disabled" });
+                        } catch (error) {
+                          console.error('Error updating sub-subagent setting:', error);
+                          toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
                 {subSubagents.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-6">No sub-subagents yet. Click "Add Sub-Subagent" to create one.</p>
+                  <p className="text-center text-muted-foreground py-6">No sub-subagents yet. Enable registration to allow them to sign up.</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHead>
+                      <TableHeader>
                         <TableRow>
                           <TableCell>Store Name</TableCell>
                           <TableCell>Top Reference</TableCell>
                           <TableCell>Wallet Balance</TableCell>
+                          <TableCell>Total Orders</TableCell>
                           <TableCell>Status</TableCell>
                           <TableCell>Created</TableCell>
                         </TableRow>
-                      </TableHead>
+                      </TableHeader>
                       <TableBody>
                         {subSubagents.map(subSubagent => (
                           <TableRow key={subSubagent.id}>
                             <TableCell className="font-semibold">{subSubagent.store_name}</TableCell>
                             <TableCell className="font-mono text-sm">{subSubagent.top_reference}</TableCell>
                             <TableCell>GH₵ {(subSubagent.wallet_balance || 0).toFixed(2)}</TableCell>
+                            <TableCell className="text-blue-400">{subSubagent.order_count || 0}</TableCell>
                             <TableCell>
                               <Badge variant={subSubagent.approved ? "default" : "secondary"}>
                                 {subSubagent.approved ? "Active" : "Pending"}
