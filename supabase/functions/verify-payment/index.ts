@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
       // Create the subagent store NOW with approved: true
       const storeData = registration.registration_data || {};
       
+      console.log("[VERIFY] Registration data:", JSON.stringify(registration, null, 2));
       console.log("[VERIFY] Creating subagent store with data:", {
         user_id: registration.user_id,
         agent_store_id: registration.agent_store_id,
@@ -226,6 +227,7 @@ Deno.serve(async (req) => {
 
       if (storeError) {
         console.error("[VERIFY] Failed to create subagent store:", storeError);
+        console.error("[VERIFY] Store creation error details:", JSON.stringify(storeError, null, 2));
         return new Response(JSON.stringify({ error: "Failed to create subagent store", details: storeError.message }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -258,7 +260,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         message: "Registration payment verified successfully",
-        type: "subagent_registration_fee",
+        type: "subagent_registration",
         registration_id: registrationId,
         subagent_store_id: newStore.id,
         verified: true,

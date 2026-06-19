@@ -79,29 +79,12 @@ export default function VerifySubagentPayment() {
         setMessage("Payment Confirmed!");
         setApprovalMessage("Your subagent account has been approved and is ready to use.");
 
-        // Fetch the newly created subagent store to redirect to correct URL
-        const { data: subagentStore } = await supabase
-          .from("subagent_stores")
-          .select("store_name")
-          .eq("user_id", registration.user_id)
-          .eq("approved", true)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
+        // Redirect to subagent dashboard after 2 seconds
+        const dashboardUrl = DOMAINS.getSubagentDashboardUrl();
+        console.log("[v0] Redirecting to subagent dashboard:", dashboardUrl);
 
-        let redirectUrl = DOMAINS.getSubagentDashboardUrl();
-        
-        if (subagentStore?.store_name) {
-          // Redirect to the subagent's actual storefront
-          redirectUrl = DOMAINS.getSubagentStoreUrl(subagentStore.store_name);
-          console.log("[v0] Redirecting to subagent storefront:", redirectUrl);
-        } else {
-          console.log("[v0] No store found, redirecting to dashboard:", redirectUrl);
-        }
-
-        // Redirect after 2 seconds
         setTimeout(() => {
-          window.location.href = redirectUrl;
+          window.location.href = dashboardUrl;
         }, 2000);
       } catch (error) {
         console.error("[v0] Payment verification error:", error);
