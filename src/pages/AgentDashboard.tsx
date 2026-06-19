@@ -2252,7 +2252,7 @@ const AgentDashboard = () => {
                       <div className="flex items-start gap-3">
                         <div className="flex-1">
                           <p className="font-semibold text-green-400 mb-2">Subagent Registration Fee</p>
-                          <p className="text-sm text-muted-foreground mb-4">Charge a one-time registration fee for new subagents. Turn off to allow free registration.</p>
+                          <p className="text-sm text-muted-foreground mb-4">Charge a one-time registration fee for new subagents. Turn off to allow free registration. if is turn on and subagent pay the money is added to your wallet automatically </p>
                         </div>
                         <Switch 
                           checked={store?.subagent_fee_enabled || false}
@@ -2307,7 +2307,7 @@ const AgentDashboard = () => {
                               <Save className="h-4 w-4" /> Save Fee
                             </Button>
                           </div>
-                          <p className="text-xs text-green-400 mt-2">Subagents will need to pay this amount to register under your store.</p>
+                          <p className="text-xs text-green-400 mt-2">Subagents will need to pay this amount to register under your store.The money is added to your wallet automatically when they pay</p>
                         </div>
                       )}
                     </div>
