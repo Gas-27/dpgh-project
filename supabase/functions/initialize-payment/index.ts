@@ -130,8 +130,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Handle subagent_registration_fee payments - they send amount directly
-    if (metadata?.type === "subagent_registration_fee") {
+    // Handle subagent_registration payments - they send amount directly
+    if (metadata?.type === "subagent_registration") {
       if (!requestedAmount || !email || !metadata?.subagent_registration_id || !metadata?.agent_store_id) {
         return new Response(JSON.stringify({ error: "Missing required fields for subagent registration" }), {
           status: 400,
