@@ -265,7 +265,7 @@ export default function SubagentRegistrationForm({
         console.log("[v0] Registration record created:", registration.id);
 
         // Call the edge function to initialize payment
-        const callbackUrl = `${window.location.origin}/verify-subagent-payment?registration_id=${registration.id}&user_id=${authData.user.id}&store_id=${storeData.id}`;
+        const callbackUrl = `${window.location.origin}/verify-subagent-payment?registration_id=${registration.id}&user_id=${authData.user.id}`;
         
         console.log("[v0] Calling initialize-payment with:", {
           email: formData.email,
@@ -277,7 +277,6 @@ export default function SubagentRegistrationForm({
             subagent_registration_id: registration.id,
             agent_store_id: agentStoreId,
             user_id: authData.user.id,
-            store_id: storeData.id,
           }
         });
 
@@ -294,7 +293,6 @@ export default function SubagentRegistrationForm({
                 subagent_registration_id: registration.id,
                 agent_store_id: agentStoreId,
                 user_id: authData.user.id,
-                store_id: storeData.id,
               }
             },
           }
