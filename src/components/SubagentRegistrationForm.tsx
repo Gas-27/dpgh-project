@@ -273,7 +273,7 @@ export default function SubagentRegistrationForm({
           phone: formData.supportNumber,
           callback_url: callbackUrl,
           metadata: {
-            type: "subagent_registration_fee",
+            type: "subagent_registration",
             subagent_registration_id: registration.id,
             agent_store_id: agentStoreId,
             user_id: authData.user.id,
