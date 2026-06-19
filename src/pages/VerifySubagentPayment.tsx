@@ -69,22 +69,9 @@ export default function VerifySubagentPayment() {
 
         console.log("[v0] Registration record found:", registration);
 
-        // Update registration record to mark as paid
-        const { error: regUpdateError } = await supabase
-          .from("subagent_registrations")
-          .update({
-            payment_status: "paid",
-            status: "approved",
-            payment_reference: reference,
-          })
-          .eq("id", registrationId);
-
-        if (regUpdateError) {
-          console.error("[v0] Failed to update registration:", regUpdateError);
-        }
-
-        // Store is already created by verify-payment edge function
-        console.log("[v0] Subagent store already created by edge function");
+        // DO NOT update registration here - verify-payment already did this
+        // Including the store creation
+        console.log("[v0] Store and registration already created by verify-payment edge function");
 
         console.log("[v0] Account approval completed");
 
