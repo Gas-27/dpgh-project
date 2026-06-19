@@ -30,7 +30,8 @@ import { DOMAINS } from "@/config/domains";
 function getOrderStage(order: any): string {
   const elapsed = (Date.now() - new Date(order.created_at).getTime()) / 1000;
   const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  const isMashup = order.network === "mtn_mashup" || order.network === "mashup";
+  // COMMENTED OUT: mashup packages deactivated
+  const isMashup = false; // order.network === "mtn_mashup" || order.network === "mashup";
   
   if (isMashup) {
     if (orderStatus === "delivered" || orderStatus === "completed") {
@@ -187,7 +188,8 @@ const SubagentDashboard = () => {
   const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string; store_name?: string } | null>(null);
   
   // Bulk Orders
-  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo" | "mtn_mashup">("mtn");
+  // COMMENTED OUT: mashup packages deactivated
+  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
@@ -1116,7 +1118,8 @@ const SubagentDashboard = () => {
   };
 
   const filteredPackages = packages.filter(p => {
-    if (networkFilter === "mtn_mashup") {
+    // COMMENTED OUT: mashup packages deactivated
+    if (false && networkFilter === "mtn_mashup") {
       return p.network === "mtn_mashup" || p.network === "mashup";
     }
     return p.network === networkFilter;
@@ -1291,11 +1294,12 @@ const SubagentDashboard = () => {
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
       const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyingPkg.size_gb;
       
-      // For mashup packages, get datahubnet ID from the hardcoded mapping
-      let dataPackageId = undefined;
-      if ((buyingPkg.network === "mashup" || buyingPkg.network === "mtn_mashup") && buyingPkg.size_gb_text) {
-        // Map size_gb_text to datahubnet ID
-        const mashupMapping: Record<string, number> = {
+    // COMMENTED OUT: mashup packages deactivated
+    // For mashup packages, get datahubnet ID from the hardcoded mapping
+    // This is because mashup uses a separate backend (datahubnet)
+    if (false && (buyingPkg.network === "mashup" || buyingPkg.network === "mtn_mashup") && buyingPkg.size_gb_text) {
+      // Datahubnet mapping for mashup packages
+      const mashupMapping: Record<string, number> = {
           "1.7GB": 14,
           "5.1GB": 3,
           "2.6 GB + 1,077 mins": 16,

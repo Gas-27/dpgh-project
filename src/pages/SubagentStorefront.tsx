@@ -108,8 +108,9 @@ const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
-  if (network === "mtn_mashup") return "MTN Special Mashup";
-  if (network === "mashup") return "Mashup";
+  // COMMENTED OUT: mashup packages deactivated
+  // if (network === "mtn_mashup") return "MTN Special Mashup";
+  // if (network === "mashup") return "Mashup";
   return network;
 };
 
@@ -210,8 +211,9 @@ const SubagentOrderTrackingCard = ({
   let statusMessage = "";
   let extraNote: string | null = null;
 
-  // Special handling for mtn_mashup
-  if (order.network === "mtn_mashup") {
+      // COMMENTED OUT: mashup packages deactivated
+      // Special handling for mtn_mashup
+      if (false && order.network === "mtn_mashup") {
     if (elapsedMinutes >= 300) { // 5 hours
       currentStep = 4;
       statusMessage = "Your data bundle has been delivered successfully.";
@@ -728,9 +730,10 @@ export function SubagentStorefront() {
     // Sort all orders by date descending
     allOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
-    // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
-    const enrichedOrders = await Promise.all(allOrders.map(async (order: any) => {
-      if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
+      // COMMENTED OUT: mashup packages deactivated
+      // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
+      // This enriches the order with package details
+      if (false && (order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
         const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
         return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
       }
@@ -749,9 +752,10 @@ export function SubagentStorefront() {
 
   // Helpers
   const filteredPackages = packages.filter((p) => {
-    // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
-    if (networkFilter === "mtn_mashup") {
-      return p.network === "mtn_mashup" || p.network === "mashup";
+      // COMMENTED OUT: mashup packages deactivated
+      // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
+      if (false && networkFilter === "mtn_mashup") {
+        return p.network === "mtn_mashup" || p.network === "mashup";
     }
     return p.network === networkFilter;
   });
@@ -995,7 +999,7 @@ export function SubagentStorefront() {
 
         {/* Network Tabs */}
         <div className="flex flex-wrap gap-2 pb-2 items-center">
-          {["mtn", "airteltigo", "telecel", "mtn_mashup"].map((net) => (
+          {["mtn", "airteltigo", "telecel"].map((net) => ( {/* COMMENTED OUT: "mtn_mashup" deactivated */}
             <Button
               key={net}
               variant={networkFilter === net && !showBulkOrders ? "default" : "outline"}
@@ -1005,7 +1009,8 @@ export function SubagentStorefront() {
               className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
-              {net === "mtn_mashup" ? "MTN Special Mashup" : formatNetworkName(net)}
+              {/* COMMENTED OUT: mashup deactivated - {net === "mtn_mashup" ? "MTN Special Mashup" : formatNetworkName(net)} */}
+        {formatNetworkName(net)}
             </Button>
           ))}
           <div className="h-6 w-px bg-border flex-shrink-0"></div>
@@ -1257,9 +1262,10 @@ export function SubagentStorefront() {
             ) : (
               filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
-                const isMTNMashup = pkg.network === "mtn_mashup" || pkg.network === "mashup";
-                // Show Express badge only on specific mtn_mashup packages (matching flyer image)
-                const showExpress = pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
+      // COMMENTED OUT: mashup packages deactivated
+      const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
+      // Show Express badge only on specific mtn_mashup packages (matching flyer image)
+      const showExpress = false; // pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
                 return (
                   <Card 
                     key={pkg.id} 

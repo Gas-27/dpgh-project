@@ -173,9 +173,10 @@ const PaymentDialog = ({
       return;
     }
 
+    // COMMENTED OUT: mashup packages deactivated
     // Special MTN Mashup: Only MTN numbers allowed
     const selectedNetwork = network || packageInfo?.network || "";
-    if (selectedNetwork === "mtn_mashup" && detectedNetwork !== "mtn") {
+    if (false && selectedNetwork === "mtn_mashup" && detectedNetwork !== "mtn") {
       toast({
         title: "MTN Only",
         description: `Special MTN Mashup is only available for MTN numbers. Your number appears to be ${detectedNetwork.toUpperCase()}.`,

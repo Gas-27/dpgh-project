@@ -120,8 +120,9 @@ const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
-  if (network === "mtn_mashup") return "MTN Special Mashup";
-  if (network === "mashup") return "Mashup";
+  // COMMENTED OUT: mashup packages deactivated
+  // if (network === "mtn_mashup") return "MTN Special Mashup";
+  // if (network === "mashup") return "Mashup";
   return network;
 };
 
@@ -238,8 +239,9 @@ const OrderTrackingCard = ({
   let statusMessage = "";
   let extraNote: string | null = null;
 
-  // Special handling for mtn_mashup
-  if (order.network === "mtn_mashup") {
+      // COMMENTED OUT: mashup packages deactivated
+      // Special handling for mtn_mashup
+      if (false && order.network === "mtn_mashup") {
     if (elapsedMinutes >= 300) { // 5 hours
       currentStep = 4;
       statusMessage = "Your data bundle has been delivered successfully.";
@@ -532,7 +534,7 @@ const NotificationModal = ({
   );
 };
 
-// ───────────────────────────────────────────────���─────────────────────────────
+// ───────────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
 // ─�����������────────────────────────��──────────────────────────────────────────────────
 const AgentStorefront = () => {
@@ -879,9 +881,10 @@ const AgentStorefront = () => {
 
   // ── Render helpers ──
   const filteredPackages = packages.filter((p) => {
-    if (networkFilter === "mtn_mashup") {
-      // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
-      return p.network === "mtn_mashup" || p.network === "mashup";
+      // COMMENTED OUT: mashup packages deactivated
+      if (false && networkFilter === "mtn_mashup") {
+        // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
+        return p.network === "mtn_mashup" || p.network === "mashup";
     }
     return p.network === networkFilter;
   });
@@ -1296,10 +1299,12 @@ const AgentStorefront = () => {
                 </Button>
               ))}
               <Button
-                variant={networkFilter === "mtn_mashup" ? "default" : "outline"}
-                size="sm"
-                className="text-xs sm:text-sm bg-amber-500 hover:bg-amber-600 text-white border-0"
-                onClick={() => setNetworkFilter("mtn_mashup" as any)}
+      // COMMENTED OUT: mashup packages deactivated
+      // variant={networkFilter === "mtn_mashup" ? "default" : "outline"}
+      // className="px-8 py-6 text-lg font-bold"
+      // onClick={() => setNetworkFilter("mtn_mashup" as any)}
+      variant="outline"
+      className="px-8 py-6 text-lg font-bold hidden"
               >
                 MTN Special Mashup
               </Button>
@@ -1332,9 +1337,10 @@ const AgentStorefront = () => {
             >
               {filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
-                const isMTNMashup = pkg.network === "mtn_mashup" || pkg.network === "mashup";
-                // Show Express badge only on specific mtn_mashup packages (matching flyer image)
-                const showExpress = pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
+      // COMMENTED OUT: mashup packages deactivated
+      const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
+      // Show Express badge only on specific mtn_mashup packages (matching flyer image)
+      const showExpress = false; // pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
                 return (
                   <Card
                       key={pkg.id}

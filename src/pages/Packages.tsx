@@ -188,9 +188,10 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   const [latestOrderStatus, setLatestOrderStatus] = useState<string>(order.order_status || "pending");
   const [hasMovedToNetworkValidation, setHasMovedToNetworkValidation] = useState(false);
 
-  // For mashup and mtn_mashup: Poll database for order_status changes
-  useEffect(() => {
-    if (order.network === "mtn_mashup" || order.network === "mashup") {
+    // COMMENTED OUT: mashup packages deactivated
+    // For mashup and mtn_mashup: Poll database for order_status changes
+    // Standard networks use time-based logic, mashup uses database polling
+    if (false && (order.network === "mtn_mashup" || order.network === "mashup")) {
       const pollOrderStatus = async () => {
         try {
           const { data } = await supabase
@@ -1240,7 +1241,8 @@ const Packages = () => {
   }, [searchParams]);
 
   const filtered = useMemo(() => packages.filter(p => {
-    if (selectedNetwork === "mtn_mashup") {
+    // COMMENTED OUT: mashup packages deactivated
+    if (false && selectedNetwork === "mtn_mashup") {
       return p.network === "mtn_mashup" || p.network === "mashup";
     }
     return p.network === selectedNetwork;
@@ -1430,13 +1432,16 @@ const Packages = () => {
               {(Object.keys(networkConfig) as Network[]).map((net) => (
                 <Button key={net} variant={selectedNetwork === net ? "hero" : "outline"} onClick={() => setSelectedNetwork(net)} className="font-semibold">{networkConfig[net].label}</Button>
               ))}
-              <Button variant={selectedNetwork === "mtn_mashup" ? "hero" : "outline"} onClick={() => setSelectedNetwork("mtn_mashup" as any)} className="font-semibold bg-amber-500/90 hover:bg-amber-600 text-white border-0">Special MTN Mashup</Button>
+              {/* COMMENTED OUT: mashup packages deactivated
+      <Button variant={selectedNetwork === "mtn_mashup" ? "hero" : "outline"} onClick={() => setSelectedNetwork("mtn_mashup" as any)} className="font-semibold bg-amber-500/90 hover:bg-amber-600 text-white border-0">Special MTN Mashup</Button>
+      */}
             </div>
 
             {loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filtered.map((pkg) => {
-                  const isMTNMashup = selectedNetwork === "mtn_mashup";
+                  // COMMENTED OUT: mashup packages deactivated
+      const isMTNMashup = false; // selectedNetwork === "mtn_mashup";
                   const networkColor = networkConfig[selectedNetwork as keyof typeof networkConfig]?.color || "text-cyan-400";
                   return (
                     <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
@@ -1444,7 +1449,9 @@ const Packages = () => {
                         {isMTNMashup ? (
                           <>
                             <div className="relative bg-white/20 rounded-lg p-2 mb-2">
-                              {pkg.network === "mtn_mashup" && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
+                              {/* COMMENTED OUT: mashup packages deactivated
+      {pkg.network === "mtn_mashup" && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
+      */}
                               <p className="font-semibold text-sm text-white">Special MTN Mashup</p>
                               <p className="text-xs opacity-90 text-white">Data Bundle</p>
                             </div>
