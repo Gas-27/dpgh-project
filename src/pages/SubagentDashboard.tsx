@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
-  ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw, Layers, FileSpreadsheet, Upload, Zap
+  ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw, Layers, FileSpreadsheet, Upload, Zap,
+  Users, DollarSign
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -192,6 +193,9 @@ const SubagentDashboard = () => {
   const [subSubagents, setSubSubagents] = useState<any[]>([]);
   const [subSubagentFormOpen, setSubSubagentFormOpen] = useState(false);
   const [loadingSubSubagents, setLoadingSubSubagents] = useState(false);
+  const [selectedSubSubagentId, setSelectedSubSubagentId] = useState<string | null>(null);
+  const [subSubagentPrices, setSubSubagentPrices] = useState<Record<string, number>>({});
+  const [tempSubSubagentPrices, setTempSubSubagentPrices] = useState<Record<string, number>>({});
   
   // Bulk Orders
   // COMMENTED OUT: mashup packages deactivated
@@ -1238,6 +1242,59 @@ const SubagentDashboard = () => {
     }
   };
 
+  const handleSubSubagentPriceChange = (packageId: string, value: string) => {
+    setTempSubSubagentPrices(prev => ({
+      ...prev,
+      [packageId]: value === "" ? 0 : (parseFloat(value) || 0)
+    }));
+  };
+
+  const saveSubSubagentPrice = async (subSubagentStoreId: string, packageId: string, price: number) => {
+    if (!subagentStore?.id) {
+      toast({ title: "Error", description: "Store not found", variant: "destructive" });
+      return;
+    }
+
+    const myPrice = subagentPrices[packageId] || basePrices[packageId] || 0;
+    const finalPrice = tempSubSubagentPrices[packageId] || price || myPrice;
+
+    if (finalPrice < myPrice) {
+      toast({
+        title: "Invalid Price",
+        description: `Price cannot be below your selling price (GH₵ ${myPrice.toFixed(2)})`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Delete existing and insert new
+      await supabase
+        .from("sub_subagent_package_prices")
+        .delete()
+        .eq("sub_subagent_store_id", subSubagentStoreId)
+        .eq("package_id", packageId);
+
+      const { error } = await supabase
+        .from("sub_subagent_package_prices")
+        .insert({
+          sub_subagent_store_id: subSubagentStoreId,
+          package_id: packageId,
+          subagent_minimum_price: myPrice,
+          sell_price: finalPrice
+        });
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Price saved for sub-subagent" });
+      setTempSubSubagentPrices({});
+      fetchData();
+    } catch (error) {
+      console.error("Error saving sub-subagent price:", error);
+      toast({ title: "Error", description: "Failed to save price", variant: "destructive" });
+    }
+  };
+
   const handleBuyData = async () => {
     if (!buyingPkg || !buyCustomerNumber || !subagentStore) return;
     
@@ -1456,6 +1513,8 @@ const SubagentDashboard = () => {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "topup", label: "Top Up", icon: Wallet },
+    { id: "sub-subagents", label: "Sub-Subagents", icon: Users },
+    { id: "sub-subagent-pricing", label: "Sub-Subagent Pricing", icon: DollarSign },
     { id: "flyer", label: "Flyer Generator", icon: Image },
     // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
@@ -3005,6 +3064,92 @@ const SubagentDashboard = () => {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* SUB-SUBAGENT PRICING */}
+          <TabsContent value="sub-subagent-pricing" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Set Sub-Subagent Package Prices</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {subSubagents.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-6">No sub-subagents yet. Add one to set their prices.</p>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">Select a sub-subagent to set their package prices</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {subSubagents.map(subSubagent => (
+                        <Card 
+                          key={subSubagent.id}
+                          className={`cursor-pointer border transition-all ${selectedSubSubagentId === subSubagent.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                          onClick={() => setSelectedSubSubagentId(subSubagent.id)}
+                        >
+                          <CardContent className="p-4">
+                            <p className="font-semibold">{subSubagent.store_name}</p>
+                            <p className="text-xs text-muted-foreground">Ref: {subSubagent.top_reference}</p>
+                            <p className="text-sm mt-2">Balance: GH₵ {(subSubagent.wallet_balance || 0).toFixed(2)}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                    
+                    {selectedSubSubagentId && packages.length > 0 && (
+                      <Card className="border-border mt-6">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Pricing for {subSubagents.find(s => s.id === selectedSubSubagentId)?.store_name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Size</TableHead>
+                                  <TableHead>Your Price</TableHead>
+                                  <TableHead>Sub-Subagent Min Price</TableHead>
+                                  <TableHead>Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {packages.map(pkg => {
+                                  const myPrice = subagentPrices[pkg.id] || basePrices[pkg.id] || 0;
+                                  const subSubagentPrice = subSubagentPrices?.[pkg.id] || myPrice;
+                                  return (
+                                    <TableRow key={pkg.id}>
+                                      <TableCell className="font-bold">{pkg.size_gb}GB</TableCell>
+                                      <TableCell>GH₵ {Number(myPrice).toFixed(2)}</TableCell>
+                                      <TableCell>
+                                        <Input 
+                                          type="number" 
+                                          step="0.01" 
+                                          min={myPrice}
+                                          placeholder={myPrice.toFixed(2)}
+                                          className="w-24 h-8"
+                                          onChange={(e) => handleSubSubagentPriceChange(pkg.id, e.target.value)}
+                                        />
+                                      </TableCell>
+                                      <TableCell>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => saveSubSubagentPrice(selectedSubSubagentId, pkg.id, subSubagentPrice)}
+                                        >
+                                          Save
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 )}
               </CardContent>

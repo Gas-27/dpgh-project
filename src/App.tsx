@@ -26,6 +26,7 @@ const AgentRegistrationCallback = lazy(() => import("./pages/AgentRegistrationCa
 const SubagentDashboard = lazy(() => import("./pages/SubagentDashboard"));
 const SubagentLogin = lazy(() => import("./pages/SubagentLogin"));
 const SubagentStorefront = lazy(() => import("./pages/SubagentStorefront"));
+const SubSubagentStorefront = lazy(() => import("./pages/SubSubagentStorefront"));
 const SubagentRegistration = lazy(() => import("./pages/SubagentRegistration"));
 const SubagentApprovalPayment = lazy(() => import("./pages/SubagentApprovalPayment"));
 const VerifySubagentPayment = lazy(() => import("./pages/VerifySubagentPayment"));
@@ -113,6 +114,7 @@ const App = () => {
                       </AuthGuard>
                     }
                   />
+                  <Route path="/:subagentStoreName/store/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/:storeName" element={<SubagentStorefront />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
