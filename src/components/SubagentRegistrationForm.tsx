@@ -205,8 +205,6 @@ export default function SubagentRegistrationForm({
       //   .select()
       //   .single();
 
-      const storeData = { id: null }; // Placeholder since we're not creating it yet
-
       // Assign subagent role
       const { data: existingRole } = await supabase
         .from("user_roles")
