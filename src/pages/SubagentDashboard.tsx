@@ -3157,14 +3157,20 @@ const SubagentDashboard = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-6">Set the base selling prices for your sub-subagents. These prices apply to ALL sub-subagents and become the minimum they must charge customers. You can set different prices for each network (MTN, Telecel, AirtelTigo).</p>
-                <SubSubagentPricesManager
-                  subagentStoreId={subagentStore?.id || ""}
-                  packages={packages}
-                  subagentPrices={subagentPrices}
-                  onPricesSaved={() => {
-                    toast({ title: "Prices saved", description: "Sub-subagent pricing updated successfully" });
-                  }}
-                />
+                {packages.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <p>No packages loaded. Please refresh the page.</p>
+                  </div>
+                ) : (
+                  <SubSubagentPricesManager
+                    subagentStoreId={subagentStore?.id || ""}
+                    packages={packages}
+                    subagentPrices={subagentPrices}
+                    onPricesSaved={() => {
+                      toast({ title: "Prices saved", description: "Sub-subagent pricing updated successfully" });
+                    }}
+                  />
+                )}
               </CardContent>
             </Card>
           </TabsContent>

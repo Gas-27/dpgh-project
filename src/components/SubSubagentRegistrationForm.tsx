@@ -435,17 +435,15 @@ export default function SubSubagentRegistrationForm({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                {agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 ? "Processing Payment..." : "Creating Account..."}
+                Creating Account...
               </>
             ) : (
-              agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0
-                ? `Pay GH₵ ${agentStore.subagent_fee_amount.toFixed(2)} to Create Agent Account`
-                : "Create Agent Account"
+              "Create Sub-Subagent Account"
             )}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            By signing up, you agree to become an agent under {agentStoreName} and follow our terms and conditions.
+            By signing up, you agree to become a sub-subagent under {subagentStoreName} and follow our terms and conditions.
           </p>
 
           <div className="text-center pt-4 border-t border-border">

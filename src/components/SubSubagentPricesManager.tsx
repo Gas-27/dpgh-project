@@ -208,20 +208,24 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-base">Set Sub-Subagent Package Prices</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">The price you set here becomes the minimum price for your sub-subagents</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            <strong>"Your Price"</strong> = The base price your agent gave you. 
+            <br />
+            <strong>"Sub-Subagent Min Price"</strong> = Set the minimum price your sub-subagents must charge (must be ≥ your price)
+          </p>
         </CardHeader>
         <CardContent>
           {filteredPackages.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">No packages available</p>
+            <p className="text-center text-muted-foreground py-4">No packages available for this network</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Your Price</TableHead>
-                    <TableHead>Sub-Subagent Min Price</TableHead>
-                    <TableHead>Profit/Unit</TableHead>
+                    <TableHead>Package Size</TableHead>
+                    <TableHead className="text-cyan-400">Your Price (Agent Cost)</TableHead>
+                    <TableHead className="text-green-400">Sub-Subagent Min Price</TableHead>
+                    <TableHead className="text-yellow-400">Your Margin/Unit</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
