@@ -125,7 +125,7 @@ const SubagentDashboard = () => {
       try {
         // Decode URI component first, then parse JSON (to handle non-Latin1 characters)
         const decoded = JSON.parse(decodeURIComponent(atob(adminToken)));
-        // Token is valid for 1 hour
+        // Token is va base id for 1 hour
         if (decoded.timestamp && Date.now() - decoded.timestamp < 3600000) {
           // Store in localStorage for subsequent navigations and remove from URL
           localStorage.setItem("admin_impersonate_subagent", decoded.userId || "");
