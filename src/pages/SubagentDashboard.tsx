@@ -384,54 +384,12 @@ const SubagentDashboard = () => {
     };
   }, [subagentStore?.id]);
 
-  // Background auto-refresh every 5 seconds (silent, no page flicker)
-  // ONLY refreshes: wallet balance, profit, and orders - does NOT touch form data
+  // Auto-refresh DISABLED - Users can manually refresh with browser refresh button
+  // Previously this would auto-refresh wallet balance and orders every 1 second
+  // This was disabled because it was causing unnecessary page updates and was annoying when users were editing data
+  // Users can still manually refresh the page with Cmd+R / Ctrl+R or use the browser's refresh button
   useEffect(() => {
-    if (!subagentStore?.id) return;
-    
-    const intervalId = setInterval(() => {
-      // Silently refresh ONLY display data in background
-      const refreshBackgroundData = async () => {
-        try {
-          // Only fetch wallet balance and orders (most important data)
-          // Do NOT set loading state to avoid UI flicker
-          // Do NOT touch form data (storeForm) - only update display state
-          const [storeRes, ordersRes] = await Promise.all([
-            supabase
-              .from("subagent_stores")
-              .select("wallet_balance, id")
-              .eq("id", subagentStore.id)
-              .single(),
-            supabase
-              .from("orders")
-              .select("*")
-              .eq("subagent_store_id", subagentStore.id)
-              .order("created_at", { ascending: false })
-          ]);
-
-          // Update ONLY wallet balance display - never touches storeForm
-          if (storeRes.data && storeRes.data.wallet_balance !== undefined) {
-            setSubagentStore((prev) =>
-              prev
-                ? { ...prev, wallet_balance: storeRes.data.wallet_balance }
-                : prev
-            );
-          }
-
-          // Update ONLY orders display - never touches user edits
-          if (ordersRes.data) {
-            setOrders(ordersRes.data as any[]);
-          }
-        } catch (error) {
-          console.error("[v0] Background refresh error:", error);
-          // Fail silently - no error toast to avoid interrupting user edits
-        }
-      };
-
-      refreshBackgroundData();
-    }, 1000); // Refresh every 1 second
-
-    return () => clearInterval(intervalId);
+    // Placeholder - auto-refresh disabled
   }, [subagentStore?.id]);
 
   const fetchData = async (userId?: string, storeId?: string) => {

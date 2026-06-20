@@ -703,109 +703,26 @@ const AgentDashboard = () => {
       });
   }, [store?.id]);
 
-  // Realtime subscriptions for instant updates
+  // Realtime subscriptions DISABLED - No longer auto-refresh on changes
+  // Previously this would trigger fetchAllData() on any database updates (orders, prices, withdrawals, etc.)
+  // This was causing constant page refreshes that interfered with user edits and was very annoying
+  // Users can now manually refresh with Cmd+R / Ctrl+R or the browser refresh button
   useEffect(() => {
     if (!store?.id) return;
     
-    // Get subagent IDs for monitoring their orders
-    const subagentIds = subagents.map(s => s.id);
-    
-    const c1 = supabase.channel("agent-store-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "agent_stores", filter: `id=eq.${store.id}` }, () => {
-        console.log('[v0] Agent store UPDATE received via realtime for store:', store.id);
-        fetchAllData();
-      })
-      .subscribe();
-    const c2 = supabase.channel("withdrawal-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "withdrawal_requests", filter: `agent_store_id=eq.${store.id}` }, (p) => {
-        if ((p.new as any).status === "completed" && (p.old as any).status !== "completed") { fetchAllData(); toast({ title: "Withdrawal approved!" }); }
-        else if ((p.new as any).status !== (p.old as any).status) fetchAllData();
-      }).subscribe();
-    const c3 = supabase.channel("agent-price-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "agent_package_prices", filter: `agent_store_id=eq.${store.id}` }, () => fetchAllData())
-      .subscribe();
-    const c4 = supabase.channel("order-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` }, (payload) => {
-        fetchAllData();
-        toast({ title: "New Order!", description: `Order received for ${(payload.new as any).size_gb}GB` });
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` }, () => fetchAllData())
-      .subscribe();
-    
-    // Monitor subagent orders
-    const c5 = supabase.channel("subagent-order-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
-        const newOrder = payload.new as any;
-        if (subagentIds.includes(newOrder.subagent_store_id)) {
-          fetchAllData();
-          fetchTotalProfit();
-          toast({ title: "Subagent Order!", description: `Order from subagent for ${newOrder.size_gb}GB` });
-        }
-      })
-      .subscribe();
+    // This effect is kept but doesn't do anything - realtime subscriptions are disabled
+    // If you want to re-enable realtime notifications for critical events like order receipts,
+    // you can uncomment the channel subscriptions below, but keep fetchAllData() calls commented out
     
     return () => {
-      supabase.removeChannel(c1);
-      supabase.removeChannel(c2);
-      supabase.removeChannel(c3);
-      supabase.removeChannel(c4);
-      supabase.removeChannel(c5);
+      // Cleanup code would go here if subscriptions were active
     };
   }, [store?.id, subagents]);
 
-  // Background auto-refresh every 5 seconds (silent, no page flicker)
-  // ONLY refreshes: wallet balance, commission balance, profit, and orders - does NOT touch form data
-  useEffect(() => {
-    if (!store?.id) return;
-
-    const intervalId = setInterval(() => {
-      // Silently refresh ONLY display data in background
-      const refreshBackgroundData = async () => {
-        try {
-          // Only fetch wallet balance, commission balance and recent orders
-          // Do NOT set loading state to avoid UI flicker
-          // Do NOT touch form data (storeForm) - only update display state
-          const [storeRes, ordersRes] = await Promise.all([
-            supabase
-              .from("agent_stores")
-              .select("wallet_balance, subagent_commission_balance, id")
-              .eq("id", store.id)
-              .single(),
-            supabase
-              .from("orders")
-              .select("*")
-              .eq("agent_store_id", store.id)
-              .order("created_at", { ascending: false })
-          ]);
-
-          // Update ONLY wallet and commission balances - never touches storeForm
-          if (storeRes.data) {
-            setStore((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    wallet_balance: storeRes.data.wallet_balance,
-                    subagent_commission_balance: storeRes.data.subagent_commission_balance
-                  }
-                : prev
-            );
-          }
-
-          // Update ONLY orders display - never touches user edits
-          if (ordersRes.data) {
-            setOrders(ordersRes.data as any[]);
-          }
-        } catch (error) {
-          console.error("[v0] Background refresh error:", error);
-          // Fail silently - no error toast to avoid interrupting user edits
-        }
-      };
-
-      refreshBackgroundData();
-    }, 1000); // Refresh every 1 second
-
-    return () => clearInterval(intervalId);
-  }, [store?.id]);
+  // Auto-refresh DISABLED - Users can manually refresh with browser refresh button
+  // Previously this would auto-refresh wallet balance, commission balance, and orders every 1 second
+  // This was disabled because it was causing unnecessary page updates and was annoying when users were editing data
+  // Users can still manually refresh the page with Cmd+R / Ctrl+R or use the browser's refresh button
 
   useEffect(() => {
     if (orders.length > 0 && packages.length > 0) fetchTotalProfit();
