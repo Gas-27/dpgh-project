@@ -364,7 +364,7 @@ export default function SubagentRegistrationForm({
       if (onClose) onClose();
 
       setTimeout(() => {
-        window.location.href = DOMAINS.getSubagentDashboardUrl();
+        navigate("/dashboard", { replace: true });
       }, 500);
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
