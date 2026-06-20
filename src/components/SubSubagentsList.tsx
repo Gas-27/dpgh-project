@@ -18,9 +18,9 @@ interface SubSubagentStore {
   momo_number: string;
   momo_network: string;
   wallet_balance: number;
-  top_reference: string;
   approved: boolean;
   suspended?: boolean;
+  // Calculated fields
   calculated_balance?: number;
 }
 
@@ -45,23 +45,24 @@ export default function SubSubagentsList({ subagentStoreId, subSubagents, onRefr
 
   const filtered = subSubagents.filter(s =>
     s.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.whatsapp_number.includes(searchTerm) ||
-    s.top_reference.toLowerCase().includes(searchTerm.toLowerCase())
+    s.whatsapp_number.includes(searchTerm)
   );
 
   const handleViewDetails = async (subSubagent: SubSubagentStore) => {
     try {
       setLoading(true);
+      // Fetch orders, withdrawals, and topups in parallel
       const [ordersResult, withdrawalsResult, topupsResult] = await Promise.all([
         supabase.from("orders").select("*").eq("sub_subagent_store_id", subSubagent.id),
         supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", subSubagent.id),
-        supabase.from("wallet_topups").select("*").eq("sub_subagent_store_id", subSubagent.id)
+        supabase.from("sub_subagent_wallet_topups").select("*").eq("sub_subagent_store_id", subSubagent.id)
       ]);
       
       const orders = ordersResult.data || [];
       const withdrawals = withdrawalsResult.data || [];
       const topups = topupsResult.data || [];
       
+      // Calculate the actual wallet balance
       const customerOrders = orders.filter((o: any) => o.payment_method !== "wallet");
       const totalProfit = customerOrders.reduce((sum: number, order: any) => {
         if (order.status !== "completed" && order.status !== "paid") return sum;
@@ -84,7 +85,7 @@ export default function SubSubagentsList({ subagentStoreId, subSubagents, onRefr
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to load sub-subagent details",
+        description: "Failed to load subagent details",
         variant: "destructive",
       });
     } finally {
@@ -126,7 +127,7 @@ export default function SubSubagentsList({ subagentStoreId, subSubagents, onRefr
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by store name, phone, or reference..."
+            placeholder="Search by store name or phone..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -147,19 +148,21 @@ export default function SubSubagentsList({ subagentStoreId, subSubagents, onRefr
               <Card key={subSubagent.id} className={`border-border hover:bg-card/80 transition-colors cursor-pointer ${subSubagent.suspended ? 'opacity-60' : ''}`}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{subSubagent.store_name}</h3>
-                        <Badge variant={subSubagent.approved ? "default" : "secondary"}>
-                          {subSubagent.approved ? "Active" : "Pending"}
-                        </Badge>
-                        {subSubagent.suspended && <Badge variant="destructive">Suspended</Badge>}
+                        <h3 className="font-semibold text-foreground truncate">{subSubagent.store_name}</h3>
+                        {subSubagent.suspended && (
+                          <Badge variant="destructive" className="text-xs">Suspended</Badge>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">Ref: {subSubagent.top_reference}</p>
-                      <p className="text-xs text-muted-foreground">{subSubagent.whatsapp_number} • {subSubagent.support_number}</p>
-                      <p className="text-sm mt-2 font-semibold text-cyan-400">Wallet: GH₵ {(subSubagent.wallet_balance || 0).toFixed(2)}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{subSubagent.whatsapp_number}</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => handleViewDetails(subSubagent)} disabled={loading}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewDetails(subSubagent)}
+                      className="ml-4 flex-shrink-0"
+                    >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -170,70 +173,130 @@ export default function SubSubagentsList({ subagentStoreId, subSubagents, onRefr
         )}
       </div>
 
-      <Dialog open={!!selectedSubSubagent} onOpenChange={() => setSelectedSubSubagent(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <Dialog open={!!selectedSubSubagent} onOpenChange={(open) => !open && setSelectedSubSubagent(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedSubSubagent?.store_name} - Details</DialogTitle>
-            <DialogDescription>View orders, withdrawals, and wallet activity</DialogDescription>
+            <DialogTitle>{selectedSubSubagent?.store_name}</DialogTitle>
+            <DialogDescription>View sub-subagent details, wallet balance, and orders</DialogDescription>
           </DialogHeader>
-
+          
           {selectedSubSubagent && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                <Card className="border-border">
-                  <CardContent className="p-3">
-                    <p className="text-xs text-muted-foreground">Wallet Balance</p>
-                    <p className="text-lg font-bold text-cyan-400">GH₵ {(selectedSubSubagent.calculated_balance || 0).toFixed(2)}</p>
+            <div className="space-y-6">
+              {/* View Shop Button */}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => window.open(`${DOMAINS.getAgentStoreUrl(selectedSubSubagent.store_name)}`, "_blank")}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" /> View Shop
+              </Button>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">WhatsApp</p>
+                  <p className="font-semibold">{selectedSubSubagent.whatsapp_number}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Support</p>
+                  <p className="font-semibold">{selectedSubSubagent.support_number}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-muted-foreground mb-1">MoMo Account</p>
+                  <p className="font-semibold">
+                    {selectedSubSubagent.momo_name} • {selectedSubSubagent.momo_number} • {selectedSubSubagent.momo_network.toUpperCase()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Wallet & Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border-green-500/30 bg-green-500/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Wallet className="h-4 w-4 text-green-400" />
+                      <p className="text-sm text-muted-foreground">Wallet Balance</p>
+                    </div>
+                    <p className="text-2xl font-bold text-green-400">GH₵ {(selectedSubSubagent.calculated_balance ?? 0).toFixed(2)}</p>
                   </CardContent>
                 </Card>
-                <Card className="border-border">
-                  <CardContent className="p-3">
-                    <p className="text-xs text-muted-foreground">Total Orders</p>
-                    <p className="text-lg font-bold">{selectedSubSubagent.orders?.length || 0}</p>
+                <Card className="border-blue-500/30 bg-blue-500/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShoppingCart className="h-4 w-4 text-blue-400" />
+                      <p className="text-sm text-muted-foreground">Total Orders</p>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-400">{selectedSubSubagent.orders?.length || 0}</p>
                   </CardContent>
                 </Card>
-                <Card className="border-border">
-                  <CardContent className="p-3">
-                    <p className="text-xs text-muted-foreground">Total Profit</p>
-                    <p className="text-lg font-bold text-green-400">
-                      GH₵ {(selectedSubSubagent.orders?.reduce((sum: number, o: any) => {
-                        if (o.profit) return sum + Number(o.profit);
-                        const baseCost = o.base_price || 0;
-                        return sum + (Number(o.selling_price || o.amount) - baseCost);
-                      }, 0) || 0).toFixed(2)}
-                    </p>
+                <Card className="border-yellow-500/30 bg-yellow-500/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <TrendingUp className="h-4 w-4 text-yellow-400" />
+                      <p className="text-sm text-muted-foreground">Status</p>
+                    </div>
+                    {selectedSubSubagent.suspended ? (
+                      <Badge className="bg-red-600/20 text-red-400 border-red-600/30 mt-1">Suspended</Badge>
+                    ) : (
+                      <Badge className="bg-green-600/20 text-green-400 border-green-600/30 mt-1">Active</Badge>
+                    )}
                   </CardContent>
                 </Card>
               </div>
 
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="text-sm">Recent Orders</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {selectedSubSubagent.orders && selectedSubSubagent.orders.length > 0 ? (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {selectedSubSubagent.orders.slice(0, 10).map((order: any) => (
-                        <div key={order.id} className="text-xs border-b pb-2 flex justify-between">
-                          <span>{order.customer_number} - {order.size_gb}GB</span>
-                          <span className="font-semibold">GH₵ {(order.amount || order.selling_price || 0).toFixed(2)}</span>
+              {/* Orders List */}
+              <div>
+                <h4 className="font-semibold mb-3">Orders ({selectedSubSubagent.orders?.length || 0})</h4>
+                {selectedSubSubagent.orders && selectedSubSubagent.orders.length > 0 ? (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {selectedSubSubagent.orders.map((order: any) => (
+                      <div key={order.id} className="text-sm p-3 rounded border border-border flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{order.network.toUpperCase()} - {order.size_gb}GB</p>
+                          <p className="text-xs text-muted-foreground">{order.customer_number}</p>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No orders yet</p>
-                  )}
-                </CardContent>
-              </Card>
+                        <div className="text-right">
+                          <p className="font-semibold">GH₵ {Number(order.selling_price || order.amount).toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30 ml-2" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30 ml-2"}>
+                          {order.status === "paid" ? "completed" : order.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No orders yet</p>
+                )}
+              </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-3 pt-4 border-t border-border">
+                {selectedSubSubagent.suspended ? (
+                  <Button
+                    variant="default"
+                    onClick={() => handleSuspend(selectedSubSubagent.id, true)}
+                    disabled={suspendLoading === selectedSubSubagent.id}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" /> 
+                    {suspendLoading === selectedSubSubagent.id ? "Processing..." : "Unsuspend Account"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleSuspend(selectedSubSubagent.id, false)}
+                    disabled={suspendLoading === selectedSubSubagent.id}
+                    className="flex-1"
+                  >
+                    <Ban className="h-4 w-4 mr-2" /> 
+                    {suspendLoading === selectedSubSubagent.id ? "Processing..." : "Suspend Account"}
+                  </Button>
+                )}
                 <Button
-                  variant={selectedSubSubagent.suspended ? "default" : "destructive"}
+                  variant="outline"
+                  onClick={() => setSelectedSubSubagent(null)}
                   className="flex-1"
-                  onClick={() => handleSuspend(selectedSubSubagent.id, selectedSubSubagent.suspended || false)}
-                  disabled={suspendLoading === selectedSubSubagent.id}
                 >
-                  {suspendLoading === selectedSubSubagent.id ? "Updating..." : (selectedSubSubagent.suspended ? "Unsuspend" : "Suspend")}
+                  Close
                 </Button>
               </div>
             </div>

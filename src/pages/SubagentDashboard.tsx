@@ -15,7 +15,7 @@ import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
   ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw, Layers, FileSpreadsheet, Upload, Zap,
-  Users, DollarSign
+  Users, DollarSign, Send, Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -27,6 +27,7 @@ import FlyerGenerator from "@/components/FlyerGenerator";
 // import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import SubSubagentPricesManager from "@/components/SubSubagentPricesManager";
+import SubSubagentsList from "@/components/SubSubagentsList";
 import { DOMAINS } from "@/config/domains";
 
 // Helper function to get current order stage
@@ -196,9 +197,12 @@ const SubagentDashboard = () => {
   const [loadingSubSubagents, setLoadingSubSubagents] = useState(false);
   const [selectedSubSubagentId, setSelectedSubSubagentId] = useState<string | null>(null);
   const [subSubagentPrices, setSubSubagentPrices] = useState<Record<string, number>>({});
-  const [tempSubSubagentPrices, setTempSubSubagentPrices] = useState<Record<string, number>>({});
+
   const [subSubagentProfitForSubagent, setSubSubagentProfitForSubagent] = useState<number>(0);
   const [subSubagentOrdersCount, setSubSubagentOrdersCount] = useState<number>(0);
+  const [subSubagentNotifications, setSubSubagentNotifications] = useState<any[]>([]);
+  const [subSubagentNotificationMsg, setSubSubagentNotificationMsg] = useState("");
+  const [sendingSubSubagentNotification, setSendingSubSubagentNotification] = useState(false);
   
   // Bulk Orders
   // COMMENTED OUT: mashup packages deactivated
@@ -521,6 +525,9 @@ const SubagentDashboard = () => {
           
           setSubSubagentProfitForSubagent(totalProfit);
         }
+        
+        // Fetch sub-subagent notifications
+        await fetchSubSubagentNotifications();
         
         // Build admin custom price map (admin's price to agents - NOT for subagents)
         const adminPriceMap: Record<string, number> = {};
@@ -945,6 +952,52 @@ const SubagentDashboard = () => {
     const { error } = await supabase.from("subagent_notifications").delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
+  };
+
+  // Sub-Subagent Notification handlers
+  const sendSubSubagentNotification = async () => {
+    if (!subSubagentNotificationMsg.trim() || !subagentStore?.id) return;
+    try {
+      setSendingSubSubagentNotification(true);
+      const { error } = await supabase.from("sub_subagent_notifications").insert({
+        subagent_store_id: subagentStore.id,
+        message: subSubagentNotificationMsg.trim(),
+        is_active: true,
+        created_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setSubSubagentNotificationMsg("");
+      toast({ title: "Success", description: "Notification sent to all sub-subagents" });
+      fetchSubSubagentNotifications();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSendingSubSubagentNotification(false);
+    }
+  };
+
+  const deleteSubSubagentNotification = async (id: string) => {
+    try {
+      const { error } = await supabase.from("sub_subagent_notifications").delete().eq("id", id);
+      if (error) throw error;
+      fetchSubSubagentNotifications();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const fetchSubSubagentNotifications = async () => {
+    try {
+      if (!subagentStore?.id) return;
+      const { data } = await supabase
+        .from("sub_subagent_notifications")
+        .select("*")
+        .eq("subagent_store_id", subagentStore.id)
+        .order("created_at", { ascending: false });
+      if (data) setSubSubagentNotifications(data);
+    } catch (error) {
+      console.error("Error fetching sub-subagent notifications:", error);
+    }
   };
   
   // Paystack wallet top up
@@ -3052,6 +3105,50 @@ const SubagentDashboard = () => {
 
           {/* SUB-SUBAGENTS */}
           <TabsContent value="sub-subagents" className="mt-0 space-y-6">
+            {/* Send Notification to Sub-Subagents - AT THE TOP */}
+            <Card className="border-orange-500/30 bg-orange-500/5">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-orange-400" /> Send Notification to All Sub-Subagents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">Send a popup notification that all your sub-subagents will see when they open their dashboard.</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    placeholder="Type your notification message..."
+                    value={subSubagentNotificationMsg}
+                    onChange={(e) => setSubSubagentNotificationMsg(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    variant="hero" 
+                    onClick={sendSubSubagentNotification} 
+                    disabled={sendingSubSubagentNotification || !subSubagentNotificationMsg.trim()}
+                  >
+                    {sendingSubSubagentNotification ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                    Send
+                  </Button>
+                </div>
+                {subSubagentNotifications.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-semibold">Recent Notifications Sent</p>
+                    {subSubagentNotifications.slice(0, 3).map((n) => (
+                      <div key={n.id} className="flex items-start justify-between p-3 bg-secondary/30 rounded-lg">
+                        <div>
+                          <p className="text-sm">{n.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => deleteSubSubagentNotification(n.id)}>
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-border">
                 <CardContent className="pt-6">
@@ -3107,42 +3204,17 @@ const SubagentDashboard = () => {
                   </div>
                 </div>
 
-                {subSubagents.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-6">No sub-subagents yet. Enable registration to allow them to sign up.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableCell>Store Name</TableCell>
-                          <TableCell>Top Reference</TableCell>
-                          <TableCell>Wallet Balance</TableCell>
-                          <TableCell>Total Orders</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Created</TableCell>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {subSubagents.map(subSubagent => (
-                          <TableRow key={subSubagent.id}>
-                            <TableCell className="font-semibold">{subSubagent.store_name}</TableCell>
-                            <TableCell className="font-mono text-sm">{subSubagent.top_reference}</TableCell>
-                            <TableCell>GH₵ {(subSubagent.wallet_balance || 0).toFixed(2)}</TableCell>
-                            <TableCell className="text-blue-400">{subSubagent.order_count || 0}</TableCell>
-                            <TableCell>
-                              <Badge variant={subSubagent.approved ? "default" : "secondary"}>
-                                {subSubagent.approved ? "Active" : "Pending"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {new Date(subSubagent.created_at).toLocaleDateString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
+                <SubSubagentsList
+                  subagentStoreId={subagentStore?.id || ""}
+                  subSubagents={subSubagents}
+                  onRefresh={async () => {
+                    const { data } = await supabase
+                      .from("sub_subagent_stores")
+                      .select("*")
+                      .eq("subagent_store_id", subagentStore?.id);
+                    if (data) setSubSubagents(data);
+                  }}
+                />
               </CardContent>
             </Card>
           </TabsContent>
