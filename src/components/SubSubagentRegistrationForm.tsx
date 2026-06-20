@@ -49,6 +49,7 @@ export default function SubSubagentRegistrationForm({
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
     
+    // Clear error when user starts typing again
     if (id === "storeName") {
       setStoreNameError("");
     }
@@ -61,7 +62,7 @@ export default function SubSubagentRegistrationForm({
     setCheckingStoreName(true);
     try {
       const { data: existingStores, error } = await supabase
-        .from("sub_subagent_stores")
+        .from("subagent_stores")
         .select("store_name")
         .ilike("store_name", `%${formData.storeName}%`);
 
@@ -89,300 +90,329 @@ export default function SubSubagentRegistrationForm({
     setFormData(prev => ({ ...prev, momoNetwork: value }));
   };
 
-  // Fetch subagent store data to check if sub-subagent registration is enabled
+  // Fetch agent store data to check if fees are enabled
   useEffect(() => {
     const fetchSubagentStore = async () => {
       try {
         const { data, error } = await supabase
           .from("subagent_stores")
-          .select("id, store_name, allow_sub_subagent_registration")
+          .select("*")
           .eq("id", subagentStoreId)
           .single();
 
-        if (error) {
-          toast({ title: "Error", description: "Failed to fetch subagent store data", variant: "destructive" });
-        } else if (data && !data.allow_sub_subagent_registration) {
-          toast({ title: "Info", description: "Sub-subagent registration is not enabled for this store", variant: "default" });
-        }
+        if (error) throw error;
         setSubagentStore(data);
+        console.log("[v0] Subagent store loaded:", data);
       } catch (error) {
-        toast({ title: "Error", description: "An error occurred while fetching store data", variant: "destructive" });
+        console.error("[v0] Error fetching subagent store:", error);
       } finally {
         setFetchingStore(false);
       }
     };
 
-    fetchSubagentStore();
-  }, [subagentStoreId, toast]);
+    if (subagentStoreId) {
+      fetchSubagentStore();
+    }
+  }, [subagentStoreId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validateForm = async () => {
+    if (!formData.email || !formData.password || !formData.storeName || 
+        !formData.supportNumber || !formData.whatsappNumber || 
+        !formData.momoName || !formData.momoNumber) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (formData.email.length < 5 || !formData.email.includes("@")) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Check if store name is already taken
+    const { data: existingStores, error: checkError } = await supabase
+      .from("subagent_stores")
+      .select("store_name")
+      .ilike("store_name", `%${formData.storeName}%`);
+
+    if (!checkError && existingStores && existingStores.length > 0) {
+      // Check for exact match (case-insensitive)
+      const isDuplicate = existingStores.some((store: any) => 
+        store.store_name.toLowerCase().trim() === formData.storeName.toLowerCase().trim()
+      );
+      
+      if (isDuplicate) {
+        toast({
+          title: "Store Name Taken",
+          description: `The store name "${formData.storeName}" is already taken. Please choose a different name.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
-    if (!formData.email || !formData.password || !formData.storeName) {
-      toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" });
-      return;
-    }
-
-    if (storeNameError) {
-      toast({ title: "Error", description: storeNameError, variant: "destructive" });
-      return;
-    }
-
-    setLoading(true);
+    if (!(await validateForm())) return;
 
     try {
-      // Sign up user with sub_subagent role
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      setLoading(true);
+
+      // Step 1: Always create the user account and subagent store first
+      console.log("[v0] Creating user account and subagent store first");
+
+      // Sign up the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
-            role: "sub_subagent",
+            role: "subagent",
           },
         },
       });
 
-      if (signUpError) {
-        toast({ title: "Error", description: signUpError.message, variant: "destructive" });
-        setLoading(false);
-        return;
+      if (authError) throw authError;
+      if (!authData.user?.id) throw new Error("Failed to create user account");
+
+      console.log("[v0] User account created:", authData.user.id);
+
+      // COMMENTED OUT: Store creation moved to webhook after payment
+      // const approvalStatus = agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 ? false : true;
+      // const { data: storeData, error: storeError } = await supabase
+      //   .from("subagent_stores")
+      //   .insert({...})
+      //   .select()
+      //   .single();
+
+      // Assign subagent role
+      const { data: existingRole } = await supabase
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .eq("role", "subagent")
+        .single();
+
+      if (!existingRole) {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({
+            user_id: authData.user.id,
+            role: "subagent",
+          });
+
+        if (roleError && roleError.code !== "PGRST116") {
+          throw new Error("Failed to create user role");
+        }
       }
 
-      if (!signUpData.user) {
-        toast({ title: "Error", description: "Failed to create user account", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
+      console.log("[v0] User role assigned");
 
-      // Store registration data in sub_subagent_registrations table
-      const { error: registrationError } = await supabase
-        .from("sub_subagent_registrations")
-        .insert([
-          {
-            user_id: signUpData.user.id,
-            subagent_store_id: subagentStoreId,
-            business_name: formData.storeName,
-            phone_number: formData.supportNumber,
-            email: formData.email,
-            registration_data: {
-              store_name: formData.storeName,
-              support_number: formData.supportNumber,
-              whatsapp_number: formData.whatsappNumber,
-              momo_name: formData.momoName,
-              momo_number: formData.momoNumber,
-              momo_network: formData.momoNetwork,
-            },
-            status: "completed",
-            payment_status: "pending",
-          },
-        ]);
+      // Step 2: Check if fees are required (Sub-Subagents don't have registration fees)
+      // Sub-subagents are automatically approved when registering under a subagent
+      console.log("[v0] Sub-subagent registration - no fees, auto-approving");
 
-      if (registrationError) {
-        console.error("[v0] Registration error:", registrationError);
-        toast({ title: "Error", description: "Failed to save registration data", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-
-      // Create sub-subagent store record
-      const { error: storeError } = await supabase
+      // Create the store directly without payment
+      const { data: storeData, error: storeError } = await supabase
         .from("sub_subagent_stores")
-        .insert([
-          {
-            user_id: signUpData.user.id,
-            subagent_store_id: subagentStoreId,
-            store_name: formData.storeName,
-            whatsapp_number: formData.whatsappNumber,
-            support_number: formData.supportNumber,
-            momo_name: formData.momoName,
-            momo_number: formData.momoNumber,
-            momo_network: formData.momoNetwork,
-            wallet_balance: 0,
-            approved: true,
-          },
-        ]);
+        .insert({
+          subagent_store_id: subagentStoreId,
+          user_id: authData.user.id,
+          store_name: formData.storeName,
+          whatsapp_number: formData.whatsappNumber,
+          support_number: formData.supportNumber,
+          momo_name: formData.momoName,
+          momo_number: formData.momoNumber,
+          momo_network: formData.momoNetwork,
+          top_reference: `REF-${Date.now()}`,
+          wallet_balance: 0,
+          approved: true, // Auto-approve
+        })
+        .select()
+        .single();
 
       if (storeError) {
-        console.error("[v0] Store creation error:", storeError);
-        toast({ title: "Error", description: "Failed to create store", variant: "destructive" });
-        setLoading(false);
-        return;
+        console.error("[v0] Error creating sub-subagent store:", storeError);
+        throw storeError;
       }
 
-      toast({ 
-        title: "Success", 
-        description: "Sub-subagent registration successful! Please log in with your credentials.", 
-        variant: "default" 
+      console.log("[v0] Sub-subagent store created:", storeData.id);
+
+      // Sub-subagents don't need payment, so skip to dashboard
+      toast({
+        title: "Success!",
+        description: "Your sub-subagent account has been created. Redirecting to your dashboard...",
+        duration: 3000,
       });
 
-      // Redirect to login page
       setTimeout(() => {
-        navigate("/login");
+        navigate(`/sub-subagent-dashboard?store_id=${storeData.id}`);
+        if (onClose) onClose();
       }, 1500);
-
-    } catch (error) {
-      console.error("[v0] Unexpected error:", error);
-      toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" });
+    } catch (error: any) {
+      console.error("[v0] Registration error:", error);
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Failed to create agent account",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  if (fetchingStore) {
-    return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardContent className="p-6 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!subagentStore?.allow_sub_subagent_registration) {
-    return (
-      <Card className="w-full max-w-md mx-auto border-red-500/50">
-        <CardContent className="p-6">
-          <div className="flex gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+  return (
+    <Card className="border-border bg-card/50">
+      <CardContent className="p-6 md:p-8 space-y-6">
+        {/* Info Alert */}
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-red-600">Registration Disabled</p>
-              <p className="text-sm text-muted-foreground mt-1">Sub-subagent registration is not currently enabled for this subagent store.</p>
+              <p className="font-semibold text-green-400 mb-1">No Registration Fee</p>
+              <p className="text-sm text-muted-foreground">
+                Your sub-subagent account will be created instantly with no registration fee. Start selling immediately after sign up!
+              </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardContent className="p-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Become a Sub-Subagent</h2>
-          <p className="text-sm text-muted-foreground mt-1">Under {subagentStoreName}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Store Name */}
-          <div>
-            <Label htmlFor="storeName" className="text-foreground">Store Name *</Label>
-            <Input
-              id="storeName"
-              type="text"
-              placeholder="Your Store Name"
-              value={formData.storeName}
-              onChange={handleInputChange}
-              onBlur={checkStoreNameAvailability}
-              disabled={loading}
-              className="mt-1.5"
-            />
-            {checkingStoreName && <p className="text-xs text-muted-foreground mt-1">Checking availability...</p>}
-            {storeNameError && <p className="text-xs text-red-600 mt-1">{storeNameError}</p>}
-          </div>
-
-          {/* Email */}
-          <div>
-            <Label htmlFor="email" className="text-foreground">Email Address *</Label>
+        <form onSubmit={handleRegister} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
             <Input
               id="email"
               type="email"
               placeholder="your@email.com"
+              className="bg-background border-border"
               value={formData.email}
               onChange={handleInputChange}
-              disabled={loading}
-              className="mt-1.5"
+              disabled={loading || fetchingStore}
             />
           </div>
 
-          {/* Password */}
-          <div>
-            <Label htmlFor="password" className="text-foreground">Password *</Label>
-            <div className="relative mt-1.5">
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="At least 8 characters"
+                placeholder="Create a strong password (min 6 characters)"
+                className="bg-background border-border pr-10"
                 value={formData.password}
                 onChange={handleInputChange}
-                disabled={loading}
+                disabled={loading || fetchingStore}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                disabled={loading || fetchingStore}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </button>
             </div>
           </div>
 
-          {/* Support Number */}
-          <div>
-            <Label htmlFor="supportNumber" className="text-foreground">Support Number</Label>
+          <div className="space-y-2">
+            <Label htmlFor="storeName">Store Name</Label>
             <Input
-              id="supportNumber"
-              type="tel"
-              placeholder="0241234567"
-              value={formData.supportNumber}
+              id="storeName"
+              placeholder="Your Store Name"
+              className={`bg-background border-border ${storeNameError ? 'border-red-500' : ''}`}
+              value={formData.storeName}
               onChange={handleInputChange}
-              disabled={loading}
-              className="mt-1.5"
+              onBlur={checkStoreNameAvailability}
+              disabled={loading || checkingStoreName || fetchingStore}
             />
+            {storeNameError && (
+              <p className="text-sm text-red-500">{storeNameError}</p>
+            )}
           </div>
 
-          {/* WhatsApp Number */}
-          <div>
-            <Label htmlFor="whatsappNumber" className="text-foreground">WhatsApp Number</Label>
-            <Input
-              id="whatsappNumber"
-              type="tel"
-              placeholder="0241234567"
-              value={formData.whatsappNumber}
-              onChange={handleInputChange}
-              disabled={loading}
-              className="mt-1.5"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="supportNumber">Support Number</Label>
+              <Input
+                id="supportNumber"
+                type="tel"
+                placeholder="0XX XXX XXXX"
+                className="bg-background border-border"
+                value={formData.supportNumber}
+                onChange={handleInputChange}
+                disabled={loading || fetchingStore}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
+              <Input
+                id="whatsappNumber"
+                type="tel"
+                placeholder="0XX XXX XXXX"
+                className="bg-background border-border"
+                value={formData.whatsappNumber}
+                onChange={handleInputChange}
+                disabled={loading || fetchingStore}
+              />
+            </div>
           </div>
 
-          {/* MoMo Name */}
-          <div>
-            <Label htmlFor="momoName" className="text-foreground">MoMo Account Name</Label>
-            <Input
-              id="momoName"
-              type="text"
-              placeholder="John Doe"
-              value={formData.momoName}
-              onChange={handleInputChange}
-              disabled={loading}
-              className="mt-1.5"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="momoName">MoMo Account Name</Label>
+              <Input
+                id="momoName"
+                placeholder="Account holder name"
+                className="bg-background border-border"
+                value={formData.momoName}
+                onChange={handleInputChange}
+                disabled={loading || fetchingStore}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="momoNumber">MoMo Number</Label>
+              <Input
+                id="momoNumber"
+                type="tel"
+                placeholder="0XX XXX XXXX"
+                className="bg-background border-border"
+                value={formData.momoNumber}
+                onChange={handleInputChange}
+                disabled={loading || fetchingStore}
+              />
+            </div>
           </div>
 
-          {/* MoMo Number */}
-          <div>
-            <Label htmlFor="momoNumber" className="text-foreground">MoMo Number</Label>
-            <Input
-              id="momoNumber"
-              type="tel"
-              placeholder="0241234567"
-              value={formData.momoNumber}
-              onChange={handleInputChange}
-              disabled={loading}
-              className="mt-1.5"
-            />
-          </div>
-
-          {/* MoMo Network */}
-          <div>
-            <Label className="text-foreground">MoMo Network</Label>
+          <div className="space-y-2">
+            <Label htmlFor="momoNetwork">MoMo Network</Label>
             <Select value={formData.momoNetwork} onValueChange={handleSelectChange} disabled={loading}>
-              <SelectTrigger className="mt-1.5">
+              <SelectTrigger id="momoNetwork" className="bg-background border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -393,39 +423,44 @@ export default function SubSubagentRegistrationForm({
             </Select>
           </div>
 
-          {/* Submit Button */}
           <Button
             type="submit"
-            disabled={loading}
-            style={{ backgroundColor: primaryColor, color: primaryForeground }}
-            className="w-full mt-6"
+            className="w-full text-lg h-12 font-semibold"
+            style={{
+              background: primaryColor,
+              color: primaryForeground,
+            }}
+            disabled={loading || checkingStoreName || !!storeNameError || fetchingStore}
           >
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Registering...
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                {agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 ? "Processing Payment..." : "Creating Account..."}
               </>
             ) : (
-              "Complete Registration"
+              agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0
+                ? `Pay GH₵ ${agentStore.subagent_fee_amount.toFixed(2)} to Create Agent Account`
+                : "Create Agent Account"
             )}
           </Button>
 
-          {onClose && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-              className="w-full"
-            >
-              Cancel
-            </Button>
-          )}
-        </form>
+          <p className="text-xs text-muted-foreground text-center">
+            By signing up, you agree to become an agent under {agentStoreName} and follow our terms and conditions.
+          </p>
 
-        <p className="text-xs text-center text-muted-foreground mt-4">
-          By registering, you agree to our terms and conditions
-        </p>
+          <div className="text-center pt-4 border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              Already an agent?{" "}
+              <a 
+                href="https://agentsstore.shop/login" 
+                className="font-semibold hover:underline"
+                style={{ color: primaryColor }}
+              >
+                Sign in here
+              </a>
+            </p>
+          </div>
+        </form>
       </CardContent>
     </Card>
   );

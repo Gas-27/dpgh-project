@@ -23,7 +23,7 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
   const [loadingPrices, setLoadingPrices] = useState(true);
   const { toast } = useToast();
 
-  // Fetch existing saved base prices for this subagent's sub-subagents
+  // Fetch existing saved base prices this subagent has set for sub-subagents
   React.useEffect(() => {
     const fetchSavedPrices = async () => {
       if (!subagentStoreId) return;
@@ -32,7 +32,7 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
       const { data, error } = await supabase
         .from("sub_subagent_package_prices")
         .select("package_id, subagent_minimum_price")
-        .eq("sub_subagent_store_id", subagentStoreId);
+        .eq("subagent_store_id", subagentStoreId);
       
       if (!error && data) {
         const priceMap: Record<string, number> = {};
@@ -122,13 +122,13 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
         await supabase
           .from("sub_subagent_package_prices")
           .delete()
-          .eq("sub_subagent_store_id", subagentStoreId)
+          .eq("subagent_store_id", subagentStoreId)
           .eq("package_id", packageId);
         
         const { error } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
-            sub_subagent_store_id: subagentStoreId,
+            subagent_store_id: subagentStoreId,
             package_id: packageId,
             subagent_minimum_price: price,
             sell_price: price

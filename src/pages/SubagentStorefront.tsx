@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import DraggableFAB from "@/components/DraggableFAB";
+import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -1321,6 +1322,21 @@ export function SubagentStorefront() {
             )}
           </div>
           </>
+        )}
+
+        {/* SUB-SUBAGENT REGISTRATION FORM */}
+        {showSubSubagentForm && store && (
+          <Card className="border-primary/30 bg-primary/5 mb-6">
+            <CardContent className="p-6">
+              <SubSubagentRegistrationForm
+                subagentStoreId={store.id}
+                subagentStoreName={store.store_name}
+                primaryColor={primaryColor}
+                primaryForeground={primaryForeground}
+                onClose={() => setShowSubSubagentForm(false)}
+              />
+            </CardContent>
+          </Card>
         )}
 
         {/* Support */}

@@ -3090,17 +3090,16 @@ const SubagentDashboard = () => {
                       checked={subagentStore?.allow_sub_subagent_registration || false}
                       onCheckedChange={async (checked) => {
                         try {
+                          setSubagentStore(prev => prev ? { ...prev, allow_sub_subagent_registration: checked } : null);
                           const { error } = await supabase
                             .from('subagent_stores')
                             .update({ allow_sub_subagent_registration: checked })
                             .eq('id', subagentStore?.id);
                           if (error) throw error;
-                          setSubagentStore(prev => prev ? { ...prev, allow_sub_subagent_registration: checked } : null);
                           toast({ title: checked ? "Registration enabled" : "Registration disabled" });
-                          // Refresh dashboard to reflect changes
-                          fetchData();
                         } catch (error) {
                           console.error('Error updating sub-subagent setting:', error);
+                          setSubagentStore(prev => prev ? { ...prev, allow_sub_subagent_registration: !checked } : null);
                           toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
                         }
                       }}
@@ -3157,46 +3156,15 @@ const SubagentDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-6">Set the minimum selling prices for your sub-subagents. These are the prices sub-subagents will see and use as their starting point to set their own store prices. All sub-subagents use these same prices.</p>
-                {selectedSubSubagentId ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-                      <div>
-                        <p className="text-sm font-semibold">Selected Sub-Subagent</p>
-                        <p className="text-xs text-muted-foreground">{subSubagents.find(s => s.id === selectedSubSubagentId)?.store_name}</p>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => setSelectedSubSubagentId(null)}>Change</Button>
-                    </div>
-                    <SubSubagentPricesManager
-                      subagentStoreId={selectedSubSubagentId}
-                      packages={packages}
-                      subagentPrices={subagentPrices}
-                      onPricesSaved={fetchData}
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground mb-4">Select a sub-subagent to set their package prices</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {subSubagents.map(subSubagent => (
-                        <Card 
-                          key={subSubagent.id}
-                          className="cursor-pointer border transition-all hover:border-cyan-500/50 hover:bg-secondary/50"
-                          onClick={() => setSelectedSubSubagentId(subSubagent.id)}
-                        >
-                          <CardContent className="p-4">
-                            <p className="font-semibold text-sm">{subSubagent.store_name}</p>
-                            <p className="text-xs text-cyan-400 font-mono mt-1">{subSubagent.top_reference}</p>
-                            <p className="text-xs text-muted-foreground mt-2">Balance: GH₵ {(subSubagent.wallet_balance || 0).toFixed(2)}</p>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                    {subSubagents.length === 0 && (
-                      <p className="text-center text-muted-foreground py-8">No sub-subagents yet. Enable registration to allow them to sign up.</p>
-                    )}
-                  </div>
-                )}
+                <p className="text-sm text-muted-foreground mb-6">Set the base selling prices for your sub-subagents. These prices apply to ALL sub-subagents and become the minimum they must charge customers. You can set different prices for each network (MTN, Telecel, AirtelTigo).</p>
+                <SubSubagentPricesManager
+                  subagentStoreId={subagentStore?.id || ""}
+                  packages={packages}
+                  subagentPrices={subagentPrices}
+                  onPricesSaved={() => {
+                    toast({ title: "Prices saved", description: "Sub-subagent pricing updated successfully" });
+                  }}
+                />
               </CardContent>
             </Card>
           </TabsContent>
