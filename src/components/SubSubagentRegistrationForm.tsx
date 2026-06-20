@@ -37,6 +37,13 @@ export default function SubSubagentRegistrationForm({
     momoNumber: "",
     momoNetwork: "mtn",
   });
+  
+  const [loading, setLoading] = useState(false);
+  const [fetchingStore, setFetchingStore] = useState(true);
+  const [storeNameError, setStoreNameError] = useState("");
+  const [checkingStoreName, setCheckingStoreName] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [subagentStore, setSubagentStore] = useState<any>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
