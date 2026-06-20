@@ -1372,11 +1372,14 @@ export function SubagentStorefront() {
         </Card>
 
         {/* Footer */}
-        <footer className="text-center py-6 border-t border-border">
+        <footer className="text-center py-6 border-t border-border space-y-2">
           <p className="text-sm text-muted-foreground">
             Powered by <span className="font-bold">ZYTRIX <span style={{ color: primaryColor }}>TECH</span></span>
           </p>
-          <p className="text-sm text-muted-foreground pt-2">
+          <p className="text-sm text-muted-foreground">
+            Already a sub-subagent? <a href={DOMAINS.getSubSubagentLoginUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
+          </p>
+          <p className="text-sm text-muted-foreground">
             Already an agent? <a href="https://agentsstore.shop/login" className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
           </p>
         </footer>

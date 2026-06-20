@@ -63,6 +63,6 @@ export const DOMAINS = {
 
   // Get sub-subagent login URL
   getSubSubagentLoginUrl: () => {
-    return `https://${DOMAINS.SUBAGENT_STORE}/login`;
+    return `https://${DOMAINS.SUBAGENT_STORE}/sub-subagent-login`;
   },
 };

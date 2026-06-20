@@ -54,6 +54,9 @@ const SubSubagentDashboard = () => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState<any>(null);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [subSubagentPrices, setSubSubagentPrices] = useState<Record<string, number>>({});
+  const [editedPrices, setEditedPrices] = useState<Record<string, number>>({});
 
   // Fetch store data
   useEffect(() => {
@@ -239,6 +242,16 @@ const SubSubagentDashboard = () => {
                   variant="ghost"
                   className="w-full justify-start"
                   onClick={() => {
+                    setActiveTab("prices");
+                    document.querySelector("[data-sheet-close]")?.click();
+                  }}
+                >
+                  <Store className="h-4 w-4 mr-2" /> Store Prices
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => {
                     setActiveTab("settings");
                     document.querySelector("[data-sheet-close]")?.click();
                   }}
@@ -409,6 +422,19 @@ const SubSubagentDashboard = () => {
                 <p className="text-xs text-muted-foreground">
                   Withdrawals are processed within 24 hours to your registered MoMo account.
                 </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* STORE PRICES */}
+          <TabsContent value="prices" className="mt-0 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Selling Prices</CardTitle>
+                <p className="text-sm text-muted-foreground mt-2">Set your selling prices for each data package. Your profit = Selling Price - Cost.</p>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-muted-foreground py-6">Price management coming soon</p>
               </CardContent>
             </Card>
           </TabsContent>

@@ -25,6 +25,7 @@ const AgentStorefront = lazy(() => import("./pages/AgentStorefront"));
 const AgentRegistrationCallback = lazy(() => import("./pages/AgentRegistrationCallback"));
 const SubagentDashboard = lazy(() => import("./pages/SubagentDashboard"));
 const SubagentLogin = lazy(() => import("./pages/SubagentLogin"));
+const SubSubagentLogin = lazy(() => import("./pages/SubSubagentLogin"));
 const SubagentStorefront = lazy(() => import("./pages/SubagentStorefront"));
 const SubSubagentStorefront = lazy(() => import("./pages/SubSubagentStorefront"));
 const SubagentRegistration = lazy(() => import("./pages/SubagentRegistration"));
@@ -97,6 +98,7 @@ const App = () => {
                 <Routes>
                   <Route path="/" element={<SubagentLogin />} />
                   <Route path="/login" element={<SubagentLogin />} />
+                  <Route path="/sub-subagent-login" element={<SubSubagentLogin />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route
                     path="/dashboard"
