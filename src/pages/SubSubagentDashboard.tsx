@@ -16,6 +16,14 @@ interface SubagentStore {
   user_id: string;
   subagent_store_id: string;
   created_at: string;
+  whatsapp_number?: string;
+  support_number?: string;
+  whatsapp_group?: string;
+  momo_number?: string;
+  momo_name?: string;
+  momo_network?: string;
+  wallet_balance?: number;
+  [key: string]: any;
 }
 
 export default function SubSubagentDashboard() {
@@ -42,7 +50,7 @@ export default function SubSubagentDashboard() {
         console.log("[v0] Fetching store with ID:", storeId);
         const { data: result, error: err } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, user_id, subagent_store_id, created_at")
+          .select("*")
           .eq("id", storeId)
           .single();
 
@@ -64,7 +72,7 @@ export default function SubSubagentDashboard() {
         console.log("[v0] Fetching store for user:", user.id);
         const { data: result, error: err } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, user_id, subagent_store_id, created_at")
+          .select("*")
           .eq("user_id", user.id)
           .single();
 
@@ -173,6 +181,59 @@ export default function SubSubagentDashboard() {
           <div className="bg-card border border-border rounded-lg p-6">
             <h3 className="text-sm font-semibold text-muted-foreground mb-2">Created</h3>
             <p className="text-lg text-foreground">{new Date(store.created_at).toLocaleDateString()}</p>
+          </div>
+        </div>
+
+        {/* Contact Information */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-4">Contact Information</h2>
+            {store.whatsapp_number && (
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground">WhatsApp</p>
+                <p className="text-foreground font-mono">{store.whatsapp_number}</p>
+              </div>
+            )}
+            {store.support_number && (
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground">Support Number</p>
+                <p className="text-foreground font-mono">{store.support_number}</p>
+              </div>
+            )}
+            {store.whatsapp_group && (
+              <div>
+                <p className="text-sm text-muted-foreground">WhatsApp Group</p>
+                <p className="text-foreground">{store.whatsapp_group}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-4">Payment Methods</h2>
+            {store.momo_name && (
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground">MoMo Account Name</p>
+                <p className="text-foreground">{store.momo_name}</p>
+              </div>
+            )}
+            {store.momo_number && (
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground">MoMo Number</p>
+                <p className="text-foreground font-mono">{store.momo_number}</p>
+              </div>
+            )}
+            {store.momo_network && (
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground">MoMo Network</p>
+                <p className="text-foreground">{store.momo_network}</p>
+              </div>
+            )}
+            {store.wallet_balance !== undefined && (
+              <div>
+                <p className="text-sm text-muted-foreground">Wallet Balance</p>
+                <p className="text-lg font-bold text-primary">{store.wallet_balance?.toLocaleString() || '0'}</p>
+              </div>
+            )}
           </div>
         </div>
 
