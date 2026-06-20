@@ -29,16 +29,23 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
       if (!subagentStoreId) return;
       setLoadingPrices(true);
       
+      console.log("[v0] Fetching saved prices for subagent:", subagentStoreId);
+      
       const { data, error } = await supabase
         .from("sub_subagent_package_prices")
-        .select("package_id, subagent_minimum_price")
+        .select("package_id, base_price")
         .eq("subagent_store_id", subagentStoreId);
+      
+      if (error) {
+        console.warn("[v0] Error fetching prices (table may not exist):", error);
+      }
       
       if (!error && data) {
         const priceMap: Record<string, number> = {};
         data.forEach((p: any) => {
-          if (p.subagent_minimum_price) priceMap[p.package_id] = p.subagent_minimum_price;
+          if (p.base_price) priceMap[p.package_id] = p.base_price;
         });
+        console.log("[v0] Loaded saved prices:", priceMap);
         setSavedBasePrices(priceMap);
       }
       setLoadingPrices(false);
@@ -115,26 +122,41 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
         }
       }
       
+      console.log("[v0] Saving sub-subagent prices for store:", subagentStoreId);
+      
       // Save to sub_subagent_package_prices table
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         
-        await supabase
+        console.log("[v0] Processing package:", packageId, "price:", price);
+        
+        // First delete existing price
+        const { error: deleteError } = await supabase
           .from("sub_subagent_package_prices")
           .delete()
           .eq("subagent_store_id", subagentStoreId)
           .eq("package_id", packageId);
         
-        const { error } = await supabase
+        if (deleteError) {
+          console.warn("[v0] Delete warning (table may not exist yet):", deleteError);
+        }
+        
+        // Then insert new price
+        const { error: insertError, data } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
             subagent_store_id: subagentStoreId,
             package_id: packageId,
-            subagent_minimum_price: price,
+            base_price: price,
             sell_price: price
-          });
+          })
+          .select();
 
-        if (error) throw error;
+        if (insertError) {
+          console.error("[v0] Insert error:", insertError);
+          throw insertError;
+        }
+        console.log("[v0] Price saved:", data);
       }
 
       const numericPrices: Record<string, number> = {};
@@ -148,8 +170,8 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
       toast({ title: "Success", description: "Prices saved for sub-subagents" });
       onPricesSaved?.();
     } catch (error) {
-      console.error("Error saving prices:", error);
-      toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
+      console.error("[v0] Error saving prices:", error);
+      toast({ title: "Error", description: "Failed to save prices. Make sure the table exists in your database.", variant: "destructive" });
     } finally {
       setSavingPrices(false);
     }

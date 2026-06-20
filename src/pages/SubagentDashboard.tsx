@@ -2753,30 +2753,30 @@ const SubagentDashboard = () => {
                       <TableBody>
                         {filteredPackages.length > 0 ? (
                           filteredPackages.map(pkg => {
-                            const basePrice = basePrices[pkg.id] || pkg.price || 0;
+                            const agentPrice = subagentPrices[pkg.id] || basePrices[pkg.id] || pkg.price || 0;
                             const savedPrice = subagentPrices[pkg.id];
-                            const cur = editedPrices[pkg.id] ?? savedPrice ?? basePrice;
-                            const profit = cur - basePrice;
-                            const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < basePrice;
+                            const cur = editedPrices[pkg.id] ?? savedPrice ?? agentPrice;
+                            const profit = cur - agentPrice;
+                            const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < agentPrice;
                             const hasSavedPrice = savedPrice !== undefined;
                             return (
                               <TableRow key={pkg.id}>
                                 <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
                                 <TableCell className="text-muted-foreground">
-                                  GH₵ {Number(basePrice).toFixed(2)}
+                                  GH₵ {Number(agentPrice).toFixed(2)}
                                 </TableCell>
                                 <TableCell>
                                   <div className="space-y-1">
                                     <Input 
                                       type="number" 
                                       step="0.01" 
-                                      min={basePrice}
+                                      min={agentPrice}
                                       value={cur} 
                                       onChange={e => handlePriceChange(pkg.id, e.target.value)} 
                                       className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !editedPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />
                                     {isInvalid && (
-                                      <p className="text-xs text-red-500">Min: GH₵ {basePrice.toFixed(2)}</p>
+                                      <p className="text-xs text-red-500">Min: GH₵ {agentPrice.toFixed(2)}</p>
                                     )}
                                     {hasSavedPrice && !editedPrices[pkg.id] && (
                                       <p className="text-xs text-green-500">Saved</p>
