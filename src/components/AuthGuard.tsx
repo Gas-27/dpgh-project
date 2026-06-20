@@ -97,7 +97,9 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
 
   // For non-agent routes: standard role check
   if (requiredRole && requiredRole !== "agent") {
+    console.log("[v0] AuthGuard - Role check:", { requiredRole, userHasRole: hasRole(requiredRole), isAdmin, user: user?.email });
     if (!hasRole(requiredRole) && !isAdmin) {
+      console.log("[v0] AuthGuard - User missing required role, redirecting to:", getLoginPage());
       return <Navigate to={getLoginPage()} replace />;
     }
   }

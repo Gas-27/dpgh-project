@@ -28,17 +28,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchRoles = useCallback(async (userId: string, force = false) => {
     if (!force && rolesCache.current[userId]) return rolesCache.current[userId];
 
+    console.log("[v0] useAuth fetchRoles - Fetching roles for user:", userId, "forceRoles:", forceRoles);
     const { data, error } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
 
+    console.log("[v0] useAuth fetchRoles - Query result:", { data, error });
+
     if (error) {
-      console.error("Failed to fetch roles:", error);
+      console.error("[v0] useAuth fetchRoles - Failed to fetch roles:", error);
       return rolesCache.current[userId] ?? [];
     }
 
     const result = (data ?? []).map((roleRow) => roleRow.role as AppRole);
+    console.log("[v0] useAuth fetchRoles - Roles found:", result);
     rolesCache.current[userId] = result;
     return result;
   }, []);
