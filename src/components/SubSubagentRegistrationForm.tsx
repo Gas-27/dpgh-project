@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
@@ -25,19 +24,8 @@ export default function SubSubagentRegistrationForm({
   primaryForeground = "#0f172a",
   onClose,
 }: SubSubagentRegistrationFormProps) {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    storeName: "",
-    supportNumber: "",
-    whatsappNumber: "",
-    momoName: "",
-    momoNumber: "",
-    momoNetwork: "mtn",
-  });
-  
+
   const [loading, setLoading] = useState(false);
   const [fetchingStore, setFetchingStore] = useState(true);
   const [storeNameError, setStoreNameError] = useState("");
@@ -279,27 +267,11 @@ export default function SubSubagentRegistrationForm({
         duration: 3000,
       });
 
-      // Wait longer and verify role is synced before navigating
-      setTimeout(async () => {
-        try {
-          // Check that user has the sub_subagent role synced
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            const { data: rolesData } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", session.user.id);
-            
-            const hasRole = rolesData?.some(r => r.role === "sub_subagent");
-            console.log("[v0] Role check:", { hasRole, roles: rolesData });
-          }
-        } catch (e) {
-          console.error("[v0] Role verification failed:", e);
-        }
-        
-        // Navigate to dashboard
-        navigate(`/sub-subagent-dashboard?store_id=${storeData.id}`, { replace: true });
-      }, 2500);
+      // Use window.location.href for full page reload to ensure session is established
+      // and browser reloads with authenticated context before route guards check role
+      setTimeout(() => {
+        window.location.href = `/sub-subagent-dashboard?store_id=${storeData.id}`;
+      }, 1500);
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
       toast({

@@ -1040,7 +1040,7 @@ export function SubagentStorefront() {
                 style={showSubSubagentForm ? { background: primaryColor, color: primaryForeground } : {}}
                 className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
               >
-                Become an agent
+                Become a Sub-Subagent
               </Button>
             </>
           )}

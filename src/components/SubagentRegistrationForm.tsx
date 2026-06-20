@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,7 +25,6 @@ export default function SubagentRegistrationForm({
   onClose,
 }: SubagentRegistrationFormProps) {
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -364,7 +362,7 @@ export default function SubagentRegistrationForm({
       if (onClose) onClose();
 
       setTimeout(() => {
-        navigate("/dashboard", { replace: true });
+        window.location.href = "/dashboard";
       }, 500);
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
