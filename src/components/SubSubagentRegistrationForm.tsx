@@ -281,8 +281,7 @@ export default function SubSubagentRegistrationForm({
 
       setTimeout(() => {
         // Redirect to sub-subagent dashboard with store_id
-        const dashboardUrl = DOMAINS.getSubSubagentDashboardUrl() + `?store_id=${storeData.id}`;
-        window.location.href = dashboardUrl;
+        navigate(`/sub-subagent-dashboard?store_id=${storeData.id}`, { replace: true });
       }, 1500);
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
