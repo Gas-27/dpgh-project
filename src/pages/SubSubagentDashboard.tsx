@@ -393,19 +393,18 @@ const SubSubagentDashboard = () => {
       // If admin is impersonating with storeId
       if (storeId) {
         console.log("[v0] SubSubagentDashboard - Admin impersonation with storeId:", storeId);
-        const { data: storeData, error: storeErr } = await supabase
+        const { data: storeDataArray, error: storeErr } = await supabase
           .from("sub_subagent_stores")
           .select("id, store_name, user_id, subagent_store_id, created_at")
-          .eq("id", storeId)
-          .single();
+          .eq("id", storeId);
 
-        if (storeErr || !storeData) {
+        if (storeErr || !storeDataArray || storeDataArray.length === 0) {
           console.error("[v0] Error fetching store by ID:", storeErr);
           setLoadError("Failed to load your store. Please refresh the page or try again.");
           setLoading(false);
           return;
         }
-        store = storeData;
+        store = storeDataArray[0];
       } else {
         // Regular user login - fetch store by user_id
         const effectiveUserId = userId || user?.id;
