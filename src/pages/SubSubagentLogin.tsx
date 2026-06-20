@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 
 const SubSubagentLogin = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -80,8 +79,11 @@ const SubSubagentLogin = () => {
     }
 
     toast({ title: "Welcome back!", description: "Redirecting to your dashboard..." });
-    navigate("/sub-subagent-dashboard", { replace: true });
-    setLoading(false);
+    // Use window.location.href to do a full page reload so the page loads with
+    // session already established and roles already cached from database
+    setTimeout(() => {
+      window.location.href = "/sub-subagent-dashboard";
+    }, 500);
   };
 
   const handleForgotPassword = async () => {
@@ -121,13 +123,13 @@ const SubSubagentLogin = () => {
         if (rolesData) {
           const roles = rolesData.map(r => r.role);
           if (roles.includes("sub_subagent")) {
-            navigate("/sub-subagent-dashboard", { replace: true });
+            window.location.href = "/sub-subagent-dashboard";
           }
         }
       }
     };
     checkAndRedirect();
-  }, [navigate]);
+  }, []);
 
   return (
     <>

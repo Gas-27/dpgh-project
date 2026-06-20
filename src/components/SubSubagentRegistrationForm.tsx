@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ export default function SubSubagentRegistrationForm({
   primaryForeground = "#0f172a",
   onClose,
 }: SubSubagentRegistrationFormProps) {
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(false);
@@ -279,10 +277,10 @@ export default function SubSubagentRegistrationForm({
         duration: 3000,
       });
 
-      // Use navigate() to stay within React Router context so session state propagates
-      // through useAuth hook before AuthGuard checks the role
+      // Use window.location.href to do a full page reload so the page loads with
+      // session already established and roles already cached from database
       setTimeout(() => {
-        navigate(`/sub-subagent-dashboard?store_id=${storeData.id}`, { replace: true });
+        window.location.href = `/sub-subagent-dashboard?store_id=${storeData.id}`;
       }, 500);
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
