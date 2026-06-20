@@ -32,6 +32,16 @@ export default function SubSubagentRegistrationForm({
   const [checkingStoreName, setCheckingStoreName] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [subagentStore, setSubagentStore] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    storeName: "",
+    supportNumber: "",
+    whatsappNumber: "",
+    momoName: "",
+    momoNumber: "",
+    momoNetwork: "mtn",
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
