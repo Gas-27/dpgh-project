@@ -279,10 +279,27 @@ export default function SubSubagentRegistrationForm({
         duration: 3000,
       });
 
-      setTimeout(() => {
-        // Redirect to sub-subagent dashboard with store_id
+      // Wait longer and verify role is synced before navigating
+      setTimeout(async () => {
+        try {
+          // Check that user has the sub_subagent role synced
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const { data: rolesData } = await supabase
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", session.user.id);
+            
+            const hasRole = rolesData?.some(r => r.role === "sub_subagent");
+            console.log("[v0] Role check:", { hasRole, roles: rolesData });
+          }
+        } catch (e) {
+          console.error("[v0] Role verification failed:", e);
+        }
+        
+        // Navigate to dashboard
         navigate(`/sub-subagent-dashboard?store_id=${storeData.id}`, { replace: true });
-      }, 1500);
+      }, 2500);
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
       toast({

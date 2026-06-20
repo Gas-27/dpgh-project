@@ -96,6 +96,7 @@ const App = () => {
               {isSubagentDomain ? (
                 // agentsstore.shop - Subagent domain with separate routing
                 <Routes>
+                  {/* Specific routes BEFORE catch-all routes */}
                   <Route path="/" element={<SubagentLogin />} />
                   <Route path="/login" element={<SubagentLogin />} />
                   <Route path="/sub-subagent-login" element={<SubSubagentLogin />} />
@@ -116,6 +117,7 @@ const App = () => {
                       </AuthGuard>
                     }
                   />
+                  {/* Catch-all routes for storefronts */}
                   <Route path="/:subagentStoreName/store/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/:storeName" element={<SubagentStorefront />} />
                   <Route path="*" element={<NotFound />} />
