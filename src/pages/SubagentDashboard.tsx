@@ -402,7 +402,7 @@ const SubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration")
           .eq("id", storeId)
           .single();
 
@@ -543,7 +543,7 @@ const SubagentDashboard = () => {
         console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration")
           .eq("user_id", effectiveUserId);
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);

@@ -1327,7 +1327,7 @@ export function SubagentStorefront() {
 
         {/* SUB-SUBAGENT REGISTRATION DIALOG */}
         <Dialog open={showSubSubagentForm} onOpenChange={setShowSubSubagentForm}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader> Become an agent 
               <DialogTitle></DialogTitle>
               <DialogDescription>
