@@ -405,21 +405,9 @@ const SubSubagentDashboard = () => {
 
         const store = storeDataArray[0];
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
-        // Always use the database value for allow_sub_subagent_registration
-        setSubagentStore({
-          ...store,
-          allow_sub_subagent_registration: store.allow_sub_subagent_registration || false
-        });
+        setSubagentStore(store);
         setStoreForm(store);
         setLoadError(null);
-        
-        // Set theme colors and headline from store (with null checks)
-        if (store?.theme_config && typeof store.theme_config === 'object') {
-          setThemeColors({ ...DEFAULT_THEME, ...store.theme_config });
-        }
-        if (store?.store_headline) {
-          setStoreHeadline(store.store_headline);
-        }
 
         // Run all other queries in parallel for faster loading
         const [
@@ -556,14 +544,6 @@ const SubSubagentDashboard = () => {
         setSubagentStore(store);
         setStoreForm(store);
         setLoadError(null);
-        
-        // Set theme colors and headline from store (with null checks)
-        if (store?.theme_config && typeof store.theme_config === 'object') {
-          setThemeColors({ ...DEFAULT_THEME, ...store.theme_config });
-        }
-        if (store?.store_headline) {
-          setStoreHeadline(store.store_headline);
-        }
 
         // Run all other queries in parallel for faster loading
         const [
