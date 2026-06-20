@@ -138,22 +138,24 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
           .eq("package_id", packageId);
         
         if (deleteError) {
-          console.warn("[v0] Delete warning (table may not exist yet):", deleteError);
+          console.warn("[v0] Delete warning:", deleteError);
         }
         
-        // Then insert new price
+        // Then insert new price with all required fields
         const { error: insertError, data } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
             subagent_store_id: subagentStoreId,
             package_id: packageId,
             base_price: price,
+            subagent_minimum_price: price,
             sell_price: price
           })
           .select();
 
         if (insertError) {
           console.error("[v0] Insert error:", insertError);
+          console.error("[v0] Attempted to insert:", { subagentStoreId, packageId, base_price: price });
           throw insertError;
         }
         console.log("[v0] Price saved:", data);
