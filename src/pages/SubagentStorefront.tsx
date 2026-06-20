@@ -1331,7 +1331,7 @@ export function SubagentStorefront() {
             <DialogHeader> Become an agent 
               <DialogTitle></DialogTitle>
               <DialogDescription>
-                Register your sub-subagent store under {store?.store_name}
+                Register your agent store under {store?.store_name}
               </DialogDescription>
             </DialogHeader>
             {store && (
