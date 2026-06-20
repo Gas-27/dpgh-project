@@ -391,20 +391,19 @@ const SubSubagentDashboard = () => {
       // If admin is impersonating and passed storeId, use that directly
       if (storeId) {
         console.log("[v0] SubSubagentDashboard - Admin impersonation with storeId:", storeId);
-        const { data: storeData, error: storeErr } = await supabase
+        const { data: storeDataArray, error: storeErr } = await supabase
           .from("sub_subagent_stores")
           .select("id, store_name, user_id, subagent_store_id, created_at")
-          .eq("id", storeId)
-          .single();
+          .eq("id", storeId);
 
-        if (storeErr || !storeData) {
+        if (storeErr || !storeDataArray || storeDataArray.length === 0) {
           console.error("[v0] Error fetching subagent store by ID:", storeErr);
           setLoadError("Failed to load your store. Please refresh the page or try again.");
           setLoading(false);
           return;
         }
 
-        const store = storeData;
+        const store = storeDataArray[0];
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
         // Always use the database value for allow_sub_subagent_registration
         setSubagentStore({
