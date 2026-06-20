@@ -2333,7 +2333,7 @@ const SubagentDashboard = () => {
                           <TableRow key={t.id}>
                             <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
                             <TableCell className="font-semibold text-green-400">GH₵ {Number(t.amount).toFixed(2)}</TableCell>
-                            <TableCell className="font-mono text-xs">{t.paystack_reference || "N/A"}</TableCell>
+                            <TableCell className="font-mono text-xs">{agentInfo?.store_name || ""} - {t.paystack_reference || "Manual"}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

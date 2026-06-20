@@ -27,7 +27,7 @@ import FlyerGenerator from "@/components/FlyerGenerator";
 // import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import SubSubagentPricesManager from "@/components/SubSubagentPricesManager";
-// Sub-subagent management disabled for sub-subagents
+import SubSubagentsList from "@/components/SubSubagentsList";
 import { DOMAINS } from "@/config/domains";
 
 // Helper function to get current order stage
@@ -111,7 +111,7 @@ const MANUAL_SECTIONS = [
   { icon: "⚙️", title: "Settings", content: `Manage your store information.\n\n• Store Name\n• WhatsApp Number\n• Support Number` },
 ];
 
-const SubSubagentDashboard = () => {
+const SubagentDashboard = () => {
   const { signOut, user, isSubagent, isAdmin } = useAuth();
   const { toast } = useToast();
 
@@ -301,7 +301,7 @@ const SubSubagentDashboard = () => {
       
       // Update the database
       const { error } = await supabase
-        .from("sub_subagent_stores")
+        .from("subagent_stores")
         .update({ wallet_balance: calculatedBalance })
         .eq("id", subagentStore.id);
       
@@ -325,7 +325,7 @@ const SubSubagentDashboard = () => {
         {
           event: "UPDATE",
           schema: "public",
-          table: "sub_subagent_stores",
+          table: "subagent_stores",
           filter: `id=eq.${subagentStore.id}`,
         },
         (payload: any) => {
@@ -350,7 +350,7 @@ const SubSubagentDashboard = () => {
           event: "*",
           schema: "public",
           table: "orders",
-          filter: `sub_subagent_store_id=eq.${subagentStore.id}`,
+          filter: `subagent_store_id=eq.${subagentStore.id}`,
         },
         () => {
           // Re-fetch orders to update wallet calculation
@@ -368,7 +368,7 @@ const SubSubagentDashboard = () => {
           event: "*",
           schema: "public",
           table: "withdrawals",
-          filter: `sub_subagent_store_id=eq.${subagentStore.id}`,
+          filter: `subagent_store_id=eq.${subagentStore.id}`,
         },
         () => {
           // Re-fetch data to update wallet
@@ -399,9 +399,9 @@ const SubSubagentDashboard = () => {
       
       // If admin is impersonating and passed storeId, use that directly
       if (storeId) {
-        console.log("[v0] SubSubagentDashboard - Admin impersonation with storeId:", storeId);
+        console.log("[v0] SubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
-          .from("sub_subagent_stores")
+          .from("subagent_stores")
           .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
           .eq("id", storeId)
           .single();
@@ -443,15 +443,15 @@ const SubSubagentDashboard = () => {
           agentInfoResult,
           subSubagentsResult
         ] = await Promise.all([
-          supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
+          supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
+          supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
+          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
-          supabase.from("sub_sub_subagent_stores").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false })
+          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -469,7 +469,7 @@ const SubSubagentDashboard = () => {
           const { data: subSubagentOrders } = await supabase
             .from("orders")
             .select("*")
-            .in("sub_sub_subagent_store_id", subSubagentIds);
+            .in("sub_subagent_store_id", subSubagentIds);
           
           const subSubagentOrdersList = subSubagentOrders || [];
           setSubSubagentOrdersCount(subSubagentOrdersList.length);
@@ -531,7 +531,7 @@ const SubSubagentDashboard = () => {
       } else {
         // Normal flow - filter by user_id
         const effectiveUserId = userId || user?.id;
-        console.log("[v0] SubSubagentDashboard - fetchData called with effectiveUserId:", effectiveUserId);
+        console.log("[v0] SubagentDashboard - fetchData called with effectiveUserId:", effectiveUserId);
         if (!effectiveUserId) {
           setLoadError("Authentication error. Please log in again.");
           setLoading(false);
@@ -540,9 +540,9 @@ const SubSubagentDashboard = () => {
 
         // Fetch subagent store first (needed for other queries)
         // Filter by user_id to ensure each subagent only sees their own store
-        console.log("[v0] Querying sub_subagent_stores with user_id:", effectiveUserId);
+        console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
-          .from("sub_subagent_stores")
+          .from("subagent_stores")
           .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
           .eq("user_id", effectiveUserId);
 
@@ -586,13 +586,13 @@ const SubSubagentDashboard = () => {
           topupsResult,
           agentInfoResult
         ] = await Promise.all([
-          supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
+          supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
+          supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
+          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
         ]);
 
@@ -666,13 +666,13 @@ const SubSubagentDashboard = () => {
           topupsResult,
           agentInfoResult
         ] = await Promise.all([
-          supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
+          supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
+          supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
+          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
         ]);
 
@@ -744,9 +744,9 @@ const SubSubagentDashboard = () => {
     setLoadingNotifications(true);
     try {
       const { data, error } = await supabase
-        .from("sub_subagent_notifications")
+        .from("subagent_notifications")
         .select("*")
-        .eq("sub_subagent_store_id", subagentStore.id)
+        .eq("subagent_store_id", subagentStore.id)
         .order("created_at", { ascending: false });
       if (!error && data) setNotifications(data);
       if (error) console.warn("[v0] Error fetching notifications:", error);
@@ -761,7 +761,7 @@ const SubSubagentDashboard = () => {
   const fetchAgentNotifications = async () => {
     if (!subagentStore?.agent_store_id) return;
     const { data, error } = await supabase
-      .from("agent_to_sub_subagent_notifications")
+      .from("agent_to_subagent_notifications")
       .select("*")
       .eq("agent_store_id", subagentStore.agent_store_id)
       .eq("is_active", true)
@@ -827,8 +827,8 @@ const SubSubagentDashboard = () => {
     }
     setSendingNotification(true);
     const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
-    const { error } = await supabase.from("sub_subagent_notifications").insert({
-      sub_subagent_store_id: subagentStore.id,
+    const { error } = await supabase.from("subagent_notifications").insert({
+      subagent_store_id: subagentStore.id,
       message: newNotificationMsg.trim(),
       is_active: true,
       expires_at
@@ -845,13 +845,13 @@ const SubSubagentDashboard = () => {
   };
 
   const toggleNotificationActive = async (id: string, cur: boolean) => {
-    const { error } = await supabase.from("sub_subagent_notifications").update({ is_active: !cur }).eq("id", id);
+    const { error } = await supabase.from("subagent_notifications").update({ is_active: !cur }).eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
 
   const deleteNotification = async (id: string) => {
-    const { error } = await supabase.from("sub_subagent_notifications").delete().eq("id", id);
+    const { error } = await supabase.from("subagent_notifications").delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
@@ -861,8 +861,8 @@ const SubSubagentDashboard = () => {
     if (!subSubagentNotificationMsg.trim() || !subagentStore?.id) return;
     try {
       setSendingSubSubagentNotification(true);
-      const { error } = await supabase.from("sub_sub_subagent_notifications").insert({
-        sub_subagent_store_id: subagentStore.id,
+      const { error } = await supabase.from("sub_subagent_notifications").insert({
+        subagent_store_id: subagentStore.id,
         message: subSubagentNotificationMsg.trim(),
         is_active: true,
         created_at: new Date().toISOString(),
@@ -880,7 +880,7 @@ const SubSubagentDashboard = () => {
 
   const deleteSubSubagentNotification = async (id: string) => {
     try {
-      const { error } = await supabase.from("sub_sub_subagent_notifications").delete().eq("id", id);
+      const { error } = await supabase.from("sub_subagent_notifications").delete().eq("id", id);
       if (error) throw error;
       fetchSubSubagentNotifications();
     } catch (error: any) {
@@ -892,9 +892,9 @@ const SubSubagentDashboard = () => {
     try {
       if (!subagentStore?.id) return;
       const { data } = await supabase
-        .from("sub_sub_subagent_notifications")
+        .from("sub_subagent_notifications")
         .select("*")
-        .eq("sub_subagent_store_id", subagentStore.id)
+        .eq("subagent_store_id", subagentStore.id)
         .order("created_at", { ascending: false });
       if (data) setSubSubagentNotifications(data);
     } catch (error) {
@@ -924,7 +924,7 @@ const SubSubagentDashboard = () => {
           callback_url: `${window.location.origin}/subagent`,
           metadata: {
             type: "subagent_wallet_topup",
-            sub_subagent_store_id: subagentStore.id,
+            subagent_store_id: subagentStore.id,
             amount
           }
         }
@@ -975,7 +975,7 @@ const SubSubagentDashboard = () => {
       // If store name has changed, check for uniqueness
       if (storeForm.store_name !== subagentStore?.store_name) {
         const { data: existingStores } = await supabase
-          .from("sub_subagent_stores")
+          .from("subagent_stores")
           .select("store_name")
           .eq("approved", true)
           .neq("id", subagentStore?.id);  // Exclude this store from comparison
@@ -1001,7 +1001,7 @@ const SubSubagentDashboard = () => {
       }
       
       const { error } = await supabase
-        .from("sub_subagent_stores")
+        .from("subagent_stores")
         .update({
           store_name: finalStoreName,
           whatsapp_number: storeForm.whatsapp_number,
@@ -1054,7 +1054,7 @@ const SubSubagentDashboard = () => {
       const { error } = await supabase
         .from("withdrawal_requests")
         .insert({
-          sub_subagent_store_id: subagentStore.id,
+          subagent_store_id: subagentStore.id,
           amount,
           status: "pending"
         });
@@ -1077,7 +1077,7 @@ const SubSubagentDashboard = () => {
     try {
       setSavingTheme(true);
       const { error } = await supabase
-        .from("sub_subagent_stores")
+        .from("subagent_stores")
         .update({ theme_config: themeColors })
         .eq("id", subagentStore.id);
       if (error) throw error;
@@ -1096,7 +1096,7 @@ const SubSubagentDashboard = () => {
     try {
       setSavingHeadline(true);
       const { error } = await supabase
-        .from("sub_subagent_stores")
+        .from("subagent_stores")
         .update({ store_headline: storeHeadline })
         .eq("id", subagentStore.id);
       if (error) throw error;
@@ -1193,16 +1193,16 @@ const SubSubagentDashboard = () => {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         // First try to delete existing
         await supabase
-          .from("sub_subagent_package_prices")
+          .from("subagent_package_prices")
           .delete()
-          .eq("sub_subagent_store_id", subagentStore.id)
+          .eq("subagent_store_id", subagentStore.id)
           .eq("package_id", packageId);
         
         // Then insert new
         const { error } = await supabase
-          .from("sub_subagent_package_prices")
+          .from("subagent_package_prices")
           .insert({
-            sub_subagent_store_id: subagentStore.id,
+            subagent_store_id: subagentStore.id,
             package_id: packageId,
             sell_price: price
           });
@@ -1255,15 +1255,15 @@ const SubSubagentDashboard = () => {
     try {
       // Delete existing and insert new
       await supabase
-        .from("sub_sub_subagent_package_prices")
+        .from("sub_subagent_package_prices")
         .delete()
-        .eq("sub_sub_subagent_store_id", subSubagentStoreId)
+        .eq("sub_subagent_store_id", subSubagentStoreId)
         .eq("package_id", packageId);
 
       const { error } = await supabase
-        .from("sub_sub_subagent_package_prices")
+        .from("sub_subagent_package_prices")
         .insert({
-          sub_sub_subagent_store_id: subSubagentStoreId,
+          sub_subagent_store_id: subSubagentStoreId,
           package_id: packageId,
           subagent_minimum_price: myPrice,
           sell_price: finalPrice
@@ -1309,7 +1309,7 @@ const SubSubagentDashboard = () => {
       
       // First, get the current wallet balance to ensure we have fresh data
       const { data: freshStore, error: fetchError } = await supabase
-        .from("sub_subagent_stores")
+        .from("subagent_stores")
         .select("wallet_balance")
         .eq("id", subagentStore.id)
         .single();
@@ -1330,7 +1330,7 @@ const SubSubagentDashboard = () => {
       
       // Deduct from wallet
       const { error: walletError } = await supabase
-        .from("sub_subagent_stores")
+        .from("subagent_stores")
         .update({ wallet_balance: newBalance })
         .eq("id", subagentStore.id);
       
@@ -1364,7 +1364,7 @@ const SubSubagentDashboard = () => {
       
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
         package_id: buyingPkg.id,
-        sub_subagent_store_id: subagentStore.id,
+        subagent_store_id: subagentStore.id,
         agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
@@ -1381,7 +1381,7 @@ const SubSubagentDashboard = () => {
       if (orderError) {
         // Rollback wallet if order fails
         await supabase
-          .from("sub_subagent_stores")
+          .from("subagent_stores")
           .update({ wallet_balance: currentBalance })
           .eq("id", subagentStore.id);
         throw orderError;
@@ -2081,7 +2081,7 @@ const SubSubagentDashboard = () => {
                                   package_id: buyingPkg.id,
                                   network: buyingPkg.network,
                                   package_name: `${(buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") ? (buyingPkg as any).size_gb_text : buyingPkg.size_gb + "GB"}`,
-                                  sub_subagent_store_id: subagentStore?.id,
+                                  subagent_store_id: subagentStore?.id,
                                   agent_store_id: subagentStore?.agent_store_id,
                                   payment_method: "paystack",
                                   is_subagent_order: true,
@@ -2501,7 +2501,7 @@ const SubSubagentDashboard = () => {
                               
                               // Get fresh wallet balance from database
                               const { data: freshStore } = await supabase
-                                .from("sub_subagent_stores")
+                                .from("subagent_stores")
                                 .select("wallet_balance")
                                 .eq("id", subagentStore.id)
                                 .single();
@@ -2518,7 +2518,7 @@ const SubSubagentDashboard = () => {
                               // First deduct the total amount from wallet to prevent race conditions
                               const newBalance = currentBalance - totalCost;
                               const { error: walletError } = await supabase
-                                .from("sub_subagent_stores")
+                                .from("subagent_stores")
                                 .update({ wallet_balance: newBalance })
                                 .eq("id", subagentStore.id);
                               
@@ -2544,7 +2544,7 @@ const SubSubagentDashboard = () => {
                                   // Create order with agent_store_id for tracking
                                   const { data: orderData, error: orderError } = await supabase.from("orders").insert({
                                     package_id: pkg.id,
-                                    sub_subagent_store_id: subagentStore.id,
+                                    subagent_store_id: subagentStore.id,
                                     agent_store_id: subagentStore.agent_store_id,
                                     customer_number: recipient.phone,
                                     network: bulkNetwork,
@@ -2587,7 +2587,7 @@ const SubSubagentDashboard = () => {
                               const refundAmount = totalCost - actualDeducted;
                               if (refundAmount > 0) {
                                 const refundedBalance = newBalance + refundAmount;
-                                await supabase.from("sub_subagent_stores").update({ wallet_balance: refundedBalance }).eq("id", subagentStore.id);
+                                await supabase.from("subagent_stores").update({ wallet_balance: refundedBalance }).eq("id", subagentStore.id);
                                 setSubagentStore(prev => prev ? { ...prev, wallet_balance: refundedBalance } : prev);
                               }
                               
@@ -3006,7 +3006,149 @@ const SubSubagentDashboard = () => {
           */}
 
           {/* SUB-SUBAGENTS */}
+          <TabsContent value="sub-subagents" className="mt-0 space-y-6">
+            {/* Send Notification to Sub-Subagents - AT THE TOP */}
+            <Card className="border-orange-500/30 bg-orange-500/5">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-orange-400" /> Send Notification to All Sub-Subagents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">Send a popup notification that all your sub-subagents will see when they open their dashboard.</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    placeholder="Type your notification message..."
+                    value={subSubagentNotificationMsg}
+                    onChange={(e) => setSubSubagentNotificationMsg(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    variant="hero" 
+                    onClick={sendSubSubagentNotification} 
+                    disabled={sendingSubSubagentNotification || !subSubagentNotificationMsg.trim()}
+                  >
+                    {sendingSubSubagentNotification ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                    Send
+                  </Button>
+                </div>
+                {subSubagentNotifications.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-semibold">Recent Notifications Sent</p>
+                    {subSubagentNotifications.slice(0, 3).map((n) => (
+                      <div key={n.id} className="flex items-start justify-between p-3 bg-secondary/30 rounded-lg">
+                        <div>
+                          <p className="text-sm">{n.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => deleteSubSubagentNotification(n.id)}>
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-2">Total Sub-Subagents</p>
+                  <p className="text-3xl font-bold">{subSubagents.length}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-2">Total Profit from Sub-Subagents</p>
+                  <p className="text-3xl font-bold text-green-400">GH₵ {subSubagentProfitForSubagent?.toFixed(2) || "0.00"}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-2">Total Orders from Sub-Subagents</p>
+                  <p className="text-3xl font-bold text-blue-400">{subSubagentOrdersCount || 0}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="border-border">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Users className="h-5 w-5" /> Your Sub-Subagents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className="font-semibold text-blue-400 mb-2">Allow Sub-Subagent Registration</p>
+                      <p className="text-sm text-muted-foreground mb-4">When enabled, a "Become a Sub-Subagent" button will appear on your storefront.</p>
+                    </div>
+                    <Switch 
+                      checked={subagentStore?.allow_sub_subagent_registration || false}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          setSubagentStore(prev => prev ? { ...prev, allow_sub_subagent_registration: checked } : null);
+                          const { error } = await supabase
+                            .from('subagent_stores')
+                            .update({ allow_sub_subagent_registration: checked })
+                            .eq('id', subagentStore?.id);
+                          if (error) throw error;
+                          toast({ title: checked ? "Registration enabled" : "Registration disabled" });
+                        } catch (error) {
+                          console.error('Error updating sub-subagent setting:', error);
+                          setSubagentStore(prev => prev ? { ...prev, allow_sub_subagent_registration: !checked } : null);
+                          toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <SubSubagentsList
+                  subagentStoreId={subagentStore?.id || ""}
+                  subagentStoreName={subagentStore?.store_name || ""}
+                  subSubagents={subSubagents}
+                  onRefresh={async () => {
+                    const { data } = await supabase
+                      .from("sub_subagent_stores")
+                      .select("*")
+                      .eq("subagent_store_id", subagentStore?.id);
+                    if (data) setSubSubagents(data);
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* SUB-SUBAGENT PRICING */}
+          <TabsContent value="sub-subagent-pricing" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" /> Set Sub-Subagent Pricing
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-6">Set the base selling prices for your sub-subagents. These prices apply to ALL sub-subagents and become the minimum they must charge customers. You can set different prices for each network (MTN, Telecel, AirtelTigo).</p>
+                {packages.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <p>No packages loaded. Please refresh the page.</p>
+                  </div>
+                ) : (
+                  <SubSubagentPricesManager
+                    subagentStoreId={subagentStore?.id || ""}
+                    packages={packages}
+                    subagentPrices={subagentPrices}
+                    onPricesSaved={() => {
+                      toast({ title: "Prices saved", description: "Sub-subagent pricing updated successfully" });
+                    }}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* SETTINGS */}
           <TabsContent value="settings" className="mt-0 space-y-6">
@@ -3185,4 +3327,4 @@ const SubSubagentDashboard = () => {
   );
 };
 
-export default SubSubagentDashboard;
+export default SubagentDashboard;

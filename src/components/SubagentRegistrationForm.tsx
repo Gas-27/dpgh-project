@@ -328,6 +328,12 @@ export default function SubagentRegistrationForm({
       // No fees - create the store immediately with approved: true
       console.log("[v0] No fees required, creating approved subagent store");
 
+      // Generate sequential top-up reference (agt1, agt2, agt3, etc.)
+      const { count: subagentCount } = await supabase
+        .from("subagent_stores")
+        .select("*", { count: "exact", head: true });
+      const topupReference = `agt${(subagentCount || 0) + 1}`;
+
       const { data: storeData, error: storeError } = await supabase
         .from("subagent_stores")
         .insert({
@@ -341,6 +347,7 @@ export default function SubagentRegistrationForm({
           momo_network: formData.momoNetwork,
           wallet_balance: 0,
           approved: true, // Auto-approve for no-fee registration
+          topup_reference: topupReference,
         })
         .select()
         .single();
