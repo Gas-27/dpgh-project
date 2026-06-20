@@ -32,11 +32,12 @@ interface SubSubagentStoreWithOrders extends SubSubagentStore {
 
 interface SubSubagentsListProps {
   subagentStoreId: string;
+  subagentStoreName: string;
   subSubagents: SubSubagentStore[];
   onRefresh?: () => void;
 }
 
-export default function SubSubagentsList({ subagentStoreId, subSubagents, onRefresh }: SubSubagentsListProps) {
+export default function SubSubagentsList({ subagentStoreId, subagentStoreName, subSubagents, onRefresh }: SubSubagentsListProps) {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSubSubagent, setSelectedSubSubagent] = useState<SubSubagentStoreWithOrders | null>(null);
@@ -186,7 +187,7 @@ export default function SubSubagentsList({ subagentStoreId, subSubagents, onRefr
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => window.open(`${DOMAINS.getAgentStoreUrl(selectedSubSubagent.store_name)}`, "_blank")}
+                onClick={() => window.open(DOMAINS.getSubSubagentStoreUrl(subagentStoreName, selectedSubSubagent.store_name), "_blank")}
               >
                 <ExternalLink className="h-4 w-4 mr-2" /> View Shop
               </Button>

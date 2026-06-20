@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -266,8 +267,9 @@ export default function SubSubagentRegistrationForm({
       });
 
       setTimeout(() => {
-        navigate(`/sub-subagent-dashboard?store_id=${storeData.id}`);
-        if (onClose) onClose();
+        // Redirect to sub-subagent dashboard with store_id
+        const dashboardUrl = DOMAINS.getSubSubagentDashboardUrl() + `?store_id=${storeData.id}`;
+        window.location.href = dashboardUrl;
       }, 1500);
     } catch (error: any) {
       console.error("[v0] Registration error:", error);

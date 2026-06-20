@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import {
@@ -1324,26 +1325,26 @@ export function SubagentStorefront() {
           </>
         )}
 
-        {/* SUB-SUBAGENT REGISTRATION FORM */}
-        {showSubSubagentForm && store && (
-          <div className="w-full py-4">
-            <Card className="border-primary/30 bg-primary/5 mb-6">
-              <CardContent className="p-6">
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold mb-2" style={{ color: primaryColor }}>Become a Sub-Subagent Under {store.store_name}</h3>
-                  <p className="text-sm text-muted-foreground">Fill in the form below to register your sub-subagent store.</p>
-                </div>
-                <SubSubagentRegistrationForm
-                  subagentStoreId={store.id}
-                  subagentStoreName={store.store_name}
-                  primaryColor={primaryColor}
-                  primaryForeground={primaryForeground}
-                  onClose={() => setShowSubSubagentForm(false)}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* SUB-SUBAGENT REGISTRATION DIALOG */}
+        <Dialog open={showSubSubagentForm} onOpenChange={setShowSubSubagentForm}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Become a Sub-Subagent</DialogTitle>
+              <DialogDescription>
+                Register your sub-subagent store under {store?.store_name}
+              </DialogDescription>
+            </DialogHeader>
+            {store && (
+              <SubSubagentRegistrationForm
+                subagentStoreId={store.id}
+                subagentStoreName={store.store_name}
+                primaryColor={primaryColor}
+                primaryForeground={primaryForeground}
+                onClose={() => setShowSubSubagentForm(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Support */}
         <Card style={{ background: cardBg }} className="border-border">

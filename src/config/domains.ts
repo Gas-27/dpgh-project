@@ -48,4 +48,21 @@ export const DOMAINS = {
   getSubagentLoginUrl: () => {
     return `https://${DOMAINS.SUBAGENT_STORE}/login`;
   },
+
+  // Get sub-subagent store URL (nested under subagent)
+  getSubSubagentStoreUrl: (subagentStoreName: string, subSubagentStoreName: string) => {
+    const subagentSlug = DOMAINS.sanitizeStoreName(subagentStoreName);
+    const subSubagentSlug = DOMAINS.sanitizeStoreName(subSubagentStoreName);
+    return `https://${DOMAINS.SUBAGENT_STORE}/${subagentSlug}/store/${subSubagentSlug}`;
+  },
+
+  // Get sub-subagent dashboard URL
+  getSubSubagentDashboardUrl: () => {
+    return `https://${DOMAINS.SUBAGENT_STORE}/sub-subagent-dashboard`;
+  },
+
+  // Get sub-subagent login URL
+  getSubSubagentLoginUrl: () => {
+    return `https://${DOMAINS.SUBAGENT_STORE}/login`;
+  },
 };

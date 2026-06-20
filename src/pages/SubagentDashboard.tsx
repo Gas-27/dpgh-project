@@ -3108,6 +3108,7 @@ const SubagentDashboard = () => {
 
                 <SubSubagentsList
                   subagentStoreId={subagentStore?.id || ""}
+                  subagentStoreName={subagentStore?.store_name || ""}
                   subSubagents={subSubagents}
                   onRefresh={async () => {
                     const { data } = await supabase
