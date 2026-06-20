@@ -36,7 +36,7 @@ export default function SubSubagentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const storeId = searchParams.get("storeId");
+  const storeId = searchParams.get("store_id");
 
   const fetchData = useCallback(async () => {
     try {
