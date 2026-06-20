@@ -21,19 +21,13 @@ interface SubSubagentRegistrationFormProps {
 export default function SubSubagentRegistrationForm({
   subagentStoreId,
   subagentStoreName,
-  primaryColor,
-  primaryForeground,
+  primaryColor = "#06b6d4",
+  primaryForeground = "#0f172a",
   onClose,
 }: SubSubagentRegistrationFormProps) {
-  const { toast } = useToast();
+  console.log("[v0] SubSubagentRegistrationForm mounted with subagentStoreId:", subagentStoreId);
   const navigate = useNavigate();
-
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [storeNameError, setStoreNameError] = useState("");
-  const [checkingStoreName, setCheckingStoreName] = useState(false);
-  const [subagentStore, setSubagentStore] = useState<any>(null);
-  const [fetchingStore, setFetchingStore] = useState(true);
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -280,6 +274,8 @@ export default function SubSubagentRegistrationForm({
       setLoading(false);
     }
   };
+
+  console.log("[v0] SubSubagentRegistrationForm rendering - loading:", loading, "fetchingStore:", fetchingStore);
 
   return (
     <Card className="border-border bg-card/50">
