@@ -237,14 +237,16 @@ export default function SubSubagentRegistrationForm({
           subagent_store_id: subagentStoreId,
           user_id: authData.user.id,
           store_name: formData.storeName,
-          whatsapp_number: formData.whatsappNumber,
-          support_number: formData.supportNumber,
-          momo_name: formData.momoName,
-          momo_number: formData.momoNumber,
-          momo_network: formData.momoNetwork,
-          top_reference: `REF-${Date.now()}`,
+          whatsapp_number: formData.whatsappNumber || null,
+          support_number: formData.supportNumber || null,
+          whatsapp_group: null,
+          momo_name: formData.momoName || null,
+          momo_number: formData.momoNumber || null,
+          momo_network: formData.momoNetwork || null,
           wallet_balance: 0,
-          approved: true, // Auto-approve
+          buy_difference: 0,
+          approved: true,
+          other_application: null,
         })
         .select()
         .single();
