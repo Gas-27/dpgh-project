@@ -53,21 +53,26 @@ const SubSubagentLogin = () => {
     }
 
     // Fetch roles from user_roles table
+    console.log("[v0] SubSubagentLogin - Login successful, fetching roles for user ID:", userId);
     const { data: rolesData, error: rolesError } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
+    console.log("[v0] SubSubagentLogin - Role query result:", { rolesData, rolesError });
 
     if (rolesError || !rolesData) {
+      console.log("[v0] SubSubagentLogin - rolesError:", rolesError);
       toast({ title: "Error", description: "Could not verify account type", variant: "destructive" });
       setLoading(false);
       return;
     }
 
     const roles = rolesData.map(r => r.role);
+    console.log("[v0] SubSubagentLogin - User roles found:", roles);
     
     // Only allow sub-subagent login on this page
     if (!roles.includes("sub_subagent")) {
+      console.log("[v0] SubSubagentLogin - User does NOT have sub_subagent role, roles:", roles);
       toast({
         title: "Access Denied",
         description: "This login page is only for sub-subagents. Please use the correct login page.",
@@ -77,6 +82,8 @@ const SubSubagentLogin = () => {
       setLoading(false);
       return;
     }
+
+    console.log("[v0] SubSubagentLogin - User has sub_subagent role, redirecting...");
 
     toast({ title: "Welcome back!", description: "Redirecting to your dashboard..." });
     // Use window.location.href to do a full page reload so the page loads with
