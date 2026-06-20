@@ -1377,7 +1377,7 @@ export function SubagentStorefront() {
             Powered by <span className="font-bold">ZYTRIX <span style={{ color: primaryColor }}>TECH</span></span>
           </p>
           <p className="text-sm text-muted-foreground">
-            Already a sub-subagent? <a href={DOMAINS.getSubSubagentLoginUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
+            agent login? <a href={DOMAINS.getSubSubagentLoginUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
           </p>
           <p className="text-sm text-muted-foreground">
             store owner login? <a href="https://agentsstore.shop/login" className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
