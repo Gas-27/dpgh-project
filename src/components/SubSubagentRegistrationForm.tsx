@@ -187,7 +187,7 @@ export default function SubSubagentRegistrationForm({
         password: formData.password,
         options: {
           data: {
-            role: "subagent",
+            role: "sub_subagent",
           },
         },
       });
@@ -205,12 +205,12 @@ export default function SubSubagentRegistrationForm({
       //   .select()
       //   .single();
 
-      // Assign subagent role
+      // Assign sub-subagent role
       const { data: existingRole } = await supabase
         .from("user_roles")
         .select("id")
         .eq("user_id", authData.user.id)
-        .eq("role", "subagent")
+        .eq("role", "sub_subagent")
         .single();
 
       if (!existingRole) {
@@ -218,7 +218,7 @@ export default function SubSubagentRegistrationForm({
           .from("user_roles")
           .insert({
             user_id: authData.user.id,
-            role: "subagent",
+            role: "sub_subagent",
           });
 
         if (roleError && roleError.code !== "PGRST116") {

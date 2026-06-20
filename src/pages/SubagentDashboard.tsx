@@ -806,73 +806,17 @@ const SubagentDashboard = () => {
       });
   }, [subagentStore?.id]);
 
-  // Realtime subscriptions for instant updates
+  // Realtime subscriptions DISABLED - No longer auto-refresh on changes
+  // Previously this would trigger fetchData() on any database updates (orders, prices, etc.)
+  // This was causing constant page refreshes that interfered with user edits and was very annoying
+  // Users can now manually refresh with Cmd+R / Ctrl+R or the browser refresh button
   useEffect(() => {
     if (!subagentStore?.id) return;
     
-    const c1 = supabase.channel("subagent-store-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "subagent_stores", filter: `id=eq.${subagentStore.id}` }, (payload) => {
-        // Immediately update wallet balance from realtime payload for instant feedback
-        const newData = payload.new as any;
-        if (newData.wallet_balance !== undefined) {
-          setSubagentStore(prev => prev ? { ...prev, wallet_balance: newData.wallet_balance } : prev);
-        }
-        // Also fetch full data to ensure everything is in sync
-        fetchData();
-      })
-      .subscribe();
-    
-    const c2 = supabase.channel("subagent-order-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders", filter: `subagent_store_id=eq.${subagentStore.id}` }, (payload) => {
-        fetchData();
-        toast({ title: "New Order!", description: `Order received for ${(payload.new as any).size_gb}GB` });
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `subagent_store_id=eq.${subagentStore.id}` }, () => fetchData())
-      .subscribe();
-    
-    const c3 = supabase.channel("subagent-price-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "subagent_package_prices", filter: `subagent_store_id=eq.${subagentStore.id}` }, () => fetchData())
-      .subscribe();
-    
-    const c4 = supabase.channel("subagent-withdrawal-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "withdrawal_requests", filter: `subagent_store_id=eq.${subagentStore.id}` }, async (p) => {
-        if ((p.new as any).status === "completed" && (p.old as any).status !== "completed") {
-          // Immediately fetch fresh wallet balance for instant feedback
-          const { data: freshStore } = await supabase
-            .from("subagent_stores")
-            .select("wallet_balance")
-            .eq("id", subagentStore.id)
-            .single();
-          
-          if (freshStore) {
-            setSubagentStore(prev => prev ? { ...prev, wallet_balance: freshStore.wallet_balance } : prev);
-          }
-          toast({ title: "Withdrawal approved!" });
-          fetchData();
-        } else if ((p.new as any).status !== (p.old as any).status) {
-          fetchData();
-        }
-      }).subscribe();
-    
-    const c5 = supabase.channel("subagent-notifications-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "subagent_notifications", filter: `subagent_store_id=eq.${subagentStore.id}` }, () => {
-        // Fetch fresh notifications on any change (insert, update, delete)
-        fetchNotifications();
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log("[v0] Subscribed to notifications updates");
-        } else if (status === 'CLOSED') {
-          console.log("[v0] Notifications subscription closed");
-        }
-      });
+    // Realtime subscriptions disabled - users should manually refresh
     
     return () => {
-      supabase.removeChannel(c1);
-      supabase.removeChannel(c2);
-      supabase.removeChannel(c3);
-      supabase.removeChannel(c4);
-      supabase.removeChannel(c5);
+      // Cleanup would go here if subscriptions were active
     };
   }, [subagentStore?.id]);
 
