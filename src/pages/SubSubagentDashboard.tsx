@@ -23,19 +23,15 @@ import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
-// COMMENTED OUT: mashup packages deactivated
-// import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import SubSubagentPricesManager from "@/components/SubSubagentPricesManager";
-// Sub-subagent management disabled for sub-subagents
 import { DOMAINS } from "@/config/domains";
 
 // Helper function to get current order stage
 function getOrderStage(order: any): string {
   const elapsed = (Date.now() - new Date(order.created_at).getTime()) / 1000;
   const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  // COMMENTED OUT: mashup packages deactivated
-  const isMashup = false; // order.network === "mtn_mashup" || order.network === "mashup";
+  const isMashup = false;
   
   if (isMashup) {
     if (orderStatus === "delivered" || orderStatus === "completed") {
@@ -46,7 +42,6 @@ function getOrderStage(order: any): string {
       return "Order Placed";
     }
   } else {
-    // Standard networks (time-based)
     if (elapsed >= 300 * 60) {
       return "Order Delivered";
     } else if (elapsed >= 60 * 60) {
@@ -65,6 +60,21 @@ interface SubagentStore {
   user_id: string;
   subagent_store_id: string;
   created_at: string;
+  wallet_balance?: number;
+  agent_store_id?: string;
+  whatsapp_number?: string;
+  support_number?: string;
+  whatsapp_group?: string;
+  show_whatsapp_group_icon?: boolean;
+  show_ussd_on_storefront?: boolean;
+  momo_name?: string;
+  momo_number?: string;
+  momo_network?: string;
+  approved?: boolean;
+  suspended?: boolean;
+  store_headline?: string;
+  theme_config?: any;
+  topup_reference?: string;
 }
 
 interface Order {
@@ -77,6 +87,10 @@ interface Order {
   fulfillment_status: string;
   created_at: string;
   package_id?: string;
+  profit?: number;
+  base_price?: number;
+  selling_price?: number;
+  payment_method?: string;
 }
 
 interface WithdrawalRequest {
@@ -109,20 +123,15 @@ const SubSubagentDashboard = () => {
   const getImpersonationData = () => {
     if (typeof window === 'undefined') return { userId: null, storeId: null, storeName: null };
     
-    // Check URL params first (for cross-domain admin impersonation)
     const urlParams = new URLSearchParams(window.location.search);
     const adminToken = urlParams.get("admin_token");
     if (adminToken) {
       try {
-        // Decode URI component first, then parse JSON (to handle non-Latin1 characters)
         const decoded = JSON.parse(decodeURIComponent(atob(adminToken)));
-        // Token is va base id for 1 hour
         if (decoded.timestamp && Date.now() - decoded.timestamp < 3600000) {
-          // Store in localStorage for subsequent navigations and remove from URL
           localStorage.setItem("admin_impersonate_subagent", decoded.userId || "");
           localStorage.setItem("admin_impersonate_store_id", decoded.storeId || "");
           localStorage.setItem("admin_impersonate_store", decoded.storeName || "");
-          // Clean URL
           window.history.replaceState({}, document.title, window.location.pathname);
           return { userId: decoded.userId, storeId: decoded.storeId, storeName: decoded.storeName };
         }
@@ -131,7 +140,6 @@ const SubSubagentDashboard = () => {
       }
     }
     
-    // Fall back to localStorage
     const userId = localStorage.getItem("admin_impersonate_subagent");
     const storeId = localStorage.getItem("admin_impersonate_store_id");
     const storeName = localStorage.getItem("admin_impersonate_store");
@@ -182,7 +190,6 @@ const SubSubagentDashboard = () => {
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
   const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string; store_name?: string } | null>(null);
   
-  // Sub-Subagents
   const [subSubagents, setSubSubagents] = useState<any[]>([]);
   const [subSubagentFormOpen, setSubSubagentFormOpen] = useState(false);
   const [loadingSubSubagents, setLoadingSubSubagents] = useState(false);
@@ -195,46 +202,26 @@ const SubSubagentDashboard = () => {
   const [subSubagentNotificationMsg, setSubSubagentNotificationMsg] = useState("");
   const [sendingSubSubagentNotification, setSendingSubSubagentNotification] = useState(false);
   
-  // Bulk Orders
-  // COMMENTED OUT: mashup packages deactivated
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkResults, setBulkResults] = useState<{ phone: string; size: number; status: string; error?: string }[]>([]);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
-
-  // Handle bulk payment callback - show success message after returning from Paystack
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("bulk_payment") === "true" && urlParams.get("reference")) {
-      toast({
-        title: "Bulk Order Placed Successfully!",
-        description: "Your orders have been placed. Check the Orders tab to track them.",
-        duration: 8000,
-      });
-      // Clear URL params without reload
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, [toast]);
   
-  // Pagination for orders
   const [currentPage, setCurrentPage] = useState(1);
-  const ordersPerPage = 50; // Changed from 100 to 50 for "Load More" functionality
+  const ordersPerPage = 50;
   
-  // Date filtering for orders/revenue/profit
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   
-  // Agent notification popup state
   const [showAgentNotificationPopup, setShowAgentNotificationPopup] = useState(true);
+  const [tempSubSubagentPrices, setTempSubSubagentPrices] = useState<Record<string, number>>({});
 
   // Helper function to get available wallet balance
-  // Uses the actual wallet_balance from database, minus any pending withdrawals
   const getAvailableBalance = () => {
     const dbBalance = subagentStore?.wallet_balance || 0;
-    // Deduct pending withdrawals from available balance
     const pendingWithdrawals = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
     return dbBalance - pendingWithdrawals;
   };
@@ -245,17 +232,14 @@ const SubSubagentDashboard = () => {
     localStorage.removeItem("admin_impersonate_store_id");
     localStorage.removeItem("admin_impersonate_store");
     localStorage.removeItem("admin_impersonate_return");
-    // Redirect back to admin dashboard on main domain
     window.location.href = "https://datastores.shop/admin";
   };
 
   useEffect(() => {
-    // Use impersonated user ID/store ID if available, otherwise use logged in user
     const effectiveUserId = impersonatedUserId || user?.id;
     if (!effectiveUserId && !impersonatedStoreId) {
       return;
     }
-    // Load data for any logged-in user, impersonated user, or impersonated store
     if (impersonatedStoreId) {
       fetchData(undefined, impersonatedStoreId);
     } else {
@@ -263,8 +247,6 @@ const SubSubagentDashboard = () => {
     }
   }, [user?.id, isImpersonating, impersonatedUserId, impersonatedStoreId]);
 
-  // Sync calculated wallet balance to database when data changes
-  // Use a ref to track if we've synced to prevent infinite loops
   const hasSyncedRef = useRef(false);
   const lastSyncedBalanceRef = useRef<number | null>(null);
   
@@ -272,8 +254,6 @@ const SubSubagentDashboard = () => {
     const syncWalletBalance = async () => {
       if (!subagentStore?.id) return;
       
-      // Calculate wallet: Profit + Topups - COMPLETED Withdrawals - Wallet Purchases
-      // Backend automatically adds AFA registration profit and subagent registration fees
       const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
       const profit = completedOrders.reduce((sum, order) => {
         if (order.profit) return sum + Number(order.profit);
@@ -281,16 +261,12 @@ const SubSubagentDashboard = () => {
         return sum + (Number(order.selling_price || order.amount) - baseCost);
       }, 0);
       const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-      // Only subtract COMPLETED withdrawals from the stored balance
       const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-      // Subtract purchases made with wallet (from buy data and bulk order sections)
       const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
       const calculatedBalance = profit + topups - completedWithdrawals - walletPurchases;
       
-      // Only sync if the balance has changed from last sync
       if (lastSyncedBalanceRef.current === calculatedBalance) return;
       
-      // Update the database
       const { error } = await supabase
         .from("sub_subagent_stores")
         .update({ wallet_balance: calculatedBalance })
@@ -308,7 +284,6 @@ const SubSubagentDashboard = () => {
   useEffect(() => {
     if (!subagentStore?.id) return;
 
-    // Subscribe to wallet balance updates in real-time
     const walletChannel = supabase
       .channel(`subagent-wallet-${subagentStore.id}`)
       .on(
@@ -332,7 +307,6 @@ const SubSubagentDashboard = () => {
       )
       .subscribe();
 
-    // Also subscribe to order changes to update wallet in real-time
     const ordersChannel = supabase
       .channel(`subagent-orders-wallet-${subagentStore.id}`)
       .on(
@@ -344,13 +318,11 @@ const SubSubagentDashboard = () => {
           filter: `sub_subagent_store_id=eq.${subagentStore.id}`,
         },
         () => {
-          // Re-fetch orders to update wallet calculation
           fetchData();
         }
       )
       .subscribe();
 
-    // Subscribe to withdrawal changes
     const withdrawalsChannel = supabase
       .channel(`subagent-withdrawals-wallet-${subagentStore.id}`)
       .on(
@@ -362,7 +334,6 @@ const SubSubagentDashboard = () => {
           filter: `sub_subagent_store_id=eq.${subagentStore.id}`,
         },
         () => {
-          // Re-fetch data to update wallet
           fetchData();
         }
       )
@@ -375,14 +346,6 @@ const SubSubagentDashboard = () => {
     };
   }, [subagentStore?.id]);
 
-  // Auto-refresh DISABLED - Users can manually refresh with browser refresh button
-  // Previously this would auto-refresh wallet balance and orders every 1 second
-  // This was disabled because it was causing unnecessary page updates and was annoying when users were editing data
-  // Users can still manually refresh the page with Cmd+R / Ctrl+R or use the browser's refresh button
-  useEffect(() => {
-    // Placeholder - auto-refresh disabled
-  }, [subagentStore?.id]);
-
   const fetchData = async (userId?: string, storeId?: string) => {
     try {
       setLoading(true);
@@ -390,12 +353,11 @@ const SubSubagentDashboard = () => {
       
       let store: SubagentStore | null = null;
 
-      // If admin is impersonating with storeId
       if (storeId) {
         console.log("[v0] SubSubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeDataArray, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, user_id, subagent_store_id, created_at")
+          .select("id, store_name, user_id, subagent_store_id, created_at, wallet_balance, agent_store_id, whatsapp_number, support_number, whatsapp_group, show_whatsapp_group_icon, show_ussd_on_storefront, momo_name, momo_number, momo_network, approved, suspended, store_headline, theme_config, topup_reference")
           .eq("id", storeId);
 
         if (storeErr || !storeDataArray || storeDataArray.length === 0) {
@@ -406,7 +368,6 @@ const SubSubagentDashboard = () => {
         }
         store = storeDataArray[0];
       } else {
-        // Regular user login - fetch store by user_id
         const effectiveUserId = userId || user?.id;
         if (!effectiveUserId) {
           setLoadError("Authentication error. Please log in again.");
@@ -417,7 +378,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] Querying sub_subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, user_id, subagent_store_id, created_at")
+          .select("id, store_name, user_id, subagent_store_id, created_at, wallet_balance, agent_store_id, whatsapp_number, support_number, whatsapp_group, show_whatsapp_group_icon, show_ussd_on_storefront, momo_name, momo_number, momo_network, approved, suspended, store_headline, theme_config, topup_reference")
           .eq("user_id", effectiveUserId);
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
@@ -449,7 +410,6 @@ const SubSubagentDashboard = () => {
       setStoreForm(store);
       setLoadError(null);
 
-      // Run all other queries in parallel for faster loading
       const [
         ordersResult,
         withdrawResult,
@@ -472,7 +432,6 @@ const SubSubagentDashboard = () => {
     }
   };
 
-  // Notification functions
   const fetchNotifications = async () => {
     if (!subagentStore?.id) return;
     setLoadingNotifications(true);
@@ -490,7 +449,6 @@ const SubSubagentDashboard = () => {
     setLoadingNotifications(false);
   };
 
-  // Fetch notifications from agent
   const [agentNotifications, setAgentNotifications] = useState<any[]>([]);
   const fetchAgentNotifications = async () => {
     if (!subagentStore?.agent_store_id) return;
@@ -510,7 +468,6 @@ const SubSubagentDashboard = () => {
     }
   }, [subagentStore?.id]);
 
-  // Check for pending wallet topup from URL params
   useEffect(() => {
     if (!subagentStore?.id) return;
     
@@ -538,20 +495,6 @@ const SubSubagentDashboard = () => {
       .catch(() => {
         sessionStorage.removeItem("pending_subagent_wallet_topup");
       });
-  }, [subagentStore?.id]);
-
-  // Realtime subscriptions DISABLED - No longer auto-refresh on changes
-  // Previously this would trigger fetchData() on any database updates (orders, prices, etc.)
-  // This was causing constant page refreshes that interfered with user edits and was very annoying
-  // Users can now manually refresh with Cmd+R / Ctrl+R or the browser refresh button
-  useEffect(() => {
-    if (!subagentStore?.id) return;
-    
-    // Realtime subscriptions disabled - users should manually refresh
-    
-    return () => {
-      // Cleanup would go here if subscriptions were active
-    };
   }, [subagentStore?.id]);
 
   const createNotification = async () => {
@@ -590,7 +533,6 @@ const SubSubagentDashboard = () => {
     else fetchNotifications();
   };
 
-  // Sub-Subagent Notification handlers
   const sendSubSubagentNotification = async () => {
     if (!subSubagentNotificationMsg.trim() || !subagentStore?.id) return;
     try {
@@ -636,7 +578,6 @@ const SubSubagentDashboard = () => {
     }
   };
   
-  // Paystack wallet top up
   const handlePaystackTopup = async () => {
     const amount = Number(paystackTopupAmount);
     if (!amount || amount < 1) {
@@ -706,24 +647,21 @@ const SubSubagentDashboard = () => {
       
       let finalStoreName = storeForm.store_name;
       
-      // If store name has changed, check for uniqueness
       if (storeForm.store_name !== subagentStore?.store_name) {
         const { data: existingStores } = await supabase
           .from("sub_subagent_stores")
           .select("store_name")
           .eq("approved", true)
-          .neq("id", subagentStore?.id);  // Exclude this store from comparison
+          .neq("id", subagentStore?.id);
         
         if (existingStores && existingStores.length > 0) {
           const slugifiedName = DOMAINS.sanitizeStoreName(storeForm.store_name);
           
-          // Count how many OTHER stores have the same slug
           const duplicates = existingStores.filter((s: any) => {
             const existingSlug = DOMAINS.sanitizeStoreName(s.store_name);
             return existingSlug === slugifiedName;
           });
           
-          // If duplicates exist, append a number
           if (duplicates.length > 0) {
             finalStoreName = `${storeForm.store_name} ${duplicates.length + 1}`;
             toast({
@@ -765,13 +703,11 @@ const SubSubagentDashboard = () => {
     
     const amount = parseFloat(withdrawAmount);
     
-    // Validate minimum withdrawal
     if (amount < 10) {
       toast({ title: "Error", description: "Minimum withdrawal is GH₵ 10.00", variant: "destructive" });
       return;
     }
     
-    // Check for pending withdrawal
     const hasPending = withdrawals.some(w => w.status === "pending");
     if (hasPending) {
       toast({ title: "Error", description: "You already have a pending withdrawal. Please wait until it completes.", variant: "destructive" });
@@ -805,7 +741,6 @@ const SubSubagentDashboard = () => {
     }
   };
 
-  // Save theme colors
   const saveThemeColors = async () => {
     if (!subagentStore?.id) return;
     try {
@@ -824,7 +759,6 @@ const SubSubagentDashboard = () => {
     }
   };
 
-  // Save store headline
   const saveStoreHeadline = async () => {
     if (!subagentStore?.id) return;
     try {
@@ -843,14 +777,12 @@ const SubSubagentDashboard = () => {
     }
   };
 
-  // Change grid columns
   const changeColumns = (delta: number) => {
     const newVal = Math.max(1, Math.min(6, themeColors.gridColumns + delta));
     setThemeColors({ ...themeColors, gridColumns: newVal });
   };
 
   const filteredPackages = packages.filter(p => {
-    // COMMENTED OUT: mashup packages deactivated
     if (false && networkFilter === "mtn_mashup") {
       return p.network === "mtn_mashup" || p.network === "mashup";
     }
@@ -858,7 +790,6 @@ const SubSubagentDashboard = () => {
   });
 
   const handlePriceChange = (packageId: string, value: string) => {
-    // Allow empty string for clearing the box - store as string for display
     setEditedPrices(prev => ({
       ...prev,
       [packageId]: value === "" ? "" : (parseFloat(value) || value)
@@ -898,7 +829,6 @@ const SubSubagentDashboard = () => {
     try {
       setSavingPrices(true);
 
-      // Validate that no price is below agent's base price
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         const basePrice = basePrices[packageId] || 0;
@@ -922,17 +852,14 @@ const SubSubagentDashboard = () => {
         }
       }
       
-      // Save each price - use delete + insert to avoid upsert issues
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        // First try to delete existing
         await supabase
           .from("sub_subagent_package_prices")
           .delete()
           .eq("sub_subagent_store_id", subagentStore.id)
           .eq("package_id", packageId);
         
-        // Then insert new
         const { error } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
@@ -947,12 +874,11 @@ const SubSubagentDashboard = () => {
         }
       }
 
-      // Update local state
       setSubagentPrices(prev => ({ ...prev, ...editedPrices }));
       setEditedPrices({});
       setMarkupPercent("");
       toast({ title: "Success", description: "Prices saved successfully" });
-      fetchData(); // Refresh data
+      fetchData();
     } catch (error) {
       console.error("Error saving prices:", error);
       toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
@@ -987,7 +913,6 @@ const SubSubagentDashboard = () => {
     }
 
     try {
-      // Delete existing and insert new
       await supabase
         .from("sub_sub_subagent_package_prices")
         .delete()
@@ -1014,16 +939,15 @@ const SubSubagentDashboard = () => {
     }
   };
 
+  // FIXED: handleBuyData with maybeSingle() instead of single()
   const handleBuyData = async () => {
     if (!buyingPkg || !buyCustomerNumber || !subagentStore) return;
     
-    // Validate phone number is exactly 10 digits
     if (!isValidPhoneLength(buyCustomerNumber)) {
       toast({ title: "Error", description: "Phone number must be exactly 10 digits", variant: "destructive" });
       return;
     }
     
-    // Validate phone matches selected network (allow mtn to buy mtn_mashup and mashup)
     const isValidForMTNMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detectNetwork(buyCustomerNumber) === "mtn";
     if (!isValidForMTNMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
       const detected = detectNetwork(buyCustomerNumber);
@@ -1041,14 +965,15 @@ const SubSubagentDashboard = () => {
     try {
       setBuyLoading(true);
       
-      // First, get the current wallet balance to ensure we have fresh data
+      // FIXED: Use maybeSingle() instead of single()
       const { data: freshStore, error: fetchError } = await supabase
         .from("sub_subagent_stores")
         .select("wallet_balance")
         .eq("id", subagentStore.id)
-        .single();
+        .maybeSingle();
       
       if (fetchError || !freshStore) {
+        console.error("Error fetching wallet:", fetchError);
         throw new Error("Failed to fetch wallet balance");
       }
       
@@ -1062,7 +987,6 @@ const SubSubagentDashboard = () => {
       
       const newBalance = currentBalance - price;
       
-      // Deduct from wallet
       const { error: walletError } = await supabase
         .from("sub_subagent_stores")
         .update({ wallet_balance: newBalance })
@@ -1072,19 +996,13 @@ const SubSubagentDashboard = () => {
         throw new Error("Failed to deduct wallet balance: " + walletError.message);
       }
       
-      // Create order with wallet payment method
-      // Include agent_store_id so it shows on storefront and for proper tracking
-      // Extract size_gb the same way verify-payment does: match first numeric value
       const packageName = buyingPkg.size_gb_text || buyingPkg.size_gb?.toString() || "";
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
       const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyingPkg.size_gb;
       
-    // COMMENTED OUT: mashup packages deactivated
-    // For mashup packages, get datahubnet ID from the hardcoded mapping
-    // This is because mashup uses a separate backend (datahubnet)
-    if (false && (buyingPkg.network === "mashup" || buyingPkg.network === "mtn_mashup") && buyingPkg.size_gb_text) {
-      // Datahubnet mapping for mashup packages
-      const mashupMapping: Record<string, number> = {
+      let dataPackageId = null;
+      if (false && (buyingPkg.network === "mashup" || buyingPkg.network === "mtn_mashup") && buyingPkg.size_gb_text) {
+        const mashupMapping: Record<string, number> = {
           "1.7GB": 14,
           "5.1GB": 3,
           "2.6 GB + 1,077 mins": 16,
@@ -1099,21 +1017,20 @@ const SubSubagentDashboard = () => {
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
         package_id: buyingPkg.id,
         sub_subagent_store_id: subagentStore.id,
-        agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
+        agent_store_id: subagentStore.agent_store_id,
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
         size_gb: extractedSize,
         amount: price,
         base_price: price,
         selling_price: price,
-        profit: 0, // Subagent buying at cost, no profit
+        profit: 0,
         payment_method: "wallet",
         status: "paid",
         fulfillment_status: "pending"
       }).select("id").single();
       
       if (orderError) {
-        // Rollback wallet if order fails
         await supabase
           .from("sub_subagent_stores")
           .update({ wallet_balance: currentBalance })
@@ -1121,23 +1038,19 @@ const SubSubagentDashboard = () => {
         throw orderError;
       }
       
-      // ADD AGENT PROFIT for wallet purchases
-      // Agent profit = subagent_price (what they charge subagent) - admin_agent_price (what admin charges agent)
       if (subagentStore.agent_store_id) {
         try {
-          // Get admin base price (agent_price field in packages)
           const adminBasePrice = buyingPkg.agent_price ? Number(buyingPkg.agent_price) : 0;
           const agentProfit = price - adminBasePrice;
           
           console.log(`[v0] Wallet purchase - Subagent price: ${price}, Admin agent price: ${adminBasePrice}, Agent profit: ${agentProfit}`);
           
           if (agentProfit > 0) {
-            // Get agent's current subagent commission balance (Profit from Subagents)
             const { data: agentStore, error: agentFetchError } = await supabase
               .from("agent_stores")
               .select("subagent_commission_balance")
               .eq("id", subagentStore.agent_store_id)
-              .single();
+              .maybeSingle();
             
             if (agentStore && !agentFetchError) {
               const newCommissionBalance = (agentStore.subagent_commission_balance || 0) + agentProfit;
@@ -1152,11 +1065,9 @@ const SubSubagentDashboard = () => {
           }
         } catch (profitErr) {
           console.error("[v0] Error adding agent profit:", profitErr);
-          // Don't throw - order already created successfully, just log the error
         }
       }
       
-      // Trigger fulfillment for the order
       if (orderData?.id) {
         try {
           await supabase.functions.invoke("fulfill-order", {
@@ -1167,7 +1078,6 @@ const SubSubagentDashboard = () => {
         }
       }
       
-      // Update local state immediately
       setSubagentStore(prev => prev ? { ...prev, wallet_balance: newBalance } : prev);
       
       toast({ title: "Success", description: `${buyingPkg.size_gb}GB data purchased for ${buyCustomerNumber}` });
@@ -1235,14 +1145,11 @@ const SubSubagentDashboard = () => {
     { id: "sub-subagents", label: "Sub-Subagents", icon: Users },
     { id: "sub-subagent-pricing", label: "Sub-Subagent Pricing", icon: DollarSign },
     { id: "flyer", label: "Flyer Generator", icon: Image },
-    // COMMENTED OUT: mashup packages deactivated
-  // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  // Date filter helper function
   const getDateFilteredOrders = (orderList: Order[]) => {
     if (dateFilter === "all") return orderList;
     
@@ -1276,21 +1183,16 @@ const SubSubagentDashboard = () => {
     });
   };
 
-  // Apply date filter to orders for stats
   const dateFilteredOrders = getDateFilteredOrders(orders);
 
-  // Only count customer orders (not wallet purchases by subagent) for revenue
   const customerOrders = dateFilteredOrders.filter(o => o.payment_method !== "wallet");
   const totalRevenue = customerOrders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.selling_price || order.amount) : 0), 0);
   
-  // Calculate profit from ALL completed orders (customer pays, subagent earns profit)
   const allCompletedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
   const totalProfit = allCompletedOrders.reduce((sum, order) => {
-    // Use stored profit if available, otherwise calculate from stored prices or fallback
     if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
       return sum + Number(order.profit);
     }
-    // Fallback for old orders without stored profit
     const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
     return sum + (Number(order.selling_price || order.amount) - baseCost);
   }, 0);
@@ -1301,33 +1203,25 @@ const SubSubagentDashboard = () => {
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
   const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
-  // Calculate total topups
   const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
   
-  // Wallet purchases from buy data and bulk order sections
   const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
   
-  // Wallet balance = Profit + Topups - Completed Withdrawals - Wallet Purchases
   const calculatedWalletBalance = totalProfit + totalTopups - completedWithdrawals - walletPurchases;
-  // Prefer database value as it's synced correctly
   const availableWalletBalance = subagentStore?.wallet_balance !== undefined && subagentStore?.wallet_balance !== null 
     ? Number(subagentStore.wallet_balance) 
     : calculatedWalletBalance;
   
-  // Available for use = actual wallet balance - pending withdrawals
   const availableForUse = availableWalletBalance - pendingWithdrawalAmount;
   
-  // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
   const storeUrl = storeName ? DOMAINS.getSubagentStoreUrl(storeName) : "";
   
-  // Filter orders by search and apply date filter
   const filteredOrders = getDateFilteredOrders(orders).filter(o => 
     o.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) ||
     o.id?.toLowerCase().includes(orderSearch.toLowerCase())
   );
   
-  // Pagination calculations
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
   const paginatedOrders = filteredOrders.slice(
     (currentPage - 1) * ordersPerPage,
@@ -1591,7 +1485,6 @@ const SubSubagentDashboard = () => {
                   </div>
                   <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                 </div>
-                {/* USSD Code with Access Code */}
                 {subagentStore?.topup_reference && (
                   <div className="mt-4 pt-4 border-t border-yellow-500/20">
                     <div className="text-center space-y-3">
@@ -1652,16 +1545,13 @@ const SubSubagentDashboard = () => {
                         </TableHeader>
                         <TableBody>
                           {paginatedOrders.map(order => {
-                            // Use stored values from order if available, otherwise fall back to current prices (for old orders)
                             const storedSellPrice = order.selling_price ?? null;
                             const storedBaseCost = order.base_price ?? null;
                             const storedProfit = order.profit ?? null;
                             
-                            // Fallback calculation for old orders
                             const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
                             const fallbackProfit = order.amount - fallbackBaseCost;
                             
-                            // Use stored values if they exist and are non-zero
                             const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
                             const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
                             const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
@@ -1694,7 +1584,6 @@ const SubSubagentDashboard = () => {
                         </TableBody>
                       </Table>
                     </div>
-                    {/* Load More Button */}
                     {currentPage * ordersPerPage < filteredOrders.length && (
                       <div className="flex items-center justify-center mt-6">
                         <Button onClick={() => setCurrentPage(p => p + 1)} className="w-full sm:w-auto">
@@ -1786,7 +1675,6 @@ const SubSubagentDashboard = () => {
                         variant="hero" 
                         className="w-full" 
                         onClick={async () => {
-                          // Paystack payment via backend initialize-payment
                           const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
                           if (!buyCustomerNumber) {
                             toast({ title: "Error", description: "Enter customer phone number", variant: "destructive" });
@@ -1797,7 +1685,7 @@ const SubSubagentDashboard = () => {
                             return;
                           }
                           const isValidForMTNMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detectNetwork(buyCustomerNumber) === "mtn";
-    if (!isValidForMTNMashup && buyingPkg.network !== "mashup" && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
+                          if (!isValidForMTNMashup && buyingPkg.network !== "mashup" && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
                             const detected = detectNetwork(buyCustomerNumber);
                             toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
                             return;
@@ -1844,7 +1732,7 @@ const SubSubagentDashboard = () => {
                       Wallet Balance: GH₵ {availableWalletBalance.toFixed(2)}
                       {pendingWithdrawalAmount > 0 && (
                         <div className="text-yellow-400 text-xs mt-1">
-                          (GH�� {pendingWithdrawalAmount.toFixed(2)} pending withdrawal)
+                          (GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal)
                         </div>
                       )}
                     </p>
@@ -1881,16 +1769,13 @@ const SubSubagentDashboard = () => {
                       </TableHeader>
                       <TableBody>
                         {orders.slice(0, 10).map(order => {
-                          // Use stored values from order if available, otherwise fall back to current prices
                           const storedSellPrice = order.selling_price ?? null;
                           const storedBaseCost = order.base_price ?? null;
                           const storedProfit = order.profit ?? null;
                           
-                          // Fallback calculation for old orders
                           const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
                           const fallbackProfit = order.amount - fallbackBaseCost;
                           
-                          // Use stored values if they exist and are non-zero
                           const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
                           const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
                           const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
@@ -2205,7 +2090,7 @@ const SubSubagentDashboard = () => {
                             <p className="text-xs text-muted-foreground">Total Data</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                            <p className="text-2xl font-bold text-yellow-500">GH�� {totalCost.toFixed(2)}</p>
+                            <p className="text-2xl font-bold text-yellow-500">GH₵ {totalCost.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">Total Cost</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
@@ -2233,23 +2118,21 @@ const SubSubagentDashboard = () => {
                               const results: typeof bulkResults = [];
                               let totalDeducted = 0;
                               
-                              // Get fresh wallet balance from database
+                              // FIXED: Use maybeSingle() instead of single()
                               const { data: freshStore } = await supabase
                                 .from("sub_subagent_stores")
                                 .select("wallet_balance")
                                 .eq("id", subagentStore.id)
-                                .single();
+                                .maybeSingle();
                               
                               const currentBalance = freshStore?.wallet_balance || 0;
                               
-                              // Check if we have enough balance
                               if (currentBalance < totalCost) {
                                 toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
                                 setBulkProcessing(false);
                                 return;
                               }
                               
-                              // First deduct the total amount from wallet to prevent race conditions
                               const newBalance = currentBalance - totalCost;
                               const { error: walletError } = await supabase
                                 .from("sub_subagent_stores")
@@ -2262,7 +2145,6 @@ const SubSubagentDashboard = () => {
                                 return;
                               }
                               
-                              // Update local state immediately
                               setSubagentStore(prev => prev ? { ...prev, wallet_balance: newBalance } : prev);
                               
                               for (const recipient of parsed) {
@@ -2275,7 +2157,6 @@ const SubSubagentDashboard = () => {
                                 const price = basePrices[pkg.id] ?? pkg.price;
                                 
                                 try {
-                                  // Create order with agent_store_id for tracking
                                   const { data: orderData, error: orderError } = await supabase.from("orders").insert({
                                     package_id: pkg.id,
                                     sub_subagent_store_id: subagentStore.id,
@@ -2294,7 +2175,6 @@ const SubSubagentDashboard = () => {
                                   
                                   if (orderError) throw orderError;
                                   
-                                  // Trigger fulfillment for each order
                                   if (orderData?.id) {
                                     try {
                                       await supabase.functions.invoke("fulfill-order", {
@@ -2312,7 +2192,6 @@ const SubSubagentDashboard = () => {
                                 }
                               }
                               
-                              // If some orders failed, refund the difference
                               const actualDeducted = results.filter(r => r.status === "success").reduce((sum, r) => {
                                 const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
                                 return sum + (pkg ? (basePrices[pkg.id] ?? pkg.price) : 0);
@@ -2390,7 +2269,6 @@ const SubSubagentDashboard = () => {
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  {/* COMMENTED OUT: mashup packages deactivated */}
                   <div className="flex gap-2 flex-wrap">
                     {["mtn", "airteltigo", "telecel"].map(net => (
                       <Button 
@@ -2424,7 +2302,7 @@ const SubSubagentDashboard = () => {
                   )}
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />������ Markup Explanation (Remember to click save after applying markup)</p>
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />💰 Markup Explanation (Remember to click save after applying markup)</p>
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
@@ -2720,27 +2598,6 @@ const SubSubagentDashboard = () => {
               />
             )}
           </TabsContent>
-
-          {/* COMMENTED OUT: mashup packages deactivated
-          MTN MASHUP FLYER
-          <TabsContent value="mashup-flyer" className="mt-0 space-y-6">
-            {subagentStore && (
-              <MashupFlyerGenerator
-                storeName={subagentStore.store_name}
-                storeUrl={storeUrl}
-                whatsappNumber={subagentStore.whatsapp_number || ""}
-                supportNumber={subagentStore.support_number || ""}
-                packages={packages}
-                agentPrices={subagentPrices}
-                topupReference={subagentStore.topup_reference || ""}
-                isSubagent={true}
-              />
-            )}
-          </TabsContent>
-          */}
-
-          {/* SUB-SUBAGENTS */}
-
 
           {/* SETTINGS */}
           <TabsContent value="settings" className="mt-0 space-y-6">
