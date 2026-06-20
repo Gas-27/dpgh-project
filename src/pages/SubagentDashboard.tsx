@@ -415,11 +415,11 @@ const SubagentDashboard = () => {
 
         const store = storeData;
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
-        // Preserve existing sub-subagent registration setting if it was just toggled
-        setSubagentStore(prev => ({
+        // Always use the database value for allow_sub_subagent_registration
+        setSubagentStore({
           ...store,
-          allow_sub_subagent_registration: store.allow_sub_subagent_registration ?? prev?.allow_sub_subagent_registration ?? false
-        }));
+          allow_sub_subagent_registration: store.allow_sub_subagent_registration || false
+        });
         setStoreForm(store);
         setLoadError(null);
         

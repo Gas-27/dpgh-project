@@ -1035,10 +1035,7 @@ export function SubagentStorefront() {
               <Button
                 variant={showSubSubagentForm ? "default" : "outline"}
                 size="sm"
-                onClick={() => {
-                  console.log("[v0] Become Sub-Subagent button clicked - current showSubSubagentForm:", showSubSubagentForm);
-                  setShowSubSubagentForm(!showSubSubagentForm);
-                }}
+                onClick={() => setShowSubSubagentForm(!showSubSubagentForm)}
                 style={showSubSubagentForm ? { background: primaryColor, color: primaryForeground } : {}}
                 className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
               >
@@ -1328,28 +1325,25 @@ export function SubagentStorefront() {
         )}
 
         {/* SUB-SUBAGENT REGISTRATION FORM */}
-        {showSubSubagentForm && store && (() => {
-          console.log("[v0] Rendering SubSubagentRegistrationForm - store:", store.id, "subagentStoreId passed:", store.id);
-          return (
-            <div className="w-full py-4">
-              <Card className="border-primary/30 bg-primary/5 mb-6">
-                <CardContent className="p-6">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold mb-2" style={{ color: primaryColor }}>Become a Sub-Subagent Under {store.store_name}</h3>
-                    <p className="text-sm text-muted-foreground">Fill in the form below to register your sub-subagent store.</p>
-                  </div>
-                  <SubSubagentRegistrationForm
-                    subagentStoreId={store.id}
-                    subagentStoreName={store.store_name}
-                    primaryColor={primaryColor}
-                    primaryForeground={primaryForeground}
-                    onClose={() => setShowSubSubagentForm(false)}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          );
-        })()}
+        {showSubSubagentForm && store && (
+          <div className="w-full py-4">
+            <Card className="border-primary/30 bg-primary/5 mb-6">
+              <CardContent className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold mb-2" style={{ color: primaryColor }}>Become a Sub-Subagent Under {store.store_name}</h3>
+                  <p className="text-sm text-muted-foreground">Fill in the form below to register your sub-subagent store.</p>
+                </div>
+                <SubSubagentRegistrationForm
+                  subagentStoreId={store.id}
+                  subagentStoreName={store.store_name}
+                  primaryColor={primaryColor}
+                  primaryForeground={primaryForeground}
+                  onClose={() => setShowSubSubagentForm(false)}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Support */}
         <Card style={{ background: cardBg }} className="border-border">

@@ -25,7 +25,6 @@ export default function SubSubagentRegistrationForm({
   primaryForeground = "#0f172a",
   onClose,
 }: SubSubagentRegistrationFormProps) {
-  console.log("[v0] SubSubagentRegistrationForm mounted with subagentStoreId:", subagentStoreId);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -274,8 +273,6 @@ export default function SubSubagentRegistrationForm({
       setLoading(false);
     }
   };
-
-  console.log("[v0] SubSubagentRegistrationForm rendering - loading:", loading, "fetchingStore:", fetchingStore);
 
   return (
     <Card className="border-border bg-card/50">
