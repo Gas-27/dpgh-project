@@ -81,9 +81,10 @@ const SubSubagentLogin = () => {
     toast({ title: "Welcome back!", description: "Redirecting to your dashboard..." });
     // Use window.location.href to do a full page reload so the page loads with
     // session already established and roles already cached from database
+    // Wait 1000ms to ensure Supabase session is fully persisted
     setTimeout(() => {
       window.location.href = "/sub-subagent-dashboard";
-    }, 500);
+    }, 1000);
   };
 
   const handleForgotPassword = async () => {

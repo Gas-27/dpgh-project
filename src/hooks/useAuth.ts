@@ -61,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const nextRoles = await fetchRoles(currentUser.id, forceRoles);
       if (!mounted) return;
 
+      console.log("[v0] useAuth syncSession - Setting roles:", nextRoles);
       setRoles(nextRoles);
       setLoading(false);
     };
@@ -78,7 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      void syncSession(session?.user ?? null);
+      // Force refresh roles on initial page load
+      void syncSession(session?.user ?? null, true);
     });
 
     return () => {
