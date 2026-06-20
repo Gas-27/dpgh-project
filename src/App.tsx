@@ -112,7 +112,7 @@ const App = () => {
                   <Route
                     path="/sub-subagent-dashboard"
                     element={
-                      <AuthGuard requiredRole="sub_subagent">
+                      <AuthGuard>
                         <SubSubagentDashboard />
                       </AuthGuard>
                     }
