@@ -68,7 +68,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -78,6 +78,7 @@ const AdminDashboard = () => {
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [agents, setAgents] = useState<AgentStore[]>([]);
   const [subagents, setSubagents] = useState<any[]>([]);
+  const [subSubagents, setSubSubagents] = useState<any[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrdersFromDB, setFilteredOrdersFromDB] = useState<Order[]>([]);
@@ -87,9 +88,10 @@ const AdminDashboard = () => {
   const [topupHistory, setTopupHistory] = useState<TopupRecord[]>([]);
   const [filteredTopupHistory, setFilteredTopupHistory] = useState<TopupRecord[]>([]);
   const [topupSearching, setTopupSearching] = useState(false);
+  const [subSubagentPage, setSubSubagentPage] = useState(1);
   
   // Total counts from database
-  const [totalCounts, setTotalCounts] = useState({ orders: 0, agents: 0, subagents: 0, users: 0, withdrawals: 0, topups: 0, complaints: 0 });
+  const [totalCounts, setTotalCounts] = useState({ orders: 0, agents: 0, subagents: 0, sub_subagents: 0, users: 0, withdrawals: 0, topups: 0, complaints: 0 });
   const [unapprovedWithdrawals, setUnapprovedWithdrawals] = useState(0);
   
   const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number }>>({});
@@ -524,6 +526,23 @@ const AdminDashboard = () => {
     }
   };
   
+  // Fetch sub-subagents with their parent subagent info
+  const fetchSubSubagents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("sub_subagent_stores")
+        .select("*, subagent_stores(id, store_name, agent_store_id)")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      
+      if (error) throw error;
+      setSubSubagents(data || []);
+    } catch (error) {
+      console.error("[v0] Error fetching sub-subagents:", error);
+      toast({ title: "Error", description: "Failed to fetch sub-subagents", variant: "destructive" });
+    }
+  };
+
   // Save app settings
   const saveAppSettings = async () => {
     setSavingSettings(true);
@@ -926,10 +945,11 @@ const AdminDashboard = () => {
   useEffect(() => {
     const refreshCountsOnly = async () => {
       try {
-        const [ordersCount, agentsCount, subagentsCount, usersCount, withdrawalsCount, topupsCount] = await Promise.all([
+        const [ordersCount, agentsCount, subagentsCount, subSubagentsCount, usersCount, withdrawalsCount, topupsCount] = await Promise.all([
           supabase.from("orders").select("id", { count: "exact", head: true }),
           supabase.from("agent_stores").select("id", { count: "exact", head: true }),
           supabase.from("subagent_stores").select("id", { count: "exact", head: true }),
+          supabase.from("sub_subagent_stores").select("id", { count: "exact", head: true }),
           supabase.from("profiles").select("id", { count: "exact", head: true }),
           supabase.from("withdrawal_requests").select("id", { count: "exact", head: true }),
           supabase.from("wallet_topups").select("id", { count: "exact", head: true }),
@@ -939,6 +959,7 @@ const AdminDashboard = () => {
           orders: ordersCount.count ?? 0,
           agents: agentsCount.count ?? 0,
           subagents: subagentsCount.count ?? 0,
+          sub_subagents: subSubagentsCount.count ?? 0,
           users: usersCount.count ?? 0,
           withdrawals: withdrawalsCount.count ?? 0,
           topups: topupsCount.count ?? 0,
@@ -1605,6 +1626,7 @@ const AdminDashboard = () => {
             </TabsTrigger>
             <TabsTrigger value="agents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Agents ({agents.filter((a) => !a.approved).length})</TabsTrigger>
             <TabsTrigger value="subagents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Subagents ({subagents.filter((s) => !s.approved).length})</TabsTrigger>
+            <TabsTrigger value="sub_subagents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Sub-Subagents ({subSubagents.filter((s) => !s.approved).length})</TabsTrigger>
             <TabsTrigger value="topup" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Wallet className="h-3 w-3 md:h-4 md:w-4" /> Topup</TabsTrigger>
             <TabsTrigger value="withdrawals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1 relative">
               <DollarSign className="h-3 w-3 md:h-4 md:w-4" /> Withdrawals ({totalCounts.withdrawals})
@@ -2137,6 +2159,115 @@ const AdminDashboard = () => {
               );
               })()}
             </TabsContent>
+          )}
+
+          {/* SUB-SUBAGENTS TAB */}
+          {canSee("sub_subagents") && section === "sub_subagents" && (
+            (() => {
+              if (subSubagents.length === 0 && section === "sub_subagents") {
+                fetchSubSubagents();
+              }
+              return (
+            <TabsContent value="sub_subagents" className="space-y-4">
+              <div className="flex gap-2 flex-wrap">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search by store name..." 
+                    className="pl-10" 
+                    onChange={(e) => setSubagentSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              {subSubagents.length === 0 ? (
+                <Card className="border-border">
+                  <CardContent className="py-12">
+                    <p className="text-center text-muted-foreground">No sub-subagents registered yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Total Sub-Subagents: {subSubagents.length}
+                  </p>
+                  {subSubagents.map((subSubagent) => (
+                    <Card key={subSubagent.id} className="border-border bg-card/50">
+                      <CardContent className="p-3 md:p-6">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
+                          <div className="flex-1 space-y-2 md:space-y-3 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-display font-bold text-base md:text-lg text-foreground truncate">{subSubagent.store_name}</h3>
+                              <Badge variant={subSubagent.approved ? "default" : "secondary"}>
+                                {subSubagent.approved ? "Active" : "Pending"}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 text-xs md:text-sm">
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Parent Subagent</p>
+                                <p className="font-semibold text-foreground truncate">{subSubagent.subagent_stores?.store_name || 'N/A'}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Top Reference</p>
+                                <p className="font-mono text-cyan-400">{subSubagent.top_reference}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">WhatsApp</p>
+                                <p className="font-semibold text-foreground">{subSubagent.whatsapp_number}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Support</p>
+                                <p className="font-semibold text-foreground">{subSubagent.support_number}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">MoMo Name</p>
+                                <p className="font-semibold text-foreground truncate">{subSubagent.momo_name}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Wallet Balance</p>
+                                <p className="font-bold text-yellow-400">GH₵ {Number(subSubagent.wallet_balance || 0).toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`https://${DOMAINS.SUBAGENT_STORE}/${subSubagent.subagent_stores?.store_name}/store/${subSubagent.store_name}`, "_blank")}
+                              className="text-xs"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View Store
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const tokenData = JSON.stringify({ 
+                                  storeId: subSubagent.id,
+                                  storeName: subSubagent.store_name,
+                                  userId: subSubagent.user_id,
+                                  isSubSubagent: true,
+                                  timestamp: Date.now() 
+                                });
+                                const token = btoa(encodeURIComponent(tokenData));
+                                window.location.href = `https://${DOMAINS.SUBAGENT_STORE}/sub-subagent-dashboard?admin_token=${token}`;
+                              }}
+                              className="text-xs bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
+                            >
+                              <LogIn className="h-3 w-3 mr-1" />
+                              Dashboard
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
+              )}
+            </TabsContent>
+              );
+            })()
           )}
 
           {/* TOPUP TAB */}

@@ -452,7 +452,11 @@ const SubagentDashboard = () => {
 
         const store = storeData;
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
-        setSubagentStore(store);
+        // Preserve existing sub-subagent registration setting if it was just toggled
+        setSubagentStore(prev => ({
+          ...store,
+          allow_sub_subagent_registration: store.allow_sub_subagent_registration ?? prev?.allow_sub_subagent_registration ?? false
+        }));
         setStoreForm(store);
         setLoadError(null);
         
@@ -3145,71 +3149,74 @@ const SubagentDashboard = () => {
           <TabsContent value="sub-subagent-pricing" className="mt-0 space-y-6">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle>Set Sub-Subagent Package Prices</CardTitle>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" /> Set Sub-Subagent Package Prices
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 {subSubagents.length === 0 ? (
                   <p className="text-center text-muted-foreground py-6">No sub-subagents yet. Add one to set their prices.</p>
                 ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">Select a sub-subagent to set their package prices</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {subSubagents.map(subSubagent => (
                         <Card 
                           key={subSubagent.id}
-                          className={`cursor-pointer border transition-all ${selectedSubSubagentId === subSubagent.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                          className={`cursor-pointer border transition-all ${selectedSubSubagentId === subSubagent.id ? "border-cyan-500 bg-cyan-500/10" : "border-border hover:border-cyan-500/50"}`}
                           onClick={() => setSelectedSubSubagentId(subSubagent.id)}
                         >
                           <CardContent className="p-4">
-                            <p className="font-semibold">{subSubagent.store_name}</p>
-                            <p className="text-xs text-muted-foreground">Ref: {subSubagent.top_reference}</p>
-                            <p className="text-sm mt-2">Balance: GH₵ {(subSubagent.wallet_balance || 0).toFixed(2)}</p>
+                            <p className="font-semibold text-sm">{subSubagent.store_name}</p>
+                            <p className="text-xs text-cyan-400 font-mono mt-1">{subSubagent.top_reference}</p>
+                            <p className="text-xs text-muted-foreground mt-2">Balance: GH₵ {(subSubagent.wallet_balance || 0).toFixed(2)}</p>
                           </CardContent>
                         </Card>
                       ))}
                     </div>
                     
                     {selectedSubSubagentId && packages.length > 0 && (
-                      <Card className="border-border mt-6">
+                      <Card className="border-border">
                         <CardHeader>
-                          <CardTitle className="text-lg">Pricing for {subSubagents.find(s => s.id === selectedSubSubagentId)?.store_name}</CardTitle>
+                          <CardTitle className="text-base">Price Configuration for <span className="text-cyan-400">{subSubagents.find(s => s.id === selectedSubSubagentId)?.store_name}</span></CardTitle>
+                          <p className="text-xs text-muted-foreground mt-2">Set the minimum price your sub-subagent must charge customers</p>
                         </CardHeader>
                         <CardContent>
                           <div className="overflow-x-auto">
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  <TableHead>Size</TableHead>
-                                  <TableHead>Your Price</TableHead>
-                                  <TableHead>Sub-Subagent Min Price</TableHead>
-                                  <TableHead>Actions</TableHead>
+                                  <TableHead className="font-bold">Package Size</TableHead>
+                                  <TableHead className="font-bold">Your Selling Price</TableHead>
+                                  <TableHead className="font-bold">Sub-Subagent Min Price</TableHead>
+                                  <TableHead className="font-bold text-right">Action</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {packages.map(pkg => {
                                   const myPrice = subagentPrices[pkg.id] || basePrices[pkg.id] || 0;
-                                  const subSubagentPrice = subSubagentPrices?.[pkg.id] || myPrice;
+                                  const inputKey = `${selectedSubSubagentId}-${pkg.id}`;
                                   return (
-                                    <TableRow key={pkg.id}>
-                                      <TableCell className="font-bold">{pkg.size_gb}GB</TableCell>
-                                      <TableCell>GH₵ {Number(myPrice).toFixed(2)}</TableCell>
+                                    <TableRow key={pkg.id} className="hover:bg-secondary/50">
+                                      <TableCell className="font-bold text-cyan-400">{pkg.size_gb}GB</TableCell>
+                                      <TableCell className="font-mono">GH₵ {Number(myPrice).toFixed(2)}</TableCell>
                                       <TableCell>
                                         <Input 
                                           type="number" 
                                           step="0.01" 
                                           min={myPrice}
                                           placeholder={myPrice.toFixed(2)}
-                                          className="w-24 h-8"
+                                          className="w-32 h-9"
                                           onChange={(e) => handleSubSubagentPriceChange(pkg.id, e.target.value)}
                                         />
                                       </TableCell>
-                                      <TableCell>
+                                      <TableCell className="text-right">
                                         <Button 
                                           size="sm" 
                                           variant="outline"
-                                          onClick={() => saveSubSubagentPrice(selectedSubSubagentId, pkg.id, subSubagentPrice)}
+                                          onClick={() => saveSubSubagentPrice(selectedSubSubagentId, pkg.id, tempSubSubagentPrices[pkg.id] || myPrice)}
+                                          className="h-8"
                                         >
-                                          Save
+                                          <Save className="h-4 w-4" />
                                         </Button>
                                       </TableCell>
                                     </TableRow>
