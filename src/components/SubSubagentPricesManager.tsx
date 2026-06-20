@@ -48,7 +48,9 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
   }, [subagentStoreId]);
 
   const filteredPackages = packages.filter(p => {
-    const networkMatch = p.network === networkFilter;
+    const networkMatch = networkFilter === "mtn_mashup" 
+      ? (p.network === "mtn_mashup" || p.network === "mashup")
+      : p.network === networkFilter;
     return networkMatch && p.active !== false;
   });
 
@@ -120,13 +122,13 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
         await supabase
           .from("sub_subagent_package_prices")
           .delete()
-          .eq("subagent_store_id", subagentStoreId)
+          .eq("sub_subagent_store_id", subagentStoreId)
           .eq("package_id", packageId);
         
         const { error } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
-            subagent_store_id: subagentStoreId,
+            sub_subagent_store_id: subagentStoreId,
             package_id: packageId,
             subagent_minimum_price: price,
             sell_price: price

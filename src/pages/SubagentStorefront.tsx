@@ -469,6 +469,9 @@ export function SubagentStorefront() {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sub-Subagent Registration
+  const [showSubSubagentForm, setShowSubSubagentForm] = useState(false);
+
   // ── AFA Packages ──
   const [selectedAFAPackage, setSelectedAFAPackage] = useState<{
     id: string;
@@ -1025,6 +1028,20 @@ export function SubagentStorefront() {
             <Layers className="h-4 w-4 mr-1" />
             Bulk Orders
           </Button>
+          {store?.allow_sub_subagent_registration !== false && (
+            <>
+              <div className="h-6 w-px bg-border flex-shrink-0"></div>
+              <Button
+                variant={showSubSubagentForm ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowSubSubagentForm(!showSubSubagentForm)}
+                style={showSubSubagentForm ? { background: primaryColor, color: primaryForeground } : {}}
+                className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
+              >
+                Become a Sub-Subagent
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Bulk Orders Section */}

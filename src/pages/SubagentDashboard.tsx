@@ -26,6 +26,7 @@ import FlyerGenerator from "@/components/FlyerGenerator";
 // COMMENTED OUT: mashup packages deactivated
 // import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
+import SubSubagentPricesManager from "@/components/SubSubagentPricesManager";
 import { DOMAINS } from "@/config/domains";
 
 // Helper function to get current order stage
@@ -3096,6 +3097,8 @@ const SubagentDashboard = () => {
                           if (error) throw error;
                           setSubagentStore(prev => prev ? { ...prev, allow_sub_subagent_registration: checked } : null);
                           toast({ title: checked ? "Registration enabled" : "Registration disabled" });
+                          // Refresh dashboard to reflect changes
+                          fetchData();
                         } catch (error) {
                           console.error('Error updating sub-subagent setting:', error);
                           toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
@@ -3150,19 +3153,35 @@ const SubagentDashboard = () => {
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" /> Set Sub-Subagent Package Prices
+                  <DollarSign className="h-5 w-5" /> Set Sub-Subagent Pricing
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {subSubagents.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-6">No sub-subagents yet. Add one to set their prices.</p>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-6">Set the minimum selling prices for your sub-subagents. These are the prices sub-subagents will see and use as their starting point to set their own store prices. All sub-subagents use these same prices.</p>
+                {selectedSubSubagentId ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                      <div>
+                        <p className="text-sm font-semibold">Selected Sub-Subagent</p>
+                        <p className="text-xs text-muted-foreground">{subSubagents.find(s => s.id === selectedSubSubagentId)?.store_name}</p>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => setSelectedSubSubagentId(null)}>Change</Button>
+                    </div>
+                    <SubSubagentPricesManager
+                      subagentStoreId={selectedSubSubagentId}
+                      packages={packages}
+                      subagentPrices={subagentPrices}
+                      onPricesSaved={fetchData}
+                    />
+                  </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground mb-4">Select a sub-subagent to set their package prices</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {subSubagents.map(subSubagent => (
                         <Card 
                           key={subSubagent.id}
-                          className={`cursor-pointer border transition-all ${selectedSubSubagentId === subSubagent.id ? "border-cyan-500 bg-cyan-500/10" : "border-border hover:border-cyan-500/50"}`}
+                          className="cursor-pointer border transition-all hover:border-cyan-500/50 hover:bg-secondary/50"
                           onClick={() => setSelectedSubSubagentId(subSubagent.id)}
                         >
                           <CardContent className="p-4">
@@ -3173,60 +3192,8 @@ const SubagentDashboard = () => {
                         </Card>
                       ))}
                     </div>
-                    
-                    {selectedSubSubagentId && packages.length > 0 && (
-                      <Card className="border-border">
-                        <CardHeader>
-                          <CardTitle className="text-base">Price Configuration for <span className="text-cyan-400">{subSubagents.find(s => s.id === selectedSubSubagentId)?.store_name}</span></CardTitle>
-                          <p className="text-xs text-muted-foreground mt-2">Set the minimum price your sub-subagent must charge customers</p>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="overflow-x-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="font-bold">Package Size</TableHead>
-                                  <TableHead className="font-bold">Your Selling Price</TableHead>
-                                  <TableHead className="font-bold">Sub-Subagent Min Price</TableHead>
-                                  <TableHead className="font-bold text-right">Action</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {packages.map(pkg => {
-                                  const myPrice = subagentPrices[pkg.id] || basePrices[pkg.id] || 0;
-                                  const inputKey = `${selectedSubSubagentId}-${pkg.id}`;
-                                  return (
-                                    <TableRow key={pkg.id} className="hover:bg-secondary/50">
-                                      <TableCell className="font-bold text-cyan-400">{pkg.size_gb}GB</TableCell>
-                                      <TableCell className="font-mono">GH₵ {Number(myPrice).toFixed(2)}</TableCell>
-                                      <TableCell>
-                                        <Input 
-                                          type="number" 
-                                          step="0.01" 
-                                          min={myPrice}
-                                          placeholder={myPrice.toFixed(2)}
-                                          className="w-32 h-9"
-                                          onChange={(e) => handleSubSubagentPriceChange(pkg.id, e.target.value)}
-                                        />
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                        <Button 
-                                          size="sm" 
-                                          variant="outline"
-                                          onClick={() => saveSubSubagentPrice(selectedSubSubagentId, pkg.id, tempSubSubagentPrices[pkg.id] || myPrice)}
-                                          className="h-8"
-                                        >
-                                          <Save className="h-4 w-4" />
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </CardContent>
-                      </Card>
+                    {subSubagents.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">No sub-subagents yet. Enable registration to allow them to sign up.</p>
                     )}
                   </div>
                 )}

@@ -475,9 +475,9 @@ const AdminDashboard = () => {
     }
   };
   const refreshData = async () => {
-    console.log("[v0] Initial load - packages, withdrawals, app settings, and AFA settings");
+    console.log("[v0] Initial load - packages, withdrawals, app settings, AFA settings, and sub-subagents");
     try {
-      // Load packages, withdrawals, and settings on initial load
+      // Load packages, withdrawals, settings, and sub-subagents on initial load
       const [pkgResult, withdrawalsData, appSettingsResult] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
         fetchWithdrawalsWithStores(10000),
@@ -517,6 +517,21 @@ const AdminDashboard = () => {
       } catch (afaError) {
         console.log("[v0] AFA settings not found, using default");
         setAfaRegistrationFee(14);
+      }
+      
+      // Fetch sub-subagents
+      try {
+        const { data, error } = await supabase
+          .from("sub_subagent_stores")
+          .select("*, subagent_stores(id, store_name, agent_store_id)")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        
+        if (error) throw error;
+        setSubSubagents(data || []);
+      } catch (error) {
+        console.error("[v0] Error fetching sub-subagents:", error);
+        setSubSubagents([]);
       }
       
       setDataLoading(false);
