@@ -62,18 +62,9 @@ function getOrderStage(order: any): string {
 interface SubagentStore {
   id: string;
   store_name: string;
-  whatsapp_number?: string;
-  support_number?: string;
-  momo_number?: string;
-  momo_name?: string;
-  momo_network?: string;
-  wallet_balance: number;
-  approved: boolean;
+  user_id: string;
   subagent_store_id: string;
   created_at: string;
-  theme_config?: any;
-  store_headline?: string;
-  whatsapp_group?: string;
 }
 
 interface Order {
@@ -402,7 +393,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] SubSubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, subagent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
+          .select("id, store_name, user_id, subagent_store_id, created_at")
           .eq("id", storeId)
           .single();
 
@@ -543,7 +534,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] Querying sub_subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, subagent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
+          .select("id, store_name, user_id, subagent_store_id, created_at")
           .eq("user_id", effectiveUserId);
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
