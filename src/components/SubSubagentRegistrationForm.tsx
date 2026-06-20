@@ -258,6 +258,20 @@ export default function SubSubagentRegistrationForm({
 
       console.log("[v0] Sub-subagent store created:", storeData.id);
 
+      // Auto sign-in the newly created user
+      console.log("[v0] Auto signing in user...");
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        console.error("[v0] Auto sign-in failed:", signInError);
+        // Still redirect even if auto-signin fails - user can sign in manually
+      } else {
+        console.log("[v0] User auto signed in successfully");
+      }
+
       // Sub-subagents don't need payment, so skip to dashboard
       toast({
         title: "Success!",
