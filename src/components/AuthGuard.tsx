@@ -74,7 +74,14 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  // Determine appropriate login page based on required role
+  const getLoginPage = () => {
+    if (requiredRole === "sub_subagent") return "/sub-subagent-login";
+    if (requiredRole === "subagent") return "/login";
+    return "/login";
+  };
+
+  if (!user) return <Navigate to={getLoginPage()} replace />;
   
   // For agent route: check store approval BEFORE role check
   if (requiredRole === "agent" && !isAdmin) {
@@ -91,7 +98,7 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
   // For non-agent routes: standard role check
   if (requiredRole && requiredRole !== "agent") {
     if (!hasRole(requiredRole) && !isAdmin) {
-      return <Navigate to="/" replace />;
+      return <Navigate to={getLoginPage()} replace />;
     }
   }
 
