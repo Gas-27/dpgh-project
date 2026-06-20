@@ -24,7 +24,6 @@ import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/ph
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
-import SubSubagentPricesManager from "@/components/SubSubagentPricesManager";
 import { DOMAINS } from "@/config/domains";
 
 // Helper function to get current order stage
@@ -190,18 +189,6 @@ const SubSubagentDashboard = () => {
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
   const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string; store_name?: string } | null>(null);
   
-  const [subSubagents, setSubSubagents] = useState<any[]>([]);
-  const [subSubagentFormOpen, setSubSubagentFormOpen] = useState(false);
-  const [loadingSubSubagents, setLoadingSubSubagents] = useState(false);
-  const [selectedSubSubagentId, setSelectedSubSubagentId] = useState<string | null>(null);
-  const [subSubagentPrices, setSubSubagentPrices] = useState<Record<string, number>>({});
-
-  const [subSubagentProfitForSubagent, setSubSubagentProfitForSubagent] = useState<number>(0);
-  const [subSubagentOrdersCount, setSubSubagentOrdersCount] = useState<number>(0);
-  const [subSubagentNotifications, setSubSubagentNotifications] = useState<any[]>([]);
-  const [subSubagentNotificationMsg, setSubSubagentNotificationMsg] = useState("");
-  const [sendingSubSubagentNotification, setSendingSubSubagentNotification] = useState(false);
-  
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
@@ -217,7 +204,6 @@ const SubSubagentDashboard = () => {
   const [customEndDate, setCustomEndDate] = useState("");
   
   const [showAgentNotificationPopup, setShowAgentNotificationPopup] = useState(true);
-  const [tempSubSubagentPrices, setTempSubSubagentPrices] = useState<Record<string, number>>({});
 
   // Helper function to get available wallet balance
   const getAvailableBalance = () => {
@@ -532,51 +518,6 @@ const SubSubagentDashboard = () => {
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
-
-  const sendSubSubagentNotification = async () => {
-    if (!subSubagentNotificationMsg.trim() || !subagentStore?.id) return;
-    try {
-      setSendingSubSubagentNotification(true);
-      const { error } = await supabase.from("sub_sub_subagent_notifications").insert({
-        sub_subagent_store_id: subagentStore.id,
-        message: subSubagentNotificationMsg.trim(),
-        is_active: true,
-        created_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-      setSubSubagentNotificationMsg("");
-      toast({ title: "Success", description: "Notification sent to all sub-subagents" });
-      fetchSubSubagentNotifications();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setSendingSubSubagentNotification(false);
-    }
-  };
-
-  const deleteSubSubagentNotification = async (id: string) => {
-    try {
-      const { error } = await supabase.from("sub_sub_subagent_notifications").delete().eq("id", id);
-      if (error) throw error;
-      fetchSubSubagentNotifications();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
-
-  const fetchSubSubagentNotifications = async () => {
-    try {
-      if (!subagentStore?.id) return;
-      const { data } = await supabase
-        .from("sub_sub_subagent_notifications")
-        .select("*")
-        .eq("sub_subagent_store_id", subagentStore.id)
-        .order("created_at", { ascending: false });
-      if (data) setSubSubagentNotifications(data);
-    } catch (error) {
-      console.error("Error fetching sub-subagent notifications:", error);
-    }
-  };
   
   const handlePaystackTopup = async () => {
     const amount = Number(paystackTopupAmount);
@@ -887,58 +828,6 @@ const SubSubagentDashboard = () => {
     }
   };
 
-  const handleSubSubagentPriceChange = (packageId: string, value: string) => {
-    setTempSubSubagentPrices(prev => ({
-      ...prev,
-      [packageId]: value === "" ? 0 : (parseFloat(value) || 0)
-    }));
-  };
-
-  const saveSubSubagentPrice = async (subSubagentStoreId: string, packageId: string, price: number) => {
-    if (!subagentStore?.id) {
-      toast({ title: "Error", description: "Store not found", variant: "destructive" });
-      return;
-    }
-
-    const myPrice = subagentPrices[packageId] || basePrices[packageId] || 0;
-    const finalPrice = tempSubSubagentPrices[packageId] || price || myPrice;
-
-    if (finalPrice < myPrice) {
-      toast({
-        title: "Invalid Price",
-        description: `Price cannot be below your selling price (GH₵ ${myPrice.toFixed(2)})`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      await supabase
-        .from("sub_sub_subagent_package_prices")
-        .delete()
-        .eq("sub_sub_subagent_store_id", subSubagentStoreId)
-        .eq("package_id", packageId);
-
-      const { error } = await supabase
-        .from("sub_sub_subagent_package_prices")
-        .insert({
-          sub_sub_subagent_store_id: subSubagentStoreId,
-          package_id: packageId,
-          subagent_minimum_price: myPrice,
-          sell_price: finalPrice
-        });
-
-      if (error) throw error;
-
-      toast({ title: "Success", description: "Price saved for sub-subagent" });
-      setTempSubSubagentPrices({});
-      fetchData();
-    } catch (error) {
-      console.error("Error saving sub-subagent price:", error);
-      toast({ title: "Error", description: "Failed to save price", variant: "destructive" });
-    }
-  };
-
   // FIXED: handleBuyData with maybeSingle() instead of single()
   const handleBuyData = async () => {
     if (!buyingPkg || !buyCustomerNumber || !subagentStore) return;
@@ -1142,8 +1031,6 @@ const SubSubagentDashboard = () => {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "topup", label: "Top Up", icon: Wallet },
-    { id: "sub-subagents", label: "Sub-Subagents", icon: Users },
-    { id: "sub-subagent-pricing", label: "Sub-Subagent Pricing", icon: DollarSign },
     { id: "flyer", label: "Flyer Generator", icon: Image },
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "notifications", label: "Notifications", icon: Bell },
