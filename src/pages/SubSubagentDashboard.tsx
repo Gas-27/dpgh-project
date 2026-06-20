@@ -69,7 +69,7 @@ interface SubagentStore {
   momo_network?: string;
   wallet_balance: number;
   approved: boolean;
-  agent_store_id: string;
+  subagent_store_id: string;
   created_at: string;
   theme_config?: any;
   store_headline?: string;
@@ -402,7 +402,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] SubSubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, subagent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
           .eq("id", storeId)
           .single();
 
@@ -446,11 +446,11 @@ const SubSubagentDashboard = () => {
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
+          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id),
+          supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("subagent_store_id", store.subagent_store_id),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
-          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
+          supabase.from("subagent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.subagent_store_id).single(),
           supabase.from("sub_sub_subagent_stores").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false })
         ]);
 
@@ -543,7 +543,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] Querying sub_subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, subagent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference")
           .eq("user_id", effectiveUserId);
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
@@ -589,11 +589,11 @@ const SubSubagentDashboard = () => {
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
+          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id),
+          supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("subagent_store_id", store.subagent_store_id),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
-          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
+          supabase.from("subagent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.subagent_store_id).single()
         ]);
 
         // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
