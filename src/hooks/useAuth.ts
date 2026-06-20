@@ -26,26 +26,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const rolesCache = useRef<Record<string, AppRole[]>>({});
 
   const fetchRoles = useCallback(async (userId: string, force = false) => {
-    if (!force && rolesCache.current[userId]) {
-      console.log("[v0] fetchRoles - returning cached roles for", userId, rolesCache.current[userId]);
-      return rolesCache.current[userId];
-    }
+    if (!force && rolesCache.current[userId]) return rolesCache.current[userId];
 
-    console.log("[v0] fetchRoles - querying database for", userId, "force:", force);
     const { data, error } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
 
-    console.log("[v0] fetchRoles - query result:", { data, error });
-
     if (error) {
-      console.error("[v0] Failed to fetch roles:", error);
+      console.error("Failed to fetch roles:", error);
       return rolesCache.current[userId] ?? [];
     }
 
     const result = (data ?? []).map((roleRow) => roleRow.role as AppRole);
-    console.log("[v0] fetchRoles - found roles:", result);
     rolesCache.current[userId] = result;
     return result;
   }, []);
