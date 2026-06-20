@@ -388,136 +388,33 @@ const SubSubagentDashboard = () => {
       setLoading(true);
       setLoadError(null);
       
-      // If admin is impersonating and passed storeId, use that directly
+      let store: SubagentStore | null = null;
+
+      // If admin is impersonating with storeId
       if (storeId) {
         console.log("[v0] SubSubagentDashboard - Admin impersonation with storeId:", storeId);
-        const { data: storeDataArray, error: storeErr } = await supabase
+        const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
           .select("id, store_name, user_id, subagent_store_id, created_at")
-          .eq("id", storeId);
+          .eq("id", storeId)
+          .single();
 
-        if (storeErr || !storeDataArray || storeDataArray.length === 0) {
-          console.error("[v0] Error fetching subagent store by ID:", storeErr);
+        if (storeErr || !storeData) {
+          console.error("[v0] Error fetching store by ID:", storeErr);
           setLoadError("Failed to load your store. Please refresh the page or try again.");
           setLoading(false);
           return;
         }
-
-        const store = storeDataArray[0];
-        console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
-        setSubagentStore(store);
-        setStoreForm(store);
-        setLoadError(null);
-
-        // Run all other queries in parallel for faster loading
-        const [
-          ordersResult,
-          withdrawResult,
-          packagesResult,
-          agentSubagentPricesResult,
-          adminCustomPricesResult,
-          subagentPricesResult,
-          topupsResult,
-          agentInfoResult,
-          subSubagentsResult
-        ] = await Promise.all([
-          supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id),
-          supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("subagent_store_id", store.subagent_store_id),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
-          supabase.from("subagent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.subagent_store_id).single(),
-          supabase.from("sub_sub_subagent_stores").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false })
-        ]);
-
-        setOrders(ordersResult.data || []);
-        setWithdrawals(withdrawResult.data || []);
-        setPackages(packagesResult.data || []);
-        setTopupHistory(topupsResult.data || []);
-        if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
-        
-        // Fetch sub-subagent orders and calculate profits
-        const subSubagentsData = subSubagentsResult.data || [];
-        setSubSubagents(subSubagentsData);
-        
-        if (subSubagentsData.length > 0) {
-          const subSubagentIds = subSubagentsData.map(s => s.id);
-          const { data: subSubagentOrders } = await supabase
-            .from("orders")
-            .select("*")
-            .in("sub_sub_subagent_store_id", subSubagentIds);
-          
-          const subSubagentOrdersList = subSubagentOrders || [];
-          setSubSubagentOrdersCount(subSubagentOrdersList.length);
-          
-          // Calculate profit: difference between what sub-subagent charged (order_price) vs what we charged them (package price)
-          let totalProfit = 0;
-          subSubagentOrdersList.forEach(order => {
-            const profit = (Number(order.order_price) || 0) - (Number(order.package_price) || 0);
-            if (profit > 0) totalProfit += profit;
-          });
-          
-          setSubSubagentProfitForSubagent(totalProfit);
-        }
-        
-        // Fetch sub-subagent notifications
-        await fetchSubSubagentNotifications();
-        
-        // Build admin custom price map (admin's price to agents - NOT for subagents)
-        const adminPriceMap: Record<string, number> = {};
-        (adminCustomPricesResult.data || []).forEach((p: any) => {
-          if (p.custom_base_price) adminPriceMap[p.package_id] = p.custom_base_price;
-        });
-        
-        // Build agent's subagent base prices map (what agent charges subagent - THIS IS THE CORRECT ONE)
-        const agentSubagentPriceMap: Record<string, number> = {};
-        (agentSubagentPricesResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
-            agentSubagentPriceMap[p.package_id] = Number(p.base_price);
-          }
-        });
-        
-        // Final price map: Agent's subagent price is the ONLY correct base price for subagents
-        // Only fall back to admin price if agent hasn't set any prices yet
-        const priceMap: Record<string, number> = {};
-        const hasAgentPrices = Object.keys(agentSubagentPriceMap).length > 0;
-        
-        (packagesResult.data || []).forEach((p: any) => {
-          if (hasAgentPrices && agentSubagentPriceMap[p.id] !== undefined) {
-            // Use agent's price for subagent
-            priceMap[p.id] = agentSubagentPriceMap[p.id];
-          } else if (adminPriceMap[p.id] !== undefined) {
-            // Fallback to admin price only if agent hasn't set prices
-            priceMap[p.id] = adminPriceMap[p.id];
-          } else {
-            // Final fallback to package default
-            priceMap[p.id] = p.price;
-          }
-        });
-        setBasePrices(priceMap);
-        
-        if (subagentPricesResult.data) {
-          const subagentPriceMap: Record<string, number> = {};
-          subagentPricesResult.data.forEach((p: any) => {
-            subagentPriceMap[p.package_id] = p.sell_price;
-          });
-          setSubagentPrices(subagentPriceMap);
-        }
-        return;
+        store = storeData;
       } else {
-        // Normal flow - filter by user_id
+        // Regular user login - fetch store by user_id
         const effectiveUserId = userId || user?.id;
-        console.log("[v0] SubSubagentDashboard - fetchData called with effectiveUserId:", effectiveUserId);
         if (!effectiveUserId) {
           setLoadError("Authentication error. Please log in again.");
           setLoading(false);
           return;
         }
 
-        // Fetch subagent store first (needed for other queries)
-        // Filter by user_id to ensure each subagent only sees their own store
         console.log("[v0] Querying sub_subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
@@ -526,184 +423,52 @@ const SubSubagentDashboard = () => {
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
         if (storeErr) {
-          console.error("[v0] Error fetching subagent store:", storeErr);
+          console.error("[v0] Error fetching store:", storeErr);
           setLoadError("Failed to load your store. Please refresh the page or try again.");
           setLoading(false);
           return;
         }
 
         if (!storeData || storeData.length === 0) {
-          console.warn("[v0] No subagent store found for user_id:", effectiveUserId);
-          setLoadError("Store not found. Please contact your agent to complete registration.");
+          console.warn("[v0] No store found for user_id:", effectiveUserId);
+          setLoadError("Store not found. Please contact your subagent to complete registration.");
           setLoading(false);
           return;
         }
 
-        const store = storeData[0];
-        console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
-        setSubagentStore(store);
-        setStoreForm(store);
-        setLoadError(null);
-
-        // Run all other queries in parallel for faster loading
-        const [
-          ordersResult,
-          withdrawResult,
-          packagesResult,
-          agentSubagentPricesResult,
-          adminCustomPricesResult,
-          subagentPricesResult,
-          topupsResult,
-          agentInfoResult
-        ] = await Promise.all([
-          supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id),
-          supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("subagent_store_id", store.subagent_store_id),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
-          supabase.from("subagent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.subagent_store_id).single()
-        ]);
-
-        // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
-        const enrichedOrders2 = await Promise.all((ordersResult.data || []).map(async (order: any) => {
-          if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
-            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
-            return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
-          }
-          return order;
-        }));
-
-        setOrders(ordersResult.data || []);
-        setWithdrawals(withdrawResult.data || []);
-        setPackages(packagesResult.data || []);
-        setTopupHistory(topupsResult.data || []);
-        if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
-        
-        // Build admin custom price map (admin's price to agents - NOT for subagents)
-        const adminPriceMap: Record<string, number> = {};
-        (adminCustomPricesResult.data || []).forEach((p: any) => {
-          if (p.custom_base_price) adminPriceMap[p.package_id] = p.custom_base_price;
-        });
-        
-        // Build agent's subagent base prices map (what agent charges subagent - THIS IS THE CORRECT ONE)
-        const agentSubagentPriceMap: Record<string, number> = {};
-        (agentSubagentPricesResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
-            agentSubagentPriceMap[p.package_id] = Number(p.base_price);
-          }
-        });
-        
-        // Final price map: Agent's subagent price is the ONLY correct base price for subagents
-        // Only fall back to admin price if agent hasn't set any prices yet
-        const priceMap: Record<string, number> = {};
-        const hasAgentPrices = Object.keys(agentSubagentPriceMap).length > 0;
-        
-        (packagesResult.data || []).forEach((p: any) => {
-          if (hasAgentPrices && agentSubagentPriceMap[p.id] !== undefined) {
-            // Use agent's price for subagent
-            priceMap[p.id] = agentSubagentPriceMap[p.id];
-          } else if (adminPriceMap[p.id] !== undefined) {
-            // Fallback to admin price only if agent hasn't set prices
-            priceMap[p.id] = adminPriceMap[p.id];
-          } else {
-            // Final fallback to package default
-            priceMap[p.id] = p.price;
-          }
-        });
-        setBasePrices(priceMap);
-        
-        if (subagentPricesResult.data) {
-          const subagentPriceMap: Record<string, number> = {};
-          subagentPricesResult.data.forEach((p: any) => {
-            subagentPriceMap[p.package_id] = p.sell_price;
-          });
-          setSubagentPrices(subagentPriceMap);
-        }
+        store = storeData[0];
       }
 
-      if (!storeId) return;
-
-        // Run all other queries in parallel for faster loading
-        const [
-          ordersResult,
-          withdrawResult,
-          packagesResult,
-          agentSubagentPricesResult,
-          adminCustomPricesResult,
-          subagentPricesResult,
-          topupsResult,
-          agentInfoResult
-        ] = await Promise.all([
-          supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
-          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
-        ]);
-
-        // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
-        const enrichedOrders = await Promise.all((ordersResult.data || []).map(async (order: any) => {
-          if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
-            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
-            return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
-          }
-          return order;
-        }));
-        setOrders(enrichedOrders);
-        setWithdrawals(withdrawResult.data || []);
-        setPackages(packagesResult.data || []);
-        setTopupHistory(topupsResult.data || []);
-        if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
-      
-      // Build admin custom price map (admin's price to agents - NOT for subagents)
-      const adminPriceMap: Record<string, number> = {};
-      (adminCustomPricesResult.data || []).forEach((p: any) => {
-        if (p.custom_base_price) adminPriceMap[p.package_id] = p.custom_base_price;
-      });
-      
-      // Build agent's subagent base prices map (what agent charges subagent - THIS IS THE CORRECT ONE)
-      const agentSubagentPriceMap: Record<string, number> = {};
-      (agentSubagentPricesResult.data || []).forEach((p: any) => {
-        if (p.base_price !== null && p.base_price !== undefined) {
-          agentSubagentPriceMap[p.package_id] = Number(p.base_price);
-        }
-      });
-      
-      // Final price map: Agent's subagent price is the ONLY correct base price for subagents
-      // Only fall back to admin price if agent hasn't set any prices yet
-      const priceMap: Record<string, number> = {};
-      const hasAgentPrices = Object.keys(agentSubagentPriceMap).length > 0;
-      
-      (packagesResult.data || []).forEach((p: any) => {
-        if (hasAgentPrices && agentSubagentPriceMap[p.id] !== undefined) {
-          // Use agent's price for subagent
-          priceMap[p.id] = agentSubagentPriceMap[p.id];
-        } else if (adminPriceMap[p.id] !== undefined) {
-          // Fallback to admin price only if agent hasn't set prices
-          priceMap[p.id] = adminPriceMap[p.id];
-        } else {
-          // Final fallback to package default
-          priceMap[p.id] = p.price;
-        }
-      });
-      setBasePrices(priceMap);
-      
-      if (subagentPricesResult.data) {
-        const priceMap: Record<string, number> = {};
-        subagentPricesResult.data.forEach((p: any) => {
-          priceMap[p.package_id] = p.sell_price;
-        });
-        setSubagentPrices(priceMap);
+      if (!store) {
+        setLoadError("Failed to load store data.");
+        setLoading(false);
+        return;
       }
+
+      console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
+      setSubagentStore(store);
+      setStoreForm(store);
+      setLoadError(null);
+
+      // Run all other queries in parallel for faster loading
+      const [
+        ordersResult,
+        withdrawResult,
+        packagesResult
+      ] = await Promise.all([
+        supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
+        supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
+        supabase.from("data_packages").select("*").eq("active", true).order("size_gb")
+      ]);
+
+      setOrders(ordersResult.data || []);
+      setWithdrawals(withdrawResult.data || []);
+      setPackages(packagesResult.data || []);
+
+      setLoading(false);
     } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({ title: "Error", description: "Failed to load dashboard", variant: "destructive" });
-    } finally {
+      console.error("[v0] Error loading data:", error);
+      setLoadError("An error occurred while loading your data. Please refresh the page.");
       setLoading(false);
     }
   };
