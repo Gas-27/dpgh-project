@@ -103,7 +103,7 @@ const MANUAL_SECTIONS = [
   { icon: "📊", title: "Overview", content: `Your dashboard home. See wallet balance, total revenue, pending orders, and store status at a glance.\n\n• Wallet Balance – funds available to withdraw\n• Total Revenue – sum of all completed orders\n• Pending Orders – orders awaiting fulfillment` },
   { icon: "🛒", title: "Buy Data", content: `Purchase data bundles at your agent's base price to resell in your store.\n\n• Select network (MTN, AirtelTigo, Telecel)\n• Choose package size\n• Enter customer number\n• Confirm purchase` },
   { icon: "📦", title: "Bulk Orders", content: `Send data to multiple recipients at once using your wallet.\n\nHow to use:\n1. SELECT NETWORK – Choose MTN, Telecel, or AirtelTigo.\n2. RECIPIENTS – Upload a CSV/Excel file OR type manually.\n   • Format: phone number followed by GB size, one per line\n   • Example: 0241234567 2 (sends 2GB to that number)\n3. GLOBAL PACKAGE (Optional) – Set a default GB size for all recipients.\n4. Review the summary showing total recipients, total GB, and total cost.\n5. Click "Pay with Wallet" to process all orders at once.\n\nTips:\n• CSV/Excel files should have phone in Column A, GB sizes in Column B.\n• Results table shows success/failure for each recipient.` },
-  { icon: "💰", title: "Store Prices", content: `Set your selling prices for each data package.\n\n• Base Price = price your agent gives you\n• Your Selling Price = what customers pay\n• Profit = Selling Price - Base Price\n\nUse markup to increase all prices by a percentage.` },
+  { icon: "💰", title: "Store Prices", content: `Set your selling prices for each data package.\n\n• Cost from Agent = what your agent charges you\n• Your Selling Price = what customers pay you\n• Profit = Your Selling Price - Cost from Agent\n\nUse markup to increase all prices by a percentage.` },
   { icon: "📦", title: "Orders", content: `View all customer orders.\n\n• Track order status (pending, completed, failed)\n• See customer details and amounts\n• Monitor your sales history` },
   { icon: "💸", title: "Withdraw", content: `Cash out your wallet balance to your MoMo account.\n\n• Minimum withdrawal: GH₵ 10.00\n• Only one pending withdrawal at a time\n• Processed within 24 hours` },
   { icon: "🎨", title: "Flyer Generator", content: `Create promotional flyers for your store.\n\n• Customize colors and design\n• Add your store name and contact\n• Download or share to WhatsApp` },
@@ -2693,14 +2693,14 @@ const SubagentDashboard = () => {
                   <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />������ Markup Explanation (Remember to click save after applying markup)</p>
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
-                <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
+                <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
                 <Card className="border-border">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Size</TableHead>
-                          <TableHead>Agent Base Price</TableHead>
+                          <TableHead>Cost from Agent</TableHead>
                           <TableHead>Your Selling Price</TableHead>
                           <TableHead>Profit</TableHead>
                         </TableRow>
@@ -2708,30 +2708,30 @@ const SubagentDashboard = () => {
                       <TableBody>
                         {filteredPackages.length > 0 ? (
                           filteredPackages.map(pkg => {
-                            const agentPrice = subagentPrices[pkg.id] || basePrices[pkg.id] || pkg.price || 0;
+                            const costFromAgent = basePrices[pkg.id] || pkg.price || 0;
                             const savedPrice = subagentPrices[pkg.id];
-                            const cur = editedPrices[pkg.id] ?? savedPrice ?? agentPrice;
-                            const profit = cur - agentPrice;
-                            const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < agentPrice;
+                            const cur = editedPrices[pkg.id] ?? savedPrice ?? costFromAgent;
+                            const profit = cur - costFromAgent;
+                            const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < costFromAgent;
                             const hasSavedPrice = savedPrice !== undefined;
                             return (
                               <TableRow key={pkg.id}>
                                 <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
                                 <TableCell className="text-muted-foreground">
-                                  GH₵ {Number(agentPrice).toFixed(2)}
+                                  GH₵ {Number(costFromAgent).toFixed(2)}
                                 </TableCell>
                                 <TableCell>
                                   <div className="space-y-1">
                                     <Input 
                                       type="number" 
                                       step="0.01" 
-                                      min={agentPrice}
+                                      min={costFromAgent}
                                       value={cur} 
                                       onChange={e => handlePriceChange(pkg.id, e.target.value)} 
                                       className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !editedPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />
                                     {isInvalid && (
-                                      <p className="text-xs text-red-500">Min: GH₵ {agentPrice.toFixed(2)}</p>
+                                      <p className="text-xs text-red-500">Min: GH₵ {costFromAgent.toFixed(2)}</p>
                                     )}
                                     {hasSavedPrice && !editedPrices[pkg.id] && (
                                       <p className="text-xs text-green-500">Saved</p>

@@ -233,9 +233,9 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
         <CardHeader>
           <CardTitle className="text-base">Set Sub-Subagent Package Prices</CardTitle>
           <p className="text-xs text-muted-foreground mt-2">
-            <strong>"Your Price"</strong> = The base price your agent gave you. 
+            <strong>"Your Selling Price (Cost to Sub-Subagents)"</strong> = What your sub-subagents pay you for each package
             <br />
-            <strong>"Sub-Subagent Min Price"</strong> = Set the minimum price your sub-subagents must charge (must be ≥ your price)
+            <strong>"Sub-Subagent Min Price"</strong> = Set the minimum price your sub-subagents must charge customers (must be ≥ your selling price)
           </p>
         </CardHeader>
         <CardContent>
@@ -247,7 +247,7 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
                 <TableHeader>
                   <TableRow>
                     <TableHead>Package Size</TableHead>
-                    <TableHead className="text-cyan-400">Your Price (Agent Cost)</TableHead>
+                    <TableHead className="text-cyan-400">Your Selling Price</TableHead>
                     <TableHead className="text-green-400">Sub-Subagent Min Price</TableHead>
                     <TableHead className="text-yellow-400">Your Margin/Unit</TableHead>
                   </TableRow>
