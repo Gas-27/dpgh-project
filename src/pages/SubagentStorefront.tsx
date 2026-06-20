@@ -1327,22 +1327,26 @@ export function SubagentStorefront() {
 
         {/* SUB-SUBAGENT REGISTRATION DIALOG */}
         <Dialog open={showSubSubagentForm} onOpenChange={setShowSubSubagentForm}>
-          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-            <DialogHeader> Become an agent 
-              <DialogTitle></DialogTitle>
-              <DialogDescription>
-                Register your agent store under {store?.store_name}
-              </DialogDescription>
-            </DialogHeader>
-            {store && (
-              <SubSubagentRegistrationForm
-                subagentStoreId={store.id}
-                subagentStoreName={store.store_name}
-                primaryColor={primaryColor}
-                primaryForeground={primaryForeground}
-                onClose={() => setShowSubSubagentForm(false)}
-              />
-            )}
+          <DialogContent className="max-w-md max-h-[95vh] flex flex-col">
+            <div className="overflow-y-auto flex-1">
+              <DialogHeader>
+                <DialogTitle>Become a Sub-Subagent</DialogTitle>
+                <DialogDescription>
+                  Register your sub-subagent store under {store?.store_name}
+                </DialogDescription>
+              </DialogHeader>
+              {store && (
+                <div className="mt-4">
+                  <SubSubagentRegistrationForm
+                    subagentStoreId={store.id}
+                    subagentStoreName={store.store_name}
+                    primaryColor={primaryColor}
+                    primaryForeground={primaryForeground}
+                    onClose={() => setShowSubSubagentForm(false)}
+                  />
+                </div>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
 
