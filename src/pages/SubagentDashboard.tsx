@@ -1343,26 +1343,30 @@ const SubagentDashboard = () => {
         }
       }
       
-      // Save prices to subagent_package_prices table as TEMPLATE prices
-      // When a new sub-subagent registers, these prices become their base cost
-      // This uses the same table as Store Prices - clean and simple
+      // Save prices to sub_subagent_package_prices table as TEMPLATE prices
+      // Template marker: sub_subagent_store_id = NULL indicates these are parent's template prices
+      // When a new sub-subagent registers, they query this table with NULL and inherit these as base prices
       for (const [packageId, priceVal] of Object.entries(subSubagentEditedSubSubPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         
-        // Delete existing template price
+        // Delete existing template price (where sub_subagent_store_id is NULL)
         await supabase
-          .from("subagent_package_prices")
+          .from("sub_subagent_package_prices")
           .delete()
           .eq("subagent_store_id", subagentStore.id)
-          .eq("package_id", packageId);
+          .eq("package_id", packageId)
+          .is("sub_subagent_store_id", null);
         
         // Insert new template price - this is what NEW SUB-SUBAGENTS will inherit as their base price
         const { error } = await supabase
-          .from("subagent_package_prices")
+          .from("sub_subagent_package_prices")
           .insert({
             subagent_store_id: subagentStore.id,
             package_id: packageId,
-            sell_price: price
+            base_price: price,
+            subagent_minimum_price: price,
+            sell_price: price,
+            sub_subagent_store_id: null
           });
 
         if (error) {
