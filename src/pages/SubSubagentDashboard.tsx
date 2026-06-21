@@ -511,7 +511,7 @@ const SubSubagentDashboard = () => {
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -523,8 +523,8 @@ const SubSubagentDashboard = () => {
           setParentSubagentStoreName(parentSubagentResult.data.store_name);
         }
         
-        // Build base prices from parent subagent's prices (what the parent charges this sub-subagent)
-        // Priority: Parent's custom prices -> Default package prices
+        // Build base prices from parent subagent's prices (what the parent charges THIS sub-subagent)
+        // Priority: Parent's custom prices for THIS store -> Default package prices
         const basePriceMap: Record<string, number> = {};
         
         // First set all to default package prices
@@ -532,10 +532,10 @@ const SubSubagentDashboard = () => {
           basePriceMap[p.id] = p.price;
         });
         
-        // Then override with parent's custom prices if they've set any
+        // Then override with parent's custom prices if they've set any for THIS store specifically
         (parentPricesResult.data || []).forEach((p: any) => {
-          if (p.sell_price !== null && p.sell_price !== undefined) {
-            basePriceMap[p.package_id] = Number(p.sell_price);
+          if (p.base_price !== null && p.base_price !== undefined) {
+            basePriceMap[p.package_id] = Number(p.base_price);
           }
         });
         setBasePrices(basePriceMap);
