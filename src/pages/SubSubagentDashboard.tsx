@@ -199,16 +199,6 @@ const SubSubagentDashboard = () => {
     return dbBalance - pendingWithdrawals;
   };
 
-  // Function to exit impersonation
-  const exitImpersonation = () => {
-    localStorage.removeItem("admin_impersonate_subagent");
-    localStorage.removeItem("admin_impersonate_store_id");
-    localStorage.removeItem("admin_impersonate_store");
-    localStorage.removeItem("admin_impersonate_return");
-    // Redirect back to admin dashboard on main domain
-    window.location.href = "https://datastores.shop/admin";
-  };
-
   useEffect(() => {
     // For sub-subagents: use store_id from URL (after registration) or user's stored data
     if (storeIdFromUrl) {
@@ -1489,25 +1479,7 @@ const SubSubagentDashboard = () => {
         </Dialog>
       )}
 
-      {/* Admin Impersonation Banner */}
-      {isImpersonating && (
-        <div className="bg-blue-500/20 border-b border-blue-500/30 px-4 py-3">
-          <div className="container flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-blue-400" />
-              <p className="text-blue-400 font-semibold">Admin View: You are viewing {subagentStore?.store_name}'s dashboard</p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={exitImpersonation}
-              className="text-blue-400 border-blue-400 hover:bg-blue-400/20"
-            >
-              Exit to Admin
-            </Button>
-          </div>
-        </div>
-      )}
+
       {/* Suspension Banner */}
       {subagentStore?.suspended && (
         <div className="bg-red-500/10 border-b border-red-500/30 px-4 py-3">
