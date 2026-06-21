@@ -234,7 +234,7 @@ export default function SubSubagentRegistrationForm({
       const { data: storeData, error: storeError } = await supabase
         .from("sub_subagent_stores")
         .insert({
-          store_id: subagentStoreId,
+          subagent_store_id: subagentStoreId,
           user_id: authData.user.id,
           store_name: formData.storeName,
           whatsapp_number: formData.whatsappNumber || null,

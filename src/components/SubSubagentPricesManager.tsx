@@ -34,7 +34,7 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
       const { data, error } = await supabase
         .from("sub_subagent_package_prices")
         .select("package_id, base_price")
-        .eq("store_id", subagentStoreId);
+        .eq("sub_subagent_store_id", subagentStoreId);
       
       if (error) {
         console.warn("[v0] Error fetching prices (table may not exist):", error);
@@ -134,7 +134,7 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
         const { error: deleteError } = await supabase
           .from("sub_subagent_package_prices")
           .delete()
-          .eq("store_id", subagentStoreId)
+          .eq("sub_subagent_store_id", subagentStoreId)
           .eq("package_id", packageId);
         
         if (deleteError) {
@@ -145,7 +145,7 @@ export default function SubSubagentPricesManager({ subagentStoreId, packages, su
         const { error: insertError, data } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
-            store_id: subagentStoreId,
+            sub_subagent_store_id: subagentStoreId,
             package_id: packageId,
             base_price: price,
             subagent_minimum_price: price,
