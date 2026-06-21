@@ -362,13 +362,15 @@ const SubSubagentDashboard = () => {
           withdrawResult,
           packagesResult,
           subagentPricesResult,
-          parentSubagentResult
+          parentSubagentResult,
+          parentPricesResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -380,12 +382,21 @@ const SubSubagentDashboard = () => {
           setParentSubagentStoreName(parentSubagentResult.data.store_name);
         }
         
-        // Build base prices from packages
-        const priceMap: Record<string, number> = {};
+        // Build base prices from parent subagent's prices (admin impersonation path)
+        const basePriceMap: Record<string, number> = {};
+        
+        // First set all to default package prices
         (packagesResult.data || []).forEach((p: any) => {
-          priceMap[p.id] = p.price;
+          basePriceMap[p.id] = p.price;
         });
-        setBasePrices(priceMap);
+        
+        // Then override with parent's custom prices if they've set any for THIS store specifically
+        (parentPricesResult.data || []).forEach((p: any) => {
+          if (p.base_price !== null && p.base_price !== undefined) {
+            basePriceMap[p.package_id] = Number(p.base_price);
+          }
+        });
+        setBasePrices(basePriceMap);
         
         // Build subagent prices
         const subagentPriceMap: Record<string, number> = {};
@@ -449,7 +460,7 @@ const SubSubagentDashboard = () => {
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);

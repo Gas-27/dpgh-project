@@ -381,10 +381,30 @@ const SubagentDashboard = () => {
       )
       .subscribe();
 
+    // Subscribe to new sub-subagent registrations
+    const subSubagentChannel = supabase
+      .channel(`subagent-sub-subagents-${subagentStore.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "sub_subagent_stores",
+          filter: `subagent_store_id=eq.${subagentStore.id}`,
+        },
+        () => {
+          console.log("[v0] New sub-subagent registered, refreshing list...");
+          // Re-fetch data to show new sub-subagent
+          fetchData();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(walletChannel);
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(withdrawalsChannel);
+      supabase.removeChannel(subSubagentChannel);
     };
   }, [subagentStore?.id]);
 
