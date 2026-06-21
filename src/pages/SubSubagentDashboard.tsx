@@ -118,6 +118,7 @@ const SubSubagentDashboard = () => {
   const storeIdFromUrl = searchParams.get("store_id");
 
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
+  const [parentSubagentStoreName, setParentSubagentStoreName] = useState<string>("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -338,7 +339,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id")
           .eq("id", storeId)
           .single();
 
@@ -360,17 +361,24 @@ const SubSubagentDashboard = () => {
           ordersResult,
           withdrawResult,
           packagesResult,
-          subagentPricesResult
+          subagentPricesResult,
+          parentSubagentResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id)
+          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
+          store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
         setWithdrawals(withdrawResult.data || []);
         setPackages(packagesResult.data || []);
+        
+        // Set parent subagent store name if available
+        if (parentSubagentResult.data?.store_name) {
+          setParentSubagentStoreName(parentSubagentResult.data.store_name);
+        }
         
         // Build base prices from packages
         const priceMap: Record<string, number> = {};
@@ -403,7 +411,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id")
           .eq("user_id", effectiveUserId);
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
@@ -426,14 +434,6 @@ const SubSubagentDashboard = () => {
         setSubagentStore(store);
         setStoreForm(store);
         setLoadError(null);
-        
-        // Set theme colors and headline from store (with null checks)
-        if (store?.theme_config && typeof store.theme_config === 'object') {
-          setThemeColors({ ...DEFAULT_THEME, ...store.theme_config });
-        }
-        if (store?.store_headline) {
-          setStoreHeadline(store.store_headline);
-        }
 
         // Run all other queries in parallel for faster loading
         const [
@@ -441,19 +441,23 @@ const SubSubagentDashboard = () => {
           withdrawResult,
           packagesResult,
           subagentPricesResult,
-          topupsResult
+          parentSubagentResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          supabase.from("sub_subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50)
+          store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
         setWithdrawals(withdrawResult.data || []);
         setPackages(packagesResult.data || []);
-        setTopupHistory(topupsResult.data || []);
+        
+        // Set parent subagent store name if available
+        if (parentSubagentResult.data?.store_name) {
+          setParentSubagentStoreName(parentSubagentResult.data.store_name);
+        }
         
         // Build subagent's sell prices map
         const subagentPriceMap: Record<string, number> = {};
@@ -1424,7 +1428,8 @@ const SubSubagentDashboard = () => {
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
-  const storeUrl = storeName ? DOMAINS.getSubagentStoreUrl(storeName) : "";
+  // For sub-subagents, use the sub-subagent URL which includes parent subagent store name
+  const storeUrl = (storeName && parentSubagentStoreName) ? DOMAINS.getSubSubagentStoreUrl(parentSubagentStoreName, storeName) : "";
   
   // Filter orders by search and apply date filter
   const filteredOrders = getDateFilteredOrders(orders).filter(o => 
