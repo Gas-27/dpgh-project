@@ -511,7 +511,7 @@ const SubSubagentDashboard = () => {
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);

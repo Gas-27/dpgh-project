@@ -1293,8 +1293,8 @@ const SubagentDashboard = () => {
   };
 
   const saveSubSubagentPrices = async () => {
-    if (!subagentStore?.id) {
-      toast({ title: "Error", description: "Store not found", variant: "destructive" });
+    if (!subagentStore?.id || !selectedSubSubagentId) {
+      toast({ title: "Error", description: "Please select a sub-subagent first", variant: "destructive" });
       return;
     }
 
@@ -1328,21 +1328,30 @@ const SubagentDashboard = () => {
 
       for (const [packageId, priceVal] of Object.entries(subSubagentEditedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
+        
+        // Delete existing price for this specific sub-subagent and package
         await supabase
           .from("sub_subagent_package_prices")
           .delete()
-          .eq("subagent_store_id", subagentStore.id)
+          .eq("sub_subagent_store_id", selectedSubSubagentId)
           .eq("package_id", packageId);
 
+        // Insert new price with all required fields
         const { error } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
+            sub_subagent_store_id: selectedSubSubagentId,
             subagent_store_id: subagentStore.id,
             package_id: packageId,
+            base_price: price,
+            subagent_minimum_price: price,
             sell_price: price
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error("[v0] Error inserting price:", error);
+          throw error;
+        }
       }
 
       setSubSubagentEditedPrices({});
