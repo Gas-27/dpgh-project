@@ -1442,10 +1442,6 @@ const SubSubagentDashboard = () => {
     }
   };
 
-  if (!isSubagent) {
-    return <Navigate to="/" />;
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
