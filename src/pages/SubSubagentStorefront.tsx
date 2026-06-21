@@ -151,11 +151,15 @@ export default function SubSubagentStorefront() {
         .insert({
           sub_subagent_store_id: subSubagentStore.id,
           package_id: selectedPackage.id,
-          phone_number: customerPhone,
+          customer_number: customerPhone,
           network: selectedPackage.network,
+          size_gb: selectedPackage.size_gb,
           amount: selectedPackage.price,
+          base_price: selectedPackage.price,
           selling_price: selectedPackage.price,
+          profit: 0,
           status: "pending",
+          fulfillment_status: "pending",
           payment_method: "cash"
         });
 

@@ -985,6 +985,8 @@ const SubSubagentDashboard = () => {
           .insert({
             sub_subagent_store_id: subagentStore.id,
             package_id: packageId,
+            base_price: price,
+            subagent_minimum_price: price,
             sell_price: price
           });
 
@@ -2020,7 +2022,7 @@ const SubSubagentDashboard = () => {
                   </div>
                 </div>
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                  <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH₵ {availableWalletBalance.toFixed(2)}</span></p>
+                  <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH�� {availableWalletBalance.toFixed(2)}</span></p>
                   {pendingWithdrawalAmount > 0 && (
                     <p className="text-xs text-yellow-400 mt-2">
                       (GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal - cannot be used until approved)
