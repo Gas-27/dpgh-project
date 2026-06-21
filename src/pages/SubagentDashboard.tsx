@@ -1343,34 +1343,30 @@ const SubagentDashboard = () => {
         }
       }
       
-      // Save prices to sub_subagent_package_prices table as TEMPLATE prices
-      // These become the BASE PRICE for new sub-subagents when they register
-      // Template marker: when sub_subagent_store_id = subagent_store_id, it's a template
+      // Save prices to subagent_package_prices table as TEMPLATE prices
+      // When a new sub-subagent registers, these prices become their base cost
+      // This uses the same table as Store Prices - clean and simple
       for (const [packageId, priceVal] of Object.entries(subSubagentEditedSubSubPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
         
-        // Delete existing template price (where sub_subagent_store_id equals subagent_store_id)
+        // Delete existing template price
         await supabase
-          .from("sub_subagent_package_prices")
+          .from("subagent_package_prices")
           .delete()
           .eq("subagent_store_id", subagentStore.id)
-          .eq("package_id", packageId)
-          .eq("sub_subagent_store_id", subagentStore.id);
+          .eq("package_id", packageId);
         
-        // Insert new template price - this is what NEW SUB-SUBAGENTS will see as their base price
+        // Insert new template price - this is what NEW SUB-SUBAGENTS will inherit as their base price
         const { error } = await supabase
-          .from("sub_subagent_package_prices")
+          .from("subagent_package_prices")
           .insert({
             subagent_store_id: subagentStore.id,
             package_id: packageId,
-            base_price: price,
-            subagent_minimum_price: price,
-            sell_price: price,
-            sub_subagent_store_id: subagentStore.id
+            sell_price: price
           });
 
         if (error) {
-          console.error("[v0] Error saving sub-subagent price:", error);
+          console.error("[v0] Error saving sub-subagent template price:", error);
           throw error;
         }
       }
