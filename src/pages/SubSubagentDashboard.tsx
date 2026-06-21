@@ -515,14 +515,16 @@ const SubSubagentDashboard = () => {
           packagesResult,
           subagentPricesResult,
           parentSubagentResult,
-          parentPricesResult
+          parentPricesResult,
+          parentTemplatePricesResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null }),
+          store.subagent_store_id ? supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -535,7 +537,7 @@ const SubSubagentDashboard = () => {
         }
         
         // Build base prices from parent subagent's prices (what the parent charges THIS sub-subagent)
-        // Priority: Parent's custom prices for THIS store -> Default package prices
+        // Priority: Parent's custom prices for THIS store -> Parent's template prices -> Default package prices
         const basePriceMap: Record<string, number> = {};
         
         // First set all to default package prices
@@ -549,6 +551,14 @@ const SubSubagentDashboard = () => {
             basePriceMap[p.package_id] = Number(p.base_price);
           }
         });
+        
+        // If no specific prices exist, fallback to parent's template prices (what SubAgent set in Sub-Subagent Pricing tab)
+        (parentTemplatePricesResult.data || []).forEach((p: any) => {
+          if (!(p.package_id in basePriceMap) && p.sell_price !== null && p.sell_price !== undefined) {
+            basePriceMap[p.package_id] = Number(p.sell_price);
+          }
+        });
+        
         setBasePrices(basePriceMap);
         
         // Build sub-subagent's own sell prices map
