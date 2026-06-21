@@ -370,85 +370,34 @@ const SubSubagentDashboard = () => {
           ordersResult,
           withdrawResult,
           packagesResult,
-          subagentPricesResult,
-          topupsResult
+          subagentPricesResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          supabase.from("sub_subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50)
+          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id)
         ]);
 
         setOrders(ordersResult.data || []);
         setWithdrawals(withdrawResult.data || []);
         setPackages(packagesResult.data || []);
-        setTopupHistory(topupsResult.data || []);
         
-        if (subSubagentsData.length > 0) {
-          const subSubagentIds = subSubagentsData.map(s => s.id);
-          const { data: subSubagentOrders } = await supabase
-            .from("orders")
-            .select("*")
-            .in("sub_subagent_store_id", subSubagentIds);
-          
-          const subSubagentOrdersList = subSubagentOrders || [];
-          setSubSubagentOrdersCount(subSubagentOrdersList.length);
-          
-          // Calculate profit: difference between what sub-subagent charged (order_price) vs what we charged them (package price)
-          let totalProfit = 0;
-          subSubagentOrdersList.forEach(order => {
-            const profit = (Number(order.order_price) || 0) - (Number(order.package_price) || 0);
-            if (profit > 0) totalProfit += profit;
-          });
-          
-          setSubSubagentProfitForSubagent(totalProfit);
-        }
-        
-        // Fetch sub-subagent notifications
-        await fetchSubSubagentNotifications();
-        
-        // Build admin custom price map (admin's price to agents - NOT for subagents)
-        const adminPriceMap: Record<string, number> = {};
-        (adminCustomPricesResult.data || []).forEach((p: any) => {
-          if (p.custom_base_price) adminPriceMap[p.package_id] = p.custom_base_price;
-        });
-        
-        // Build agent's subagent base prices map (what agent charges subagent - THIS IS THE CORRECT ONE)
-        const agentSubagentPriceMap: Record<string, number> = {};
-        (agentSubagentPricesResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
-            agentSubagentPriceMap[p.package_id] = Number(p.base_price);
-          }
-        });
-        
-        // Final price map: Agent's subagent price is the ONLY correct base price for subagents
-        // Only fall back to admin price if agent hasn't set any prices yet
+        // Build base prices from packages
         const priceMap: Record<string, number> = {};
-        const hasAgentPrices = Object.keys(agentSubagentPriceMap).length > 0;
-        
         (packagesResult.data || []).forEach((p: any) => {
-          if (hasAgentPrices && agentSubagentPriceMap[p.id] !== undefined) {
-            // Use agent's price for subagent
-            priceMap[p.id] = agentSubagentPriceMap[p.id];
-          } else if (adminPriceMap[p.id] !== undefined) {
-            // Fallback to admin price only if agent hasn't set prices
-            priceMap[p.id] = adminPriceMap[p.id];
-          } else {
-            // Final fallback to package default
-            priceMap[p.id] = p.price;
-          }
+          priceMap[p.id] = p.price;
         });
         setBasePrices(priceMap);
         
-        if (subagentPricesResult.data) {
-          const subagentPriceMap: Record<string, number> = {};
-          subagentPricesResult.data.forEach((p: any) => {
-            subagentPriceMap[p.package_id] = p.sell_price;
-          });
-          setSubagentPrices(subagentPriceMap);
-        }
-        return;
+        // Build subagent prices
+        const subagentPriceMap: Record<string, number> = {};
+        (subagentPricesResult.data || []).forEach((p: any) => {
+          if (p.sell_price !== null && p.sell_price !== undefined) {
+            subagentPriceMap[p.package_id] = Number(p.sell_price);
+          }
+        });
+        setSubagentPrices(subagentPriceMap);
+
       } else {
         // Normal flow - filter by user_id
         const effectiveUserId = userId || user?.id;
