@@ -524,7 +524,7 @@ export function SubSubagentStorefront() {
         const agentNormalized = subagentStoreName.toLowerCase().trim();
         const { data: parentStores, error: parentError } = await supabase
           .from("subagent_stores")
-          .select("id")
+          .select("id, store_name")
           .eq("approved", true);
         
         if (parentError || !parentStores) {
@@ -533,9 +533,9 @@ export function SubSubagentStorefront() {
           return;
         }
 
-        // Find matching parent subagent
-        const parentStore = parentStores.find((s: any) => slugify(s.store_name) === slugify(agentNormalized)) ||
-          parentStores.find((s: any) => s.store_name?.toLowerCase() === agentNormalized) ||
+        // Find matching parent subagent with null checks
+        const parentStore = parentStores.find((s: any) => s.store_name && slugify(s.store_name) === slugify(agentNormalized)) ||
+          parentStores.find((s: any) => s.store_name && s.store_name.toLowerCase() === agentNormalized) ||
           parentStores.find((s: any) => s.id === subagentStoreName);
         
         if (!parentStore) {
@@ -558,9 +558,9 @@ export function SubSubagentStorefront() {
           return;
         }
 
-        // Find matching sub-subagent
-        let matched = subStores.find((s: any) => slugify(s.store_name) === slugify(subNormalized)) ||
-          subStores.find((s: any) => s.store_name?.toLowerCase() === subNormalized) ||
+        // Find matching sub-subagent with null checks
+        let matched = subStores.find((s: any) => s.store_name && slugify(s.store_name) === slugify(subNormalized)) ||
+          subStores.find((s: any) => s.store_name && s.store_name.toLowerCase() === subNormalized) ||
           subStores.find((s: any) => s.id === subSubagentStoreName);
 
         if (!matched) {
