@@ -441,13 +441,15 @@ const SubSubagentDashboard = () => {
           withdrawResult,
           packagesResult,
           subagentPricesResult,
-          parentSubagentResult
+          parentSubagentResult,
+          parentPricesResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -459,7 +461,22 @@ const SubSubagentDashboard = () => {
           setParentSubagentStoreName(parentSubagentResult.data.store_name);
         }
         
-        // Build subagent's sell prices map
+        // Build base prices (what parent subagent charges this sub-subagent) - Cost from Agent
+        const basePriceMap: Record<string, number> = {};
+        (parentPricesResult.data || []).forEach((p: any) => {
+          if (p.sell_price !== null && p.sell_price !== undefined) {
+            basePriceMap[p.package_id] = Number(p.sell_price);
+          }
+        });
+        // Fallback to package defaults if parent hasn't set prices
+        (packagesResult.data || []).forEach((p: any) => {
+          if (basePriceMap[p.id] === undefined) {
+            basePriceMap[p.id] = p.price;
+          }
+        });
+        setBasePrices(basePriceMap);
+        
+        // Build sub-subagent's own sell prices map
         const subagentPriceMap: Record<string, number> = {};
         (subagentPricesResult.data || []).forEach((p: any) => {
           if (p.sell_price !== null && p.sell_price !== undefined) {
@@ -511,24 +528,7 @@ const SubSubagentDashboard = () => {
             priceMap[p.package_id] = Number(p.sell_price);
           }
         });
-        
-        // Fallback to package default prices if subagent hasn't set custom prices
-        (packagesResult.data || []).forEach((p: any) => {
-          if (priceMap[p.id] === undefined) {
-            priceMap[p.id] = p.price;
-          }
-        });
-        
-        setBasePrices(priceMap);
-        setSubagentPrices(priceMap);
-      
-      if (subagentPricesResult.data) {
-        const priceMap: Record<string, number> = {};
-        subagentPricesResult.data.forEach((p: any) => {
-          priceMap[p.package_id] = p.sell_price;
-        });
-        setSubagentPrices(priceMap);
-      }
+        setSubagentPrices(subagentPriceMap);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ title: "Error", description: "Failed to load dashboard", variant: "destructive" });
@@ -1078,14 +1078,16 @@ const SubSubagentDashboard = () => {
         await supabase
           .from("sub_subagent_package_prices")
           .delete()
-          .eq("subagent_store_id", subagentStore.id)
+          .eq("sub_subagent_store_id", subagentStore.id)
           .eq("package_id", packageId);
 
         const { error } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
-            subagent_store_id: subagentStore.id,
+            sub_subagent_store_id: subagentStore.id,
             package_id: packageId,
+            base_price: price,
+            subagent_minimum_price: price,
             sell_price: price
           });
 

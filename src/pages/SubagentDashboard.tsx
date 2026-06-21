@@ -588,7 +588,8 @@ const SubagentDashboard = () => {
           adminCustomPricesResult,
           subagentPricesResult,
           topupsResult,
-          agentInfoResult
+          agentInfoResult,
+          subSubagentsResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -597,7 +598,8 @@ const SubagentDashboard = () => {
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
-          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
+          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
+          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false })
         ]);
 
         // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
@@ -614,6 +616,29 @@ const SubagentDashboard = () => {
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
+        
+        // Set sub-subagents
+        const subSubagentsData = subSubagentsResult.data || [];
+        setSubSubagents(subSubagentsData);
+        
+        // Calculate sub-subagent stats
+        if (subSubagentsData.length > 0) {
+          const subSubagentIds = subSubagentsData.map(s => s.id);
+          const { data: subSubagentOrders } = await supabase
+            .from("orders")
+            .select("*")
+            .in("sub_subagent_store_id", subSubagentIds);
+          
+          const subSubagentOrdersList = subSubagentOrders || [];
+          setSubSubagentOrdersCount(subSubagentOrdersList.length);
+          
+          let totalProfit = 0;
+          subSubagentOrdersList.forEach(order => {
+            const profit = (Number(order.selling_price) || 0) - (Number(order.base_price) || 0);
+            totalProfit += profit;
+          });
+          setSubSubagentTotalProfit(totalProfit);
+        }
         
         // Build admin custom price map (admin's price to agents - NOT for subagents)
         const adminPriceMap: Record<string, number> = {};
