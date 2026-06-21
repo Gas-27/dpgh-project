@@ -1321,8 +1321,8 @@ const SubagentDashboard = () => {
   };
 
   const saveSubSubagentPrices = async () => {
-    if (!subagentStore?.id || subSubagents.length === 0) {
-      toast({ title: "Error", description: "Store or sub-subagents not found", variant: "destructive" });
+    if (!subagentStore?.id) {
+      toast({ title: "Error", description: "Store not found", variant: "destructive" });
       return;
     }
     
@@ -1332,7 +1332,6 @@ const SubagentDashboard = () => {
       // Validate prices
       for (const [packageId, priceVal] of Object.entries(subSubagentEditedSubSubPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        const yourSellingPrice = subagentPrices[packageId] || basePrices[packageId] || 0;
         if (isNaN(price) || price <= 0) {
           toast({
             title: "Invalid Price",
@@ -1344,42 +1343,42 @@ const SubagentDashboard = () => {
         }
       }
       
-      // Save prices for EACH sub-subagent
-      for (const subSubagent of subSubagents) {
-        for (const [packageId, priceVal] of Object.entries(subSubagentEditedSubSubPrices)) {
-          const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-          
-          // Delete existing price for this sub-subagent and package
-          await supabase
-            .from("sub_subagent_package_prices")
-            .delete()
-            .eq("subagent_store_id", subagentStore.id)
-            .eq("sub_subagent_store_id", subSubagent.id)
-            .eq("package_id", packageId);
-          
-          // Insert new price
-          const { error } = await supabase
-            .from("sub_subagent_package_prices")
-            .insert({
-              subagent_store_id: subagentStore.id,
-              sub_subagent_store_id: subSubagent.id,
-              package_id: packageId,
-              base_price: price,
-              subagent_minimum_price: price,
-              sell_price: price
-            });
+      // Save prices to subagent_package_prices table
+      // These become the BASE PRICE for new sub-subagents when they register
+      for (const [packageId, priceVal] of Object.entries(subSubagentEditedSubSubPrices)) {
+        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
+        
+        // Delete existing price
+        await supabase
+          .from("subagent_package_prices")
+          .delete()
+          .eq("subagent_store_id", subagentStore.id)
+          .eq("package_id", packageId);
+        
+        // Insert new price - this is what SUB-SUBAGENTS will see as their base price
+        const { error } = await supabase
+          .from("subagent_package_prices")
+          .insert({
+            subagent_store_id: subagentStore.id,
+            package_id: packageId,
+            base_price: price,
+            subagent_minimum_price: price,
+            sell_price: price
+          });
 
-          if (error) {
-            console.error("[v0] Error saving price for", subSubagent.store_name, ":", error);
-            throw error;
-          }
+        if (error) {
+          console.error("[v0] Error saving sub-subagent price:", error);
+          throw error;
         }
       }
 
       // Update local state
       setSubSubagentEditedSubSubPrices({});
       setSubSubagentMarkupPercentForSubsub("");
-      toast({ title: "Success", description: `Sub-subagent prices saved for all ${subSubagents.length} sub-subagent(s)` });
+      toast({ 
+        title: "Success", 
+        description: "Prices saved! New sub-subagents will see these as their base prices." 
+      });
       fetchData(); // Refresh data
     } catch (error) {
       console.error("[v0] Error saving sub-subagent prices:", error);
