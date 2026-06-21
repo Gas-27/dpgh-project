@@ -244,9 +244,7 @@ export default function SubSubagentRegistrationForm({
           momo_number: formData.momoNumber || null,
           momo_network: formData.momoNetwork || null,
           wallet_balance: 0,
-          buy_difference: 0,
           approved: true,
-          other_application: null,
         })
         .select()
         .single();
