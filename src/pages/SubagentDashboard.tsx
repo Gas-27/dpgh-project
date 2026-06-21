@@ -3256,10 +3256,10 @@ const SubagentDashboard = () => {
           {/* SUB-SUBAGENT PRICING */}
           {/* SUB-SUBAGENT PRICING */}
           <TabsContent value="sub-subagent-pricing" className="space-y-4 mt-0">
-            {subSubagents.length === 0 ? (
+            {packages.length === 0 ? (
               <Card className="border-border">
                 <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">You don't have any sub-subagents yet. They will appear here once they register.</p>
+                  <p className="text-muted-foreground">Loading packages...</p>
                 </CardContent>
               </Card>
             ) : (
@@ -3273,7 +3273,7 @@ const SubagentDashboard = () => {
                         size="sm" 
                         onClick={() => setSubSubagentNetworkFilterForSubsub(net)}
                       >
-                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
                       </Button>
                     ))}
                   </div>
@@ -3293,53 +3293,53 @@ const SubagentDashboard = () => {
                   {Object.keys(subSubagentEditedSubSubPrices).length > 0 && (
                     <Button variant="hero" size="sm" onClick={saveSubSubagentPrices} disabled={savingSubSubSubagentPrices}>
                       <Save className="h-4 w-4 mr-1" />
-                      {savingSubSubSubagentPrices ? "Saving..." : "Save All Prices"}
+                      {savingSubSubSubagentPrices ? "Saving..." : "Save Prices"}
                     </Button>
                   )}
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">Set Sub-Subagent Prices by Package</p>
-                  <p className="text-xs text-muted-foreground mt-2">Set the base price you charge for each package size. Sub-subagents will see these as their "Cost from Agent" and must charge at least this amount to their customers. Edit prices below for the {subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel"} network.</p>
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br/>🚀 Markup Explanation (Remember to click save after applying markup)</p>
+                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your prices to sub-subagents for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (your cost price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
-                <p className="text-sm text-muted-foreground">Your profit = Your Price - Your Cost from Agent. Use markup to quickly increase all prices by a percentage.</p>
+                <p className="text-sm text-muted-foreground">Your profit = Your Sub-Subagent Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
                 <Card className="border-border">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Package Size</TableHead>
-                          <TableHead>Your Cost Price (Base)</TableHead>
-                          <TableHead>Price for Sub-Subagents</TableHead>
-                          <TableHead>Your Profit/Unit</TableHead>
+                          <TableHead>Size</TableHead>
+                          <TableHead>Cost from Agent</TableHead>
+                          <TableHead>Sub-Subagent Price</TableHead>
+                          <TableHead>Profit</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub).length > 0 ? (
                           packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub).map(pkg => {
-                            const yourCost = basePrices[pkg.id] || pkg.price || 0;
+                            const costFromAgent = basePrices[pkg.id] || pkg.price || 0;
                             const savedPrice = subagentPrices[pkg.id];
-                            const cur = subSubagentEditedSubSubPrices[pkg.id] ?? savedPrice ?? yourCost;
-                            const profit = cur - yourCost;
-                            const isInvalid = subSubagentEditedSubSubPrices[pkg.id] !== undefined && subSubagentEditedSubSubPrices[pkg.id] < yourCost;
+                            const cur = subSubagentEditedSubSubPrices[pkg.id] ?? savedPrice ?? costFromAgent;
+                            const profit = cur - costFromAgent;
+                            const isInvalid = subSubagentEditedSubSubPrices[pkg.id] !== undefined && subSubagentEditedSubSubPrices[pkg.id] < costFromAgent;
                             const hasSavedPrice = savedPrice !== undefined;
                             return (
                               <TableRow key={pkg.id}>
                                 <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
                                 <TableCell className="text-muted-foreground">
-                                  GH₵ {Number(yourCost).toFixed(2)}
+                                  GH₵ {Number(costFromAgent).toFixed(2)}
                                 </TableCell>
                                 <TableCell>
                                   <div className="space-y-1">
                                     <Input 
                                       type="number" 
                                       step="0.01" 
-                                      min={yourCost}
+                                      min={costFromAgent}
                                       value={cur} 
                                       onChange={e => handleSubSubagentPriceChange(pkg.id, e.target.value)} 
                                       className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !subSubagentEditedSubSubPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />
                                     {isInvalid && (
-                                      <p className="text-xs text-red-500">Min: GH₵ {yourCost.toFixed(2)}</p>
+                                      <p className="text-xs text-red-500">Min: GH₵ {costFromAgent.toFixed(2)}</p>
                                     )}
                                     {hasSavedPrice && !subSubagentEditedSubSubPrices[pkg.id] && (
                                       <p className="text-xs text-green-500">Saved</p>
@@ -3355,7 +3355,7 @@ const SubagentDashboard = () => {
                         ) : (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                              No packages for {subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                              No packages for {subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : subSubagentNetworkFilterForSubsub === "telecel" ? "Telecel" : "MTN Special Mashup"}
                             </TableCell>
                           </TableRow>
                         )}
