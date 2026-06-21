@@ -201,6 +201,11 @@ const SubagentDashboard = () => {
   const [loadingSubSubagents, setLoadingSubSubagents] = useState(false);
   const [selectedSubSubagentId, setSelectedSubSubagentId] = useState<string | null>(null);
   const [subSubagentPrices, setSubSubagentPrices] = useState<Record<string, number>>({});
+  const [subSubagentBasePrices, setSubSubagentBasePrices] = useState<Record<string, number>>({});
+  const [subSubagentEditedSubSubPrices, setSubSubagentEditedSubSubPrices] = useState<Record<string, number | string>>({});
+  const [subSubagentMarkupPercentForSubsub, setSubSubagentMarkupPercentForSubsub] = useState("");
+  const [subSubagentNetworkFilterForSubsub, setSubSubagentNetworkFilterForSubsub] = useState("mtn");
+  const [savingSubSubSubagentPrices, setSavingSubSubSubagentPrices] = useState(false);
 
   const [subSubagentProfitForSubagent, setSubSubagentProfitForSubagent] = useState<number>(0);
   const [subSubagentOrdersCount, setSubSubagentOrdersCount] = useState<number>(0);
@@ -415,6 +420,46 @@ const SubagentDashboard = () => {
   useEffect(() => {
     // Placeholder - auto-refresh disabled
   }, [subagentStore?.id]);
+
+  // Fetch sub-subagent pricing when a sub-subagent is selected
+  useEffect(() => {
+    if (!selectedSubSubagentId || !subagentStore?.id) {
+      setSubSubagentBasePrices({});
+      setSubSubagentEditedSubSubPrices({});
+      return;
+    }
+
+    const fetchSubSubagentPricing = async () => {
+      try {
+        // Fetch what we (subagent) charge this specific sub-subagent
+        const { data: pricingData, error } = await supabase
+          .from("sub_subagent_package_prices")
+          .select("package_id, base_price")
+          .eq("subagent_store_id", subagentStore.id)
+          .eq("sub_subagent_store_id", selectedSubSubagentId);
+
+        if (error) {
+          console.error("[v0] Error fetching sub-subagent pricing:", error);
+          return;
+        }
+
+        // Build the price map
+        const basePriceMap: Record<string, number> = {};
+        (pricingData || []).forEach((p: any) => {
+          if (p.base_price !== null && p.base_price !== undefined) {
+            basePriceMap[p.package_id] = Number(p.base_price);
+          }
+        });
+
+        setSubSubagentBasePrices(basePriceMap);
+        setSubSubagentEditedSubSubPrices({});
+      } catch (err) {
+        console.error("[v0] Error in fetchSubSubagentPricing:", err);
+      }
+    };
+
+    fetchSubSubagentPricing();
+  }, [selectedSubSubagentId, subagentStore?.id]);
 
   const fetchData = async (userId?: string, storeId?: string) => {
     try {
@@ -1283,11 +1328,114 @@ const SubagentDashboard = () => {
     }
   };
 
+  // Sub-Subagent pricing handlers - for setting prices we charge sub-subagents
   const handleSubSubagentPriceChange = (packageId: string, value: string) => {
-    setSubSubagentEditedPrices(prev => ({
+    setSubSubagentEditedSubSubPrices(prev => ({
       ...prev,
       [packageId]: value === "" ? "" : (parseFloat(value) || value)
     }));
+  };
+
+  const applySubSubagentMarkupForSubsub = () => {
+    if (!subSubagentMarkupPercentForSubsub) {
+      toast({ title: "Error", description: "Enter a markup percentage", variant: "destructive" });
+      return;
+    }
+
+    const markup = parseFloat(subSubagentMarkupPercentForSubsub) / 100;
+    const networkName = subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel";
+    
+    const filteredPkgs = packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub);
+    filteredPkgs.forEach(pkg => {
+      const basePrice = basePrices[pkg.id] || pkg.price || 0;
+      const newPrice = basePrice * (1 + markup);
+      setSubSubagentEditedSubSubPrices(prev => ({
+        ...prev,
+        [pkg.id]: parseFloat(newPrice.toFixed(2))
+      }));
+    });
+
+    toast({
+      title: `Markup applied to ${networkName} packages`,
+      description: `All prices increased by ${subSubagentMarkupPercentForSubsub}%`
+    });
+  };
+
+  const saveSubSubagentPrices = async () => {
+    if (!subagentStore?.id || !selectedSubSubagentId) {
+      toast({ title: "Error", description: "Store or sub-subagent not found", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      setSavingSubSubSubagentPrices(true);
+
+      // Validate that no price is below our subagent base price
+      for (const [packageId, priceVal] of Object.entries(subSubagentEditedSubSubPrices)) {
+        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
+        const basePrice = basePrices[packageId] || 0;
+        if (isNaN(price) || price <= 0) {
+          toast({
+            title: "Invalid Price",
+            description: "Please enter a valid price",
+            variant: "destructive"
+          });
+          setSavingSubSubSubagentPrices(false);
+          return;
+        }
+        if (price < basePrice) {
+          toast({
+            title: "Invalid Price",
+            description: `Sub-subagent price cannot be below your base price (GH₵ ${basePrice.toFixed(2)})`,
+            variant: "destructive"
+          });
+          setSavingSubSubSubagentPrices(false);
+          return;
+        }
+      }
+      
+      // Save each price - use delete + insert
+      for (const [packageId, priceVal] of Object.entries(subSubagentEditedSubSubPrices)) {
+        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
+        
+        // Delete existing
+        await supabase
+          .from("sub_subagent_package_prices")
+          .delete()
+          .eq("subagent_store_id", subagentStore.id)
+          .eq("sub_subagent_store_id", selectedSubSubagentId)
+          .eq("package_id", packageId);
+        
+        // Insert new
+        const { error } = await supabase
+          .from("sub_subagent_package_prices")
+          .insert({
+            subagent_store_id: subagentStore.id,
+            sub_subagent_store_id: selectedSubSubagentId,
+            package_id: packageId,
+            base_price: price,
+            subagent_minimum_price: price,
+            sell_price: price
+          });
+
+        if (error) {
+          console.error("[v0] Error saving sub-subagent price:", error);
+          throw error;
+        }
+      }
+
+      // Update local state
+      setSubSubagentBasePrices(prev => ({ ...prev, ...subSubagentEditedSubSubPrices }));
+      setSubSubagentEditedSubSubPrices({});
+      setSubSubagentMarkupPercentForSubsub("");
+      toast({ title: "Success", description: "Sub-subagent prices saved successfully" });
+      fetchData(); // Refresh data
+    } catch (error) {
+      console.error("[v0] Error saving sub-subagent prices:", error);
+      toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
+    } finally {
+      setSavingSubSubSubagentPrices(false);
+    }
   };
 
   const applySubSubagentMarkup = () => {
@@ -1310,80 +1458,6 @@ const SubagentDashboard = () => {
         [pkg.id]: parseFloat(newPrice.toFixed(2))
       }));
     });
-  };
-
-  const saveSubSubagentPrices = async () => {
-    if (!subagentStore?.id || !selectedSubSubagentId) {
-      toast({ title: "Error", description: "Please select a sub-subagent first", variant: "destructive" });
-      return;
-    }
-
-    try {
-      setSavingSubSubagentPrices(true);
-
-      for (const [packageId, priceVal] of Object.entries(subSubagentEditedPrices)) {
-        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        const yourPrice = subagentPrices[packageId] || basePrices[packageId] || 0;
-
-        if (isNaN(price) || price <= 0) {
-          toast({
-            title: "Invalid Price",
-            description: "Please enter a valid price",
-            variant: "destructive"
-          });
-          setSavingSubSubagentPrices(false);
-          return;
-        }
-
-        if (price < yourPrice) {
-          toast({
-            title: "Invalid Price",
-            description: `Sub-subagent price cannot be below your selling price (GH₵ ${yourPrice.toFixed(2)})`,
-            variant: "destructive"
-          });
-          setSavingSubSubagentPrices(false);
-          return;
-        }
-      }
-
-      for (const [packageId, priceVal] of Object.entries(subSubagentEditedPrices)) {
-        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        
-        // Delete existing price for this specific sub-subagent and package
-        await supabase
-          .from("sub_subagent_package_prices")
-          .delete()
-          .eq("sub_subagent_store_id", selectedSubSubagentId)
-          .eq("package_id", packageId);
-
-        // Insert new price with all required fields
-        const { error } = await supabase
-          .from("sub_subagent_package_prices")
-          .insert({
-            sub_subagent_store_id: selectedSubSubagentId,
-            subagent_store_id: subagentStore.id,
-            package_id: packageId,
-            base_price: price,
-            subagent_minimum_price: price,
-            sell_price: price
-          });
-
-        if (error) {
-          console.error("[v0] Error inserting price:", error);
-          throw error;
-        }
-      }
-
-      setSubSubagentEditedPrices({});
-      setSubSubagentMarkupPercent("");
-      toast({ title: "Success", description: "Sub-subagent prices saved successfully" });
-      fetchData();
-    } catch (error) {
-      console.error("Error saving sub-subagent prices:", error);
-      toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
-    } finally {
-      setSavingSubSubagentPrices(false);
-    }
   };
 
   const handleBuyData = async () => {
@@ -3241,7 +3315,7 @@ const SubagentDashboard = () => {
                 {/* Sub-Subagent Selector */}
                 <Card className="border-border">
                   <CardHeader>
-                    <CardTitle className="text-base">Select Sub-Subagent</CardTitle>
+                    <CardTitle className="text-base">Select Sub-Subagent to Set Prices</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <Select value={selectedSubSubagentId || ""} onValueChange={setSelectedSubSubagentId}>
@@ -3262,19 +3336,113 @@ const SubagentDashboard = () => {
                   </CardContent>
                 </Card>
 
-                {/* Price Manager */}
+                {/* Inline Pricing UI - mirrors store prices tab */}
                 {selectedSubSubagentId ? (
-                  <SubSubagentPricesManager
-                    subagentStoreId={subagentStore?.id || ""}
-                    selectedSubSubagentId={selectedSubSubagentId}
-                    packages={packages}
-                    subagentPrices={subagentPrices}
-                    onPricesSaved={() => fetchData()}
-                  />
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex gap-2 flex-wrap">
+                        {["mtn", "airteltigo", "telecel"].map(net => (
+                          <Button 
+                            key={net} 
+                            variant={subSubagentNetworkFilterForSubsub === net ? "hero" : "outline"} 
+                            size="sm" 
+                            onClick={() => setSubSubagentNetworkFilterForSubsub(net)}
+                          >
+                            {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Markup:</span>
+                        <Input 
+                          type="number" 
+                          placeholder="+10" 
+                          value={subSubagentMarkupPercentForSubsub} 
+                          onChange={e => setSubSubagentMarkupPercentForSubsub(e.target.value)} 
+                          className="w-20 h-8 text-sm" 
+                        />
+                        <Button variant="outline" size="sm" onClick={applySubSubagentMarkupForSubsub}>
+                          <Percent className="h-3 w-3 mr-1" /> Apply
+                        </Button>
+                      </div>
+                      {Object.keys(subSubagentEditedSubSubPrices).length > 0 && (
+                        <Button variant="hero" size="sm" onClick={saveSubSubagentPrices} disabled={savingSubSubSubagentPrices}>
+                          <Save className="h-4 w-4 mr-1" />
+                          {savingSubSubSubagentPrices ? "Saving..." : "Save Prices"}
+                        </Button>
+                      )}
+                    </div>
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
+                      <p className="font-semibold">Set Sub-Subagent Pricing</p>
+                      <p className="text-xs text-muted-foreground mt-2">Enter the prices you want to charge this sub-subagent. They will see these as their "Cost from Agent" and must charge their customers at least this amount.</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Sub-subagent profit = Their Selling Price - Your Price. Use markup to increase all prices by a %.</p>
+                    <Card className="border-border">
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Size</TableHead>
+                              <TableHead>Your Cost Price (Base)</TableHead>
+                              <TableHead>Price You Set for Sub-Subagent</TableHead>
+                              <TableHead>Your Profit/Unit</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub).length > 0 ? (
+                              packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub).map(pkg => {
+                                const yourCost = basePrices[pkg.id] || pkg.price || 0;
+                                const savedPrice = subSubagentBasePrices[pkg.id];
+                                const cur = subSubagentEditedSubSubPrices[pkg.id] ?? savedPrice ?? yourCost;
+                                const profit = cur - yourCost;
+                                const isInvalid = subSubagentEditedSubSubPrices[pkg.id] !== undefined && subSubagentEditedSubSubPrices[pkg.id] < yourCost;
+                                const hasSavedPrice = savedPrice !== undefined;
+                                return (
+                                  <TableRow key={pkg.id}>
+                                    <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                      GH₵ {Number(yourCost).toFixed(2)}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="space-y-1">
+                                        <Input 
+                                          type="number" 
+                                          step="0.01" 
+                                          min={yourCost}
+                                          value={cur} 
+                                          onChange={e => handleSubSubagentPriceChange(pkg.id, e.target.value)} 
+                                          className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !subSubagentEditedSubSubPrices[pkg.id] ? "border-green-500" : ""}`}
+                                        />
+                                        {isInvalid && (
+                                          <p className="text-xs text-red-500">Min: GH₵ {yourCost.toFixed(2)}</p>
+                                        )}
+                                        {hasSavedPrice && !subSubagentEditedSubSubPrices[pkg.id] && (
+                                          <p className="text-xs text-green-500">Saved</p>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
+                                      GH₵ {profit.toFixed(2)}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                                  No packages for {subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </Card>
+                  </>
                 ) : (
                   <Card className="border-border">
                     <CardContent className="py-8 text-center">
-                      <p className="text-muted-foreground">Select a sub-subagent to manage their prices</p>
+                      <p className="text-muted-foreground">Select a sub-subagent to manage the prices you charge them</p>
                     </CardContent>
                   </Card>
                 )}
