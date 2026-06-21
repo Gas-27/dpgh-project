@@ -531,6 +531,11 @@ const SubagentDashboard = () => {
         
         // Fetch sub-subagent orders and calculate profits
         const subSubagentsData = subSubagentsResult.data || [];
+        console.log("[v0] SubagentDashboard fetchData - subSubagents fetched:", {
+          count: subSubagentsData.length,
+          subagentStoreId: store.id,
+          data: subSubagentsData
+        });
         setSubSubagents(subSubagentsData);
         
         if (subSubagentsData.length > 0) {
