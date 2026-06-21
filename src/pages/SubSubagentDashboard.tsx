@@ -511,7 +511,7 @@ const SubSubagentDashboard = () => {
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id).eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -1091,6 +1091,17 @@ const SubSubagentDashboard = () => {
 
       for (const [packageId, priceVal] of Object.entries(subSubagentEditedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
+        
+        // Validate all required fields
+        if (!subagentStore.id || !subagentStore.subagent_store_id || !packageId) {
+          console.error("[v0] Missing required fields for price insert:", { 
+            storeId: subagentStore.id, 
+            parentStoreId: subagentStore.subagent_store_id, 
+            packageId 
+          });
+          throw new Error("Missing required store or package information");
+        }
+        
         await supabase
           .from("sub_subagent_package_prices")
           .delete()
@@ -1108,7 +1119,10 @@ const SubSubagentDashboard = () => {
             sell_price: price
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error("[v0] Error inserting price:", error);
+          throw error;
+        }
       }
 
       setSubSubagentEditedPrices({});
