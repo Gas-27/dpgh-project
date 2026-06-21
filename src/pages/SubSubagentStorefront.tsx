@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Phone, ShoppingCart, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import NetworkIndicator from "@/components/NetworkIndicator";
+
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 
 interface DataPackage {
@@ -226,7 +226,6 @@ export default function SubSubagentStorefront() {
                 <div className="border-t border-b border-border py-3">
                   <p className="text-2xl font-bold">GH₵ {pkg.price.toFixed(2)}</p>
                 </div>
-                <NetworkIndicator network={pkg.network} />
                 <Button className="w-full" size="sm">
                   <ShoppingCart className="h-4 w-4 mr-1" /> Buy Now
                 </Button>
