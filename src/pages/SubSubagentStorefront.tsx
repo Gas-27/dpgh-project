@@ -42,6 +42,10 @@ export default function SubSubagentStorefront() {
   const [selectedPackage, setSelectedPackage] = useState<DataPackage | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showTrackOrder, setShowTrackOrder] = useState(false);
+  const [trackingPhone, setTrackingPhone] = useState("");
+  const [trackedOrders, setTrackedOrders] = useState<any[]>([]);
+  const [trackingLoading, setTrackingLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,18 +78,38 @@ export default function SubSubagentStorefront() {
           return;
         }
 
-        // Fetch packages
+        // Fetch packages for all networks
         const { data: packagesData, error: packagesError } = await supabase
           .from("data_packages")
           .select("*")
           .eq("active", true)
-          .eq("network", "mtn")
-          .order("size_gb");
+          .in("network", ["mtn", "airteltigo", "telecel"])
+          .order("network, size_gb");
 
         if (packagesError) throw packagesError;
 
+        // Fetch custom prices for this sub-subagent store
+        const { data: customPricesData, error: pricesError } = await supabase
+          .from("sub_subagent_package_prices")
+          .select("package_id, sell_price")
+          .eq("sub_subagent_store_id", subSubagentData.id);
+
+        if (pricesError) throw pricesError;
+
+        // Build a map of custom prices
+        const customPriceMap: Record<string, number> = {};
+        (customPricesData || []).forEach((price: any) => {
+          customPriceMap[price.package_id] = price.sell_price;
+        });
+
+        // Apply custom prices to packages if available
+        const packagesWithPrices = (packagesData || []).map((pkg: any) => ({
+          ...pkg,
+          price: customPriceMap[pkg.id] !== undefined ? customPriceMap[pkg.id] : pkg.price
+        }));
+
         setSubSubagentStore(subSubagentData);
-        setPackages(packagesData || []);
+        setPackages(packagesWithPrices);
       } catch (err) {
         console.error("Error loading storefront:", err);
         setError("Failed to load storefront");
@@ -153,6 +177,40 @@ export default function SubSubagentStorefront() {
     }
   };
 
+  const handleTrackOrder = async () => {
+    if (!trackingPhone || !subSubagentStore) return;
+
+    if (!isValidPhoneLength(trackingPhone)) {
+      toast({ title: "Error", description: "Phone number must be exactly 10 digits", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setTrackingLoading(true);
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("sub_subagent_store_id", subSubagentStore.id)
+        .eq("phone_number", trackingPhone)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setTrackedOrders(data || []);
+      if (!data || data.length === 0) {
+        toast({
+          title: "No Orders Found",
+          description: "No orders found for this phone number"
+        });
+      }
+    } catch (err) {
+      console.error("Error tracking order:", err);
+      toast({ title: "Error", description: "Failed to track order", variant: "destructive" });
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -185,9 +243,14 @@ export default function SubSubagentStorefront() {
             <h1 className="text-xl font-bold">{subSubagentStore.store_name}</h1>
             <p className="text-xs text-muted-foreground">Ref: {subSubagentStore.top_reference}</p>
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <span>{subSubagentStore.whatsapp_number}</span>
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" onClick={() => setShowTrackOrder(true)}>
+              Track Order
+            </Button>
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span>{subSubagentStore.whatsapp_number}</span>
+            </div>
           </div>
         </div>
       </nav>
@@ -290,6 +353,77 @@ export default function SubSubagentStorefront() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Track Order Dialog */}
+      <Dialog open={showTrackOrder} onOpenChange={setShowTrackOrder}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Track Your Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Phone Number</label>
+              <Input
+                type="tel"
+                placeholder="024XXXXXXX"
+                maxLength="10"
+                value={trackingPhone}
+                onChange={e => setTrackingPhone(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={handleTrackOrder}
+              disabled={trackingLoading || !trackingPhone}
+            >
+              {trackingLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Searching...
+                </>
+              ) : (
+                "Track Order"
+              )}
+            </Button>
+
+            {trackedOrders.length > 0 && (
+              <div className="space-y-3 mt-4">
+                <p className="font-medium text-sm">Orders for {trackingPhone}</p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {trackedOrders.map((order: any) => (
+                    <Card key={order.id} className="p-3">
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Order ID:</span>
+                          <span className="font-mono text-xs">{order.id.substring(0, 8)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Package:</span>
+                          <span className="font-medium">{order.size_gb}GB</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Amount:</span>
+                          <span className="font-medium">GH₵ {order.amount?.toFixed(2) || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Status:</span>
+                          <Badge variant={order.status === "completed" ? "default" : order.status === "pending" ? "secondary" : "destructive"}>
+                            {order.status}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Date:</span>
+                          <span>{new Date(order.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
