@@ -524,12 +524,15 @@ const SubSubagentDashboard = () => {
         }
         
         // Build base prices from parent subagent's prices (what the parent charges this sub-subagent)
-        // These come from the parent subagent's sub_subagent_package_prices where they set prices for THIS store
+        // Priority: Parent's custom prices -> Default package prices
         const basePriceMap: Record<string, number> = {};
+        
+        // First set all to default package prices
         (packagesResult.data || []).forEach((p: any) => {
           basePriceMap[p.id] = p.price;
         });
-        // Override with parent's custom prices if they've set any
+        
+        // Then override with parent's custom prices if they've set any
         (parentPricesResult.data || []).forEach((p: any) => {
           if (p.sell_price !== null && p.sell_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.sell_price);
@@ -1000,6 +1003,7 @@ const SubSubagentDashboard = () => {
           .from("sub_subagent_package_prices")
           .insert({
             sub_subagent_store_id: subagentStore.id,
+            subagent_store_id: subagentStore.subagent_store_id,
             package_id: packageId,
             base_price: price,
             subagent_minimum_price: price,
