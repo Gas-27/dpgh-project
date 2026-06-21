@@ -365,7 +365,7 @@ const SubSubagentDashboard = () => {
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id)
+          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("store_id", store.id)
         ]);
 
         setOrders(ordersResult.data || []);
@@ -446,7 +446,7 @@ const SubSubagentDashboard = () => {
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
+          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("store_id", store.id),
           supabase.from("sub_subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50)
         ]);
 
