@@ -61,6 +61,7 @@ export default function SubSubagentStorefront() {
           .single();
 
         if (subagentError || !subagentData) {
+          console.error("[v0] Subagent store not found:", { subagentStoreName, error: subagentError });
           setError("Subagent store not found");
           return;
         }
@@ -74,9 +75,12 @@ export default function SubSubagentStorefront() {
           .single();
 
         if (subSubagentError || !subSubagentData) {
+          console.error("[v0] Sub-subagent store not found:", { subSubagentStoreName, subagentStoreId: subagentData.id, error: subSubagentError });
           setError("Sub-subagent store not found");
           return;
         }
+        
+        console.log("[v0] SubSubagentStorefront loaded:", { subagentStoreName, subSubagentStoreName, subSubagentId: subSubagentData.id });
 
         // Fetch packages for all networks
         const { data: packagesData, error: packagesError } = await supabase
@@ -248,6 +252,40 @@ export default function SubSubagentStorefront() {
             <p className="text-xs text-muted-foreground">Ref: {subSubagentStore.top_reference}</p>
           </div>
           <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setLoading(true);
+                const fetchData = async () => {
+                  try {
+                    const { data: customPricesData, error: pricesError } = await supabase
+                      .from("sub_subagent_package_prices")
+                      .select("package_id, sell_price")
+                      .eq("sub_subagent_store_id", subSubagentStore.id);
+
+                    if (!pricesError) {
+                      const customPriceMap: Record<string, number> = {};
+                      (customPricesData || []).forEach((price: any) => {
+                        customPriceMap[price.package_id] = price.sell_price;
+                      });
+                      const packagesWithPrices = packages.map((pkg: any) => ({
+                        ...pkg,
+                        price: customPriceMap[pkg.id] !== undefined ? customPriceMap[pkg.id] : pkg.price
+                      }));
+                      setPackages(packagesWithPrices);
+                      toast({ title: "Prices updated", description: "Latest prices loaded" });
+                    }
+                  } finally {
+                    setLoading(false);
+                  }
+                };
+                fetchData();
+              }}
+              disabled={loading}
+            >
+              Refresh Prices
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowTrackOrder(true)}>
               Track Order
             </Button>
