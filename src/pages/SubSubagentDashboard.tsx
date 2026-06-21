@@ -23,7 +23,7 @@ interface SubagentStore {
 
 export default function SubSubagentDashboard() {
   const navigate = useNavigate();
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   
   const [store, setStore] = useState<SubagentStore | null>(null);
