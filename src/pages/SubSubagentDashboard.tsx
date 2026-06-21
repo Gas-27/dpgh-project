@@ -687,27 +687,7 @@ const SubSubagentDashboard = () => {
     else fetchNotifications();
   };
 
-  // Sub-Subagent Notification handlers
-  const sendSubSubagentNotification = async () => {
-    if (!subSubagentNotificationMsg.trim() || !subagentStore?.id) return;
-    try {
-      setSendingSubSubagentNotification(true);
-      const { error } = await supabase.from("sub_subagent_notifications").insert({
-        subagent_store_id: subagentStore.id,
-        message: subSubagentNotificationMsg.trim(),
-        is_active: true,
-        created_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-      setSubSubagentNotificationMsg("");
-      toast({ title: "Success", description: "Notification sent to all sub-subagents" });
-      fetchSubSubagentNotifications();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setSendingSubSubagentNotification(false);
-    }
-  };
+
 
   const deleteSubSubagentNotification = async (id: string) => {
     try {
@@ -954,12 +934,7 @@ const SubSubagentDashboard = () => {
     return p.network === networkFilter;
   });
 
-  const filteredSubSubagentPackages = packages.filter(p => {
-    if (false && subSubagentNetworkFilter === "mtn_mashup") {
-      return p.network === "mtn_mashup" || p.network === "mashup";
-    }
-    return p.network === subSubagentNetworkFilter;
-  });
+
 
   const handlePriceChange = (packageId: string, value: string) => {
     // Allow empty string for clearing the box - store as string for display
@@ -2878,117 +2853,6 @@ const SubSubagentDashboard = () => {
             )}
           </TabsContent>
           */}
-
-
-            {packages.length === 0 ? (
-              <Card className="border-border">
-                <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">Loading packages...</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex gap-2 flex-wrap">
-                    {["mtn", "airteltigo", "telecel"].map(net => (
-                      <Button 
-                        key={net} 
-                        variant={subSubagentNetworkFilter === net ? "hero" : "outline"} 
-                        size="sm" 
-                        onClick={() => setSubSubagentNetworkFilter(net)}
-                      >
-                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">Markup:</span>
-                    <Input 
-                      type="number" 
-                      placeholder="+10" 
-                      value={subSubagentMarkupPercent} 
-                      onChange={e => setSubSubagentMarkupPercent(e.target.value)} 
-                      className="w-20 h-8 text-sm" 
-                    />
-                    <Button variant="outline" size="sm" onClick={applySubSubagentMarkup}>
-                      <Percent className="h-3 w-3 mr-1" /> Apply
-                    </Button>
-                  </div>
-                  {Object.keys(subSubagentEditedPrices).length > 0 && (
-                    <Button variant="hero" size="sm" onClick={saveSubSubagentPrices} disabled={savingSubSubagentPrices}>
-                      <Save className="h-4 w-4 mr-1" />
-                      {savingSubSubagentPrices ? "Saving..." : "Save Prices"}
-                    </Button>
-                  )}
-                </div>
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />🔔🔔🔔🔔🔔 Markup Explanation (Remember to click save after applying markup)</p>
-                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your sub-subagent selling prices for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (your store base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{subSubagentNetworkFilter === "mtn" ? "MTN" : subSubagentNetworkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
-                </div>
-                <p className="text-sm text-muted-foreground">Your sub-subagent profit = Their Selling Price - Your Selling Price. Use markup to increase all prices by a % (based on your price).</p>
-                <Card className="border-border">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Size</TableHead>
-                          <TableHead>Your Selling Price</TableHead>
-                          <TableHead>Sub-Subagent Selling Price</TableHead>
-                          <TableHead>Sub-Subagent Profit</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredSubSubagentPackages.length > 0 ? (
-                          filteredSubSubagentPackages.map(pkg => {
-                            const yourPrice = subagentPrices[pkg.id] || basePrices[pkg.id] || pkg.price || 0;
-                            const savedPrice = subSubagentPrices[pkg.id];
-                            const cur = subSubagentEditedPrices[pkg.id] ?? savedPrice ?? yourPrice;
-                            const profit = cur - yourPrice;
-                            const isInvalid = subSubagentEditedPrices[pkg.id] !== undefined && subSubagentEditedPrices[pkg.id] < yourPrice;
-                            const hasSavedPrice = savedPrice !== undefined;
-                            return (
-                              <TableRow key={pkg.id}>
-                                <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
-                                <TableCell className="text-muted-foreground">
-                                  GH₵ {Number(yourPrice).toFixed(2)}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="space-y-1">
-                                    <Input 
-                                      type="number" 
-                                      step="0.01" 
-                                      min={yourPrice}
-                                      value={cur} 
-                                      onChange={e => handleSubSubagentPriceChange(pkg.id, e.target.value)} 
-                                      className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !subSubagentEditedPrices[pkg.id] ? "border-green-500" : ""}`}
-                                    />
-                                    {isInvalid && (
-                                      <p className="text-xs text-red-500">Min: GH₵ {yourPrice.toFixed(2)}</p>
-                                    )}
-                                    {hasSavedPrice && !subSubagentEditedPrices[pkg.id] && (
-                                      <p className="text-xs text-green-500">Saved</p>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
-                                  GH₵ {profit.toFixed(2)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                              No packages for {subSubagentNetworkFilter === "mtn" ? "MTN" : subSubagentNetworkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </Card>
-              </>
-            )}
 
           {/* SETTINGS */}
           <TabsContent value="settings" className="mt-0 space-y-6">
