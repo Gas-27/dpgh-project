@@ -1361,8 +1361,6 @@ const SubagentDashboard = () => {
           .insert({
             subagent_store_id: subagentStore.id,
             package_id: packageId,
-            base_price: price,
-            subagent_minimum_price: price,
             sell_price: price
           });
 
