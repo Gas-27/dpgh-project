@@ -503,13 +503,15 @@ const SubSubagentDashboard = () => {
           withdrawResult,
           packagesResult,
           subagentPricesResult,
-          parentSubagentResult
+          parentSubagentResult,
+          parentPricesResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id).eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -522,10 +524,24 @@ const SubSubagentDashboard = () => {
         }
         
         // Build base prices from parent subagent's prices (what the parent charges this sub-subagent)
-        const priceMap: Record<string, number> = {};
+        // These come from the parent subagent's sub_subagent_package_prices where they set prices for THIS store
+        const basePriceMap: Record<string, number> = {};
+        (packagesResult.data || []).forEach((p: any) => {
+          basePriceMap[p.id] = p.price;
+        });
+        // Override with parent's custom prices if they've set any
+        (parentPricesResult.data || []).forEach((p: any) => {
+          if (p.sell_price !== null && p.sell_price !== undefined) {
+            basePriceMap[p.package_id] = Number(p.sell_price);
+          }
+        });
+        setBasePrices(basePriceMap);
+        
+        // Build sub-subagent's own sell prices map
+        const subagentPriceMap: Record<string, number> = {};
         (subagentPricesResult.data || []).forEach((p: any) => {
           if (p.sell_price !== null && p.sell_price !== undefined) {
-            priceMap[p.package_id] = Number(p.sell_price);
+            subagentPriceMap[p.package_id] = Number(p.sell_price);
           }
         });
         setSubagentPrices(subagentPriceMap);

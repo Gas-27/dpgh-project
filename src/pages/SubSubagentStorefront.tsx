@@ -19,7 +19,6 @@ import { useToast } from "@/hooks/use-toast";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import DraggableFAB from "@/components/DraggableFAB";
-import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -466,13 +465,6 @@ export function SubSubagentStorefront() {
   // Bulk Orders
   const [showBulkOrders, setShowBulkOrders] = useState(false);
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
-  const [bulkRecipients, setBulkRecipients] = useState("");
-  const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
-  const [bulkProcessing, setBulkProcessing] = useState(false);
-  const bulkFileInputRef = useRef<HTMLInputElement>(null);
-
-  // Sub-Subagent Registration
-  const [showSubSubagentForm, setShowSubSubagentForm] = useState(false);
 
   // ── AFA Packages ──
   const [selectedAFAPackage, setSelectedAFAPackage] = useState<{
@@ -1034,20 +1026,6 @@ export function SubSubagentStorefront() {
             <Layers className="h-4 w-4 mr-1" />
             Bulk Orders
           </Button>
-          {store?.allow_sub_subagent_registration !== false && (
-            <>
-              <div className="h-6 w-px bg-border flex-shrink-0"></div>
-              <Button
-                variant={showSubSubagentForm ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowSubSubagentForm(!showSubSubagentForm)}
-                style={showSubSubagentForm ? { background: primaryColor, color: primaryForeground } : {}}
-                className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
-              >
-                Become a Sub-Subagent
-              </Button>
-            </>
-          )}
         </div>
 
         {/* Bulk Orders Section */}
@@ -1329,30 +1307,7 @@ export function SubSubagentStorefront() {
           </>
         )}
 
-        {/* SUB-SUBAGENT REGISTRATION DIALOG */}
-        <Dialog open={showSubSubagentForm} onOpenChange={setShowSubSubagentForm}>
-          <DialogContent className="max-w-md max-h-[95vh] flex flex-col">
-            <div className="overflow-y-auto flex-1">
-              <DialogHeader>
-                <DialogTitle>Become a Sub-Subagent</DialogTitle>
-                <DialogDescription>
-                  Register your sub-subagent store under {store?.store_name}
-                </DialogDescription>
-              </DialogHeader>
-              {store && (
-                <div className="mt-4">
-                  <SubSubagentRegistrationForm
-                    subagentStoreId={store.id}
-                    subagentStoreName={store.store_name}
-                    primaryColor={primaryColor}
-                    primaryForeground={primaryForeground}
-                    onClose={() => setShowSubSubagentForm(false)}
-                  />
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+
 
         {/* Support */}
         <Card style={{ background: cardBg }} className="border-border">
