@@ -477,41 +477,6 @@ const SubSubagentDashboard = () => {
         });
         setSubagentPrices(subagentPriceMap);
       }
-
-      if (!storeId) return;
-
-        // Run all other queries in parallel for faster loading
-        const [
-          ordersResult,
-          withdrawResult,
-          packagesResult,
-          subagentPricesResult,
-          parentSubagentResult,
-          parentPricesResult,
-          parentTemplatePricesResult
-        ] = await Promise.all([
-          supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-          store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null })
-        ]);
-
-        setOrders(ordersResult.data || []);
-        setWithdrawals(withdrawResult.data || []);
-        setPackages(packagesResult.data || []);
-        
-        // Set parent subagent store name if available
-        if (parentSubagentResult.data?.store_name) {
-          setParentSubagentStoreName(parentSubagentResult.data.store_name);
-        }
-        
-        // Build base prices = "Cost from Agent" for this sub-subagent.
-        // EXACT MIRROR of agent->subagent: base price is the parent subagent's GLOBAL template
-        // price (sub_subagent_store_id IS NULL). Fallback = admin/default package price.
-        const basePriceMap: Record<string, number> = {};
         // Ultimate fallback: admin/default package price
         (packagesResult.data || []).forEach((p: any) => {
           basePriceMap[p.id] = p.price;
