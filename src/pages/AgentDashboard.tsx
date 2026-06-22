@@ -640,6 +640,9 @@ const AgentDashboard = () => {
   momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
   });
 
+      // First, fetch the API user record to get its ID
+      const { data: apiUserData } = await supabase.from("api_users").select("id").eq("identity_id", effectiveUserId).eq("is_agent", true).maybeSingle();
+      
       const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, apiUserOrderR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
@@ -649,7 +652,7 @@ const AgentDashboard = () => {
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
-        supabase.from("orders").select("*").eq("api_user", effectiveUserId).order("created_at", { ascending: false }),
+        apiUserData?.id ? supabase.from("orders").select("*").eq("api_user", apiUserData.id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
       ]);
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
@@ -680,6 +683,7 @@ const AgentDashboard = () => {
       setOrders(enrichedOrders);
       
       // Enrich API user orders
+      console.log("[v0] API user ID:", apiUserData?.id);
       console.log("[v0] API user order response:", apiUserOrderR);
       const apiOs = (apiUserOrderR.data as Order[]) ?? [];
       console.log("[v0] API user orders fetched:", apiOs.length, "orders");
