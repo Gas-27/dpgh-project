@@ -372,6 +372,11 @@ const AgentDashboard = () => {
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkResults, setBulkResults] = useState<{ phone: string; size: number; status: string; error?: string }[]>([]);
+  
+  // API Key
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [generatingApiKey, setGeneratingApiKey] = useState(false);
+  const [loadingApiKey, setLoadingApiKey] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Pagination and date filtering
@@ -529,6 +534,75 @@ const AgentDashboard = () => {
     }
   };
 
+  // Fetch existing API key for agent
+  const fetchApiKey = async (storeId: string) => {
+    try {
+      setLoadingApiKey(true);
+      const { data, error } = await supabase
+        .from("api_users")
+        .select("api_key")
+        .eq("identity_id", storeId)
+        .eq("is_agent", true)
+        .maybeSingle();
+      
+      if (error && error.code !== "PGRST116") {
+        console.error("[v0] Error fetching API key:", error);
+      }
+      
+      if (data?.api_key) {
+        setApiKey(data.api_key);
+      }
+    } catch (err) {
+      console.error("[v0] Exception fetching API key:", err);
+    } finally {
+      setLoadingApiKey(false);
+    }
+  };
+
+  // Generate API key via edge function
+  const handleGenerateApiKey = async () => {
+    if (!store?.id) return;
+    setGeneratingApiKey(true);
+    try {
+      const response = await fetch("/api/generate-api-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identity_id: store.id,
+          is_agent: true,
+          is_user: false,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        if (result.api_key) {
+          // API key already exists
+          setApiKey(result.api_key);
+          toast({ title: "API Key", description: "API key already exists for this agent", variant: "default" });
+        } else {
+          toast({ title: "Error", description: result.error || "Failed to generate API key", variant: "destructive" });
+        }
+      } else {
+        setApiKey(result.data.api_key);
+        toast({ title: "Success", description: "API key generated successfully", variant: "default" });
+      }
+    } catch (err) {
+      console.error("[v0] Error generating API key:", err);
+      toast({ title: "Error", description: "Failed to generate API key", variant: "destructive" });
+    } finally {
+      setGeneratingApiKey(false);
+    }
+  };
+
+  // Copy API key to clipboard
+  const handleCopyApiKey = () => {
+    if (!apiKey) return;
+    navigator.clipboard.writeText(apiKey);
+    toast({ title: "Copied", description: "API key copied to clipboard", variant: "default" });
+  };
+
   const fetchAllData = async () => {
     const effectiveUserId = impersonatedUserId || user?.id;
     if (!effectiveUserId) return;
@@ -540,6 +614,7 @@ const AgentDashboard = () => {
   if (!sd.store_headline) { sd.store_headline = `Get the best data deals from ${sd.store_name}. Select your network and package below`; await supabase.from("agent_stores").update({ store_headline: sd.store_headline }).eq("id", sd.id); }
       setStore(sd as AgentStore);
       setStoreHeadline(sd.store_headline || "");
+      fetchApiKey(sd.id);
       if (sd.theme_config) setThemeColors({ ...DEFAULT_THEME, ...sd.theme_config });
       else { await supabase.from("agent_stores").update({ theme_config: DEFAULT_THEME }).eq("id", sd.id); setThemeColors(DEFAULT_THEME); }
   setStoreForm({
@@ -2331,6 +2406,70 @@ const AgentDashboard = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* ============================= API KEY ============================= */}
+            <Card className="border-border mt-6">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  API Key
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Use your API key to integrate with external applications and automate data purchases.
+                </p>
+                
+                {loadingApiKey ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                ) : apiKey ? (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <Input 
+                          value={apiKey} 
+                          readOnly 
+                          className="font-mono text-xs pr-10"
+                        />
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleCopyApiKey}
+                        className="gap-2"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Copy
+                      </Button>
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+                      ⚠️ Keep this key secret. Never share it publicly.
+                    </p>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="hero" 
+                    onClick={handleGenerateApiKey}
+                    disabled={generatingApiKey}
+                    className="w-full gap-2"
+                  >
+                    {generatingApiKey ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4" />
+                        Generate API Key
+                      </>
+                    )}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
             
             <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
