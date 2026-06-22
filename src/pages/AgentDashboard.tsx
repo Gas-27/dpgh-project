@@ -574,31 +574,46 @@ const AgentDashboard = () => {
     }
   };
 
-  // Generate API key via local API route (allows regeneration)
+  // Generate API key directly with Supabase (allows regeneration)
   const handleGenerateApiKey = async () => {
     const effectiveUserId = impersonatedUserId || user?.id;
     if (!effectiveUserId) return;
     setGeneratingApiKey(true);
     try {
       console.log("[v0] Generating API key for user:", effectiveUserId);
-      const response = await fetch("/api/agent/generate-api-key", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      
+      // Generate a new API key
+      const crypto = await import('crypto');
+      const apiKey = 'pk_live_' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      console.log("[v0] Generated API key:", apiKey.substring(0, 20) + "...");
+      
+      // Upsert the API user record
+      const { data, error } = await supabase
+        .from("api_users")
+        .upsert({
           identity_id: effectiveUserId,
+          api_key: apiKey,
           is_agent: true,
           is_user: false,
-        }),
-      });
+          wallet: 0,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'identity_id'
+        })
+        .select()
+        .single();
       
-      const result = await response.json();
-      console.log("[v0] API key generation response:", response.status, result);
+      console.log("[v0] Upsert result:", { data, error });
       
-      if (!response.ok) {
-        toast({ title: "Error", description: result.error || "Failed to generate API key", variant: "destructive" });
+      if (error) {
+        console.error("[v0] Error upserting API key:", error);
+        toast({ title: "Error", description: error.message || "Failed to generate API key", variant: "destructive" });
       } else {
-        setApiKey(result.data.api_key);
-        setWallet(result.data.wallet || 0);
+        setApiKey(apiKey);
+        setWallet(data?.wallet || 0);
         setShowRegenerateConfirm(false);
         toast({ title: "Success", description: apiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
       }
