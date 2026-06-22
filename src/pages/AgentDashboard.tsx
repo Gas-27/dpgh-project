@@ -542,6 +542,8 @@ const AgentDashboard = () => {
   const fetchApiKey = async (storeId: string) => {
     try {
       setLoadingApiKey(true);
+      console.log("[v0] Fetching API key for agent store:", storeId);
+      
       const { data, error } = await supabase
         .from("api_users")
         .select("api_key, wallet, total_requests, total_data_purchased, total_spent")
@@ -549,18 +551,28 @@ const AgentDashboard = () => {
         .eq("is_agent", true)
         .maybeSingle();
       
+      console.log("[v0] API key fetch result:", { data, error });
+      
       if (error && error.code !== "PGRST116") {
         console.error("[v0] Error fetching API key:", error);
       }
       
-      if (data?.api_key) {
-        setApiKey(data.api_key);
-        setWallet(data.wallet || 0);
-        setApiStats({
-          total_requests: data.total_requests || 0,
-          total_data_purchased: data.total_data_purchased || 0,
-          total_spent: data.total_spent || 0,
-        });
+      if (data) {
+        console.log("[v0] API user data found:", data);
+        if (data.api_key) {
+          setApiKey(data.api_key);
+          setWallet(data.wallet || 0);
+          setApiStats({
+            total_requests: data.total_requests || 0,
+            total_data_purchased: data.total_data_purchased || 0,
+            total_spent: data.total_spent || 0,
+          });
+          console.log("[v0] API key and stats set successfully");
+        } else {
+          console.log("[v0] No API key found for this agent yet");
+        }
+      } else {
+        console.log("[v0] No API user record found");
       }
     } catch (err) {
       console.error("[v0] Exception fetching API key:", err);
@@ -749,6 +761,52 @@ const AgentDashboard = () => {
     return () => {
       console.log('[v0] Unsubscribing from realtime channel for store', store.id);
       subscription.unsubscribe();
+    };
+  }, [store?.id]);
+
+  // Subscribe to real-time changes in api_users for API key, wallet, and stats
+  useEffect(() => {
+    if (!store?.id) {
+      console.log('[v0] No store ID yet, API user subscription not set up');
+      return;
+    }
+
+    console.log('[v0] Setting up realtime subscription for API user:', store.id);
+    const apiUserChannel = supabase
+      .channel(`api_users_${store.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'api_users',
+          filter: `identity_id=eq.${store.id},is_agent=eq.true`,
+        },
+        (payload) => {
+          console.log('[v0] API user updated via realtime:', payload);
+          if (payload.new) {
+            console.log('[v0] Updating API key and stats from realtime:', payload.new);
+            if (payload.new.api_key) {
+              setApiKey(payload.new.api_key);
+            }
+            if (payload.new.wallet !== undefined) {
+              setWallet(payload.new.wallet);
+            }
+            setApiStats({
+              total_requests: payload.new.total_requests || 0,
+              total_data_purchased: payload.new.total_data_purchased || 0,
+              total_spent: payload.new.total_spent || 0,
+            });
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        console.log('[v0] API user subscription status:', status, err);
+      });
+
+    return () => {
+      console.log('[v0] Unsubscribing from API user realtime channel');
+      apiUserChannel.unsubscribe();
     };
   }, [store?.id]);
   
