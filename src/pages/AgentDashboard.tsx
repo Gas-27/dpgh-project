@@ -377,11 +377,6 @@ const AgentDashboard = () => {
   // API Key
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [wallet, setWallet] = useState<number>(0);
-  const [apiStats, setApiStats] = useState<{ total_requests: number; total_data_purchased: number; total_spent: number }>({
-    total_requests: 0,
-    total_data_purchased: 0,
-    total_spent: 0,
-  });
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [loadingApiKey, setLoadingApiKey] = useState(true);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
@@ -546,8 +541,6 @@ const AgentDashboard = () => {
   const fetchApiKey = async (storeId: string) => {
     try {
       setLoadingApiKey(true);
-      console.log("[v0] Fetching API key for agent store:", storeId);
-      
       const { data, error } = await supabase
         .from("api_users")
         .select("api_key, wallet, total_requests, total_data_purchased, total_spent")
@@ -555,28 +548,13 @@ const AgentDashboard = () => {
         .eq("is_agent", true)
         .maybeSingle();
       
-      console.log("[v0] API key fetch result:", { data, error });
-      
       if (error && error.code !== "PGRST116") {
         console.error("[v0] Error fetching API key:", error);
       }
       
-      if (data) {
-        console.log("[v0] API user data found:", data);
-        if (data.api_key) {
-          setApiKey(data.api_key);
-          setWallet(data.wallet || 0);
-          setApiStats({
-            total_requests: data.total_requests || 0,
-            total_data_purchased: data.total_data_purchased || 0,
-            total_spent: data.total_spent || 0,
-          });
-          console.log("[v0] API key and stats set successfully");
-        } else {
-          console.log("[v0] No API key found for this agent yet");
-        }
-      } else {
-        console.log("[v0] No API user record found");
+      if (data?.api_key) {
+        setApiKey(data.api_key);
+        setWallet(data.wallet || 0);
       }
     } catch (err) {
       console.error("[v0] Exception fetching API key:", err);
@@ -607,7 +585,6 @@ const AgentDashboard = () => {
       } else {
         setApiKey(result.data.api_key);
         setWallet(result.data.wallet || 0);
-        setShowRegenerateConfirm(false);
         toast({ title: "Success", description: apiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
       }
     } catch (err) {
@@ -623,35 +600,6 @@ const AgentDashboard = () => {
     if (!apiKey) return;
     navigator.clipboard.writeText(apiKey);
     toast({ title: "Copied", description: "API key copied to clipboard", variant: "default" });
-  };
-
-  // Save store information
-  const handleSaveStoreInfo = async () => {
-    if (!store?.id) return;
-    try {
-      const { error } = await supabase
-        .from("agent_stores")
-        .update({
-          store_name: storeForm.store_name,
-          whatsapp_number: storeForm.whatsapp_number,
-          support_number: storeForm.support_number,
-          whatsapp_group: storeForm.whatsapp_group,
-          telegram_channel: storeForm.telegram_channel,
-          show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon,
-        })
-        .eq("id", store.id);
-      
-      if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      } else {
-        setEditingStore(false);
-        setStore({ ...store, ...storeForm });
-        toast({ title: "Success", description: "Store information updated", variant: "default" });
-      }
-    } catch (err) {
-      console.error("[v0] Error saving store info:", err);
-      toast({ title: "Error", description: "Failed to save store information", variant: "destructive" });
-    }
   };
 
   const fetchAllData = async () => {
@@ -794,52 +742,6 @@ const AgentDashboard = () => {
     return () => {
       console.log('[v0] Unsubscribing from realtime channel for store', store.id);
       subscription.unsubscribe();
-    };
-  }, [store?.id]);
-
-  // Subscribe to real-time changes in api_users for API key, wallet, and stats
-  useEffect(() => {
-    if (!store?.id) {
-      console.log('[v0] No store ID yet, API user subscription not set up');
-      return;
-    }
-
-    console.log('[v0] Setting up realtime subscription for API user:', store.id);
-    const apiUserChannel = supabase
-      .channel(`api_users_${store.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'api_users',
-          filter: `identity_id=eq.${store.id},is_agent=eq.true`,
-        },
-        (payload) => {
-          console.log('[v0] API user updated via realtime:', payload);
-          if (payload.new) {
-            console.log('[v0] Updating API key and stats from realtime:', payload.new);
-            if (payload.new.api_key) {
-              setApiKey(payload.new.api_key);
-            }
-            if (payload.new.wallet !== undefined) {
-              setWallet(payload.new.wallet);
-            }
-            setApiStats({
-              total_requests: payload.new.total_requests || 0,
-              total_data_purchased: payload.new.total_data_purchased || 0,
-              total_spent: payload.new.total_spent || 0,
-            });
-          }
-        }
-      )
-      .subscribe((status, err) => {
-        console.log('[v0] API user subscription status:', status, err);
-      });
-
-    return () => {
-      console.log('[v0] Unsubscribing from API user realtime channel');
-      apiUserChannel.unsubscribe();
     };
   }, [store?.id]);
   
@@ -2255,6 +2157,133 @@ const AgentDashboard = () => {
             </div>
           </TabsContent>
 
+          {/* ============================= API KEY ============================= */}
+          <TabsContent value="api-key" className="mt-0 space-y-4">
+            {/* API Key Card */}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  API Key
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Use your API key to integrate with external applications and automate data purchases programmatically.
+                </p>
+                
+                {loadingApiKey ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                ) : apiKey ? (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input 
+                        value={apiKey} 
+                        readOnly 
+                        className="font-mono text-xs"
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleCopyApiKey}
+                        className="gap-2"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Copy
+                      </Button>
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded">
+                      ⚠️ Keep this key secret. Never share it publicly.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowRegenerateConfirm(true)}
+                      className="w-full gap-2"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Regenerate Key
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="hero" 
+                    onClick={handleGenerateApiKey}
+                    disabled={generatingApiKey}
+                    className="w-full gap-2"
+                  >
+                    {generatingApiKey ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4" />
+                        Generate API Key
+                      </>
+                    )}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* API Wallet Card */}
+            {apiKey && (
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <Wallet className="h-5 w-5" />
+                    API Wallet
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-4 rounded-lg border border-primary/20">
+                    <p className="text-sm text-muted-foreground mb-1">Wallet Balance</p>
+                    <p className="text-2xl font-bold text-primary">GHC {wallet.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Available for API purchases</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Regenerate Confirmation Dialog */}
+            <Dialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Regenerate API Key?</DialogTitle>
+                  <DialogDescription>
+                    This will generate a new API key and invalidate your current key. Any applications using the old key will stop working. Are you sure?
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowRegenerateConfirm(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleGenerateApiKey}
+                    disabled={generatingApiKey}
+                    className="gap-2"
+                  >
+                    {generatingApiKey ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Regenerating...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="h-4 w-4" />
+                        Regenerate
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+
           {/* ============================= SUBAGENTS ============================= */}
           <TabsContent value="subagents" className="mt-0 space-y-6">
             {/* Send Notification to Subagents - AT THE TOP */}
@@ -2503,27 +2532,9 @@ const AgentDashboard = () => {
                 </CardContent>
               </Card>
             )}
-            
-            <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="pricing">Pricing</TabsTrigger>
-                <TabsTrigger value="registrations">Bundle Registrations</TabsTrigger>
-              </TabsList>
 
-              <TabsContent value="pricing" className="space-y-6 mt-4">
-                <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
-              </TabsContent>
-
-              <TabsContent value="registrations" className="space-y-6 mt-4">
-                {store && <AgentAFABundleRegistrations agentStoreId={store.id} primaryColor={themeColors?.primaryColor || "#000000"} />}
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          {/* ============================= API KEY ============================= */}
-          <TabsContent value="api-key" className="mt-0 space-y-4">
-            {/* API Key Card */}
-            <Card className="border-border">
+            {/* ============================= API KEY ============================= */}
+            <Card className="border-border mt-6">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
                   <Zap className="h-5 w-5" />
@@ -2532,11 +2543,11 @@ const AgentDashboard = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Use your API key to integrate with external applications and automate data purchases programmatically.
+                  Use your API key to integrate with external applications and automate data purchases.
                 </p>
                 
                 {loadingApiKey ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
                   </div>
                 ) : apiKey ? (
@@ -2559,17 +2570,9 @@ const AgentDashboard = () => {
                         Copy
                       </Button>
                     </div>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded">
-                      ⚠️ Keep this key secret. Never share it publicly or commit it to version control.
+                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+                      ⚠️ Keep this key secret. Never share it publicly.
                     </p>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowRegenerateConfirm(true)}
-                      className="w-full gap-2"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      Regenerate Key
-                    </Button>
                   </div>
                 ) : (
                   <Button 
@@ -2593,114 +2596,26 @@ const AgentDashboard = () => {
                 )}
               </CardContent>
             </Card>
+            
+            <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="pricing">Pricing</TabsTrigger>
+                <TabsTrigger value="registrations">Bundle Registrations</TabsTrigger>
+              </TabsList>
 
-            {/* API Wallet Card */}
-            {apiKey && (
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="font-display flex items-center gap-2">
-                    <Wallet className="h-5 w-5" />
-                    API Wallet
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-4 rounded-lg border border-primary/20">
-                      <p className="text-sm text-muted-foreground mb-1">Wallet Balance</p>
-                      <p className="text-2xl font-bold text-primary">GHC {wallet.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground mt-2">Available for API purchases</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-card to-card/50 p-4 rounded-lg border border-border">
-                      <p className="text-sm text-muted-foreground mb-1">Your Store Wallet</p>
-                      <p className="text-2xl font-bold">{store ? `GHC ${store.wallet_balance?.toFixed(2) || "0.00"}` : "Loading..."}</p>
-                      <p className="text-xs text-muted-foreground mt-2">Main store wallet balance</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+              <TabsContent value="pricing" className="space-y-6 mt-4">
+                <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
+              </TabsContent>
 
-            {/* API Dashboard */}
-            {apiKey && (
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="font-display flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    API Usage Dashboard
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gradient-to-br from-blue-50 dark:from-blue-950/20 to-blue-50/50 dark:to-blue-950/10 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <p className="text-sm text-muted-foreground mb-2">Total API Requests</p>
-                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{apiStats.total_requests.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground mt-2">Requests made via API</p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-green-50 dark:from-green-950/20 to-green-50/50 dark:to-green-950/10 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                      <p className="text-sm text-muted-foreground mb-2">Total Data Purchased</p>
-                      <p className="text-3xl font-bold text-green-600 dark:text-green-400">{apiStats.total_data_purchased} GB</p>
-                      <p className="text-xs text-muted-foreground mt-2">Data purchased via API</p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-orange-50 dark:from-orange-950/20 to-orange-50/50 dark:to-orange-950/10 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
-                      <p className="text-sm text-muted-foreground mb-2">Total Spent</p>
-                      <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">GHC {apiStats.total_spent.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground mt-2">Total amount spent</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-primary/5 border border-primary/20 p-4 rounded-lg">
-                    <h4 className="font-semibold text-sm mb-2">API Endpoints</h4>
-                    <ul className="text-xs space-y-2 text-muted-foreground">
-                      <li><code className="bg-background px-2 py-1 rounded">/api/purchase-data</code> - Purchase data for a recipient</li>
-                      <li><code className="bg-background px-2 py-1 rounded">/api/check-balance</code> - Check your API wallet balance</li>
-                      <li><code className="bg-background px-2 py-1 rounded">/api/transaction-history</code> - Get API transaction history</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Regenerate Confirmation Dialog */}
-            <Dialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Regenerate API Key?</DialogTitle>
-                  <DialogDescription>
-                    This will generate a new API key and invalidate your current key. Any applications using the old key will stop working. Are you sure?
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowRegenerateConfirm(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    onClick={handleGenerateApiKey}
-                    disabled={generatingApiKey}
-                    className="gap-2"
-                  >
-                    {generatingApiKey ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Regenerating...
-                      </>
-                    ) : (
-                      <>
-                        <RotateCcw className="h-4 w-4" />
-                        Regenerate
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+              <TabsContent value="registrations" className="space-y-6 mt-4">
+                {store && <AgentAFABundleRegistrations agentStoreId={store.id} primaryColor={themeColors?.primaryColor || "#000000"} />}
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* ============================= SETTINGS ============================= */}
           <TabsContent value="settings" className="mt-0">
-            <Card className="border-border"><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="font-display">Store Information</CardTitle>{!editingStore && <Button variant="outline" size="sm" onClick={() => setEditingStore(true)}><Edit2 className="h-4 w-4 mr-1" />Edit</Button>}</CardHeader><CardContent className="space-y-4">{editingStore ? (<><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div><div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={e => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div><div className="space-y-2"><Label>Support Number <span className="text-xs text-primary font-normal">(shown on flyer footer)</span></Label><Input value={storeForm.support_number} onChange={e => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>WhatsApp Group / Channel Link</Label><div className="flex items-center gap-2"><Label htmlFor="show-group-icon" className="text-sm text-muted-foreground cursor-pointer">Show join icon on storefront</Label><Switch id="show-group-icon" checked={storeForm.show_whatsapp_group_icon} onCheckedChange={c => setStoreForm({ ...storeForm, show_whatsapp_group_icon: c })} /></div></div><Input value={storeForm.whatsapp_group} onChange={e => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Paste the WhatsApp link here" /><p className="text-xs text-muted-foreground">{storeForm.show_whatsapp_group_icon ? "The WhatsApp join icon will appear on your storefront." : "The join icon will be hidden."}</p></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>Telegram Channel Link</Label></div><Input value={storeForm.telegram_channel} onChange={e => setStoreForm({ ...storeForm, telegram_channel: e.target.value })} placeholder="Paste the Telegram link here" /><p className="text-xs text-muted-foreground">Customers can join your Telegram channel directly from your storefront.</p></div></div><div className="flex gap-2 justify-end"><Button variant="outline" onClick={() => { setEditingStore(false); setStoreForm({ store_name: store?.store_name || "", whatsapp_number: store?.whatsapp_number || "", support_number: store?.support_number || "", whatsapp_group: store?.whatsapp_group || "", telegram_channel: store?.telegram_channel || "", show_whatsapp_group_icon: store?.show_whatsapp_group_icon ?? true }); }}>Cancel</Button><Button onClick={handleSaveStoreInfo}>Save Changes</Button></div></>) : (<div className="space-y-4"><div><p className="text-sm font-semibold text-muted-foreground">Store Name</p><p className="text-lg font-semibold">{store?.store_name}</p></div><div><p className="text-sm font-semibold text-muted-foreground">WhatsApp Number</p><p className="text-lg font-semibold">{store?.whatsapp_number || "Not set"}</p></div><div><p className="text-sm font-semibold text-muted-foreground">Support Number</p><p className="text-lg font-semibold">{store?.support_number || "Not set"}</p></div><div><p className="text-sm font-semibold text-muted-foreground">WhatsApp Group Link</p><p className="text-sm text-primary underline cursor-pointer">{store?.whatsapp_group ? <a href={store.whatsapp_group} target="_blank" rel="noopener noreferrer">{store.whatsapp_group}</a> : "Not set"}</p></div><div><p className="text-sm font-semibold text-muted-foreground">Telegram Channel Link</p><p className="text-sm text-primary underline cursor-pointer">{store?.telegram_channel ? <a href={store.telegram_channel} target="_blank" rel="noopener noreferrer">{store.telegram_channel}</a> : "Not set"}</p></div></div>)}</CardContent></Card>
+            <Card className="border-border"><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="font-display">Store Information</CardTitle>{!editingStore && <Button variant="outline" size="sm" onClick={() => setEditingStore(true)}><Edit2 className="h-4 w-4 mr-1" />Edit</Button>}</CardHeader><CardContent className="space-y-4">{editingStore ? (<><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div><div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={e => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div><div className="space-y-2"><Label>Support Number <span className="text-xs text-primary font-normal">(shown on flyer footer)</span></Label><Input value={storeForm.support_number} onChange={e => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>WhatsApp Group / Channel Link</Label><div className="flex items-center gap-2"><Label htmlFor="show-group-icon" className="text-sm text-muted-foreground cursor-pointer">Show join icon on storefront</Label><Switch id="show-group-icon" checked={storeForm.show_whatsapp_group_icon} onCheckedChange={c => setStoreForm({ ...storeForm, show_whatsapp_group_icon: c })} /></div></div><Input value={storeForm.whatsapp_group} onChange={e => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Paste the WhatsApp link here" /><p className="text-xs text-muted-foreground">{storeForm.show_whatsapp_group_icon ? "The WhatsApp join icon will appear on your storefront." : "The join icon will be hidden."}</p></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>USSD Access Code</Label><div className="flex items-center gap-2"><Label htmlFor="show-ussd" className="text-sm text-muted-foreground cursor-pointer">Show USSD on storefront</Label><Switch id="show-ussd" checked={storeForm.show_ussd_on_storefront} onCheckedChange={c => setStoreForm({ ...storeForm, show_ussd_on_storefront: c })} /></div></div><p className="text-xs text-muted-foreground">{storeForm.show_ussd_on_storefront ? "The USSD code (*380*455#) and your access code will be displayed on your storefront." : "USSD information will be hidden from your storefront."}</p></div><div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={e => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Number</Label><Input value={storeForm.momo_number} onChange={e => setStoreForm({ ...storeForm, momo_number: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Network</Label><Input value={storeForm.momo_network} onChange={e => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" /></div></div><div className="flex gap-2 pt-2"><Button variant="hero" size="sm" onClick={saveStoreInfo} disabled={savingStore}><Save className="h-4 w-4 mr-1" />{savingStore ? "Saving..." : "Save Changes"}</Button><Button variant="outline" size="sm" onClick={() => setEditingStore(false)}>Cancel</Button></div></>) : (<div className="grid grid-cols-2 gap-4 text-sm"><div><p className="text-muted-foreground">Store Name</p><p className="font-semibold">{store?.store_name}</p></div><div><p className="text-muted-foreground">WhatsApp</p><p className="font-semibold">{store?.whatsapp_number}</p></div><div><p className="text-muted-foreground">Support Number</p><p className="font-semibold">{store?.support_number}</p></div><div><p className="text-muted-foreground">WhatsApp Group</p><p className="font-semibold">{store?.whatsapp_group || "Not set"}</p></div><div><p className="text-muted-foreground">Show Group Icon</p><p className="font-semibold">{store?.show_whatsapp_group_icon !== false ? "Yes (default)" : "No"}</p></div><div><p className="text-muted-foreground">MoMo Name</p><p className="font-semibold">{store?.momo_name}</p></div><div><p className="text-muted-foreground">MoMo Number</p><p className="font-semibold">{store?.momo_number}</p></div><div><p className="text-muted-foreground">MoMo Network</p><p className="font-semibold">{store?.momo_network?.toUpperCase()}</p></div><div className="col-span-2"><p className="text-muted-foreground">Topup Reference</p><p className="font-display text-xl font-bold text-primary">{store?.topup_reference}</p></div></div>)}</CardContent></Card>
           </TabsContent>
         </Tabs>
       </div>
