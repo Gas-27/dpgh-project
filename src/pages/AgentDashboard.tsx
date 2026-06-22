@@ -315,7 +315,7 @@ const AgentDashboard = () => {
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
+  const [apiUserOrders, setApiUserOrders] = useState<Order[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
@@ -639,7 +639,7 @@ const AgentDashboard = () => {
   momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
   });
 
-      const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR, specialMTNR] = await Promise.all([
+      const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, apiUserOrderR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
@@ -648,6 +648,7 @@ const AgentDashboard = () => {
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
+        supabase.from("orders").select("*").eq("api_user", effectiveUserId).order("created_at", { ascending: false }),
       ]);
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
@@ -676,6 +677,17 @@ const AgentDashboard = () => {
         return order;
       }));
       setOrders(enrichedOrders);
+      
+      // Enrich API user orders
+      const apiOs = (apiUserOrderR.data as Order[]) ?? [];
+      const enrichedApiOrders = await Promise.all(apiOs.map(async (order: any) => {
+        if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
+          const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+          return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
+        }
+        return order;
+      }));
+      setApiUserOrders(enrichedApiOrders);
       const wd = (wdR.data as WithdrawalRequest[]) ?? [];
       setWithdrawals(wd);
       const subags = subagentR.data ?? [];
@@ -1575,6 +1587,68 @@ const AgentDashboard = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* API USER ORDERS SECTION */}
+            {apiUserOrders.length > 0 && (
+              <Card className="border-blue-500/30 bg-blue-500/5">
+                <CardHeader className="flex flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <CardTitle className="font-display text-lg flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-blue-400" />
+                      API Orders ({apiUserOrders.length})
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">Orders made through your API key</p>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date & Time</TableHead>
+                          <TableHead>Number</TableHead>
+                          <TableHead>Network</TableHead>
+                          <TableHead>Size</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Order Status</TableHead>
+                          <TableHead>Payment Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {apiUserOrders.slice(0, 10).map(order => (
+                          <TableRow key={order.id}>
+                            <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
+                            <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                            <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                            <TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell>
+                            <TableCell className="font-semibold">GH₵ {Number(order.amount).toFixed(2)}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {order.payment_method === "wallet" ? "API Wallet" : "Paystack"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="capitalize text-sm">
+                              <Badge variant="outline" className="text-xs">{getOrderStage(order)}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
+                                {order.status === "paid" ? "completed" : order.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {apiUserOrders.length > 10 && (
+                    <div className="flex items-center justify-center mt-4 text-muted-foreground text-sm">
+                      Showing 10 of {apiUserOrders.length} API orders
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* ============================= BUY DATA ============================= */}
