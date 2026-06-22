@@ -11,12 +11,17 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  console.log('[API] Method:', req.method);
+  console.log('[API] Has SERVICE_ROLE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+  
   if (req.method !== 'POST') {
+    console.log('[API] Method not POST, returning 405');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { identity_id, is_agent, is_user } = req.body;
+    console.log('[API] Request body:', { identity_id, is_agent, is_user });
 
     if (!identity_id) {
       return res.status(400).json({ error: 'identity_id is required' });
