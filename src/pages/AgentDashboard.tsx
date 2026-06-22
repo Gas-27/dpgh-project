@@ -576,14 +576,15 @@ const AgentDashboard = () => {
 
   // Generate API key via edge function (allows regeneration)
   const handleGenerateApiKey = async () => {
-    if (!store?.id) return;
+    const effectiveUserId = impersonatedUserId || user?.id;
+    if (!effectiveUserId) return;
     setGeneratingApiKey(true);
     try {
       const response = await fetch("https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/generate-api-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          identity_id: store.id,
+          identity_id: effectiveUserId,
           is_agent: true,
           is_user: false,
         }),
