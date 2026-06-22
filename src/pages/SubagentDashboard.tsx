@@ -937,15 +937,32 @@ const SubagentDashboard = () => {
     if (!subSubagentNotificationMsg.trim() || !subagentStore?.id) return;
     try {
       setSendingSubSubagentNotification(true);
-      const { error } = await supabase.from("sub_subagent_notifications").insert({
+      // Get all sub-subagents under this subagent
+      const { data: subSubagents, error: fetchError } = await supabase
+        .from("sub_subagent_stores")
+        .select("id")
+        .eq("subagent_store_id", subagentStore.id);
+      
+      if (fetchError) throw fetchError;
+      if (!subSubagents || subSubagents.length === 0) {
+        toast({ title: "Info", description: "No sub-subagents to send notifications to" });
+        setSendingSubSubagentNotification(false);
+        return;
+      }
+
+      // Create a notification for each sub-subagent
+      const notifications = subSubagents.map((ssa: any) => ({
         subagent_store_id: subagentStore.id,
+        sub_subagent_store_id: ssa.id,
         message: subSubagentNotificationMsg.trim(),
         is_active: true,
         created_at: new Date().toISOString(),
-      });
+      }));
+
+      const { error } = await supabase.from("sub_subagent_notifications").insert(notifications);
       if (error) throw error;
       setSubSubagentNotificationMsg("");
-      toast({ title: "Success", description: "Notification sent to all sub-subagents" });
+      toast({ title: "Success", description: `Notification sent to ${subSubagents.length} sub-subagent(s)` });
       fetchSubSubagentNotifications();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
