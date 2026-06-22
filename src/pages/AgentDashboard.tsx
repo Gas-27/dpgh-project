@@ -541,6 +541,8 @@ const AgentDashboard = () => {
   const fetchApiKey = async (storeId: string) => {
     try {
       setLoadingApiKey(true);
+      console.log("[v0] Fetching API key for store:", storeId);
+      
       const { data, error } = await supabase
         .from("api_users")
         .select("api_key, wallet, total_requests, total_data_purchased, total_spent")
@@ -548,16 +550,25 @@ const AgentDashboard = () => {
         .eq("is_agent", true)
         .maybeSingle();
       
+      console.log("[v0] API key fetch response:", { data, error });
+      
       if (error && error.code !== "PGRST116") {
         console.error("[v0] Error fetching API key:", error);
       }
       
-      if (data?.api_key) {
-        setApiKey(data.api_key);
+      if (data) {
+        console.log("[v0] API user data found, setting state:", data);
+        setApiKey(data.api_key || null);
         setWallet(data.wallet || 0);
+      } else {
+        console.log("[v0] No API user data found for store");
+        setApiKey(null);
+        setWallet(0);
       }
     } catch (err) {
       console.error("[v0] Exception fetching API key:", err);
+      setApiKey(null);
+      setWallet(0);
     } finally {
       setLoadingApiKey(false);
     }
