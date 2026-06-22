@@ -625,7 +625,7 @@ const AgentDashboard = () => {
   if (!sd.store_headline) { sd.store_headline = `Get the best data deals from ${sd.store_name}. Select your network and package below`; await supabase.from("agent_stores").update({ store_headline: sd.store_headline }).eq("id", sd.id); }
       setStore(sd as AgentStore);
       setStoreHeadline(sd.store_headline || "");
-      fetchApiKey(sd.id);
+      fetchApiKey(effectiveUserId);
       if (sd.theme_config) setThemeColors({ ...DEFAULT_THEME, ...sd.theme_config });
       else { await supabase.from("agent_stores").update({ theme_config: DEFAULT_THEME }).eq("id", sd.id); setThemeColors(DEFAULT_THEME); }
   setStoreForm({
