@@ -37,7 +37,7 @@ import {
 // Interfaces
 // ============================================================
 interface DataPackage {
-  id: string; network: string; size_gb: number; price: number; agent_price: number; active: boolean;
+  id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean;
 }
 interface AgentStore {
     id: string; user_id: string; store_name: string; whatsapp_number: string; support_number: string;
@@ -94,12 +94,12 @@ const AdminDashboard = () => {
   const [totalCounts, setTotalCounts] = useState({ orders: 0, agents: 0, subagents: 0, sub_subagents: 0, users: 0, withdrawals: 0, topups: 0, complaints: 0 });
   const [unapprovedWithdrawals, setUnapprovedWithdrawals] = useState(0);
   
-  const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number }>>({});
+  const [editedPrices, setEditedPrices] = useState<Record<string, { price?: number; agent_price?: number; api_price?: number }>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [saving, setSaving] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newPkg, setNewPkg] = useState({ network: "mtn", size_gb: "", price: "", agent_price: "" });
+  const [newPkg, setNewPkg] = useState({ network: "mtn", size_gb: "", price: "", agent_price: "", api_price: "" });
   const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
   const [retryingAllOrders, setRetryingAllOrders] = useState(false);
   const [processingWithdrawals, setProcessingWithdrawals] = useState<Set<string>>(new Set());
@@ -479,7 +479,7 @@ const AdminDashboard = () => {
     try {
       // Load packages, withdrawals, settings, and sub-subagents on initial load
       const [pkgResult, withdrawalsData, appSettingsResult] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, agent_price, active").order("size_gb").limit(100),
+        supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
         fetchWithdrawalsWithStores(10000),
         supabase
           .from("app_settings")
@@ -1160,7 +1160,7 @@ const AdminDashboard = () => {
   }, []);
 
   // ======================== Price management ========================
-  const handlePriceChange = (id: string, field: "price" | "agent_price", value: string) => {
+  const handlePriceChange = (id: string, field: "price" | "agent_price" | "api_price", value: string) => {
     setEditedPrices((prev) => ({ ...prev, [id]: { ...prev[id], [field]: parseFloat(value) || 0 } }));
   };
 
@@ -1192,11 +1192,12 @@ const AdminDashboard = () => {
     const size = parseFloat(newPkg.size_gb);
     const price = parseFloat(newPkg.price);
     const agentPrice = parseFloat(newPkg.agent_price);
-    if (!size || !price || !agentPrice) { toast({ title: "Fill all fields", variant: "destructive" }); return; }
-    const { error } = await supabase.from("data_packages").insert({ network: newPkg.network, size_gb: size, price, agent_price: agentPrice });
+    const apiPrice = parseFloat(newPkg.api_price);
+    if (!size || !price || !agentPrice || !apiPrice) { toast({ title: "Fill all fields", variant: "destructive" }); return; }
+    const { error } = await supabase.from("data_packages").insert({ network: newPkg.network, size_gb: size, price, agent_price: agentPrice, api_price: apiPrice });
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     setAddDialogOpen(false);
-    setNewPkg({ network: "mtn", size_gb: "", price: "", agent_price: "" });
+    setNewPkg({ network: "mtn", size_gb: "", price: "", agent_price: "", api_price: "" });
     await refreshData();
     toast({ title: "Package added!" });
   };
@@ -1682,13 +1683,14 @@ const AdminDashboard = () => {
               </div>
               <Card className="border-border">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Size</TableHead><TableHead>User Price (GH₵)</TableHead><TableHead>Agent Price (GH₵)</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Size</TableHead><TableHead>User Price (GH₵)</TableHead><TableHead>Agent Price (GH₵)</TableHead><TableHead>API Price (GH₵)</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {filteredPackages.map((pkg) => (
                       <TableRow key={pkg.id}>
                         <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.price} onChange={(e) => handlePriceChange(pkg.id, "price", e.target.value)} className="w-24 h-8" /></TableCell>
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.agent_price} onChange={(e) => handlePriceChange(pkg.id, "agent_price", e.target.value)} className="w-24 h-8" /></TableCell>
+                        <TableCell><Input type="number" step="0.01" defaultValue={pkg.api_price} onChange={(e) => handlePriceChange(pkg.id, "api_price", e.target.value)} className="w-24 h-8" /></TableCell>
                         <TableCell><Switch checked={pkg.active} onCheckedChange={(checked) => toggleActive(pkg.id, checked)} /></TableCell>
                         <TableCell><Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => deletePackage(pkg.id)}><Trash2 className="h-4 w-4" /></Button></TableCell>
                       </TableRow>
@@ -3213,6 +3215,7 @@ const AdminDashboard = () => {
             <div className="space-y-2"><Label>Size (GB)</Label><Input type="number" placeholder="e.g. 5" value={newPkg.size_gb} onChange={(e) => setNewPkg((p) => ({ ...p, size_gb: e.target.value }))} /></div>
             <div className="space-y-2"><Label>User Price (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 15.00" value={newPkg.price} onChange={(e) => setNewPkg((p) => ({ ...p, price: e.target.value }))} /></div>
             <div className="space-y-2"><Label>Agent Price (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 12.00" value={newPkg.agent_price} onChange={(e) => setNewPkg((p) => ({ ...p, agent_price: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>API Price (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 10.00" value={newPkg.api_price} onChange={(e) => setNewPkg((p) => ({ ...p, api_price: e.target.value }))} /></div>
             <Button variant="hero" className="w-full" onClick={addPackage}><Plus className="h-4 w-4 mr-1" /> Add Package</Button>
           </div>
         </DialogContent>
