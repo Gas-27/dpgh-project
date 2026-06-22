@@ -376,8 +376,11 @@ const AgentDashboard = () => {
   
   // API Key
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<number>(0);
+  const [apiStats, setApiStats] = useState<{ total_requests: number; total_data_purchased: number; total_spent: number } | null>(null);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [loadingApiKey, setLoadingApiKey] = useState(true);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Pagination and date filtering
@@ -541,7 +544,7 @@ const AgentDashboard = () => {
       setLoadingApiKey(true);
       const { data, error } = await supabase
         .from("api_users")
-        .select("api_key")
+        .select("api_key, wallet, total_requests, total_data_purchased, total_spent")
         .eq("identity_id", storeId)
         .eq("is_agent", true)
         .maybeSingle();
@@ -552,6 +555,12 @@ const AgentDashboard = () => {
       
       if (data?.api_key) {
         setApiKey(data.api_key);
+        setWallet(data.wallet || 0);
+        setApiStats({
+          total_requests: data.total_requests || 0,
+          total_data_purchased: data.total_data_purchased || 0,
+          total_spent: data.total_spent || 0,
+        });
       }
     } catch (err) {
       console.error("[v0] Exception fetching API key:", err);
@@ -560,7 +569,7 @@ const AgentDashboard = () => {
     }
   };
 
-  // Generate API key via edge function
+  // Generate API key via edge function (allows regeneration)
   const handleGenerateApiKey = async () => {
     if (!store?.id) return;
     setGeneratingApiKey(true);
@@ -578,16 +587,12 @@ const AgentDashboard = () => {
       const result = await response.json();
       
       if (!response.ok) {
-        if (result.api_key) {
-          // API key already exists
-          setApiKey(result.api_key);
-          toast({ title: "API Key", description: "API key already exists for this agent", variant: "default" });
-        } else {
-          toast({ title: "Error", description: result.error || "Failed to generate API key", variant: "destructive" });
-        }
+        toast({ title: "Error", description: result.error || "Failed to generate API key", variant: "destructive" });
       } else {
         setApiKey(result.data.api_key);
-        toast({ title: "Success", description: "API key generated successfully", variant: "default" });
+        setWallet(result.data.wallet || 0);
+        setShowRegenerateConfirm(false);
+        toast({ title: "Success", description: apiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
       }
     } catch (err) {
       console.error("[v0] Error generating API key:", err);
@@ -2425,7 +2430,8 @@ const AgentDashboard = () => {
           </TabsContent>
 
           {/* ============================= API KEY ============================= */}
-          <TabsContent value="api-key" className="mt-0">
+          <TabsContent value="api-key" className="mt-0 space-y-4">
+            {/* API Key Card */}
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
@@ -2465,6 +2471,14 @@ const AgentDashboard = () => {
                     <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded">
                       ⚠️ Keep this key secret. Never share it publicly or commit it to version control.
                     </p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowRegenerateConfirm(true)}
+                      className="w-full gap-2"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Regenerate Key
+                    </Button>
                   </div>
                 ) : (
                   <Button 
@@ -2488,6 +2502,109 @@ const AgentDashboard = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* API Wallet Card */}
+            {apiKey && (
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <Wallet className="h-5 w-5" />
+                    API Wallet
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-4 rounded-lg border border-primary/20">
+                      <p className="text-sm text-muted-foreground mb-1">Wallet Balance</p>
+                      <p className="text-2xl font-bold text-primary">GHC {wallet.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground mt-2">Available for API purchases</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-card to-card/50 p-4 rounded-lg border border-border">
+                      <p className="text-sm text-muted-foreground mb-1">Your Store Wallet</p>
+                      <p className="text-2xl font-bold">{store ? `GHC ${store.wallet_balance?.toFixed(2) || "0.00"}` : "Loading..."}</p>
+                      <p className="text-xs text-muted-foreground mt-2">Main store wallet balance</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* API Dashboard */}
+            {apiKey && apiStats && (
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    API Usage Dashboard
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gradient-to-br from-blue-50 dark:from-blue-950/20 to-blue-50/50 dark:to-blue-950/10 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p className="text-sm text-muted-foreground mb-2">Total API Requests</p>
+                      <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{apiStats.total_requests.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground mt-2">Requests made via API</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-green-50 dark:from-green-950/20 to-green-50/50 dark:to-green-950/10 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-sm text-muted-foreground mb-2">Total Data Purchased</p>
+                      <p className="text-3xl font-bold text-green-600 dark:text-green-400">{apiStats.total_data_purchased} GB</p>
+                      <p className="text-xs text-muted-foreground mt-2">Data purchased via API</p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-orange-50 dark:from-orange-950/20 to-orange-50/50 dark:to-orange-950/10 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <p className="text-sm text-muted-foreground mb-2">Total Spent</p>
+                      <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">GHC {apiStats.total_spent.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground mt-2">Total amount spent</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-primary/5 border border-primary/20 p-4 rounded-lg">
+                    <h4 className="font-semibold text-sm mb-2">API Endpoints</h4>
+                    <ul className="text-xs space-y-2 text-muted-foreground">
+                      <li><code className="bg-background px-2 py-1 rounded">/api/purchase-data</code> - Purchase data for a recipient</li>
+                      <li><code className="bg-background px-2 py-1 rounded">/api/check-balance</code> - Check your API wallet balance</li>
+                      <li><code className="bg-background px-2 py-1 rounded">/api/transaction-history</code> - Get API transaction history</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Regenerate Confirmation Dialog */}
+            <Dialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Regenerate API Key?</DialogTitle>
+                  <DialogDescription>
+                    This will generate a new API key and invalidate your current key. Any applications using the old key will stop working. Are you sure?
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowRegenerateConfirm(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleGenerateApiKey}
+                    disabled={generatingApiKey}
+                    className="gap-2"
+                  >
+                    {generatingApiKey ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Regenerating...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="h-4 w-4" />
+                        Regenerate
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* ============================= SETTINGS ============================= */}
