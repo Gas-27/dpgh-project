@@ -574,13 +574,14 @@ const AgentDashboard = () => {
     }
   };
 
-  // Generate API key via edge function (allows regeneration)
+  // Generate API key via local API route (allows regeneration)
   const handleGenerateApiKey = async () => {
     const effectiveUserId = impersonatedUserId || user?.id;
     if (!effectiveUserId) return;
     setGeneratingApiKey(true);
     try {
-      const response = await fetch("https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/generate-api-key", {
+      console.log("[v0] Generating API key for user:", effectiveUserId);
+      const response = await fetch("/api/agent/generate-api-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -591,6 +592,7 @@ const AgentDashboard = () => {
       });
       
       const result = await response.json();
+      console.log("[v0] API key generation response:", response.status, result);
       
       if (!response.ok) {
         toast({ title: "Error", description: result.error || "Failed to generate API key", variant: "destructive" });
