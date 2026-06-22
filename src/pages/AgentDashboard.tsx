@@ -680,7 +680,9 @@ const AgentDashboard = () => {
       setOrders(enrichedOrders);
       
       // Enrich API user orders
+      console.log("[v0] API user order response:", apiUserOrderR);
       const apiOs = (apiUserOrderR.data as Order[]) ?? [];
+      console.log("[v0] API user orders fetched:", apiOs.length, "orders");
       const enrichedApiOrders = await Promise.all(apiOs.map(async (order: any) => {
         if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
           const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
@@ -688,6 +690,7 @@ const AgentDashboard = () => {
         }
         return order;
       }));
+      console.log("[v0] Setting API user orders state:", enrichedApiOrders.length, "orders");
       setApiUserOrders(enrichedApiOrders);
       const wd = (wdR.data as WithdrawalRequest[]) ?? [];
       setWithdrawals(wd);
@@ -1272,7 +1275,7 @@ const AgentDashboard = () => {
     }
   };
   
-  // ─── GUARDS ────────────────────────────────────────────────────────����──────
+  // ──��� GUARDS ────────────────────────────────────────────────────────����──────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
@@ -1722,7 +1725,7 @@ const AgentDashboard = () => {
               {Object.keys(editedPrices).length > 0 && <Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}><Save className="h-4 w-4 mr-1" />{savingPrices ? "Saving..." : "Save Prices"}</Button>}
             </div>
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-              <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>💡 Markup Explanation(Remember to click save after applying markup</p>
+              <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>�� Markup Explanation(Remember to click save after applying markup</p>
               <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network base on the percentage you want all the prices to be increase by  .Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
             </div>
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
