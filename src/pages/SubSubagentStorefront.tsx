@@ -872,7 +872,7 @@ export function SubSubagentStorefront() {
                     className="block w-full rounded-lg px-3 py-2 font-mono text-sm font-semibold break-all"
                     style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, border: `1px solid ${primaryColor}30` }}
                   >
-                    {DOMAINS.getSubagentStoreUrl(store.store_name).replace('https://', '')}
+                    {DOMAINS.getSubSubagentStoreUrl(subagentStoreName || "", store.store_name).replace('https://', '')}
                   </code>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
@@ -881,7 +881,7 @@ export function SubSubagentStorefront() {
                     className="flex-1 sm:flex-auto rounded-lg font-semibold"
                     style={{ backgroundColor: primaryColor, color: primaryForeground }}
                     onClick={() => {
-                      const url = DOMAINS.getSubagentStoreUrl(store.store_name);
+                      const url = DOMAINS.getSubSubagentStoreUrl(subagentStoreName || "", store.store_name);
                       if (navigator.share) {
                         navigator.share({
                           title: `${store.store_name} - Data Store`,
@@ -905,7 +905,7 @@ export function SubSubagentStorefront() {
                     variant="outline"
                     className="flex-1 sm:flex-auto rounded-lg"
                     onClick={() => {
-                      const url = DOMAINS.getSubagentStoreUrl(store.store_name);
+                      const url = DOMAINS.getSubSubagentStoreUrl(subagentStoreName || "", store.store_name);
                       navigator.clipboard.writeText(url);
                       toast({
                         title: "Link copied!",
