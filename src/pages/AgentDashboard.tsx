@@ -377,7 +377,11 @@ const AgentDashboard = () => {
   // API Key
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [wallet, setWallet] = useState<number>(0);
-  const [apiStats, setApiStats] = useState<{ total_requests: number; total_data_purchased: number; total_spent: number } | null>(null);
+  const [apiStats, setApiStats] = useState<{ total_requests: number; total_data_purchased: number; total_spent: number }>({
+    total_requests: 0,
+    total_data_purchased: 0,
+    total_spent: 0,
+  });
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [loadingApiKey, setLoadingApiKey] = useState(true);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
@@ -619,6 +623,35 @@ const AgentDashboard = () => {
     if (!apiKey) return;
     navigator.clipboard.writeText(apiKey);
     toast({ title: "Copied", description: "API key copied to clipboard", variant: "default" });
+  };
+
+  // Save store information
+  const handleSaveStoreInfo = async () => {
+    if (!store?.id) return;
+    try {
+      const { error } = await supabase
+        .from("agent_stores")
+        .update({
+          store_name: storeForm.store_name,
+          whatsapp_number: storeForm.whatsapp_number,
+          support_number: storeForm.support_number,
+          whatsapp_group: storeForm.whatsapp_group,
+          telegram_channel: storeForm.telegram_channel,
+          show_whatsapp_group_icon: storeForm.show_whatsapp_group_icon,
+        })
+        .eq("id", store.id);
+      
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else {
+        setEditingStore(false);
+        setStore({ ...store, ...storeForm });
+        toast({ title: "Success", description: "Store information updated", variant: "default" });
+      }
+    } catch (err) {
+      console.error("[v0] Error saving store info:", err);
+      toast({ title: "Error", description: "Failed to save store information", variant: "destructive" });
+    }
   };
 
   const fetchAllData = async () => {
@@ -2588,7 +2621,7 @@ const AgentDashboard = () => {
             )}
 
             {/* API Dashboard */}
-            {apiKey && apiStats && (
+            {apiKey && (
               <Card className="border-border">
                 <CardHeader>
                   <CardTitle className="font-display flex items-center gap-2">
