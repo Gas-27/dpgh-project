@@ -568,6 +568,20 @@ const AgentDashboard = () => {
     if (!store?.id) return;
     setGeneratingApiKey(true);
     try {
+      // If regenerating, delete the old key first
+      if (apiKey) {
+        console.log("[v0] Deleting old API key for regeneration");
+        const deleteResponse = await supabase
+          .from("api_users")
+          .delete()
+          .eq("identity_id", store.id)
+          .eq("is_agent", true);
+        
+        if (deleteResponse.error) {
+          console.error("[v0] Error deleting old API key:", deleteResponse.error);
+        }
+      }
+      
       const response = await fetch("https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/generate-api-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -585,6 +599,7 @@ const AgentDashboard = () => {
       } else {
         setApiKey(result.data.api_key);
         setWallet(result.data.wallet || 0);
+        setShowRegenerateConfirm(false);
         toast({ title: "Success", description: apiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
       }
     } catch (err) {
