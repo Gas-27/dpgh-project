@@ -166,6 +166,7 @@ const SubSubagentDashboard = () => {
   
   // Agent notification popup state
   const [showAgentNotificationPopup, setShowAgentNotificationPopup] = useState(true);
+  const [showSubagentNotificationPopup, setShowSubagentNotificationPopup] = useState(true);
 
   // Helper function to get available wallet balance
   // Uses the actual wallet_balance from database, minus any pending withdrawals
@@ -573,6 +574,7 @@ const SubSubagentDashboard = () => {
     if (subagentStore?.id) {
       fetchNotifications();
       fetchAgentNotifications();
+      fetchSubSubagentNotifications();
     }
   }, [subagentStore?.id]);
 
@@ -671,10 +673,12 @@ const SubSubagentDashboard = () => {
   const fetchSubSubagentNotifications = async () => {
     try {
       if (!subagentStore?.id) return;
+      // Fetch notifications sent BY parent subagent TO this sub-subagent
       const { data } = await supabase
         .from("sub_subagent_notifications")
         .select("*")
-        .eq("subagent_store_id", subagentStore.id)
+        .eq("sub_subagent_store_id", subagentStore.id)
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
       if (data) setSubSubagentNotifications(data);
     } catch (error) {
@@ -1478,6 +1482,34 @@ const SubSubagentDashboard = () => {
         </Dialog>
       )}
 
+      {/* Subagent Notification Popup Dialog */}
+      {subSubagentNotifications.length > 0 && showSubagentNotificationPopup && (
+        <Dialog open={showSubagentNotificationPopup} onOpenChange={setShowSubagentNotificationPopup}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-blue-400">
+                <Bell className="h-5 w-5" /> Message from Your Subagent
+              </DialogTitle>
+              <DialogDescription>
+                Important notification from your subagent
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {subSubagentNotifications.map((n) => (
+                <div key={n.id} className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                  <p className="text-foreground">{n.message}</p>
+                  <p className="text-xs text-muted-foreground mt-2">{new Date(n.created_at).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => setShowSubagentNotificationPopup(false)}>
+                Got it
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Suspension Banner */}
       {subagentStore?.suspended && (
