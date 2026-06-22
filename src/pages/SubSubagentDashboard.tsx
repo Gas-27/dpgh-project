@@ -167,6 +167,7 @@ const SubSubagentDashboard = () => {
   // Agent notification popup state
   const [showAgentNotificationPopup, setShowAgentNotificationPopup] = useState(true);
   const [showSubagentNotificationPopup, setShowSubagentNotificationPopup] = useState(true);
+  const [subSubagentNotifications, setSubSubagentNotifications] = useState<any[]>([]);
 
   // Helper function to get available wallet balance
   // Uses the actual wallet_balance from database, minus any pending withdrawals
@@ -680,11 +681,17 @@ const SubSubagentDashboard = () => {
         .eq("sub_subagent_store_id", subagentStore.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
-      if (data) setSubSubagentNotifications(data);
+      if (data) {
+        setSubSubagentNotifications(data);
+      }
     } catch (error) {
       console.error("Error fetching sub-subagent notifications:", error);
     }
   };
+
+
+
+
   
   // Paystack wallet top up
   const handlePaystackTopup = async () => {
