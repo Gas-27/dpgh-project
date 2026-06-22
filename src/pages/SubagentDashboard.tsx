@@ -208,7 +208,7 @@ const SubagentDashboard = () => {
   // Load the GLOBAL template prices this subagent has set for their sub-subagents
   // (stored in sub_subagent_package_prices with sub_subagent_store_id = NULL).
   // This mirrors how the Agent loads the base prices it set for subagents.
-  React.useEffect(() => {
+  useEffect(() => {
     const loadSubSubagentTemplate = async () => {
       if (!subagentStore?.id) return;
       const { data, error } = await supabase
