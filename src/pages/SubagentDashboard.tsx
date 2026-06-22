@@ -112,7 +112,7 @@ const MANUAL_SECTIONS = [
 ];
 
 const SubagentDashboard = () => {
-  const { signOut, user, isSubagent, isAdmin } = useAuth();
+  const { signOut, user, isSubagent, isSubSubagent, isAdmin } = useAuth();
   const { toast } = useToast();
 
   const getImpersonationData = () => {
@@ -1627,7 +1627,8 @@ const SubagentDashboard = () => {
     }
   };
 
-  if (!isSubagent) {
+  // Only allow pure subagents (not sub-subagents) to access this dashboard
+  if (!isSubagent || isSubSubagent) {
     return <Navigate to="/" />;
   }
 
