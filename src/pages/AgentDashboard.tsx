@@ -316,6 +316,7 @@ const AgentDashboard = () => {
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [apiUserOrders, setApiUserOrders] = useState<Order[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
