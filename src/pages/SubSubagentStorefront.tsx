@@ -435,6 +435,7 @@ export function SubSubagentStorefront() {
   const [store, setStore] = useState<SubSubagentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [subSubagentPrices, setSubSubagentPrices] = useState<Record<string, number>>({});
+  const [parentSubagentPrices, setParentSubagentPrices] = useState<Record<string, number>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -546,20 +547,33 @@ export function SubSubagentStorefront() {
         matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
         setStore(matched);
 
-        // Fetch packages and custom sub-subagent prices
-        const [pkgRes, subSubagentPricesRes] = await Promise.all([
+        // Fetch packages, sub-subagent prices, and parent subagent prices
+        const [pkgRes, subSubagentPricesRes, parentPricesRes] = await Promise.all([
           supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", matched.id),
+          matched.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
         ]);
 
         setPackages(pkgRes.data || []);
 
-        // Build price map: custom prices -> base prices
+        // Build price map: admin base -> parent subagent -> sub-subagent own
         const priceMap: Record<string, number> = {};
-        (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
+        (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; }); // Admin base price
+        
+        // Override with parent subagent's sell prices (template prices for this sub-subagent)
+        const parentMap: Record<string, number> = {};
+        (parentPricesRes.data || []).forEach((p: any) => {
+          if (p.sell_price != null) {
+            priceMap[p.package_id] = Number(p.sell_price);
+            parentMap[p.package_id] = Number(p.sell_price);
+          }
+        });
+        setParentSubagentPrices(parentMap);
+        
+        // Override with sub-subagent's own sell prices (only if set)
         (subSubagentPricesRes.data || []).forEach((p: any) => { 
           if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
-      });
+        });
       
         setSubSubagentPrices(priceMap);
         setLoading(false);
@@ -599,15 +613,27 @@ export function SubSubagentStorefront() {
         "postgres_changes",
         { event: "*", schema: "public", table: "sub_subagent_package_prices", filter: `sub_subagent_store_id=eq.${store.id}` },
         async () => {
-          const { data } = await supabase
+          // Re-fetch all prices to maintain hierarchy: admin -> parent subagent -> sub-subagent
+          const { data: subSubagentData } = await supabase
             .from("sub_subagent_package_prices")
             .select("package_id, sell_price")
             .eq("sub_subagent_store_id", store.id);
-          if (data) {
-            const priceMap: Record<string, number> = {};
-            data.forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-            setSubSubagentPrices(priceMap);
-          }
+          
+          // Rebuild price map with full hierarchy
+          const newPriceMap: Record<string, number> = {};
+          packages.forEach((pkg: any) => { newPriceMap[pkg.id] = pkg.price; }); // Admin base
+          
+          // Add parent subagent prices
+          Object.entries(parentSubagentPrices).forEach(([pkgId, price]) => {
+            newPriceMap[pkgId] = price;
+          });
+          
+          // Add sub-subagent's own prices (override parent/admin)
+          (subSubagentData || []).forEach((p: any) => {
+            if (p.sell_price != null) newPriceMap[p.package_id] = Number(p.sell_price);
+          });
+          
+          setSubSubagentPrices(newPriceMap);
         }
       )
       .subscribe();
