@@ -599,6 +599,14 @@ export function SubSubagentStorefront() {
     fetchStore();
   }, [subagentStoreName, subSubagentStoreName]);
 
+  // Auto-open notification modal when notifications are fetched
+  useEffect(() => {
+    const undismissed = notifications.filter((n) => !dismissedIds.includes(n.id));
+    if (undismissed.length > 0 && !modalOpen) {
+      setModalOpen(true);
+    }
+  }, [notifications]);
+
   // Real-time store settings updates (theme, prices, etc.)
   useEffect(() => {
     if (!store?.id) return;
@@ -650,18 +658,31 @@ export function SubSubagentStorefront() {
       )
       .subscribe();
     
+    const notificationChannel = supabase
+      .channel(`sub-subagent-notifications-${store.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sub_subagent_storefront_notifications", filter: `sub_subagent_store_id=eq.${store.id}` },
+        async () => {
+          // Re-fetch notifications when changes occur
+          fetchNotifications();
+        }
+      )
+      .subscribe();
+    
     return () => { 
       supabase.removeChannel(storeChannel);
       supabase.removeChannel(priceChannel);
+      supabase.removeChannel(notificationChannel);
     };
-  }, [store?.id]);
+  }, [store?.id, fetchNotifications]);
 
   // Notifications
   const fetchNotifications = useCallback(async () => {
     if (!store?.id) return;
     const now = new Date().toISOString();
     const { data } = await supabase
-      .from("subagent_notifications")
+      .from("sub_subagent_storefront_notifications")
       .select("id, message, created_at")
       .eq("sub_subagent_store_id", store.id)
       .eq("is_active", true)
