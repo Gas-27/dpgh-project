@@ -545,7 +545,7 @@ const AgentDashboard = () => {
       
       const { data, error } = await supabase
         .from("api_users")
-        .select("api_key, wallet, total_requests, total_data_purchased, total_spent")
+        .select("api_key, wallet")
         .eq("identity_id", storeId)
         .eq("is_agent", true)
         .maybeSingle();
