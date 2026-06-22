@@ -568,17 +568,30 @@ const AgentDashboard = () => {
     if (!store?.id) return;
     setGeneratingApiKey(true);
     try {
-      // If regenerating, delete the old key first
+      // If regenerating, first check if record exists and delete it
       if (apiKey) {
-        console.log("[v0] Deleting old API key for regeneration");
-        const deleteResponse = await supabase
+        console.log("[v0] Regenerating API key - deleting old record");
+        const { data: existingRecord, error: selectError } = await supabase
           .from("api_users")
-          .delete()
+          .select("id")
           .eq("identity_id", store.id)
-          .eq("is_agent", true);
+          .eq("is_agent", true)
+          .maybeSingle();
         
-        if (deleteResponse.error) {
-          console.error("[v0] Error deleting old API key:", deleteResponse.error);
+        if (existingRecord?.id) {
+          const { error: deleteError } = await supabase
+            .from("api_users")
+            .delete()
+            .eq("id", existingRecord.id);
+          
+          if (deleteError) {
+            console.error("[v0] Error deleting old API key:", deleteError);
+            // Continue anyway, the edge function might handle it
+          } else {
+            console.log("[v0] Old API key deleted successfully");
+            // Wait a bit for delete to propagate
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
       }
       
