@@ -205,6 +205,30 @@ const SubagentDashboard = () => {
   const [subSubagentNetworkFilterForSubsub, setSubSubagentNetworkFilterForSubsub] = useState("mtn");
   const [savingSubSubSubagentPrices, setSavingSubSubSubagentPrices] = useState(false);
 
+  // Load the GLOBAL template prices this subagent has set for their sub-subagents
+  // (stored in sub_subagent_package_prices with sub_subagent_store_id = NULL).
+  // This mirrors how the Agent loads the base prices it set for subagents.
+  React.useEffect(() => {
+    const loadSubSubagentTemplate = async () => {
+      if (!subagentStore?.id) return;
+      const { data, error } = await supabase
+        .from("sub_subagent_package_prices")
+        .select("package_id, base_price")
+        .eq("subagent_store_id", subagentStore.id)
+        .is("sub_subagent_store_id", null);
+      if (!error && data) {
+        const map: Record<string, number> = {};
+        data.forEach((p: any) => {
+          if (p.base_price !== null && p.base_price !== undefined) {
+            map[p.package_id] = Number(p.base_price);
+          }
+        });
+        setSubSubagentPrices(map);
+      }
+    };
+    loadSubSubagentTemplate();
+  }, [subagentStore?.id]);
+
   const [subSubagentProfitForSubagent, setSubSubagentProfitForSubagent] = useState<number>(0);
   const [subSubagentOrdersCount, setSubSubagentOrdersCount] = useState<number>(0);
   const [subSubagentNotifications, setSubSubagentNotifications] = useState<any[]>([]);
@@ -1375,12 +1399,17 @@ const SubagentDashboard = () => {
         }
       }
 
-      // Update local state
+      // Update local state so the saved template prices show immediately
+      const numericPrices: Record<string, number> = {};
+      Object.entries(subSubagentEditedSubSubPrices).forEach(([k, v]) => {
+        numericPrices[k] = typeof v === "string" ? parseFloat(v) : v;
+      });
+      setSubSubagentPrices(prev => ({ ...prev, ...numericPrices }));
       setSubSubagentEditedSubSubPrices({});
       setSubSubagentMarkupPercentForSubsub("");
       toast({ 
         title: "Success", 
-        description: "Prices saved! New sub-subagents will see these as their base prices." 
+        description: "Prices saved! Your sub-subagents will see these as their base prices." 
       });
       fetchData(); // Refresh data
     } catch (error) {
@@ -3319,7 +3348,7 @@ const SubagentDashboard = () => {
                         {packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub).length > 0 ? (
                           packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub).map(pkg => {
                             const costFromAgent = basePrices[pkg.id] || pkg.price || 0;
-                            const savedPrice = subagentPrices[pkg.id];
+                            const savedPrice = subSubagentPrices[pkg.id];
                             const cur = subSubagentEditedSubSubPrices[pkg.id] ?? savedPrice ?? costFromAgent;
                             const profit = cur - costFromAgent;
                             const isInvalid = subSubagentEditedSubSubPrices[pkg.id] !== undefined && subSubagentEditedSubSubPrices[pkg.id] < costFromAgent;

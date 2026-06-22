@@ -363,14 +363,14 @@ const SubSubagentDashboard = () => {
           packagesResult,
           subagentPricesResult,
           parentSubagentResult,
-          parentPricesResult
+          parentTemplatePricesResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -382,29 +382,20 @@ const SubSubagentDashboard = () => {
           setParentSubagentStoreName(parentSubagentResult.data.store_name);
         }
         
-        // Build base prices from parent subagent's prices (admin impersonation path)
+        // Build base prices = "Cost from Agent" for this sub-subagent.
+        // EXACT MIRROR of agent->subagent: the base price is the parent subagent's
+        // GLOBAL template price (sub_subagent_store_id IS NULL). Fallback = admin/default package price.
         const basePriceMap: Record<string, number> = {};
-        
-        // First set all to default package prices
+        // Ultimate fallback: admin/default package price
         (packagesResult.data || []).forEach((p: any) => {
           basePriceMap[p.id] = p.price;
         });
-        
-        // Then override with parent's custom prices if they've set any for THIS store specifically
-        (parentPricesResult.data || []).forEach((p: any) => {
+        // Override with the parent subagent's template base price (what the subagent set for sub-subagents)
+        (parentTemplatePricesResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
           }
         });
-        
-        // If no specific prices exist, fallback to parent's template prices (what SubAgent set in Sub-Subagent Pricing tab)
-        // Template prices are stored with sub_subagent_store_id = NULL
-        (parentTemplatePricesResult.data || []).forEach((p: any) => {
-          if (!(p.package_id in basePriceMap) && p.base_price !== null && p.base_price !== undefined) {
-            basePriceMap[p.package_id] = Number(p.base_price);
-          }
-        });
-        
         setBasePrices(basePriceMap);
         
         // Build subagent prices
@@ -483,23 +474,18 @@ const SubSubagentDashboard = () => {
           setParentSubagentStoreName(parentSubagentResult.data.store_name);
         }
         
-        // Build base prices (what parent subagent charges this sub-subagent) - Cost from Agent
+        // Build base prices = "Cost from Agent" for this sub-subagent.
+        // EXACT MIRROR of agent->subagent: base price is the parent subagent's GLOBAL template
+        // price (sub_subagent_store_id IS NULL). Fallback = admin/default package price.
         const basePriceMap: Record<string, number> = {};
-        (parentPricesResult.data || []).forEach((p: any) => {
+        // Ultimate fallback: admin/default package price
+        (packagesResult.data || []).forEach((p: any) => {
+          basePriceMap[p.id] = p.price;
+        });
+        // Override with the parent subagent's template base price
+        (parentTemplatePricesResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
-          }
-        });
-        // Fallback to parent's template prices if no specific prices set
-        (parentTemplatePricesResult.data || []).forEach((p: any) => {
-          if (!(p.package_id in basePriceMap) && p.base_price !== null && p.base_price !== undefined) {
-            basePriceMap[p.package_id] = Number(p.base_price);
-          }
-        });
-        // Fallback to package defaults if parent hasn't set any prices
-        (packagesResult.data || []).forEach((p: any) => {
-          if (basePriceMap[p.id] === undefined) {
-            basePriceMap[p.id] = p.price;
           }
         });
         setBasePrices(basePriceMap);
@@ -511,15 +497,6 @@ const SubSubagentDashboard = () => {
             subagentPriceMap[p.package_id] = Number(p.sell_price);
           }
         });
-        
-        // Build base prices from packages
-        const priceMap: Record<string, number> = {};
-        (packagesResult.data || []).forEach((p: any) => {
-          priceMap[p.id] = p.price;
-        });
-        setBasePrices(priceMap);
-        
-        // Set subagent prices
         setSubagentPrices(subagentPriceMap);
       }
 
@@ -553,29 +530,20 @@ const SubSubagentDashboard = () => {
           setParentSubagentStoreName(parentSubagentResult.data.store_name);
         }
         
-        // Build base prices from parent subagent's prices (what the parent charges THIS sub-subagent)
-        // Priority: Parent's custom prices for THIS store -> Parent's template prices -> Default package prices
+        // Build base prices = "Cost from Agent" for this sub-subagent.
+        // EXACT MIRROR of agent->subagent: base price is the parent subagent's GLOBAL template
+        // price (sub_subagent_store_id IS NULL). Fallback = admin/default package price.
         const basePriceMap: Record<string, number> = {};
-        
-        // First set all to default package prices
+        // Ultimate fallback: admin/default package price
         (packagesResult.data || []).forEach((p: any) => {
           basePriceMap[p.id] = p.price;
         });
-        
-        // Then override with parent's custom prices if they've set any for THIS store specifically
-        (parentPricesResult.data || []).forEach((p: any) => {
+        // Override with the parent subagent's template base price
+        (parentTemplatePricesResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
           }
         });
-        
-        // If no specific prices exist, fallback to parent's template prices (what SubAgent set in Sub-Subagent Pricing tab)
-        (parentTemplatePricesResult.data || []).forEach((p: any) => {
-          if (!(p.package_id in basePriceMap) && p.base_price !== null && p.base_price !== undefined) {
-            basePriceMap[p.package_id] = Number(p.base_price);
-          }
-        });
-        
         setBasePrices(basePriceMap);
         
         // Build sub-subagent's own sell prices map
