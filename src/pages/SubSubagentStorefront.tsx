@@ -576,6 +576,18 @@ export function SubSubagentStorefront() {
         });
       
         setSubSubagentPrices(priceMap);
+        
+        // Fetch storefront notifications
+        const { data: notifData } = await supabase
+          .from("sub_subagent_storefront_notifications")
+          .select("*")
+          .eq("sub_subagent_store_id", matched.id)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+        if (notifData && notifData.length > 0) {
+          setNotifications(notifData);
+        }
+        
         setLoading(false);
       } catch (error) {
         console.error("[v0] Error fetching sub-subagent store:", error);

@@ -491,9 +491,9 @@ const SubSubagentDashboard = () => {
     setLoadingNotifications(true);
     try {
       const { data, error } = await supabase
-        .from("subagent_notifications")
+        .from("sub_subagent_storefront_notifications")
         .select("*")
-        .eq("subagent_store_id", subagentStore.id)
+        .eq("sub_subagent_store_id", subagentStore.id)
         .order("created_at", { ascending: false });
       if (!error && data) setNotifications(data);
       if (error) console.warn("[v0] Error fetching notifications:", error);
@@ -575,8 +575,8 @@ const SubSubagentDashboard = () => {
     }
     setSendingNotification(true);
     const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
-    const { error } = await supabase.from("subagent_notifications").insert({
-      subagent_store_id: subagentStore.id,
+    const { error } = await supabase.from("sub_subagent_storefront_notifications").insert({
+      sub_subagent_store_id: subagentStore.id,
       message: newNotificationMsg.trim(),
       is_active: true,
       expires_at
@@ -593,13 +593,13 @@ const SubSubagentDashboard = () => {
   };
 
   const toggleNotificationActive = async (id: string, cur: boolean) => {
-    const { error } = await supabase.from("subagent_notifications").update({ is_active: !cur }).eq("id", id);
+    const { error } = await supabase.from("sub_subagent_storefront_notifications").update({ is_active: !cur }).eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
 
   const deleteNotification = async (id: string) => {
-    const { error } = await supabase.from("subagent_notifications").delete().eq("id", id);
+    const { error } = await supabase.from("sub_subagent_storefront_notifications").delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
   };
