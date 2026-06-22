@@ -477,26 +477,6 @@ const SubSubagentDashboard = () => {
         });
         setSubagentPrices(subagentPriceMap);
       }
-        // Ultimate fallback: admin/default package price
-        (packagesResult.data || []).forEach((p: any) => {
-          basePriceMap[p.id] = p.price;
-        });
-        // Override with the parent subagent's template base price
-        (parentTemplatePricesResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
-            basePriceMap[p.package_id] = Number(p.base_price);
-          }
-        });
-        setBasePrices(basePriceMap);
-        
-        // Build sub-subagent's own sell prices map
-        const subagentPriceMap: Record<string, number> = {};
-        (subagentPricesResult.data || []).forEach((p: any) => {
-          if (p.sell_price !== null && p.sell_price !== undefined) {
-            subagentPriceMap[p.package_id] = Number(p.sell_price);
-          }
-        });
-        setSubagentPrices(subagentPriceMap);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ title: "Error", description: "Failed to load dashboard", variant: "destructive" });
