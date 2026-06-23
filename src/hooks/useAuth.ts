@@ -130,8 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (roles.includes("sub_subagent")) return "/sub-subagent-dashboard";
     if (roles.includes("subagent")) return "/subagent-dashboard";
     if (hasPendingAgentStore) return "/pending-approval";
+    if (user) return "/user-dashboard";
     return "/";
-  }, [roles, hasPendingAgentStore]);
+  }, [roles, hasPendingAgentStore, user]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

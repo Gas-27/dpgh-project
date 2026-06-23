@@ -32,6 +32,7 @@ const SubagentRegistration = lazy(() => import("./pages/SubagentRegistration"));
 const SubagentApprovalPayment = lazy(() => import("./pages/SubagentApprovalPayment"));
 const VerifySubagentPayment = lazy(() => import("./pages/VerifySubagentPayment"));
 const SubSubagentDashboard = lazy(() => import("./pages/SubSubagentDashboard"));
+const UserDashboard = lazy(() => import("./pages/UserDashboard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -155,6 +156,14 @@ const App = () => {
                     element={
                       <AuthGuard requiredRole="agent">
                         <AgentDashboard />
+                      </AuthGuard>
+                    }
+                  />
+                  <Route
+                    path="/user-dashboard"
+                    element={
+                      <AuthGuard>
+                        <UserDashboard />
                       </AuthGuard>
                     }
                   />

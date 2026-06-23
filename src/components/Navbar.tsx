@@ -11,13 +11,13 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   // Get the correct dashboard route (with fallback)
-  const dashboardRoute = getDashboardRoute() || "/dashboard";
+  const dashboardRoute = getDashboardRoute() || "/user-dashboard";
 
   // Helper to get the button label based on role
   const getDashboardLabel = () => {
     if (isAdmin) return "Admin Dashboard";
     if (isAgent) return "Agent Dashboard";
-    return "Dashboard";
+    return "My Dashboard";
   };
 
   // Handle dashboard click – navigate programmatically (optional, Link already works)
