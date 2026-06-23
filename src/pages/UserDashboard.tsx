@@ -58,6 +58,7 @@ const UserDashboard = () => {
   const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
   const [buyLoading, setBuyLoading] = useState(false);
+  const [topupReference, setTopupReference] = useState<string>("");
 
   // Redirect if not logged in
   useEffect(() => {
@@ -117,12 +118,27 @@ const UserDashboard = () => {
         // Fetch user's normal wallet (from user_wallets table)
         const { data: userWalletData } = await supabase
           .from("user_wallets")
-          .select("balance")
+          .select("balance, topup_reference")
           .eq("user_id", user.id)
           .maybeSingle();
 
         if (userWalletData) {
           setNormalWallet(userWalletData.balance || 0);
+          // Generate top-up reference if it doesn't exist
+          if (!userWalletData.topup_reference) {
+            const allUsersCount = await supabase
+              .from("user_wallets")
+              .select("id", { count: "exact", head: true });
+            const userNumber = (allUsersCount.count || 0) + 1;
+            const ref = `${userNumber}us`;
+            await supabase
+              .from("user_wallets")
+              .update({ topup_reference: ref })
+              .eq("user_id", user.id);
+            setTopupReference(ref);
+          } else {
+            setTopupReference(userWalletData.topup_reference);
+          }
         }
 
         // Fetch available packages
@@ -361,6 +377,19 @@ const UserDashboard = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Top-up Reference Card */}
+            <Card className="border-blue-500/30 bg-blue-500/5">
+              <CardHeader>
+                <CardTitle className="text-base">Your Top-up Reference</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-sm text-muted-foreground">Use this reference when making top-ups to your account</p>
+                <div className="bg-muted p-4 rounded-lg border border-border">
+                  <p className="font-display text-2xl font-bold text-primary">{topupReference || "Loading..."}</p>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Total Data Purchased */}
               <Card className="border-cyan-500/30 bg-cyan-500/5">
@@ -524,6 +553,21 @@ const UserDashboard = () => {
                     </Button>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* API Key Warning */}
+            <Card className="border-red-500/50 bg-red-500/10">
+              <CardHeader>
+                <CardTitle className="text-base text-red-500">⚠️ Important: API Key Warning</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p className="text-red-400 font-semibold">
+                  Only generate an API key if you have your own data website and want to connect your source to our platform.
+                </p>
+                <p className="text-muted-foreground">
+                  API keys are for developers and businesses with their own infrastructure. If you simply want to buy data packages, you don't need an API key.
+                </p>
               </CardContent>
             </Card>
 

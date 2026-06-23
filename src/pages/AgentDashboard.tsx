@@ -2206,6 +2206,21 @@ const AgentDashboard = () => {
 
           {/* ============================= API KEY ============================= */}
           <TabsContent value="api-key" className="mt-0 space-y-4">
+            {/* API Key Warning */}
+            <Card className="border-red-500/50 bg-red-500/10">
+              <CardHeader>
+                <CardTitle className="text-base text-red-500">⚠️ Important: API Key Warning</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p className="text-red-400 font-semibold">
+                  Only generate an API key if you have your own data source and want to connect it to our platform.
+                </p>
+                <p className="text-muted-foreground">
+                  API keys are for integrating external systems and sources. If you simply want to resell data, you don't need an API key.
+                </p>
+              </CardContent>
+            </Card>
+
             {/* API Key Card */}
             <Card className="border-border">
               <CardHeader>

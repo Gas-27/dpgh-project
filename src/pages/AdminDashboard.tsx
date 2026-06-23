@@ -1468,6 +1468,84 @@ const AdminDashboard = () => {
     setTopupLoading(false);
   };
 
+  // User top-up search and credit functions
+  const [userTopupSearch, setUserTopupSearch] = useState("");
+  const [topupUser, setTopupUser] = useState<any>(null);
+  const [userTopupAmount, setUserTopupAmount] = useState("");
+  const [userTopupLoading, setUserTopupLoading] = useState(false);
+
+  const searchUserTopupRef = async () => {
+    if (!userTopupSearch.trim()) {
+      setTopupUser(null);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from("user_wallets")
+        .select("user_id, balance, topup_reference, auth.users!inner(email)")
+        .eq("topup_reference::text", userTopupSearch.trim())
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error searching user topup reference:", error);
+        toast({ 
+          title: "Error", 
+          description: "Error searching for user", 
+          variant: "destructive" 
+        });
+        setTopupUser(null);
+        return;
+      }
+
+      if (data) {
+        setTopupUser(data);
+      } else {
+        toast({ 
+          title: "Not found", 
+          description: "No user with that reference code.", 
+          variant: "destructive" 
+        }); 
+        setTopupUser(null);
+      }
+    } catch (err) {
+      console.error("Exception searching user topup reference:", err);
+      toast({ 
+        title: "Error", 
+        description: "Error searching for user", 
+        variant: "destructive" 
+      });
+      setTopupUser(null);
+    }
+  };
+
+  const creditUserWallet = async () => {
+    if (!topupUser) return;
+    const amount = parseFloat(userTopupAmount);
+    if (!amount || amount <= 0) { 
+      toast({ title: "Enter a valid amount", variant: "destructive" }); 
+      return; 
+    }
+    setUserTopupLoading(true);
+    const newBalance = Number(topupUser.balance) + amount;
+    const { error: updateErr } = await supabase
+      .from("user_wallets")
+      .update({ balance: newBalance })
+      .eq("user_id", topupUser.user_id);
+    
+    if (updateErr) { 
+      toast({ title: "Error", description: updateErr.message, variant: "destructive" }); 
+      setUserTopupLoading(false); 
+      return; 
+    }
+    
+    setTopupUser({ ...topupUser, balance: newBalance });
+    setUserTopupAmount("");
+    toast({ title: "Wallet credited!", description: `GH₵ ${Number(amount || 0).toFixed(2)} added to user ${topupUser.topup_reference}` });
+    setUserTopupLoading(false);
+  };
+
   // ======================== Notifications ========================
   const sendNotification = async () => {
     if (!notifTitle.trim() || !notifMessage.trim()) { toast({ title: "Fill title and message", variant: "destructive" }); return; }
@@ -2171,9 +2249,9 @@ const AdminDashboard = () => {
                         Next
                       </Button>
                     </div>
-                  )}
-                </>
-              );
+                    )}
+                  </>
+                );
               })()}
             </TabsContent>
           )}
@@ -2471,7 +2549,82 @@ const AdminDashboard = () => {
 
           {/* USERS TAB */}
           {canSee("users") && (
-            <TabsContent value="users" className="space-y-4">
+            <TabsContent value="users" className="space-y-6">
+              {/* User Top-up Section */}
+              <Card className="border-blue-500/30 bg-blue-500/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-blue-400" />
+                    User Wallet Top-up
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="Enter user top-up reference (e.g., 1us, 2us...)" 
+                        value={userTopupSearch}
+                        onChange={(e) => setUserTopupSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && searchUserTopupRef()}
+                        className="pl-10" 
+                      />
+                    </div>
+                    <Button variant="hero" onClick={searchUserTopupRef}>Search</Button>
+                  </div>
+                  
+                  {topupUser && (
+                    <div className="space-y-3 border-t border-border pt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">User Email</p>
+                          <p className="font-semibold">{topupUser["auth.users"]?.email || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Reference</p>
+                          <p className="font-semibold text-primary">{topupUser.topup_reference}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Current Balance</p>
+                          <p className="font-semibold text-lg">GH₵ {Number(topupUser.balance).toFixed(2)}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Amount to Add</Label>
+                        <div className="flex gap-2">
+                          <div className="flex-1 relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">GH₵</span>
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              value={userTopupAmount}
+                              onChange={(e) => setUserTopupAmount(e.target.value)}
+                              className="pl-12 pr-3 text-base font-semibold"
+                              min="1"
+                            />
+                          </div>
+                          <Button 
+                            variant="hero" 
+                            onClick={creditUserWallet}
+                            disabled={userTopupLoading}
+                          >
+                            {userTopupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <DollarSign className="h-4 w-4 mr-2" />}
+                            Credit Wallet
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Users List Section */}
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle>Users Directory</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
               <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -2547,6 +2700,8 @@ const AdminDashboard = () => {
                   </>
                 );
               })()}
+                </CardContent>
+              </Card>
             </TabsContent>
           )}
 
