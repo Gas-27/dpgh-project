@@ -223,8 +223,8 @@ const UserDashboard = () => {
     if (cleaned.startsWith("024") || cleaned.startsWith("054") || cleaned.startsWith("055")) return "mtn";
     // AirtelTigo: 027, 057
     if (cleaned.startsWith("027") || cleaned.startsWith("057")) return "airteltigo";
-    // Telecel: 026, 056
-    if (cleaned.startsWith("026") || cleaned.startsWith("056")) return "telecel";
+    // Telecel: 020, 026, 056
+    if (cleaned.startsWith("020") || cleaned.startsWith("026") || cleaned.startsWith("056")) return "telecel";
     return "unknown";
   };
 
@@ -564,12 +564,12 @@ const UserDashboard = () => {
                   <p className="text-sm font-semibold">Top Up API Wallet</p>
                   <div className="flex gap-2">
                     <div className="flex-1 relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">GH₵</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">GH₵</span>
                       <Input
                         type="number"
-                        placeholder="Enter amount"
+                        placeholder="0.00"
                         id="api-wallet-topup"
-                        className="pl-10"
+                        className="pl-12 pr-3 text-base font-semibold"
                         min="1"
                       />
                     </div>
@@ -688,13 +688,13 @@ const UserDashboard = () => {
                   <p className="text-xs text-muted-foreground">Balance: <strong>GH₵ {normalWallet.toFixed(2)}</strong></p>
                   <div className="flex gap-2">
                     <div className="flex-1 relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">GH₵</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">GH₵</span>
                       <Input
                         type="number"
-                        placeholder="Enter amount"
+                        placeholder="0.00"
                         value={customTopupAmount}
                         onChange={(e) => setCustomTopupAmount(e.target.value)}
-                        className="pl-10"
+                        className="pl-12 pr-3 text-base font-semibold"
                         min="1"
                       />
                     </div>
