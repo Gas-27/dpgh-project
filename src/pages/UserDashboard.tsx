@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff } from "lucide-react";
@@ -42,7 +43,9 @@ const UserDashboard = () => {
   const [totalSpent, setTotalSpent] = useState(0);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
-  const [wallet, setWallet] = useState(0);
+  const [apiWallet, setApiWallet] = useState(0);
+  const [normalWallet, setNormalWallet] = useState(0);
+  const [customTopupAmount, setCustomTopupAmount] = useState("");
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
 
@@ -88,7 +91,7 @@ const UserDashboard = () => {
           setTotalSpent(totalCost);
         }
 
-        // Fetch user's API key and wallet
+        // Fetch user's API key and both wallet types
         const { data: apiUserData } = await supabase
           .from("api_users")
           .select("api_key, wallet")
@@ -98,8 +101,18 @@ const UserDashboard = () => {
 
         if (apiUserData?.api_key) {
           setApiKey(apiUserData.api_key);
-          setWallet(apiUserData.wallet || 0);
-          console.log("[v0] Fetched user wallet:", apiUserData.wallet);
+          setApiWallet(apiUserData.wallet || 0);
+        }
+
+        // Fetch user's normal wallet (from user_wallets table)
+        const { data: userWalletData } = await supabase
+          .from("user_wallets")
+          .select("balance")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (userWalletData) {
+          setNormalWallet(userWalletData.balance || 0);
         }
 
         // Fetch available packages
@@ -133,14 +146,14 @@ const UserDashboard = () => {
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 
-      // Fetch existing wallet to preserve it
+      // Fetch existing API wallet to preserve it
       const { data: existingData } = await supabase
         .from("api_users")
         .select("wallet")
         .eq("identity_id", user?.id)
         .maybeSingle();
 
-      const existingWallet = existingData?.wallet || 0;
+      const existingApiWallet = existingData?.wallet || 0;
 
       const { data, error } = await supabase
         .from("api_users")
@@ -149,7 +162,7 @@ const UserDashboard = () => {
           api_key: newApiKey,
           is_agent: false,
           is_user: true,
-          wallet: existingWallet,
+          wallet: existingApiWallet,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'identity_id'
@@ -162,7 +175,7 @@ const UserDashboard = () => {
         toast({ title: "Error", description: error.message || "Failed to generate API key", variant: "destructive" });
       } else {
         setApiKey(newApiKey);
-        setWallet(existingWallet);
+        setApiWallet(existingApiWallet);
         toast({ title: "Success", description: apiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
       }
     } catch (err) {
@@ -181,6 +194,10 @@ const UserDashboard = () => {
   };
 
   const handleTopUp = async (amount: number) => {
+    if (!amount || amount <= 0) {
+      toast({ title: "Error", description: "Please enter a valid amount", variant: "destructive" });
+      return;
+    }
     try {
       // Redirect to payment page with amount parameter
       window.location.href = `/checkout?amount=${amount}&type=wallet-topup`;
@@ -389,22 +406,66 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* API Wallet Card */}
-            <Card className="border-yellow-500/30 bg-yellow-500/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="h-5 w-5 text-yellow-400" />
-                  API Wallet Balance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-muted p-6 rounded-lg border border-border text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
-                  <p className="font-display text-4xl font-bold text-yellow-400">GH₵ {Number(wallet).toFixed(2)}</p>
-                </div>
-                <p className="text-xs text-muted-foreground text-center">Use this wallet to make API purchases. Top up to get started.</p>
-              </CardContent>
-            </Card>
+            {/* Wallet Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Normal Wallet Card */}
+              <Card className="border-blue-500/30 bg-blue-500/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-blue-400" />
+                    Normal Wallet
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-muted p-6 rounded-lg border border-border text-center">
+                    <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
+                    <p className="font-display text-3xl font-bold text-blue-400">GH₵ {Number(normalWallet).toFixed(2)}</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => {
+                      const customAmount = prompt("Enter amount to top up:");
+                      if (customAmount && !isNaN(Number(customAmount))) {
+                        handleTopUp(Number(customAmount));
+                      }
+                    }}
+                  >
+                    Add Funds
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">Use this to purchase data packages</p>
+                </CardContent>
+              </Card>
+
+              {/* API Wallet Card */}
+              <Card className="border-yellow-500/30 bg-yellow-500/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-yellow-400" />
+                    API Wallet
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-muted p-6 rounded-lg border border-border text-center">
+                    <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
+                    <p className="font-display text-3xl font-bold text-yellow-400">GH₵ {Number(apiWallet).toFixed(2)}</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => {
+                      const customAmount = prompt("Enter amount to top up:");
+                      if (customAmount && !isNaN(Number(customAmount))) {
+                        handleTopUp(Number(customAmount));
+                      }
+                    }}
+                  >
+                    Add Funds
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">Use this for API purchases</p>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Buy Data Tab */}
@@ -455,21 +516,56 @@ const UserDashboard = () => {
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-2">Add credit to your account for quick purchases</p>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[100, 200, 500, 1000].map((amount) => (
+              <CardContent className="space-y-6">
+                {/* Custom Amount Section */}
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold">Enter Custom Amount</p>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">GH₵</span>
+                      <Input
+                        type="number"
+                        placeholder="Enter amount"
+                        value={customTopupAmount}
+                        onChange={(e) => setCustomTopupAmount(e.target.value)}
+                        className="pl-10"
+                        min="1"
+                      />
+                    </div>
                     <Button
-                      key={amount}
-                      variant="outline"
-                      className="h-20 flex flex-col items-center justify-center hover:border-orange-500/50"
-                      onClick={() => handleTopUp(amount)}
+                      variant="hero"
+                      onClick={() => {
+                        if (customTopupAmount) {
+                          handleTopUp(Number(customTopupAmount));
+                        }
+                      }}
                     >
-                      <p className="text-lg font-bold">GH₵ {amount}</p>
-                      <p className="text-xs text-muted-foreground">Top Up</p>
+                      Top Up
                     </Button>
-                  ))}
+                  </div>
                 </div>
-                <div className="bg-muted p-4 rounded-lg border border-border mt-6">
+
+                {/* Quick Amount Buttons */}
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold">Quick Top Up</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {[100, 200, 500, 1000].map((amount) => (
+                      <Button
+                        key={amount}
+                        variant="outline"
+                        className="h-16 flex flex-col items-center justify-center hover:border-orange-500/50"
+                        onClick={() => {
+                          setCustomTopupAmount(amount.toString());
+                          handleTopUp(amount);
+                        }}
+                      >
+                        <p className="text-sm font-bold">GH₵ {amount}</p>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-muted p-4 rounded-lg border border-border">
                   <p className="text-sm text-muted-foreground">
                     💡 Tip: Top up your wallet to get faster checkout and keep funds ready for quick purchases.
                   </p>
@@ -505,9 +601,6 @@ const UserDashboard = () => {
                 <div className="space-y-2">
                   <p className="text-sm font-semibold">Account Actions</p>
                   <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start">
-                      Change Password
-                    </Button>
                     <Button variant="outline" className="w-full justify-start">
                       Download My Data
                     </Button>
