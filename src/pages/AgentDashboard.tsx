@@ -591,7 +591,16 @@ const AgentDashboard = () => {
       
       console.log("[v0] Generated API key:", apiKey.substring(0, 20) + "...");
       
-      // Upsert the API user record
+      // First, fetch existing API user record to preserve wallet balance
+      const { data: existingData } = await supabase
+        .from("api_users")
+        .select("wallet")
+        .eq("identity_id", effectiveUserId)
+        .maybeSingle();
+      
+      const existingWallet = existingData?.wallet || 0;
+      
+      // Upsert the API user record, preserving wallet balance
       const { data, error } = await supabase
         .from("api_users")
         .upsert({
@@ -599,7 +608,7 @@ const AgentDashboard = () => {
           api_key: apiKey,
           is_agent: true,
           is_user: false,
-          wallet: 0,
+          wallet: existingWallet,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'identity_id'
