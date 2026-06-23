@@ -582,9 +582,10 @@ const AgentDashboard = () => {
     try {
       console.log("[v0] Generating API key for user:", effectiveUserId);
       
-      // Generate a new API key
-      const crypto = await import('crypto');
-      const apiKey = 'pk_live_' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      // Generate a new API key using Web Crypto API
+      const array = new Uint8Array(32);
+      globalThis.crypto.getRandomValues(array);
+      const apiKey = 'pk_live_' + Array.from(array)
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
       
