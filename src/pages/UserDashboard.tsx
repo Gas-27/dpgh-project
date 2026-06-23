@@ -219,8 +219,11 @@ const UserDashboard = () => {
 
   const detectNetwork = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
+    // MTN: 024, 054, 055
     if (cleaned.startsWith("024") || cleaned.startsWith("054") || cleaned.startsWith("055")) return "mtn";
+    // AirtelTigo: 027, 057
     if (cleaned.startsWith("027") || cleaned.startsWith("057")) return "airteltigo";
+    // Telecel: 026, 056
     if (cleaned.startsWith("026") || cleaned.startsWith("056")) return "telecel";
     return "unknown";
   };
@@ -524,6 +527,23 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
 
+            {/* What is API Section */}
+            <Card className="border-blue-500/30 bg-blue-500/5">
+              <CardHeader>
+                <CardTitle className="text-base">What is the API?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <p className="text-muted-foreground">
+                  The API allows developers to programmatically purchase data and integrate our service into their applications or websites. If you don't have a technical team or website, you don't need to generate an API key.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground text-xs">
+                  <li>Build custom applications that buy data automatically</li>
+                  <li>Integrate data purchases into your website</li>
+                  <li>Automate bulk purchases for your business</li>
+                </ul>
+              </CardContent>
+            </Card>
+
             {/* API Wallet Card */}
             <Card className="border-yellow-500/30 bg-yellow-500/5">
               <CardHeader>
@@ -537,7 +557,47 @@ const UserDashboard = () => {
                   <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
                   <p className="font-display text-3xl font-bold text-yellow-400">GH₵ {Number(apiWallet).toFixed(2)}</p>
                 </div>
-                <p className="text-xs text-muted-foreground text-center">Use this wallet for API calls and programmatic purchases. Top up in the Top Up section.</p>
+                <p className="text-xs text-muted-foreground text-center">Use this wallet exclusively for API-based purchases and automated requests.</p>
+                
+                {/* Top Up API Wallet */}
+                <div className="space-y-2 border-t border-border pt-4">
+                  <p className="text-sm font-semibold">Top Up API Wallet</p>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">GH₵</span>
+                      <Input
+                        type="number"
+                        placeholder="Enter amount"
+                        id="api-wallet-topup"
+                        className="pl-10"
+                        min="1"
+                      />
+                    </div>
+                    <Button
+                      variant="hero"
+                      onClick={() => {
+                        const input = (document.getElementById("api-wallet-topup") as HTMLInputElement);
+                        if (input?.value) {
+                          handleTopUp(Number(input.value));
+                        }
+                      }}
+                    >
+                      Top Up
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {[100, 200, 500, 1000].map((amount) => (
+                      <Button
+                        key={amount}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleTopUp(amount)}
+                      >
+                        GH₵ {amount}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -601,17 +661,15 @@ const UserDashboard = () => {
             {/* Wallet Type Explanation */}
             <Card className="border-blue-500/30 bg-blue-500/5">
               <CardHeader>
-                <CardTitle className="text-base">Understanding Your Wallets</CardTitle>
+                <CardTitle className="text-base">Top Up Your Normal Wallet</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div>
-                  <p className="font-semibold text-blue-400">Normal Wallet</p>
-                  <p className="text-muted-foreground">Used to purchase data packages through the website's Buy Data section. Top up here to buy data directly.</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-yellow-400">API Wallet</p>
-                  <p className="text-muted-foreground">Used for programmatic API purchases and automated requests. Top up here for API-based transactions.</p>
-                </div>
+                <p className="text-muted-foreground">
+                  Your <strong>Normal Wallet</strong> is used to purchase data packages directly through the Buy Data section. Add funds here to start buying data immediately.
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  <strong>Note:</strong> The API Wallet is for programmatic purchases only and is topped up separately in the API section.
+                </p>
               </CardContent>
             </Card>
 
@@ -619,9 +677,9 @@ const UserDashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Wallet className="h-5 w-5 text-orange-400" />
-                  Top Up Your Wallets
+                  Add Funds to Normal Wallet
                 </CardTitle>
-                <p className="text-sm text-muted-foreground mt-2">Choose which wallet to top up below</p>
+                <p className="text-sm text-muted-foreground mt-2">Top up your wallet for buying data packages</p>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Top Up Normal Wallet Section */}
@@ -666,38 +724,6 @@ const UserDashboard = () => {
                         GH₵ {amount}
                       </Button>
                     ))}
-                  </div>
-                </div>
-
-                {/* Top Up API Wallet Section */}
-                <div className="border-t border-border pt-6 space-y-3">
-                  <p className="text-sm font-semibold">Top Up API Wallet (API Purchases)</p>
-                  <p className="text-xs text-muted-foreground">Balance: <strong>GH₵ {apiWallet.toFixed(2)}</strong></p>
-                  <p className="text-xs text-muted-foreground bg-yellow-500/10 border border-yellow-500/30 p-2 rounded">
-                    💡 API wallet is specifically for automated/programmatic purchases through your API key. Use the input below to add funds.
-                  </p>
-                  <div className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">GH₵</span>
-                      <Input
-                        type="number"
-                        placeholder="Enter amount for API wallet"
-                        id="api-topup"
-                        className="pl-10"
-                        min="1"
-                      />
-                    </div>
-                    <Button
-                      variant="hero"
-                      onClick={() => {
-                        const input = (document.getElementById("api-topup") as HTMLInputElement);
-                        if (input?.value) {
-                          handleTopUp(Number(input.value));
-                        }
-                      }}
-                    >
-                      Top Up API
-                    </Button>
                   </div>
                 </div>
               </CardContent>
