@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface DataPackage {
@@ -40,6 +40,9 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [totalDataPurchased, setTotalDataPurchased] = useState(0);
   const [totalSpent, setTotalSpent] = useState(0);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [packages, setPackages] = useState<DataPackage[]>([]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -48,27 +51,26 @@ const UserDashboard = () => {
     }
   }, [authLoading, user, navigate]);
 
-  // Fetch user orders
+  // Fetch user orders and API key
   useEffect(() => {
     if (!user?.id) return;
 
-    const fetchOrders = async () => {
+    const fetchUserData = async () => {
       try {
         setLoading(true);
         
         // Fetch orders for this user
-        const { data, error } = await supabase
+        const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
           .select("*")
           .eq("customer_id", user.id)
           .order("created_at", { ascending: false })
           .range(0, 99999999);
 
-        if (error) {
-          console.error("[v0] Error fetching orders:", error);
-          toast({ title: "Error", description: "Failed to load your orders", variant: "destructive" });
+        if (ordersError) {
+          console.error("[v0] Error fetching orders:", ordersError);
         } else {
-          const userOrders = (data as Order[]) || [];
+          const userOrders = (ordersData as Order[]) || [];
           setOrders(userOrders);
 
           // Calculate totals
@@ -83,16 +85,81 @@ const UserDashboard = () => {
           setTotalDataPurchased(totalGB);
           setTotalSpent(totalCost);
         }
+
+        // Fetch user's API key
+        const { data: apiUserData } = await supabase
+          .from("api_users")
+          .select("api_key")
+          .eq("identity_id", user.id)
+          .eq("is_user", true)
+          .maybeSingle();
+
+        if (apiUserData?.api_key) {
+          setApiKey(apiUserData.api_key);
+        }
+
+        // Fetch available packages
+        const { data: packagesData } = await supabase
+          .from("data_packages")
+          .select("*")
+          .eq("active", true)
+          .order("size_gb");
+
+        if (packagesData) {
+          setPackages(packagesData);
+        }
       } catch (err) {
-        console.error("[v0] Error loading orders:", err);
-        toast({ title: "Error", description: "Failed to load your orders", variant: "destructive" });
+        console.error("[v0] Error loading user data:", err);
+        toast({ title: "Error", description: "Failed to load your data", variant: "destructive" });
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOrders();
+    fetchUserData();
   }, [user?.id, toast]);
+
+  const generateApiKey = async () => {
+    try {
+      const array = new Uint8Array(32);
+      globalThis.crypto.getRandomValues(array);
+      const newApiKey = 'pk_live_' + Array.from(array)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      const { data, error } = await supabase
+        .from("api_users")
+        .upsert({
+          identity_id: user?.id,
+          api_key: newApiKey,
+          is_agent: false,
+          is_user: true,
+          wallet: 0,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'identity_id'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast({ title: "Error", description: "Failed to generate API key", variant: "destructive" });
+      } else {
+        setApiKey(newApiKey);
+        toast({ title: "Success", description: "API key generated successfully", variant: "default" });
+      }
+    } catch (err) {
+      console.error("[v0] Error generating API key:", err);
+      toast({ title: "Error", description: "Failed to generate API key", variant: "destructive" });
+    }
+  };
+
+  const copyApiKey = () => {
+    if (apiKey) {
+      navigator.clipboard.writeText(apiKey);
+      toast({ title: "Success", description: "API key copied to clipboard", variant: "default" });
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -113,13 +180,16 @@ const UserDashboard = () => {
       <div className="container pt-24 pb-12">
         <div className="mb-8">
           <h1 className="font-display text-4xl font-bold text-foreground mb-2">My Dashboard</h1>
-          <p className="text-muted-foreground">View your data purchases and history</p>
+          <p className="text-muted-foreground">Manage your data, API key, and settings</p>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
+          <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="orders">Order History</TabsTrigger>
+            <TabsTrigger value="api-key">API Key</TabsTrigger>
+            <TabsTrigger value="buy-data">Buy Data</TabsTrigger>
+            <TabsTrigger value="top-up">Top Up</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -158,27 +228,27 @@ const UserDashboard = () => {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Download className="h-5 w-5 text-purple-400" />
-                    Recent Orders
+                    Total Orders
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="font-display text-3xl font-bold text-purple-400">{orders.length}</p>
-                  <p className="text-xs text-muted-foreground mt-2">Total orders</p>
+                  <p className="text-xs text-muted-foreground mt-2">All time</p>
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
 
-          {/* Orders Tab */}
-          <TabsContent value="orders">
+            {/* Order History Preview */}
             <Card>
               <CardHeader>
-                <CardTitle>Order History</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Download className="h-5 w-5" />
+                  Recent Orders
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {orders.length === 0 ? (
                   <div className="text-center py-8">
-                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
                     <p className="text-muted-foreground">No orders yet. Start by buying a package.</p>
                     <Button variant="hero" className="mt-4" onClick={() => navigate("/packages")}>
                       Buy Data
@@ -198,7 +268,7 @@ const UserDashboard = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {orders.slice(0, 50).map((order) => (
+                        {orders.slice(0, 10).map((order) => (
                           <TableRow key={order.id}>
                             <TableCell className="text-sm whitespace-nowrap">
                               {new Date(order.created_at).toLocaleString()}
@@ -224,11 +294,176 @@ const UserDashboard = () => {
                     </Table>
                   </div>
                 )}
-                {orders.length > 50 && (
-                  <div className="text-center mt-4 text-muted-foreground text-sm">
-                    Showing 50 of {orders.length} orders
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* API Key Tab */}
+          <TabsContent value="api-key" className="space-y-6">
+            <Card className="border-blue-500/30 bg-blue-500/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5 text-blue-400" />
+                  API Key Management
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-2">Use your API key to programmatically purchase data</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {apiKey ? (
+                  <div className="space-y-4">
+                    <div className="bg-muted p-4 rounded-lg border border-border flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-2">Your API Key</p>
+                        <p className="font-mono text-sm break-all">
+                          {showApiKey ? apiKey : apiKey.substring(0, 20) + '...' + apiKey.substring(apiKey.length - 10)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                        >
+                          {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={copyApiKey}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <Button variant="outline" onClick={generateApiKey} className="w-full">
+                      Regenerate API Key
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Key className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <p className="text-muted-foreground mb-4">No API key yet</p>
+                    <Button variant="hero" onClick={generateApiKey}>
+                      Generate API Key
+                    </Button>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Buy Data Tab */}
+          <TabsContent value="buy-data" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Available Data Packages
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {packages.length === 0 ? (
+                    <p className="text-muted-foreground col-span-full text-center py-8">No packages available</p>
+                  ) : (
+                    packages.map((pkg) => (
+                      <Card key={pkg.id} className="border-border">
+                        <CardHeader>
+                          <CardTitle className="text-lg">{pkg.size_gb} GB</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <p className="text-sm text-muted-foreground capitalize">{pkg.network}</p>
+                          <p className="font-display text-2xl font-bold">GH₵ {Number(pkg.price).toFixed(2)}</p>
+                          <Button 
+                            variant="hero" 
+                            className="w-full"
+                            onClick={() => navigate("/packages")}
+                          >
+                            Buy Now
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Top Up Tab */}
+          <TabsContent value="top-up" className="space-y-6">
+            <Card className="border-orange-500/30 bg-orange-500/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="h-5 w-5 text-orange-400" />
+                  Wallet Top Up
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-2">Add credit to your account for quick purchases</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[100, 200, 500, 1000].map((amount) => (
+                    <Button
+                      key={amount}
+                      variant="outline"
+                      className="h-20 flex flex-col items-center justify-center"
+                      onClick={() => {
+                        toast({ 
+                          title: "Redirect", 
+                          description: `Redirecting to payment for GH₵ ${amount}...`, 
+                          variant: "default" 
+                        });
+                      }}
+                    >
+                      <p className="text-lg font-bold">GH₵ {amount}</p>
+                      <p className="text-xs text-muted-foreground">Top Up</p>
+                    </Button>
+                  ))}
+                </div>
+                <div className="bg-muted p-4 rounded-lg border border-border mt-6">
+                  <p className="text-sm text-muted-foreground">
+                    💡 Tip: Top up your wallet to get faster checkout and keep funds ready for quick purchases.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Account Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">Account Information</p>
+                  <div className="bg-muted p-4 rounded-lg border border-border space-y-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="text-sm font-mono">{user?.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">User ID</p>
+                      <p className="text-sm font-mono">{user?.id}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">Account Actions</p>
+                  <div className="space-y-2">
+                    <Button variant="outline" className="w-full justify-start">
+                      Change Password
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start">
+                      Download My Data
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
