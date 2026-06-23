@@ -10,8 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DataPackage {
   id: string;
@@ -49,6 +52,12 @@ const UserDashboard = () => {
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [networkFilter, setNetworkFilter] = useState("mtn");
+  const [buyDialogOpen, setBuyDialogOpen] = useState(false);
+  const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
+  const [buyPhone, setBuyPhone] = useState("");
+  const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
+  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
+  const [buyLoading, setBuyLoading] = useState(false);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -205,6 +214,114 @@ const UserDashboard = () => {
     } catch (err) {
       console.error("[v0] Error processing top-up:", err);
       toast({ title: "Error", description: "Failed to process top-up", variant: "destructive" });
+    }
+  };
+
+  const detectNetwork = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, "");
+    if (cleaned.startsWith("024") || cleaned.startsWith("054") || cleaned.startsWith("055")) return "mtn";
+    if (cleaned.startsWith("027") || cleaned.startsWith("057")) return "airteltigo";
+    if (cleaned.startsWith("026") || cleaned.startsWith("056")) return "telecel";
+    return "unknown";
+  };
+
+  const phoneMatchesNetwork = (phone: string, network: string) => {
+    return detectNetwork(phone) === network;
+  };
+
+  const isValidPhoneLength = (phone: string) => phone.length === 10;
+
+  const openBuyDialog = (pkg: DataPackage) => {
+    setBuyPkg(pkg);
+    setBuyPhone("");
+    setBuyStep("phone");
+    setBuyPaymentMethod("wallet");
+    setBuyDialogOpen(true);
+  };
+
+  const handleBuyConfirm = async () => {
+    if (!buyPkg || !user?.id) return;
+    setBuyLoading(true);
+    try {
+      const price = Number(buyPkg.price);
+
+      // Check for rate limit (45 minute window)
+      const cutoff = new Date(Date.now() - 45 * 60 * 1000).toISOString();
+      const { data: recentOrders } = await supabase
+        .from("orders")
+        .select("created_at")
+        .eq("customer_number", buyPhone.trim())
+        .eq("customer_id", user.id)
+        .gte("created_at", cutoff)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (recentOrders && recentOrders.length > 0) {
+        const el = Math.floor((Date.now() - new Date(recentOrders[0].created_at).getTime()) / 60000);
+        toast({ title: "Rate limit", description: `Wait ${45 - el} more minute(s).`, variant: "destructive" });
+        setBuyLoading(false);
+        return;
+      }
+
+      if (buyPaymentMethod === "wallet") {
+        if (normalWallet < price) {
+          toast({ title: "Insufficient balance", variant: "destructive" });
+          setBuyLoading(false);
+          return;
+        }
+
+        // Deduct from wallet and create order
+        const { error: walletError } = await supabase
+          .from("user_wallets")
+          .update({ balance: normalWallet - price })
+          .eq("user_id", user.id);
+
+        if (walletError) {
+          toast({ title: "Error", description: walletError.message, variant: "destructive" });
+          setBuyLoading(false);
+          return;
+        }
+
+        setNormalWallet(normalWallet - price);
+      }
+
+      // Create order record
+      const { error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          customer_id: user.id,
+          customer_number: buyPhone.trim(),
+          network: buyPkg.network,
+          size_gb: buyPkg.size_gb,
+          amount: price,
+          status: "pending",
+          fulfillment_status: "processing",
+          payment_method: buyPaymentMethod,
+          source: "web"
+        });
+
+      if (orderError) {
+        toast({ title: "Error", description: orderError.message, variant: "destructive" });
+        setBuyLoading(false);
+        return;
+      }
+
+      toast({ title: "Order placed!", description: `Data purchase initiated for ${buyPhone}`, variant: "default" });
+      setBuyDialogOpen(false);
+      
+      // Refresh orders
+      const { data: ordersData } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("customer_id", user.id)
+        .order("created_at", { ascending: false });
+      
+      if (ordersData) setOrders(ordersData as Order[]);
+    } catch (err) {
+      console.error("[v0] Error processing purchase:", err);
+      toast({ title: "Error", description: "Failed to process purchase", variant: "destructive" });
+    } finally {
+      setBuyLoading(false);
     }
   };
 
@@ -407,66 +524,22 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Wallet Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Normal Wallet Card */}
-              <Card className="border-blue-500/30 bg-blue-500/5">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5 text-blue-400" />
-                    Normal Wallet
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-muted p-6 rounded-lg border border-border text-center">
-                    <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
-                    <p className="font-display text-3xl font-bold text-blue-400">GH₵ {Number(normalWallet).toFixed(2)}</p>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => {
-                      const customAmount = prompt("Enter amount to top up:");
-                      if (customAmount && !isNaN(Number(customAmount))) {
-                        handleTopUp(Number(customAmount));
-                      }
-                    }}
-                  >
-                    Add Funds
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center">Use this to purchase data packages</p>
-                </CardContent>
-              </Card>
-
-              {/* API Wallet Card */}
-              <Card className="border-yellow-500/30 bg-yellow-500/5">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5 text-yellow-400" />
-                    API Wallet
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-muted p-6 rounded-lg border border-border text-center">
-                    <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
-                    <p className="font-display text-3xl font-bold text-yellow-400">GH₵ {Number(apiWallet).toFixed(2)}</p>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => {
-                      const customAmount = prompt("Enter amount to top up:");
-                      if (customAmount && !isNaN(Number(customAmount))) {
-                        handleTopUp(Number(customAmount));
-                      }
-                    }}
-                  >
-                    Add Funds
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center">Use this for API purchases</p>
-                </CardContent>
-              </Card>
-            </div>
+            {/* API Wallet Card */}
+            <Card className="border-yellow-500/30 bg-yellow-500/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="h-5 w-5 text-yellow-400" />
+                  API Wallet Balance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-muted p-6 rounded-lg border border-border text-center">
+                  <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
+                  <p className="font-display text-3xl font-bold text-yellow-400">GH₵ {Number(apiWallet).toFixed(2)}</p>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">Use this wallet for API calls and programmatic purchases. Top up in the Top Up section.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Buy Data Tab */}
@@ -512,7 +585,7 @@ const UserDashboard = () => {
                         variant="hero" 
                         size="sm" 
                         className="w-full bg-cyan-600 hover:bg-cyan-700 mt-2"
-                        onClick={() => navigate("/packages")}
+                        onClick={() => openBuyDialog(pkg)}
                       >
                         Buy Now
                       </Button>
@@ -525,18 +598,36 @@ const UserDashboard = () => {
 
           {/* Top Up Tab */}
           <TabsContent value="top-up" className="space-y-6">
+            {/* Wallet Type Explanation */}
+            <Card className="border-blue-500/30 bg-blue-500/5">
+              <CardHeader>
+                <CardTitle className="text-base">Understanding Your Wallets</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div>
+                  <p className="font-semibold text-blue-400">Normal Wallet</p>
+                  <p className="text-muted-foreground">Used to purchase data packages through the website's Buy Data section. Top up here to buy data directly.</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-yellow-400">API Wallet</p>
+                  <p className="text-muted-foreground">Used for programmatic API purchases and automated requests. Top up here for API-based transactions.</p>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="border-orange-500/30 bg-orange-500/5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Wallet className="h-5 w-5 text-orange-400" />
-                  Wallet Top Up
+                  Top Up Your Wallets
                 </CardTitle>
-                <p className="text-sm text-muted-foreground mt-2">Add credit to your account for quick purchases</p>
+                <p className="text-sm text-muted-foreground mt-2">Choose which wallet to top up below</p>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Custom Amount Section */}
+                {/* Top Up Normal Wallet Section */}
                 <div className="space-y-3">
-                  <p className="text-sm font-semibold">Enter Custom Amount</p>
+                  <p className="text-sm font-semibold">Top Up Normal Wallet (Data Purchases)</p>
+                  <p className="text-xs text-muted-foreground">Balance: <strong>GH₵ {normalWallet.toFixed(2)}</strong></p>
                   <div className="flex gap-2">
                     <div className="flex-1 relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">GH₵</span>
@@ -560,32 +651,54 @@ const UserDashboard = () => {
                       Top Up
                     </Button>
                   </div>
-                </div>
-
-                {/* Quick Amount Buttons */}
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold">Quick Top Up</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {[100, 200, 500, 1000].map((amount) => (
                       <Button
                         key={amount}
                         variant="outline"
-                        className="h-16 flex flex-col items-center justify-center hover:border-orange-500/50"
+                        size="sm"
+                        className="h-12"
                         onClick={() => {
                           setCustomTopupAmount(amount.toString());
                           handleTopUp(amount);
                         }}
                       >
-                        <p className="text-sm font-bold">GH₵ {amount}</p>
+                        GH₵ {amount}
                       </Button>
                     ))}
                   </div>
                 </div>
 
-                <div className="bg-muted p-4 rounded-lg border border-border">
-                  <p className="text-sm text-muted-foreground">
-                    💡 Tip: Top up your wallet to get faster checkout and keep funds ready for quick purchases.
+                {/* Top Up API Wallet Section */}
+                <div className="border-t border-border pt-6 space-y-3">
+                  <p className="text-sm font-semibold">Top Up API Wallet (API Purchases)</p>
+                  <p className="text-xs text-muted-foreground">Balance: <strong>GH₵ {apiWallet.toFixed(2)}</strong></p>
+                  <p className="text-xs text-muted-foreground bg-yellow-500/10 border border-yellow-500/30 p-2 rounded">
+                    💡 API wallet is specifically for automated/programmatic purchases through your API key. Use the input below to add funds.
                   </p>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">GH₵</span>
+                      <Input
+                        type="number"
+                        placeholder="Enter amount for API wallet"
+                        id="api-topup"
+                        className="pl-10"
+                        min="1"
+                      />
+                    </div>
+                    <Button
+                      variant="hero"
+                      onClick={() => {
+                        const input = (document.getElementById("api-topup") as HTMLInputElement);
+                        if (input?.value) {
+                          handleTopUp(Number(input.value));
+                        }
+                      }}
+                    >
+                      Top Up API
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -627,6 +740,109 @@ const UserDashboard = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Buy Dialog */}
+        <Dialog open={buyDialogOpen} onOpenChange={v => !v && setBuyDialogOpen(false)}>
+          <DialogContent className="sm:max-w-md border-border bg-card">
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl">Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</DialogTitle>
+              <DialogDescription>Purchase data at user price</DialogDescription>
+            </DialogHeader>
+            {buyStep === "phone" ? (
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label>Recipient Phone Number (exactly 10 digits)</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      type="tel" 
+                      placeholder="0XX XXX XXXX" 
+                      maxLength={10} 
+                      value={buyPhone} 
+                      onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      className={`pl-10 ${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                      autoFocus
+                    />
+                  </div>
+                  {buyPhone.length > 0 && buyPhone.length < 10 && (
+                    <p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>
+                  )}
+                </div>
+                <Button 
+                  variant="hero" 
+                  className="w-full" 
+                  onClick={() => {
+                    if (!isValidPhoneLength(buyPhone)) {
+                      toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" });
+                      return;
+                    }
+                    const detected = detectNetwork(buyPhone);
+                    if (buyPkg && !phoneMatchesNetwork(buyPhone, buyPkg.network)) {
+                      toast({ title: "Network mismatch", description: `This phone appears to be ${detected.toUpperCase()}, but you selected ${buyPkg.network.toUpperCase()}`, variant: "destructive" });
+                      return;
+                    }
+                    setBuyStep("confirm");
+                  }}
+                >
+                  Continue
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-2">
+                <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Package</span>
+                    <span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Phone</span>
+                    <span className="font-semibold">{buyPhone}</span>
+                  </div>
+                  <div className="border-t border-border my-1" />
+                  <div className="flex justify-between text-base font-bold">
+                    <span>Price</span>
+                    <span className="text-primary">GH₵ {Number(buyPkg?.price ?? 0).toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="wallet">
+                        <span className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4" />
+                          Wallet (GH₵ {normalWallet.toFixed(2)})
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="paystack">
+                        <span className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Paystack (+ charges)
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button>
+                  <Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>
+                    {buyLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Confirm Purchase"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Footer />
