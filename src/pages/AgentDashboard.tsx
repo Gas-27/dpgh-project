@@ -611,7 +611,11 @@ const AgentDashboard = () => {
       
       if (error) {
         console.error("[v0] Error upserting API key:", error);
-        toast({ title: "Error", description: error.message || "Failed to generate API key", variant: "destructive" });
+        let errorMsg = error.message || "Failed to generate API key";
+        if (error.message && error.message.includes("row-level security")) {
+          errorMsg = "RLS policy needs to be configured. Please contact admin.";
+        }
+        toast({ title: "Error", description: errorMsg, variant: "destructive" });
       } else {
         setApiKey(apiKey);
         setWallet(data?.wallet || 0);
