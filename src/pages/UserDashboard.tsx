@@ -176,7 +176,7 @@ const UserDashboard = () => {
       } else {
         setApiKey(newApiKey);
         setApiWallet(existingApiWallet);
-        toast({ title: "Success", description: apiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
+        toast({ title: "Success", description: apiKey || newApiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
       }
     } catch (err) {
       console.error("[v0] Error generating API key:", err);
