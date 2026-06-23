@@ -48,6 +48,7 @@ const UserDashboard = () => {
   const [customTopupAmount, setCustomTopupAmount] = useState("");
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
+  const [networkFilter, setNetworkFilter] = useState("mtn");
 
   // Redirect if not logged in
   useEffect(() => {
@@ -469,41 +470,57 @@ const UserDashboard = () => {
           </TabsContent>
 
           {/* Buy Data Tab */}
-          <TabsContent value="buy-data" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5" />
-                  Available Data Packages
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {packages.length === 0 ? (
-                    <p className="text-muted-foreground col-span-full text-center py-8">No packages available</p>
-                  ) : (
-                    packages.map((pkg) => (
-                      <Card key={pkg.id} className="border-border">
-                        <CardHeader>
-                          <CardTitle className="text-lg">{pkg.size_gb} GB</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <p className="text-sm text-muted-foreground capitalize">{pkg.network}</p>
-                          <p className="font-display text-2xl font-bold">GH₵ {Number(pkg.price).toFixed(2)}</p>
-                          <Button 
-                            variant="hero" 
-                            className="w-full"
-                            onClick={() => navigate("/packages")}
-                          >
-                            Buy Now
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
+          <TabsContent value="buy-data" className="space-y-4 mt-0">
+            {/* Wallet Balance Card */}
+            <Card className="bg-secondary/30">
+              <CardContent className="p-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Wallet Balance:</span>
+                  </div>
+                  <span className="font-display text-xl font-bold text-primary">GH₵ {normalWallet.toFixed(2)}</span>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Network Filter Buttons */}
+            <div className="flex gap-2 flex-wrap">
+              {["mtn", "airteltigo", "telecel"].map(net => (
+                <Button 
+                  key={net} 
+                  variant={networkFilter === net ? "hero" : "outline"} 
+                  size="sm"
+                  onClick={() => setNetworkFilter(net)}
+                >
+                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                </Button>
+              ))}
+            </div>
+
+            {/* Data Packages Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {packages.filter(p => p.network === networkFilter).map((pkg) => {
+                const price = Number(pkg.price || 0);
+                return (
+                  <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
+                    <CardContent>
+                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                      <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">User Price</p>
+                      <Button 
+                        variant="hero" 
+                        size="sm" 
+                        className="w-full bg-cyan-600 hover:bg-cyan-700 mt-2"
+                        onClick={() => navigate("/packages")}
+                      >
+                        Buy Now
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </TabsContent>
 
           {/* Top Up Tab */}
