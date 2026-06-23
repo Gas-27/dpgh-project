@@ -42,7 +42,9 @@ const UserDashboard = () => {
   const [totalSpent, setTotalSpent] = useState(0);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [wallet, setWallet] = useState(0);
   const [packages, setPackages] = useState<DataPackage[]>([]);
+  const [generatingApiKey, setGeneratingApiKey] = useState(false);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -86,16 +88,18 @@ const UserDashboard = () => {
           setTotalSpent(totalCost);
         }
 
-        // Fetch user's API key
+        // Fetch user's API key and wallet
         const { data: apiUserData } = await supabase
           .from("api_users")
-          .select("api_key")
+          .select("api_key, wallet")
           .eq("identity_id", user.id)
           .eq("is_user", true)
           .maybeSingle();
 
         if (apiUserData?.api_key) {
           setApiKey(apiUserData.api_key);
+          setWallet(apiUserData.wallet || 0);
+          console.log("[v0] Fetched user wallet:", apiUserData.wallet);
         }
 
         // Fetch available packages
@@ -120,12 +124,23 @@ const UserDashboard = () => {
   }, [user?.id, toast]);
 
   const generateApiKey = async () => {
+    if (generatingApiKey) return;
+    setGeneratingApiKey(true);
     try {
       const array = new Uint8Array(32);
       globalThis.crypto.getRandomValues(array);
       const newApiKey = 'pk_live_' + Array.from(array)
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
+
+      // Fetch existing wallet to preserve it
+      const { data: existingData } = await supabase
+        .from("api_users")
+        .select("wallet")
+        .eq("identity_id", user?.id)
+        .maybeSingle();
+
+      const existingWallet = existingData?.wallet || 0;
 
       const { data, error } = await supabase
         .from("api_users")
@@ -134,7 +149,7 @@ const UserDashboard = () => {
           api_key: newApiKey,
           is_agent: false,
           is_user: true,
-          wallet: 0,
+          wallet: existingWallet,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'identity_id'
@@ -143,14 +158,18 @@ const UserDashboard = () => {
         .single();
 
       if (error) {
-        toast({ title: "Error", description: "Failed to generate API key", variant: "destructive" });
+        console.error("[v0] Error:", error);
+        toast({ title: "Error", description: error.message || "Failed to generate API key", variant: "destructive" });
       } else {
         setApiKey(newApiKey);
-        toast({ title: "Success", description: "API key generated successfully", variant: "default" });
+        setWallet(existingWallet);
+        toast({ title: "Success", description: apiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
       }
     } catch (err) {
       console.error("[v0] Error generating API key:", err);
       toast({ title: "Error", description: "Failed to generate API key", variant: "destructive" });
+    } finally {
+      setGeneratingApiKey(false);
     }
   };
 
@@ -158,6 +177,16 @@ const UserDashboard = () => {
     if (apiKey) {
       navigator.clipboard.writeText(apiKey);
       toast({ title: "Success", description: "API key copied to clipboard", variant: "default" });
+    }
+  };
+
+  const handleTopUp = async (amount: number) => {
+    try {
+      // Redirect to payment page with amount parameter
+      window.location.href = `/checkout?amount=${amount}&type=wallet-topup`;
+    } catch (err) {
+      console.error("[v0] Error processing top-up:", err);
+      toast({ title: "Error", description: "Failed to process top-up", variant: "destructive" });
     }
   };
 
@@ -335,19 +364,45 @@ const UserDashboard = () => {
                         </Button>
                       </div>
                     </div>
-                    <Button variant="outline" onClick={generateApiKey} className="w-full">
-                      Regenerate API Key
+                    <Button 
+                      variant="outline" 
+                      onClick={generateApiKey} 
+                      className="w-full"
+                      disabled={generatingApiKey}
+                    >
+                      {generatingApiKey ? "Generating..." : "Regenerate API Key"}
                     </Button>
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <Key className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
                     <p className="text-muted-foreground mb-4">No API key yet</p>
-                    <Button variant="hero" onClick={generateApiKey}>
-                      Generate API Key
+                    <Button 
+                      variant="hero" 
+                      onClick={generateApiKey}
+                      disabled={generatingApiKey}
+                    >
+                      {generatingApiKey ? "Generating..." : "Generate API Key"}
                     </Button>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* API Wallet Card */}
+            <Card className="border-yellow-500/30 bg-yellow-500/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="h-5 w-5 text-yellow-400" />
+                  API Wallet Balance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-muted p-6 rounded-lg border border-border text-center">
+                  <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
+                  <p className="font-display text-4xl font-bold text-yellow-400">GH₵ {Number(wallet).toFixed(2)}</p>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">Use this wallet to make API purchases. Top up to get started.</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -406,14 +461,8 @@ const UserDashboard = () => {
                     <Button
                       key={amount}
                       variant="outline"
-                      className="h-20 flex flex-col items-center justify-center"
-                      onClick={() => {
-                        toast({ 
-                          title: "Redirect", 
-                          description: `Redirecting to payment for GH₵ ${amount}...`, 
-                          variant: "default" 
-                        });
-                      }}
+                      className="h-20 flex flex-col items-center justify-center hover:border-orange-500/50"
+                      onClick={() => handleTopUp(amount)}
                     >
                       <p className="text-lg font-bold">GH₵ {amount}</p>
                       <p className="text-xs text-muted-foreground">Top Up</p>
