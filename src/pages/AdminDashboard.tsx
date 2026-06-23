@@ -68,7 +68,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -80,6 +80,8 @@ const AdminDashboard = () => {
   const [subagents, setSubagents] = useState<any[]>([]);
   const [subSubagents, setSubSubagents] = useState<any[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrdersFromDB, setFilteredOrdersFromDB] = useState<Order[]>([]);
   const [isFilteringOrders, setIsFilteringOrders] = useState(false);
@@ -466,6 +468,9 @@ const AdminDashboard = () => {
       } else if (tabValue === "users") {
         const data = await fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 10000);
         setUsers(data ?? []);
+      } else if (tabValue === "customers") {
+        const data = await fetchCustomers();
+        setCustomers(data ?? []);
       } else if (tabValue === "api_errors") {
         const logs = await getAPIErrorLogs({ resolved: false, limit: 1000 });
         setAPIErrors(logs ?? []);
@@ -862,7 +867,7 @@ const AdminDashboard = () => {
     if (!error && data) {
       setCurrentUserSections(data.sections as Section[]);
     } else {
-      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "settings"]);
+      setCurrentUserSections(["prices", "orders", "agents", "subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "settings"]);
     }
   };
 
@@ -1546,6 +1551,26 @@ const AdminDashboard = () => {
     setUserTopupLoading(false);
   };
 
+  // Fetch customers from database
+  const fetchCustomers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*, auth.users!inner(email)")
+        .order("customer_since", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching customers:", error);
+        return [];
+      }
+
+      return data || [];
+    } catch (err) {
+      console.error("Exception fetching customers:", err);
+      return [];
+    }
+  };
+
   // ======================== Notifications ========================
   const sendNotification = async () => {
     if (!notifTitle.trim() || !notifMessage.trim()) { toast({ title: "Fill title and message", variant: "destructive" }); return; }
@@ -1731,6 +1756,7 @@ const AdminDashboard = () => {
               )}
             </TabsTrigger>
             <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>
+            <TabsTrigger value="customers" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Customers</TabsTrigger>
             <TabsTrigger value="notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Notify</TabsTrigger>
             <TabsTrigger value="push" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Smartphone className="h-3 w-3 md:h-4 md:w-4" /> Push</TabsTrigger>
             <TabsTrigger value="spinwheel" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Spin</TabsTrigger>
@@ -2664,7 +2690,7 @@ const AdminDashboard = () => {
                                   {u.role !== "admin" ? (
                                     <Button variant="outline" size="sm" onClick={() => {
                                       setSelectedUserForAdmin(u);
-                                      setNewAdminSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints"]);
+                                      setNewAdminSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "customers", "notifications", "spinwheel", "complaints"]);
                                       setMakeAdminDialogOpen(true);
                                     }}>
                                       <ShieldAlert className="h-4 w-4 mr-1" /> Make Admin
@@ -2700,6 +2726,76 @@ const AdminDashboard = () => {
                   </>
                 );
               })()}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* CUSTOMERS TAB */}
+          {canSee("customers") && (
+            <TabsContent value="customers" className="space-y-4">
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Customers Directory
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="relative max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search by name or email..." 
+                      value={customerSearchTerm}
+                      onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                      className="pl-10" 
+                    />
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Total Orders</TableHead>
+                          <TableHead>Total Spent</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Member Since</TableHead>
+                          <TableHead>Last Purchase</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {customers
+                          .filter(c => 
+                            !customerSearchTerm || 
+                            `${c.first_name} ${c.last_name}`.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+                            c.email?.toLowerCase().includes(customerSearchTerm.toLowerCase())
+                          )
+                          .map((customer) => (
+                            <TableRow key={customer.id}>
+                              <TableCell className="font-medium">{customer.first_name || ''} {customer.last_name || ''}</TableCell>
+                              <TableCell>{customer.email || '—'}</TableCell>
+                              <TableCell>{customer.phone_number || '—'}</TableCell>
+                              <TableCell>{customer.total_orders || 0}</TableCell>
+                              <TableCell>GH₵ {Number(customer.total_purchases || 0).toFixed(2)}</TableCell>
+                              <TableCell>
+                                <Badge variant={customer.status === 'active' ? 'default' : customer.status === 'inactive' ? 'secondary' : 'destructive'}>
+                                  {customer.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {new Date(customer.customer_since).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {customer.last_purchase_date ? new Date(customer.last_purchase_date).toLocaleDateString() : '—'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -3468,7 +3564,7 @@ const AdminDashboard = () => {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>Admin Permissions for {selectedUserForPermissions?.full_name || selectedUserForPermissions?.id}</DialogTitle><DialogDescription>Select which sections this admin can access.</DialogDescription></DialogHeader>
           <div className="space-y-3">
-            {(["prices", "orders", "agents", "topup", "withdrawals", "users", "notifications", "spinwheel", "complaints"] as Section[]).map(section => (
+            {(["prices", "orders", "agents", "topup", "withdrawals", "users", "customers", "notifications", "spinwheel", "complaints"] as Section[]).map(section => (
               <div key={section} className="flex items-center gap-2">
                 <Switch checked={userSections.includes(section)} onCheckedChange={() => setUserSections(prev => prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section])} id={`perm-${section}`} />
                 <Label htmlFor={`perm-${section}`} className="capitalize">{section}</Label>
