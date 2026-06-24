@@ -1556,17 +1556,18 @@ const AdminDashboard = () => {
     try {
       const { data, error } = await supabase
         .from("customers")
-        .select("*, auth.users!inner(email)")
+        .select("*")
         .order("customer_since", { ascending: false });
 
       if (error) {
-        console.error("Error fetching customers:", error);
+        console.error("[v0] Error fetching customers:", error.message);
         return [];
       }
 
+      console.log("[v0] Fetched customers:", data?.length || 0);
       return data || [];
     } catch (err) {
-      console.error("Exception fetching customers:", err);
+      console.error("[v0] Exception fetching customers:", err);
       return [];
     }
   };
@@ -2732,13 +2733,14 @@ const AdminDashboard = () => {
           )}
 
           {/* CUSTOMERS TAB */}
-          {canSee("customers") && section === "customers" && (
-            (() => {
-              if (customers.length === 0 && section === "customers") {
-                fetchCustomers().then(data => setCustomers(data ?? []));
-              }
-              return (
+          {canSee("customers") && (
             <TabsContent value="customers" className="space-y-4">
+              {(() => {
+                if (customers.length === 0 && activeTab === "customers") {
+                  fetchCustomers().then(data => setCustomers(data ?? []));
+                }
+                return (
+            <div>
               <div className="flex gap-2 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2752,9 +2754,14 @@ const AdminDashboard = () => {
               </div>
               
               {customers.length === 0 ? (
-                <Card className="border-border">
-                  <CardContent className="py-12">
-                    <p className="text-center text-muted-foreground">No customers registered yet.</p>
+                <Card className="border-yellow-500/30 bg-yellow-500/5">
+                  <CardContent className="py-8 space-y-3">
+                    <p className="text-center text-muted-foreground font-semibold">No customers found.</p>
+                    <p className="text-center text-xs text-muted-foreground">To set up customers:</p>
+                    <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                      <li>Run the CREATE_CUSTOMERS_TABLE.sql in your Supabase SQL editor</li>
+                      <li>Customers will appear here after they register and make purchases</li>
+                    </ol>
                   </CardContent>
                 </Card>
               ) : (
@@ -2823,9 +2830,10 @@ const AdminDashboard = () => {
                   ))}
                 </>
               )}
+            </div>
+                );
+              })()}
             </TabsContent>
-              );
-            })()
           )}
 
           {/* NOTIFICATIONS TAB */}
