@@ -1179,8 +1179,10 @@ const SubagentDashboard = () => {
     try {
       setWithdrawLoading(true);
       const payload: any = {
+        requester_type: "subagent",
+        requester_id: subagentStore.id,
         amount,
-        subagent_store_id: subagentStore.id,
+        withdrawal_source: "wallet_balance",
       };
 
       // If creating new recipient, include recipient details
@@ -1206,11 +1208,15 @@ const SubagentDashboard = () => {
         payload.recipient_id = selectedRecipient;
       }
 
+      const authToken = localStorage.getItem('sb-auth-token') || '';
       const response = await fetch(
         "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
+          },
           body: JSON.stringify(payload),
         }
       );

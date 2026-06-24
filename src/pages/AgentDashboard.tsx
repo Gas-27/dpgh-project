@@ -1166,9 +1166,10 @@ const AgentDashboard = () => {
     setWithdrawLoading(true);
     try {
       const payload: any = {
+        requester_type: "agent",
+        requester_id: store.id,
         amount: amt,
-        agent_store_id: store.id,
-        withdrawal_source: withdrawSource,
+        withdrawal_source: withdrawSource === "subagent_commission" ? "subagent_commission_balance" : "wallet_balance",
       };
 
       // If creating new recipient, include recipient details
@@ -1194,11 +1195,15 @@ const AgentDashboard = () => {
         payload.recipient_id = selectedRecipient;
       }
 
+      const authToken = localStorage.getItem('sb-auth-token') || '';
       const response = await fetch(
         "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
+          },
           body: JSON.stringify(payload),
         }
       );
