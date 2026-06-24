@@ -179,16 +179,19 @@ const UserDashboard = () => {
 
       const existingApiWallet = existingData?.wallet || 0;
 
+      const upsertData: any = {
+        identity_id: user?.id,
+        api_key: newApiKey,
+        is_agent: false,
+        is_user: true,
+        wallet: existingApiWallet,
+        updated_at: new Date().toISOString(),
+        role: 'user',
+      };
+
       const { data, error } = await supabase
         .from("api_users")
-        .upsert({
-          identity_id: user?.id,
-          api_key: newApiKey,
-          is_agent: false,
-          is_user: true,
-          wallet: existingApiWallet,
-          updated_at: new Date().toISOString(),
-        }, {
+        .upsert(upsertData, {
           onConflict: 'identity_id'
         })
         .select()

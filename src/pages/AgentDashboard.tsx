@@ -601,16 +601,23 @@ const AgentDashboard = () => {
       const existingWallet = existingData?.wallet || 0;
       
       // Upsert the API user record, preserving wallet balance
+      const upsertData: any = {
+        identity_id: effectiveUserId,
+        api_key: apiKey,
+        is_agent: true,
+        is_user: false,
+        wallet: existingWallet,
+        updated_at: new Date().toISOString(),
+      };
+      
+      // Add role field - the database trigger requires it
+      upsertData.role = 'agent';
+      
+      console.log("[v0] Upserting with data:", { ...upsertData, api_key: '****' });
+      
       const { data, error } = await supabase
         .from("api_users")
-        .upsert({
-          identity_id: effectiveUserId,
-          api_key: apiKey,
-          is_agent: true,
-          is_user: false,
-          wallet: existingWallet,
-          updated_at: new Date().toISOString(),
-        }, {
+        .upsert(upsertData, {
           onConflict: 'identity_id'
         })
         .select()
