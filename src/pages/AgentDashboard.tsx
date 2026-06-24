@@ -1152,6 +1152,10 @@ const AgentDashboard = () => {
     
     // Validate new recipient form if creating new
     if (createNewRecipient) {
+      if (transferRecipients.length >= 4) { 
+        toast({ title: "Maximum 4 recipients allowed", variant: "destructive" }); 
+        return; 
+      }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
       if (recipientType === "bank") {
         if (!bankName.trim() || !bankCode.trim() || !accountNumber.trim()) {
@@ -2221,8 +2225,9 @@ const AgentDashboard = () => {
                       variant="outline" 
                       className="w-full" 
                       onClick={() => setCreateNewRecipient(true)}
+                      disabled={transferRecipients.length >= 4}
                     >
-                      {transferRecipients.length === 0 ? "Add Recipient" : "+ Add New Recipient"}
+                      {transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/4)`}
                     </Button>
                   </>
                 ) : (
