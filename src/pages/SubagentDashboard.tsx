@@ -2487,7 +2487,7 @@ const SubagentDashboard = () => {
                           <SelectContent>
                             {transferRecipients.map((r: any) => (
                               <SelectItem key={r.recipient_code} value={r.recipient_code}>
-                                {r.recipient_name || r.account_number} ({r.recipient_type === "nuban" ? "Bank" : "Mobile Money"})
+                                {r.account_holder_name} • {r.provider_type === "mobile_money" ? `${r.mobile_money_network?.toUpperCase()}: ${r.mobile_money_number}` : `Bank: ${r.account_number}`}
                               </SelectItem>
                             ))}
                           </SelectContent>
