@@ -608,6 +608,7 @@ const AgentDashboard = () => {
           api_key: apiKey,
           is_agent: true,
           is_user: false,
+          role: "agent",
           wallet: existingWallet,
           updated_at: new Date().toISOString(),
         }, {
