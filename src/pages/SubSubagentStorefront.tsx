@@ -152,14 +152,6 @@ function stripSpaces(s: string) {
   return s.replace(/\s+/g, "");
 }
 
-const defaultTheme = {
-  primary: "#22c55e",
-  primary_foreground: "#ffffff",
-  background: "#09090b",
-  card_background: "#18181b",
-  gridColumns: 2,
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 // ORDER TRACKING CARD (same as AgentStorefront)
 // Delivery (step 4) only appears after 200 minutes.
@@ -430,6 +422,15 @@ function SubSubagentOrderTrackingCard({
     </div>
   );
 }
+
+// Default theme configuration
+const defaultTheme = {
+  primary: "#22c55e",
+  primary_foreground: "#ffffff",
+  background: "#09090b",
+  card_background: "#18181b",
+  gridColumns: 2,
+};
 
 export function SubSubagentStorefront() {
   const { subagentStoreName, subSubagentStoreName } = useParams();
