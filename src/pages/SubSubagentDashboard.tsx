@@ -376,6 +376,7 @@ const SubSubagentDashboard = () => {
         setLoadError(null);
 
         // Run all other queries in parallel for faster loading
+        console.log("[v0] Starting parallel data queries for store:", store.id);
         const [
           ordersResult,
           withdrawResult,
@@ -391,6 +392,7 @@ const SubSubagentDashboard = () => {
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null })
         ]);
+        console.log("[v0] Parallel queries completed");
 
         setOrders(ordersResult.data || []);
         setWithdrawals(withdrawResult.data || []);
@@ -425,6 +427,7 @@ const SubSubagentDashboard = () => {
           }
         });
         setSubagentPrices(subagentPriceMap);
+        setLoading(false);
 
       } else {
         // Normal flow - filter by user_id
