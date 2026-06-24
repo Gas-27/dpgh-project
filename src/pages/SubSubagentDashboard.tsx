@@ -109,9 +109,45 @@ const MANUAL_SECTIONS = [
 ];
 
 const SubSubagentDashboard = () => {
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdmin } = useAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
+
+  // Check if admin is impersonating (via token or localStorage)
+  const getImpersonationData = () => {
+    if (typeof window === 'undefined') return { storeId: null, storeName: null };
+    
+    // Check URL params first (for cross-domain admin impersonation)
+    const adminToken = searchParams.get("admin_token");
+    if (adminToken) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(atob(adminToken)));
+        if (decoded.timestamp && Date.now() - decoded.timestamp < 3600000) {
+          // Store in localStorage for subsequent navigations and remove from URL
+          localStorage.setItem("admin_impersonate_subsubagent", decoded.userId || "");
+          localStorage.setItem("admin_impersonate_subsubagent_store", decoded.storeId || "");
+          // Clean URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return { storeId: decoded.storeId, storeName: decoded.storeName };
+        }
+      } catch (e) {
+        console.error("Invalid admin token");
+      }
+    }
+    
+    // Fall back to localStorage
+    const storeId = localStorage.getItem("admin_impersonate_subsubagent_store");
+    return storeId ? { storeId, storeName: null } : { storeId: null, storeName: null };
+  };
+
+  const impersonationData = getImpersonationData();
+  const [isImpersonating] = useState(() => !!impersonationData.storeId);
+  
+  const exitImpersonation = () => {
+    localStorage.removeItem("admin_impersonate_subsubagent");
+    localStorage.removeItem("admin_impersonate_subsubagent_store");
+    window.location.href = "/admin";
+  };
 
   // For sub-subagents, we support store_id from URL (for registration redirect)
   const storeIdFromUrl = searchParams.get("store_id");
@@ -180,12 +216,15 @@ const SubSubagentDashboard = () => {
 
   useEffect(() => {
     // For sub-subagents: use store_id from URL (after registration) or user's stored data
-    if (storeIdFromUrl) {
+    // Or use impersonation data if admin is impersonating
+    if (impersonationData.storeId) {
+      fetchData(undefined, impersonationData.storeId);
+    } else if (storeIdFromUrl) {
       fetchData(undefined, storeIdFromUrl);
     } else if (user?.id) {
       fetchData(user.id);
     }
-  }, [user?.id, storeIdFromUrl]);
+  }, [user?.id, storeIdFromUrl, impersonationData.storeId]);
 
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops
@@ -1403,6 +1442,25 @@ const SubSubagentDashboard = () => {
     toast({ title: "Store link copied!" });
   };
 
+  // Handle redirects and permission checks
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // Redirect if not admin and no valid store
+  if (!isAdmin && !subagentStore) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Redirect if not admin and store not approved
+  if (!isAdmin && !subagentStore?.approved) {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Agent Notification Popup Dialog */}
@@ -1514,6 +1572,16 @@ const SubSubagentDashboard = () => {
             <Button variant="ghost" size="sm" asChild>
               <Link to="/">Home</Link>
             </Button>
+            {isImpersonating && (
+              <Button variant="ghost" size="sm" onClick={exitImpersonation} className="text-yellow-400 hover:text-yellow-300">
+                Exit Impersonation
+              </Button>
+            )}
+            {isAdmin && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/admin">Admin</Link>
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={signOut}>
               <LogOut className="h-4 w-4 mr-1" /> Sign Out
             </Button>
