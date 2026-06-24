@@ -228,7 +228,6 @@ const SubSubagentDashboard = () => {
 
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops
-  const hasSyncedRef = useRef(false);
   const lastSyncedBalanceRef = useRef<number | null>(null);
   
   useEffect(() => {
@@ -264,8 +263,11 @@ const SubSubagentDashboard = () => {
       }
     };
     
-    syncWalletBalance();
-  }, [orders.length, topupHistory.length, withdrawals.length, subagentStore?.id]);
+    // Only sync if we have a store and at least some data loaded
+    if (subagentStore?.id && orders.length >= 0) {
+      syncWalletBalance();
+    }
+  }, [subagentStore?.id, JSON.stringify(basePrices)]);
 
   // Real-time wallet balance updates
   useEffect(() => {
