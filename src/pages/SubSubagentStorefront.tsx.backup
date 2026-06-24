@@ -1158,11 +1158,9 @@ export const SubSubagentStorefront = () => {
             Powered by <span className="font-bold">ZYTRIX <span style={{ color: primaryColor }}>TECH</span></span>
           </p>
           <p className="text-sm text-muted-foreground">
-            agent login? <a href={DOMAINS.getSubSubagentLoginUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
+            store owner login? <a href={DOMAINS.getSubSubagentLoginUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
           </p>
-          <p className="text-sm text-muted-foreground">
-            store owner login? <a href="https://agentsstore.shop/login" className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
-          </p>
+         
         </footer>
       </main>
 
