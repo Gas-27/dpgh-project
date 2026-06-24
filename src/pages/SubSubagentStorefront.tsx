@@ -162,7 +162,7 @@ const defaultTheme = {
 // ORDER TRACKING CARD (same as AgentStorefront)
 // Delivery (step 4) only appears after 200 minutes.
 // ─────────────────────────────────────────────────────────────────────────────
-const SubSubagentOrderTrackingCard = ({
+function SubSubagentOrderTrackingCard({
   order,
   store,
   onReportClick,
@@ -170,7 +170,7 @@ const SubSubagentOrderTrackingCard = ({
   order: Order;
   store: SubSubagentStore;
   onReportClick: (order: Order) => void;
-}): JSX.Element => {
+}): JSX.Element {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
 
@@ -426,7 +426,7 @@ const SubSubagentOrderTrackingCard = ({
       )}
     </div>
   );
-};
+}
 
 export function SubSubagentStorefront() {
   const { subagentStoreName, subSubagentStoreName } = useParams();
