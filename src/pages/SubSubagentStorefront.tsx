@@ -212,9 +212,10 @@ function SubSubagentOrderTrackingCard({
   let statusMessage = "";
   let extraNote: string | null = null;
 
-      // COMMENTED OUT: mashup packages deactivated
-      // Special handling for mtn_mashup
-      if (false && order.network === "mtn_mashup") {
+  // COMMENTED OUT: mashup packages deactivated
+  // Special handling for mtn_mashup - disabled with if(false)
+  if (false && order.network === "mtn_mashup") {
+    // Mashup package logic (disabled)
     if (elapsedMinutes >= 300) { // 5 hours
       currentStep = 4;
       statusMessage = "Your data bundle has been delivered successfully.";
