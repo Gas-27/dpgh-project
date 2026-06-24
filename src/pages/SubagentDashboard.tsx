@@ -1208,14 +1208,19 @@ const SubagentDashboard = () => {
         payload.recipient_id = selectedRecipient;
       }
 
-      const authToken = localStorage.getItem('sb-auth-token') || '';
+      // Get valid Supabase session token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error("Authentication failed. Please log in again.");
+      }
+
       const response = await fetch(
         "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
         {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${authToken}`
+            "Authorization": `Bearer ${session.access_token}`
           },
           body: JSON.stringify(payload),
         }
