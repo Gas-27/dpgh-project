@@ -2221,11 +2221,6 @@ const AdminDashboard = () => {
           {/* SUB-SUBAGENTS TAB */}
           {canSee("sub_subagents") && (
             <TabsContent value="sub_subagents" className="space-y-4">
-              {(() => {
-                if (subSubagents.length === 0 && activeTab === "sub_subagents") {
-                  fetchSubSubagents();
-                }
-                return (
             <div>
               <div className="flex gap-2 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
@@ -2324,8 +2319,6 @@ const AdminDashboard = () => {
                 </>
               )}
             </div>
-                );
-              })()}
             </TabsContent>
           )}
 
@@ -2603,11 +2596,6 @@ const AdminDashboard = () => {
           {/* CUSTOMERS TAB */}
           {canSee("customers") && (
             <TabsContent value="customers" className="space-y-4">
-              {(() => {
-                if (customers.length === 0 && activeTab === "customers") {
-                  fetchCustomers().then(data => setCustomers(data ?? []));
-                }
-                return (
             <div>
               <div className="flex gap-2 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
@@ -2664,6 +2652,10 @@ const AdminDashboard = () => {
                                 <p className="font-semibold text-foreground">{customer.phone_number || '—'}</p>
                               </div>
                               <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Top-up Ref</p>
+                                <p className="font-mono text-cyan-400 font-bold">{customer.topup_reference || '—'}</p>
+                              </div>
+                              <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Total Orders</p>
                                 <p className="font-semibold text-foreground">{customer.total_orders || 0}</p>
                               </div>
@@ -2699,8 +2691,6 @@ const AdminDashboard = () => {
                 </>
               )}
             </div>
-                );
-              })()}
             </TabsContent>
           )}
 

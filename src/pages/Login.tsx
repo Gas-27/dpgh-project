@@ -67,6 +67,8 @@ const Login = () => {
         redirectTo = "/agent";
       } else if (roles.includes("subagent")) {
         redirectTo = "/subagent-dashboard";
+      } else if (roles.includes("customer")) {
+        redirectTo = "/user-dashboard";
       } else {
         redirectTo = "/";
       }

@@ -124,21 +124,19 @@ const UserDashboard = () => {
 
         if (userWalletData) {
           setNormalWallet(userWalletData.balance || 0);
-          // Generate top-up reference if it doesn't exist
-          if (!userWalletData.topup_reference) {
-            const allUsersCount = await supabase
-              .from("user_wallets")
-              .select("id", { count: "exact", head: true });
-            const userNumber = (allUsersCount.count || 0) + 1;
-            const ref = `${userNumber}us`;
-            await supabase
-              .from("user_wallets")
-              .update({ topup_reference: ref })
-              .eq("user_id", user.id);
-            setTopupReference(ref);
-          } else {
-            setTopupReference(userWalletData.topup_reference);
-          }
+        }
+
+        // Check if user is a customer and fetch topup reference from customers table
+        const { data: customerData } = await supabase
+          .from("customers")
+          .select("topup_reference")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (customerData?.topup_reference) {
+          setTopupReference(customerData.topup_reference);
+        } else if (userWalletData?.topup_reference) {
+          setTopupReference(userWalletData.topup_reference);
         }
 
         // Fetch available packages
