@@ -538,9 +538,14 @@ const NotificationModal = ({
 // MAIN AGENT STOREFRONT
 // ─�����������────────────────────────��──────────────────────────────────────────────────
 const SubSubagentStorefront = () => {
-  let { storeName: paramStoreName } = useParams<{ storeName: string }>();
+  let { subSubagentStoreName: paramStoreName } = useParams<{ subSubagentStoreName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain();
   const storeName = subdomainStoreName || paramStoreName;
+  
+  // Debug logging
+  if (paramStoreName) {
+    console.log("[v0] SubSubagentStorefront - paramStoreName:", paramStoreName);
+  }
 
   const { toast } = useToast();
 
@@ -655,27 +660,45 @@ const SubSubagentStorefront = () => {
   // ── Initial data fetch ──
   useEffect(() => {
     const fetchStore = async () => {
-      if (!storeName) { setNotFound(true); setLoading(false); return; }
+      if (!storeName) { 
+        console.log("[v0] fetchStore - storeName is empty");
+        setNotFound(true); 
+        setLoading(false); 
+        return; 
+      }
       const normalized = storeName.toLowerCase().trim();
       // Normalize for comparison - remove ALL special characters for matching
       const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
+      console.log("[v0] fetchStore - looking for storeName:", storeName, "normalized:", normalized, "clean:", normalizedClean);
       
       // Fetch sub_subagent_stores - this is SubSubagentStorefront so we only look for sub_subagent stores
       const { data: stores } = await supabase.from("sub_subagent_stores").select("*").eq("approved", true) as any;
+      console.log("[v0] fetchStore - found", stores?.length, "approved sub_subagent_stores");
       
       let matched = null;
       if (stores && stores.length > 0) {
+        console.log("[v0] Store names available:", stores.map((s: any) => ({ name: s.store_name, slug: slugify(s.store_name), id: s.id })));
         // Try exact slug match first
         matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
+        console.log("[v0] After slug match:", matched?.store_name);
         // Try exact store name match
         if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
+        console.log("[v0] After name match:", matched?.store_name);
         // Try normalized comparison (removes ALL special chars)
         if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
+        console.log("[v0] After normalized match:", matched?.store_name);
         // Try matching without hyphens
         if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
+        console.log("[v0] After clean match:", matched?.store_name);
       }
       
-      if (!matched) { setNotFound(true); setLoading(false); return; }
+      if (!matched) { 
+        console.log("[v0] fetchStore - NO STORE MATCHED");
+        setNotFound(true); 
+        setLoading(false); 
+        return; 
+      }
+      console.log("[v0] fetchStore - MATCHED STORE:", matched.store_name, "ID:", matched.id);
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
