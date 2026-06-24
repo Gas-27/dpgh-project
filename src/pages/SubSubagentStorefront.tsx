@@ -21,7 +21,7 @@ import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import DraggableFAB from "@/components/DraggableFAB";
 
 // Utility function to update page metadata dynamically
-const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
+function updatePageMetadata(storeName: string, description?: string, imageUrl?: string) {
   try {
     // Update document title
     document.title = `${storeName} - Buy Affordable Data Bundles Instantly`;
@@ -58,7 +58,7 @@ const updatePageMetadata = (storeName: string, description?: string, imageUrl?: 
   } catch (error) {
     console.error("[v0] Error updating page metadata:", error);
   }
-};
+}
 
 interface SubSubagentStore {
   id: string;
@@ -105,19 +105,18 @@ interface Notification {
   created_at: string;
 }
 
-const formatNetworkName = (network: string) => {
+function formatNetworkName(network: string) {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
   // COMMENTED OUT: mashup packages deactivated
   // if (network === "mtn_mashup") return "MTN Special Mashup";
-  // if (network === "mashup") return "Mashup";
   return network;
-};
+}
 
 // Sanitize store name for URL matching - removes apostrophes, periods, and spaces
-const slugify = (name: string) =>
-  name
+function slugify(name: string) {
+  return name
     .toLowerCase()
     .trim()                           // Remove leading/trailing spaces
     .replace(/'/g, "")                // Remove apostrophes (store'name -> storename)
@@ -125,30 +124,33 @@ const slugify = (name: string) =>
     .replace(/\s+/g, "-")             // Replace spaces with hyphens
     .replace(/-+/g, "-")              // Replace multiple hyphens with single hyphen
     .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
+}
 
-const getNetworkColor = (network: string) => {
+function getNetworkColor(network: string) {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#3b82f6", telecel: "#ef4444" };
   return colors[network] || "#22c55e";
-};
+}
 
-const formatDisplayPhone = (phone: string): string => {
+function formatDisplayPhone(phone: string): string {
   if (!phone) return phone;
   const cleaned = phone.trim();
   if (cleaned.startsWith("+")) return cleaned;
   if (cleaned.startsWith("233")) return "+" + cleaned;
   if (cleaned.startsWith("0")) return "+233" + cleaned.slice(1);
   return cleaned;
-};
+}
 
-const getInternationalDigits = (phone: string): string => {
+function getInternationalDigits(phone: string): string {
   if (!phone) return "";
   const cleaned = phone.replace(/[^0-9]/g, "");
   if (cleaned.startsWith("233")) return cleaned;
   if (cleaned.startsWith("0")) return "233" + cleaned.slice(1);
   return cleaned;
-};
+}
 
-const stripSpaces = (s: string) => s.replace(/\s+/g, "");
+function stripSpaces(s: string) {
+  return s.replace(/\s+/g, "");
+}
 
 const defaultTheme = {
   primary: "#22c55e",
