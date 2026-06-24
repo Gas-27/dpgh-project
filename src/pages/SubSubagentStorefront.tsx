@@ -534,7 +534,7 @@ const NotificationModal = ({
   );
 };
 
-// ─��─────────────────────────────────────────────����─────────────────────────────
+// ─��───────────────────────────���─────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
 // ─�����������────────────────────────��──────────────────────────────────────────────────
 const SubSubagentStorefront = () => {
@@ -638,9 +638,9 @@ const SubSubagentStorefront = () => {
     fetchingRef.current = true;
     try {
       const { data, error } = await supabase
-        .from("agent_package_prices")
+        .from("sub_subagent_package_prices")
         .select("package_id, sell_price")
-        .eq("agent_store_id", store.id);
+        .eq("sub_subagent_store_id", store.id);
       if (error) throw error;
       const map: Record<string, number> = {};
       (data ?? []).forEach((p: any) => { map[p.package_id] = p.sell_price; });
@@ -660,12 +660,7 @@ const SubSubagentStorefront = () => {
       // Normalize for comparison - remove ALL special characters for matching
       const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
       
-      // Check if we're on agentsstore.shop domain (subagent domain)
-      const isSubagentDomain = window.location.hostname === "agentsstore.shop" || 
-                               window.location.hostname === "www.agentsstore.shop" ||
-                               window.location.hostname.includes("localhost");
-      
-      // First try sub_subagent_stores
+      // Fetch sub_subagent_stores - this is SubSubagentStorefront so we only look for sub_subagent stores
       const { data: stores } = await supabase.from("sub_subagent_stores").select("*").eq("approved", true) as any;
       
       let matched = null;
@@ -680,53 +675,16 @@ const SubSubagentStorefront = () => {
         if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
       }
       
-      // If on subagent domain and no agent store found, try subsub_subagent_stores
-      if (!matched && isSubagentDomain) {
-        const { data: subagentStores } = await supabase
-          .from("subsub_subagent_stores")
-          .select("*, sub_subagent_stores(store_name)")
-          .eq("approved", true) as any;
-        
-        if (subagentStores && subagentStores.length > 0) {
-          matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name) === normalized);
-          if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
-          if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
-          if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
-          
-          if (matched) {
-            // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices
-            matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
-            matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
-            matched.is_subagent_store = true;
-            setStore(matched);
-
-            const [pkgRes, subagentPriceRes, agentPriceRes] = await Promise.all([
-              supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text").eq("active", true).order("size_gb"),
-              supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
-              supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
-            ]);
-            setPackages(pkgRes.data ?? []);
-            
-            // Use subagent prices if available, otherwise fall back to agent prices
-            const priceMap: Record<string, number> = {};
-            (agentPriceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-            (subagentPriceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-            setAgentPrices(priceMap);
-            setLoading(false);
-            return;
-          }
-        }
-      }
-      
       if (!matched) { setNotFound(true); setLoading(false); return; }
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
 
+      // Fetch packages and sub_subagent prices
       const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text").eq("active", true).order("size_gb"),
-        supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
+        supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", matched.id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
       ]);
       setPackages(pkgRes.data ?? []);
@@ -758,7 +716,7 @@ const SubSubagentStorefront = () => {
       .channel(`prices-${store.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "agent_package_prices", filter: `agent_store_id=eq.${store.id}` },
+        { event: "*", schema: "public", table: "sub_subagent_package_prices", filter: `sub_subagent_store_id=eq.${store.id}` },
         () => refreshPrices()
       )
       .subscribe();
@@ -768,8 +726,7 @@ const SubSubagentStorefront = () => {
   // ── Real-time store settings updates (spin wheel, theme, etc.) ──
   useEffect(() => {
     if (!store?.id) return;
-    const isSubagent = !!(store as any).is_subagent_store;
-    const tableName = isSubagent ? "subsub_subagent_stores" : "sub_subagent_stores";
+    const tableName = "sub_subagent_stores";
     
     const storeChannel = supabase
       .channel(`store-settings-${store.id}`)
