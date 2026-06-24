@@ -21,7 +21,7 @@ import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import DraggableFAB from "@/components/DraggableFAB";
 
 // Utility function to update page metadata dynamically
-function updatePageMetadata(storeName: string, description?: string, imageUrl?: string) {
+const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
   try {
     // Update document title
     document.title = `${storeName} - Buy Affordable Data Bundles Instantly`;
@@ -58,7 +58,7 @@ function updatePageMetadata(storeName: string, description?: string, imageUrl?: 
   } catch (error) {
     console.error("[v0] Error updating page metadata:", error);
   }
-}
+};
 
 interface SubSubagentStore {
   id: string;
@@ -105,18 +105,18 @@ interface Notification {
   created_at: string;
 }
 
-function formatNetworkName(network: string) {
+const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
   // COMMENTED OUT: mashup packages deactivated
   // if (network === "mtn_mashup") return "MTN Special Mashup";
   return network;
-}
+};
 
 // Sanitize store name for URL matching - removes apostrophes, periods, and spaces
-function slugify(name: string) {
-  return name
+const slugify = (name: string) =>
+  name
     .toLowerCase()
     .trim()                           // Remove leading/trailing spaces
     .replace(/'/g, "")                // Remove apostrophes (store'name -> storename)
@@ -124,35 +124,31 @@ function slugify(name: string) {
     .replace(/\s+/g, "-")             // Replace spaces with hyphens
     .replace(/-+/g, "-")              // Replace multiple hyphens with single hyphen
     .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
-}
 
-function getNetworkColor(network: string) {
+const getNetworkColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#3b82f6", telecel: "#ef4444" };
   return colors[network] || "#22c55e";
-}
+};
 
-function formatDisplayPhone(phone: string): string {
+const formatDisplayPhone = (phone: string): string => {
   if (!phone) return phone;
   const cleaned = phone.trim();
   if (cleaned.startsWith("+")) return cleaned;
   if (cleaned.startsWith("233")) return "+" + cleaned;
   if (cleaned.startsWith("0")) return "+233" + cleaned.slice(1);
   return cleaned;
-}
+};
 
-function getInternationalDigits(phone: string): string {
+const getInternationalDigits = (phone: string): string => {
   if (!phone) return "";
   const cleaned = phone.replace(/[^0-9]/g, "");
   if (cleaned.startsWith("233")) return cleaned;
   if (cleaned.startsWith("0")) return "233" + cleaned.slice(1);
   return cleaned;
-}
+};
 
-function stripSpaces(s: string) {
-  return s.replace(/\s+/g, "");
-}
+const stripSpaces = (s: string) => s.replace(/\s+/g, "");
 
-// Default theme configuration - MUST be before SubSubagentOrderTrackingCard which uses it
 const defaultTheme = {
   primary: "#22c55e",
   primary_foreground: "#ffffff",
@@ -165,7 +161,7 @@ const defaultTheme = {
 // ORDER TRACKING CARD (same as AgentStorefront)
 // Delivery (step 4) only appears after 200 minutes.
 // ─────────────────────────────────────────────────────────────────────────────
-function SubSubagentOrderTrackingCard({
+const SubSubagentOrderTrackingCard = ({
   order,
   store,
   onReportClick,
@@ -173,7 +169,7 @@ function SubSubagentOrderTrackingCard({
   order: Order;
   store: SubSubagentStore;
   onReportClick: (order: Order) => void;
-}): JSX.Element {
+}): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
 
@@ -430,9 +426,9 @@ function SubSubagentOrderTrackingCard({
       )}
     </div>
   );
-}
+};
 
-export function SubSubagentStorefront() {
+export const SubSubagentStorefront = () => {
   const { subagentStoreName, subSubagentStoreName } = useParams();
   const { toast } = useToast();
 
@@ -1239,6 +1235,6 @@ export function SubSubagentStorefront() {
       )}
     </div>
   );
-}
+};
 
 export default SubSubagentStorefront;
