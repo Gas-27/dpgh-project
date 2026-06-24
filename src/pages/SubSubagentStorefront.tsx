@@ -536,22 +536,34 @@ export function SubSubagentStorefront() {
       setStore(matched);
 
       // Fetch packages and prices
-      // Priority: 1. Sub-Subagent's own sell_price, 2. Admin's base prices
-      const [pkgRes, subSubagentPriceRes, appSettingsRes, parentSubagentInfoRes] = await Promise.all([
+      // Priority: 1. Sub-Subagent's own sell_price, 2. Parent Subagent's base prices, 3. Admin's base prices
+      const [pkgRes, subSubagentPriceRes, appSettingsRes, parentSubagentInfoRes, parentSubagentPricesRes] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text").eq("active", true).order("size_gb"),
         supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", matched.id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
         supabase.from("subagent_stores").select("whatsapp_number, support_number").eq("id", matched.subagent_store_id).single(),
+        // Get parent subagent's prices - these are what the subagent pays to the agent
+        matched.subagent_store_id ? supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.subagent_store_id) : Promise.resolve({ data: null, error: null }),
       ]);
 
       setPackages(pkgRes.data || []);
       if (parentSubagentInfoRes.data) setAgentInfo(parentSubagentInfoRes.data);
 
-      // Build price map with fallback: sub-subagent's own prices -> admin's base
+      // Build price map with proper fallback: 
+      // 1. Sub-Subagent's own prices (if they set them)
+      // 2. Parent Subagent's prices (what they pay to agent - their base cost)
+      // 3. Admin's base prices (only if neither above are available)
       const priceMap: Record<string, number> = {};
-      // First set admin base prices
+      
+      // First set admin base prices as ultimate fallback
       (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
-      // Then override with sub-subagent's own prices if set
+      
+      // Then override with parent subagent's prices (their buy price from agent)
+      (parentSubagentPricesRes.data || []).forEach((p: any) => { 
+        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+      });
+      
+      // Finally override with sub-subagent's own prices if they have set them
       (subSubagentPriceRes.data || []).forEach((p: any) => { 
         if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
       });
@@ -589,17 +601,28 @@ export function SubSubagentStorefront() {
       .channel(`subagent-prices-${store.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "sub_subagent_package_prices", filter: `subagent_store_id=eq.${store.id}` },
+        { event: "*", schema: "public", table: "sub_subagent_package_prices", filter: `sub_subagent_store_id=eq.${store.id}` },
         async () => {
-          const { data } = await supabase
-            .from("sub_subagent_package_prices")
-            .select("package_id, sell_price")
-            .eq("subagent_store_id", store.id);
-          if (data) {
-            const priceMap: Record<string, number> = {};
-            data.forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-            setSubagentPrices(priceMap);
-          }
+          // When sub-subagent prices change, rebuild the full price hierarchy
+          const [subSubPrices, parentPrices, pkgs] = await Promise.all([
+            supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
+            store.subagent_store_id ? supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null }),
+            supabase.from("data_packages").select("id, price").eq("active", true),
+          ]);
+          
+          const priceMap: Record<string, number> = {};
+          // Base: admin prices
+          (pkgs.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
+          // Override: parent subagent prices
+          (parentPrices.data || []).forEach((p: any) => { 
+            if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+          });
+          // Final: sub-subagent's own prices
+          (subSubPrices.data || []).forEach((p: any) => { 
+            if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+          });
+          
+          setSubagentPrices(priceMap);
         }
       )
       .subscribe();
