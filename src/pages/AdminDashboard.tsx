@@ -549,23 +549,27 @@ const AdminDashboard = () => {
   // Fetch sub-subagents with their parent subagent info
   const fetchSubSubagents = async () => {
     try {
+      console.log("[v0] Starting to fetch sub-subagents...");
       const { data, error } = await supabase
         .from("sub_subagent_stores")
         .select("*, subagent_stores(id, store_name, agent_store_id)")
         .order("created_at", { ascending: false })
         .limit(200);
       
+      console.log("[v0] Sub-subagents fetch result - Error:", error, "Data count:", data?.length);
       if (error) throw error;
       setSubSubagents(data || []);
     } catch (error) {
       console.error("[v0] Error fetching sub-subagents:", error);
-      toast({ title: "Error", description: "Failed to fetch sub-subagents", variant: "destructive" });
+      setSubSubagents([]);
     }
   };
 
   // Load data when active tab changes
   useEffect(() => {
-    if (activeTab === "sub_subagents" && subSubagents.length === 0) {
+    console.log("[v0] Tab changed to:", activeTab, "Sub-subagents loaded:", subSubagents.length);
+    if (activeTab === "sub_subagents") {
+      console.log("[v0] Fetching sub-subagents...");
       fetchSubSubagents();
     } else if (activeTab === "customers" && customers.length === 0) {
       fetchCustomers();
@@ -2221,7 +2225,6 @@ const AdminDashboard = () => {
           {/* SUB-SUBAGENTS TAB */}
           {canSee("sub_subagents") && (
             <TabsContent value="sub_subagents" className="space-y-4">
-            <div>
               <div className="flex gap-2 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2318,7 +2321,6 @@ const AdminDashboard = () => {
                   ))}
                 </>
               )}
-            </div>
             </TabsContent>
           )}
 
@@ -2596,7 +2598,6 @@ const AdminDashboard = () => {
           {/* CUSTOMERS TAB */}
           {canSee("customers") && (
             <TabsContent value="customers" className="space-y-4">
-            <div>
               <div className="flex gap-2 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2690,7 +2691,6 @@ const AdminDashboard = () => {
                   ))}
                 </>
               )}
-            </div>
             </TabsContent>
           )}
 
