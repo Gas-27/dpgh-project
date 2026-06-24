@@ -345,6 +345,14 @@ const AgentDashboard = () => {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState<string>("");
   const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
+  const [createNewRecipient, setCreateNewRecipient] = useState(false);
+  const [recipientType, setRecipientType] = useState<"bank" | "mobile_money">("bank");
+  const [recipientName, setRecipientName] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankCode, setBankCode] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [mobileNetwork, setMobileNetwork] = useState("mtn");
+  const [mobileNumber, setMobileNumber] = useState("");
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string; source: string }[]>([]);
@@ -1125,7 +1133,6 @@ const AgentDashboard = () => {
 
   const handleWithdraw = async () => {
     if (!store) return;
-    if (!selectedRecipient) { toast({ title: "Select a recipient", variant: "destructive" }); return; }
     if (hasPendingWithdrawal) { toast({ title: "Pending withdrawal exists", variant: "destructive" }); return; }
     
     const amt = parseFloat(withdrawAmount);
@@ -1137,19 +1144,62 @@ const AgentDashboard = () => {
     
     if (amt > availableBalance) { toast({ title: "Insufficient balance", variant: "destructive" }); return; }
     
+    // Validate recipient selection or new recipient creation
+    if (!createNewRecipient && !selectedRecipient) { 
+      toast({ title: "Select a recipient", variant: "destructive" }); 
+      return; 
+    }
+    
+    // Validate new recipient form if creating new
+    if (createNewRecipient) {
+      if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
+      if (recipientType === "bank") {
+        if (!bankName.trim() || !bankCode.trim() || !accountNumber.trim()) {
+          toast({ title: "Fill in all bank details", variant: "destructive" }); 
+          return; 
+        }
+      } else {
+        if (!mobileNumber.trim()) { toast({ title: "Enter mobile number", variant: "destructive" }); return; }
+      }
+    }
+    
     setWithdrawLoading(true);
     try {
+      const payload: any = {
+        amount: amt,
+        agent_store_id: store.id,
+        withdrawal_source: withdrawSource,
+      };
+
+      // If creating new recipient, include recipient details
+      if (createNewRecipient) {
+        if (recipientType === "bank") {
+          payload.recipient_details = {
+            account_holder_name: recipientName,
+            provider_type: "bank",
+            bank_name: bankName,
+            bank_code: bankCode,
+            account_number: accountNumber,
+          };
+        } else {
+          payload.recipient_details = {
+            account_holder_name: recipientName,
+            provider_type: "mobile_money",
+            mobile_money_network: mobileNetwork,
+            mobile_money_number: mobileNumber,
+          };
+        }
+      } else {
+        // Use existing recipient
+        payload.recipient_id = selectedRecipient;
+      }
+
       const response = await fetch(
         "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipient_code: selectedRecipient,
-            amount: amt,
-            agent_store_id: store.id,
-            withdrawal_source: withdrawSource,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -1162,6 +1212,12 @@ const AgentDashboard = () => {
       toast({ title: "Withdrawal initiated!", description: `GH₵ ${amt.toFixed(2)} will be transferred soon.` });
       setWithdrawAmount("");
       setSelectedRecipient("");
+      setCreateNewRecipient(false);
+      setRecipientName("");
+      setBankName("");
+      setBankCode("");
+      setAccountNumber("");
+      setMobileNumber("");
       fetchAllData();
     } catch (error: any) {
       console.error("[v0] Withdrawal error:", error);
@@ -2130,29 +2186,133 @@ const AgentDashboard = () => {
                   </div>
                 )}
                 
-                {transferRecipients.length === 0 ? (
-                  <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 text-center">
-                    <p className="text-sm text-orange-400 font-medium">No recipients configured yet</p>
-                    <p className="text-xs text-muted-foreground mt-1">Add a bank or mobile money recipient first</p>
-                  </div>
+                {/* Recipient Selection or Creation */}
+                {!createNewRecipient ? (
+                  <>
+                    {transferRecipients.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>Select Recipient</Label>
+                        <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a recipient..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {transferRecipients.map((r: any) => (
+                              <SelectItem key={r.recipient_code} value={r.recipient_code}>
+                                {r.recipient_name || r.account_number} ({r.recipient_type === "nuban" ? "Bank" : "Mobile Money"})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={() => setCreateNewRecipient(true)}
+                    >
+                      {transferRecipients.length === 0 ? "Add Recipient" : "+ Add New Recipient"}
+                    </Button>
+                  </>
                 ) : (
                   <>
-                    <div className="space-y-2">
-                      <Label>Select Recipient</Label>
-                      <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose a recipient..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {transferRecipients.map((r: any) => (
-                            <SelectItem key={r.recipient_code} value={r.recipient_code}>
-                              {r.recipient_name || r.account_number} ({r.recipient_type === "nuban" ? "Bank" : "Mobile Money"})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <Button 
+                      variant="ghost" 
+                      className="text-xs" 
+                      onClick={() => setCreateNewRecipient(false)}
+                    >
+                      ← Back to Recipients
+                    </Button>
                     
+                    <div className="space-y-3 border border-border rounded-lg p-4">
+                      <div className="space-y-2">
+                        <Label>Recipient Type</Label>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant={recipientType === "bank" ? "default" : "outline"} 
+                            className="flex-1"
+                            onClick={() => setRecipientType("bank")}
+                          >
+                            Bank Account
+                          </Button>
+                          <Button 
+                            variant={recipientType === "mobile_money" ? "default" : "outline"} 
+                            className="flex-1"
+                            onClick={() => setRecipientType("mobile_money")}
+                          >
+                            Mobile Money
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label>Full Name</Label>
+                        <Input 
+                          placeholder="John Doe" 
+                          value={recipientName}
+                          onChange={e => setRecipientName(e.target.value)}
+                        />
+                      </div>
+                      
+                      {recipientType === "bank" ? (
+                        <>
+                          <div className="space-y-1">
+                            <Label>Bank Name</Label>
+                            <Input 
+                              placeholder="e.g., GCB Bank" 
+                              value={bankName}
+                              onChange={e => setBankName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Bank Code</Label>
+                            <Input 
+                              placeholder="e.g., 030" 
+                              value={bankCode}
+                              onChange={e => setBankCode(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Account Number</Label>
+                            <Input 
+                              placeholder="1234567890" 
+                              value={accountNumber}
+                              onChange={e => setAccountNumber(e.target.value)}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="space-y-1">
+                            <Label>Network</Label>
+                            <Select value={mobileNetwork} onValueChange={setMobileNetwork}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="mtn">MTN</SelectItem>
+                                <SelectItem value="telecel">Telecel</SelectItem>
+                                <SelectItem value="airteltigo">AirtelTigo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Mobile Number</Label>
+                            <Input 
+                              placeholder="024XXXXXXX" 
+                              value={mobileNumber}
+                              onChange={e => setMobileNumber(e.target.value)}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+                
+                {!createNewRecipient && (transferRecipients.length > 0 || selectedRecipient) && (
+                  <>
                     <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
                     
                     <div className="flex gap-2 items-end">
@@ -2171,6 +2331,34 @@ const AgentDashboard = () => {
                         variant="hero" 
                         onClick={handleWithdraw} 
                         disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
+                      >
+                        {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                        Transfer
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                {createNewRecipient && (
+                  <>
+                    <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
+                    
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1 space-y-1">
+                        <Label>Amount (GH₵)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="e.g. 50.00" 
+                          value={withdrawAmount} 
+                          onChange={e => setWithdrawAmount(e.target.value)} 
+                          disabled={hasPendingWithdrawal} 
+                        />
+                      </div>
+                      <Button 
+                        variant="hero" 
+                        onClick={handleWithdraw} 
+                        disabled={withdrawLoading || hasPendingWithdrawal}
                       >
                         {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
                         Transfer
