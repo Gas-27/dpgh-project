@@ -2284,13 +2284,14 @@ const AdminDashboard = () => {
           )}
 
           {/* SUB-SUBAGENTS TAB */}
-          {canSee("sub_subagents") && section === "sub_subagents" && (
-            (() => {
-              if (subSubagents.length === 0 && section === "sub_subagents") {
-                fetchSubSubagents();
-              }
-              return (
+          {canSee("sub_subagents") && (
             <TabsContent value="sub_subagents" className="space-y-4">
+              {(() => {
+                if (subSubagents.length === 0 && activeTab === "sub_subagents") {
+                  fetchSubSubagents();
+                }
+                return (
+            <div>
               <div className="flex gap-2 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2387,9 +2388,10 @@ const AdminDashboard = () => {
                   ))}
                 </>
               )}
+            </div>
+                );
+              })()}
             </TabsContent>
-              );
-            })()
           )}
 
           {/* TOPUP TAB */}
