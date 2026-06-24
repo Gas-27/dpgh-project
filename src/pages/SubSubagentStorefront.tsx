@@ -981,10 +981,10 @@ export function SubSubagentStorefront() {
         {["mtn", "airteltigo", "telecel"].map((net) => (
             <Button
               key={net}
-              variant={networkFilter === net && !showBulkOrders ? "default" : "outline"}
+              variant={networkFilter === net ? "default" : "outline"}
               size="sm"
-              onClick={() => { setNetworkFilter(net); setShowBulkOrders(false); }}
-              style={networkFilter === net && !showBulkOrders ? { background: getNetworkColor(net), color: "#000" } : {}}
+              onClick={() => setNetworkFilter(net)}
+              style={networkFilter === net ? { background: getNetworkColor(net), color: "#000" } : {}}
               className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
