@@ -163,6 +163,8 @@ const SubagentDashboard = () => {
   const [storeForm, setStoreForm] = useState<Partial<SubagentStore>>({});
   const [saving, setSaving] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [selectedRecipient, setSelectedRecipient] = useState<string>("");
+  const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [packages, setPackages] = useState<any[]>([]);
   const [basePrices, setBasePrices] = useState<Record<string, number>>({});
@@ -492,7 +494,9 @@ const SubagentDashboard = () => {
           subagentPricesResult,
           topupsResult,
           agentInfoResult,
-          subSubagentsResult
+          subSubagentsResult,
+          recipientsResult,
+          payoutResult
         ] = await Promise.all([
           supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -502,11 +506,14 @@ const SubagentDashboard = () => {
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
-          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false })
+          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("transfer_recipients").select("*").eq("subagent_store_id", store.id).eq("is_active", true).order("created_at", { ascending: false }),
+          supabase.from("payout_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false })
         ]);
 
         setOrders(ordersResult.data || []);
         setWithdrawals(withdrawResult.data || []);
+        setTransferRecipients(recipientsResult.data || []);
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
@@ -1121,6 +1128,10 @@ const SubagentDashboard = () => {
 
   const handleRequestWithdrawal = async () => {
     if (!withdrawAmount || !subagentStore) return;
+    if (!selectedRecipient) {
+      toast({ title: "Error", description: "Select a recipient", variant: "destructive" });
+      return;
+    }
     
     const amount = parseFloat(withdrawAmount);
     
@@ -1144,21 +1155,32 @@ const SubagentDashboard = () => {
 
     try {
       setWithdrawLoading(true);
-      const { error } = await supabase
-        .from("withdrawal_requests")
-        .insert({
-          subagent_store_id: subagentStore.id,
-          amount,
-          status: "pending"
-        });
+      const response = await fetch(
+        "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipient_code: selectedRecipient,
+            amount,
+            subagent_store_id: subagentStore.id,
+          }),
+        }
+      );
 
-      if (error) throw error;
-      toast({ title: "Success", description: "Withdrawal request submitted successfully" });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Withdrawal failed");
+      }
+
+      toast({ title: "Success", description: `GH₵ ${amount.toFixed(2)} will be transferred soon` });
       setWithdrawAmount("");
+      setSelectedRecipient("");
       fetchData();
-    } catch (error) {
-      console.error("Error requesting withdrawal:", error);
-      toast({ title: "Error", description: "Failed to submit withdrawal request", variant: "destructive" });
+    } catch (error: any) {
+      console.error("[v0] Withdrawal error:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setWithdrawLoading(false);
     }
@@ -2375,75 +2397,93 @@ const SubagentDashboard = () => {
           <TabsContent value="withdraw" className="mt-0 space-y-6">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="font-display text-lg">Request Withdrawal</CardTitle>
+                <CardTitle className="font-display text-lg">Request Paystack Transfer</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {hasPendingWithdrawal && (
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                    <p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes before requesting another.</p>
+                    <p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
                   </div>
                 )}
-                <div className="rounded-xl border border-border bg-secondary/50 p-4">
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">MoMo Name</p>
-                      <p className="font-bold">{subagentStore?.momo_name || "Not set"}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">MoMo Number</p>
-                      <p className="font-bold">{subagentStore?.momo_number || "Not set"}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">Network</p>
-                      <p className="font-bold">{subagentStore?.momo_network?.toUpperCase() || "Not set"}</p>
-                    </div>
+                
+                {transferRecipients.length === 0 ? (
+                  <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 text-center">
+                    <p className="text-sm text-orange-400 font-medium">No recipients configured yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">Add a bank or mobile money recipient first</p>
                   </div>
-                </div>
-                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                  <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH₵ {availableWalletBalance.toFixed(2)}</span></p>
-                  {pendingWithdrawalAmount > 0 && (
-                    <p className="text-xs text-yellow-400 mt-2">
-                      (GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal - cannot be used until approved)
-                    </p>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1 space-y-1">
-                    <Label>Amount (GH₵)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="e.g. 10.00"
-                      value={withdrawAmount}
-                      onChange={e => setWithdrawAmount(e.target.value)}
-                      disabled={hasPendingWithdrawal}
-                    />
-                  </div>
-                  <Button variant="hero" onClick={handleRequestWithdrawal} disabled={withdrawLoading || hasPendingWithdrawal}>
-                    {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                    Withdraw
-                  </Button>
-                </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Select Recipient</Label>
+                      <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a recipient..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {transferRecipients.map((r: any) => (
+                            <SelectItem key={r.recipient_code} value={r.recipient_code}>
+                              {r.recipient_name || r.account_number} ({r.recipient_type === "nuban" ? "Bank" : "Mobile Money"})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                      <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH₵ {availableWalletBalance.toFixed(2)}</span></p>
+                      {pendingWithdrawalAmount > 0 && (
+                        <p className="text-xs text-yellow-400 mt-2">
+                          (GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal - cannot be used)
+                        </p>
+                      )}
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
+                    
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1 space-y-1">
+                        <Label>Amount (GH₵)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g. 10.00"
+                          value={withdrawAmount}
+                          onChange={e => setWithdrawAmount(e.target.value)}
+                          disabled={hasPendingWithdrawal}
+                        />
+                      </div>
+                      <Button 
+                        variant="hero" 
+                        onClick={handleRequestWithdrawal} 
+                        disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
+                      >
+                        {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                        Transfer
+                      </Button>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
             <Card className="border-border">
               <CardHeader>
-                <CardTitle>Withdrawal History</CardTitle>
+                <CardTitle>Payout History</CardTitle>
               </CardHeader>
               <CardContent>
                 {withdrawals.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No withdrawals yet</p>
+                  <p className="text-center text-muted-foreground py-8">No transfers yet</p>
                 ) : (
                   <div className="space-y-2">
                     {withdrawals.map(w => (
                       <div key={w.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
-                        <div>
-                          <p className="font-medium">GH₵{w.amount.toFixed(2)}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</p>
+                        <div className="flex-1">
+                          <p className="font-medium">GH₵ {w.amount.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString()} • {w.recipient_name || w.recipient_code}</p>
                         </div>
-                        <Badge variant={w.status === "completed" ? "default" : "secondary"}>{w.status}</Badge>
+                        <Badge variant={w.status === "success" ? "default" : w.status === "pending" ? "secondary" : "destructive"}>
+                          {w.status}
+                        </Badge>
                       </div>
                     ))}
                   </div>

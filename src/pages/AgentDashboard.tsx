@@ -343,6 +343,8 @@ const AgentDashboard = () => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawSource, setWithdrawSource] = useState<"wallet" | "subagent_commission">("wallet");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState<string>("");
+  const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string; source: string }[]>([]);
@@ -675,7 +677,7 @@ const AgentDashboard = () => {
   momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
   });
 
-      const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR, specialMTNR] = await Promise.all([
+      const [pkgR, priceR, orderR, wdR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR, payoutR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999999),
@@ -684,6 +686,8 @@ const AgentDashboard = () => {
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
+        supabase.from("transfer_recipients").select("*").eq("agent_store_id", sd.id).eq("is_active", true).order("created_at", { ascending: false }),
+        supabase.from("payout_requests").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
       ]);
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
@@ -714,6 +718,7 @@ const AgentDashboard = () => {
       setOrders(enrichedOrders);
       const wd = (wdR.data as WithdrawalRequest[]) ?? [];
       setWithdrawals(wd);
+      setTransferRecipients(recipientsR.data ?? []);
       const subags = subagentR.data ?? [];
       setSubagents(subags);
     
@@ -1120,25 +1125,50 @@ const AgentDashboard = () => {
 
   const handleWithdraw = async () => {
     if (!store) return;
+    if (!selectedRecipient) { toast({ title: "Select a recipient", variant: "destructive" }); return; }
     if (hasPendingWithdrawal) { toast({ title: "Pending withdrawal exists", variant: "destructive" }); return; }
+    
     const amt = parseFloat(withdrawAmount);
     if (!amt || amt < 10) { toast({ title: "Minimum is GH₵ 10.00", variant: "destructive" }); return; }
     
-    // Check balance based on source
     const availableBalance = withdrawSource === "subagent_commission" 
       ? Number(store.subagent_commission_balance ?? 0) 
       : Number(store.wallet_balance ?? 0);
     
     if (amt > availableBalance) { toast({ title: "Insufficient balance", variant: "destructive" }); return; }
+    
     setWithdrawLoading(true);
-    const { error } = await supabase.from("withdrawal_requests").insert({ 
-      agent_store_id: store.id, 
-      amount: amt,
-      withdrawal_source: withdrawSource
-    });
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else { toast({ title: "Withdrawal requested!" }); setWithdrawAmount(""); fetchAllData(); }
-    setWithdrawLoading(false);
+    try {
+      const response = await fetch(
+        "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipient_code: selectedRecipient,
+            amount: amt,
+            agent_store_id: store.id,
+            withdrawal_source: withdrawSource,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Withdrawal failed");
+      }
+
+      toast({ title: "Withdrawal initiated!", description: `GH₵ ${amt.toFixed(2)} will be transferred soon.` });
+      setWithdrawAmount("");
+      setSelectedRecipient("");
+      fetchAllData();
+    } catch (error: any) {
+      console.error("[v0] Withdrawal error:", error);
+      toast({ title: "Withdrawal failed", description: error.message, variant: "destructive" });
+    } finally {
+      setWithdrawLoading(false);
+    }
   };
 
   // ==================== FLYER FUNCTIONS ====================
@@ -1295,7 +1325,7 @@ const AgentDashboard = () => {
     }
   };
   
-  // ──��� GUARDS ────────────────────────────────────────────────────────����──────
+  // ──��� GUARDS ───────────��────────────────────────────────────────────����──────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
@@ -2089,8 +2119,103 @@ const AgentDashboard = () => {
                 </CardContent>
               </Card>
             </div>
-            <Card className="border-border"><CardHeader><CardTitle className="font-display text-lg">Request Withdrawal from {withdrawSource === "wallet" ? "My Wallet" : "Subagent Profit"}</CardTitle></CardHeader><CardContent className="space-y-4">{hasPendingWithdrawal && (<div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3"><p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes before requesting another.</p></div>)}<div className="rounded-xl border border-border bg-secondary/50 p-4"><div className="grid grid-cols-3 gap-4 text-sm"><div className="text-center"><p className="text-xs text-muted-foreground">MoMo Name</p><p className="font-bold">{store?.momo_name}</p></div><div className="text-center"><p className="text-xs text-muted-foreground">MoMo Number</p><p className="font-bold">{store?.momo_number}</p></div><div className="text-center"><p className="text-xs text-muted-foreground">Network</p><p className="font-bold">{store?.momo_network?.toUpperCase()}</p></div></div></div><p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p><div className="flex gap-2 items-end"><div className="flex-1 space-y-1"><Label>Amount (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 50.00" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} disabled={hasPendingWithdrawal} /></div><Button variant="hero" onClick={handleWithdraw} disabled={withdrawLoading || hasPendingWithdrawal}>{withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}Withdraw</Button></div></CardContent></Card>
-            {withdrawals.length > 0 && (<Card className="border-border"><CardHeader><CardTitle className="font-display text-lg">Withdrawal History</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Source</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{withdrawals.map(w => (<TableRow key={w.id}><TableCell className="text-sm">{new Date(w.created_at).toLocaleString()}</TableCell><TableCell className="font-bold">GH₵ {Number(w.amount).toFixed(2)}</TableCell><TableCell><Badge className={w.withdrawal_source === "subagent_commission" ? "bg-primary/20 text-primary" : "bg-yellow-500/20 text-yellow-400"}>{w.withdrawal_source === "subagent_commission" ? "Subagent Profit" : "Wallet"}</Badge></TableCell><TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : w.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>{w.status}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent></Card>)}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display text-lg">Request Paystack Transfer</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {hasPendingWithdrawal && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                    <p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
+                  </div>
+                )}
+                
+                {transferRecipients.length === 0 ? (
+                  <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 text-center">
+                    <p className="text-sm text-orange-400 font-medium">No recipients configured yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">Add a bank or mobile money recipient first</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Select Recipient</Label>
+                      <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a recipient..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {transferRecipients.map((r: any) => (
+                            <SelectItem key={r.recipient_code} value={r.recipient_code}>
+                              {r.recipient_name || r.account_number} ({r.recipient_type === "nuban" ? "Bank" : "Mobile Money"})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
+                    
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1 space-y-1">
+                        <Label>Amount (GH₵)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          placeholder="e.g. 50.00" 
+                          value={withdrawAmount} 
+                          onChange={e => setWithdrawAmount(e.target.value)} 
+                          disabled={hasPendingWithdrawal} 
+                        />
+                      </div>
+                      <Button 
+                        variant="hero" 
+                        onClick={handleWithdraw} 
+                        disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
+                      >
+                        {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                        Transfer
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+            
+            {withdrawals.length > 0 && (
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display text-lg">Payout History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Recipient</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Transfer Code</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {withdrawals.map(w => (
+                        <TableRow key={w.id}>
+                          <TableCell className="text-sm">{new Date(w.created_at).toLocaleString()}</TableCell>
+                          <TableCell className="font-bold">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
+                          <TableCell className="text-xs">{w.recipient_name || w.recipient_code}</TableCell>
+                          <TableCell>
+                            <Badge className={w.status === "success" ? "bg-green-600/20 text-green-400 border-green-600/30" : w.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
+                              {w.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{w.transfer_code || "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* ============================= TOP UP ============================= */}
