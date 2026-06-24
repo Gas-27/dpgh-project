@@ -5,21 +5,19 @@ import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
-import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
-
-import ReportComplaintDialog from "@/components/ReportComplaintDialog";
-import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
-import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import {
-  Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
-  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
+  Zap, Phone, Wifi, Clock, Search, Package,
+  CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
+  MessageCircle, Users, AlertTriangle, Check, Gift,
   Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ReportComplaintDialog from "@/components/ReportComplaintDialog";
+import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import DraggableFAB from "@/components/DraggableFAB";
 
 // Utility function to update page metadata dynamically
@@ -62,10 +60,7 @@ const updatePageMetadata = (storeName: string, description?: string, imageUrl?: 
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INTERFACES
-// ─────────────────────────────────────────────────────────────────────────────
-interface SubSubagentStore {
+interface SubagentStore {
   id: string;
   store_name: string;
   whatsapp_number: string;
@@ -74,19 +69,16 @@ interface SubSubagentStore {
   show_whatsapp_group_icon?: boolean;
   show_ussd_on_storefront?: boolean;
   topup_reference?: string;
-  allow_subagent_registration?: boolean;
   theme_config?: {
     primary: string;
     primary_foreground: string;
     background: string;
     card_background: string;
     gridColumns?: number;
-    gb_text_color?: string;
-    price_text_color?: string;
-    button_text_color?: string;
-    button_bg_color?: string;
-    button_border_color?: string;
   };
+  agent_store_id: string;
+  approved?: boolean;
+  suspended?: boolean;
 }
 
 interface DataPackage {
@@ -113,9 +105,6 @@ interface Notification {
   created_at: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
 const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "airteltigo") return "AirtelTigo";
@@ -124,24 +113,6 @@ const formatNetworkName = (network: string) => {
   // if (network === "mtn_mashup") return "MTN Special Mashup";
   // if (network === "mashup") return "Mashup";
   return network;
-};
-
-const copyToClipboard = async (text: string, toast: any) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast({ title: "Copied!", description: "Contact information copied to clipboard." });
-  } catch {
-    toast({ title: "Failed to copy", description: "Please copy manually.", variant: "destructive" });
-  }
-};
-
-const getStoreNameFromSubdomain = (): string | null => {
-  const hostname = window.location.hostname;
-  if (hostname.endsWith(`.${DOMAINS.AGENT_STORE}`)) {
-    const parts = hostname.split(".");
-    if (parts.length >= 3) return parts[0].toLowerCase().trim();
-  }
-  return null;
 };
 
 // Sanitize store name for URL matching - removes apostrophes, periods, and spaces
@@ -155,9 +126,9 @@ const slugify = (name: string) =>
     .replace(/-+/g, "-")              // Replace multiple hyphens with single hyphen
     .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
 
-const getNetworkLabelColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#60a5fa", telecel: "#f87171" };
-  return colors[network] || "#ffffff";
+const getNetworkColor = (network: string) => {
+  const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#3b82f6", telecel: "#ef4444" };
+  return colors[network] || "#22c55e";
 };
 
 const formatDisplayPhone = (phone: string): string => {
@@ -177,25 +148,27 @@ const getInternationalDigits = (phone: string): string => {
   return cleaned;
 };
 
-/**
- * Strip ALL whitespace from a phone string so that
- * "059 944 9202", "05 99 44 92 02", and "0599449202" all normalize to "0599449202".
- */
-const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
+const stripSpaces = (s: string) => s.replace(/\s+/g, "");
 
-// ──────�����──────────────────────��──────────────────────────────────────────────
-// ORDER TRACKING CARD
+const defaultTheme = {
+  primary: "#22c55e",
+  primary_foreground: "#ffffff",
+  background: "#09090b",
+  card_background: "#18181b",
+  gridColumns: 2,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ORDER TRACKING CARD (same as AgentStorefront)
 // Delivery (step 4) only appears after 200 minutes.
 // ─────────────────────────────────────────────────────────────────────────────
-const OrderTrackingCard = ({
+const SubSubagentOrderTrackingCard = ({
   order,
   store,
-  toast,
   onReportClick,
 }: {
   order: Order;
-  store: SubSubagentStore;
-  toast: any;
+  store: SubagentStore;
   onReportClick: (order: Order) => void;
 }): JSX.Element => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -227,14 +200,14 @@ const OrderTrackingCard = ({
     };
 
     fetchComplaintStatus();
-    const interval = setInterval(fetchComplaintStatus, 5000); // Check every 5 seconds
+    const interval = setInterval(fetchComplaintStatus, 5000);
     return () => clearInterval(interval);
   }, [order.id]);
 
   const elapsedMs = currentTime.getTime() - new Date(order.created_at).getTime();
   const elapsedMinutes = elapsedMs / 60_000;
 
-  // ── Step logic ──
+  // Step logic - Delivery (step 4) only after 200 minutes
   let currentStep = 1;
   let statusMessage = "";
   let extraNote: string | null = null;
@@ -256,70 +229,65 @@ const OrderTrackingCard = ({
     }
   } else {
     // Original logic for other networks
-    // Step 4 (Delivered) only after 200 minutes
     if (elapsedMinutes >= 200) {
       currentStep = 4;
       statusMessage = "Your data bundle has been delivered successfully.";
       if (order.network === "mtn")
         extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
       else if (order.network === "airteltigo")
-        extraNote =
-          "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+        extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
       else if (order.network === "telecel")
         extraNote = "Please check your Telecel messages for delivery confirmation.";
       else extraNote = "Please check your messages for delivery confirmation.";
     } else if (elapsedMinutes >= 60) {
       currentStep = 3;
       if (order.network === "mtn")
-        statusMessage =
-          "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
+        statusMessage = "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
       else if (order.network === "airteltigo")
-        statusMessage =
-          "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
+        statusMessage = "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
       else if (order.network === "telecel")
-        statusMessage =
-          "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
+        statusMessage = "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
       else
-        statusMessage =
-          "Please be expecting your data any moment from now. Check your messages for delivery confirmation.";
-      extraNote =
-        "The order has left our system and is now with the network you bought the data from. All delays from now are from them.";
+        statusMessage = "Please be expecting your data any moment from now. Check your messages for delivery confirmation.";
+      extraNote = "The order has left our system and is now with the network you bought the data from. All delays from now are from them.";
     } else if (elapsedMinutes >= 15) {
       currentStep = 3;
-      statusMessage =
-        "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
+      statusMessage = "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
     } else if (elapsedMinutes >= 12) {
       currentStep = 3;
-      statusMessage = `Waiting for validation from ${formatNetworkName(order.network)}...`;
+      statusMessage = `Waiting for validation from ${order.network?.toUpperCase()}...`;
     } else if (elapsedMinutes >= 9) {
       currentStep = 2;
-      statusMessage = `Order sent to ${formatNetworkName(order.network)} for validation`;
-      extraNote =
-        "Now waiting for validation from the network to deliver your data. All delay now is from the network you bought the data from.";
+      statusMessage = `Order sent to ${order.network?.toUpperCase()} for validation`;
+      extraNote = "Now waiting for validation from the network to deliver your data. All delay now is from the network you bought the data from.";
+    } else {
+      currentStep = 1;
+      statusMessage = "Order being processed...";
     }
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
+  const contactMessage = `Order from ${orderDate}\nNetwork: ${order.network?.toUpperCase()}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
   const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
-    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
+    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${order.network?.toUpperCase()}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
   // Support button: show after 132 min if still not delivered
   const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
   // Report button: show once delivered, within a reasonable window
-  const showReportButton =
-    currentStep === 4 && elapsedMinutes >= 200 && elapsedMinutes < 3030;
+  const showReportButton = currentStep === 4 && elapsedMinutes >= 200 && elapsedMinutes < 3030;
 
   const stepLabels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
+  const theme = store.theme_config || defaultTheme;
+  const primaryColor = theme.primary || defaultTheme.primary;
 
-  // ── Delivered state ──
+  // Delivered state
   if (currentStep === 4) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 mt-3 p-4 rounded-lg border border-border bg-background/50">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-foreground">Delivery Status</span>
           <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
@@ -370,7 +338,7 @@ const OrderTrackingCard = ({
               <CheckCircle className="h-4 w-4" /> Report has been sent 
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. Your report is being worked on .
+              Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. Your report is being worked on 
             </p>
           </div>
         )}
@@ -386,9 +354,9 @@ const OrderTrackingCard = ({
     );
   }
 
-  // ─��� In-progress state ──
+  // In-progress state
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mt-3 p-4 rounded-lg border border-border bg-background/50">
       <div className="relative">
         <div className="flex items-center justify-between">
           {stepLabels.map((label, idx) => {
@@ -396,7 +364,7 @@ const OrderTrackingCard = ({
             let icon;
             if (n < currentStep) icon = <Check className="h-4 w-4 text-green-400" />;
             else if (n === currentStep)
-              icon = <Loader2 className="h-4 w-4 text-primary animate-spin" />;
+              icon = <Loader2 className="h-4 w-4 animate-spin" style={{ color: primaryColor }} />;
             else icon = <Clock className="h-4 w-4 text-muted-foreground" />;
             return (
               <div key={n} className="flex flex-col items-center flex-1">
@@ -404,15 +372,16 @@ const OrderTrackingCard = ({
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${n < currentStep
                     ? "bg-green-600/20 text-green-400"
                     : n === currentStep
-                      ? "bg-primary/20 text-primary border border-primary/50"
+                      ? "border"
                       : "bg-muted text-muted-foreground"
-                    }`}
+                  }`}
+                  style={n === currentStep ? { backgroundColor: `${primaryColor}20`, borderColor: `${primaryColor}50`, color: primaryColor } : {}}
                 >
                   {icon}
                 </div>
                 <span
-                  className={`text-xs text-center mt-1 ${n === currentStep ? "text-primary font-medium" : "text-muted-foreground"
-                    }`}
+                  className={`text-xs text-center mt-1 ${n === currentStep ? "font-medium" : "text-muted-foreground"}`}
+                  style={n === currentStep ? { color: primaryColor } : {}}
                 >
                   {label}
                 </span>
@@ -422,16 +391,16 @@ const OrderTrackingCard = ({
         </div>
         <div className="absolute top-4 left-0 w-full h-0.5 bg-muted -z-10">
           <div
-            className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
+            className="h-full transition-all duration-500"
+            style={{ width: `${((currentStep - 1) / 3) * 100}%`, backgroundColor: primaryColor }}
           />
         </div>
       </div>
 
-      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+      <div className="p-3 rounded-lg border" style={{ backgroundColor: `${primaryColor}10`, borderColor: `${primaryColor}30` }}>
         <p className="text-sm text-foreground font-medium">{statusMessage}</p>
         {extraNote && (
-          <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-primary/20">
+          <p className="text-xs text-muted-foreground mt-2 border-t pt-2" style={{ borderColor: `${primaryColor}20` }}>
             {extraNote}
           </p>
         )}
@@ -447,148 +416,67 @@ const OrderTrackingCard = ({
           variant="outline"
           size="sm"
           className="w-full"
-          onClick={() => copyToClipboard(contactMessage, toast)}
+          asChild
         >
-          <Copy className="h-4 w-4 mr-2" />
-          Contact Support ({store.support_number})
+          <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Contact Support ({store.support_number})
+          </a>
         </Button>
       )}
     </div>
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NOTIFICATION MODAL
-// ─────────────────────────────────────────────────────────────────────────────
-const NotificationModal = ({
-  notifications,
-  onDismiss,
-  onCloseAll,
-  primaryColor,
-}: {
-  notifications: Notification[];
-  onDismiss: (id: string) => void;
-  onCloseAll: () => void;
-  primaryColor: string;
-}): JSX.Element => {
-  if (notifications.length === 0) return null as any;
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative max-w-md w-full mx-4 bg-card rounded-2xl shadow-2xl border overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="relative p-6 pb-4 text-center">
-          <div
-            className="absolute top-0 left-0 right-0 h-1"
-            style={{ background: `linear-gradient(90deg, ${primaryColor}, ${primaryColor}cc)` }}
-          />
-          <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4"
-            style={{ backgroundColor: `${primaryColor}20` }}
-          >
-            <Megaphone className="h-6 w-6" style={{ color: primaryColor }} />
-          </div>
-          <h3 className="text-xl font-display font-bold text-foreground">Announcement</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Important information from the store
-          </p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 h-8 w-8 rounded-full"
-            onClick={onCloseAll}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="px-6 pb-6 space-y-4">
-          {notifications.map((notif) => (
-            <div
-              key={notif.id}
-              className="p-4 rounded-lg border bg-secondary/20"
-              style={{ borderColor: `${primaryColor}30` }}
-            >
-              <div className="flex items-start gap-3">
-                <Bell className="h-5 w-5 mt-0.5 shrink-0" style={{ color: primaryColor }} />
-                <p className="text-foreground text-sm flex-1">{notif.message}</p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 shrink-0 hover:bg-destructive/10"
-                  onClick={() => onDismiss(notif.id)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 pl-8">
-                {new Date(notif.created_at).toLocaleString()}
-              </p>
-            </div>
-          ))}
-          {notifications.length > 1 && (
-            <Button variant="outline" size="sm" className="w-full mt-2" onClick={onCloseAll}>
-              Dismiss All
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─��───────────────────────────���─────────────────����─────────────────────────────
-// MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��──────────────────────────────────────────────────
-const SubSubagentStorefront = () => {
-  let { subagentStoreName, subSubagentStoreName: paramStoreName } = useParams<{ subagentStoreName: string; subSubagentStoreName: string }>();
-  const subdomainStoreName = getStoreNameFromSubdomain();
-  const storeName = subdomainStoreName || paramStoreName;
-
+export function SubSubagentStorefront() {
+  const { subagentStoreName, subSubagentStoreName: urlStoreName } = useParams<{ subagentStoreName: string; subSubagentStoreName: string }>();
   const { toast } = useToast();
 
-  // Simply render the storefront - subagent dashboard is on its own /subagent-dashboard route
-
-  const [store, setStore] = useState<SubSubagentStore | null>(null);
+  const [store, setStore] = useState<SubagentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
-  const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
+  const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
-
-  // ── Order tracking ──
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string } | null>(null);
+  
+  // Order search
   const [searchQuery, setSearchQuery] = useState("");
-  const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [searching, setSearching] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
-
-  // ── Notifications ──
-  const [showGroupTooltip] = useState(true);
+  
+  // Notifications
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
-  // ── Report complaint dialog ──
+  // Report complaint dialog
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
   
-  // ── Claim Free Data dialog ──
+  // Claim Free Data dialog
   const [claimFreeDataOpen, setClaimFreeDataOpen] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
-
-  // ── Category ──
-  const [activeCategory, setActiveCategory] = useState<
-    "data" | "afa" | "vouchers" | "services" | "bulk"
-  >("data");
   
-  // ── Bulk Orders ──
+  // Bulk Orders
+  const [showBulkOrders, setShowBulkOrders] = useState(false);
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
-
+  // Sub-Subagent Registration
   // ── AFA Packages ──
-  // (Handled by AFABundleSection component)
+  const [selectedAFAPackage, setSelectedAFAPackage] = useState<{
+    id: string;
+    name: string;
+    price: number;
+  } | null>(null);
 
   // Handle bulk payment callback - show success message after returning from Paystack
   useEffect(() => {
@@ -604,106 +492,13 @@ const SubSubagentStorefront = () => {
     }
   }, [toast]);
 
-  // ── Default theme ──
-  const defaultTheme = {
-    primary: "#a78bfa",
-    primary_foreground: "#ffffff",
-    background: "#0f0f0f",
-    card_background: "linear-gradient(135deg, #2d1b69 0%, #1a0a3e 100%)",
-    gridColumns: 2,
-    gb_text_color: "#ffffff",
-    price_text_color: "#ffffff",
-    button_text_color: "#ffffff",
-    button_bg_color: "rgba(255,255,255,0.1)",
-    button_border_color: "rgba(255,255,255,0.2)",
-  };
-
+  // Theme
   const theme = store?.theme_config || defaultTheme;
-  const gridColumns = theme.gridColumns || 2;
   const primaryColor = theme.primary || defaultTheme.primary;
   const primaryForeground = theme.primary_foreground || defaultTheme.primary_foreground;
-  const backgroundColor = theme.background || defaultTheme.background;
-  const cardBackground = theme.card_background || defaultTheme.card_background;
-  const gbTextColor = theme.gb_text_color || defaultTheme.gb_text_color;
-  const priceTextColor = theme.price_text_color || defaultTheme.price_text_color;
-  const buttonTextColor = theme.button_text_color || defaultTheme.button_text_color;
-  const buttonBgColor = theme.button_bg_color || defaultTheme.button_bg_color;
-  const buttonBorderColor = theme.button_border_color || defaultTheme.button_border_color;
-
-  const fetchingRef = useRef(false);
-
-  // ── Price refresh ──
-  const refreshPrices = useCallback(async () => {
-    if (!store?.id || fetchingRef.current) return;
-    fetchingRef.current = true;
-    try {
-      const { data, error } = await supabase
-        .from("sub_subagent_package_prices")
-        .select("package_id, sell_price")
-        .eq("sub_subagent_store_id", store.id);
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      (data ?? []).forEach((p: any) => { map[p.package_id] = p.sell_price; });
-      setAgentPrices(map);
-    } catch (err: any) {
-      console.error("[PRICE REFRESH] Error:", err.message);
-    } finally {
-      fetchingRef.current = false;
-    }
-  }, [store?.id]);
-
-  // ── Initial data fetch ──
-  useEffect(() => {
-    const fetchStore = async () => {
-      if (!storeName) { 
-        setNotFound(true); 
-        setLoading(false); 
-        return; 
-      }
-      const normalized = storeName.toLowerCase().trim();
-      // Normalize for comparison - remove ALL special characters for matching
-      const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
-      
-      // Fetch sub_subagent_stores - this is SubSubagentStorefront so we only look for sub_subagent stores
-      const { data: stores } = await supabase.from("sub_subagent_stores").select("*").eq("approved", true) as any;
-      
-      let matched = null;
-      if (stores && stores.length > 0) {
-        // Try exact slug match first
-        matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
-        // Try exact store name match
-        if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
-        // Try normalized comparison (removes ALL special chars)
-        if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
-        // Try matching without hyphens
-        if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
-      }
-      
-      if (!matched) { 
-        setNotFound(true); 
-        setLoading(false); 
-        return; 
-      }
-
-      matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
-      matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
-      setStore(matched);
-
-      // Fetch packages and sub_subagent prices
-      const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text").eq("active", true).order("size_gb"),
-        supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", matched.id),
-        supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
-      ]);
-      setPackages(pkgRes.data ?? []);
-      const priceMap: Record<string, number> = {};
-      (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-      setAgentPrices(priceMap);
-      if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
-      setLoading(false);
-    };
-    fetchStore();
-  }, [storeName, subdomainStoreName]);
+  const bgColor = theme.background || defaultTheme.background;
+  const cardBg = theme.card_background || defaultTheme.card_background;
+  const gridColumns = theme.gridColumns || 2;
 
   // ── Update page metadata when store loads ──
   useEffect(() => {
@@ -711,36 +506,96 @@ const SubSubagentStorefront = () => {
       updatePageMetadata(store.store_name);
     }
   }, [store?.store_name]);
-  useEffect(() => {
-    if (!store?.id) return;
-    refreshPrices();
-    const interval = setInterval(refreshPrices, 15_000);
-    return () => clearInterval(interval);
-  }, [store?.id, refreshPrices]);
 
+  // Fetch store by name
   useEffect(() => {
-    if (!store?.id) return;
-    const channel = supabase
-      .channel(`prices-${store.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "sub_subagent_package_prices", filter: `sub_subagent_store_id=eq.${store.id}` },
-        () => refreshPrices()
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [store?.id, refreshPrices]);
+    const fetchStore = async () => {
+      if (!urlStoreName) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
 
-  // ── Real-time store settings updates (spin wheel, theme, etc.) ──
+      const normalized = urlStoreName.toLowerCase().trim();
+      const normalizedSlugified = slugify(normalized);
+      // Normalize for comparison - remove ALL special characters for matching
+      const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
+
+      const { data: stores, error } = await supabase
+        .from("sub_subagent_stores")
+        .select("*")
+        .eq("approved", true);
+      
+      if (error) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+      
+      if (!stores || stores.length === 0) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      // Find matching store - try multiple strategies with more robust matching
+      let matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
+      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
+      // Normalized clean comparison - removes ALL special characters
+      if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
+      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
+      // Also try matching by ID as fallback
+      if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
+
+      if (!matched) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
+      // Don't override show_whatsapp_group_icon - use database value directly
+      setStore(matched);
+
+      // Fetch packages and prices
+      // Priority: 1. Sub-Subagent's own sell_price, 2. Admin's base prices
+      const [pkgRes, subSubagentPriceRes, appSettingsRes, parentSubagentInfoRes] = await Promise.all([
+        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text").eq("active", true).order("size_gb"),
+        supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", matched.id),
+        supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
+        supabase.from("subagent_stores").select("whatsapp_number, support_number").eq("id", matched.subagent_store_id).single(),
+      ]);
+
+      setPackages(pkgRes.data || []);
+      if (parentSubagentInfoRes.data) setAgentInfo(parentSubagentInfoRes.data);
+
+      // Build price map with fallback: sub-subagent's own prices -> admin's base
+      const priceMap: Record<string, number> = {};
+      // First set admin base prices
+      (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
+      // Then override with sub-subagent's own prices if set
+      (subSubagentPriceRes.data || []).forEach((p: any) => { 
+        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+      });
+      
+      setSubagentPrices(priceMap);
+      if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
+      
+      setLoading(false);
+    };
+
+    fetchStore();
+  }, [urlStoreName]);
+
+  // Real-time store settings updates (theme, prices, etc.)
   useEffect(() => {
     if (!store?.id) return;
-    const tableName = "sub_subagent_stores";
     
     const storeChannel = supabase
-      .channel(`store-settings-${store.id}`)
+      .channel(`subagent-store-settings-${store.id}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: tableName, filter: `id=eq.${store.id}` },
+        { event: "UPDATE", schema: "public", table: "sub_subagent_stores", filter: `id=eq.${store.id}` },
         (payload) => {
           const newData = payload.new as any;
           setStore(prev => prev ? { 
@@ -752,35 +607,62 @@ const SubSubagentStorefront = () => {
       )
       .subscribe();
     
-    return () => { supabase.removeChannel(storeChannel); };
+    const priceChannel = supabase
+      .channel(`subagent-prices-${store.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sub_subagent_package_prices", filter: `subagent_store_id=eq.${store.id}` },
+        async () => {
+          const { data } = await supabase
+            .from("sub_subagent_package_prices")
+            .select("package_id, sell_price")
+            .eq("subagent_store_id", store.id);
+          if (data) {
+            const priceMap: Record<string, number> = {};
+            data.forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+            setSubagentPrices(priceMap);
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => { 
+      supabase.removeChannel(storeChannel);
+      supabase.removeChannel(priceChannel);
+    };
   }, [store?.id]);
 
-  // ── Notifications ──
+  // Notifications
   const fetchNotifications = useCallback(async () => {
     if (!store?.id) return;
     const now = new Date().toISOString();
-    const { data, error } = await (supabase
-      .from("agent_notifications" as any)
+    const { data } = await supabase
+      .from("subagent_notifications")
       .select("id, message, created_at")
-      .eq("agent_store_id", store.id)
+      .eq("subagent_store_id", store.id)
       .eq("is_active", true)
       .or(`expires_at.is.null,expires_at.gt.${now}`)
-      .order("created_at", { ascending: false })) as any;
-    if (!error && data) {
-      const active = data as Notification[];
-      setNotifications(active);
-      const undismissed = active.filter((n) => !dismissedIds.includes(n.id));
+      .order("created_at", { ascending: false }) as any;
+    
+    if (data) {
+      setNotifications(data);
+      const undismissed = data.filter((n: any) => !dismissedIds.includes(n.id));
       if (undismissed.length > 0 && !modalOpen) setModalOpen(true);
     }
   }, [store?.id, dismissedIds, modalOpen]);
 
-  useEffect(() => { if (store?.id) fetchNotifications(); }, [store?.id, fetchNotifications]);
-
+  useEffect(() => {
+    if (store?.id) {
+      fetchNotifications();
+      const saved = localStorage.getItem(`dismissed_subagent_notifications_${store.id}`);
+      if (saved) setDismissedIds(JSON.parse(saved));
+    }
+  }, [store?.id, fetchNotifications]);
 
   const dismissNotification = (id: string) => {
     const next = [...dismissedIds, id];
     setDismissedIds(next);
-    localStorage.setItem(`dismissed_notifications_${store?.id}`, JSON.stringify(next));
+    localStorage.setItem(`dismissed_subagent_notifications_${store?.id}`, JSON.stringify(next));
     if (notifications.filter((n) => !next.includes(n.id)).length === 0) setModalOpen(false);
   };
 
@@ -788,54 +670,77 @@ const SubSubagentStorefront = () => {
     const allIds = notifications.map((n) => n.id);
     const next = [...dismissedIds, ...allIds];
     setDismissedIds(next);
-    localStorage.setItem(`dismissed_notifications_${store?.id}`, JSON.stringify(next));
+    localStorage.setItem(`dismissed_subagent_notifications_${store?.id}`, JSON.stringify(next));
     setModalOpen(false);
   };
 
   const undismissedNotifications = notifications.filter((n) => !dismissedIds.includes(n.id));
 
-  // ── Order search ──
-  // Phone numbers are stripped of ALL spaces before comparing so
-  // "059 944 9202", "05 99 44 92 02", "0599449202" all match the same record.
+  // Order search - searches both subagent orders and parent agent orders
   const searchOrders = useCallback(async () => {
     if (!searchQuery.trim()) return;
     setSearching(true);
     setSearchPerformed(true);
 
-    // Remove every space the user may have typed
     const raw = searchQuery.trim();
     const noSpaces = stripSpaces(raw);
+    
+    let allOrders: Order[] = [];
 
-    let query = supabase
+    // Search subagent orders first
+    let subagentQuery = supabase
       .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at, package_id");
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at, package_id")
+      .eq("subagent_store_id", store?.id);
 
-    // If it looks like a UUID, search by ID directly
     if (noSpaces.length === 36 && raw.includes("-")) {
-      query = query.eq("id", raw);
+      subagentQuery = subagentQuery.eq("id", raw);
     } else {
-      // Search for the stripped number inside stored customer_number
-      // (stored numbers should also be stripped of spaces, but ilike handles it)
-      query = query.ilike("customer_number", `%${noSpaces}%`);
+      subagentQuery = subagentQuery.ilike("customer_number", `%${noSpaces}%`);
     }
 
-    const { data, error } = await query.order("created_at", { ascending: false });
-    if (!error && data) {
-      // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
-      const enrichedOrders = await Promise.all(data.map(async (order: any) => {
-        if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
-          const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
-          return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
-        }
-        return order;
-      }));
-      setOrders(enrichedOrders as Order[]);
-    } else {
-      setOrders([]);
-      if (error) console.error("Order search error:", error);
+    const { data: subagentData, error: subagentError } = await subagentQuery.order("created_at", { ascending: false });
+    if (!subagentError && subagentData) {
+      allOrders = [...(subagentData as Order[])];
     }
+    
+    // Also search parent agent's orders
+    if (store?.agent_store_id) {
+      let agentQuery = supabase
+        .from("orders")
+        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at, package_id")
+        .eq("agent_store_id", store.agent_store_id)
+        .is("subagent_store_id", null); // Only direct agent orders
+
+      if (noSpaces.length === 36 && raw.includes("-")) {
+        agentQuery = agentQuery.eq("id", raw);
+      } else {
+        agentQuery = agentQuery.ilike("customer_number", `%${noSpaces}%`);
+      }
+
+      const { data: agentData, error: agentError } = await agentQuery.order("created_at", { ascending: false });
+      if (!agentError && agentData) {
+        allOrders = [...allOrders, ...(agentData as Order[])];
+      }
+    }
+    
+    // Sort all orders by date descending
+    allOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    const enrichedOrders = allOrders.map((order) => {
+      // COMMENTED OUT: mashup packages deactivated
+      // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
+      // This enriches the order with package details
+      if (false && (order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
+        const { data: pkg } = supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+        return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
+      }
+      return order;
+    });
+    
+    setOrders(enrichedOrders);
     setSearching(false);
-  }, [searchQuery]);
+  }, [searchQuery, store?.id, store?.agent_store_id]);
 
   const clearSearch = () => {
     setSearchQuery("");
@@ -843,124 +748,123 @@ const SubSubagentStorefront = () => {
     setSearchPerformed(false);
   };
 
-  // ── Render helpers ──
+  // Helpers
   const filteredPackages = packages.filter((p) => {
       // COMMENTED OUT: mashup packages deactivated
+      // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
       if (false && networkFilter === "mtn_mashup") {
-        // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
         return p.network === "mtn_mashup" || p.network === "mashup";
     }
     return p.network === networkFilter;
   });
-  const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
+  const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
-  const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number) : "";
-  const whatsappLink = store ? `https://wa.me/${getInternationalDigits(store.whatsapp_number)}` : "#";
-  const groupLink =
-    store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
+  const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number || "") : "";
+  const whatsappLink = store ? `https://wa.me/${getInternationalDigits(store.whatsapp_number || "")}` : "#";
+  const groupLink = store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
 
   const getStatusIcon = (status: string) => {
     if (status === "completed" || status === "paid") return <CheckCircle className="h-4 w-4 text-green-400" />;
     if (status === "pending") return <Clock className="h-4 w-4 text-yellow-400" />;
     return <XCircle className="h-4 w-4 text-red-400" />;
   };
+
   const getStatusText = (status: string) => {
     if (status === "completed" || status === "paid") return "Payment Completed";
     if (status === "pending") return "Pending";
     return status;
   };
 
-  const getGbFontSize = () => {
-    if (gridColumns >= 5) return "text-xl sm:text-2xl";
-    if (gridColumns >= 3) return "text-2xl sm:text-3xl";
-    return "text-3xl sm:text-4xl";
-  };
-  const getPriceFontSize = () => {
-    if (gridColumns >= 5) return "text-sm sm:text-base";
-    if (gridColumns >= 3) return "text-base sm:text-lg";
-    return "text-lg sm:text-xl";
-  };
-  const getButtonSize = () => (gridColumns >= 4 ? "xs" : "sm");
-  const getPadding = () => {
-    if (gridColumns >= 5) return "p-2 sm:p-3";
-    if (gridColumns >= 3) return "p-3";
-    return "p-4";
-  };
-
-  const renderComingSoon = () => (
-    <div className="text-center py-16">
-      <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10 mb-6">
-        <Rocket className="h-12 w-12 text-primary" />
-      </div>
-      <h2 className="text-2xl font-bold text-foreground mb-2">Coming Soon!</h2>
-      <p className="text-muted-foreground max-w-md mx-auto">
-        We're working hard to bring you this feature. Stay tuned for exciting updates!
-      </p>
-    </div>
-  );
-
-  // ── Early returns ──
-  if (loading)
+  // Loading
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Zap className="h-10 w-10 text-primary animate-pulse" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: bgColor }}>
+        <Zap className="h-10 w-10 animate-pulse" style={{ color: primaryColor }} />
       </div>
     );
-  if (notFound || !store)
+  }
+
+  // Not found
+  if (notFound || !store) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Zap className="h-12 w-12 text-muted-foreground mx-auto" />
-          <h1 className="font-display text-2xl font-bold">Store Not Found</h1>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: bgColor }}>
+        <div className="text-center text-white">
+          <Zap className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h1 className="text-2xl font-bold mb-2">Store Not Found</h1>
+          <p className="text-gray-400 mb-4">The store you are looking for does not exist.</p>
+          <Button onClick={() => window.location.href = "https://agentsstore.shop"} style={{ background: primaryColor, color: primaryForeground }}>
+            Go to AgentsStore
+          </Button>
         </div>
       </div>
     );
+  }
 
-  // ── JSX ──
   return (
-    <div
-      className="min-h-screen relative"
-      style={{ backgroundColor: backgroundColor } as React.CSSProperties}
-    >
-      {/* Notification modal */}
+    <div className="min-h-screen font-sans" style={{ background: bgColor, color: "#fff" }}>
+      {/* Notification Modal */}
       {modalOpen && undismissedNotifications.length > 0 && (
-        <NotificationModal
-          notifications={undismissedNotifications}
-          onDismiss={dismissNotification}
-          onCloseAll={closeAllNotifications}
-          primaryColor={primaryColor}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="relative w-full max-w-md rounded-xl border border-border p-6 space-y-4" style={{ background: cardBg }}>
+            <button onClick={closeAllNotifications} className="absolute top-3 right-3 text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
+            <div className="flex items-center gap-2 text-lg font-bold" style={{ color: primaryColor }}>
+              <Megaphone className="h-5 w-5" /> Announcements
+            </div>
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {undismissedNotifications.map((n) => (
+                <div key={n.id} className="relative rounded-lg p-3 text-sm" style={{ background: `${primaryColor}15`, borderLeft: `3px solid ${primaryColor}` }}>
+                  <button onClick={() => dismissNotification(n.id)} className="absolute top-2 right-2 text-muted-foreground hover:text-white"><X className="h-4 w-4" /></button>
+                  <p className="pr-6 text-gray-200 whitespace-pre-wrap">{n.message}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+            <Button className="w-full" style={{ background: primaryColor, color: primaryForeground }} onClick={closeAllNotifications}>Dismiss All</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Suspended Store Banner */}
+      {store.suspended && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-md rounded-xl border border-red-500/50 bg-red-950/90 p-6 space-y-4 text-center">
+            <div className="flex justify-center">
+              <div className="rounded-full bg-red-500/20 p-4">
+                <AlertTriangle className="h-12 w-12 text-red-500" />
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-red-400">Store Suspended</h2>
+            <p className="text-gray-300">
+              This store has been temporarily suspended and cannot process orders at this time.
+            </p>
+            {agentInfo?.whatsapp_number && (
+              <p className="text-sm text-gray-400">
+                For assistance, contact the administrator at: <span className="text-white font-semibold">{agentInfo.whatsapp_number}</span>
+              </p>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Header */}
-      <header className="border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div
-              className="h-8 w-8 rounded-lg flex items-center justify-center"
-              style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
-            >
-              <Zap className="h-5 w-5" style={{ color: primaryForeground }} />
-            </div>
-            <span className="font-display text-lg font-bold">{store.store_name}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href={`tel:${store.support_number}`}>
-                <Phone className="h-4 w-4 mr-1" /> Call
-              </a>
-            </Button>
-            <Button variant="hero" size="sm" asChild>
-              <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                <img
-                  src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-                  alt="WhatsApp"
-                  className="h-4 w-4 mr-1"
-                  style={{ filter: "invert(1)" }}
-                />
-                WhatsApp
-              </a>
+      <header className="sticky top-0 z-40 border-b border-border/50 backdrop-blur-md" style={{ background: `${cardBg}ee` }}>
+        <div className="mx-auto max-w-6xl flex items-center justify-between gap-3 px-4 py-3">
+          <h1 className="font-display text-xl font-bold truncate" style={{ color: primaryColor }}>{store.store_name}</h1>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {undismissedNotifications.length > 0 && (
+              <Button variant="ghost" size="icon" className="relative" onClick={() => setModalOpen(true)}>
+                <Bell className="h-5 w-5" style={{ color: primaryColor }} />
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full text-[10px] font-bold flex items-center justify-center" style={{ background: primaryColor, color: primaryForeground }}>{undismissedNotifications.length}</span>
+              </Button>
+            )}
+            {groupLink && (
+              <Button variant="ghost" size="icon" asChild>
+                <a href={groupLink} target="_blank" rel="noopener noreferrer"><Users className="h-5 w-5" style={{ color: primaryColor }} /></a>
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" asChild>
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-5 w-5" style={{ color: primaryColor }} /></a>
             </Button>
           </div>
         </div>
@@ -970,7 +874,7 @@ const SubSubagentStorefront = () => {
       {store && (
         <div className="relative px-4 py-6 overflow-hidden">
           <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)` }} />
-          <div className="container mx-auto max-w-3xl relative z-10">
+          <div className="max-w-6xl mx-auto relative z-10">
             <div className="rounded-xl border-2 p-6 backdrop-blur-sm" style={{ borderColor: `${primaryColor}40`, backgroundColor: `${primaryColor}08` }}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex-1">
@@ -1035,345 +939,100 @@ const SubSubagentStorefront = () => {
         </div>
       )}
 
-      {/* Hero */}
-      <section className="relative overflow-hidden py-16 md:py-20">
-        <div
-          className="absolute inset-0"
-          style={{ background: `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}05)` }}
-        />
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full blur-[120px]"
-          style={{ background: `${primaryColor}30` }}
-        />
-        <div className="container relative text-center space-y-6">
-          <div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium"
-            style={{ borderColor: `${primaryColor}50`, background: `${primaryColor}10`, color: primaryColor }}
-          >
-            <Wifi className="h-4 w-4" /> Fast &amp; Reliable Data Delivery
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-            Cheap Data Bundles
-            <br />
-            <span style={{ color: primaryColor }}>Instant Delivery</span>
-          </h1>
-          <p className="text-muted-foreground max-w-lg mx-auto text-lg">
-            Get the best data deals from{" "}
-            <span className="text-foreground font-semibold">{store.store_name}</span>. Select your
-            network and package below.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground pt-2">
-            <span className="flex items-center gap-2">
-              <Shield className="h-4 w-4" style={{ color: primaryColor }} /> Trusted Seller
-            </span>
-            <span className="flex items-center gap-2">
-              <Clock className="h-4 w-4" style={{ color: primaryColor }} /> &lt;60min Delivery
-            </span>
-            <span className="flex items-center gap-2">
-              <Star className="h-4 w-4" style={{ color: primaryColor }} /> 24/7 Support
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* Category tabs */}
-      <div className="container pb-8">
-        <div className="flex flex-wrap justify-center gap-3 items-center">
-          {(["data", "afa", "vouchers", "services", "bulk"] as const).map((cat) => {
-            const icons: Record<string, React.ReactNode> = {
-              data: <Wifi className="h-4 w-4 mr-2" />,
-              afa: <Package className="h-4 w-4 mr-2" />,
-              vouchers: <CheckCircle className="h-4 w-4 mr-2" />,
-              services: <Rocket className="h-4 w-4 mr-2" />,
-              bulk: <Layers className="h-4 w-4 mr-2" />,
-            };
-            const labels: Record<string, string> = {
-              data: "Data",
-              afa: "AFA Bundles",
-              vouchers: "Vouchers",
-              services: "Internet Services",
-              bulk: "Bulk Orders",
-            };
-            return (
-              <Button
-                key={cat}
-                variant={activeCategory === cat ? "hero" : "outline"}
-                onClick={() => setActiveCategory(cat)}
-                className="font-semibold"
-              >
-                {icons[cat]}
-                {labels[cat]}
-              </Button>
-            );
-          })}
-
-        </div>
-      </div>
-
-      {activeCategory === "data" ? (
-        <>
-          {/* ── Order Tracking ── */}
-          <div className="container pb-10">
-            <Card className="border-primary/30 bg-primary/5">
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-                  <div className="flex-1">
-                    <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2 mb-2">
-                      <Package className="h-5 w-5 text-primary" /> Track Your Order
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Enter your phone number  or order ID to check your
-                      purchase status.
-                    </p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    <div className="flex-1 min-w-[200px]">
-                      <Input
-                        placeholder="Phone number or Order ID"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && searchOrders()}
-                        className="bg-background"
-                      />
-                    </div>
-                    <Button variant="hero" onClick={searchOrders} disabled={searching}>
-                      {searching ? (
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                      ) : (
-                        <Search className="h-4 w-4 mr-1" />
-                      )}
-                      Search
-                    </Button>
-                    {searchPerformed && (
-                      <Button variant="outline" onClick={clearSearch} disabled={searching}>
-                        <X className="h-4 w-4 mr-1" /> Clear
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Results */}
-                <div className="mt-6">
-                  {searching ? (
-                    <div className="text-center py-8">
-                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-3" />
-                      <p className="text-muted-foreground">Searching for your order…</p>
-                    </div>
-                  ) : orders.length > 0 ? (
-                    <div>
-                      <p className="text-sm font-medium text-foreground mb-3">
-                        Found {orders.length} order(s):
-                      </p>
-                      <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
-                        {orders.map((order) => (
-                          <div
-                            key={order.id}
-                            className="flex flex-col p-4 border border-border rounded-lg bg-background/50 hover:bg-background transition-colors"
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/50">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="outline" className="font-mono text-xs">
-                                    {order.id.slice(0, 8)}…
-                                  </Badge>
-                                  <span className="text-sm font-medium text-foreground">
-                                    {order.customer_number}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm">
-                                  <span className="uppercase text-muted-foreground">
-                                    {order.network}
-                                  </span>
-                                  <span className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
-                                  <span className="text-primary">
-                                    GH₵ {Number(order.amount).toFixed(2)}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(order.created_at).toLocaleString()}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {getStatusIcon(order.status)}
-                                <Badge
-                                  className={
-                                    order.status === "completed" || order.status === "paid"
-                                      ? "bg-green-600/20 text-green-400 border-green-600/30"
-                                      : order.status === "pending"
-                                        ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                        : "bg-red-600/20 text-red-400 border-red-600/30"
-                                  }
-                                >
-                                  {getStatusText(order.status)}
-                                </Badge>
-                              </div>
-                            </div>
-                            <div className="pt-3">
-                              <OrderTrackingCard
-                                order={order}
-                                store={store}
-                                toast={toast}
-                                onReportClick={(o) => {
-                                  setReportOrder(o);
-                                  setReportDialogOpen(true);
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : searchPerformed ? (
-                    <div className="text-center py-8 border border-border rounded-lg bg-background/50">
-                      <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground">
-                        No orders found for "{searchQuery}".
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Check the contact well, or check your order ID.
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* ── Network filter ── */}
-          <div className="container pb-6">
-            <div className="flex gap-2 justify-center flex-wrap">
-              {["mtn", "airteltigo", "telecel"].map((net) => (
-                <Button
-                  key={net}
-                  variant={networkFilter === net ? "default" : "outline"}
-                  size="sm"
-                  className="text-xs sm:text-sm"
-                  onClick={() => setNetworkFilter(net)}
-                >
-                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
-                </Button>
-              ))}
-              <Button
-      // COMMENTED OUT: mashup packages deactivated
-      // variant={networkFilter === "mtn_mashup" ? "default" : "outline"}
-      // className="px-8 py-6 text-lg font-bold"
-      // onClick={() => setNetworkFilter("mtn_mashup" as any)}
-      variant="outline"
-      className="px-8 py-6 text-lg font-bold hidden"
-              >
-                MTN Special Mashup
-              </Button>
-            </div>
-          </div>
-
-          {/* USSD Info Banner */}
-          {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
-            <div className="container pb-4">
-              <a href="tel:*380*455#" className="block p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
-                <div className="flex items-center justify-center gap-3 text-center">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <Phone className="h-5 w-5" style={{ color: primaryColor }} />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
-                    <p className="text-xl font-bold font-mono" style={{ color: primaryColor }}>*380*455#</p>
-                    <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
-                  </div>
-                </div>
-              </a>
-            </div>
-          )}
-
-          {/* Packages grid */}
-          <div className="container pb-20">
-            <div
-              className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-              style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 300px), 1fr))` }}
-            >
-              {filteredPackages.map((pkg) => {
-                const price = getPrice(pkg);
-      // COMMENTED OUT: mashup packages deactivated
-      const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
-      // Show Express badge only on specific mtn_mashup packages (matching flyer image)
-      const showExpress = false; // pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
-                return (
-                  <Card
-                      key={pkg.id}
-                      className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group w-full"
-                      style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBackground }}
-                    >
-                      {isMTNMashup ? (
-                        <>
-                          <CardContent className="p-6 text-center space-y-4">
-                            <div className="relative bg-white/20 rounded-lg p-3 mb-3">
-                              {showExpress && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold">Express</div>}
-                              <p className="font-semibold text-base text-white">Special MTN Mashup</p>
-                              <p className="text-xs opacity-90 text-white">Data Bundle</p>
-                            </div>
-                            <p className="text-4xl md:text-5xl font-bold text-white">{pkg.size_gb_text}</p>
-                            <p className="text-base font-medium text-white">GH₵ {Number(price).toFixed(2)} - Valid forever</p>
-                            <div className="space-y-2 text-sm text-white">
-                              <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
-                            </div>
-                            <Button variant="secondary" size="lg" className="w-full font-semibold bg-orange-700 hover:bg-orange-800 text-white border-0" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
-                          </CardContent>
-                        </>
-                      ) : (
-                        <>
-                          <CardContent className={`${getPadding()} text-center space-y-1 sm:space-y-2 w-full`}>
-                            <p
-                              className={`${getGbFontSize()} font-bold break-words`}
-                              style={{ color: gbTextColor }}
-                            >
-                              {pkg.size_gb}GB
-                            </p>
-                            <p
-                              className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words"
-                              style={{ color: getNetworkLabelColor(networkFilter) }}
-                            >
-                              {formatNetworkName(networkFilter)}
-                            </p>
-                            <p
-                              className={`${getPriceFontSize()} font-bold break-words`}
-                              style={{ color: priceTextColor }}
-                            >
-                              GHC{Number(price).toFixed(2)}
-                            </p>
-                            <Button
-                              variant="secondary"
-                              size={getButtonSize() === "xs" ? "sm" : (getButtonSize() as any)}
-                              className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap"
-                              style={{
-                                backgroundColor: buttonBgColor,
-                                color: buttonTextColor,
-                                borderColor: buttonBorderColor,
-                                borderWidth: "1px",
-                                borderStyle: "solid",
-                              }}
-                              onClick={() => setPaymentPkg(pkg)}
-                            >
-                              Buy Now
-                            </Button>
-                          </CardContent>
-                        </>
-                      )}
-                    </Card>
-                  );
-                })}
+      <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
+        {/* Order Search */}
+        <Card style={{ background: cardBg }} className="border-border">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search orders by phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && searchOrders()}
+                  className="pl-10 bg-background border-border"
+                />
               </div>
-            {filteredPackages.length === 0 && (
-              <p className="text-center text-muted-foreground py-12">
-                No packages available for this network.
-              </p>
+              <div className="flex gap-2">
+                <Button onClick={searchOrders} disabled={searching} style={{ background: primaryColor, color: primaryForeground }}>
+                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+                </Button>
+                {searchPerformed && <Button variant="outline" onClick={clearSearch}>Clear</Button>}
+              </div>
+            </div>
+            {searchPerformed && (
+              <div className="mt-4 space-y-2">
+                {orders.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No orders found</p>
+                ) : (
+                  <div className="max-h-[300px] overflow-y-auto space-y-3">
+                    {orders.map((order) => (
+                      <div key={order.id} className="p-3 rounded-lg bg-background/50 border border-border">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-mono text-sm">{order.customer_number}</p>
+                            <p className="text-xs text-muted-foreground">{(order as any).size_gb_text || order.size_gb + "GB"} {formatNetworkName(order.network)} - GH₵{Number(order.amount).toFixed(2)}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(order.status)}
+                            <span className="text-xs">{getStatusText(order.status)}</span>
+                          </div>
+                        </div>
+                        {/* Order Tracking Card */}
+                        <SubSubagentOrderTrackingCard
+                          order={order}
+                          store={store}
+                          onReportClick={(o) => {
+                            setReportOrder(o);
+                            setReportDialogOpen(true);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
-          </div>
-        </>
-      ) : activeCategory === "bulk" ? (
-        <div className="container pb-20">
-          <Card className="border-primary/30 bg-primary/5 max-w-3xl mx-auto">
+          </CardContent>
+        </Card>
+
+        {/* Network Tabs */}
+        <div className="flex flex-wrap gap-2 pb-2 items-center">
+          {/* COMMENTED OUT: "mtn_mashup" deactivated */}
+        {["mtn", "airteltigo", "telecel"].map((net) => (
+            <Button
+              key={net}
+              variant={networkFilter === net && !showBulkOrders ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setNetworkFilter(net); setShowBulkOrders(false); }}
+              style={networkFilter === net && !showBulkOrders ? { background: getNetworkColor(net), color: "#000" } : {}}
+              className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
+            >
+              <Wifi className="h-4 w-4 mr-1" />
+              {formatNetworkName(net)}
+            </Button>
+          ))}
+          <div className="h-6 w-px bg-border flex-shrink-0"></div>
+          <Button
+            variant={showBulkOrders ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowBulkOrders(!showBulkOrders)}
+            style={showBulkOrders ? { background: primaryColor, color: primaryForeground } : {}}
+            className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
+          >
+            <Layers className="h-4 w-4 mr-1" />
+            Bulk Orders
+          </Button>
+
+        </div>
+
+        {/* Bulk Orders Section */}
+        {showBulkOrders ? (
+          <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-6 space-y-6">
               <div className="text-center mb-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ backgroundColor: `${primaryColor}20` }}>
                   <Layers className="h-8 w-8" style={{ color: primaryColor }} />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground">Bulk Orders</h2>
@@ -1386,10 +1045,10 @@ const SubSubagentStorefront = () => {
                   <span className="flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold" style={{ backgroundColor: primaryColor, color: primaryForeground }}>1</span>
                   <span className="font-semibold text-lg">SELECT NETWORK</span>
                 </div>
-                <div className="flex gap-3 flex-wrap">
-                  <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
-                  <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
-                  <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
+                <div className="flex gap-3 flex-wrap justify-center">
+                  <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-4 sm:px-6 py-2 sm:py-4 text-sm sm:text-base font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
+                  <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-4 sm:px-6 py-2 sm:py-4 text-sm sm:text-base font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
+                  <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-4 sm:px-6 py-2 sm:py-4 text-sm sm:text-base font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
                 </div>
               </div>
 
@@ -1433,7 +1092,7 @@ const SubSubagentStorefront = () => {
                   placeholder={`0241234567 2\n0551234567 5\n0591234567 10`}
                   value={bulkRecipients}
                   onChange={(e) => setBulkRecipients(e.target.value)}
-                  rows={8}
+                  rows={6}
                   className="w-full font-mono text-sm bg-secondary/50 border border-border rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                 />
 
@@ -1461,8 +1120,8 @@ const SubSubagentStorefront = () => {
                 >
                   <option value="none">None (use per-line sizes)</option>
                   {packages.filter(p => p.network.toLowerCase() === bulkNetwork).map(p => {
-                    const price = agentPrices[p.id] ?? p.price;
-                    return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {price.toFixed(2)}</option>;
+                    const price = subagentPrices[p.id] ?? p.price;
+                    return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH�� {price.toFixed(2)}</option>;
                   })}
                 </select>
               </div>
@@ -1481,7 +1140,7 @@ const SubSubagentStorefront = () => {
                   const totalGb = parsed.reduce((sum, r) => sum + (r.size || 0), 0);
                   const totalCost = parsed.reduce((sum, r) => {
                     const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
-                    const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                    const price = pkg ? (subagentPrices[pkg.id] ?? pkg.price) : 0;
                     return sum + price;
                   }, 0);
                   const paystackFee = Math.ceil(totalCost * 0.0198 * 100) / 100;
@@ -1489,21 +1148,21 @@ const SubSubagentStorefront = () => {
                   
                   return (
                     <>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold">{parsed.length}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+                        <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-xl sm:text-2xl font-bold">{parsed.length}</p>
                           <p className="text-xs text-muted-foreground">Valid Recipients</p>
                         </div>
-                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold">{totalGb}GB</p>
+                        <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-xl sm:text-2xl font-bold">{totalGb}GB</p>
                           <p className="text-xs text-muted-foreground">Total Data</p>
                         </div>
-                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold" style={{ color: primaryColor }}>GH₵ {totalCost.toFixed(2)}</p>
+                        <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-xl sm:text-2xl font-bold" style={{ color: primaryColor }}>GH₵ {totalCost.toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">Data Cost</p>
                         </div>
-                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold text-green-500">GH₵ {grandTotal.toFixed(2)}</p>
+                        <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-xl sm:text-2xl font-bold text-green-500">GH₵ {grandTotal.toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">Total (incl. fees)</p>
                         </div>
                       </div>
@@ -1514,8 +1173,8 @@ const SubSubagentStorefront = () => {
                       
                       <div className="flex gap-3 flex-wrap">
                         <Button
-                          variant="hero"
                           className="flex-1"
+                          style={{ background: primaryColor, color: primaryForeground }}
                           disabled={bulkProcessing || parsed.length === 0}
                           onClick={async () => {
                             if (parsed.length === 0 || !store) return;
@@ -1524,7 +1183,7 @@ const SubSubagentStorefront = () => {
                             try {
                               const recipients = parsed.map(r => {
                                 const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
-                                const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                                const price = pkg ? (subagentPrices[pkg.id] ?? pkg.price) : 0;
                                 return {
                                   phone: r.phone,
                                   size_gb: r.size,
@@ -1547,7 +1206,7 @@ const SubSubagentStorefront = () => {
                                     recipients: recipients,
                                     total_gb: totalGb,
                                     recipient_count: parsed.length,
-                                    agent_store_id: store.id
+                                    subagent_store_id: store.id
                                   }
                                 }
                               });
@@ -1577,109 +1236,132 @@ const SubSubagentStorefront = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      ) : activeCategory === "afa" ? (
-        <div className="w-full pb-20">
-          <AFAPackagesDisplay
-            agentStoreId={store?.id}
-            onRegisterClick={(packageId, packageName, price) => {
-              setPaymentPkg({
-                id: packageId,
-                size_gb: 0,
-                price: store?.afa_bundle_price || price,
-                network: "mtn",
-                callbackUrl: typeof window !== 'undefined' ? window.location.href : '',
-                agentStoreId: store?.id
-              });
-            }}
-            themeColor={primaryColor}
-          />
-        </div>
-      ) : (
-        <div className="container pb-20">{renderComingSoon()}</div>
-      )}
-
-      {/* Footer */}
-      <footer className="border-t border-border py-8 bg-card/50">
-        <div className="container text-center space-y-3">
-          <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-            <a
-              href={whatsappLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              <img
-                src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-                alt="WhatsApp"
-                className="h-4 w-4"
-                style={{ filter: "invert(0.5)" }}
-              />
-              {displayWhatsApp}
+        ) : (
+          /* Packages Grid */
+          <>
+          {/* USSD Info Banner */}
+          {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
+            <a href="tel:*380*455#" className="block mb-4 p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
+              <div className="flex items-center justify-center gap-3 text-center">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <Phone className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
+                  <p className="text-xl font-bold font-mono text-primary">*380*455#</p>
+                  <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
+                </div>
+              </div>
             </a>
-            <a
-              href={`tel:${store.support_number}`}
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              <Phone className="h-4 w-4" /> {store.support_number}
-            </a>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Powered by{" "}
-            <span className="font-display font-bold">
-              <span className="text-foreground">ZYTRIX</span>{" "}
-              <span style={{ color: primaryColor }}>TECH</span>
-            </span>
-          </p>
-          <p className="text-sm text-muted-foreground pt-2">
-            Already an agent?{" "}
-            <a 
-              href="https://agentsstore.shop/login"
-              className="font-semibold hover:underline"
-              style={{ color: primaryColor }}
-            >
-              Login here
-            </a>
-          </p>
-        </div>
-      </footer>
-
-      {/* WhatsApp group FAB */}
-      {groupLink && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <a
-            href={groupLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-[#25D366] hover:bg-[#20B859] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105"
-            style={{ padding: showGroupTooltip ? "0.75rem 1.5rem" : "0.75rem" }}
-          >
-            <img
-              src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-              alt="WhatsApp"
-              className="h-6 w-6"
-              style={{ filter: "brightness(0) invert(1)" }}
-            />
-            {showGroupTooltip && (
-              <span className="font-medium text-sm whitespace-nowrap">Join WhatsApp Group</span>
+          )}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 300px), 1fr))` }}>
+            {filteredPackages.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No packages available</p>
+              </div>
+            ) : (
+              filteredPackages.map((pkg) => {
+                const price = getPrice(pkg);
+      // COMMENTED OUT: mashup packages deactivated
+      const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
+      // Show Express badge only on specific mtn_mashup packages (matching flyer image)
+      const showExpress = false; // pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
+                return (
+                  <Card 
+                    key={pkg.id} 
+                    className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer w-full" 
+                    style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBg, borderColor: "var(--border)" }}
+                    onClick={() => { setPaymentPkg(pkg); setPaymentOpen(true); }}
+                  >
+                    <CardContent className="p-6 text-center space-y-4">
+                      {isMTNMashup ? (
+                        <>
+                          <div className="relative bg-white/20 rounded-lg p-3 mb-3">
+                            {showExpress && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold">Express</div>}
+                            <p className="font-semibold text-base text-white">Special MTN Mashup</p>
+                            <p className="text-xs opacity-90 text-white">Data Bundle</p>
+                          </div>
+                          <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-white">{pkg.size_gb_text}</p>
+                          <p className="text-base font-medium text-white">GH₵ {Number(price).toFixed(2)} - Valid forever</p>
+                          <div className="space-y-2 text-sm text-white">
+                            <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
+                          </div>
+                          <Button variant="secondary" size="lg" className="w-full font-semibold bg-orange-700 hover:bg-orange-800 text-white border-0">Buy Now</Button>
+                        </>
+                      ) : (
+                        <>
+                          <Badge style={{ background: getNetworkColor(pkg.network), color: "#000" }}>{formatNetworkName(pkg.network)}</Badge>
+                          <p className="text-3xl font-bold" style={{ color: primaryColor }}>{pkg.size_gb}<span className="text-lg text-muted-foreground">GB</span></p>
+                          <p className="text-xl font-semibold text-green-400">GH₵ {Number(price).toFixed(2)}</p>
+                          <Button size="lg" className="w-full font-semibold" style={{ background: primaryColor, color: primaryForeground }}>Buy Now</Button>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
-          </a>
-        </div>
-      )}
+          </div>
+          </>
+        )}
 
-      {/* Payment dialog */}
+        {/* Support */}
+        <Card style={{ background: cardBg }} className="border-border">
+          <CardContent className="p-4">
+            <h3 className="font-semibold mb-3" style={{ color: primaryColor }}>Need Help?</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-3">
+                <Phone className="h-5 w-5 flex-shrink-0" style={{ color: primaryColor }} />
+                <div>
+                  <p className="text-muted-foreground text-xs">Support</p>
+                  <p className="font-mono cursor-pointer hover:underline" onClick={() => { navigator.clipboard.writeText(store.support_number || ""); toast({ title: "Copied!" }); }}>
+                    {formatDisplayPhone(store.support_number || "")} <Copy className="h-3 w-3 inline" />
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <MessageCircle className="h-5 w-5 flex-shrink-0" style={{ color: primaryColor }} />
+                <div>
+                  <p className="text-muted-foreground text-xs">WhatsApp</p>
+                  <a href={`${whatsappLink}?text=Hello, I need help with my order.`} target="_blank" rel="noopener noreferrer" className="hover:underline">{displayWhatsApp}</a>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <footer className="text-center py-6 border-t border-border space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Powered by <span className="font-bold">ZYTRIX <span style={{ color: primaryColor }}>TECH</span></span>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            agent login? <a href={DOMAINS.getSubSubagentLoginUrl()} className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            store owner login? <a href="https://agentsstore.shop/login" className="font-semibold hover:underline" style={{ color: primaryColor }}>Login here</a>
+          </p>
+        </footer>
+      </main>
+
+      {/* Payment Dialog */}
       {paymentPkg && (
         <PaymentDialog
-          open={!!paymentPkg}
-          onOpenChange={(v) => !v && setPaymentPkg(null)}
+          isOpen={paymentOpen}
+          onOpenChange={setPaymentOpen}
           package={paymentPkg}
-          network={networkFilter}
-          price={Number(selectedPaymentPrice)}
-          agentStoreId={store.id}
+          packageId={paymentPkg.id}
+          price={selectedPaymentPrice}
+          storeId={store.agent_store_id}
+          subagentStoreId={store.id}
+          phoneNumber={customerPhone}
+          onPhoneNumberChange={setCustomerPhone}
+          storeName={store.store_name}
         />
       )}
-      <PaymentVerifier />
-      <AFARegistrationSuccess />
+
+      <PaymentVerifier storeId={store.id} isSubagent={true} />
 
       {/* Report Complaint Dialog */}
       {reportOrder && (
@@ -1687,16 +1369,33 @@ const SubSubagentStorefront = () => {
           open={reportDialogOpen}
           onOpenChange={setReportDialogOpen}
           order={reportOrder}
-          complaintType="agent"
-          agentStoreId={store?.id}
+          complaintType="subagent"
+          subagentStoreId={store.id}
         />
+      )}
+
+      {/* Floating WhatsApp Group Icon */}
+      {groupLink && (
+        <a
+          href={groupLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow-lg hover:scale-105 transition-transform"
+          style={{ background: "#25D366", color: "#fff" }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+          </svg>
+          <span className="font-semibold text-sm">Join WhatsApp Group</span>
+        </a>
       )}
 
       {/* Claim Free Data Dialog */}
       <ClaimFreeDataDialog
         open={claimFreeDataOpen}
         onOpenChange={setClaimFreeDataOpen}
-        storeId={store?.id}
+        storeId={store.agent_store_id}
+        subagentStoreId={store.id}
       />
 
       {/* Claim Free Data FAB - draggable */}
@@ -1704,7 +1403,7 @@ const SubSubagentStorefront = () => {
         <DraggableFAB
           initialBottom={groupLink ? 88 : 24}
           initialRight={24}
-          storageKey="claim-free-data-agent"
+          storageKey="claim-free-data-subagent"
           onClick={() => setClaimFreeDataOpen(true)}
           title="Claim Free Data"
         >
@@ -1715,6 +1414,6 @@ const SubSubagentStorefront = () => {
       )}
     </div>
   );
-};
+}
 
 export default SubSubagentStorefront;
