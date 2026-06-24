@@ -186,7 +186,6 @@ const UserDashboard = () => {
           api_key: newApiKey,
           is_agent: false,
           is_user: true,
-          role: "customer",
           wallet: existingApiWallet,
           updated_at: new Date().toISOString(),
         }, {
