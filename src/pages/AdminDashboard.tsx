@@ -2732,73 +2732,100 @@ const AdminDashboard = () => {
           )}
 
           {/* CUSTOMERS TAB */}
-          {canSee("customers") && (
+          {canSee("customers") && section === "customers" && (
+            (() => {
+              if (customers.length === 0 && section === "customers") {
+                fetchCustomers().then(data => setCustomers(data ?? []));
+              }
+              return (
             <TabsContent value="customers" className="space-y-4">
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Customers Directory
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="relative max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Search by name or email..." 
-                      value={customerSearchTerm}
-                      onChange={(e) => setCustomerSearchTerm(e.target.value)}
-                      className="pl-10" 
-                    />
-                  </div>
-                  
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Phone</TableHead>
-                          <TableHead>Total Orders</TableHead>
-                          <TableHead>Total Spent</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Member Since</TableHead>
-                          <TableHead>Last Purchase</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {customers
-                          .filter(c => 
-                            !customerSearchTerm || 
-                            `${c.first_name} ${c.last_name}`.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-                            c.email?.toLowerCase().includes(customerSearchTerm.toLowerCase())
-                          )
-                          .map((customer) => (
-                            <TableRow key={customer.id}>
-                              <TableCell className="font-medium">{customer.first_name || ''} {customer.last_name || ''}</TableCell>
-                              <TableCell>{customer.email || '—'}</TableCell>
-                              <TableCell>{customer.phone_number || '—'}</TableCell>
-                              <TableCell>{customer.total_orders || 0}</TableCell>
-                              <TableCell>GH₵ {Number(customer.total_purchases || 0).toFixed(2)}</TableCell>
-                              <TableCell>
-                                <Badge variant={customer.status === 'active' ? 'default' : customer.status === 'inactive' ? 'secondary' : 'destructive'}>
-                                  {customer.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {new Date(customer.customer_since).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {customer.last_purchase_date ? new Date(customer.last_purchase_date).toLocaleDateString() : '—'}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="flex gap-2 flex-wrap">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search by name or email..." 
+                    className="pl-10" 
+                    value={customerSearchTerm}
+                    onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              {customers.length === 0 ? (
+                <Card className="border-border">
+                  <CardContent className="py-12">
+                    <p className="text-center text-muted-foreground">No customers registered yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Total Customers: {customers.length}
+                  </p>
+                  {customers
+                    .filter(c => 
+                      !customerSearchTerm || 
+                      `${c.first_name} ${c.last_name}`.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+                      c.email?.toLowerCase().includes(customerSearchTerm.toLowerCase())
+                    )
+                    .map((customer) => (
+                    <Card key={customer.id} className="border-border bg-card/50">
+                      <CardContent className="p-3 md:p-6">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
+                          <div className="flex-1 space-y-2 md:space-y-3 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-display font-bold text-base md:text-lg text-foreground truncate">{customer.first_name || 'Customer'} {customer.last_name || ''}</h3>
+                              <Badge variant={customer.status === 'active' ? 'default' : customer.status === 'inactive' ? 'secondary' : 'destructive'}>
+                                {customer.status || 'active'}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 text-xs md:text-sm">
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Email</p>
+                                <p className="font-semibold text-foreground truncate">{customer.email || '—'}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Phone</p>
+                                <p className="font-semibold text-foreground">{customer.phone_number || '—'}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Total Orders</p>
+                                <p className="font-semibold text-foreground">{customer.total_orders || 0}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Total Spent</p>
+                                <p className="font-bold text-green-400">GH₵ {Number(customer.total_purchases || 0).toFixed(2)}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Member Since</p>
+                                <p className="font-semibold text-foreground">{new Date(customer.customer_since).toLocaleDateString()}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-muted-foreground text-xs">Last Purchase</p>
+                                <p className="font-semibold text-foreground">{customer.last_purchase_date ? new Date(customer.last_purchase_date).toLocaleDateString() : '—'}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => toast({ title: "Customer", description: `Viewing ${customer.first_name} ${customer.last_name}'s profile` })}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View Profile
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
+              )}
             </TabsContent>
+              );
+            })()
           )}
 
           {/* NOTIFICATIONS TAB */}
