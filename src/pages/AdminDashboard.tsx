@@ -471,6 +471,8 @@ const AdminDashboard = () => {
       } else if (tabValue === "customers") {
         const data = await fetchCustomers();
         setCustomers(data ?? []);
+      } else if (tabValue === "sub_subagents") {
+        await fetchSubSubagents();
       } else if (tabValue === "api_errors") {
         const logs = await getAPIErrorLogs({ resolved: false, limit: 1000 });
         setAPIErrors(logs ?? []);
@@ -549,14 +551,12 @@ const AdminDashboard = () => {
   // Fetch sub-subagents with their parent subagent info
   const fetchSubSubagents = async () => {
     try {
-      console.log("[v0] Starting to fetch sub-subagents...");
       const { data, error } = await supabase
         .from("sub_subagent_stores")
         .select("*, subagent_stores(id, store_name, agent_store_id)")
         .order("created_at", { ascending: false })
         .limit(200);
       
-      console.log("[v0] Sub-subagents fetch result - Error:", error, "Data count:", data?.length);
       if (error) throw error;
       setSubSubagents(data || []);
     } catch (error) {
@@ -567,9 +567,7 @@ const AdminDashboard = () => {
 
   // Load data when active tab changes
   useEffect(() => {
-    console.log("[v0] Tab changed to:", activeTab, "Sub-subagents loaded:", subSubagents.length);
     if (activeTab === "sub_subagents") {
-      console.log("[v0] Fetching sub-subagents...");
       fetchSubSubagents();
     } else if (activeTab === "customers" && customers.length === 0) {
       fetchCustomers();
