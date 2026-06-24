@@ -551,16 +551,27 @@ const AdminDashboard = () => {
   // Fetch sub-subagents with their parent subagent info
   const fetchSubSubagents = async () => {
     try {
+      console.log("[v0] Fetching sub-subagents from Supabase...");
       const { data, error } = await supabase
         .from("sub_subagent_stores")
         .select("*, subagent_stores(id, store_name, agent_store_id)")
         .order("created_at", { ascending: false })
         .limit(200);
       
-      if (error) throw error;
+      console.log("[v0] Sub-subagents fetch - Error:", error?.message, "Data count:", data?.length || 0);
+      
+      if (error) {
+        console.error("[v0] Supabase error:", error);
+        toast({ title: "Error", description: "Failed to fetch sub-subagents", variant: "destructive" });
+        setSubSubagents([]);
+        return;
+      }
+      
+      console.log("[v0] Successfully fetched", data?.length || 0, "sub-subagents");
       setSubSubagents(data || []);
     } catch (error) {
-      console.error("[v0] Error fetching sub-subagents:", error);
+      console.error("[v0] Exception fetching sub-subagents:", error);
+      toast({ title: "Error", description: "Failed to load sub-subagents", variant: "destructive" });
       setSubSubagents([]);
     }
   };
@@ -2235,9 +2246,10 @@ const AdminDashboard = () => {
               </div>
               
               {subSubagents.length === 0 ? (
-                <Card className="border-border">
-                  <CardContent className="py-12">
-                    <p className="text-center text-muted-foreground">No sub-subagents registered yet.</p>
+                <Card className="border-yellow-500/30 bg-yellow-500/5">
+                  <CardContent className="py-8 space-y-3 text-center">
+                    <p className="text-muted-foreground font-semibold">No sub-subagents found.</p>
+                    <p className="text-xs text-muted-foreground">Check the Subagents tab to manage sub-subagents.</p>
                   </CardContent>
                 </Card>
               ) : (
