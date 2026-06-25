@@ -1663,47 +1663,12 @@ const AgentDashboard = () => {
                       <p className="text-sm text-muted-foreground">My Wallet</p>
                       <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
                       {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
-                      <details className="mt-3 cursor-pointer">
-                        <summary className="text-xs text-muted-foreground hover:text-yellow-400 transition-colors">📊 View Detailed Breakdown</summary>
-                        <div className="mt-3 space-y-2 text-xs border-t border-yellow-500/20 pt-2">
-                          <div className="font-semibold text-yellow-300 mb-2">Profit Sources:</div>
-                          <div className="flex justify-between pl-2">
-                            <span className="text-muted-foreground">AFA Registration:</span>
-                            <span className="text-green-400 font-semibold">+GH₵ {profitBreakdown.afaProfit.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between pl-2">
-                            <span className="text-muted-foreground">Storefront Sales:</span>
-                            <span className="text-green-400 font-semibold">+GH₵ {profitBreakdown.storefrontProfit.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between pl-2">
-                            <span className="text-muted-foreground">Subagent Registration Fees:</span>
-                            <span className="text-green-400 font-semibold">+GH₵ {profitBreakdown.subagentProfit.toFixed(2)}</span>
-                          </div>
-                          <div className="border-t border-yellow-500/20 pt-2 mt-2">
-                            <div className="font-semibold text-yellow-300 mb-2">Subtotal Profit:</div>
-                            <div className="flex justify-between pl-2">
-                              <span className="text-green-400 font-bold">+GH₵ {profitBreakdown.totalProfit.toFixed(2)}</span>
-                            </div>
-                          </div>
-                          <div className="border-t border-yellow-500/20 pt-2 mt-2">
-                            <div className="font-semibold text-yellow-300 mb-2">Transactions:</div>
-                            <div className="flex justify-between pl-2">
-                              <span className="text-muted-foreground">Top-ups:</span>
-                              <span className="text-blue-400 font-semibold">+GH₵ {(topupHistory?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0).toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between pl-2 mt-1">
-                              <span className="text-muted-foreground">Withdrawals:</span>
-                              <span className="text-red-400 font-semibold">-GH₵ {(withdrawals?.reduce((sum, w) => sum + (Number(w.amount) || 0), 0) || 0).toFixed(2)}</span>
-                            </div>
-                          </div>
-                          <div className="border-t border-yellow-500/20 pt-2 mt-2">
-                            <div className="font-semibold text-yellow-300">Total Wallet Balance:</div>
-                            <div className="flex justify-between pl-2 mt-1">
-                              <span className="text-yellow-400 font-bold">GH₵ {(profitBreakdown.totalProfit + (topupHistory?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0) - (withdrawals?.reduce((sum, w) => sum + (Number(w.amount) || 0), 0) || 0)).toFixed(2)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </details>
+                      <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs">
+                        <p className="text-yellow-300 font-semibold mb-2">What is My Wallet?</p>
+                        <p className="text-muted-foreground leading-relaxed">
+                          Your wallet is your account balance that accumulates from your store sales and referral earnings. You can use it to purchase data packages for your store, or withdraw it to your mobile money or bank account. The wallet balance updates automatically with each transaction.
+                        </p>
+                      </div>
                     </div>
                     <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                   </div>
@@ -2412,6 +2377,20 @@ const AgentDashboard = () => {
                           })()}
                         </div>
                       )}
+
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3">
+                        <p className="text-xs text-blue-400 font-semibold mb-2">Withdrawal Fees</p>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Below GH₵ 100:</span>
+                            <span className="text-blue-300 font-semibold">5% fee</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">GH₵ 100 and above:</span>
+                            <span className="text-blue-300 font-semibold">1.5% fee</span>
+                          </div>
+                        </div>
+                      </div>
 
                       <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
                         <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
