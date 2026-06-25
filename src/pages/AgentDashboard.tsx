@@ -1157,43 +1157,30 @@ const AgentDashboard = () => {
         return; 
       }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
-      if (recipientType === "bank") {
-        if (!bankName.trim() || !bankCode.trim() || !accountNumber.trim()) {
-          toast({ title: "Fill in all bank details", variant: "destructive" }); 
-          return; 
-        }
-      } else {
-        if (!mobileNumber.trim()) { toast({ title: "Enter mobile number", variant: "destructive" }); return; }
-      }
+      if (!mobileNumber.trim()) { toast({ title: "Enter mobile number", variant: "destructive" }); return; }
     }
     
     setWithdrawLoading(true);
     try {
+      // Calculate fee-deducted amount (5% fee means user receives 95%)
+      const amountAfterFee = amt * 0.95;
+      
       const payload: any = {
         requester_type: "agent",
         requester_id: store.id,
-        amount: amt,
+        amount: amt, // Original amount for fee calculation
+        amount_to_send: amountAfterFee, // Amount after 5% fee deduction
         withdrawal_source: withdrawSource === "subagent_commission" ? "subagent_commission_balance" : "wallet_balance",
       };
 
-      // If creating new recipient, include recipient details
+      // If creating new recipient, include recipient details (only mobile money)
       if (createNewRecipient) {
-        if (recipientType === "bank") {
-          payload.recipient_details = {
-            account_holder_name: recipientName,
-            provider_type: "bank",
-            bank_name: bankName,
-            bank_code: bankCode,
-            account_number: accountNumber,
-          };
-        } else {
-          payload.recipient_details = {
-            account_holder_name: recipientName,
-            provider_type: "mobile_money",
-            mobile_money_network: mobileNetwork,
-            mobile_money_number: mobileNumber,
-          };
-        }
+        payload.recipient_details = {
+          account_holder_name: recipientName,
+          provider_type: "mobile_money",
+          mobile_money_network: mobileNetwork,
+          mobile_money_number: mobileNumber,
+        };
       } else {
         // Use existing recipient
         payload.recipient_id = selectedRecipient;
@@ -1223,7 +1210,7 @@ const AgentDashboard = () => {
         throw new Error(data.error || "Withdrawal failed");
       }
 
-      toast({ title: "Withdrawal initiated!", description: `GH₵ ${amt.toFixed(2)} will be transferred soon.` });
+      toast({ title: "Transfer Sent!", description: `GH₵ ${amountAfterFee.toFixed(2)} sent instantly (after 5% fee)` });
       setWithdrawAmount("");
       setSelectedRecipient("");
       setCreateNewRecipient(false);
@@ -2241,26 +2228,6 @@ const AgentDashboard = () => {
                     </Button>
                     
                     <div className="space-y-3 border border-border rounded-lg p-4">
-                      <div className="space-y-2">
-                        <Label>Recipient Type</Label>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant={recipientType === "bank" ? "default" : "outline"} 
-                            className="flex-1"
-                            onClick={() => setRecipientType("bank")}
-                          >
-                            Bank Account
-                          </Button>
-                          <Button 
-                            variant={recipientType === "mobile_money" ? "default" : "outline"} 
-                            className="flex-1"
-                            onClick={() => setRecipientType("mobile_money")}
-                          >
-                            Mobile Money
-                          </Button>
-                        </div>
-                      </div>
-                      
                       <div className="space-y-1">
                         <Label>Full Name</Label>
                         <Input 
@@ -2270,58 +2237,28 @@ const AgentDashboard = () => {
                         />
                       </div>
                       
-                      {recipientType === "bank" ? (
-                        <>
-                          <div className="space-y-1">
-                            <Label>Bank Name</Label>
-                            <Input 
-                              placeholder="e.g., GCB Bank" 
-                              value={bankName}
-                              onChange={e => setBankName(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label>Bank Code</Label>
-                            <Input 
-                              placeholder="e.g., 030" 
-                              value={bankCode}
-                              onChange={e => setBankCode(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label>Account Number</Label>
-                            <Input 
-                              placeholder="1234567890" 
-                              value={accountNumber}
-                              onChange={e => setAccountNumber(e.target.value)}
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="space-y-1">
-                            <Label>Network</Label>
-                            <Select value={mobileNetwork} onValueChange={setMobileNetwork}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="mtn">MTN</SelectItem>
-                                <SelectItem value="telecel">Telecel</SelectItem>
-                                <SelectItem value="airteltigo">AirtelTigo</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label>Mobile Number</Label>
-                            <Input 
-                              placeholder="024XXXXXXX" 
-                              value={mobileNumber}
-                              onChange={e => setMobileNumber(e.target.value)}
-                            />
-                          </div>
-                        </>
-                      )}
+                      <div className="space-y-1">
+                        <Label>Mobile Network</Label>
+                        <Select value={mobileNetwork} onValueChange={setMobileNetwork}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mtn">MTN</SelectItem>
+                            <SelectItem value="telecel">Telecel</SelectItem>
+                            <SelectItem value="airteltigo">AirtelTigo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label>Mobile Number</Label>
+                        <Input 
+                          placeholder="024XXXXXXX" 
+                          value={mobileNumber}
+                          onChange={e => setMobileNumber(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </>
                 )}
@@ -2375,7 +2312,7 @@ const AgentDashboard = () => {
                         </p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Maximum: GH₵ {(withdrawSource === "subagent_commission" ? Number(store.subagent_commission_balance ?? 0) : Number(store.wallet_balance ?? 0)).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Processed Instantly ⚡</p>
                     </div>
                   </>
                 )}
@@ -2429,7 +2366,7 @@ const AgentDashboard = () => {
                         </p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Maximum: GH₵ {(withdrawSource === "subagent_commission" ? Number(store.subagent_commission_balance ?? 0) : Number(store.wallet_balance ?? 0)).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Processed Instantly ⚡</p>
                     </div>
                   </>
                 )}
