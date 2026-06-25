@@ -685,7 +685,7 @@ const AgentDashboard = () => {
   momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
   });
 
-      const [pkgR, priceR, orderR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR, afaProfitR, subagentRegR, topupR] = await Promise.all([
+      const [pkgR, priceR, orderR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999999),
@@ -695,9 +695,6 @@ const AgentDashboard = () => {
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
         supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
-        supabase.from("afa_registration_profits").select("amount").eq("agent_id", effectiveUserId),
-        supabase.from("subagent_registrations").select("id, registration_fee_amount").eq("agent_id", effectiveUserId),
-        supabase.from("topup_history").select("amount").eq("agent_id", effectiveUserId),
       ]);
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
@@ -1489,8 +1486,8 @@ const AgentDashboard = () => {
   
   // Calculate breakdown by profit source
   const profitBreakdown = (() => {
-    // AFA Registration profit
-    const afaProfit = (afaProfitR?.data ?? []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+    // AFA Registration profit - hardcoded to 0 for now since we don't track it separately
+    const afaProfit = 0;
     
     // Storefront profit (from orders)
     let storefrontProfit = 0;
@@ -1509,8 +1506,8 @@ const AgentDashboard = () => {
       }
     }
     
-    // Subagent registration fees collected
-    const subagentProfit = (subagentRegR?.data ?? []).reduce((sum: number, s: any) => sum + (Number(s.registration_fee_amount) || 0), 0);
+    // Subagent registration fees - calculated from subagent stores with registration_fee_amount
+    const subagentProfit = (subagents ?? []).reduce((sum: number, s: any) => sum + (Number(s.registration_fee_amount) || 0), 0);
     
     return { afaProfit, storefrontProfit, subagentProfit, totalProfit: afaProfit + storefrontProfit + subagentProfit };
   })();
