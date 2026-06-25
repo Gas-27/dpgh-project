@@ -2540,12 +2540,54 @@ const SubagentDashboard = () => {
                 
                 {!createNewRecipient && (transferRecipients.length > 0 || selectedRecipient) && (
                   <>
-                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                      <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH₵ {availableWalletBalance.toFixed(2)}</span></p>
-                      {pendingWithdrawalAmount > 0 && (
-                        <p className="text-xs text-yellow-400 mt-2">
-                          (GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal - cannot be used)
-                        </p>
+                    <div className="space-y-3">
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1">
+                          <Label>Amount (GH₵)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 20.00"
+                            value={withdrawAmount}
+                            onChange={e => setWithdrawAmount(e.target.value)}
+                            disabled={hasPendingWithdrawal}
+                          />
+                        </div>
+                        <Button 
+                          variant="hero" 
+                          onClick={handleRequestWithdrawal} 
+                          disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
+                        >
+                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                          Transfer
+                        </Button>
+                      </div>
+
+                      {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                        <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
+                          {(() => {
+                            const amt = parseFloat(withdrawAmount);
+                            const feePercentage = amt < 100 ? 0.05 : 0.015;
+                            const feeAmount = amt * feePercentage;
+                            const recipientAmount = amt - feeAmount;
+                            return (
+                              <>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Amount to Deduct:</span>
+                                  <span>GH₵ {amt.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
+                                  <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
+                                  <span>Recipient Receives:</span>
+                                  <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
                       )}
                     </div>
                     
@@ -2574,18 +2616,28 @@ const SubagentDashboard = () => {
 
                       {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
                         <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Amount:</span>
-                            <span>GH₵ {parseFloat(withdrawAmount).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Fee (5%):</span>
-                            <span className="text-red-400">GH₵ {(parseFloat(withdrawAmount) * 0.05).toFixed(2)}</span>
-                          </div>
-                          <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
-                            <span>You will receive:</span>
-                            <span className="text-green-400">GH₵ {(parseFloat(withdrawAmount) * 0.95).toFixed(2)}</span>
-                          </div>
+                          {(() => {
+                            const amt = parseFloat(withdrawAmount);
+                            const feePercentage = amt < 100 ? 0.05 : 0.015;
+                            const feeAmount = amt * feePercentage;
+                            const recipientAmount = amt - feeAmount;
+                            return (
+                              <>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Amount to Deduct:</span>
+                                  <span>GH₵ {amt.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
+                                  <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
+                                  <span>Recipient Receives:</span>
+                                  <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -2636,18 +2688,28 @@ const SubagentDashboard = () => {
 
                       {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
                         <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Amount:</span>
-                            <span>GH₵ {parseFloat(withdrawAmount).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Fee (5%):</span>
-                            <span className="text-red-400">GH₵ {(parseFloat(withdrawAmount) * 0.05).toFixed(2)}</span>
-                          </div>
-                          <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
-                            <span>You will receive:</span>
-                            <span className="text-green-400">GH₵ {(parseFloat(withdrawAmount) * 0.95).toFixed(2)}</span>
-                          </div>
+                          {(() => {
+                            const amt = parseFloat(withdrawAmount);
+                            const feePercentage = amt < 100 ? 0.05 : 0.015;
+                            const feeAmount = amt * feePercentage;
+                            const recipientAmount = amt - feeAmount;
+                            return (
+                              <>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Amount to Deduct:</span>
+                                  <span>GH₵ {amt.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
+                                  <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
+                                  <span>Recipient Receives:</span>
+                                  <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
 

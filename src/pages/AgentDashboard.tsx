@@ -1162,14 +1162,16 @@ const AgentDashboard = () => {
     
     setWithdrawLoading(true);
     try {
-      // Calculate fee-deducted amount (5% fee means user receives 95%)
-      const amountAfterFee = amt * 0.95;
+      // Calculate tiered fee: below 100 = 5%, 100+ = 1.5%
+      const feePercentage = amt < 100 ? 0.05 : 0.015;
+      const amountAfterFee = amt * (1 - feePercentage);
       
       const payload: any = {
         requester_type: "agent",
         requester_id: store.id,
         amount: amountAfterFee, // Send fee-deducted amount to edge function
         original_amount: amt, // Track original amount for records
+        fee_percentage: feePercentage * 100, // Store fee percentage for records
         withdrawal_source: withdrawSource === "subagent_commission" ? "subagent_commission_balance" : "wallet_balance",
       };
 
@@ -2290,18 +2292,28 @@ const AgentDashboard = () => {
 
                       {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
                         <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Amount:</span>
-                            <span>GH₵ {parseFloat(withdrawAmount).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Fee (5%):</span>
-                            <span className="text-red-400">GH₵ {(parseFloat(withdrawAmount) * 0.05).toFixed(2)}</span>
-                          </div>
-                          <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
-                            <span>You will receive:</span>
-                            <span className="text-green-400">GH₵ {(parseFloat(withdrawAmount) * 0.95).toFixed(2)}</span>
-                          </div>
+                          {(() => {
+                            const amt = parseFloat(withdrawAmount);
+                            const feePercentage = amt < 100 ? 0.05 : 0.015;
+                            const feeAmount = amt * feePercentage;
+                            const recipientAmount = amt - feeAmount;
+                            return (
+                              <>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Amount to Deduct:</span>
+                                  <span>GH₵ {amt.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
+                                  <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
+                                  <span>Recipient Receives:</span>
+                                  <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -2344,18 +2356,28 @@ const AgentDashboard = () => {
 
                       {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
                         <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Amount:</span>
-                            <span>GH₵ {parseFloat(withdrawAmount).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Fee (5%):</span>
-                            <span className="text-red-400">GH₵ {(parseFloat(withdrawAmount) * 0.05).toFixed(2)}</span>
-                          </div>
-                          <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
-                            <span>You will receive:</span>
-                            <span className="text-green-400">GH₵ {(parseFloat(withdrawAmount) * 0.95).toFixed(2)}</span>
-                          </div>
+                          {(() => {
+                            const amt = parseFloat(withdrawAmount);
+                            const feePercentage = amt < 100 ? 0.05 : 0.015;
+                            const feeAmount = amt * feePercentage;
+                            const recipientAmount = amt - feeAmount;
+                            return (
+                              <>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Amount to Deduct:</span>
+                                  <span>GH₵ {amt.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
+                                  <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
+                                  <span>Recipient Receives:</span>
+                                  <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -2473,7 +2495,7 @@ const AgentDashboard = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                  <p className="text-sm text-yellow-400 font-semibold">⚠️ Minimum top up amount: GH₵ 100</p>
+                  <p className="text-sm text-yellow-400 font-semibold">⚠�� Minimum top up amount: GH₵ 100</p>
                 </div>
                 <ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground">
                   <li>Dial <span className="font-mono font-bold text-foreground">*170#</span> on your MTN MoMo phone.</li>
