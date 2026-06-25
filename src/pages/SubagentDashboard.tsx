@@ -516,21 +516,21 @@ const SubagentDashboard = () => {
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
           supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("transfer_recipients").select("*").eq("user_id", user.id).eq("status", "active").order("created_at", { ascending: false }),
-          supabase.from("payout_requests").select("*").eq("requester_id", store.id).order("created_at", { ascending: false })
+          supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("sub_subagent_registrations").select("id, registration_fee_amount").eq("subagent_id", store.id)
         ]);
 
         setOrders(ordersResult.data || []);
-        const payoutData = (withdrawResult.data ?? []).map((p: any) => {
-          const recipientDetails = p.recipient_details || {};
+        const payoutData = (payoutReqResult?.data ?? []).map((p: any) => {
+          const recipientDetails = p.transfer_recipients || {};
           return {
             ...p,
-            account_holder_name: p.account_holder_name || recipientDetails.account_holder_name || p.recipient_name || "Unknown",
-            provider_type: p.provider_type || recipientDetails.provider_type,
-            mobile_money_network: p.mobile_money_network || recipientDetails.mobile_money_network,
-            mobile_money_number: p.mobile_money_number || recipientDetails.mobile_money_number,
-            account_number: p.account_number || recipientDetails.account_number,
-            bank_name: p.bank_name || recipientDetails.bank_name,
-            bank_code: p.bank_code || recipientDetails.bank_code,
+            account_holder_name: recipientDetails.account_holder_name || "Unknown",
+            provider_type: recipientDetails.provider_type,
+            mobile_money_network: recipientDetails.mobile_money_network,
+            mobile_money_number: recipientDetails.mobile_money_number,
+            account_number: recipientDetails.account_number,
+            bank_name: recipientDetails.bank_name,
           };
         });
         setWithdrawals(payoutData);

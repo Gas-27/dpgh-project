@@ -685,16 +685,19 @@ const AgentDashboard = () => {
   momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
   });
 
-      const [pkgR, priceR, orderR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR] = await Promise.all([
+      const [pkgR, priceR, orderR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR, afaProfitR, subagentRegR, topupR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999999),
-        supabase.from("payout_requests").select("*").eq("requester_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
         supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
+        supabase.from("afa_registration_profits").select("amount").eq("agent_id", effectiveUserId),
+        supabase.from("subagent_registrations").select("id, registration_fee_amount").eq("agent_id", effectiveUserId),
+        supabase.from("topup_history").select("amount").eq("agent_id", effectiveUserId),
       ]);
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
@@ -724,21 +727,19 @@ const AgentDashboard = () => {
       }));
       setOrders(enrichedOrders);
       const payoutData = (payoutR.data ?? []).map((p: any) => {
-        const recipientDetails = p.recipient_details || {};
-        console.log("[v0] Payout record:", p);
+        const recipientDetails = p.transfer_recipients || {};
         return {
           ...p,
           id: p.id,
           amount: p.amount,
           created_at: p.created_at,
           status: p.status,
-          account_holder_name: p.account_holder_name || recipientDetails.account_holder_name || p.recipient_name || "Unknown",
-          provider_type: p.provider_type || recipientDetails.provider_type || p.payment_method,
-          mobile_money_network: p.mobile_money_network || recipientDetails.mobile_money_network || p.network,
-          mobile_money_number: p.mobile_money_number || recipientDetails.mobile_money_number || p.phone_number,
-          account_number: p.account_number || recipientDetails.account_number,
-          bank_name: p.bank_name || recipientDetails.bank_name,
-          bank_code: p.bank_code || recipientDetails.bank_code,
+          account_holder_name: recipientDetails.account_holder_name || "Unknown",
+          provider_type: recipientDetails.provider_type,
+          mobile_money_network: recipientDetails.mobile_money_network,
+          mobile_money_number: recipientDetails.mobile_money_number,
+          account_number: recipientDetails.account_number,
+          bank_name: recipientDetails.bank_name,
           transfer_code: p.transfer_code,
         };
       });
@@ -1488,14 +1489,11 @@ const AgentDashboard = () => {
   
   // Calculate breakdown by profit source
   const profitBreakdown = (() => {
-    let afaProfit = 0;
-    let storefrontProfit = 0;
-    let subagentProfit = 0;
-    
-    // AFA Registration profit (from afa_registration_profits or similar)
-    // This should come from a registration profit table
+    // AFA Registration profit
+    const afaProfit = (afaProfitR?.data ?? []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
     
     // Storefront profit (from orders)
+    let storefrontProfit = 0;
     const completedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
     for (const order of completedOrders) {
       const orderRevenue = order.selling_price && order.selling_price > 0 
@@ -1511,8 +1509,8 @@ const AgentDashboard = () => {
       }
     }
     
-    // Subagent profit
-    subagentProfit = subagentProfitForAgent || 0;
+    // Subagent registration fees collected
+    const subagentProfit = (subagentRegR?.data ?? []).reduce((sum: number, s: any) => sum + (Number(s.registration_fee_amount) || 0), 0);
     
     return { afaProfit, storefrontProfit, subagentProfit, totalProfit: afaProfit + storefrontProfit + subagentProfit };
   })();
@@ -1671,35 +1669,40 @@ const AgentDashboard = () => {
                       <details className="mt-3 cursor-pointer">
                         <summary className="text-xs text-muted-foreground hover:text-yellow-400 transition-colors">📊 View Detailed Breakdown</summary>
                         <div className="mt-3 space-y-2 text-xs border-t border-yellow-500/20 pt-2">
-                          <div className="font-semibold text-yellow-300 mb-2">💰 Profit Sources:</div>
+                          <div className="font-semibold text-yellow-300 mb-2">Profit Sources:</div>
                           <div className="flex justify-between pl-2">
-                            <span className="text-muted-foreground">AFA Registration Profit:</span>
+                            <span className="text-muted-foreground">AFA Registration:</span>
                             <span className="text-green-400 font-semibold">+GH₵ {profitBreakdown.afaProfit.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between pl-2">
-                            <span className="text-muted-foreground">Storefront Sales Profit:</span>
+                            <span className="text-muted-foreground">Storefront Sales:</span>
                             <span className="text-green-400 font-semibold">+GH₵ {profitBreakdown.storefrontProfit.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between pl-2">
-                            <span className="text-muted-foreground">Subagent Registration Profit:</span>
+                            <span className="text-muted-foreground">Subagent Registration Fees:</span>
                             <span className="text-green-400 font-semibold">+GH₵ {profitBreakdown.subagentProfit.toFixed(2)}</span>
                           </div>
                           <div className="border-t border-yellow-500/20 pt-2 mt-2">
-                            <div className="font-semibold text-yellow-300 mb-2">📈 Total Profit:</div>
+                            <div className="font-semibold text-yellow-300 mb-2">Subtotal Profit:</div>
                             <div className="flex justify-between pl-2">
-                              <span className="text-green-400 font-bold">Total:</span>
                               <span className="text-green-400 font-bold">+GH₵ {profitBreakdown.totalProfit.toFixed(2)}</span>
                             </div>
                           </div>
                           <div className="border-t border-yellow-500/20 pt-2 mt-2">
-                            <div className="font-semibold text-yellow-300 mb-2">💳 Other Sources:</div>
+                            <div className="font-semibold text-yellow-300 mb-2">Transactions:</div>
                             <div className="flex justify-between pl-2">
-                              <span className="text-muted-foreground">Total Top-ups:</span>
+                              <span className="text-muted-foreground">Top-ups:</span>
                               <span className="text-blue-400 font-semibold">+GH₵ {(topupHistory?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between pl-2 mt-1">
-                              <span className="text-muted-foreground">Total Withdrawals:</span>
+                              <span className="text-muted-foreground">Withdrawals:</span>
                               <span className="text-red-400 font-semibold">-GH₵ {(withdrawals?.reduce((sum, w) => sum + (Number(w.amount) || 0), 0) || 0).toFixed(2)}</span>
+                            </div>
+                          </div>
+                          <div className="border-t border-yellow-500/20 pt-2 mt-2">
+                            <div className="font-semibold text-yellow-300">Total Wallet Balance:</div>
+                            <div className="flex justify-between pl-2 mt-1">
+                              <span className="text-yellow-400 font-bold">GH₵ {(profitBreakdown.totalProfit + (topupHistory?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0) - (withdrawals?.reduce((sum, w) => sum + (Number(w.amount) || 0), 0) || 0)).toFixed(2)}</span>
                             </div>
                           </div>
                         </div>
