@@ -2177,29 +2177,64 @@ const SubagentDashboard = () => {
                         <span>How is my wallet calculated?</span>
                         <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
                       </summary>
-                      <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-2">
-                        <p className="text-yellow-300 font-semibold mb-3">Wallet Formula:</p>
-                        <div className="space-y-1 text-muted-foreground text-xs">
-                          <div className="flex justify-between pl-2">
-                            <span>Store Sales Profit:</span>
-                            <span className="text-green-400">+ GH₵ {profitBreakdown.storefrontProfit.toFixed(2)}</span>
+                      <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-3">
+                        <div>
+                          <p className="text-yellow-300 font-semibold mb-2">Your Wallet Balance:</p>
+                          <p className="text-muted-foreground text-xs leading-relaxed mb-3">
+                            Your wallet is where your earnings are stored. When you make sales or earn from referrals, these profits are automatically added to your wallet. You can use your wallet to purchase data for resale or withdraw to your bank/mobile money account.
+                          </p>
+                        </div>
+                        
+                        <div className="border-t border-yellow-500/20 pt-2">
+                          <p className="text-yellow-300 font-semibold mb-2">Income Sources (Added to Wallet):</p>
+                          <div className="space-y-1 text-muted-foreground text-xs">
+                            <div className="flex justify-between pl-2">
+                              <span>Store Sales Profit:</span>
+                              <span className="text-green-400 font-semibold">+ GH₵ {profitBreakdown.storefrontProfit.toFixed(2)}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground pl-2 mb-1">
+                              Profit earned from each data package sold
+                            </div>
+                            
+                            <div className="flex justify-between pl-2 mt-2">
+                              <span>Sub-Subagent Registration Fees:</span>
+                              <span className="text-green-400 font-semibold">+ GH₵ {profitBreakdown.subSubagentProfit.toFixed(2)}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground pl-2 mb-1">
+                              Fees collected when registering sub-subagents
+                            </div>
+                            
+                            <div className="flex justify-between pl-2 mt-2">
+                              <span>Total Profits:</span>
+                              <span className="text-green-400 font-semibold">GH₵ {profitBreakdown.totalProfit.toFixed(2)}</span>
+                            </div>
                           </div>
-                          <div className="flex justify-between pl-2">
-                            <span>Sub-Subagent Registration Profit:</span>
-                            <span className="text-green-400">+ GH₵ {profitBreakdown.subSubagentProfit.toFixed(2)}</span>
+                        </div>
+                        
+                        <div className="border-t border-yellow-500/20 pt-2">
+                          <p className="text-yellow-300 font-semibold mb-2">Wallet Transactions (Deducted):</p>
+                          <div className="space-y-1 text-muted-foreground text-xs">
+                            <div className="flex justify-between pl-2">
+                              <span>Wallet Purchases (Buy Data):</span>
+                              <span className="text-red-400">- GH₵ {walletPurchases.toFixed(2)}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground pl-2 mb-1">
+                              Data purchased using your wallet balance
+                            </div>
+                            
+                            <div className="flex justify-between pl-2 mt-2">
+                              <span>Withdrawals:</span>
+                              <span className="text-red-400">- GH₵ {totalWithdrawals.toFixed(2)}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground pl-2 mb-1">
+                              Money withdrawn to bank/mobile money
+                            </div>
                           </div>
-                          <div className="border-t border-yellow-500/20 my-2"></div>
-                          <div className="flex justify-between pl-2">
-                            <span>Total Withdrawals:</span>
-                            <span className="text-red-400">- GH₵ {totalWithdrawals.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between pl-2">
-                            <span>Wallet Purchases (Buy Data):</span>
-                            <span className="text-red-400">- GH₵ {walletPurchases.toFixed(2)}</span>
-                          </div>
-                          <div className="border-t border-yellow-500/20 my-2"></div>
+                        </div>
+                        
+                        <div className="border-t border-yellow-500/20 pt-2">
                           <div className="flex justify-between pl-2 font-semibold text-yellow-400">
-                            <span>Total Wallet Balance:</span>
+                            <span>Current Wallet Balance:</span>
                             <span>GH₵ {availableWalletBalance.toFixed(2)}</span>
                           </div>
                         </div>
