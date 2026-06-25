@@ -1136,7 +1136,7 @@ const AgentDashboard = () => {
     if (hasPendingWithdrawal) { toast({ title: "Pending withdrawal exists", variant: "destructive" }); return; }
     
     const amt = parseFloat(withdrawAmount);
-    if (!amt || amt < 10) { toast({ title: "Minimum is GH₵ 10.00", variant: "destructive" }); return; }
+    if (!amt || amt < 20) { toast({ title: "Minimum withdrawal is GH₵ 20.00", variant: "destructive" }); return; }
     
     const availableBalance = withdrawSource === "subagent_commission" 
       ? Number(store.subagent_commission_balance ?? 0) 
@@ -2328,56 +2328,108 @@ const AgentDashboard = () => {
                 
                 {!createNewRecipient && (transferRecipients.length > 0 || selectedRecipient) && (
                   <>
-                    <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
-                    
-                    <div className="flex gap-2 items-end">
-                      <div className="flex-1 space-y-1">
-                        <Label>Amount (GH₵)</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          placeholder="e.g. 50.00" 
-                          value={withdrawAmount} 
-                          onChange={e => setWithdrawAmount(e.target.value)} 
-                          disabled={hasPendingWithdrawal} 
-                        />
+                    <div className="space-y-3">
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1">
+                          <Label>Amount (GH₵)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="e.g. 50.00" 
+                            value={withdrawAmount} 
+                            onChange={e => setWithdrawAmount(e.target.value)} 
+                            disabled={hasPendingWithdrawal} 
+                          />
+                        </div>
+                        <Button 
+                          variant="hero" 
+                          onClick={handleWithdraw} 
+                          disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
+                        >
+                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                          Transfer
+                        </Button>
                       </div>
-                      <Button 
-                        variant="hero" 
-                        onClick={handleWithdraw} 
-                        disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
-                      >
-                        {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                        Transfer
-                      </Button>
+
+                      {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                        <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Amount:</span>
+                            <span>GH₵ {parseFloat(withdrawAmount).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Fee (5%):</span>
+                            <span className="text-red-400">GH₵ {(parseFloat(withdrawAmount) * 0.05).toFixed(2)}</span>
+                          </div>
+                          <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
+                            <span>You will receive:</span>
+                            <span className="text-green-400">GH₵ {(parseFloat(withdrawAmount) * 0.95).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
+                        <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
+                        <p className="text-xs text-red-300">
+                          Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
+                        </p>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Maximum: GH₵ {(withdrawSource === "subagent_commission" ? Number(store.subagent_commission_balance ?? 0) : Number(store.wallet_balance ?? 0)).toFixed(2)}</p>
                     </div>
                   </>
                 )}
 
                 {createNewRecipient && (
                   <>
-                    <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
-                    
-                    <div className="flex gap-2 items-end">
-                      <div className="flex-1 space-y-1">
-                        <Label>Amount (GH₵)</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          placeholder="e.g. 50.00" 
-                          value={withdrawAmount} 
-                          onChange={e => setWithdrawAmount(e.target.value)} 
-                          disabled={hasPendingWithdrawal} 
-                        />
+                    <div className="space-y-3">
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1">
+                          <Label>Amount (GH₵)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="e.g. 50.00" 
+                            value={withdrawAmount} 
+                            onChange={e => setWithdrawAmount(e.target.value)} 
+                            disabled={hasPendingWithdrawal} 
+                          />
+                        </div>
+                        <Button 
+                          variant="hero" 
+                          onClick={handleWithdraw} 
+                          disabled={withdrawLoading || hasPendingWithdrawal}
+                        >
+                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                          Transfer
+                        </Button>
                       </div>
-                      <Button 
-                        variant="hero" 
-                        onClick={handleWithdraw} 
-                        disabled={withdrawLoading || hasPendingWithdrawal}
-                      >
-                        {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                        Transfer
-                      </Button>
+
+                      {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                        <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Amount:</span>
+                            <span>GH₵ {parseFloat(withdrawAmount).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Fee (5%):</span>
+                            <span className="text-red-400">GH₵ {(parseFloat(withdrawAmount) * 0.05).toFixed(2)}</span>
+                          </div>
+                          <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
+                            <span>You will receive:</span>
+                            <span className="text-green-400">GH₵ {(parseFloat(withdrawAmount) * 0.95).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
+                        <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
+                        <p className="text-xs text-red-300">
+                          Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
+                        </p>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Maximum: GH₵ {(withdrawSource === "subagent_commission" ? Number(store.subagent_commission_balance ?? 0) : Number(store.wallet_balance ?? 0)).toFixed(2)}</p>
                     </div>
                   </>
                 )}
@@ -2405,9 +2457,17 @@ const AgentDashboard = () => {
                         <TableRow key={w.id}>
                           <TableCell className="text-sm">{new Date(w.created_at).toLocaleString()}</TableCell>
                           <TableCell className="font-bold">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
-                          <TableCell className="text-xs">{w.recipient_name || w.recipient_code}</TableCell>
+                          <TableCell className="text-xs">
+                            <div className="space-y-1">
+                              <p className="font-medium">{w.account_holder_name}</p>
+                              {w.provider_type === "mobile_money" 
+                                ? <p>{w.mobile_money_network?.toUpperCase()}: {w.mobile_money_number}</p>
+                                : <p>Bank: {w.account_number}</p>
+                              }
+                            </div>
+                          </TableCell>
                           <TableCell>
-                            <Badge className={w.status === "success" ? "bg-green-600/20 text-green-400 border-green-600/30" : w.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
+                            <Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : w.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
                               {w.status}
                             </Badge>
                           </TableCell>

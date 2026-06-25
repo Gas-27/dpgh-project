@@ -1140,8 +1140,8 @@ const SubagentDashboard = () => {
     const amount = parseFloat(withdrawAmount);
     
     // Validate minimum withdrawal
-    if (amount < 10) {
-      toast({ title: "Error", description: "Minimum withdrawal is GH₵ 10.00", variant: "destructive" });
+    if (amount < 20) {
+      toast({ title: "Error", description: "Minimum withdrawal is GH₵ 20.00", variant: "destructive" });
       return;
     }
     
@@ -2611,28 +2611,54 @@ const SubagentDashboard = () => {
                       )}
                     </div>
                     
-                    <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
-                    
-                    <div className="flex gap-2 items-end">
-                      <div className="flex-1 space-y-1">
-                        <Label>Amount (GH₵)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g. 10.00"
-                          value={withdrawAmount}
-                          onChange={e => setWithdrawAmount(e.target.value)}
-                          disabled={hasPendingWithdrawal}
-                        />
+                    <div className="space-y-3">
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1">
+                          <Label>Amount (GH₵)</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 20.00"
+                            value={withdrawAmount}
+                            onChange={e => setWithdrawAmount(e.target.value)}
+                            disabled={hasPendingWithdrawal}
+                          />
+                        </div>
+                        <Button 
+                          variant="hero" 
+                          onClick={handleRequestWithdrawal} 
+                          disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
+                        >
+                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                          Transfer
+                        </Button>
                       </div>
-                      <Button 
-                        variant="hero" 
-                        onClick={handleRequestWithdrawal} 
-                        disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
-                      >
-                        {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                        Transfer
-                      </Button>
+
+                      {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                        <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Amount:</span>
+                            <span>GH₵ {parseFloat(withdrawAmount).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Fee (5%):</span>
+                            <span className="text-red-400">GH₵ {(parseFloat(withdrawAmount) * 0.05).toFixed(2)}</span>
+                          </div>
+                          <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
+                            <span>You will receive:</span>
+                            <span className="text-green-400">GH₵ {(parseFloat(withdrawAmount) * 0.95).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
+                        <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
+                        <p className="text-xs text-red-300">
+                          Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
+                        </p>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Maximum: GH₵ {availableWalletBalance.toFixed(2)}</p>
                     </div>
                   </>
                 )}
@@ -2648,28 +2674,53 @@ const SubagentDashboard = () => {
                       )}
                     </div>
                     
-                    <p className="text-xs text-muted-foreground">Minimum: GH₵ 10.00. Processed within 24 hours.</p>
-                    
-                    <div className="flex gap-2 items-end">
-                      <div className="flex-1 space-y-1">
-                        <Label>Amount (GH₵)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g. 10.00"
-                          value={withdrawAmount}
-                          onChange={e => setWithdrawAmount(e.target.value)}
-                          disabled={hasPendingWithdrawal}
-                        />
+                    <div className="space-y-3">
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 20.00"
+                            value={withdrawAmount}
+                            onChange={e => setWithdrawAmount(e.target.value)}
+                            disabled={hasPendingWithdrawal}
+                          />
+                        </div>
+                        <Button 
+                          variant="hero" 
+                          onClick={handleRequestWithdrawal} 
+                          disabled={withdrawLoading || hasPendingWithdrawal}
+                        >
+                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                          Transfer
+                        </Button>
                       </div>
-                      <Button 
-                        variant="hero" 
-                        onClick={handleRequestWithdrawal} 
-                        disabled={withdrawLoading || hasPendingWithdrawal}
-                      >
-                        {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                        Transfer
-                      </Button>
+
+                      {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                        <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Amount:</span>
+                            <span>GH₵ {parseFloat(withdrawAmount).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Fee (5%):</span>
+                            <span className="text-red-400">GH₵ {(parseFloat(withdrawAmount) * 0.05).toFixed(2)}</span>
+                          </div>
+                          <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
+                            <span>You will receive:</span>
+                            <span className="text-green-400">GH₵ {(parseFloat(withdrawAmount) * 0.95).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
+                        <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
+                        <p className="text-xs text-red-300">
+                          Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
+                        </p>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Maximum: GH₵ {availableWalletBalance.toFixed(2)}</p>
                     </div>
                   </>
                 )}
@@ -2689,9 +2740,15 @@ const SubagentDashboard = () => {
                       <div key={w.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
                         <div className="flex-1">
                           <p className="font-medium">GH₵ {w.amount.toFixed(2)}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString()} • {w.recipient_name || w.recipient_code}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {w.provider_type === "mobile_money" 
+                              ? `${w.account_holder_name} • ${w.mobile_money_network?.toUpperCase()}: ${w.mobile_money_number}`
+                              : `${w.account_holder_name} • Bank: ${w.account_number}`
+                            }
+                          </p>
                         </div>
-                        <Badge variant={w.status === "success" ? "default" : w.status === "pending" ? "secondary" : "destructive"}>
+                        <Badge variant={w.status === "completed" ? "default" : w.status === "pending" ? "secondary" : "destructive"}>
                           {w.status}
                         </Badge>
                       </div>
