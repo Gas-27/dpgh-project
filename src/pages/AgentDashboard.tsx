@@ -1666,7 +1666,7 @@ const AgentDashboard = () => {
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵ {filteredProfitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
+              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div className="flex-1"><p className="text-sm text-muted-foreground">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p><details className="mt-2 cursor-pointer group"><summary className="text-xs text-green-300 font-semibold hover:text-green-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-green-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-green-500/10 border border-green-500/30 rounded text-xs space-y-1"><p className="text-green-300 font-semibold mb-1">Total Profit</p><p className="text-muted-foreground text-xs leading-relaxed">This is a display of your profit from store sales and subagent registration fees. This money is already part of your wallet balance and you can spend or withdraw it anytime.</p></div></details></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
               <Card className="border-yellow-500/30 bg-yellow-500/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -1680,42 +1680,19 @@ const AgentDashboard = () => {
                           <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
                         </summary>
                         <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-2">
-                          <p className="text-yellow-300 font-semibold mb-3">Your wallet balance comes from:</p>
-                          <div className="space-y-2 text-muted-foreground text-xs">
-                            <div className="flex justify-between">
-                              <span>+ Total profit from store sales</span>
-                              <span className="text-green-400">GH₵ {profitBreakdown.storefrontProfit.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>+ Top-ups added</span>
-                              <span className="text-green-400">GH₵ {(topupHistory?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0).toFixed(2)}</span>
-                            </div>
-                            {profitBreakdown.afaProfit > 0 && (
-                              <div className="flex justify-between">
-                                <span>+ AFA registration profit</span>
-                                <span className="text-green-400">GH₵ {profitBreakdown.afaProfit.toFixed(2)}</span>
-                              </div>
-                            )}
+                          <p className="text-yellow-300 font-semibold mb-3">Your wallet balance is calculated from:</p>
+                          <div className="space-y-1 text-muted-foreground leading-relaxed">
+                            <p>+ Profits from store sales</p>
                             {profitBreakdown.subagentProfit > 0 && (
-                              <div className="flex justify-between">
-                                <span>+ Subagent registration profit</span>
-                                <span className="text-green-400">GH₵ {profitBreakdown.subagentProfit.toFixed(2)}</span>
-                              </div>
+                              <p>+ Profit from subagent registration (only if you have set it up)</p>
                             )}
-                            <div className="border-t border-yellow-500/20 my-2"></div>
-                            <div className="flex justify-between">
-                              <span>- Data purchased (Buy Data)</span>
-                              <span className="text-red-400">GH₵ {walletPurchases.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>- Total withdrawals</span>
-                              <span className="text-red-400">GH₵ {(withdrawals?.reduce((sum, w) => sum + (Number(w.amount) || 0), 0) || 0).toFixed(2)}</span>
-                            </div>
-                            <div className="border-t border-yellow-500/20 my-2"></div>
-                            <div className="flex justify-between font-semibold text-yellow-400">
-                              <span>= Current wallet balance</span>
-                              <span>GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</span>
-                            </div>
+                            {profitBreakdown.afaProfit > 0 && (
+                              <p>+ Profit from AFA registration (only if it is set up)</p>
+                            )}
+                            <p>+ Wallet top-ups</p>
+                            <p className="text-xs text-muted-foreground mt-1">- Data purchases made using your wallet (Buy Data)</p>
+                            <p className="text-xs text-muted-foreground">- Total withdrawals</p>
+                            <p className="text-yellow-300 font-semibold mt-2">The remaining amount is your current wallet balance.</p>
                           </div>
                         </div>
                       </details>

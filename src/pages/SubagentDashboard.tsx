@@ -2155,11 +2155,16 @@ const SubagentDashboard = () => {
                 </CardContent>
               </Card>
               <Card className="border-border">
-                <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">
-                    {dateFilter !== "all" ? `Profit (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Profit"}
-                  </p>
-                  <p className="font-display text-2xl font-bold mt-1 text-yellow-400">GH₵{totalProfit.toFixed(2)}</p>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-muted-foreground text-sm">
+                        {dateFilter !== "all" ? `Profit (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Profit"}
+                      </p>
+                      <p className="font-display text-2xl font-bold mt-1 text-yellow-400">GH₵{totalProfit.toFixed(2)}</p>
+                      <details className="mt-2 cursor-pointer group"><summary className="text-xs text-yellow-300 font-semibold hover:text-yellow-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-yellow-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-1"><p className="text-yellow-300 font-semibold mb-1">Total Profit</p><p className="text-muted-foreground text-xs leading-relaxed">This is a display of your profit from store sales and sub-subagent registration fees. This money is already part of your wallet balance and you can spend or withdraw it anytime.</p></div></details>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -2178,36 +2183,16 @@ const SubagentDashboard = () => {
                         <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
                       </summary>
                       <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-2">
-                        <p className="text-yellow-300 font-semibold mb-3">Your wallet balance comes from:</p>
-                        <div className="space-y-2 text-muted-foreground text-xs">
-                          <div className="flex justify-between">
-                            <span>+ Total profit from store sales</span>
-                            <span className="text-green-400">GH₵ {profitBreakdown.storefrontProfit.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>+ Top-ups added</span>
-                            <span className="text-green-400">GH₵ {totalTopups.toFixed(2)}</span>
-                          </div>
+                        <p className="text-yellow-300 font-semibold mb-3">Your wallet balance is calculated from:</p>
+                        <div className="space-y-1 text-muted-foreground leading-relaxed">
+                          <p>+ Profits from store sales</p>
                           {profitBreakdown.subSubagentProfit > 0 && (
-                            <div className="flex justify-between">
-                              <span>+ Sub-subagent registration profit</span>
-                              <span className="text-green-400">GH₵ {profitBreakdown.subSubagentProfit.toFixed(2)}</span>
-                            </div>
+                            <p>+ Profit from sub-subagent registration (only if you have set it up)</p>
                           )}
-                          <div className="border-t border-yellow-500/20 my-2"></div>
-                          <div className="flex justify-between">
-                            <span>- Data purchased (Buy Data)</span>
-                            <span className="text-red-400">GH₵ {walletPurchases.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>- Total withdrawals</span>
-                            <span className="text-red-400">GH₵ {totalWithdrawals.toFixed(2)}</span>
-                          </div>
-                          <div className="border-t border-yellow-500/20 my-2"></div>
-                          <div className="flex justify-between font-semibold text-yellow-400">
-                            <span>= Current wallet balance</span>
-                            <span>GH₵ {availableWalletBalance.toFixed(2)}</span>
-                          </div>
+                          <p>+ Wallet top-ups</p>
+                          <p className="text-xs text-muted-foreground mt-1">- Data purchases made using your wallet (Buy Data)</p>
+                          <p className="text-xs text-muted-foreground">- Total withdrawals</p>
+                          <p className="text-yellow-300 font-semibold mt-2">The remaining amount is your current wallet balance.</p>
                         </div>
                       </div>
                     </details>
