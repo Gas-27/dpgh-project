@@ -1873,6 +1873,26 @@ const SubagentDashboard = () => {
   
   // Wallet balance = Profit + Topups - Completed Withdrawals - Wallet Purchases
   const calculatedWalletBalance = totalProfit + totalTopups - completedWithdrawals - walletPurchases;
+  
+  // Calculate profit breakdown by source
+  const profitBreakdown = (() => {
+    let storefrontProfit = 0;
+    let subSubagentProfit = 0;
+    
+    // Storefront profit from orders
+    const completedOrders = allCompletedOrders;
+    for (const order of completedOrders) {
+      const profit = order.profit !== null && order.profit !== undefined && order.profit !== 0 
+        ? Number(order.profit) 
+        : (Number(order.selling_price || order.amount) - (order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0)));
+      storefrontProfit += profit;
+    }
+    
+    // Sub-subagent profit
+    subSubagentProfit = subSubagentProfitForSubagent || 0;
+    
+    return { storefrontProfit, subSubagentProfit, totalProfit: storefrontProfit + subSubagentProfit };
+  })();
   // Prefer database value as it's synced correctly
   const availableWalletBalance = subagentStore?.wallet_balance !== undefined && subagentStore?.wallet_balance !== null 
     ? Number(subagentStore.wallet_balance) 
@@ -2153,19 +2173,38 @@ const SubagentDashboard = () => {
                     <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {availableWalletBalance.toFixed(2)}</p>
                     {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
                     <details className="mt-3 cursor-pointer">
-                      <summary className="text-xs text-muted-foreground hover:text-yellow-400 transition-colors">View Breakdown</summary>
-                      <div className="mt-3 space-y-2 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total Profit:</span>
-                          <span className="text-green-400 font-semibold">+GH₵ {profitStats.totalProfit.toFixed(2)}</span>
+                      <summary className="text-xs text-muted-foreground hover:text-yellow-400 transition-colors">📊 View Detailed Breakdown</summary>
+                      <div className="mt-3 space-y-2 text-xs border-t border-yellow-500/20 pt-2">
+                        <div className="font-semibold text-yellow-300 mb-2">💰 Profit Sources:</div>
+                        <div className="flex justify-between pl-2">
+                          <span className="text-muted-foreground">Storefront Sales Profit:</span>
+                          <span className="text-green-400 font-semibold">+GH₵ {profitBreakdown.storefrontProfit.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total Top-ups:</span>
-                          <span className="text-blue-400 font-semibold">+GH₵ {(topupHistory?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0).toFixed(2)}</span>
+                        <div className="flex justify-between pl-2">
+                          <span className="text-muted-foreground">Sub-Subagent Registration Profit:</span>
+                          <span className="text-green-400 font-semibold">+GH₵ {profitBreakdown.subSubagentProfit.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total Withdrawals:</span>
-                          <span className="text-red-400 font-semibold">-GH₵ {(withdrawals?.reduce((sum, w) => sum + (Number(w.amount) || 0), 0) || 0).toFixed(2)}</span>
+                        <div className="border-t border-yellow-500/20 pt-2 mt-2">
+                          <div className="font-semibold text-yellow-300 mb-2">📈 Total Profit:</div>
+                          <div className="flex justify-between pl-2">
+                            <span className="text-green-400 font-bold">Total:</span>
+                            <span className="text-green-400 font-bold">+GH₵ {profitBreakdown.totalProfit.toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <div className="border-t border-yellow-500/20 pt-2 mt-2">
+                          <div className="font-semibold text-yellow-300 mb-2">💳 Wallet Transactions:</div>
+                          <div className="flex justify-between pl-2">
+                            <span className="text-muted-foreground">Total Top-ups:</span>
+                            <span className="text-blue-400 font-semibold">+GH₵ {totalTopups.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between pl-2 mt-1">
+                            <span className="text-muted-foreground">Wallet Purchases:</span>
+                            <span className="text-orange-400 font-semibold">-GH₵ {walletPurchases.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between pl-2 mt-1">
+                            <span className="text-muted-foreground">Total Withdrawals:</span>
+                            <span className="text-red-400 font-semibold">-GH₵ {totalWithdrawals.toFixed(2)}</span>
+                          </div>
                         </div>
                       </div>
                     </details>
