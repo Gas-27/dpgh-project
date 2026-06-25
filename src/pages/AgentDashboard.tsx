@@ -723,7 +723,7 @@ const AgentDashboard = () => {
         return order;
       }));
       setOrders(enrichedOrders);
-      const payoutData = (payoutReqR.data ?? []).map((p: any) => ({
+      const payoutData = (payoutR.data ?? []).map((p: any) => ({
         ...p,
         id: p.id,
         amount: p.amount,
