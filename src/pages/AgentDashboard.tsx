@@ -695,7 +695,7 @@ const AgentDashboard = () => {
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
         supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
-        supabase.from("payout_requests").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("payout_requests").select("*").eq("requester_id", sd.id).order("created_at", { ascending: false }),
       ]);
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
@@ -1168,8 +1168,8 @@ const AgentDashboard = () => {
       const payload: any = {
         requester_type: "agent",
         requester_id: store.id,
-        amount: amt, // Original amount for fee calculation
-        amount_to_send: amountAfterFee, // Amount after 5% fee deduction
+        amount: amountAfterFee, // Send fee-deducted amount to edge function
+        original_amount: amt, // Track original amount for records
         withdrawal_source: withdrawSource === "subagent_commission" ? "subagent_commission_balance" : "wallet_balance",
       };
 
@@ -1773,7 +1773,7 @@ const AgentDashboard = () => {
               {Object.keys(editedPrices).length > 0 && <Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}><Save className="h-4 w-4 mr-1" />{savingPrices ? "Saving..." : "Save Prices"}</Button>}
             </div>
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-              <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>�� Markup Explanation(Remember to click save after applying markup</p>
+              <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>���� Markup Explanation(Remember to click save after applying markup</p>
               <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network base on the percentage you want all the prices to be increase by  .Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
             </div>
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>

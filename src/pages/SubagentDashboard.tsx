@@ -516,7 +516,7 @@ const SubagentDashboard = () => {
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
           supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("transfer_recipients").select("*").eq("user_id", user.id).eq("status", "active").order("created_at", { ascending: false }),
-          supabase.from("payout_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false })
+          supabase.from("payout_requests").select("*").eq("requester_id", store.id).order("created_at", { ascending: false })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -1182,8 +1182,8 @@ const SubagentDashboard = () => {
       const payload: any = {
         requester_type: "subagent",
         requester_id: subagentStore.id,
-        amount, // Original amount for fee calculation
-        amount_to_send: amountAfterFee, // Amount after 5% fee deduction
+        amount: amountAfterFee, // Send fee-deducted amount to edge function
+        original_amount: amount, // Track original amount for records
         withdrawal_source: "wallet_balance",
       };
 
