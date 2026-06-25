@@ -520,7 +520,20 @@ const SubagentDashboard = () => {
         ]);
 
         setOrders(ordersResult.data || []);
-        setWithdrawals(withdrawResult.data || []);
+        const payoutData = (withdrawResult.data ?? []).map((p: any) => {
+          const recipientDetails = p.recipient_details || {};
+          return {
+            ...p,
+            account_holder_name: p.account_holder_name || recipientDetails.account_holder_name || p.recipient_name || "Unknown",
+            provider_type: p.provider_type || recipientDetails.provider_type,
+            mobile_money_network: p.mobile_money_network || recipientDetails.mobile_money_network,
+            mobile_money_number: p.mobile_money_number || recipientDetails.mobile_money_number,
+            account_number: p.account_number || recipientDetails.account_number,
+            bank_name: p.bank_name || recipientDetails.bank_name,
+            bank_code: p.bank_code || recipientDetails.bank_code,
+          };
+        });
+        setWithdrawals(payoutData);
         setTransferRecipients(recipientsResult.data || []);
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
@@ -674,7 +687,20 @@ const SubagentDashboard = () => {
         }));
 
         setOrders(ordersResult.data || []);
-        setWithdrawals(withdrawResult.data || []);
+        const payoutData2 = (withdrawResult.data ?? []).map((p: any) => {
+          const recipientDetails = p.recipient_details || {};
+          return {
+            ...p,
+            account_holder_name: p.account_holder_name || recipientDetails.account_holder_name || p.recipient_name || "Unknown",
+            provider_type: p.provider_type || recipientDetails.provider_type,
+            mobile_money_network: p.mobile_money_network || recipientDetails.mobile_money_network,
+            mobile_money_number: p.mobile_money_number || recipientDetails.mobile_money_number,
+            account_number: p.account_number || recipientDetails.account_number,
+            bank_name: p.bank_name || recipientDetails.bank_name,
+            bank_code: p.bank_code || recipientDetails.bank_code,
+          };
+        });
+        setWithdrawals(payoutData2);
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
@@ -776,7 +802,20 @@ const SubagentDashboard = () => {
           return order;
         }));
         setOrders(enrichedOrders);
-        setWithdrawals(withdrawResult.data || []);
+        const payoutData3 = (withdrawResult.data ?? []).map((p: any) => {
+          const recipientDetails = p.recipient_details || {};
+          return {
+            ...p,
+            account_holder_name: p.account_holder_name || recipientDetails.account_holder_name || p.recipient_name || "Unknown",
+            provider_type: p.provider_type || recipientDetails.provider_type,
+            mobile_money_network: p.mobile_money_network || recipientDetails.mobile_money_network,
+            mobile_money_number: p.mobile_money_number || recipientDetails.mobile_money_number,
+            account_number: p.account_number || recipientDetails.account_number,
+            bank_name: p.bank_name || recipientDetails.bank_name,
+            bank_code: p.bank_code || recipientDetails.bank_code,
+          };
+        });
+        setWithdrawals(payoutData3);
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
@@ -2109,10 +2148,31 @@ const SubagentDashboard = () => {
             <Card className="border-yellow-500/30 bg-yellow-500/5">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm text-muted-foreground">My Wallet</p>
                     <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {availableWalletBalance.toFixed(2)}</p>
                     {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
+                    <details className="mt-3 cursor-pointer">
+                      <summary className="text-xs text-muted-foreground hover:text-yellow-400 transition-colors">View Breakdown</summary>
+                      <div className="mt-3 space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total Profit:</span>
+                          <span className="text-green-400 font-semibold">+GH₵ {profitStats.totalProfit.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total Top-ups:</span>
+                          <span className="text-blue-400 font-semibold">+GH₵ {(topupHistory?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total Withdrawals:</span>
+                          <span className="text-red-400 font-semibold">-GH₵ {(withdrawals?.reduce((sum, w) => sum + (Number(w.amount) || 0), 0) || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Data Purchases:</span>
+                          <span className="text-red-400 font-semibold">-GH₵ {(buyDataHistory?.reduce((sum, b) => sum + (Number(b.amount_spent) || 0), 0) || 0).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </details>
                   </div>
                   <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                 </div>

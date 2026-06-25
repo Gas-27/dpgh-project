@@ -723,19 +723,24 @@ const AgentDashboard = () => {
         return order;
       }));
       setOrders(enrichedOrders);
-      const payoutData = (payoutR.data ?? []).map((p: any) => ({
-        ...p,
-        id: p.id,
-        amount: p.amount,
-        created_at: p.created_at,
-        status: p.status,
-        account_holder_name: p.account_holder_name || p.recipient_name,
-        provider_type: p.provider_type,
-        mobile_money_network: p.mobile_money_network,
-        mobile_money_number: p.mobile_money_number,
-        account_number: p.account_number,
-        transfer_code: p.transfer_code,
-      }));
+      const payoutData = (payoutR.data ?? []).map((p: any) => {
+        const recipientDetails = p.recipient_details || {};
+        return {
+          ...p,
+          id: p.id,
+          amount: p.amount,
+          created_at: p.created_at,
+          status: p.status,
+          account_holder_name: p.account_holder_name || recipientDetails.account_holder_name || p.recipient_name || "Unknown",
+          provider_type: p.provider_type || recipientDetails.provider_type,
+          mobile_money_network: p.mobile_money_network || recipientDetails.mobile_money_network,
+          mobile_money_number: p.mobile_money_number || recipientDetails.mobile_money_number,
+          account_number: p.account_number || recipientDetails.account_number,
+          bank_name: p.bank_name || recipientDetails.bank_name,
+          bank_code: p.bank_code || recipientDetails.bank_code,
+          transfer_code: p.transfer_code,
+        };
+      });
       setWithdrawals(payoutData);
       setTransferRecipients(recipientsR.data ?? []);
       const subags = subagentR.data ?? [];
@@ -1624,7 +1629,39 @@ const AgentDashboard = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
-              <Card className="border-yellow-500/30 bg-yellow-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">My Wallet</p><p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>{hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}</div><ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" /></div></CardContent></Card>
+              <Card className="border-yellow-500/30 bg-yellow-500/5">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">My Wallet</p>
+                      <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
+                      {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
+                      <details className="mt-3 cursor-pointer">
+                        <summary className="text-xs text-muted-foreground hover:text-yellow-400 transition-colors">View Breakdown</summary>
+                        <div className="mt-3 space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Profit:</span>
+                            <span className="text-green-400 font-semibold">+GH₵ {filteredProfitStats.totalProfit.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Top-ups:</span>
+                            <span className="text-blue-400 font-semibold">+GH₵ {(topupHistory?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) || 0).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Withdrawals:</span>
+                            <span className="text-red-400 font-semibold">-GH₵ {(withdrawals?.reduce((sum, w) => sum + (Number(w.amount) || 0), 0) || 0).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Data Purchases:</span>
+                            <span className="text-red-400 font-semibold">-GH₵ {(buyDataHistory?.reduce((sum, b) => sum + (Number(b.amount_spent) || 0), 0) || 0).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </details>
+                    </div>
+                    <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
+                  </div>
+                </CardContent>
+              </Card>
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Profit from Subagents</p><p className="font-display text-2xl font-bold text-primary mt-1">GH₵ {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Withdraw separately in Wallet tab</p></div><Users className="h-8 w-8 text-primary opacity-50" /></div></CardContent></Card>
             </div>
             
