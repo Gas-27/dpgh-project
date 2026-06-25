@@ -2177,64 +2177,35 @@ const SubagentDashboard = () => {
                         <span>How is my wallet calculated?</span>
                         <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
                       </summary>
-                      <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-3">
-                        <div>
-                          <p className="text-yellow-300 font-semibold mb-2">Your Wallet Balance:</p>
-                          <p className="text-muted-foreground text-xs leading-relaxed mb-3">
-                            Your wallet is where your earnings are stored. When you make sales or earn from referrals, these profits are automatically added to your wallet. You can use your wallet to purchase data for resale or withdraw to your bank/mobile money account.
-                          </p>
-                        </div>
-                        
-                        <div className="border-t border-yellow-500/20 pt-2">
-                          <p className="text-yellow-300 font-semibold mb-2">Income Sources (Added to Wallet):</p>
-                          <div className="space-y-1 text-muted-foreground text-xs">
-                            <div className="flex justify-between pl-2">
-                              <span>Store Sales Profit:</span>
-                              <span className="text-green-400 font-semibold">+ GH₵ {profitBreakdown.storefrontProfit.toFixed(2)}</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground pl-2 mb-1">
-                              Profit earned from each data package sold
-                            </div>
-                            
-                            <div className="flex justify-between pl-2 mt-2">
-                              <span>Sub-Subagent Registration Fees:</span>
-                              <span className="text-green-400 font-semibold">+ GH₵ {profitBreakdown.subSubagentProfit.toFixed(2)}</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground pl-2 mb-1">
-                              Fees collected when registering sub-subagents
-                            </div>
-                            
-                            <div className="flex justify-between pl-2 mt-2">
-                              <span>Total Profits:</span>
-                              <span className="text-green-400 font-semibold">GH₵ {profitBreakdown.totalProfit.toFixed(2)}</span>
-                            </div>
+                      <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-2">
+                        <p className="text-yellow-300 font-semibold mb-3">Your wallet balance comes from:</p>
+                        <div className="space-y-2 text-muted-foreground text-xs">
+                          <div className="flex justify-between">
+                            <span>+ Total profit from store sales</span>
+                            <span className="text-green-400">GH₵ {profitBreakdown.storefrontProfit.toFixed(2)}</span>
                           </div>
-                        </div>
-                        
-                        <div className="border-t border-yellow-500/20 pt-2">
-                          <p className="text-yellow-300 font-semibold mb-2">Wallet Transactions (Deducted):</p>
-                          <div className="space-y-1 text-muted-foreground text-xs">
-                            <div className="flex justify-between pl-2">
-                              <span>Wallet Purchases (Buy Data):</span>
-                              <span className="text-red-400">- GH₵ {walletPurchases.toFixed(2)}</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground pl-2 mb-1">
-                              Data purchased using your wallet balance
-                            </div>
-                            
-                            <div className="flex justify-between pl-2 mt-2">
-                              <span>Withdrawals:</span>
-                              <span className="text-red-400">- GH₵ {totalWithdrawals.toFixed(2)}</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground pl-2 mb-1">
-                              Money withdrawn to bank/mobile money
-                            </div>
+                          <div className="flex justify-between">
+                            <span>+ Top-ups added</span>
+                            <span className="text-green-400">GH₵ {totalTopups.toFixed(2)}</span>
                           </div>
-                        </div>
-                        
-                        <div className="border-t border-yellow-500/20 pt-2">
-                          <div className="flex justify-between pl-2 font-semibold text-yellow-400">
-                            <span>Current Wallet Balance:</span>
+                          {profitBreakdown.subSubagentProfit > 0 && (
+                            <div className="flex justify-between">
+                              <span>+ Sub-subagent registration profit</span>
+                              <span className="text-green-400">GH₵ {profitBreakdown.subSubagentProfit.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="border-t border-yellow-500/20 my-2"></div>
+                          <div className="flex justify-between">
+                            <span>- Data purchased (Buy Data)</span>
+                            <span className="text-red-400">GH₵ {walletPurchases.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>- Total withdrawals</span>
+                            <span className="text-red-400">GH₵ {totalWithdrawals.toFixed(2)}</span>
+                          </div>
+                          <div className="border-t border-yellow-500/20 my-2"></div>
+                          <div className="flex justify-between font-semibold text-yellow-400">
+                            <span>= Current wallet balance</span>
                             <span>GH₵ {availableWalletBalance.toFixed(2)}</span>
                           </div>
                         </div>
@@ -2769,19 +2740,19 @@ const SubagentDashboard = () => {
                         </div>
                       )}
 
-                      <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3">
-                        <p className="text-xs text-blue-400 font-semibold mb-2">Withdrawal Fees</p>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Below GH₵ 100:</span>
-                            <span className="text-blue-300 font-semibold">5% fee</span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">GH₵ 100 and above:</span>
-                            <span className="text-blue-300 font-semibold">1.5% fee</span>
+                      <details className="cursor-pointer group">
+                        <summary className="text-xs text-blue-400 font-semibold p-2 rounded hover:bg-blue-500/10 flex items-center gap-2">
+                          <span>Withdrawal Fees</span>
+                          <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
+                        </summary>
+                        <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3 mt-1 space-y-2 text-xs">
+                          <p className="text-blue-300">A small fee applies based on your withdrawal amount:</p>
+                          <div className="space-y-1 pl-2">
+                            <p className="text-muted-foreground">• Less than GH₵ 100: 5% fee</p>
+                            <p className="text-muted-foreground">• GH₵ 100 or more: 1.5% fee</p>
                           </div>
                         </div>
-                      </div>
+                      </details>
 
                       <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
                         <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
