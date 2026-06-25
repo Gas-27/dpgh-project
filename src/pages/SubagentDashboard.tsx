@@ -1233,7 +1233,8 @@ const SubagentDashboard = () => {
       setBankCode("");
       setAccountNumber("");
       setMobileNumber("");
-      fetchData();
+      // Wait a moment for the database to sync, then refresh
+      setTimeout(() => fetchData(), 1000);
     } catch (error: any) {
       console.error("[v0] Withdrawal error:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });

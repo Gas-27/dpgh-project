@@ -689,13 +689,12 @@ const AgentDashboard = () => {
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999999),
-        supabase.from("withdrawal_requests").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("payout_requests").select("*").eq("requester_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
         supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
-        supabase.from("payout_requests").select("*").eq("requester_id", sd.id).order("created_at", { ascending: false }),
       ]);
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
@@ -724,8 +723,20 @@ const AgentDashboard = () => {
         return order;
       }));
       setOrders(enrichedOrders);
-      const wd = (wdR.data as WithdrawalRequest[]) ?? [];
-      setWithdrawals(wd);
+      const payoutData = (payoutReqR.data ?? []).map((p: any) => ({
+        ...p,
+        id: p.id,
+        amount: p.amount,
+        created_at: p.created_at,
+        status: p.status,
+        account_holder_name: p.account_holder_name || p.recipient_name,
+        provider_type: p.provider_type,
+        mobile_money_network: p.mobile_money_network,
+        mobile_money_number: p.mobile_money_number,
+        account_number: p.account_number,
+        transfer_code: p.transfer_code,
+      }));
+      setWithdrawals(payoutData);
       setTransferRecipients(recipientsR.data ?? []);
       const subags = subagentR.data ?? [];
       setSubagents(subags);
@@ -1221,7 +1232,8 @@ const AgentDashboard = () => {
       setBankCode("");
       setAccountNumber("");
       setMobileNumber("");
-      fetchAllData();
+      // Wait a moment for the database to sync, then refresh
+      setTimeout(() => fetchAllData(), 1000);
     } catch (error: any) {
       console.error("[v0] Withdrawal error:", error);
       toast({ title: "Withdrawal failed", description: error.message, variant: "destructive" });
