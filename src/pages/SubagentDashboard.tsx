@@ -2167,10 +2167,6 @@ const SubagentDashboard = () => {
                           <span className="text-muted-foreground">Total Withdrawals:</span>
                           <span className="text-red-400 font-semibold">-GH₵ {(withdrawals?.reduce((sum, w) => sum + (Number(w.amount) || 0), 0) || 0).toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Data Purchases:</span>
-                          <span className="text-red-400 font-semibold">-GH₵ {(buyDataHistory?.reduce((sum, b) => sum + (Number(b.amount_spent) || 0), 0) || 0).toFixed(2)}</span>
-                        </div>
                       </div>
                     </details>
                   </div>
