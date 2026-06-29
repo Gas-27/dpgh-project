@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Zap, Check } from "lucide-react";
 import AFAPackagesDisplay from "./AFAPackagesDisplay";
 import AFARegistrationForm from "./AFARegistrationForm";
+import AFAVideoPlayer from "./AFAVideoPlayer";
+import { getAFAMediaForRegistration, AFAMedia } from "@/services/afa-media-service";
 
 interface AFABundleSectionProps {
   agentStoreId?: string | null;
@@ -29,10 +31,21 @@ export default function AFABundleSection({
   
   const [agentBundlePrice, setAgentBundlePrice] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [mediaList, setMediaList] = useState<AFAMedia[]>([]);
 
   useEffect(() => {
     loadAFABundlePrice();
+    loadAFAMedia();
   }, [agentStoreId, subagentStoreId]);
+
+  const loadAFAMedia = async () => {
+    try {
+      const media = await getAFAMediaForRegistration();
+      setMediaList(media);
+    } catch (error) {
+      console.error('[v0] Error loading AFA media:', error);
+    }
+  };
 
   // Subscribe to real-time changes in agent_stores for bundle price updates
   useEffect(() => {
@@ -159,27 +172,45 @@ export default function AFABundleSection({
 
       {/* AFA Registration Form - shown when package is selected */}
       {selectedPackage && storeId && (
-        <Card className="border-blue-500/30 bg-blue-50/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-blue-600" />
-              Register for {selectedPackage.name}
-            </CardTitle>
-            <CardDescription>
-              Registration Fee: <span className="font-bold text-blue-600">GH₵{agentBundlePrice.toFixed(2)}</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AFARegistrationForm
-              storeId={storeId}
-              storeType={storeType}
-              packageId={selectedPackage.id}
-              packageName={selectedPackage.name}
-              amount={agentBundlePrice}
-              onSuccess={handleRegistrationSuccess}
-            />
-          </CardContent>
-        </Card>
+        <>
+          <Card className="border-blue-500/30 bg-blue-50/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-blue-600" />
+                Register for {selectedPackage.name}
+              </CardTitle>
+              <CardDescription>
+                Registration Fee: <span className="font-bold text-blue-600">GH₵{agentBundlePrice.toFixed(2)}</span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AFARegistrationForm
+                storeId={storeId}
+                storeType={storeType}
+                packageId={selectedPackage.id}
+                packageName={selectedPackage.name}
+                amount={agentBundlePrice}
+                onSuccess={handleRegistrationSuccess}
+              />
+            </CardContent>
+          </Card>
+
+          {/* AFA Explainer Video */}
+          {mediaList.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-4">Learn More About AFA</h3>
+              <div className="space-y-4">
+                {mediaList.map((media) => (
+                  <AFAVideoPlayer
+                    key={media.id}
+                    media={media}
+                    showTitle={true}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Info about AFA Bundle Registration */}

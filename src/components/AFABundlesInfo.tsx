@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import AFARegistrationFormStandalone from './AFARegistrationFormStandalone';
+import AFAVideoPlayer from './AFAVideoPlayer';
+import { getAFAMediaForPackagePage, AFAMedia } from '@/services/afa-media-service';
 
 interface AFABundlesInfoProps {
   agentId?: string;
@@ -18,6 +20,7 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
   const [agentBundlePrice, setAgentBundlePrice] = useState<number | null>(null);
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [mediaList, setMediaList] = useState<AFAMedia[]>([]);
 
   useEffect(() => {
     const loadFee = async () => {
@@ -53,6 +56,10 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
             setAgentBundlePrice(null);
           }
         }
+
+        // Load AFA media
+        const media = await getAFAMediaForPackagePage();
+        setMediaList(media);
       } catch (err) {
         console.log('[v0] Error loading AFA fees:', err);
         setRegistrationFee(15);
@@ -297,6 +304,22 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
               agentStoreId={agentId}
               agentBundlePrice={agentBundlePrice}
             />
+
+            {/* AFA Explainer Video */}
+            {mediaList.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold mb-4">Learn More About AFA</h3>
+                <div className="space-y-4">
+                  {mediaList.map((media) => (
+                    <AFAVideoPlayer
+                      key={media.id}
+                      media={media}
+                      showTitle={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         )}
       </Card>
