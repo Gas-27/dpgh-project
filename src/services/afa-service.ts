@@ -306,6 +306,111 @@ export const getAFAPackages = async (
 };
 
 /**
+ * Retry failed AFA registration
+ */
+export const retryAFARegistration = async (
+  registrationId: string
+): Promise<AFARegistrationResponse> => {
+  try {
+    // Fetch the registration details
+    const { data: registration, error: fetchError } = await supabase
+      .from('afa_registrations')
+      .select('*')
+      .eq('id', registrationId)
+      .single();
+
+    if (fetchError || !registration) {
+      return {
+        success: false,
+        message: 'Registration not found',
+      };
+    }
+
+    // Prepare the registration data
+    const registrationData: AFARegistrationRequest = {
+      customer_name: registration.customer_name,
+      customer_phone: registration.customer_phone,
+      customer_id: registration.customer_id,
+      date_of_birth: registration.date_of_birth,
+      town: registration.town,
+      occupation: registration.occupation,
+      region: registration.region,
+      crop: registration.crop,
+      package_id: registration.afa_package_id,
+      amount: registration.amount_paid || 0,
+    };
+
+    // Determine store type
+    const storeType = registration.agent_store_id ? 'agent' : 'subagent';
+    const storeId = registration.agent_store_id || registration.subagent_store_id;
+
+    // Call AFA provider API again
+    const response = await fetch(`${AFA_API_URL}/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AFA_API_KEY}`,
+        'X-Store-ID': storeId,
+        'X-Store-Type': storeType,
+      },
+      body: JSON.stringify({
+        name: registrationData.customer_name,
+        phone: registrationData.customer_phone,
+        id_number: registrationData.customer_id,
+        dob: registrationData.date_of_birth,
+        town: registrationData.town,
+        occupation: registrationData.occupation,
+        region: registrationData.region,
+        crop: registrationData.crop,
+        package_id: registrationData.package_id,
+        amount: registrationData.amount,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      return {
+        success: false,
+        message: error.message || 'Failed to register with AFA provider',
+      };
+    }
+
+    const result = await response.json();
+
+    // Update the registration with new ref_id and reset status to pending
+    const { error: updateError } = await supabase
+      .from('afa_registrations')
+      .update({
+        afa_ref_id: result.ref_id,
+        registration_status: 'pending',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', registrationId);
+
+    if (updateError) {
+      console.error('[AFA] Database update error:', updateError);
+      return {
+        success: false,
+        message: 'Failed to update registration',
+      };
+    }
+
+    return {
+      success: true,
+      ref_id: result.ref_id,
+      message: 'Registration retried successfully. Awaiting verification.',
+    };
+  } catch (error) {
+    console.error('[AFA] Retry registration error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};
+
+/**
  * Set custom AFA price for agent/subagent
  */
 export const setAFAPrice = async (

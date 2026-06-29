@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Loader2, Search } from 'lucide-react';
+import { Download, Loader2, Search, RotateCcw } from 'lucide-react';
+import { retryAFARegistration } from '@/services/afa-service';
 
 interface AFARegistration {
   id: string;
@@ -28,6 +29,7 @@ export default function AdminAFABundleRegistrations() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [retrying, setRetrying] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -120,6 +122,41 @@ export default function AdminAFABundleRegistrations() {
     toast({ title: 'Success', description: 'Registrations exported to CSV' });
   };
 
+  const handleRetry = async (registrationId: string) => {
+    setRetrying(registrationId);
+    try {
+      const result = await retryAFARegistration(registrationId);
+      
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Registration sent again. Awaiting verification.',
+        });
+        
+        // Update local state
+        setRegistrations(registrations.map(reg => 
+          reg.id === registrationId 
+            ? { ...reg, registration_status: 'pending' }
+            : reg
+        ));
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to retry registration',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to retry registration',
+        variant: 'destructive',
+      });
+    } finally {
+      setRetrying(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -178,6 +215,7 @@ export default function AdminAFABundleRegistrations() {
                   <TableHead>Store</TableHead>
                   <TableHead>Amount Paid</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -191,6 +229,24 @@ export default function AdminAFABundleRegistrations() {
                     <TableCell className="text-sm">{reg.store_name}</TableCell>
                     <TableCell>GH₵{reg.amount_paid?.toFixed(2) || '0.00'}</TableCell>
                     <TableCell>{getStatusBadge(reg.registration_status)}</TableCell>
+                    <TableCell>
+                      {reg.registration_status === 'failed' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRetry(reg.id)}
+                          disabled={retrying === reg.id}
+                          className="gap-1"
+                        >
+                          {retrying === reg.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
+                          {retrying === reg.id ? 'Retrying...' : 'Retry'}
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -200,7 +256,7 @@ export default function AdminAFABundleRegistrations() {
       </Card>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Total Registrations</CardTitle>
@@ -228,6 +284,17 @@ export default function AdminAFABundleRegistrations() {
           <CardContent>
             <div className="text-3xl font-bold text-yellow-600">
               {filteredRegistrations.filter((r) => r.registration_status === 'pending').length}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Failed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">
+              {filteredRegistrations.filter((r) => r.registration_status === 'failed').length}
             </div>
           </CardContent>
         </Card>
