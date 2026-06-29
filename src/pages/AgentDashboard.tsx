@@ -393,6 +393,7 @@ const AgentDashboard = () => {
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
+  const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Pagination and date filtering
