@@ -79,7 +79,7 @@ interface AgentStore {
   tutorial_video_url: string | null; allow_subagent_registration?: boolean;
   theme_config: { primary: string; primary_foreground: string; background: string; card_background: string; gridColumns: number; };
   }
-interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; active: boolean; }
+interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; }
 interface Order { id: string; customer_number: string; network: string; size_gb: number; amount: number; status: string; fulfillment_status: string; payment_method: string; created_at: string; package_id: string; }
 interface WithdrawalRequest { id: string; amount: number; status: string; created_at: string; }
 interface ProfitStats { totalRevenue: number; totalCost: number; totalProfit: number; availableForWithdrawal: number; }
@@ -2768,13 +2768,13 @@ const AgentDashboard = () => {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {packages.filter(p => p.network === networkFilter).map((pkg) => {
-                      const price = Number(pkg.agent_price || pkg.price);
+                      const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
                       return (
                         <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
                           <CardContent>
                             <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                            <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
-                            <p className="text-xs text-muted-foreground">Price</p>
+                            <p className="text-lg font-bold text-cyan-400">GH₵ {apiPrice.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">API Price</p>
                           </CardContent>
                         </Card>
                       );

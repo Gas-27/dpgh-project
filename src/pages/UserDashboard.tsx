@@ -22,6 +22,7 @@ interface DataPackage {
   size_gb: number;
   size_gb_text?: string;
   price: number;
+  api_price: number;
 }
 
 interface Order {
@@ -416,13 +417,13 @@ const UserDashboard = () => {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {packages.filter(p => p.network === networkFilter).map((pkg) => {
-                      const price = Number(pkg.price);
+                      const apiPrice = Number(pkg.api_price || pkg.price);
                       return (
                         <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
                           <CardContent>
                             <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                            <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
-                            <p className="text-xs text-muted-foreground">Price</p>
+                            <p className="text-lg font-bold text-cyan-400">GH₵ {apiPrice.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">API Price</p>
                           </CardContent>
                         </Card>
                       );
