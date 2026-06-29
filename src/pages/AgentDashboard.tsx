@@ -391,6 +391,8 @@ const AgentDashboard = () => {
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [loadingApiKey, setLoadingApiKey] = useState(true);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
+  const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Pagination and date filtering
