@@ -1397,7 +1397,7 @@ const AgentDashboard = () => {
   
   // Paystack wallet top up
   const handlePaystackTopup = async () => {
-    const amount = Number(paystackTopupAmount);
+    const amount = Number(topupAmount);
     if (!amount || amount < 1) {
       toast({ title: "Invalid amount", description: "Enter a valid amount", variant: "destructive" });
       return;
@@ -2390,231 +2390,29 @@ const AgentDashboard = () => {
                       <div className="flex gap-2 items-end">
                         <div className="flex-1 space-y-1">
                           <Label>Amount (GH₵)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="e.g. 50.00" 
-                            value={withdrawAmount} 
-                            onChange={e => setWithdrawAmount(e.target.value)} 
-                            disabled={hasPendingWithdrawal} 
+                          <Input
+                            id="paystack-amount"
+                            type="number"
+                            placeholder="Enter amount"
+                            value={topupAmount}
+                            onChange={(e) => setTopupAmount(e.target.value)}
+                            className="text-lg"
                           />
                         </div>
                         <Button 
                           variant="hero" 
-                          onClick={handleWithdraw} 
-                          disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
+                          className="self-end bg-green-600 hover:bg-green-700"
+                          disabled={!topupAmount || Number(topupAmount) < 1 || topupLoading}
+                          onClick={handlePaystackTopup}
                         >
-                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                          Transfer
+                          {topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
+                          Pay Now
                         </Button>
                       </div>
-
-                      {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-                        <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
-                          {(() => {
-                            const amt = parseFloat(withdrawAmount);
-                            const feePercentage = amt < 100 ? 0.05 : 0.015;
-                            const feeAmount = amt * feePercentage;
-                            const recipientAmount = amt - feeAmount;
-                            return (
-                              <>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Amount to Deduct:</span>
-                                  <span>GH₵ {amt.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
-                                  <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
-                                </div>
-                                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
-                                  <span>Recipient Receives:</span>
-                                  <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      <details className="cursor-pointer group">
-                        <summary className="text-xs text-blue-400 font-semibold p-2 rounded hover:bg-blue-500/10 flex items-center gap-2">
-                          <span>Withdrawal Fees</span>
-                          <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
-                        </summary>
-                        <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3 mt-1 space-y-2 text-xs">
-                          <p className="text-blue-300">A small fee applies based on your withdrawal amount:</p>
-                          <div className="space-y-1 pl-2">
-                            <p className="text-muted-foreground">• Less than GH₵ 100: 5% fee</p>
-                            <p className="text-muted-foreground">• GH₵ 100 or more: 1.5% fee</p>
-                          </div>
-                        </div>
-                      </details>
-
-                      <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                        <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
-                        <p className="text-xs text-red-300">
-                          Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
-                        </p>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Processed Instantly ⚡</p>
+                      <p className="text-xs text-muted-foreground">A small Paystack fee (1.98%) will be added to your payment.</p>
                     </div>
                   </>
                 )}
-
-                {createNewRecipient && (
-                  <>
-                    <div className="space-y-3">
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1 space-y-1">
-                          <Label>Amount (GH₵)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="e.g. 50.00" 
-                            value={withdrawAmount} 
-                            onChange={e => setWithdrawAmount(e.target.value)} 
-                            disabled={hasPendingWithdrawal} 
-                          />
-                        </div>
-                        <Button 
-                          variant="hero" 
-                          onClick={handleWithdraw} 
-                          disabled={withdrawLoading || hasPendingWithdrawal}
-                        >
-                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                          Transfer
-                        </Button>
-                      </div>
-
-                      {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-                        <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
-                          {(() => {
-                            const amt = parseFloat(withdrawAmount);
-                            const feePercentage = amt < 100 ? 0.05 : 0.015;
-                            const feeAmount = amt * feePercentage;
-                            const recipientAmount = amt - feeAmount;
-                            return (
-                              <>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Amount to Deduct:</span>
-                                  <span>GH₵ {amt.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
-                                  <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
-                                </div>
-                                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
-                                  <span>Recipient Receives:</span>
-                                  <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                        <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
-                        <p className="text-xs text-red-300">
-                          Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
-                        </p>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Processed Instantly ⚡</p>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-            
-            {withdrawals.length > 0 && (
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="font-display text-lg">Payout History</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Recipient</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Transfer Code</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {withdrawals.map(w => (
-                        <TableRow key={w.id}>
-                          <TableCell className="text-sm">{new Date(w.created_at).toLocaleString()}</TableCell>
-                          <TableCell className="font-bold">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
-                          <TableCell className="text-xs">
-                            <div className="space-y-1">
-                              <p className="font-medium">{w.account_holder_name}</p>
-                              {w.provider_type === "mobile_money" 
-                                ? <p>{w.mobile_money_network?.toUpperCase()}: {w.mobile_money_number}</p>
-                                : <p>Bank: {w.account_number}</p>
-                              }
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : w.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
-                              {w.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">{w.transfer_code || "-"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* ============================= TOP UP ============================= */}
-          <TabsContent value="topup" className="mt-0 space-y-6">
-            {/* Current Balance */}
-            <Card className="border-primary/30 bg-primary/5">
-              <CardContent className="p-6 text-center">
-                <p className="text-sm text-muted-foreground">Current Wallet Balance</p>
-                <p className="font-display text-4xl font-bold text-primary mt-2">GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"}</p>
-              </CardContent>
-            </Card>
-
-            {/* Paystack Top Up */}
-            <Card className="border-green-500/30 bg-green-500/5">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2 text-green-400">
-                  <CreditCard className="h-5 w-5" /> Instant Top Up with Paystack
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">Top up instantly with any amount using card or mobile money</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <Label className="text-sm mb-1 block">Amount (GH��)</Label>
-                    <Input 
-                      type="number" 
-                      placeholder="Enter amount" 
-                      min="1"
-                      value={paystackTopupAmount}
-                      onChange={(e) => setPaystackTopupAmount(e.target.value)}
-                      className="text-lg"
-                    />
-                  </div>
-                  <Button 
-                    variant="hero" 
-                    className="self-end bg-green-600 hover:bg-green-700"
-                    disabled={!paystackTopupAmount || Number(paystackTopupAmount) < 1 || topupLoading}
-                    onClick={handlePaystackTopup}
-                  >
-                    {topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
-                    Pay Now
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">A small Paystack fee (1.98%) will be added to your payment.</p>
               </CardContent>
             </Card>
 
