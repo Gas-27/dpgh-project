@@ -2277,6 +2277,132 @@ const AgentDashboard = () => {
             )}
           </TabsContent>
 
+          {/* ============================= TOP UP ============================= */}
+          <TabsContent value="topup" className="space-y-6 mt-0">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" /> Instant Top Up with Paystack
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Top up instantly with any amount using card or mobile money</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Amount (GH₵)</Label>
+                  <Input
+                    type="number"
+                    placeholder="Enter amount"
+                    value={topupAmount}
+                    onChange={(e) => setTopupAmount(e.target.value)}
+                    className="text-lg"
+                  />
+                  <p className="text-xs text-muted-foreground">A small Paystack fee (1.98%) will be added to your payment.</p>
+                </div>
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  disabled={!topupAmount || Number(topupAmount) < 1 || topupLoading}
+                  onClick={handlePaystackTopup}
+                >
+                  {topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
+                  Pay Now
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Manual MoMo Top Up */}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Coins className="h-5 w-5 text-yellow-400" /> Manual Top Up via MoMo
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Transfer directly via MTN MoMo (minimum GH₵ 100)</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-yellow-400">🏷️ Minimum top up amount: GH₵ 100</p>
+                </div>
+
+                <div className="space-y-3 text-sm">
+                  <div className="flex gap-3">
+                    <span className="font-bold text-primary flex-shrink-0">1.</span>
+                    <span>Dial <span className="font-mono bg-slate-800 px-2 py-1 rounded">*188#</span> on your MTN Mobile phone</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="font-bold text-primary flex-shrink-0">2.</span>
+                    <span>Select 1 (Transfer Money) → 1 (Mobile User)</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="font-bold text-primary flex-shrink-0">3.</span>
+                    <span>Recipient: <span className="font-mono bg-slate-800 px-2 py-1 rounded">80984482202</span></span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="font-bold text-primary flex-shrink-0">4.</span>
+                    <span>Enter the amount (minimum GH₵ 100)</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="font-bold text-primary flex-shrink-0">5.</span>
+                    <span>Reference: (optional)</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800 rounded-lg p-4 space-y-2">
+                  <p className="text-xs text-muted-foreground">Send transaction ID to:</p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      WhatsApp
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Phone className="h-4 w-4 mr-2" />
+                      Call
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-xs text-red-400 font-medium">🚨 Important: Always include your reference code. Admin credits your wallet after verifying the transaction.</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top Up History */}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" /> Top Up History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {topupHistory.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">No top-up history yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Source</TableHead>
+                          <TableHead>Reference</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {topupHistory.map((t) => (
+                          <TableRow key={t.id}>
+                            <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
+                            <TableCell className="font-semibold text-green-400">GH₵ {Number(t.amount).toFixed(2)}</TableCell>
+                            <TableCell><Badge variant={t.source === "Paystack" ? "default" : "secondary"}>{t.source}</Badge></TableCell>
+                            <TableCell className="font-mono text-xs">{t.paystack_reference || "Admin credit"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* ============================= WITHDRAW ============================= */}
           <TabsContent value="withdraw" className="space-y-6 mt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2415,38 +2541,11 @@ const AgentDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Manual MoMo Top Up */}
+            {/* Payout History */}
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
-                  <Coins className="h-5 w-5 text-yellow-400" /> Manual Top Up via MoMo
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">Transfer directly via MTN MoMo (minimum GH₵ 100)</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                  <p className="text-sm text-yellow-400 font-semibold">⚠�� Minimum top up amount: GH₵ 100</p>
-                </div>
-                <ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground">
-                  <li>Dial <span className="font-mono font-bold text-foreground">*170#</span> on your MTN MoMo phone.</li>
-                  <li>Select <b>1</b> (Transfer Money) → <b>1</b> (MoMo User).</li>
-                  <li>Recipient: <span className="font-mono font-bold text-foreground">0599449202</span> <Button variant="ghost" size="sm" className="h-6 w-6 p-0 ml-1" onClick={() => copyPhoneNumber("0599449202")}><Copy className="h-3 w-3" /></Button></li>
-                  <li>Enter the amount (minimum GH₵ 100).</li>
-                  <li>Reference: <div className="mt-2 p-3 bg-secondary/50 rounded-lg border border-border font-mono font-bold text-center text-primary text-xl">{store?.topup_reference ?? "N/A"}<Button variant="ghost" size="sm" className="ml-2 h-8" onClick={copyRef}><Copy className="h-3 w-3" /> Copy</Button></div></li>
-                  <li>Send transaction ID to: <div className="mt-2 flex flex-wrap gap-3"><Button variant="outline" size="sm" asChild><a href="https://wa.me/233200511211" target="_blank" rel="noopener noreferrer">WhatsApp 0200511211</a></Button><Button variant="outline" size="sm" asChild><a href="tel:0599449202">Call 0599449202</a></Button></div></li>
-                </ol>
-                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-sm">
-                  <p className="font-semibold text-destructive">Important</p>
-                  <p className="text-muted-foreground">Admin credits your wallet after verifying the transaction. Always include your reference code.</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Withdrawal History */}
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <ArrowDownToLine className="h-5 w-5 text-yellow-400" /> Withdrawal History
+                  <ArrowDownToLine className="h-5 w-5 text-yellow-400" /> Payout History
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -2468,7 +2567,7 @@ const AgentDashboard = () => {
                         {withdrawals.map((w) => (
                           <TableRow key={w.id}>
                             <TableCell className="text-sm">{new Date(w.created_at).toLocaleDateString()} {new Date(w.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
-                            <TableCell className="font-semibold text-yellow-400">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
+                            <TableCell className="font-semibold text-yellow-400">GH�� {Number(w.amount).toFixed(2)}</TableCell>
                             <TableCell><Badge variant={w.source === "wallet" ? "default" : "secondary"}>{w.source === "wallet" ? "Wallet" : "Subagent Profit"}</Badge></TableCell>
                             <TableCell className="text-sm">{w.account_holder_name || "N/A"}</TableCell>
                             <TableCell><Badge variant={w.status === "completed" ? "default" : w.status === "pending" ? "secondary" : "destructive"}>{w.status?.toUpperCase()}</Badge></TableCell>
