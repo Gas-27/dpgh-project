@@ -339,6 +339,22 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
         </CardContent>
       </Card>
 
+      {/* AFA Explainer Video - Right after Timeline */}
+      {mediaList.length > 0 && (
+        <div className="mt-6 animate-in fade-in slide-in-from-top-2 duration-300">
+          <h3 className="text-lg font-semibold mb-4 text-foreground">Learn More About AFA Benefits</h3>
+          <div className="space-y-4">
+            {mediaList.map((media) => (
+              <AFAVideoPlayer
+                key={media.id}
+                media={media}
+                showTitle={true}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Registration Form - Outside Card if needed */}
       {showForm && false && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
