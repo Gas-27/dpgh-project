@@ -2743,6 +2743,47 @@ const AgentDashboard = () => {
               </CardContent>
             </Card>
 
+            {/* API Packages Display */}
+            {apiKey && (
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5" />
+                    Available Packages for API
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">These are the packages you can purchase through your API integration.</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2 flex-wrap">
+                    {["mtn", "airteltigo", "telecel"].map(net => (
+                      <Button 
+                        key={net} 
+                        variant={networkFilter === net ? "hero" : "outline"} 
+                        size="sm" 
+                        onClick={() => setNetworkFilter(net)}
+                      >
+                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {packages.filter(p => p.network === networkFilter).map((pkg) => {
+                      const price = Number(pkg.agent_price || pkg.price);
+                      return (
+                        <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
+                          <CardContent>
+                            <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                            <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">Price</p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* API Contact Section */}
             {apiKey && (
               <Card className="border-primary/30 bg-primary/5">

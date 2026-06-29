@@ -391,108 +391,46 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Total Data Purchased */}
-              <Card className="border-cyan-500/30 bg-cyan-500/5">
+            {/* Available Packages for API */}
+            {apiKey && (
+              <Card className="border-border">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Package className="h-5 w-5 text-cyan-400" />
-                    Total Data Purchased
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Available Packages for API
                   </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">These are the packages you can purchase through your API integration.</p>
                 </CardHeader>
-                <CardContent>
-                  <p className="font-display text-3xl font-bold text-cyan-400">{totalDataPurchased} GB</p>
-                  <p className="text-xs text-muted-foreground mt-2">All time</p>
-                </CardContent>
-              </Card>
-
-              {/* Total Spent */}
-              <Card className="border-green-500/30 bg-green-500/5">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-green-400" />
-                    Total Spent
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="font-display text-3xl font-bold text-green-400">GH₵ {totalSpent.toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground mt-2">All purchases</p>
-                </CardContent>
-              </Card>
-
-              {/* Recent Orders Count */}
-              <Card className="border-purple-500/30 bg-purple-500/5">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Download className="h-5 w-5 text-purple-400" />
-                    Total Orders
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="font-display text-3xl font-bold text-purple-400">{orders.length}</p>
-                  <p className="text-xs text-muted-foreground mt-2">All time</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Order History Preview */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Download className="h-5 w-5" />
-                  Recent Orders
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {orders.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No orders yet. Start by buying a package.</p>
-                    <Button variant="hero" className="mt-4" onClick={() => navigate("/packages")}>
-                      Buy Data
-                    </Button>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2 flex-wrap">
+                    {["mtn", "airteltigo", "telecel"].map(net => (
+                      <Button 
+                        key={net} 
+                        variant={networkFilter === net ? "hero" : "outline"} 
+                        size="sm" 
+                        onClick={() => setNetworkFilter(net)}
+                      >
+                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                      </Button>
+                    ))}
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date & Time</TableHead>
-                          <TableHead>Number</TableHead>
-                          <TableHead>Network</TableHead>
-                          <TableHead>Size</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {orders.slice(0, 10).map((order) => (
-                          <TableRow key={order.id}>
-                            <TableCell className="text-sm whitespace-nowrap">
-                              {new Date(order.created_at).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
-                            <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                            <TableCell className="font-display font-bold">{order.size_gb} GB</TableCell>
-                            <TableCell className="font-semibold">GH₵ {Number(order.amount).toFixed(2)}</TableCell>
-                            <TableCell>
-                              <Badge 
-                                className={
-                                  order.status === "completed" || order.status === "paid"
-                                    ? "bg-green-600/20 text-green-400 border-green-600/30"
-                                    : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                }
-                              >
-                                {order.status === "paid" ? "completed" : order.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {packages.filter(p => p.network === networkFilter).map((pkg) => {
+                      const price = Number(pkg.price);
+                      return (
+                        <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
+                          <CardContent>
+                            <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                            <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">Price</p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* API Key Tab */}
