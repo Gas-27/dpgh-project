@@ -316,12 +316,11 @@ const AgentDashboard = () => {
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [withdrawals, setWithdrawals] = useState<any[]>([]);
-  const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
-  const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
-  const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
-  const [subagents, setSubagents] = useState<any[]>([]);
+  const [storeBalance, setStoreBalance] = useState(0);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
   const [subagentOrdersCount, setSubagentOrdersCount] = useState(0);
+  const [totalOrderCount, setTotalOrderCount] = useState(0);
   const [subagentProfitForAgent, setSubagentProfitForAgent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [networkFilter, setNetworkFilter] = useState("mtn");
@@ -345,7 +344,6 @@ const AgentDashboard = () => {
   const [withdrawSource, setWithdrawSource] = useState<"wallet" | "subagent_commission">("wallet");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState<string>("");
-  const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
   const [createNewRecipient, setCreateNewRecipient] = useState(false);
   const [recipientType, setRecipientType] = useState<"bank" | "mobile_money">("bank");
   const [recipientName, setRecipientName] = useState("");
@@ -718,6 +716,9 @@ const AgentDashboard = () => {
       setSubagentBasePrices(subPm);
       
       const os = (orderR.data as Order[]) ?? [];
+      // Store the exact total order count from Supabase (not just the fetched data length)
+      setTotalOrderCount(orderR.count ?? os.length);
+      
       // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
       const enrichedOrders = await Promise.all(os.map(async (order: any) => {
         if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
@@ -1499,7 +1500,8 @@ const AgentDashboard = () => {
   };
 
   const dateFilteredOrders = getDateFilteredOrders(orders);
-  const totalOrders = dateFilteredOrders.length;
+  // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
+  const totalOrders = dateFilter === "all" ? totalOrderCount : dateFilteredOrders.length;
   const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
   const filteredOrders = getDateFilteredOrders(orders).filter(o => o.customer_number.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase()));
   

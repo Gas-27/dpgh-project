@@ -214,6 +214,7 @@ const SubagentDashboard = () => {
   const [subSubagentMarkupPercentForSubsub, setSubSubagentMarkupPercentForSubsub] = useState("");
   const [subSubagentNetworkFilterForSubsub, setSubSubagentNetworkFilterForSubsub] = useState("mtn");
   const [savingSubSubSubagentPrices, setSavingSubSubSubagentPrices] = useState(false);
+  const [totalOrderCount, setTotalOrderCount] = useState(0);
 
   // Load the GLOBAL template prices this subagent has set for their sub-subagents
   // (stored in sub_subagent_package_prices with sub_subagent_store_id = NULL).
@@ -506,7 +507,7 @@ const SubagentDashboard = () => {
           recipientsResult,
           payoutResult
         ] = await Promise.all([
-          supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
+          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
@@ -521,6 +522,7 @@ const SubagentDashboard = () => {
         ]);
 
         setOrders(ordersResult.data || []);
+        setTotalOrderCount(ordersResult.count ?? (ordersResult.data?.length || 0));
         const payoutData = (payoutReqResult?.data ?? []).map((p: any) => {
           const recipientDetails = p.transfer_recipients || {};
           return {
@@ -667,7 +669,7 @@ const SubagentDashboard = () => {
           agentInfoResult,
           subSubagentsResult
         ] = await Promise.all([
-          supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
+          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
@@ -785,7 +787,7 @@ const SubagentDashboard = () => {
           topupsResult,
           agentInfoResult
         ] = await Promise.all([
-          supabase.from("orders").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
+          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
@@ -1862,7 +1864,8 @@ const SubagentDashboard = () => {
   }, 0);
   
   const pendingOrders = dateFilteredOrders.filter(o => o.status !== "completed").length;
-  const totalOrders = dateFilteredOrders.length;
+  // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
+  const totalOrders = dateFilter === "all" ? totalOrderCount : dateFilteredOrders.length;
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);

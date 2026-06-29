@@ -273,11 +273,12 @@ const AdminDashboard = () => {
   // Only fetches first 200 records to prevent database timeout
   const fetchRecords = async (table: string, select: string = "*", orderBy?: { column: string; ascending: boolean }, limit: number = 200) => {
     try {
-      let query = supabase.from(table).select(select).limit(limit);
+      let query = supabase.from(table).select(select);
       if (orderBy) {
         query = query.order(orderBy.column, { ascending: orderBy.ascending });
       }
-      const { data, error } = await query;
+      // Use range instead of limit to avoid Supabase's 1000-row limit
+      const { data, error } = await query.range(0, limit - 1);
       if (error) {
         console.error(`Error fetching ${table}:`, error);
         return [];
