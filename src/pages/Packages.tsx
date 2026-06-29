@@ -11,6 +11,7 @@ import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
+import AgentSignupPrompt from "@/components/AgentSignupPrompt";
 import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
@@ -1811,6 +1812,9 @@ const Packages = () => {
       )}
 
       <AFARegistrationSuccess />
+      
+      {/* Agent Signup Prompt - Shows on every packages page load */}
+      <AgentSignupPrompt />
     </div>
   );
 };
