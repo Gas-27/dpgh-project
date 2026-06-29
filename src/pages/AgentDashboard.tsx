@@ -348,6 +348,12 @@ const AgentDashboard = () => {
   const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
   const [createNewRecipient, setCreateNewRecipient] = useState(false);
   const [recipientType, setRecipientType] = useState<"bank" | "mobile_money">("bank");
+  const [recipientName, setRecipientName] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankCode, setBankCode] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [showTopupDialog, setShowTopupDialog] = useState(false);
   const [topupAmount, setTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
