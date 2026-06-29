@@ -322,6 +322,7 @@ const AgentDashboard = () => {
   const [subagentOrdersCount, setSubagentOrdersCount] = useState(0);
   const [totalOrderCount, setTotalOrderCount] = useState(0);
   const [subagentProfitForAgent, setSubagentProfitForAgent] = useState(0);
+  const [subagents, setSubagents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [savingPrices, setSavingPrices] = useState(false);
