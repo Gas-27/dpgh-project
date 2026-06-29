@@ -340,9 +340,9 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
       </Card>
 
       {/* AFA Explainer Video - Right after Timeline */}
-      {mediaList.length > 0 && (
-        <div className="mt-6 animate-in fade-in slide-in-from-top-2 duration-300">
-          <h3 className="text-lg font-semibold mb-4 text-foreground">Learn More About AFA Benefits</h3>
+      <div className="mt-6 animate-in fade-in slide-in-from-top-2 duration-300">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Learn More About AFA Benefits</h3>
+        {mediaList.length > 0 ? (
           <div className="space-y-4">
             {mediaList.map((media) => (
               <AFAVideoPlayer
@@ -352,8 +352,19 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
               />
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-6 border border-slate-200 dark:border-slate-800">
+            <div className="flex flex-col items-center justify-center space-y-3">
+              <div className="w-full aspect-video bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-lg flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Video explaining AFA benefits</p>
+                  <p className="text-xs text-muted-foreground mt-1">Upload a video via admin panel to display here</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Registration Form - Outside Card if needed */}
       {showForm && false && (
