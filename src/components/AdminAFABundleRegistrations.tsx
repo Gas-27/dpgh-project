@@ -230,7 +230,7 @@ export default function AdminAFABundleRegistrations() {
                     <TableCell>GH₵{reg.amount_paid?.toFixed(2) || '0.00'}</TableCell>
                     <TableCell>{getStatusBadge(reg.registration_status)}</TableCell>
                     <TableCell>
-                      {reg.registration_status === 'failed' && (
+                      {reg.registration_status === 'failed' ? (
                         <Button
                           size="sm"
                           variant="outline"
@@ -245,6 +245,8 @@ export default function AdminAFABundleRegistrations() {
                           )}
                           {retrying === reg.id ? 'Retrying...' : 'Retry'}
                         </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
                       )}
                     </TableCell>
                   </TableRow>

@@ -75,6 +75,29 @@ export const registerAFA = async (
 
     if (!response.ok) {
       const error = await response.json();
+      
+      // Save failed registration to database so admin can retry
+      try {
+        await supabase
+          .from('afa_registrations')
+          .insert({
+            customer_name: data.customer_name,
+            customer_phone: data.customer_phone,
+            customer_id: data.customer_id,
+            date_of_birth: data.date_of_birth,
+            town: data.town,
+            occupation: data.occupation,
+            region: data.region,
+            crop: data.crop,
+            registration_status: 'failed',
+            afa_package_id: data.package_id,
+            ...(storeType === 'agent' && { agent_store_id: storeId }),
+            ...(storeType === 'subagent' && { subagent_store_id: storeId }),
+          });
+      } catch (dbErr) {
+        console.error('[AFA] Failed to save failed registration:', dbErr);
+      }
+      
       return {
         success: false,
         message: error.message || 'Failed to register with AFA provider',
@@ -119,6 +142,29 @@ export const registerAFA = async (
     };
   } catch (error) {
     console.error('[AFA] Registration error:', error);
+    
+    // Save failed registration to database so admin can retry
+    try {
+      await supabase
+        .from('afa_registrations')
+        .insert({
+          customer_name: data.customer_name,
+          customer_phone: data.customer_phone,
+          customer_id: data.customer_id,
+          date_of_birth: data.date_of_birth,
+          town: data.town,
+          occupation: data.occupation,
+          region: data.region,
+          crop: data.crop,
+          registration_status: 'failed',
+          afa_package_id: data.package_id,
+          ...(storeType === 'agent' && { agent_store_id: storeId }),
+          ...(storeType === 'subagent' && { subagent_store_id: storeId }),
+        });
+    } catch (dbErr) {
+      console.error('[AFA] Failed to save failed registration:', dbErr);
+    }
+    
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error occurred',
