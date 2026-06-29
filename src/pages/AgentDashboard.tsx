@@ -17,6 +17,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import {
   Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
@@ -2526,15 +2527,55 @@ const AgentDashboard = () => {
                         </div>
                         <Button 
                           variant="hero" 
-                          className="self-end bg-red-600 hover:bg-red-700"
+                          className="self-end bg-cyan-600 hover:bg-cyan-700"
                           disabled={!withdrawAmount || Number(withdrawAmount) < 1 || Number(withdrawAmount) > effectiveBalance || withdrawLoading}
                           onClick={() => handleRequestWithdrawal()}
                         >
-                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                          Request Withdrawal
+                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
+                          Transfer
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Maximum available: GH₵ {effectiveBalance.toFixed(2)}</p>
+
+                      {/* Fee Breakdown */}
+                      {withdrawAmount && Number(withdrawAmount) > 0 && (
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Amount to Deduct:</span>
+                            <span className="font-semibold">GH₵ {Number(withdrawAmount).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Fee (5.0%):</span>
+                            <span className="font-semibold text-red-400">GH₵ {(Number(withdrawAmount) * 0.05).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-border pt-2">
+                            <span className="text-muted-foreground">Recipient Receives:</span>
+                            <span className="font-semibold text-green-400">GH₵ {(Number(withdrawAmount) * 0.95).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Withdrawal Fees Info */}
+                      <Collapsible>
+                        <CollapsibleTrigger className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+                          Withdrawal Fees
+                          <ChevronDown className="h-4 w-4" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-3 bg-slate-800/50 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+                          <p>A small fee applies based on your withdrawal amount:</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            <li>Less than GH₵ 100: 5% fee</li>
+                            <li>GH₵ 100 or more: 1.5% fee</li>
+                          </ul>
+                        </CollapsibleContent>
+                      </Collapsible>
+
+                      {/* Important Warning */}
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                        <p className="text-xs text-red-400 font-medium">⚠️ IMPORTANT WARNING</p>
+                        <p className="text-xs text-red-300 mt-1">Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.</p>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Processed Instantly ⚡</p>
                     </div>
                   </>
                 )}
