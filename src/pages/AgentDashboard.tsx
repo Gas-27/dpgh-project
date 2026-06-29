@@ -2529,7 +2529,7 @@ const AgentDashboard = () => {
                           variant="hero" 
                           className="self-end bg-cyan-600 hover:bg-cyan-700"
                           disabled={!withdrawAmount || Number(withdrawAmount) < 1 || Number(withdrawAmount) > effectiveBalance || withdrawLoading}
-                          onClick={() => handleRequestWithdrawal()}
+                          onClick={() => handleWithdraw()}
                         >
                           {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
                           Transfer
@@ -2539,18 +2539,29 @@ const AgentDashboard = () => {
                       {/* Fee Breakdown */}
                       {withdrawAmount && Number(withdrawAmount) > 0 && (
                         <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Amount to Deduct:</span>
-                            <span className="font-semibold">GH₵ {Number(withdrawAmount).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Fee (5.0%):</span>
-                            <span className="font-semibold text-red-400">GH₵ {(Number(withdrawAmount) * 0.05).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between border-t border-border pt-2">
-                            <span className="text-muted-foreground">Recipient Receives:</span>
-                            <span className="font-semibold text-green-400">GH₵ {(Number(withdrawAmount) * 0.95).toFixed(2)}</span>
-                          </div>
+                          {(() => {
+                            const amount = Number(withdrawAmount);
+                            const feeRate = amount >= 100 ? 0.015 : 0.05;
+                            const feeAmount = amount * feeRate;
+                            const recipientAmount = amount - feeAmount;
+                            
+                            return (
+                              <>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Amount to Deduct:</span>
+                                  <span className="font-semibold">GH₵ {amount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Fee ({(feeRate * 100).toFixed(1)}%):</span>
+                                  <span className="font-semibold text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between border-t border-border pt-2">
+                                  <span className="text-muted-foreground">Recipient Receives:</span>
+                                  <span className="font-semibold text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
 
