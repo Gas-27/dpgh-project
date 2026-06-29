@@ -2596,9 +2596,7 @@ const AgentDashboard = () => {
             {/* Payout History */}
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <ArrowDownToLine className="h-5 w-5 text-yellow-400" /> Payout History
-                </CardTitle>
+                <CardTitle className="font-display">Payout History</CardTitle>
               </CardHeader>
               <CardContent>
                 {withdrawals.length === 0 ? (
@@ -2610,19 +2608,30 @@ const AgentDashboard = () => {
                         <TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Amount</TableHead>
-                          <TableHead>From</TableHead>
                           <TableHead>Recipient</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Transfer Code</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {withdrawals.map((w) => (
                           <TableRow key={w.id}>
-                            <TableCell className="text-sm">{new Date(w.created_at).toLocaleDateString()} {new Date(w.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
-                            <TableCell className="font-semibold text-yellow-400">GH�� {Number(w.amount).toFixed(2)}</TableCell>
-                            <TableCell><Badge variant={w.source === "wallet" ? "default" : "secondary"}>{w.source === "wallet" ? "Wallet" : "Subagent Profit"}</Badge></TableCell>
-                            <TableCell className="text-sm">{w.account_holder_name || "N/A"}</TableCell>
-                            <TableCell><Badge variant={w.status === "completed" ? "default" : w.status === "pending" ? "secondary" : "destructive"}>{w.status?.toUpperCase()}</Badge></TableCell>
+                            <TableCell className="text-sm">{new Date(w.created_at).toLocaleDateString([], { year: 'numeric', month: 'numeric', day: 'numeric' })}, {new Date(w.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</TableCell>
+                            <TableCell className="font-semibold">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
+                            <TableCell className="text-sm">
+                              <div>
+                                <div className="font-medium">{w.account_holder_name || w.recipient_account_name || "Unknown"}</div>
+                                <div className="text-xs text-muted-foreground">MTN: {w.recipient_phone || w.phone_number || "N/A"}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={w.status === "completed" || w.status === "success" ? "default" : w.status === "pending" ? "secondary" : "destructive"}>
+                                {w.status === "success" ? "success" : w.status?.toUpperCase() || "PENDING"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                              {w.transfer_code || w.reference_code || (w.status === "completed" || w.status === "success" ? "-" : "-")}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
