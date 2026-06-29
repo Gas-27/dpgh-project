@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Wifi } from "lucide-react";
 import PaymentDialog from "@/components/PaymentDialog";
+import { useFetchRealtimePackages } from "@/hooks/useRealtimePackages";
 
 const networks = [
   { id: "mtn", name: "MTN", color: "bg-mtn text-primary-foreground" },
@@ -28,23 +28,12 @@ const QuickBuyWidget = () => {
   const navigate = useNavigate();
   const [selectedNetwork, setSelectedNetwork] = useState("mtn");
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
-  const [packages, setPackages] = useState<DataPackage[]>([]);
-  const [loading, setLoading] = useState(true);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
 
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("data_packages")
-        .select("id, network, size_gb, price, data_package_id, size_gb_text")
-        .eq("active", true)
-        .in("network", ["mtn", "airteltigo", "telecel"]) // COMMENTED OUT: mashup packages deactivated
-        .order("size_gb");
-      setPackages(data ?? []);
-      setLoading(false);
-    };
-    void fetch();
-  }, []);
+  // Use real-time packages hook for instant updates
+  const { packages, loading } = useFetchRealtimePackages({
+    active: true,
+  });
 
   const filteredPlans = useMemo(
     () => {

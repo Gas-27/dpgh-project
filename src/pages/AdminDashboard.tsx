@@ -502,6 +502,44 @@ const AdminDashboard = () => {
       
       if (appSettings?.agent_registration_fee) {
         setAgentRegistrationFee(appSettings.agent_registration_fee);
+
+      // Subscribe to real-time package changes
+      const channel = supabase
+        .channel('admin_packages_realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'data_packages',
+          },
+          (payload) => {
+            console.log('[v0] Admin dashboard received package update:', payload);
+            
+            if (payload.eventType === 'UPDATE') {
+              setPackages((prev) =>
+                prev.map((pkg) =>
+                  pkg.id === payload.new.id
+                    ? { ...pkg, ...payload.new }
+                    : pkg
+                ).sort((a, b) => a.size_gb - b.size_gb)
+              );
+            } else if (payload.eventType === 'INSERT') {
+              setPackages((prev) => 
+                [...prev, payload.new as any].sort((a, b) => a.size_gb - b.size_gb)
+              );
+            } else if (payload.eventType === 'DELETE') {
+              setPackages((prev) => prev.filter((pkg) => pkg.id !== payload.old.id));
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('[v0] Admin packages realtime status:', status);
+        });
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
       }
       if (appSettings) {
         setFreeDataConfig({
