@@ -548,7 +548,8 @@ const SubagentDashboard = () => {
           const { data: subSubagentOrders } = await supabase
             .from("orders")
             .select("*")
-            .in("sub_subagent_store_id", subSubagentIds);
+            .in("sub_subagent_store_id", subSubagentIds)
+            .range(0, 99999);
           
           const subSubagentOrdersList = subSubagentOrders || [];
           setSubSubagentOrdersCount(subSubagentOrdersList.length);
@@ -715,7 +716,8 @@ const SubagentDashboard = () => {
           const { data: subSubagentOrders } = await supabase
             .from("orders")
             .select("*")
-            .in("sub_subagent_store_id", subSubagentIds);
+            .in("sub_subagent_store_id", subSubagentIds)
+            .range(0, 99999);
           
           const subSubagentOrdersList = subSubagentOrders || [];
           setSubSubagentOrdersCount(subSubagentOrdersList.length);
