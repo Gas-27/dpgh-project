@@ -690,7 +690,7 @@ const AgentDashboard = () => {
       const [pkgR, priceR, orderR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR] = await Promise.all([
         supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
-        supabase.from("orders").select("*", { count: "exact" }).eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("orders").select("*", { count: "exact" }).eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 9999),
         supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
