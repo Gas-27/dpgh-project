@@ -2391,25 +2391,24 @@ const AgentDashboard = () => {
                         <div className="flex-1 space-y-1">
                           <Label>Amount (GH₵)</Label>
                           <Input
-                            id="paystack-amount"
                             type="number"
                             placeholder="Enter amount"
-                            value={topupAmount}
-                            onChange={(e) => setTopupAmount(e.target.value)}
+                            value={withdrawAmount}
+                            onChange={(e) => setWithdrawAmount(e.target.value)}
                             className="text-lg"
                           />
                         </div>
                         <Button 
                           variant="hero" 
-                          className="self-end bg-green-600 hover:bg-green-700"
-                          disabled={!topupAmount || Number(topupAmount) < 1 || topupLoading}
-                          onClick={handlePaystackTopup}
+                          className="self-end bg-red-600 hover:bg-red-700"
+                          disabled={!withdrawAmount || Number(withdrawAmount) < 1 || Number(withdrawAmount) > effectiveBalance || withdrawLoading}
+                          onClick={() => handleRequestWithdrawal()}
                         >
-                          {topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
-                          Pay Now
+                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                          Request Withdrawal
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">A small Paystack fee (1.98%) will be added to your payment.</p>
+                      <p className="text-xs text-muted-foreground">Maximum available: GH₵ {effectiveBalance.toFixed(2)}</p>
                     </div>
                   </>
                 )}
@@ -2443,16 +2442,16 @@ const AgentDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Top Up History */}
+            {/* Withdrawal History */}
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" /> Top Up History
+                  <ArrowDownToLine className="h-5 w-5 text-yellow-400" /> Withdrawal History
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {topupHistory.length === 0 ? (
-                  <p className="text-muted-foreground text-sm text-center py-4">No top-up history yet</p>
+                {withdrawals.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">No withdrawals yet</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <Table>
@@ -2460,17 +2459,19 @@ const AgentDashboard = () => {
                         <TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Amount</TableHead>
-                          <TableHead>Source</TableHead>
-                          <TableHead>Reference</TableHead>
+                          <TableHead>From</TableHead>
+                          <TableHead>Recipient</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {topupHistory.map((t) => (
-                          <TableRow key={t.id}>
-                            <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
-                            <TableCell className="font-semibold text-green-400">GH₵ {Number(t.amount).toFixed(2)}</TableCell>
-                            <TableCell><Badge variant={t.source === "Paystack" ? "default" : "secondary"}>{t.source}</Badge></TableCell>
-                            <TableCell className="font-mono text-xs">{t.paystack_reference || "Admin credit"}</TableCell>
+                        {withdrawals.map((w) => (
+                          <TableRow key={w.id}>
+                            <TableCell className="text-sm">{new Date(w.created_at).toLocaleDateString()} {new Date(w.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
+                            <TableCell className="font-semibold text-yellow-400">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
+                            <TableCell><Badge variant={w.source === "wallet" ? "default" : "secondary"}>{w.source === "wallet" ? "Wallet" : "Subagent Profit"}</Badge></TableCell>
+                            <TableCell className="text-sm">{w.account_holder_name || "N/A"}</TableCell>
+                            <TableCell><Badge variant={w.status === "completed" ? "default" : w.status === "pending" ? "secondary" : "destructive"}>{w.status?.toUpperCase()}</Badge></TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
