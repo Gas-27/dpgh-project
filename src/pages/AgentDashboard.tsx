@@ -347,13 +347,8 @@ const AgentDashboard = () => {
   const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
   const [createNewRecipient, setCreateNewRecipient] = useState(false);
   const [recipientType, setRecipientType] = useState<"bank" | "mobile_money">("bank");
-  const [recipientName, setRecipientName] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [bankCode, setBankCode] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [mobileNetwork, setMobileNetwork] = useState("mtn");
-  const [mobileNumber, setMobileNumber] = useState("");
-  const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
+  const [showTopupDialog, setShowTopupDialog] = useState(false);
+  const [topupAmount, setTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string; source: string }[]>([]);
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
@@ -2816,12 +2811,19 @@ const AgentDashboard = () => {
                     API Wallet
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-4 rounded-lg border border-primary/20">
                     <p className="text-sm text-muted-foreground mb-1">Wallet Balance</p>
                     <p className="text-2xl font-bold text-primary">GHC {wallet.toFixed(2)}</p>
                     <p className="text-xs text-muted-foreground mt-2">Available for API purchases</p>
                   </div>
+                  <Button 
+                    onClick={() => setShowTopupDialog(true)}
+                    className="w-full bg-primary hover:bg-primary/90"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Top Up Wallet
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -2856,6 +2858,61 @@ const AgentDashboard = () => {
                         Regenerate
                       </>
                     )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* API Wallet Top Up Dialog */}
+            <Dialog open={showTopupDialog} onOpenChange={setShowTopupDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Top Up API Wallet</DialogTitle>
+                  <DialogDescription>
+                    Enter the amount you want to add to your API wallet
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="topup-amount">Amount (GH₵)</Label>
+                    <Input
+                      id="topup-amount"
+                      type="number"
+                      placeholder="Enter amount"
+                      value={topupAmount}
+                      onChange={(e) => setTopupAmount(e.target.value)}
+                      min="0.01"
+                      step="0.01"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Current balance: GH₵ {wallet.toFixed(2)}
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowTopupDialog(false);
+                      setTopupAmount("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      // TODO: Implement top-up payment processing
+                      console.log("[v0] Top up amount:", topupAmount);
+                      toast({
+                        title: "Coming Soon",
+                        description: "Top-up payment processing will be available soon",
+                      });
+                    }}
+                    disabled={!topupAmount || parseFloat(topupAmount) <= 0 || topupLoading}
+                  >
+                    {topupLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Proceed to Payment
                   </Button>
                 </div>
               </DialogContent>
