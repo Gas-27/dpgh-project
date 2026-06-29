@@ -60,9 +60,9 @@ export default function PushNotificationManager() {
       // Fetch push subscriptions - explicitly set high limit to get all subscribers
       const { data: subs, error: subsError } = await supabase
         .from("push_subscriptions")
-        .select("*")
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
-        .limit(10000);
+        .range(0, 99999);
       
       if (subsError) {
         console.error("[v0] Error fetching subscriptions:", subsError);
