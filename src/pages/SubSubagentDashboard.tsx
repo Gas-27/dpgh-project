@@ -188,9 +188,7 @@ const SubSubagentDashboard = () => {
   const [savingTheme, setSavingTheme] = useState(false);
   const [storeHeadline, setStoreHeadline] = useState("");
   const [savingHeadline, setSavingHeadline] = useState(false);
-  const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
-  const [topupLoading, setTopupLoading] = useState(false);
-  const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
+
   
   // Pagination for orders
   const [currentPage, setCurrentPage] = useState(1);
@@ -235,20 +233,17 @@ const SubSubagentDashboard = () => {
     const syncWalletBalance = async () => {
       if (!subagentStore?.id) return;
       
-      // Calculate wallet: Profit + Topups - COMPLETED Withdrawals - Wallet Purchases
-      // Backend automatically adds AFA registration profit and subagent registration fees
-      const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
-      const profit = completedOrders.reduce((sum, order) => {
-        if (order.profit) return sum + Number(order.profit);
-        const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
-        return sum + (Number(order.selling_price || order.amount) - baseCost);
-      }, 0);
-      const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-      // Only subtract COMPLETED withdrawals from the stored balance
-      const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-      // Subtract purchases made with wallet (from buy data and bulk order sections)
-      const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
-      const calculatedBalance = profit + topups - completedWithdrawals - walletPurchases;
+      // Calculate wallet: Profit - COMPLETED Withdrawals - Wallet Purchases
+      const profit = orders.reduce((sum, order) => sum + (order.profit || 0), 0);
+
+      const completedWithdrawals = withdrawals
+        .filter((w) => w.status === "completed")
+        .reduce((s, w) => s + Number(w.amount || 0), 0);
+      const walletPurchases = orders
+        .filter((o) => o.payment_method === "wallet")
+        .reduce((s, o) => s + Number(o.amount || 0), 0);
+
+      const calculatedBalance = profit - completedWithdrawals - walletPurchases;
       
       // Only sync if the balance has changed from last sync
       if (lastSyncedBalanceRef.current === calculatedBalance) return;
@@ -572,35 +567,7 @@ const SubSubagentDashboard = () => {
     }
   }, [subagentStore?.id]);
 
-  // Check for pending wallet topup from URL params
-  useEffect(() => {
-    if (!subagentStore?.id) return;
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlRef = urlParams.get("reference") || urlParams.get("trxref");
-    const sessionRef = sessionStorage.getItem("pending_subagent_wallet_topup");
-    const ref = urlRef || sessionRef;
-    
-    if (!ref) return;
-    
-    if (urlRef) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    
-    supabase.functions.invoke("verify-payment", { body: { reference: ref } })
-      .then(({ data }) => {
-        if (data?.success && !data?.already_processed) {
-          toast({ title: "Wallet topped up!", description: data.message });
-          fetchData();
-        } else if (data?.already_processed) {
-          fetchData();
-        }
-        sessionStorage.removeItem("pending_subagent_wallet_topup");
-      })
-      .catch(() => {
-        sessionStorage.removeItem("pending_subagent_wallet_topup");
-      });
-  }, [subagentStore?.id]);
+
 
   // Realtime subscriptions DISABLED - No longer auto-refresh on changes
   // Previously this would trigger fetchData() on any database updates (orders, prices, etc.)
@@ -685,46 +652,7 @@ const SubSubagentDashboard = () => {
 
 
 
-  
-  // Paystack wallet top up
-  const handlePaystackTopup = async () => {
-    const amount = Number(paystackTopupAmount);
-    if (!amount || amount < 1) {
-      toast({ title: "Invalid amount", description: "Enter a valid amount", variant: "destructive" });
-      return;
-    }
-    if (!user?.email || !subagentStore?.id) {
-      toast({ title: "Error", description: "Please log in to top up", variant: "destructive" });
-      return;
-    }
-    
-    setTopupLoading(true);
-    try {
-      const res = await supabase.functions.invoke("initialize-payment", {
-        body: {
-          amount,
-          email: user.email,
-          phone: subagentStore.support_number || subagentStore.whatsapp_number || "0000000000",
-          callback_url: `${window.location.origin}/subagent`,
-          metadata: {
-            type: "subagent_wallet_topup",
-            subagent_store_id: subagentStore.id,
-            amount
-          }
-        }
-      });
-      
-      if (res.error) throw new Error(res.error.message);
-      if (!res.data?.authorization_url) throw new Error("No authorization URL");
-      
-      sessionStorage.setItem("pending_subagent_wallet_topup", res.data.reference);
-      window.location.href = res.data.authorization_url;
-    } catch (e: any) {
-      toast({ title: "Payment error", description: e.message, variant: "destructive" });
-    } finally {
-      setTopupLoading(false);
-    }
-  };
+
 
   const handleSavePrices = async () => {
     try {
@@ -1339,8 +1267,6 @@ const SubSubagentDashboard = () => {
     { id: "store", label: "Store Prices", icon: Store },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
-    { id: "topup", label: "Top Up", icon: Wallet },
-
     { id: "flyer", label: "Flyer Generator", icon: Image },
     // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
@@ -1409,14 +1335,8 @@ const SubSubagentDashboard = () => {
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
   const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
-  // Calculate total topups
-  const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-  
-  // Wallet purchases from buy data and bulk order sections
-  const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
-  
-  // Wallet balance = Profit + Topups - Completed Withdrawals - Wallet Purchases
-  const calculatedWalletBalance = totalProfit + totalTopups - completedWithdrawals - walletPurchases;
+  // Wallet balance = Profit - Completed Withdrawals - Wallet Purchases
+  const calculatedWalletBalance = totalProfit - completedWithdrawals - walletPurchases;
   // Prefer database value as it's synced correctly
   const availableWalletBalance = subagentStore?.wallet_balance !== undefined && subagentStore?.wallet_balance !== null 
     ? Number(subagentStore.wallet_balance) 
@@ -2148,78 +2068,6 @@ const SubSubagentDashboard = () => {
                         <Badge variant={w.status === "completed" ? "default" : "secondary"}>{w.status}</Badge>
                       </div>
                     ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* TOP UP */}
-          <TabsContent value="topup" className="mt-0 space-y-6">
-            <Card className="border-green-500/30 bg-green-500/5">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2 text-green-400">
-                  <Wallet className="h-5 w-5" /> Top Up via Paystack
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">Top up instantly with card or mobile money</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <Label className="text-sm mb-1 block">Amount (GH₵)</Label>
-                    <Input 
-                      type="number" 
-                      placeholder="Enter amount" 
-                      min="1"
-                      value={paystackTopupAmount}
-                      onChange={(e) => setPaystackTopupAmount(e.target.value)}
-                      className="text-lg"
-                    />
-                  </div>
-                  <Button 
-                    variant="hero" 
-                    className="self-end bg-green-600 hover:bg-green-700"
-                    disabled={!paystackTopupAmount || Number(paystackTopupAmount) < 1 || topupLoading}
-                    onClick={handlePaystackTopup}
-                  >
-                    {topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
-                    Pay Now
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">A small Paystack fee (1.98%) will be added to your payment.</p>
-              </CardContent>
-            </Card>
-
-            {/* Top Up History */}
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" /> Top Up History
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {topupHistory.length === 0 ? (
-                  <p className="text-muted-foreground text-sm text-center py-4">No top-up history yet</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Reference</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {topupHistory.map((t) => (
-                          <TableRow key={t.id}>
-                            <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
-                            <TableCell className="font-semibold text-green-400">GH₵ {Number(t.amount).toFixed(2)}</TableCell>
-                            <TableCell className="font-mono text-xs">{agentInfo?.store_name || ""} - {t.paystack_reference || "Manual"}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
                   </div>
                 )}
               </CardContent>
