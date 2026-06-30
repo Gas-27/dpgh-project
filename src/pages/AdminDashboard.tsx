@@ -1408,21 +1408,12 @@ const AdminDashboard = () => {
   const queryOrdersFromDB = async (network: string, fulfillment: string, paymentStatus: string) => {
     setIsFilteringOrders(true);
     try {
-      let query = supabase.from("orders").select("*");
-      
-      // Only apply filters if they're not "all"
-      if (network !== "all") {
-        // Convert to lowercase to match database values
-        query = query.ilike("network", network);
-      }
-      if (fulfillment !== "all") {
-        query = query.eq("fulfillment_status", fulfillment);
-      }
-      if (paymentStatus !== "all") {
-        query = query.eq("status", paymentStatus);
-      }
-      
-      const { data, error } = await query.order("created_at", { ascending: false }).limit(1000);
+      // Fetch ALL orders first to include API orders (which have no agent_store_id)
+      const { data: allOrders, error } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000);
       
       if (error) {
         console.error("[v0] Error querying orders:", error);
@@ -1430,8 +1421,23 @@ const AdminDashboard = () => {
         return;
       }
       
-      console.log("[v0] Filtered orders from DB:", data?.length || 0, "with filters:", { network, fulfillment, paymentStatus });
-      setFilteredOrdersFromDB(data || []);
+      // Filter in memory to ensure API orders are preserved
+      let filtered = allOrders || [];
+      
+      if (network !== "all") {
+        filtered = filtered.filter(o => o.network && o.network.toLowerCase().includes(network.toLowerCase()));
+      }
+      if (fulfillment !== "all") {
+        filtered = filtered.filter(o => o.fulfillment_status === fulfillment);
+      }
+      if (paymentStatus !== "all") {
+        filtered = filtered.filter(o => o.status === paymentStatus);
+      }
+      
+      const apiOrders = filtered.filter(o => !o.agent_store_id && !o.subagent_store_id);
+      console.log("[v0] Total orders:", allOrders?.length, "Filtered:", filtered.length, "API orders:", apiOrders.length, "Filters:", { network, fulfillment, paymentStatus });
+      
+      setFilteredOrdersFromDB(filtered);
     } catch (error) {
       console.error("[v0] Error querying orders from DB:", error);
       toast({ title: "Error", description: "Failed to filter orders", variant: "destructive" });
@@ -1965,9 +1971,11 @@ const AdminDashboard = () => {
                               // Determine source
                               const agentStore = order.agent_store_id ? agents.find(a => a.id === order.agent_store_id) : null;
                               const subagentStore = order.subagent_store_id ? subagents.find(s => s.id === order.subagent_store_id) : null;
+                              const isAPIOrder = !order.agent_store_id && !order.subagent_store_id;
+                              
                               let sourceType = "Main Site";
-                              let sourceLabel = "Direct";
-                              let sourceBadgeClass = "bg-blue-500/10 text-blue-400 border-blue-500/30";
+                              let sourceLabel = isAPIOrder ? "API" : "Direct";
+                              let sourceBadgeClass = isAPIOrder ? "bg-orange-500/10 text-orange-400 border-orange-500/30" : "bg-blue-500/10 text-blue-400 border-blue-500/30";
                               
                               if (subagentStore) {
                                 sourceType = "Subagent";
