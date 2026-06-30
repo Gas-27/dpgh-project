@@ -332,6 +332,7 @@ const AdminDashboard = () => {
         id: w.id,
         agent_store_id: w.agent_store_id,
         subagent_store_id: w.subagent_store_id,
+        sub_subagent_store_id: w.sub_subagent_store_id,
         amount: w.amount,
         status: w.status,
         created_at: w.created_at,
@@ -347,12 +348,12 @@ const AdminDashboard = () => {
           subagent_commission_balance: w.agent_subagent_commission_balance,
         },
         subagent_store: {
-          id: w.subagent_store_id,
-          store_name: w.subagent_store_name,
-          momo_name: w.subagent_momo_name,
-          momo_number: w.subagent_momo_number,
-          momo_network: w.subagent_momo_network,
-          wallet_balance: w.subagent_wallet_balance,
+          id: w.subagent_store_id || w.sub_subagent_store_id,
+          store_name: w.subagent_store_name || w.sub_subagent_store_name,
+          momo_name: w.subagent_momo_name || w.sub_subagent_momo_name,
+          momo_number: w.subagent_momo_number || w.sub_subagent_momo_number,
+          momo_network: w.subagent_momo_network || w.sub_subagent_momo_network,
+          wallet_balance: w.subagent_wallet_balance || w.sub_subagent_wallet_balance,
         },
       }));
     } catch (err) {
@@ -2497,11 +2498,23 @@ const AdminDashboard = () => {
                         <TableBody>
                           {paginated.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
                             paginated.map((w) => {
-                              const isSubagentWithdrawal = !!w.subagent_store_id;
+                              const isSubsubagentWithdrawal = !!w.sub_subagent_store_id;
+                              const isSubagentWithdrawal = !!w.subagent_store_id && !isSubsubagentWithdrawal;
                               const isSubagentProfit = w.withdrawal_source === "subagent_commission";
                               
-                              // Get store data from nested objects (now fetched from RPC function)
-                              const store = isSubagentWithdrawal ? w.subagent_store : w.agent_store;
+                              // Get store data from nested objects - handle all three types
+                              let store, typeLabel;
+                              if (isSubsubagentWithdrawal) {
+                                store = w.subagent_store; // sub_subagent_store is stored as subagent_store
+                                typeLabel = "SubSubagent";
+                              } else if (isSubagentWithdrawal) {
+                                store = w.subagent_store;
+                                typeLabel = "Subagent";
+                              } else {
+                                store = w.agent_store;
+                                typeLabel = "Agent";
+                              }
+                              
                               const storeName = store?.store_name || "—";
                               const momoName = store?.momo_name || "—";
                               const momoNumber = store?.momo_number || "—";
@@ -2519,7 +2532,17 @@ const AdminDashboard = () => {
                                 <TableRow key={w.id}>
                                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{new Date(w.created_at).toLocaleString()}</TableCell>
                                   <TableCell className="font-medium">{storeName}</TableCell>
-                                  <TableCell><Badge className={isSubagentWithdrawal ? "bg-orange-600/20 text-orange-400 border-orange-600/30" : "bg-cyan-600/20 text-cyan-400 border-cyan-600/30"}>{isSubagentWithdrawal ? "Subagent" : "Agent"}</Badge></TableCell>
+                                  <TableCell>
+                                    <Badge className={
+                                      isSubsubagentWithdrawal 
+                                        ? "bg-purple-600/20 text-purple-400 border-purple-600/30"
+                                        : isSubagentWithdrawal 
+                                        ? "bg-orange-600/20 text-orange-400 border-orange-600/30" 
+                                        : "bg-cyan-600/20 text-cyan-400 border-cyan-600/30"
+                                    }>
+                                      {typeLabel}
+                                    </Badge>
+                                  </TableCell>
                                   <TableCell><Badge className={isSubagentProfit ? "bg-purple-600/20 text-purple-400 border-purple-600/30" : "bg-blue-600/20 text-blue-400 border-blue-600/30"}>{isSubagentProfit ? "Subagent Profit" : "Wallet"}</Badge></TableCell>
                                   <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount || 0).toFixed(2)}</TableCell>
                                   <TableCell className="font-bold text-green-400">GH₵ {Number(walletBalance || 0).toFixed(2)}</TableCell>
