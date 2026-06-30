@@ -1660,7 +1660,6 @@ const AdminDashboard = () => {
   const canSee = (section: Section) => currentUserSections.includes(section);
 
   const filteredPackages = packages.filter((p) => p.network === networkFilter);
-  const storeSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
   
@@ -2054,7 +2053,7 @@ const AdminDashboard = () => {
                               <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} • {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
                               <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(agent.wallet_balance || 0).toFixed(2)}</span></p>
                               <p className="text-xs text-muted-foreground">Subagent Profit: <span className="font-bold text-purple-400">GH₵ {Number(agent.subagent_commission_balance || 0).toFixed(2)}</span></p>
-                              {agent.approved && <Link to={`/store/${storeSlug(agent.store_name)}`} className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</Link>}
+                              {agent.approved && <a href={DOMAINS.getAgentStoreUrl(agent.store_name)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</a>}
                             </div>
                             <div className="flex flex-col gap-2">
                               <div className="flex items-center gap-2">
