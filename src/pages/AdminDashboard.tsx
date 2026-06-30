@@ -1626,21 +1626,43 @@ const AdminDashboard = () => {
   };
 
   // ======================== Withdrawals ========================
-  const processWithdrawal = async (withdrawalId: string, agentStoreId: string | null, amount: number, withdrawalSource: string = "wallet", subagentStoreId?: string | null) => {
+  const processWithdrawal = async (withdrawalId: string, agentStoreId: string | null, amount: number, withdrawalSource: string = "wallet", subagentStoreId?: string | null, subsubagentStoreId?: string | null) => {
     setProcessingWithdrawals((prev) => new Set(prev).add(withdrawalId));
     try {
       // Re-fetch the withdrawal to get the correct source and IDs
       const { data: withdrawalData } = await supabase
         .from("withdrawal_requests")
-        .select("withdrawal_source, agent_store_id, subagent_store_id")
+        .select("withdrawal_source, agent_store_id, subagent_store_id, sub_subagent_store_id")
         .eq("id", withdrawalId)
         .single();
       
       const confirmedSource = withdrawalData?.withdrawal_source || withdrawalSource || "wallet";
-      const isSubagentWithdrawal = !!withdrawalData?.subagent_store_id;
+      const isSubsubagentWithdrawal = !!withdrawalData?.sub_subagent_store_id;
+      const isSubagentWithdrawal = !!withdrawalData?.subagent_store_id && !isSubsubagentWithdrawal;
       const isSubagentProfit = confirmedSource === "subagent_commission";
       
-      if (isSubagentWithdrawal) {
+      if (isSubsubagentWithdrawal) {
+        // SUBSUBAGENT WITHDRAWAL - fetch fresh balance from database first
+        const { data: freshSubsubagent, error: fetchError } = await supabase
+          .from("subagent_stores")
+          .select("wallet_balance")
+          .eq("id", withdrawalData.sub_subagent_store_id)
+          .single();
+        
+        if (fetchError || !freshSubsubagent) throw new Error("Failed to fetch subsubagent balance");
+        
+        const currentBalance = Number(freshSubsubagent.wallet_balance ?? 0);
+        const newBalance = currentBalance - amount;
+        
+        await supabase.from("subagent_stores").update({ wallet_balance: newBalance }).eq("id", withdrawalData.sub_subagent_store_id);
+        await supabase.from("withdrawal_requests").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", withdrawalId);
+        
+        // Update local state
+        setSubagents((prev) => prev.map((s) => s.id === withdrawalData.sub_subagent_store_id ? { ...s, wallet_balance: newBalance } : s));
+        setWithdrawals((prev) => prev.map((w) => w.id === withdrawalId ? { ...w, status: "completed", processed_at: new Date().toISOString() } : w));
+        
+        toast({ title: "Withdrawal processed!", description: `GH₵ ${Number(amount || 0).toFixed(2)} deducted from SubSubagent wallet. New balance: GH₵ ${Number(newBalance || 0).toFixed(2)}.` });
+      } else if (isSubagentWithdrawal) {
         // SUBAGENT WITHDRAWAL - fetch fresh balance from database first
         const { data: freshSubagent, error: fetchError } = await supabase
           .from("subagent_stores")
@@ -2591,7 +2613,7 @@ const AdminDashboard = () => {
                                   <TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{w.status}</Badge></TableCell>
                                   <TableCell>
                                     {w.status === "pending" && (
-                                      <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount), w.withdrawal_source, w.subagent_store_id)} disabled={processingWithdrawals.has(w.id)}>
+                                      <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount), w.withdrawal_source, w.subagent_store_id, w.sub_subagent_store_id)} disabled={processingWithdrawals.has(w.id)}>
                                         {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
                                       </Button>
                                     )}
