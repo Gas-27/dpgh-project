@@ -441,25 +441,26 @@ const SubSubagentDashboard = () => {
           return;
         }
 
-        // Fetch subagent store first (needed for other queries)
-        // Filter by user_id to ensure each subagent only sees their own store
-        console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
+        // Fetch subsubagent store first (needed for other queries)
+        // Filter by user_id to ensure each subsubagent only sees their own store
+        console.log("[v0] Querying sub_subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id")
-          .eq("user_id", effectiveUserId);
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id")
+          .eq("user_id", effectiveUserId)
+          .order("created_at", { ascending: false });
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
         if (storeErr) {
-          console.error("[v0] Error fetching subagent store:", storeErr);
+          console.error("[v0] Error fetching sub_subagent store:", storeErr);
           setLoadError("Failed to load your store. Please refresh the page or try again.");
           setLoading(false);
           return;
         }
 
         if (!storeData || storeData.length === 0) {
-          console.warn("[v0] No subagent store found for user_id:", effectiveUserId);
-          setLoadError("Store not found. Please contact your agent to complete registration.");
+          console.warn("[v0] No sub_subagent store found for user_id:", effectiveUserId);
+          setLoadError("Store not found. Your registration may still be pending. Please contact your parent agent to complete the registration process.");
           setLoading(false);
           return;
         }

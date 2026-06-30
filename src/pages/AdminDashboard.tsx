@@ -327,8 +327,9 @@ const AdminDashboard = () => {
         console.error('Error fetching withdrawals with stores:', error);
         return [];
       }
+      
       // Transform the flat response into nested structure for compatibility
-      return (data || []).map((w: any) => ({
+      const transformed = (data || []).map((w: any) => ({
         id: w.id,
         agent_store_id: w.agent_store_id,
         subagent_store_id: w.subagent_store_id,
@@ -356,6 +357,39 @@ const AdminDashboard = () => {
           wallet_balance: w.subagent_wallet_balance || w.sub_subagent_wallet_balance,
         },
       }));
+
+      // For subsubagent withdrawals with missing store data, fetch directly
+      const missingStoreIds = transformed
+        .filter(w => w.sub_subagent_store_id && !w.subagent_store.store_name)
+        .map(w => w.sub_subagent_store_id);
+
+      if (missingStoreIds.length > 0) {
+        const { data: storeData } = await supabase
+          .from("sub_subagent_stores")
+          .select("id, store_name, momo_name, momo_number, momo_network, wallet_balance")
+          .in("id", missingStoreIds);
+
+        if (storeData) {
+          const storeMap = Object.fromEntries(storeData.map(s => [s.id, s]));
+          transformed.forEach(w => {
+            if (w.sub_subagent_store_id && !w.subagent_store.store_name) {
+              const store = storeMap[w.sub_subagent_store_id];
+              if (store) {
+                w.subagent_store = {
+                  id: store.id,
+                  store_name: store.store_name,
+                  momo_name: store.momo_name,
+                  momo_number: store.momo_number,
+                  momo_network: store.momo_network,
+                  wallet_balance: store.wallet_balance,
+                };
+              }
+            }
+          });
+        }
+      }
+
+      return transformed;
     } catch (err) {
       console.error('Exception fetching withdrawals with stores:', err);
       return [];
