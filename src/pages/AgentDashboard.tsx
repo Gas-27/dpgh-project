@@ -1200,7 +1200,7 @@ const AgentDashboard = () => {
     if (hasPendingWithdrawal) { toast({ title: "Pending withdrawal exists", variant: "destructive" }); return; }
     
     const amt = parseFloat(withdrawAmount);
-    if (!amt || amt < 20) { toast({ title: "Minimum withdrawal is GH₵ 20.00", variant: "destructive" }); return; }
+    if (!amt || amt < 15) { toast({ title: "Minimum withdrawal is GH₵ 15.00", variant: "destructive" }); return; }
     
     const availableBalance = withdrawSource === "subagent_commission" 
       ? Number(store.subagent_commission_balance ?? 0) 
@@ -2600,7 +2600,7 @@ const AgentDashboard = () => {
                         <p className="text-xs text-red-300 mt-1">Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.</p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Processed Instantly ⚡</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
                     </div>
                   </>
                 )}

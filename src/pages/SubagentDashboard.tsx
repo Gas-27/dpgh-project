@@ -1183,8 +1183,8 @@ const SubagentDashboard = () => {
     const amount = parseFloat(withdrawAmount);
     
     // Validate minimum withdrawal
-    if (amount < 20) {
-      toast({ title: "Error", description: "Minimum withdrawal is GH₵ 20.00", variant: "destructive" });
+    if (amount < 15) {
+      toast({ title: "Error", description: "Minimum withdrawal is GH₵ 15.00", variant: "destructive" });
       return;
     }
     
@@ -2751,7 +2751,7 @@ const SubagentDashboard = () => {
                         </p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Processed Instantly ⚡</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
                     </div>
                   </>
                 )}
@@ -2823,7 +2823,7 @@ const SubagentDashboard = () => {
                         </p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 20.00 | Processed Instantly ⚡</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
                     </div>
                   </>
                 )}
