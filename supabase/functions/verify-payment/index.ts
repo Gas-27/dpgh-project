@@ -1,5 +1,3 @@
-// supabase/functions/verify-payment/index.ts
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -156,7 +154,7 @@ Deno.serve(async (req) => {
     }
 
     // =====================================
-    // SUBAGENT REGISTRATION PAYMENT HANDLER
+    // SUBAGENT REGISTRATION FEE PAYMENT
     // =====================================
     if (paymentType === "subagent_registration") {
       const registrationId = metadata.subagent_registration_id;
@@ -194,46 +192,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Create the subagent store NOW with approved: true
-      const storeData = registration.registration_data || {};
-      
-      console.log("[VERIFY] Registration data:", JSON.stringify(registration, null, 2));
-      console.log("[VERIFY] Creating subagent store with data:", {
-        user_id: registration.user_id,
-        agent_store_id: registration.agent_store_id,
-        store_name: storeData.store_name || registration.business_name,
-        registration_data: storeData
-      });
-      
-      const { data: newStore, error: storeError } = await supabase
-        .from("subagent_stores")
-        .insert({
-          user_id: registration.user_id,
-          agent_store_id: registration.agent_store_id,
-          store_name: storeData.store_name || registration.business_name,
-          whatsapp_number: storeData.whatsapp_number || "",
-          support_number: storeData.support_number || registration.phone_number,
-          momo_name: storeData.momo_name || "",
-          momo_number: storeData.momo_number || "",
-          momo_network: storeData.momo_network || "mtn",
-          wallet_balance: 0,
-          approved: true
-        })
-        .select("id")
-        .single();
-
-      if (storeError) {
-        console.error("[VERIFY] Failed to create subagent store:", storeError);
-        console.error("[VERIFY] Store creation error details:", JSON.stringify(storeError, null, 2));
-        return new Response(JSON.stringify({ error: "Failed to create subagent store", details: storeError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      console.log(`[VERIFY] Subagent store SUCCESSFULLY created with ID: ${newStore.id} for agent_store_id: ${registration.agent_store_id}`);
-
-      // Mark registration as paid and approved
+            // Mark as paid and APPROVED
       const { error: updateError } = await supabase
         .from("subagent_registrations")
         .update({
@@ -252,6 +211,42 @@ Deno.serve(async (req) => {
         });
       }
 
+      // =====================================
+      // CREATE SUBAGENT STORE AFTER PAYMENT
+      // =====================================
+      const { data: fullRegistration } = await supabase
+        .from("subagent_registrations")
+        .select("*")
+        .eq("id", registrationId)
+        .single();
+
+      if (fullRegistration && fullRegistration.user_id && fullRegistration.agent_store_id) {
+        const storeData = fullRegistration.registration_data || {};
+        
+        const { data: newStore, error: storeError } = await supabase
+          .from("subagent_stores")
+          .insert({
+            user_id: fullRegistration.user_id,
+            agent_store_id: fullRegistration.agent_store_id,
+            store_name: storeData.store_name || fullRegistration.business_name,
+            whatsapp_number: storeData.whatsapp_number || "",
+            support_number: storeData.support_number || fullRegistration.phone_number,
+            momo_name: storeData.momo_name || "",
+            momo_number: storeData.momo_number || "",
+            momo_network: storeData.momo_network || "mtn",
+            wallet_balance: 0,
+            approved: true
+          })
+          .select("id")
+          .single();
+
+        if (storeError) {
+          console.error("[VERIFY] Failed to create subagent store:", storeError);
+        } else {
+          console.log(`[VERIFY] Subagent store created: ${newStore.id}`);
+        }
+      }
+
       console.log(`[VERIFY] Subagent registration ${registrationId} payment verified and store created`);
 
       return new Response(JSON.stringify({
@@ -259,10 +254,82 @@ Deno.serve(async (req) => {
         message: "Registration payment verified successfully",
         type: "subagent_registration",
         registration_id: registrationId,
-        subagent_store_id: newStore.id,
         verified: true,
+        redirect_to: "/subagent-dashboard"
       }), {
         status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // =====================================
+    // SUBSUBAGENT WALLET TOPUP HANDLER
+    // =====================================
+    if (paymentType === "subsubagent_wallet_topup") {
+      const subsubagentStoreId = metadata.subsubagent_store_id;
+      const baseAmount = Number(metadata.base_amount) || (txData.amount / 100);
+      
+      if (!subsubagentStoreId) {
+        return new Response(JSON.stringify({ error: "Missing subsubagent store ID" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      const { data: existingTopup } = await supabase
+        .from("subsubagent_wallet_topups")
+        .select("id")
+        .eq("paystack_reference", reference)
+        .maybeSingle();
+      
+      if (existingTopup) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: "Topup already processed",
+          already_processed: true,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      const { data: store, error: storeError } = await supabase
+        .from("subagent_stores")
+        .select("wallet_balance")
+        .eq("id", subsubagentStoreId)
+        .single();
+      
+      if (storeError || !store) {
+        return new Response(JSON.stringify({ error: "Subsubagent store not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      const newBalance = (Number(store.wallet_balance) || 0) + baseAmount;
+      
+      const { error: updateError } = await supabase
+        .from("subagent_stores")
+        .update({ wallet_balance: newBalance })
+        .eq("id", subsubagentStoreId);
+      
+      if (updateError) {
+        console.error("Failed to update subsubagent wallet:", updateError);
+        return new Response(JSON.stringify({ error: "Failed to update wallet" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      await supabase.from("subsubagent_wallet_topups").insert({
+        subsubagent_store_id: subsubagentStoreId,
+        amount: baseAmount,
+        paystack_reference: reference,
+      });
+      
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Wallet topped up with GH₵${baseAmount.toFixed(2)}`,
+        new_balance: newBalance,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -373,7 +440,7 @@ Deno.serve(async (req) => {
       const { data: store, error: storeError } = await supabase
         .from("subagent_stores")
         .select("wallet_balance")
-        .eq("id", subagentStoreId)
+        .eq("id", dataPackageSubagentStoreId)
         .single();
       
       if (storeError || !store) {
@@ -388,7 +455,7 @@ Deno.serve(async (req) => {
       const { error: updateError } = await supabase
         .from("subagent_stores")
         .update({ wallet_balance: newBalance })
-        .eq("id", subagentStoreId);
+        .eq("id", dataPackageSubagentStoreId);
       
       if (updateError) {
         console.error("Failed to update subagent wallet:", updateError);
@@ -412,7 +479,217 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // =====================================
+    // SUBSUBAGENT DATA PACKAGE PURCHASE
+    // =====================================
+    const dataPackageSubsubagentStoreId = metadata?.subsubagent_store_id || null;
+    const dataPackageSubagentStoreId = metadata?.subagent_store_id || null;
+    const dataPackageAgentStoreId = metadata?.agent_store_id || null;
 
+    if (dataPackageSubsubagentStoreId) {
+      const phone = metadata.phone || "";
+      const packageId = metadata.package_id || "";
+      const network = metadata.network || "";
+      const packageName = metadata.package_name || "";
+      const sizeGbText = metadata.size_gb_text || "";
+
+      const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
+      let sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
+
+      const { data: existing } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("paystack_reference", reference)
+        .maybeSingle();
+
+      if (existing) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: "Payment already processed – your data is on the way!",
+          order_id: existing.id,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const amount = txData.amount / 100;
+
+      const { data: pkgData } = await supabase
+        .from("data_packages")
+        .select("agent_price")
+        .eq("id", packageId)
+        .single();
+
+      const adminBasePrice = pkgData?.agent_price ? Number(pkgData.agent_price) : 0;
+
+      const { data: subsubStore } = await supabase
+        .from("subagent_stores")
+        .select("parent_subagent_store_id, agent_store_id, wallet_balance")
+        .eq("id", dataPackageSubsubagentStoreId)
+        .single();
+
+      if (!subsubStore) {
+        return new Response(JSON.stringify({ error: "SubSubagent store not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // What SubSubagent PAID to parent Subagent
+      const { data: parentPrice } = await supabase
+        .from("subagent_package_prices")
+        .select("sell_price")
+        .eq("subagent_store_id", subsubStore.parent_subagent_store_id)
+        .eq("package_id", packageId)
+        .maybeSingle();
+
+      const costThatSubSubAgentPaid = parentPrice?.sell_price != null 
+        ? Number(parentPrice.sell_price) 
+        : adminBasePrice;
+
+      const sellingPrice = amount;
+      const basePriceForOrder = costThatSubSubAgentPaid;
+      const profitForOrder = sellingPrice - costThatSubSubAgentPaid;
+
+      console.log(`[SUBSUBAGENT] selling=${sellingPrice.toFixed(2)}, cost=${basePriceForOrder.toFixed(2)}, profit=${profitForOrder.toFixed(2)}`);
+
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          customer_number: phone,
+          package_id: packageId,
+          network,
+          size_gb: sizeGb,
+          size_gb_text: sizeGbText,
+          amount: amount,
+          status: "paid",
+          fulfillment_status: "pending",
+          paystack_reference: reference,
+          payment_method: "paystack",
+          selling_price: sellingPrice,
+          base_price: basePriceForOrder,
+          profit: profitForOrder,
+          profit_credited: false,
+          agent_store_id: subsubStore.agent_store_id,
+          subagent_store_id: subsubStore.parent_subagent_store_id,
+          subsubagent_store_id: subsubagentStoreId,
+        })
+        .select("id")
+        .single();
+
+      if (orderError) {
+        console.error("Failed to create subsubagent order:", orderError);
+        return new Response(JSON.stringify({ error: "Failed to create order" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log(`[SUBSUBAGENT] Order created: ${order.id}`);
+
+      // === CREDIT SUBSUBAGENT PROFIT ===
+      if (profitForOrder > 0) {
+        const newBalance = (Number(subsubStore.wallet_balance) || 0) + profitForOrder;
+        await supabase
+          .from("subagent_stores")
+          .update({ wallet_balance: newBalance })
+          .eq("id", subsubagentStoreId);
+
+        console.log(`[SUBSUBAGENT] Wallet: +GHS ${profitForOrder.toFixed(2)}, balance: GHS ${newBalance.toFixed(2)}`);
+      }
+
+      // === CREDIT PARENT SUBAGENT COMMISSION ===
+      if (subsubStore.parent_subagent_store_id) {
+        const { data: parentStore } = await supabase
+          .from("subagent_stores")
+          .select("wallet_balance")
+          .eq("id", subsubStore.parent_subagent_store_id)
+          .single();
+
+        if (parentStore) {
+          const { data: agentPrice } = await supabase
+            .from("agent_package_prices")
+            .select("sell_price")
+            .eq("agent_store_id", subsubStore.agent_store_id)
+            .eq("package_id", packageId)
+            .maybeSingle();
+
+          const agentToParentPrice = agentPrice?.sell_price != null 
+            ? Number(agentPrice.sell_price) 
+            : adminBasePrice;
+
+          const parentCommission = costThatSubSubAgentPaid - agentToParentPrice;
+
+          if (parentCommission > 0) {
+            const newBalance = (Number(parentStore.wallet_balance) || 0) + parentCommission;
+            await supabase
+              .from("subagent_stores")
+              .update({ wallet_balance: newBalance })
+              .eq("id", subsubStore.parent_subagent_store_id);
+
+            console.log(`[SUBSUBAGENT] Parent commission: +GHS ${parentCommission.toFixed(2)}, balance: GHS ${newBalance.toFixed(2)}`);
+          }
+        }
+      }
+
+      // === CREDIT AGENT COMMISSION ===
+      if (subsubStore.agent_store_id) {
+        const { data: agentPrice } = await supabase
+          .from("agent_package_prices")
+          .select("sell_price")
+          .eq("agent_store_id", subsubStore.agent_store_id)
+          .eq("package_id", packageId)
+          .maybeSingle();
+
+        const agentSellPrice = agentPrice?.sell_price != null 
+          ? Number(agentPrice.sell_price) 
+          : adminBasePrice;
+
+        const agentCommission = agentSellPrice - adminBasePrice;
+
+        if (agentCommission > 0) {
+          const { data: agentStore } = await supabase
+            .from("agent_stores")
+            .select("subagent_commission_balance")
+            .eq("id", subsubStore.agent_store_id)
+            .single();
+
+          if (agentStore) {
+            const newBalance = (Number(agentStore.subagent_commission_balance) || 0) + agentCommission;
+            await supabase
+              .from("agent_stores")
+              .update({ subagent_commission_balance: newBalance })
+              .eq("id", subsubStore.agent_store_id);
+
+            console.log(`[SUBSUBAGENT] Agent commission: +GHS ${agentCommission.toFixed(2)}, balance: GHS ${newBalance.toFixed(2)}`);
+          }
+        }
+      }
+
+      // Trigger fulfillment
+      try {
+        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fulfill-order`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+          },
+          body: JSON.stringify({ order_id: order.id }),
+        });
+      } catch (err) {
+        console.error("Failed to trigger fulfillment:", err);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: "SubSubagent order processed successfully",
+        order_id: order.id,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     // =====================================
     // REGULAR DATA PACKAGE PURCHASE HANDLER
     // =====================================
@@ -421,15 +698,11 @@ Deno.serve(async (req) => {
     const network = metadata.network || "";
     const packageName = metadata.package_name || "";
     const sizeGbText = metadata.size_gb_text || "";
-    const agentStoreId = metadata.agent_store_id || null;
-    const subagentStoreId = metadata.subagent_store_id || null;
 
     const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
     let sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
     
-    // For mashup packages, extract the correct GB value from sizeGbText (not packageName which may have minutes)
     if ((network === "mashup" || network === "mtn_mashup") && sizeGbText) {
-      // Extract GB value from formats like "2.6 GB + 1,077 mins" or "1077mins + 2.6GB"
       const gbMatch = sizeGbText.match(/(\d+(?:\.\d+)?)\s*GB/i);
       if (gbMatch) {
         sizeGb = parseFloat(gbMatch[1]);
@@ -455,9 +728,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // =====================================================
-    // CALCULATE PRICES
-    // =====================================================
     let sellingPrice = amount;
     let basePriceForOrder = 0;
     let profitForOrder = 0;
@@ -470,18 +740,17 @@ Deno.serve(async (req) => {
 
     const adminBasePrice = pkgData?.agent_price ? Number(pkgData.agent_price) : 0;
 
-    if (subagentStoreId) {
-      // SUBAGENT ORDER
+    if (dataPackageSubagentStoreId) {
       const { data: subagentStore } = await supabase
         .from("subagent_stores")
         .select("agent_store_id, wallet_balance")
-        .eq("id", subagentStoreId)
+        .eq("id", dataPackageSubagentStoreId)
         .single();
 
       const { data: packagePrice } = await supabase
         .from("subagent_package_prices")
         .select("base_price")
-        .eq("subagent_store_id", subagentStoreId)
+        .eq("subagent_store_id", dataPackageSubagentStoreId)
         .eq("package_id", packageId)
         .maybeSingle();
 
@@ -493,31 +762,48 @@ Deno.serve(async (req) => {
       basePriceForOrder = agentPriceToSubagent;
       profitForOrder = sellingPrice - basePriceForOrder;
 
-      // NOTE: Wallet credits are handled by Paystack webhook ONLY
-      // Do NOT credit wallet here - webhook handles all wallet updates to avoid double-crediting
-      console.log(`[v0] Subagent order - wallet credit delegated to webhook. Profit: ${profitForOrder}`);
+      if (subagentStore && profitForOrder > 0) {
+        const newWalletBalance = (Number(subagentStore.wallet_balance) || 0) + profitForOrder;
+        await supabase
+          .from("subagent_stores")
+          .update({ wallet_balance: newWalletBalance })
+          .eq("id", dataPackageSubagentStoreId);
+        
+        console.log(`[v0] Credited subagent ${dataPackageSubagentStoreId}: +${profitForOrder}, new balance=${newWalletBalance}`);
+      }
 
-    } else if (agentStoreId) {
-      // AGENT ORDER (direct sale) - ONLY if explicitly set
-      // Do NOT auto-assign agentStoreId from metadata to prevent accidentally crediting agents for main site orders
+      if (subagentStore?.agent_store_id && packageId) {
+        const agentCommission = basePriceForOrder - adminBasePrice;
+        
+        if (agentCommission > 0) {
+          const { data: agentStore } = await supabase
+            .from("agent_stores")
+            .select("subagent_commission_balance")
+            .eq("id", subagentStore.agent_store_id)
+            .single();
+          
+          if (agentStore) {
+            const newBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
+            await supabase
+              .from("agent_stores")
+              .update({ subagent_commission_balance: newBalance })
+              .eq("id", subagentStore.agent_store_id);
+            
+            console.log(`[v0] Credited agent ${subagentStore.agent_store_id}: +${agentCommission}, new balance=${newBalance}`);
+          }
+        }
+      }
+
+    } else if (dataPackageAgentStoreId) {
       sellingPrice = amount;
       basePriceForOrder = adminBasePrice;
       profitForOrder = sellingPrice - basePriceForOrder;
-      
-      console.log(`[v0] Agent order: agentStoreId=${agentStoreId}, profit=${profitForOrder}`);
     } else {
-      // DIRECT/ADMIN ORDER (no agent, no subagent) - main site orders
       sellingPrice = amount;
       basePriceForOrder = adminBasePrice;
       profitForOrder = 0;
-      
-      // Force clear agent_store_id to prevent accidental crediting
-      agentStoreId = null;
-      
-      console.log(`[v0] Main site order: no agent, profit=0`);
     }
 
-    // Build the new order
     const orderInsert: Record<string, unknown> = {
       customer_number: phone,
       package_id: packageId,
@@ -536,25 +822,22 @@ Deno.serve(async (req) => {
       subagent_store_id: null,
     };
     
-    // ONLY assign agent/subagent if they are explicitly provided AND valid
-    if (subagentStoreId) {
-      // Subagent order - credit subagent wallet
-      orderInsert.subagent_store_id = subagentStoreId;
+    if (dataPackageAgentStoreId) {
+      orderInsert.agent_store_id = dataPackageAgentStoreId;
+    }
+    if (dataPackageSubagentStoreId) {
+      orderInsert.subagent_store_id = dataPackageSubagentStoreId;
       
       const { data: subagentStore } = await supabase
         .from("subagent_stores")
         .select("agent_store_id")
-        .eq("id", subagentStoreId)
+        .eq("id", dataPackageSubagentStoreId)
         .maybeSingle();
       
       if (subagentStore?.agent_store_id) {
         orderInsert.agent_store_id = subagentStore.agent_store_id;
       }
-    } else if (agentStoreId) {
-      // Direct agent order - assign only if this is explicitly a direct agent sale
-      orderInsert.agent_store_id = agentStoreId;
     }
-    // else: main site order, leave both as null
 
     let orderId = "";
 
@@ -610,14 +893,15 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: "Payment confirmed! Your data bundle is being processed.",
+      message: "Payment confirmed – your data is on the way!",
       order_id: orderId,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    console.error("Verify error:", err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
+
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return new Response(JSON.stringify({ error: "Unexpected error occurred" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
