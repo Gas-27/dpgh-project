@@ -837,7 +837,7 @@ const SubSubagentDashboard = () => {
       const { error } = await supabase
         .from("withdrawal_requests")
         .insert({
-          subagent_store_id: subagentStore.id,
+          sub_subagent_store_id: subagentStore.id,
           amount,
           status: "pending"
         });
