@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dataplug-v1';
+const CACHE_NAME = 'dataapp-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -84,7 +84,7 @@ self.addEventListener('push', (event) => {
       },
     };
     event.waitUntil(
-      self.registration.showNotification(data.title || 'DATA PLUG', options)
+      self.registration.showNotification(data.title || 'DATA APP', options)
     );
   }
 });
