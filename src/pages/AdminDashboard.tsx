@@ -363,18 +363,23 @@ const AdminDashboard = () => {
         .filter(w => w.sub_subagent_store_id && !w.subagent_store.store_name)
         .map(w => w.sub_subagent_store_id);
 
+      console.log("[v0] Subsubagent withdrawals with missing data:", missingStoreIds.length, missingStoreIds);
+
       if (missingStoreIds.length > 0) {
-        const { data: storeData } = await supabase
+        const { data: storeData, error: storeError } = await supabase
           .from("sub_subagent_stores")
           .select("id, store_name, momo_name, momo_number, momo_network, wallet_balance")
           .in("id", missingStoreIds);
 
-        if (storeData) {
+        console.log("[v0] Fetched subsubagent stores:", storeData?.length, "error:", storeError);
+
+        if (storeData && storeData.length > 0) {
           const storeMap = Object.fromEntries(storeData.map(s => [s.id, s]));
           transformed.forEach(w => {
             if (w.sub_subagent_store_id && !w.subagent_store.store_name) {
               const store = storeMap[w.sub_subagent_store_id];
               if (store) {
+                console.log("[v0] Updating subsubagent withdrawal", w.id, "with store", store.store_name);
                 w.subagent_store = {
                   id: store.id,
                   store_name: store.store_name,
