@@ -667,7 +667,7 @@ const AgentStorefront = () => {
                                window.location.hostname.includes("localhost");
       
       // First try agent_stores
-      const { data: stores } = await supabase.from("agent_stores").select("*").eq("approved", true) as any;
+      const { data: stores } = await supabase.from("agent_stores").select("*") as any;
       
       let matched = null;
       if (stores && stores.length > 0) {
@@ -685,8 +685,7 @@ const AgentStorefront = () => {
       if (!matched && isSubagentDomain) {
         const { data: subagentStores } = await supabase
           .from("subagent_stores")
-          .select("*, agent_stores(store_name)")
-          .eq("approved", true) as any;
+          .select("*, agent_stores(store_name)") as any;
         
         if (subagentStores && subagentStores.length > 0) {
           matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name) === normalized);

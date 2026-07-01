@@ -526,8 +526,7 @@ export function SubagentStorefront() {
 
       const { data: stores, error } = await supabase
         .from("subagent_stores")
-        .select("*")
-        .eq("approved", true);
+        .select("*");
       
       if (error) {
         setNotFound(true);
