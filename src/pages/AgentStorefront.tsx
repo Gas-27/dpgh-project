@@ -672,7 +672,7 @@ const AgentStorefront = () => {
       let matched = null;
       if (stores && stores.length > 0) {
         // Try exact slug match from database first
-        matched = (stores as any[]).find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
+        matched = (stores as any[]).find((s: any) => s.store_name_slug && s.store_name_slug === storeName);
         // Try exact slug match
         if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
         // Try exact store name match
@@ -690,7 +690,7 @@ const AgentStorefront = () => {
           .select("*, agent_stores(store_name)") as any;
         
         if (subagentStores && subagentStores.length > 0) {
-          matched = (subagentStores as any[]).find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
+          matched = (subagentStores as any[]).find((s: any) => s.store_name_slug && s.store_name_slug === storeName);
           if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name) === normalized);
           if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
           if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
