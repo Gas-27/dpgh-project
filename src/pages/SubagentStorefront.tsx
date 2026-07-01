@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -513,10 +513,7 @@ export function SubagentStorefront() {
   // Fetch store by name
   useEffect(() => {
     const fetchStore = async () => {
-      console.log("[v0] SubagentStorefront.tsx - fetchStore called, urlStoreName:", urlStoreName);
-      
       if (!urlStoreName) {
-        console.log("[v0] urlStoreName is empty, setting not found");
         setNotFound(true);
         setLoading(false);
         return;
@@ -527,13 +524,9 @@ export function SubagentStorefront() {
       // Normalize for comparison - remove ALL special characters for matching
       const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
 
-      console.log("[v0] Searching for store with:", { urlStoreName, normalized, normalizedSlugified, normalizedClean });
-
       const { data: stores, error } = await supabase
         .from("subagent_stores")
         .select("*");
-      
-      console.log("[v0] Supabase query result - error:", error, "stores count:", stores?.length);
       
       if (error) {
         console.error("[v0] Supabase query error:", error);
@@ -543,39 +536,29 @@ export function SubagentStorefront() {
       }
       
       if (!stores || stores.length === 0) {
-        console.log("[v0] No stores returned from database");
         setNotFound(true);
         setLoading(false);
         return;
       }
 
-      console.log("[v0] Sample stores:", stores.slice(0, 3).map((s: any) => ({ store_name: s.store_name, store_name_slug: s.store_name_slug, id: s.id })));
-
       // Find matching store - try multiple strategies with more robust matching
       // First try exact slug match from database
       let matched = stores.find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
-      console.log("[v0] After slug match attempt:", matched ? `Found: ${matched.store_name}` : "No match");
       
       // Try slugified store name
       if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
-      console.log("[v0] After slugify match:", matched ? `Found: ${matched.store_name}` : "No match");
       
       if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
-      console.log("[v0] After exact lowercase match:", matched ? `Found: ${matched.store_name}` : "No match");
       
       // Normalized clean comparison - removes ALL special characters
       if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
-      console.log("[v0] After clean slugify match:", matched ? `Found: ${matched.store_name}` : "No match");
       
       if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
-      console.log("[v0] After clean lowercase match:", matched ? `Found: ${matched.store_name}` : "No match");
       
       // Also try matching by ID as fallback
       if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
-      console.log("[v0] After ID match:", matched ? `Found: ${matched.store_name}` : "No match");
 
       if (!matched) {
-        console.log("[v0] FINAL: Store not found after all attempts");
         setNotFound(true);
         setLoading(false);
         return;
