@@ -533,6 +533,10 @@ export function SubagentStorefront() {
         .select("*");
       
       console.log("[v0] Fetch result - error:", error, "stores:", stores?.slice(0, 2));
+      if (stores && stores.length > 0) {
+        console.log("[v0] First store keys:", Object.keys(stores[0]));
+        console.log("[v0] First store values:", stores[0]);
+      }
       
       if (error) {
         console.error("[v0] Supabase query error:", error);
