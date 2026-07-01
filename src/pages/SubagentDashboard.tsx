@@ -496,7 +496,7 @@ const SubagentDashboard = () => {
         // Run all other queries in parallel for faster loading
         const [
           ordersResult,
-          withdrawResult,
+          withdrawalsResult,
           packagesResult,
           agentSubagentPricesResult,
           adminCustomPricesResult,
@@ -505,7 +505,8 @@ const SubagentDashboard = () => {
           agentInfoResult,
           subSubagentsResult,
           recipientsResult,
-          payoutResult
+          payoutReqResult,
+          registrationsResult
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
