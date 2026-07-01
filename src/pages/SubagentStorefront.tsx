@@ -526,7 +526,8 @@ export function SubagentStorefront() {
 
       const { data: stores, error } = await supabase
         .from("subagent_stores")
-        .select("*");
+        .select("*")
+        .limit(10000);
       
       console.log("[v0] Fetch result - error:", error, "stores count:", stores?.length);
       if (stores && stores.length > 0) {
