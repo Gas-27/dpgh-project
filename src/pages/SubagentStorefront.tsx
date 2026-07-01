@@ -542,7 +542,10 @@ export function SubagentStorefront() {
       }
 
       // Find matching store - try multiple strategies with more robust matching
-      let matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
+      // First try exact slug match from database
+      let matched = stores.find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
+      // Try slugified store name
+      if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
       if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
       // Normalized clean comparison - removes ALL special characters
       if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
