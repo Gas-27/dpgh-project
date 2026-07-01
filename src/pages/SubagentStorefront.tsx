@@ -531,8 +531,6 @@ export function SubagentStorefront() {
         .ilike("store_name", normalized)
         .limit(5);
       
-      console.log("[v0] Exact name match result:", exactMatch?.length, "error:", exactError);
-      
       let matched = exactMatch && exactMatch.length > 0 ? exactMatch[0] : null;
       
       // If no exact match, fetch all stores for more flexible matching
@@ -541,8 +539,6 @@ export function SubagentStorefront() {
           .from("subagent_stores")
           .select("*")
           .limit(10000);
-        
-        console.log("[v0] Fetch result - error:", error, "stores count:", stores?.length);
       
         if (error) {
           console.error("[v0] Supabase query error:", error);
@@ -557,11 +553,8 @@ export function SubagentStorefront() {
           return;
         }
 
-        console.log("[v0] Searching for store:", { urlStoreName, normalized, normalizedSlugified, normalizedClean });
-        
         // Try slug match from database (if slug is populated)
         matched = stores.find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
-        console.log("[v0] After slug match:", matched ? "FOUND" : "No match");
         
         // If no match and store has NULL slug, try matching by generating slug from store_name
         if (!matched) {
@@ -569,22 +562,21 @@ export function SubagentStorefront() {
             const generatedSlug = s.store_name ? slugify(s.store_name) : null;
             return generatedSlug && generatedSlug === urlStoreName;
           });
-          console.log("[v0] After generated slug match:", matched ? "FOUND" : "No match");
         }
         
         // Try slugified store name
         if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
         
         if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
+        
+        // Normalized clean comparison - removes ALL special characters
+        if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
+        
+        if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
+        
+        // Also try matching by ID as fallback
+        if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
       }
-      
-      // Normalized clean comparison - removes ALL special characters
-      if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
-      
-      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
-      
-      // Also try matching by ID as fallback
-      if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
 
       if (!matched) {
         setNotFound(true);
