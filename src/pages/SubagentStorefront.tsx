@@ -524,54 +524,59 @@ export function SubagentStorefront() {
       // Normalize for comparison - remove ALL special characters for matching
       const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
 
-      const { data: stores, error } = await supabase
+      // First, try to find the store by exact name match (case-insensitive)
+      const { data: exactMatch, error: exactError } = await supabase
         .from("subagent_stores")
         .select("*")
-        .limit(10000);
+        .ilike("store_name", normalized)
+        .limit(5);
       
-      console.log("[v0] Fetch result - error:", error, "stores count:", stores?.length);
-      if (stores && stores.length > 0) {
-        console.log("[v0] First 3 stores:", stores.slice(0, 3).map((s: any) => ({ 
-          store_name: s.store_name, 
-          store_name_slug: s.store_name_slug,
-          id: s.id
-        })));
-        console.log("[v0] Jerry store data:", stores.find((s: any) => s.store_name === 'jerry'));
-      }
+      console.log("[v0] Exact name match result:", exactMatch?.length, "error:", exactError);
       
-      if (error) {
-        console.error("[v0] Supabase query error:", error);
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
+      let matched = exactMatch && exactMatch.length > 0 ? exactMatch[0] : null;
       
-      if (!stores || stores.length === 0) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-
-      console.log("[v0] Searching for store:", { urlStoreName, normalized, normalizedSlugified, normalizedClean });
-      
-      // Find matching store - try multiple strategies with more robust matching
-      // First try exact slug match from database (if slug is populated)
-      let matched = stores.find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
-      console.log("[v0] After slug match:", matched ? "FOUND" : "No match");
-      
-      // If no match and store has NULL slug, try matching by generating slug from store_name
+      // If no exact match, fetch all stores for more flexible matching
       if (!matched) {
-        matched = stores.find((s: any) => {
-          const generatedSlug = s.store_name ? slugify(s.store_name) : null;
-          return generatedSlug && generatedSlug === urlStoreName;
-        });
-        console.log("[v0] After generated slug match:", matched ? "FOUND" : "No match");
+        const { data: stores, error } = await supabase
+          .from("subagent_stores")
+          .select("*")
+          .limit(10000);
+        
+        console.log("[v0] Fetch result - error:", error, "stores count:", stores?.length);
+      
+        if (error) {
+          console.error("[v0] Supabase query error:", error);
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        
+        if (!stores || stores.length === 0) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+
+        console.log("[v0] Searching for store:", { urlStoreName, normalized, normalizedSlugified, normalizedClean });
+        
+        // Try slug match from database (if slug is populated)
+        matched = stores.find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
+        console.log("[v0] After slug match:", matched ? "FOUND" : "No match");
+        
+        // If no match and store has NULL slug, try matching by generating slug from store_name
+        if (!matched) {
+          matched = stores.find((s: any) => {
+            const generatedSlug = s.store_name ? slugify(s.store_name) : null;
+            return generatedSlug && generatedSlug === urlStoreName;
+          });
+          console.log("[v0] After generated slug match:", matched ? "FOUND" : "No match");
+        }
+        
+        // Try slugified store name
+        if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
+        
+        if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
       }
-      
-      // Try slugified store name
-      if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
-      
-      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
       
       // Normalized clean comparison - removes ALL special characters
       if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
