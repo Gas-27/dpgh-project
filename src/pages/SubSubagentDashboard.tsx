@@ -1332,6 +1332,10 @@ const SubSubagentDashboard = () => {
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
   const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
+  // Calculate wallet purchases from orders
+  const walletPurchases = orders
+    .filter((o) => o.payment_method === "wallet")
+    .reduce((s, o) => s + Number(o.amount || 0), 0);
   // Wallet balance = Profit - Completed Withdrawals - Wallet Purchases
   const calculatedWalletBalance = totalProfit - completedWithdrawals - walletPurchases;
   // Prefer database value as it's synced correctly
