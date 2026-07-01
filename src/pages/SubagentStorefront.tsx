@@ -513,6 +513,9 @@ export function SubagentStorefront() {
   // Fetch store by name
   useEffect(() => {
     const fetchStore = async () => {
+      console.log("[v0] SubagentStorefront fetchStore - client:", supabase);
+      console.log("[v0] Client auth settings:", supabase.auth);
+      
       if (!urlStoreName) {
         setNotFound(true);
         setLoading(false);
@@ -524,9 +527,12 @@ export function SubagentStorefront() {
       // Normalize for comparison - remove ALL special characters for matching
       const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
 
+      console.log("[v0] Fetching stores for:", urlStoreName);
       const { data: stores, error } = await supabase
         .from("subagent_stores")
         .select("*");
+      
+      console.log("[v0] Fetch result - error:", error, "stores:", stores?.slice(0, 2));
       
       if (error) {
         console.error("[v0] Supabase query error:", error);
