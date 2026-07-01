@@ -534,7 +534,7 @@ const NotificationModal = ({
   );
 };
 
-// ───────────────────────────────────────────────����─────────────────────────────
+// ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
 // ─�����������────────────────────────��──────────────────────────────────────────────────
 const AgentStorefront = () => {
@@ -669,6 +669,9 @@ const AgentStorefront = () => {
       // First try agent_stores
       const { data: stores } = await supabase.from("agent_stores").select("*") as any;
       
+      console.log("[v0] Searching for store on domain:", window.location.hostname, "with params:", { urlStoreName, normalized, normalizedSlugified });
+      console.log("[v0] Agent stores found:", stores?.map((s: any) => ({ store_name: s.store_name, id: s.id })) || []);
+      
       let matched = null;
       if (stores && stores.length > 0) {
         // Try exact slug match first
@@ -687,11 +690,15 @@ const AgentStorefront = () => {
           .from("subagent_stores")
           .select("*, agent_stores(store_name)") as any;
         
+        console.log("[v0] Subagent stores found:", subagentStores?.map((s: any) => ({ store_name: s.store_name, id: s.id })) || []);
+        
         if (subagentStores && subagentStores.length > 0) {
           matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name) === normalized);
           if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
           if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
           if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
+          
+          console.log("[v0] Subagent store match result:", matched ? `Found: ${matched.store_name}` : "No match");
           
           if (matched) {
             // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices
