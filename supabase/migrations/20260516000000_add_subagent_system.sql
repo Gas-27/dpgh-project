@@ -100,6 +100,10 @@ CREATE POLICY "Admins can manage all subagent stores" ON public.subagent_stores
   FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'));
 
+-- Anyone can view subagent stores for storefront (public read)
+CREATE POLICY "Anyone can view subagent stores for storefront" ON public.subagent_stores
+  FOR SELECT USING (true);
+
 -- RLS Policies for subagent_package_prices
 
 -- Subagents can view their own pricing

@@ -535,14 +535,10 @@ export function SubagentStorefront() {
       }
       
       if (!stores || stores.length === 0) {
-        console.log("[v0] No subagent stores found in database");
         setNotFound(true);
         setLoading(false);
         return;
       }
-
-      console.log("[v0] Searching for store:", { urlStoreName, normalized, normalizedSlugified, normalizedClean });
-      console.log("[v0] Available stores:", stores.map((s: any) => ({ store_name: s.store_name, id: s.id })));
 
       // Find matching store - try multiple strategies with more robust matching
       let matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
@@ -552,8 +548,6 @@ export function SubagentStorefront() {
       if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
       // Also try matching by ID as fallback
       if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
-
-      console.log("[v0] Store match result:", matched ? `Found: ${matched.store_name}` : "No match found");
 
       if (!matched) {
         setNotFound(true);
