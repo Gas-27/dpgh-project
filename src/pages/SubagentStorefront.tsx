@@ -528,6 +528,16 @@ export function SubagentStorefront() {
         .from("subagent_stores")
         .select("*");
       
+      console.log("[v0] Fetch result - error:", error, "stores count:", stores?.length);
+      if (stores && stores.length > 0) {
+        console.log("[v0] First 3 stores:", stores.slice(0, 3).map((s: any) => ({ 
+          store_name: s.store_name, 
+          store_name_slug: s.store_name_slug,
+          id: s.id
+        })));
+        console.log("[v0] Jerry store data:", stores.find((s: any) => s.store_name === 'jerry'));
+      }
+      
       if (error) {
         console.error("[v0] Supabase query error:", error);
         setNotFound(true);
@@ -541,9 +551,12 @@ export function SubagentStorefront() {
         return;
       }
 
+      console.log("[v0] Searching for store:", { urlStoreName, normalized, normalizedSlugified, normalizedClean });
+      
       // Find matching store - try multiple strategies with more robust matching
       // First try exact slug match from database
       let matched = stores.find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
+      console.log("[v0] After slug match:", matched ? "FOUND" : "No match");
       
       // Try slugified store name
       if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
