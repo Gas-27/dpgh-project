@@ -554,9 +554,18 @@ export function SubagentStorefront() {
       console.log("[v0] Searching for store:", { urlStoreName, normalized, normalizedSlugified, normalizedClean });
       
       // Find matching store - try multiple strategies with more robust matching
-      // First try exact slug match from database
+      // First try exact slug match from database (if slug is populated)
       let matched = stores.find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
       console.log("[v0] After slug match:", matched ? "FOUND" : "No match");
+      
+      // If no match and store has NULL slug, try matching by generating slug from store_name
+      if (!matched) {
+        matched = stores.find((s: any) => {
+          const generatedSlug = s.store_name ? slugify(s.store_name) : null;
+          return generatedSlug && generatedSlug === urlStoreName;
+        });
+        console.log("[v0] After generated slug match:", matched ? "FOUND" : "No match");
+      }
       
       // Try slugified store name
       if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
