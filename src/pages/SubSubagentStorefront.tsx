@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
-import { findStoreByName } from "@/utils/storeUtils";
+import { findStoreByName, fetchAllStores } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -486,38 +486,18 @@ export function SubSubagentStorefront() {
         return;
       }
 
-      const normalized = urlStoreName.toLowerCase().trim();
-      const normalizedSlugified = slugify(normalized);
-      // Normalize for comparison - remove ALL special characters for matching
-      const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
+      // Fetch ALL sub-subagent stores via pagination (bypasses the 1000-row cap)
+      const stores = await fetchAllStores(supabase, "sub_subagent_stores");
 
-      const { data: stores, error } = await supabase
-        .from("sub_subagent_stores")
-        .select("*");
-      
-      if (error) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-      
       if (!stores || stores.length === 0) {
         setNotFound(true);
         setLoading(false);
         return;
       }
 
-      // Find matching store - try multiple strategies with more robust matching
-      // First try exact slug match from database
-      let matched = stores.find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
-      // Try slugified store name
-      if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
-      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
-      // Normalized clean comparison - removes ALL special characters
-      if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
-      if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
-      // Also try matching by ID as fallback
-      if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
+      // Use unified store matching utility, with ID fallback
+      let matched = findStoreByName(urlStoreName, stores);
+      if (!matched) matched = stores.find((s: any) => s.id === urlStoreName) || null;
 
       if (!matched) {
         setNotFound(true);

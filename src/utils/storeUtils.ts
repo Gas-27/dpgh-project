@@ -28,6 +28,47 @@ export const slugify = (name: string): string => {
 };
 
 /**
+ * Fetch ALL rows from a table, bypassing Supabase/PostgREST's default
+ * "Max rows" cap (1000). We page through the data in batches using .range()
+ * until we receive a page smaller than the batch size.
+ *
+ * This is critical: `.limit(10000)` is silently capped at 1000 rows by the
+ * server, which caused stores beyond row 1000 (e.g. "jerry") to never be
+ * returned to the client, showing "Store Not Found".
+ */
+export const fetchAllStores = async (
+  supabase: any,
+  table: string,
+  selectStr: string = "*"
+): Promise<StoreData[]> => {
+  const pageSize = 1000;
+  let allRows: StoreData[] = [];
+  let from = 0;
+
+  // Safety cap: 50 pages = 50,000 rows max, prevents infinite loops
+  for (let page = 0; page < 50; page++) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(selectStr)
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error(`[v0] fetchAllStores error for ${table}:`, error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+
+    allRows = allRows.concat(data as StoreData[]);
+
+    // If we got fewer than a full page, we've reached the end
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return allRows;
+};
+
+/**
  * Find a store by name using normalized matching
  * Works for both agent_stores and subagent_stores
  */

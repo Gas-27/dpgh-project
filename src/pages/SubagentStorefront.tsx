@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
-import { findStoreByName } from "@/utils/storeUtils";
+import { findStoreByName, fetchAllStores } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -511,18 +511,8 @@ export function SubagentStorefront() {
         return;
       }
 
-      // Fetch all subagent stores and use unified matching logic
-      const { data: stores, error } = await supabase
-        .from("subagent_stores")
-        .select("*")
-        .limit(10000);
-
-      if (error) {
-        console.error("[v0] Supabase query error:", error);
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
+      // Fetch ALL subagent stores via pagination (bypasses the 1000-row cap)
+      const stores = await fetchAllStores(supabase, "subagent_stores");
 
       if (!stores || stores.length === 0) {
         setNotFound(true);

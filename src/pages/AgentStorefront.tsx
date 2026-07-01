@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
-import { getStoreNameFromSubdomain, findStoreByName } from "@/utils/storeUtils";
+import { getStoreNameFromSubdomain, findStoreByName, fetchAllStores } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -169,7 +169,7 @@ const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 // ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────���────────────────────
 const OrderTrackingCard = ({
   order,
   store,
@@ -645,24 +645,18 @@ const AgentStorefront = () => {
         return;
       }
 
-      // Check if we're on agentsstore.shop domain (subagent domain)
-      const isSubagentDomain =
-        window.location.hostname === "agentsstore.shop" ||
-        window.location.hostname === "www.agentsstore.shop" ||
-        window.location.hostname.includes("localhost");
-
-      // Fetch both agent and subagent stores
-      const [agentStoresRes, subagentStoresRes] = await Promise.all([
-        supabase.from("agent_stores").select("*"),
-        isSubagentDomain ? supabase.from("subagent_stores").select("*, agent_stores(store_name)") : Promise.resolve({ data: [] }),
+      // Fetch ALL agent and subagent stores via pagination (bypasses the 1000-row cap)
+      const [agentStores, subagentStores] = await Promise.all([
+        fetchAllStores(supabase, "agent_stores"),
+        fetchAllStores(supabase, "subagent_stores", "*, agent_stores(store_name)"),
       ]);
 
       // Try to find match in agent stores first
-      let matched = findStoreByName(storeName, (agentStoresRes.data as any[]) || []);
+      let matched = findStoreByName(storeName, agentStores);
 
-      // If no agent store match and we're on subagent domain, try subagent stores
-      if (!matched && isSubagentDomain) {
-        matched = findStoreByName(storeName, (subagentStoresRes.data as any[]) || []);
+      // If no agent store match, try subagent stores (works on any domain)
+      if (!matched) {
+        matched = findStoreByName(storeName, subagentStores);
 
         if (matched) {
           // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices
