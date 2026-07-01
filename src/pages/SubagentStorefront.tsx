@@ -529,6 +529,7 @@ export function SubagentStorefront() {
         .select("*");
       
       if (error) {
+        console.error("[v0] Supabase query error:", error);
         setNotFound(true);
         setLoading(false);
         return;
