@@ -216,14 +216,14 @@ const SubSubagentDashboard = () => {
   useEffect(() => {
     // For sub-subagents: use store_id from URL (after registration) or user's stored data
     // Or use impersonation data if admin is impersonating
-    if (impersonationData.storeId) {
+    if (impersonationData?.storeId) {
       fetchData(undefined, impersonationData.storeId);
     } else if (storeIdFromUrl) {
       fetchData(undefined, storeIdFromUrl);
     } else if (user?.id) {
       fetchData(user.id);
     }
-  }, [user?.id, storeIdFromUrl, impersonationData.storeId]);
+  }, [user?.id, storeIdFromUrl, impersonationData?.storeId]);
 
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops
@@ -340,9 +340,6 @@ const SubSubagentDashboard = () => {
   // Previously this would auto-refresh wallet balance and orders every 1 second
   // This was disabled because it was causing unnecessary page updates and was annoying when users were editing data
   // Users can still manually refresh the page with Cmd+R / Ctrl+R or use the browser's refresh button
-  useEffect(() => {
-    // Placeholder - auto-refresh disabled
-  }, [subagentStore?.id]);
 
   const fetchData = async (userId?: string, storeId?: string) => {
     try {
