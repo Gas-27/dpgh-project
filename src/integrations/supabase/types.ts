@@ -62,6 +62,7 @@ export type Database = {
           momo_network: string
           momo_number: string
           store_name: string
+          store_name_slug: string
           support_number: string
           topup_reference: string | null
           user_id: string
@@ -77,6 +78,7 @@ export type Database = {
           momo_network: string
           momo_number: string
           store_name: string
+          store_name_slug: string
           support_number: string
           topup_reference?: string | null
           user_id: string
@@ -107,6 +109,7 @@ export type Database = {
           user_id: string
           agent_store_id: string
           store_name: string
+          store_name_slug: string
           whatsapp_number: string
           support_number: string
           whatsapp_group: string | null
@@ -125,6 +128,7 @@ export type Database = {
           user_id: string
           agent_store_id: string
           store_name: string
+          store_name_slug: string
           whatsapp_number: string
           support_number: string
           whatsapp_group?: string | null
@@ -227,6 +231,7 @@ export type Database = {
           momo_network: string
           momo_number: string
           store_name: string
+          store_name_slug: string
           support_number: string
           topup_reference: string | null
           user_id: string
@@ -242,6 +247,7 @@ export type Database = {
           momo_network: string
           momo_number: string
           store_name: string
+          store_name_slug: string
           support_number: string
           topup_reference?: string | null
           user_id: string
