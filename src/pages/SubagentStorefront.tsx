@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
+import { findStoreByName } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -116,16 +117,7 @@ const formatNetworkName = (network: string) => {
   return network;
 };
 
-// Sanitize store name for URL matching - removes apostrophes, periods, and spaces
-const slugify = (name: string) =>
-  name
-    .toLowerCase()
-    .trim()                           // Remove leading/trailing spaces
-    .replace(/'/g, "")                // Remove apostrophes (store'name -> storename)
-    .replace(/\./g, "")               // Remove periods (store.name -> storename)
-    .replace(/\s+/g, "-")             // Replace spaces with hyphens
-    .replace(/-+/g, "-")              // Replace multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
+// Note: slugify is now imported from @/utils/storeUtils
 
 const getNetworkColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#3b82f6", telecel: "#ef4444" };
@@ -519,64 +511,27 @@ export function SubagentStorefront() {
         return;
       }
 
-      const normalized = urlStoreName.toLowerCase().trim();
-      const normalizedSlugified = slugify(normalized);
-      // Normalize for comparison - remove ALL special characters for matching
-      const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
-
-      // First, try to find the store by exact name match (case-insensitive)
-      const { data: exactMatch, error: exactError } = await supabase
+      // Fetch all subagent stores and use unified matching logic
+      const { data: stores, error } = await supabase
         .from("subagent_stores")
         .select("*")
-        .ilike("store_name", normalized)
-        .limit(5);
-      
-      let matched = exactMatch && exactMatch.length > 0 ? exactMatch[0] : null;
-      
-      // If no exact match, fetch all stores for more flexible matching
-      if (!matched) {
-        const { data: stores, error } = await supabase
-          .from("subagent_stores")
-          .select("*")
-          .limit(10000);
-      
-        if (error) {
-          console.error("[v0] Supabase query error:", error);
-          setNotFound(true);
-          setLoading(false);
-          return;
-        }
-        
-        if (!stores || stores.length === 0) {
-          setNotFound(true);
-          setLoading(false);
-          return;
-        }
+        .limit(10000);
 
-        // Try slug match from database (if slug is populated)
-        matched = stores.find((s: any) => s.store_name_slug && s.store_name_slug === urlStoreName);
-        
-        // If no match and store has NULL slug, try matching by generating slug from store_name
-        if (!matched) {
-          matched = stores.find((s: any) => {
-            const generatedSlug = s.store_name ? slugify(s.store_name) : null;
-            return generatedSlug && generatedSlug === urlStoreName;
-          });
-        }
-        
-        // Try slugified store name
-        if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name) === normalizedSlugified);
-        
-        if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().trim() === normalized);
-        
-        // Normalized clean comparison - removes ALL special characters
-        if (!matched) matched = stores.find((s: any) => s.store_name && slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
-        
-        if (!matched) matched = stores.find((s: any) => s.store_name && s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
-        
-        // Also try matching by ID as fallback
-        if (!matched) matched = stores.find((s: any) => s.id === urlStoreName);
+      if (error) {
+        console.error("[v0] Supabase query error:", error);
+        setNotFound(true);
+        setLoading(false);
+        return;
       }
+
+      if (!stores || stores.length === 0) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      // Use unified store matching utility
+      const matched = findStoreByName(urlStoreName, stores);
 
       if (!matched) {
         setNotFound(true);

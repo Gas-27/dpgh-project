@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
+import { findStoreByName } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -115,16 +116,7 @@ const formatNetworkName = (network: string) => {
   return network;
 };
 
-// Sanitize store name for URL matching - removes apostrophes, periods, and spaces
-const slugify = (name: string) =>
-  name
-    .toLowerCase()
-    .trim()                           // Remove leading/trailing spaces
-    .replace(/'/g, "")                // Remove apostrophes (store'name -> storename)
-    .replace(/\./g, "")               // Remove periods (store.name -> storename)
-    .replace(/\s+/g, "-")             // Replace spaces with hyphens
-    .replace(/-+/g, "-")              // Replace multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
+// Note: slugify is now imported from @/utils/storeUtils
 
 const getNetworkColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#3b82f6", telecel: "#ef4444" };

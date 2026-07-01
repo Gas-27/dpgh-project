@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
+import { getStoreNameFromSubdomain, findStoreByName } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -135,25 +136,7 @@ const copyToClipboard = async (text: string, toast: any) => {
   }
 };
 
-const getStoreNameFromSubdomain = (): string | null => {
-  const hostname = window.location.hostname;
-  if (hostname.endsWith(`.${DOMAINS.AGENT_STORE}`)) {
-    const parts = hostname.split(".");
-    if (parts.length >= 3) return parts[0].toLowerCase().trim();
-  }
-  return null;
-};
-
-// Sanitize store name for URL matching - removes apostrophes, periods, and spaces
-const slugify = (name: string) =>
-  name
-    .toLowerCase()
-    .trim()                           // Remove leading/trailing spaces
-    .replace(/'/g, "")                // Remove apostrophes (store'name -> storename)
-    .replace(/\./g, "")               // Remove periods (store.name -> storename)
-    .replace(/\s+/g, "-")             // Replace spaces with hyphens
-    .replace(/-+/g, "-")              // Replace multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
+// Note: getStoreNameFromSubdomain and slugify are now imported from @/utils/storeUtils
 
 const getNetworkLabelColor = (network: string) => {
   const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#60a5fa", telecel: "#f87171" };
@@ -539,7 +522,7 @@ const NotificationModal = ({
 // ─�����������────────────────────────��──────────────────────────────────────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
-  const subdomainStoreName = getStoreNameFromSubdomain();
+  const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
   const storeName = subdomainStoreName || paramStoreName;
 
   const { toast } = useToast();
@@ -656,72 +639,74 @@ const AgentStorefront = () => {
   // ── Initial data fetch ──
   useEffect(() => {
     const fetchStore = async () => {
-      if (!storeName) { setNotFound(true); setLoading(false); return; }
-      const normalized = storeName.toLowerCase().trim();
-      // Normalize for comparison - remove ALL special characters for matching
-      const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
-      
-      // Check if we're on agentsstore.shop domain (subagent domain)
-      const isSubagentDomain = window.location.hostname === "agentsstore.shop" || 
-                               window.location.hostname === "www.agentsstore.shop" ||
-                               window.location.hostname.includes("localhost");
-      
-      // First try agent_stores
-      const { data: stores } = await supabase.from("agent_stores").select("*") as any;
-      
-      let matched = null;
-      if (stores && stores.length > 0) {
-        // Try exact slug match from database first
-        matched = (stores as any[]).find((s: any) => s.store_name_slug && s.store_name_slug === storeName);
-        // Try exact slug match
-        if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
-        // Try exact store name match
-        if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
-        // Try normalized comparison (removes ALL special chars)
-        if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
-        // Try matching without hyphens
-        if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
+      if (!storeName) {
+        setNotFound(true);
+        setLoading(false);
+        return;
       }
-      
-      // If on subagent domain and no agent store found, try subagent_stores
-      if (!matched && isSubagentDomain) {
-        const { data: subagentStores } = await supabase
-          .from("subagent_stores")
-          .select("*, agent_stores(store_name)") as any;
-        
-        if (subagentStores && subagentStores.length > 0) {
-          matched = (subagentStores as any[]).find((s: any) => s.store_name_slug && s.store_name_slug === storeName);
-          if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name) === normalized);
-          if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
-          if (!matched) matched = (subagentStores as any[]).find((s: any) => slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean);
-          if (!matched) matched = (subagentStores as any[]).find((s: any) => s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean);
-          
-          if (matched) {
-            // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices
-            matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
-            matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
-            matched.is_subagent_store = true;
-            setStore(matched);
 
-            const [pkgRes, subagentPriceRes, agentPriceRes] = await Promise.all([
-              supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text").eq("active", true).order("size_gb"),
-              supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
-              supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
-            ]);
-            setPackages(pkgRes.data ?? []);
-            
-            // Use subagent prices if available, otherwise fall back to agent prices
-            const priceMap: Record<string, number> = {};
-            (agentPriceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-            (subagentPriceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-            setAgentPrices(priceMap);
-            setLoading(false);
-            return;
-          }
+      // Check if we're on agentsstore.shop domain (subagent domain)
+      const isSubagentDomain =
+        window.location.hostname === "agentsstore.shop" ||
+        window.location.hostname === "www.agentsstore.shop" ||
+        window.location.hostname.includes("localhost");
+
+      // Fetch both agent and subagent stores
+      const [agentStoresRes, subagentStoresRes] = await Promise.all([
+        supabase.from("agent_stores").select("*"),
+        isSubagentDomain ? supabase.from("subagent_stores").select("*, agent_stores(store_name)") : Promise.resolve({ data: [] }),
+      ]);
+
+      // Try to find match in agent stores first
+      let matched = findStoreByName(storeName, (agentStoresRes.data as any[]) || []);
+
+      // If no agent store match and we're on subagent domain, try subagent stores
+      if (!matched && isSubagentDomain) {
+        matched = findStoreByName(storeName, (subagentStoresRes.data as any[]) || []);
+
+        if (matched) {
+          // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices
+          matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
+          matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
+          matched.is_subagent_store = true;
+          setStore(matched);
+
+          const [pkgRes, subagentPriceRes, agentPriceRes] = await Promise.all([
+            supabase
+              .from("data_packages")
+              .select("id, network, size_gb, price, data_package_id, size_gb_text")
+              .eq("active", true)
+              .order("size_gb"),
+            supabase
+              .from("subagent_package_prices")
+              .select("package_id, sell_price")
+              .eq("subagent_store_id", matched.id),
+            supabase
+              .from("agent_package_prices")
+              .select("package_id, sell_price")
+              .eq("agent_store_id", matched.agent_store_id),
+          ]);
+          setPackages(pkgRes.data ?? []);
+
+          // Use subagent prices if available, otherwise fall back to agent prices
+          const priceMap: Record<string, number> = {};
+          (agentPriceRes.data ?? []).forEach((p: any) => {
+            priceMap[p.package_id] = p.sell_price;
+          });
+          (subagentPriceRes.data ?? []).forEach((p: any) => {
+            priceMap[p.package_id] = p.sell_price;
+          });
+          setAgentPrices(priceMap);
+          setLoading(false);
+          return;
         }
       }
-      
-      if (!matched) { setNotFound(true); setLoading(false); return; }
+
+      if (!matched) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
