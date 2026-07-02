@@ -2887,7 +2887,7 @@ const AgentDashboard = () => {
               currentBalance={wallet}
               walletType="api"
               apiKey={apiKey || undefined}
-              identityId={storeId}
+              identityId={store?.id}
               callbackUrl={`${window.location.origin}/agent/dashboard?tab=api-key`}
             />
           </TabsContent>
