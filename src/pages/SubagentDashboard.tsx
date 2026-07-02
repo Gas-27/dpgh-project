@@ -1073,7 +1073,7 @@ const SubagentDashboard = () => {
           amount,
           email: user.email,
           phone: subagentStore.support_number || subagentStore.whatsapp_number || "0000000000",
-          callback_url: `${window.location.origin}/subagent`,
+          callback_url: `${window.location.origin}/dashboard`,
           metadata: {
             type: "subagent_wallet_topup",
             subagent_store_id: subagentStore.id,
@@ -2424,7 +2424,7 @@ const SubagentDashboard = () => {
                                 email,
                                 amount: price,
                                 phone: buyCustomerNumber.trim(),
-                                callback_url: `${window.location.origin}/subagent?payment=verifying`,
+                                callback_url: `${window.location.origin}/dashboard`,
                                 metadata: {
                                   package_id: buyingPkg.id,
                                   network: buyingPkg.network,
@@ -2848,7 +2848,7 @@ const SubagentDashboard = () => {
                           <p className="text-xs text-muted-foreground mt-1">
                             {w.provider_type === "mobile_money" 
                               ? `${w.account_holder_name} • ${w.mobile_money_network?.toUpperCase()}: ${w.mobile_money_number}`
-                              : `${w.account_holder_name} • Bank: ${w.account_number}`
+                              : `${w.account_holder_name} �� Bank: ${w.account_number}`
                             }
                           </p>
                         </div>

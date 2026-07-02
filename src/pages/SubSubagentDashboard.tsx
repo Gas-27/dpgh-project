@@ -1879,7 +1879,7 @@ const SubSubagentDashboard = () => {
                                 email,
                                 amount: price,
                                 phone: buyCustomerNumber.trim(),
-                                callback_url: `${window.location.origin}/subagent?payment=verifying`,
+                                callback_url: `${window.location.origin}/sub-subagent-dashboard`,
                                 metadata: {
                                   package_id: buyingPkg.id,
                                   network: buyingPkg.network,

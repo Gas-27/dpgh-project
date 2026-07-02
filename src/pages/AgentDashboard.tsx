@@ -2888,7 +2888,7 @@ const AgentDashboard = () => {
               walletType="api"
               apiKey={apiKey || undefined}
               identityId={store?.id}
-              callbackUrl={`${window.location.origin}/agent/dashboard?tab=api-key`}
+              callbackUrl={`${window.location.origin}/agent?tab=api-key`}
             />
           </TabsContent>
 

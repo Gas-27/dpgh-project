@@ -736,7 +736,7 @@ const UserDashboard = () => {
           walletType="api"
           apiKey={apiKey || undefined}
           identityId={user?.id}
-          callbackUrl={`${window.location.origin}/dashboard?tab=api`}
+          callbackUrl={`${window.location.origin}/user-dashboard?tab=api`}
         />
 
         {/* Normal Wallet Top-up Dialog */}
@@ -746,7 +746,7 @@ const UserDashboard = () => {
           currentBalance={normalWallet}
           walletType="normal"
           identityId={user?.id}
-          callbackUrl={`${window.location.origin}/dashboard?tab=top-up`}
+          callbackUrl={`${window.location.origin}/user-dashboard?tab=top-up`}
         />
 
         {/* Buy Dialog */}
