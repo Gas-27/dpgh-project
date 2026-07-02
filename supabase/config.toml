@@ -3,6 +3,9 @@ project_id = "uloaiqmknsrknqikbmtb"
 [functions.initialize-payment]
 verify_jwt = false
 
+[functions.initialize-wallet-topup]
+verify_jwt = false
+
 [functions.verify-payment]
 verify_jwt = false
 
