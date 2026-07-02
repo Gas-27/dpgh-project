@@ -77,7 +77,6 @@ export const findStoreByName = (
   stores: StoreData[]
 ): StoreData | null => {
   if (!storeName || !stores || stores.length === 0) {
-    console.log("[v0] findStoreByName: No storeName or stores", { storeName, storeCount: stores?.length });
     return null;
   }
 
@@ -85,39 +84,19 @@ export const findStoreByName = (
   const normalizedSlugified = slugify(normalized);
   const normalizedClean = normalized.replace(/[^a-z0-9]/g, "");
 
-  console.log("[v0] findStoreByName: Searching", {
-    searchFor: storeName,
-    normalized,
-    normalizedSlugified,
-    normalizedClean,
-    availableStores: stores.slice(0, 5).map((s) => ({
-      name: s.store_name,
-      slug: s.store_name_slug,
-    })),
-  });
-
   // Strategy 1: Try exact name match (case-insensitive)
   let matched = stores.find(
     (s) => s.store_name && s.store_name.toLowerCase().trim() === normalized
   );
-  if (matched) {
-    console.log("[v0] Match found at Strategy 1 (exact name):", matched.store_name);
-    return matched;
-  }
+  if (matched) return matched;
 
   // Strategy 2: Try database slug field if populated
   matched = stores.find((s) => s.store_name_slug && s.store_name_slug === normalizedSlugified);
-  if (matched) {
-    console.log("[v0] Match found at Strategy 2 (database slug):", matched.store_name);
-    return matched;
-  }
+  if (matched) return matched;
 
   // Strategy 3: Try slugified comparison
   matched = stores.find((s) => s.store_name && slugify(s.store_name) === normalizedSlugified);
-  if (matched) {
-    console.log("[v0] Match found at Strategy 3 (slugified):", matched.store_name);
-    return matched;
-  }
+  if (matched) return matched;
 
   // Strategy 4: Try normalized clean comparison (all special chars removed)
   matched = stores.find(
@@ -125,10 +104,7 @@ export const findStoreByName = (
       s.store_name &&
       slugify(s.store_name).replace(/[^a-z0-9]/g, "") === normalizedClean
   );
-  if (matched) {
-    console.log("[v0] Match found at Strategy 4 (clean comparison):", matched.store_name);
-    return matched;
-  }
+  if (matched) return matched;
 
   // Strategy 5: Last resort - clean both sides completely
   matched = stores.find(
@@ -136,12 +112,8 @@ export const findStoreByName = (
       s.store_name &&
       s.store_name.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedClean
   );
-  if (matched) {
-    console.log("[v0] Match found at Strategy 5 (complete clean):", matched.store_name);
-    return matched;
-  }
+  if (matched) return matched;
 
-  console.log("[v0] No match found after all strategies");
   return null;
 };
 

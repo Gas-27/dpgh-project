@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import NotificationPopup from "@/components/NotificationPopup";
+import WalletTopupDialog from "@/components/WalletTopupDialog";
 import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
@@ -2880,59 +2881,15 @@ const AgentDashboard = () => {
             </Dialog>
 
             {/* API Wallet Top Up Dialog */}
-            <Dialog open={showTopupDialog} onOpenChange={setShowTopupDialog}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Top Up API Wallet</DialogTitle>
-                  <DialogDescription>
-                    Enter the amount you want to add to your API wallet
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="topup-amount">Amount (GH₵)</Label>
-                    <Input
-                      id="topup-amount"
-                      type="number"
-                      placeholder="Enter amount"
-                      value={topupAmount}
-                      onChange={(e) => setTopupAmount(e.target.value)}
-                      min="0.01"
-                      step="0.01"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Current balance: GH₵ {wallet.toFixed(2)}
-                  </div>
-                </div>
-                <div className="flex gap-2 justify-end mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowTopupDialog(false);
-                      setTopupAmount("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      // TODO: Implement top-up payment processing
-                      console.log("[v0] Top up amount:", topupAmount);
-                      toast({
-                        title: "Coming Soon",
-                        description: "Top-up payment processing will be available soon",
-                      });
-                    }}
-                    disabled={!topupAmount || parseFloat(topupAmount) <= 0 || topupLoading}
-                  >
-                    {topupLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                    Proceed to Payment
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <WalletTopupDialog
+              open={showTopupDialog}
+              onOpenChange={setShowTopupDialog}
+              currentBalance={wallet}
+              walletType="api"
+              apiKey={apiKey || undefined}
+              identityId={storeId}
+              callbackUrl={`${window.location.origin}/agent/dashboard?tab=api-key`}
+            />
           </TabsContent>
 
           {/* ============================= SUBAGENTS ============================= */}

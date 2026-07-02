@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import WalletTopupDialog from "@/components/WalletTopupDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,8 @@ const UserDashboard = () => {
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
   const [buyLoading, setBuyLoading] = useState(false);
   const [topupReference, setTopupReference] = useState<string>("");
+  const [showApiWalletTopup, setShowApiWalletTopup] = useState(false);
+  const [showNormalWalletTopup, setShowNormalWalletTopup] = useState(false);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -261,18 +264,12 @@ const UserDashboard = () => {
     }
   };
 
-  const handleTopUp = async (amount: number) => {
-    if (!amount || amount <= 0) {
-      toast({ title: "Error", description: "Please enter a valid amount", variant: "destructive" });
-      return;
-    }
-    try {
-      // Redirect to payment page with amount parameter
-      window.location.href = `/checkout?amount=${amount}&type=wallet-topup`;
-    } catch (err) {
-      console.error("[v0] Error processing top-up:", err);
-      toast({ title: "Error", description: "Failed to process top-up", variant: "destructive" });
-    }
+  const handleOpenApiWalletTopup = () => {
+    setShowApiWalletTopup(true);
+  };
+
+  const handleOpenNormalWalletTopup = () => {
+    setShowNormalWalletTopup(true);
   };
 
   const detectNetwork = (phone: string) => {
@@ -586,41 +583,13 @@ const UserDashboard = () => {
                 {/* Top Up API Wallet */}
                 <div className="space-y-2 border-t border-border pt-4">
                   <p className="text-sm font-semibold">Top Up API Wallet</p>
-                  <div className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">GH₵</span>
-                      <Input
-                        type="number"
-                        placeholder="0.00"
-                        id="api-wallet-topup"
-                        className="pl-12 pr-3 text-base font-semibold"
-                        min="1"
-                      />
-                    </div>
-                    <Button
-                      variant="hero"
-                      onClick={() => {
-                        const input = (document.getElementById("api-wallet-topup") as HTMLInputElement);
-                        if (input?.value) {
-                          handleTopUp(Number(input.value));
-                        }
-                      }}
-                    >
-                      Top Up
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {[100, 200, 500, 1000].map((amount) => (
-                      <Button
-                        key={amount}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleTopUp(amount)}
-                      >
-                        GH₵ {amount}
-                      </Button>
-                    ))}
-                  </div>
+                  <Button
+                    variant="hero"
+                    className="w-full"
+                    onClick={handleOpenApiWalletTopup}
+                  >
+                    Add Funds
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -710,45 +679,13 @@ const UserDashboard = () => {
                 <div className="space-y-3">
                   <p className="text-sm font-semibold">Top Up Normal Wallet (Data Purchases)</p>
                   <p className="text-xs text-muted-foreground">Balance: <strong>GH₵ {normalWallet.toFixed(2)}</strong></p>
-                  <div className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">GH₵</span>
-                      <Input
-                        type="number"
-                        placeholder="0.00"
-                        value={customTopupAmount}
-                        onChange={(e) => setCustomTopupAmount(e.target.value)}
-                        className="pl-12 pr-3 text-base font-semibold"
-                        min="1"
-                      />
-                    </div>
-                    <Button
-                      variant="hero"
-                      onClick={() => {
-                        if (customTopupAmount) {
-                          handleTopUp(Number(customTopupAmount));
-                        }
-                      }}
-                    >
-                      Top Up
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {[100, 200, 500, 1000].map((amount) => (
-                      <Button
-                        key={amount}
-                        variant="outline"
-                        size="sm"
-                        className="h-12"
-                        onClick={() => {
-                          setCustomTopupAmount(amount.toString());
-                          handleTopUp(amount);
-                        }}
-                      >
-                        GH₵ {amount}
-                      </Button>
-                    ))}
-                  </div>
+                  <Button
+                    variant="hero"
+                    className="w-full"
+                    onClick={handleOpenNormalWalletTopup}
+                  >
+                    Add Funds
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -790,6 +727,27 @@ const UserDashboard = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* API Wallet Top-up Dialog */}
+        <WalletTopupDialog
+          open={showApiWalletTopup}
+          onOpenChange={setShowApiWalletTopup}
+          currentBalance={apiWallet}
+          walletType="api"
+          apiKey={apiKey || undefined}
+          identityId={user?.id}
+          callbackUrl={`${window.location.origin}/dashboard?tab=api`}
+        />
+
+        {/* Normal Wallet Top-up Dialog */}
+        <WalletTopupDialog
+          open={showNormalWalletTopup}
+          onOpenChange={setShowNormalWalletTopup}
+          currentBalance={normalWallet}
+          walletType="normal"
+          identityId={user?.id}
+          callbackUrl={`${window.location.origin}/dashboard?tab=top-up`}
+        />
 
         {/* Buy Dialog */}
         <Dialog open={buyDialogOpen} onOpenChange={v => !v && setBuyDialogOpen(false)}>
