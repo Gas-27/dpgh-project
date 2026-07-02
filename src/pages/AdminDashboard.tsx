@@ -1971,7 +1971,10 @@ const AdminDashboard = () => {
                               // Determine source
                               const agentStore = order.agent_store_id ? agents.find(a => a.id === order.agent_store_id) : null;
                               const subagentStore = order.subagent_store_id ? subagents.find(s => s.id === order.subagent_store_id) : null;
-                              const isAPIOrder = !order.agent_store_id && !order.subagent_store_id;
+                              // An order is only an API order when it was actually placed via the API
+                              // (i.e. the api_user field is set). Missing store IDs alone means a
+                              // direct main-site order, NOT an API order.
+                              const isAPIOrder = !!(order.api_user && String(order.api_user).trim() !== "");
                               
                               let sourceType = "Main Site";
                               let sourceLabel = isAPIOrder ? "API" : "Direct";
