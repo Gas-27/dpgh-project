@@ -3,6 +3,8 @@
  * Handles calling the Supabase Edge Function to initialize Paystack payments
  */
 
+import { supabase } from "@/integrations/supabase/client";
+
 export interface WalletTopupRequest {
   api_key?: string;
   identity_id?: string;
@@ -32,30 +34,36 @@ export const initializeWalletTopup = async (
   request: WalletTopupRequest
 ): Promise<WalletTopupResponse> => {
   try {
-    const response = await fetch(
-      "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/initialize-wallet-topup",
+    // Use supabase.functions.invoke so the required apikey/Authorization
+    // headers are automatically attached (avoids the 401 gateway error).
+    const { data, error } = await supabase.functions.invoke(
+      "initialize-wallet-topup",
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(request),
+        body: request,
       }
     );
 
-    if (!response.ok) {
-      const errorData = await response.json();
+    if (error) {
+      // Try to surface the edge function's own error message if present
+      let message = error.message;
+      try {
+        const ctx = (error as any).context;
+        if (ctx && typeof ctx.json === "function") {
+          const body = await ctx.json();
+          message = body?.error || body?.message || message;
+        }
+      } catch {
+        // ignore parse errors, fall back to error.message
+      }
       return {
         success: false,
         message: "Failed to initialize payment",
-        error: errorData.error || response.statusText,
+        error: message,
       };
     }
 
-    const data: WalletTopupResponse = await response.json();
-    return data;
+    return data as WalletTopupResponse;
   } catch (error) {
-    console.error("[v0] Wallet topup error:", error);
     return {
       success: false,
       message: "Error initializing payment",
