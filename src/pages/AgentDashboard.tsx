@@ -347,11 +347,9 @@ const AgentDashboard = () => {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState<string>("");
   const [createNewRecipient, setCreateNewRecipient] = useState(false);
-  const [recipientType, setRecipientType] = useState<"bank" | "mobile_money">("bank");
+  const [editingRecipient, setEditingRecipient] = useState<any>(null);
   const [recipientName, setRecipientName] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [bankCode, setBankCode] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
+  const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [mobileNumber, setMobileNumber] = useState("");
   const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [showTopupDialog, setShowTopupDialog] = useState(false);
@@ -1194,6 +1192,69 @@ const AgentDashboard = () => {
       } catch (e: any) { toast({ title: "Payment Error", description: e.message, variant: "destructive" }); }
     }
     setBuyLoading(false);
+  };
+
+  const handleDeleteRecipient = async (recipientCode: string) => {
+    if (!window.confirm("Are you sure you want to delete this recipient? This action cannot be undone.")) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("transfer_recipients")
+        .delete()
+        .eq("recipient_code", recipientCode);
+      
+      if (error) throw error;
+      
+      toast({ title: "Recipient deleted successfully" });
+      setTransferRecipients(transferRecipients.filter(r => r.recipient_code !== recipientCode));
+      if (selectedRecipient === recipientCode) {
+        setSelectedRecipient("");
+      }
+    } catch (error: any) {
+      toast({ title: "Failed to delete recipient", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleEditRecipient = (recipient: any) => {
+    setEditingRecipient(recipient);
+    setRecipientName(recipient.account_holder_name);
+    setMobileNetwork(recipient.mobile_money_network || "mtn");
+    setMobileNumber(recipient.mobile_money_number);
+    setCreateNewRecipient(true);
+  };
+
+  const handleSaveEditedRecipient = async () => {
+    if (!recipientName.trim() || !mobileNumber.trim()) {
+      toast({ title: "Please fill all fields", variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("transfer_recipients")
+        .update({
+          account_holder_name: recipientName,
+          mobile_money_network: mobileNetwork,
+          mobile_money_number: mobileNumber,
+        })
+        .eq("recipient_code", editingRecipient.recipient_code);
+      
+      if (error) throw error;
+      
+      toast({ title: "Recipient updated successfully" });
+      setTransferRecipients(transferRecipients.map(r => 
+        r.recipient_code === editingRecipient.recipient_code 
+          ? { ...r, account_holder_name: recipientName, mobile_money_network: mobileNetwork, mobile_money_number: mobileNumber }
+          : r
+      ));
+      setEditingRecipient(null);
+      setRecipientName("");
+      setMobileNetwork("mtn");
+      setMobileNumber("");
+      setCreateNewRecipient(false);
+    } catch (error: any) {
+      toast({ title: "Failed to update recipient", description: error.message, variant: "destructive" });
+    }
   };
 
   const handleWithdraw = async () => {
@@ -2498,6 +2559,33 @@ const AgentDashboard = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                        <div className="space-y-1 mt-3">
+                          {transferRecipients.map((r: any) => (
+                            <div key={r.recipient_code} className="flex items-center justify-between gap-2 p-2 rounded border border-border text-sm bg-muted/30">
+                              <span className="flex-1 truncate text-sm">{r.account_holder_name} • {r.mobile_money_network?.toUpperCase()}</span>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => handleEditRecipient(r)}
+                                  title="Edit recipient"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
+                                  onClick={() => handleDeleteRecipient(r.recipient_code)}
+                                  title="Delete recipient"
+                                >
+                                  <Trash2Icon className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                     
@@ -2516,12 +2604,19 @@ const AgentDashboard = () => {
                     <Button 
                       variant="ghost" 
                       className="text-xs" 
-                      onClick={() => setCreateNewRecipient(false)}
+                      onClick={() => {
+                        setCreateNewRecipient(false);
+                        setEditingRecipient(null);
+                        setRecipientName("");
+                        setMobileNetwork("mtn");
+                        setMobileNumber("");
+                      }}
                     >
                       ← Back to Recipients
                     </Button>
                     
                     <div className="space-y-3 border border-border rounded-lg p-4">
+                      <h3 className="font-medium">{editingRecipient ? "Edit Recipient" : "Create New Recipient"}</h3>
                       <div className="space-y-1">
                         <Label>Full Name</Label>
                         <Input 
@@ -2603,19 +2698,37 @@ const AgentDashboard = () => {
                         <Button 
                           variant="outline" 
                           className="flex-1"
-                          onClick={() => setCreateNewRecipient(false)}
+                          onClick={() => {
+                            setCreateNewRecipient(false);
+                            setEditingRecipient(null);
+                            setRecipientName("");
+                            setMobileNetwork("mtn");
+                            setMobileNumber("");
+                          }}
                         >
                           Cancel
                         </Button>
-                        <Button 
-                          variant="hero"
-                          className="flex-1 bg-cyan-600 hover:bg-cyan-700"
-                          disabled={!recipientName.trim() || !mobileNumber.trim() || !withdrawAmount || Number(withdrawAmount) < 15 || Number(withdrawAmount) > effectiveBalance || withdrawLoading}
-                          onClick={() => handleWithdraw()}
-                        >
-                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
-                          Send Transfer
-                        </Button>
+                        {editingRecipient ? (
+                          <Button 
+                            variant="hero"
+                            className="flex-1 bg-amber-600 hover:bg-amber-700"
+                            disabled={!recipientName.trim() || !mobileNumber.trim()}
+                            onClick={() => handleSaveEditedRecipient()}
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Changes
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="hero"
+                            className="flex-1 bg-cyan-600 hover:bg-cyan-700"
+                            disabled={!recipientName.trim() || !mobileNumber.trim() || !withdrawAmount || Number(withdrawAmount) < 15 || Number(withdrawAmount) > effectiveBalance || withdrawLoading}
+                            onClick={() => handleWithdraw()}
+                          >
+                            {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
+                            Send Transfer
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </>
