@@ -693,7 +693,7 @@ const AgentDashboard = () => {
   });
 
       const [pkgR, priceR, orderR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR] = await Promise.all([
-        supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
+        supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         supabase.from("orders").select("*", { count: "exact" }).eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999),
         supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", sd.id).order("created_at", { ascending: false }),
@@ -790,7 +790,7 @@ const AgentDashboard = () => {
       );
       await fetchTotalProfit();
     } else {
-      const { data: pkgData } = await supabase.from("data_packages").select("*").eq("active", true).order("size_gb");
+          const { data: pkgData } = await supabase.from("data_packages").select("*").order("size_gb");
       setPackages(pkgData ?? []);
     }
     setLoading(false);
@@ -1870,18 +1870,20 @@ const AgentDashboard = () => {
               }).map((pkg) => {
                 const price = Number(pkg.agent_price || pkg.price);
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
+                const isInactive = pkg.active === false;
                 return (
-                  // COMMENTED OUT: mashup packages deactivated
-                  <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
-                    {/* {pkg.network === "mtn_mashup" && <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>} */}
-                    {/* {networkFilter === "mtn_mashup" && <div className="h-10 w-10 rounded-full bg-amber-600/20 flex items-center justify-center mx-auto"><Zap className="h-5 w-5 text-amber-500" /></div>} */}
-                    {/* {networkFilter === "mtn_mashup" && <p className="font-display text-xs text-amber-500 uppercase tracking-wide mb-1">Special Mashup</p>} */}
+                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "opacity-50 grayscale" : "hover:border-slate-600/50"}`}>
+                    {isInactive && (
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
+                        Not available
+                      </div>
+                    )}
                     <CardContent>
                       <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
                       <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
-                      {wouldUnderflow ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}
-                      <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700" onClick={() => openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow}>Buy Now</Button>
+                      {wouldUnderflow && !isInactive ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}
+                      <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow || isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
                   </Card>
                 );
@@ -1918,7 +1920,7 @@ const AgentDashboard = () => {
             </div>
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
             <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
-              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = cur - pkg.agent_price; return (<TableRow key={pkg.id}><TableCell className="font-display font-bold">{pkg.size_gb_text || pkg.size_gb + "GB"}</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
+              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = cur - pkg.agent_price; const isInactive = pkg.active === false; return (<TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}><TableCell className="font-display font-bold">{pkg.size_gb_text || pkg.size_gb + "GB"}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
           </TabsContent>
 
           {/* ============================= FLYER GENERATOR ============================= */}

@@ -510,7 +510,7 @@ const SubagentDashboard = () => {
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
+          supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
@@ -672,7 +672,7 @@ const SubagentDashboard = () => {
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
+          supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
@@ -790,7 +790,7 @@ const SubagentDashboard = () => {
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").eq("active", true).order("size_gb"),
+          supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
@@ -2346,13 +2346,19 @@ const SubagentDashboard = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {filteredPackages.map(pkg => {
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;
+                const isInactive = pkg.active === false;
                 return (
-                  <Card key={pkg.id} className="border-border transition-all hover:border-primary/50 relative">
+                  <Card key={pkg.id} className={`border-border transition-all relative ${isInactive ? "opacity-50 grayscale" : "hover:border-primary/50"}`}>
+                    {isInactive && (
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
+                        Not available
+                      </div>
+                    )}
                     <CardContent className="p-4 text-center space-y-3">
                       <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb}GB</p>
                       <p className="text-lg font-bold text-primary">GH₵ {Number(basePrice).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Base Price</p>
-                      <Button variant="hero" size="sm" className="w-full" onClick={() => setBuyingPkg(pkg)}>Buy Now</Button>
+                      <Button variant="hero" size="sm" disabled={isInactive} className="w-full disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && setBuyingPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
                   </Card>
                 );
@@ -3305,9 +3311,10 @@ const SubagentDashboard = () => {
                             const profit = cur - costFromAgent;
                             const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < costFromAgent;
                             const hasSavedPrice = savedPrice !== undefined;
+                            const isInactive = pkg.active === false;
                             return (
-                              <TableRow key={pkg.id}>
-                                <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                              <TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}>
+                                <TableCell className="font-display font-bold">{pkg.size_gb}GB{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
                                 <TableCell className="text-muted-foreground">
                                   GH₵ {Number(costFromAgent).toFixed(2)}
                                 </TableCell>
@@ -3782,9 +3789,10 @@ const SubagentDashboard = () => {
                             const profit = cur - costFromAgent;
                             const isInvalid = subSubagentEditedSubSubPrices[pkg.id] !== undefined && subSubagentEditedSubSubPrices[pkg.id] < costFromAgent;
                             const hasSavedPrice = savedPrice !== undefined;
+                            const isInactive = pkg.active === false;
                             return (
-                              <TableRow key={pkg.id}>
-                                <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                              <TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}>
+                                <TableCell className="font-display font-bold">{pkg.size_gb}GB{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
                                 <TableCell className="text-muted-foreground">
                                   GH₵ {Number(costFromAgent).toFixed(2)}
                                 </TableCell>
