@@ -112,7 +112,7 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
       <CardHeader>
         <CardTitle>Add New Recipient</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-20">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label>Recipient Type</Label>
@@ -205,11 +205,11 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4">
+          <div className="sticky bottom-0 -mx-6 -mb-6 bg-slate-950 border-t border-slate-800 px-6 py-4 flex flex-col sm:flex-row gap-3 justify-end">
             <Button variant="outline" onClick={onCancel} disabled={loading} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button disabled={loading} type="submit" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+            <Button disabled={loading} type="submit" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold">
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {loading ? "Saving..." : "Save Recipient"}
             </Button>
