@@ -1337,9 +1337,6 @@ const SubagentDashboard = () => {
       setSelectedRecipient("");
       setCreateNewRecipient(false);
       setRecipientName("");
-      setBankName("");
-      setBankCode("");
-      setAccountNumber("");
       setMobileNumber("");
       // Wait a moment for the database to sync, then refresh
       setTimeout(() => fetchData(), 1000);
