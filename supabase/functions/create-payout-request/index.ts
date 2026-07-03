@@ -277,7 +277,19 @@ Deno.serve(async (req) => {
         body: JSON.stringify(paystackPayload),
       });
 
-      const paystackResult = await paystackRes.json();
+      const contentType = paystackRes.headers.get("content-type");
+      let paystackResult: any;
+
+      if (contentType && contentType.includes("application/json")) {
+        paystackResult = await paystackRes.json();
+      } else {
+        const textBody = await paystackRes.text();
+        console.error(`[CREATE-PAYOUT] Non-JSON response from Paystack. Status: ${paystackRes.status}, Content-Type: ${contentType}, Body: ${textBody.substring(0, 200)}`);
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Paystack API error (HTTP ${paystackRes.status}): Invalid response format`,
+        }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
       if (!paystackResult.status) {
         console.error(`[CREATE-PAYOUT] Paystack error:`, paystackResult);
@@ -438,15 +450,27 @@ Deno.serve(async (req) => {
         body: JSON.stringify(transferPayload),
       });
 
-      const transferResult = await transferRes.json();
-      console.log(`[CREATE-PAYOUT] Paystack transfer response:`, JSON.stringify(transferResult));
+      const contentType = transferRes.headers.get("content-type");
+      let transferResult: any;
 
-      if (transferResult.status && transferResult.data) {
-        transferSuccess = true;
-        transferData = transferResult.data;
+      if (contentType && contentType.includes("application/json")) {
+        transferResult = await transferRes.json();
       } else {
-        transferError = transferResult.message || "Transfer initiation failed";
-        console.error(`[CREATE-PAYOUT] Transfer failed:`, transferError);
+        const textBody = await transferRes.text();
+        console.error(`[CREATE-PAYOUT] Non-JSON response from Paystack. Status: ${transferRes.status}, Content-Type: ${contentType}, Body: ${textBody.substring(0, 200)}`);
+        transferError = `Paystack API error (HTTP ${transferRes.status}): Invalid response format`;
+      }
+
+      if (transferResult) {
+        console.log(`[CREATE-PAYOUT] Paystack transfer response:`, JSON.stringify(transferResult));
+
+        if (transferResult.status && transferResult.data) {
+          transferSuccess = true;
+          transferData = transferResult.data;
+        } else {
+          transferError = transferResult.message || "Transfer initiation failed";
+          console.error(`[CREATE-PAYOUT] Transfer failed:`, transferError);
+        }
       }
     } catch (err) {
       transferError = (err as Error).message;
