@@ -74,7 +74,7 @@ function getOrderStage(order: any): string {
 
 // ==================== INTERFACES ====================
 interface AgentStore {
-  id: string; store_name: string; whatsapp_number: string; support_number: string;
+  id: string; user_id?: string; subagent_commission_balance?: number; store_name: string; whatsapp_number: string; support_number: string;
   whatsapp_group: string | null; show_whatsapp_group_icon: boolean; show_ussd_on_storefront: boolean;
   momo_number: string; momo_name: string; momo_network: string; approved: boolean;
   wallet_balance: number; topup_reference: string; store_headline: string;
@@ -1258,6 +1258,31 @@ const AgentDashboard = () => {
       if (sessionError || !session?.access_token) {
         throw new Error("Authentication failed. Please log in again.");
       }
+
+      // The payout edge function authorizes the store against the authenticated
+      // session user (token). During admin impersonation the displayed `store`
+      // belongs to another agent, so we must resolve and use the store owned by
+      // the actual logged-in user to keep the request valid and self-consistent.
+      const authUserId = session.user.id;
+      let requesterStoreId = store.id;
+      if (store.user_id && store.user_id !== authUserId) {
+        const { data: ownStore, error: ownStoreError } = await supabase
+          .from("agent_stores")
+          .select("id, wallet_balance, subagent_commission_balance")
+          .eq("user_id", authUserId)
+          .single();
+        if (ownStoreError || !ownStore) {
+          throw new Error("Your agent store could not be found for this account.");
+        }
+        requesterStoreId = ownStore.id;
+        const ownAvailable = withdrawSource === "subagent_commission"
+          ? Number(ownStore.subagent_commission_balance ?? 0)
+          : Number(ownStore.wallet_balance ?? 0);
+        if (amt > ownAvailable) {
+          throw new Error("Insufficient balance in your store for this withdrawal.");
+        }
+      }
+      payload.requester_id = requesterStoreId;
 
       const response = await fetch(
         "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
