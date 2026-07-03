@@ -95,6 +95,8 @@ interface DataPackage {
   network: string;
   size_gb: number;
   price: number;
+  size_gb_text?: string;
+  active?: boolean;
 }
 
 interface Order {
@@ -667,10 +669,9 @@ const AgentStorefront = () => {
 
           const [pkgRes, subagentPriceRes, agentPriceRes] = await Promise.all([
             supabase
-              .from("data_packages")
-              .select("id, network, size_gb, price, data_package_id, size_gb_text")
-              .eq("active", true)
-              .order("size_gb"),
+          .from("data_packages")
+          .select("id, network, size_gb, price, data_package_id, size_gb_text, active")
+          .order("size_gb"),
             supabase
               .from("subagent_package_prices")
               .select("package_id, sell_price")
@@ -707,7 +708,7 @@ const AgentStorefront = () => {
       setStore(matched);
 
       const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text").eq("active", true).order("size_gb"),
+        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text, active").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
       ]);
@@ -1318,6 +1319,7 @@ const AgentStorefront = () => {
             >
               {filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
+                const isInactive = pkg.active === false;
       // COMMENTED OUT: mashup packages deactivated
       const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
       // Show Express badge only on specific mtn_mashup packages (matching flyer image)
@@ -1325,9 +1327,14 @@ const AgentStorefront = () => {
                 return (
                   <Card
                       key={pkg.id}
-                      className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group w-full"
+                      className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 group w-full ${isInactive ? "opacity-50 grayscale" : "hover:shadow-xl"}`}
                       style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBackground }}
                     >
+                      {isInactive && (
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
+                          Package not available
+                        </div>
+                      )}
                       {isMTNMashup ? (
                         <>
                           <CardContent className="p-6 text-center space-y-4">
@@ -1368,17 +1375,24 @@ const AgentStorefront = () => {
                             <Button
                               variant="secondary"
                               size={getButtonSize() === "xs" ? "sm" : (getButtonSize() as any)}
-                              className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap"
-                              style={{
+                              disabled={isInactive}
+                              className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap disabled:opacity-100 disabled:cursor-not-allowed"
+                              style={isInactive ? {
+                                backgroundColor: "transparent",
+                                color: "inherit",
+                                borderColor: buttonBorderColor,
+                                borderWidth: "1px",
+                                borderStyle: "solid",
+                              } : {
                                 backgroundColor: buttonBgColor,
                                 color: buttonTextColor,
                                 borderColor: buttonBorderColor,
                                 borderWidth: "1px",
                                 borderStyle: "solid",
                               }}
-                              onClick={() => setPaymentPkg(pkg)}
+                              onClick={() => !isInactive && setPaymentPkg(pkg)}
                             >
-                              Buy Now
+                              {isInactive ? "Not Available" : "Buy Now"}
                             </Button>
                           </CardContent>
                         </>

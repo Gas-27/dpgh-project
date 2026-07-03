@@ -87,6 +87,8 @@ interface DataPackage {
   network: string;
   size_gb: number;
   price: number;
+  size_gb_text?: string;
+  active?: boolean;
 }
 
 interface Order {
@@ -512,7 +514,7 @@ export function SubSubagentStorefront() {
       // Fetch packages and prices
       // Priority: 1. Sub-Subagent's own sell_price, 2. Parent Subagent's base prices, 3. Admin's base prices
       const [pkgRes, subSubagentPriceRes, appSettingsRes, parentSubagentInfoRes, parentSubagentPricesRes] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text").eq("active", true).order("size_gb"),
+        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text, active").order("size_gb"),
         supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", matched.id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
         supabase.from("subagent_stores").select("whatsapp_number, support_number").eq("id", matched.subagent_store_id).single(),
@@ -1015,6 +1017,7 @@ export function SubSubagentStorefront() {
             ) : (
               filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
+                const isInactive = pkg.active === false;
       // COMMENTED OUT: mashup packages deactivated
       const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
       // Show Express badge only on specific mtn_mashup packages (matching flyer image)
@@ -1022,10 +1025,15 @@ export function SubSubagentStorefront() {
                 return (
                   <Card 
                     key={pkg.id} 
-                    className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer w-full" 
+                    className={`relative border-0 shadow-lg transition-all w-full ${isInactive ? "opacity-50 grayscale cursor-not-allowed" : "hover:shadow-xl cursor-pointer"}`}
                     style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBg, borderColor: "var(--border)" }}
-                    onClick={() => { setPaymentPkg(pkg); setPaymentOpen(true); }}
+                    onClick={() => { if (isInactive) return; setPaymentPkg(pkg); setPaymentOpen(true); }}
                   >
+                    {isInactive && (
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
+                        Package not available
+                      </div>
+                    )}
                     <CardContent className="p-6 text-center space-y-4">
                       {isMTNMashup ? (
                         <>
@@ -1046,7 +1054,7 @@ export function SubSubagentStorefront() {
                           <Badge style={{ background: getNetworkColor(pkg.network), color: "#000" }}>{formatNetworkName(pkg.network)}</Badge>
                           <p className="text-3xl font-bold" style={{ color: primaryColor }}>{pkg.size_gb}<span className="text-lg text-muted-foreground">GB</span></p>
                           <p className="text-xl font-semibold text-green-400">GH₵ {Number(price).toFixed(2)}</p>
-                          <Button size="lg" className="w-full font-semibold" style={{ background: primaryColor, color: primaryForeground }}>Buy Now</Button>
+                          <Button size="lg" disabled={isInactive} className="w-full font-semibold disabled:opacity-100 disabled:cursor-not-allowed" style={isInactive ? { background: "transparent", color: "inherit", border: "1px solid var(--border)" } : { background: primaryColor, color: primaryForeground }}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                         </>
                       )}
                     </CardContent>
