@@ -2528,7 +2528,52 @@ const AgentDashboard = () => {
                         />
                       </div>
                       
-                      <div className="flex gap-2 pt-3 border-t border-border">
+                      <div className="space-y-1 pt-3 border-t border-border">
+                        <Label>Amount (GH₵)</Label>
+                        <Input
+                          type="number"
+                          placeholder="Enter amount"
+                          value={withdrawAmount}
+                          onChange={(e) => setWithdrawAmount(e.target.value)}
+                          className="text-lg"
+                        />
+                      </div>
+
+                      {withdrawAmount && Number(withdrawAmount) > 0 && (
+                        <div className="space-y-2 text-sm">
+                          {(() => {
+                            const amount = Number(withdrawAmount);
+                            const feeRate = amount >= 100 ? 0.015 : 0.05;
+                            const feeAmount = amount * feeRate;
+                            const recipientAmount = amount - feeAmount;
+                            return (
+                              <>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Amount to Deduct:</span>
+                                  <span className="font-semibold">GH₵ {amount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Fee ({(feeRate * 100).toFixed(1)}%):</span>
+                                  <span className="font-semibold text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between border-t border-border pt-2">
+                                  <span className="text-muted-foreground">Recipient Receives:</span>
+                                  <span className="font-semibold text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                        <p className="text-xs text-red-400 font-medium">⚠️ IMPORTANT WARNING</p>
+                        <p className="text-xs text-red-300 mt-1">Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming.</p>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
+
+                      <div className="flex gap-2 pt-2">
                         <Button 
                           variant="outline" 
                           className="flex-1"
@@ -2538,46 +2583,12 @@ const AgentDashboard = () => {
                         </Button>
                         <Button 
                           variant="hero"
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
-                          disabled={!recipientName.trim() || !mobileNumber.trim()}
-                          onClick={async () => {
-                            if (!recipientName.trim() || !mobileNumber.trim()) {
-                              toast({ title: "Please fill all fields", variant: "destructive" });
-                              return;
-                            }
-                            if (!user?.id) {
-                              toast({ title: "User not found", variant: "destructive" });
-                              return;
-                            }
-                            console.log("[v0] Saving recipient - user.id:", user.id, "name:", recipientName);
-                            try {
-                              const { data, error } = await supabase.from("transfer_recipients").insert([{
-                                user_id: user.id,
-                                account_holder_name: recipientName,
-                                provider_type: "mobile_money",
-                                mobile_money_network: mobileNetwork,
-                                mobile_money_number: mobileNumber,
-                                status: "active",
-                              }]).select();
-                              
-                              console.log("[v0] Insert response - error:", error, "data:", data);
-                              if (error) throw error;
-                              
-                              toast({ title: "Recipient saved successfully", description: `${recipientName} has been saved.` });
-                              setTransferRecipients([...transferRecipients, ...(data || [])]);
-                              setRecipientName("");
-                              setMobileNetwork("mtn");
-                              setMobileNumber("");
-                              setCreateNewRecipient(false);
-                              if (data && data.length > 0) {
-                                setSelectedRecipient(data[0].recipient_code);
-                              }
-                            } catch (error: any) {
-                              toast({ title: "Failed to save recipient", description: error.message, variant: "destructive" });
-                            }
-                          }}
+                          className="flex-1 bg-cyan-600 hover:bg-cyan-700"
+                          disabled={!recipientName.trim() || !mobileNumber.trim() || !withdrawAmount || Number(withdrawAmount) < 15 || Number(withdrawAmount) > effectiveBalance || withdrawLoading}
+                          onClick={() => handleWithdraw()}
                         >
-                          Save Recipient
+                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
+                          Send Transfer
                         </Button>
                       </div>
                     </div>
