@@ -2579,7 +2579,7 @@ const AgentDashboard = () => {
                                   onClick={() => handleDeleteRecipient(r.recipient_code)}
                                   title="Delete recipient"
                                 >
-                                  <Trash2Icon className="h-3.5 w-3.5" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
                             </div>
