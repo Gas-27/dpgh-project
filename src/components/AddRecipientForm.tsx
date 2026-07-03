@@ -205,13 +205,13 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={onCancel} disabled={loading}>
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4">
+            <Button variant="outline" onClick={onCancel} disabled={loading} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button disabled={loading}>
+            <Button disabled={loading} type="submit" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Add Recipient
+              {loading ? "Saving..." : "Save Recipient"}
             </Button>
           </div>
         </form>
