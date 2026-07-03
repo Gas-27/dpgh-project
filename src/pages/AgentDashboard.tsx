@@ -351,7 +351,6 @@ const AgentDashboard = () => {
   const [recipientName, setRecipientName] = useState("");
   const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [mobileNumber, setMobileNumber] = useState("");
-  const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [showTopupDialog, setShowTopupDialog] = useState(false);
   const [topupAmount, setTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
