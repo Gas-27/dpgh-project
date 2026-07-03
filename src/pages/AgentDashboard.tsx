@@ -2505,9 +2505,10 @@ const AgentDashboard = () => {
                       variant="outline" 
                       className="w-full" 
                       onClick={() => setCreateNewRecipient(true)}
-                      disabled={transferRecipients.length >= 4}
+                      disabled={transferRecipients.length >= 4 || !!impersonatedUserId}
+                      title={impersonatedUserId ? "Cannot create new recipients while impersonating. Use existing recipients only." : ""}
                     >
-                      {transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/4)`}
+                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/4)`}
                     </Button>
                   </>
                 ) : (
