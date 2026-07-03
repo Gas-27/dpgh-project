@@ -39,6 +39,7 @@ interface DataPackage {
   size_gb_text?: string;
   mins?: number;
   price: number;
+  active?: boolean;
 }
 
 interface Order {
@@ -1171,7 +1172,7 @@ const Packages = () => {
 
   useEffect(() => {
     // Fetch packages with caching - include size_gb_text for mtn_mashup packages
-    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price").eq("active", true).order("size_gb", { ascending: true })
+    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price,active").order("size_gb", { ascending: true })
       .then(({ data }) => { setPackages(data ?? []); setLoading(false); });
   }, []);
 
@@ -1181,8 +1182,7 @@ const Packages = () => {
     async () => {
       const { data, error } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,price")
-        .eq("active", true)
+        .select("id,network,size_gb,size_gb_text,price,active")
         .order("size_gb", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -1206,7 +1206,7 @@ const Packages = () => {
         { event: "*", schema: "public", table: "data_packages" },
         async () => {
           // Simply invalidate the cache and let it refetch
-          const { data } = await supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price").eq("active", true).order("size_gb", { ascending: true });
+          const { data } = await supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price,active").order("size_gb", { ascending: true });
           if (data) setPackages(data);
         }
       )
@@ -1444,9 +1444,15 @@ const Packages = () => {
                 {filtered.map((pkg) => {
                   // COMMENTED OUT: mashup packages deactivated
                   const isMTNMashup = false; // selectedNetwork === "mtn_mashup";
+                  const isInactive = pkg.active === false;
                   const networkColor = networkConfig[selectedNetwork as keyof typeof networkConfig]?.color || "text-cyan-400";
                   return (
-                    <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
+                    <Card key={pkg.id} className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 ${isInactive ? "opacity-50 grayscale" : "hover:shadow-xl"}`} style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
+                      {isInactive && (
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-white/20 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
+                          Package not available
+                        </div>
+                      )}
                       <CardContent className="p-4 text-center space-y-3">
                         {isMTNMashup ? (
                           <>
@@ -1462,14 +1468,14 @@ const Packages = () => {
                             <div className="space-y-1 text-xs text-white">
                               <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
                             </div>
-                            <Button variant="secondary" size="sm" className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
+                            <Button variant="secondary" size="sm" disabled={isInactive} className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0 disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:border disabled:border-white/20" onClick={() => !isInactive && setPaymentPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                           </>
                         ) : (
                           <>
                             <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
                             <p className={`text-sm font-semibold uppercase tracking-wide ${networkColor}`}>{networkConfig[selectedNetwork as keyof typeof networkConfig]?.label || "Bundle"}</p>
                             <p className="text-xl font-bold text-white">GH₵{Number(pkg.price).toFixed(2)}</p>
-                            <Button variant="secondary" size="sm" className="w-full mt-2 font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
+                            <Button variant="secondary" size="sm" disabled={isInactive} className="w-full mt-2 font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && setPaymentPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                           </>
                         )}
                       </CardContent>

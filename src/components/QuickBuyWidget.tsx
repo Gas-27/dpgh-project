@@ -21,6 +21,7 @@ interface DataPackage {
   price: number;
   data_package_id?: string;
   size_gb_text?: string;
+  active?: boolean;
 }
 
 const QuickBuyWidget = () => {
@@ -30,10 +31,8 @@ const QuickBuyWidget = () => {
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
 
-  // Use real-time packages hook for instant updates
-  const { packages, loading } = useFetchRealtimePackages({
-    active: true,
-  });
+  // Use real-time packages hook for instant updates (include inactive so they show as unavailable)
+  const { packages, loading } = useFetchRealtimePackages();
 
   const filteredPlans = useMemo(
     () => {
@@ -49,7 +48,7 @@ const QuickBuyWidget = () => {
   );
 
   const handleBuyNow = () => {
-    if (selectedPlan === null || !filteredPlans[selectedPlan]) {
+    if (selectedPlan === null || !filteredPlans[selectedPlan] || filteredPlans[selectedPlan].active === false) {
       navigate(`/packages?network=${selectedNetwork}`);
       return;
     }
@@ -93,23 +92,33 @@ const QuickBuyWidget = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {filteredPlans.map((plan, i) => (
-              <button
-                key={plan.id}
-                type="button"
-                onClick={() => setSelectedPlan(i)}
-                className={`rounded-lg border p-3 text-left transition-all ${
-                  selectedPlan === i
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/40"
-                }`}
-              >
-                <p className="font-display text-base sm:text-lg font-bold text-foreground">
-                  {`${plan.size_gb}GB`}
-                </p>
-                <p className="text-xs text-muted-foreground">GH₵ {Number(plan.price).toFixed(2)}</p>
-              </button>
-            ))}
+            {filteredPlans.map((plan, i) => {
+              const isInactive = plan.active === false;
+              return (
+                <button
+                  key={plan.id}
+                  type="button"
+                  disabled={isInactive}
+                  onClick={() => !isInactive && setSelectedPlan(i)}
+                  className={`rounded-lg border p-3 text-left transition-all ${
+                    isInactive
+                      ? "border-border opacity-50 grayscale cursor-not-allowed"
+                      : selectedPlan === i
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <p className="font-display text-base sm:text-lg font-bold text-foreground">
+                    {`${plan.size_gb}GB`}
+                  </p>
+                  {isInactive ? (
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">GH₵ {Number(plan.price).toFixed(2)}</p>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
 
