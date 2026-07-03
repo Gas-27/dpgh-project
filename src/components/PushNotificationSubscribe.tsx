@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Bell, BellOff, Loader2 } from "lucide-react";
