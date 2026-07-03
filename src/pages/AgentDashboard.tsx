@@ -2527,6 +2527,53 @@ const AgentDashboard = () => {
                           onChange={e => setMobileNumber(e.target.value)}
                         />
                       </div>
+                      
+                      <div className="flex gap-2 pt-3 border-t border-border">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => setCreateNewRecipient(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          variant="hero"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          disabled={!recipientName.trim() || !mobileNumber.trim()}
+                          onClick={async () => {
+                            if (!recipientName.trim() || !mobileNumber.trim()) {
+                              toast({ title: "Please fill all fields", variant: "destructive" });
+                              return;
+                            }
+                            try {
+                              const { data, error } = await supabase.from("transfer_recipients").insert([{
+                                user_id: effectiveUserId,
+                                account_holder_name: recipientName,
+                                provider_type: "mobile_money",
+                                mobile_money_network: mobileNetwork,
+                                mobile_money_number: mobileNumber,
+                                status: "active",
+                              }]).select();
+                              
+                              if (error) throw error;
+                              
+                              toast({ title: "Recipient saved successfully", description: `${recipientName} has been saved.` });
+                              setTransferRecipients([...transferRecipients, ...(data || [])]);
+                              setRecipientName("");
+                              setMobileNetwork("mtn");
+                              setMobileNumber("");
+                              setCreateNewRecipient(false);
+                              if (data && data.length > 0) {
+                                setSelectedRecipient(data[0].recipient_code);
+                              }
+                            } catch (error: any) {
+                              toast({ title: "Failed to save recipient", description: error.message, variant: "destructive" });
+                            }
+                          }}
+                        >
+                          Save Recipient
+                        </Button>
+                      </div>
                     </div>
                   </>
                 )}
