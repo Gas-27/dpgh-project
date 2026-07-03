@@ -2545,9 +2545,14 @@ const AgentDashboard = () => {
                               toast({ title: "Please fill all fields", variant: "destructive" });
                               return;
                             }
+                            const userId = impersonatedUserId || user?.id;
+                            if (!userId) {
+                              toast({ title: "User not found", variant: "destructive" });
+                              return;
+                            }
                             try {
                               const { data, error } = await supabase.from("transfer_recipients").insert([{
-                                user_id: effectiveUserId,
+                                user_id: userId,
                                 account_holder_name: recipientName,
                                 provider_type: "mobile_money",
                                 mobile_money_network: mobileNetwork,
