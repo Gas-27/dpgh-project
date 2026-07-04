@@ -28,7 +28,7 @@ export default function PackageStatusIndicator({
   return (
     <div className="relative w-full">
       {/* Badge - keep on one line */}
-      <div className="flex items-center gap-1 mb-3 px-3 py-1 rounded-lg bg-red-50 border border-red-200 whitespace-nowrap">
+      <div className="flex items-center gap-1 mb-1.5 px-3 py-1 rounded-lg bg-red-50 border border-red-200 whitespace-nowrap">
         <p className="text-xs font-semibold text-red-700">
           Package is offline
         </p>
@@ -42,6 +42,11 @@ export default function PackageStatusIndicator({
           Why?
         </button>
       </div>
+
+      {/* Helper text for scrolling */}
+      <p className="text-[9px] text-red-500 mb-2 leading-tight">
+        Scroll down to see available packages
+      </p>
 
       {/* Dropdown showing reasons - compact with left alignment */}
       {showDropdown && (
