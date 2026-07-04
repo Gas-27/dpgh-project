@@ -14,6 +14,7 @@ import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 import AgentSignupPrompt from "@/components/AgentSignupPrompt";
 import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
+import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,8 @@ interface DataPackage {
   mins?: number;
   price: number;
   active?: boolean;
+  is_online?: boolean;
+  offline_reason?: string;
 }
 
 interface Order {
@@ -1445,12 +1448,17 @@ const Packages = () => {
                   // COMMENTED OUT: mashup packages deactivated
                   const isMTNMashup = false; // selectedNetwork === "mtn_mashup";
                   const isInactive = pkg.active === false;
+                  const isOffline = pkg.is_online === false;
+                  const packageStatus: PackageStatus = isOffline ? 'offline' : (isInactive ? 'not_available' : 'available');
                   const networkColor = networkConfig[selectedNetwork as keyof typeof networkConfig]?.color || "text-cyan-400";
                   return (
-                    <Card key={pkg.id} className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 ${isInactive ? "opacity-50 grayscale" : "hover:shadow-xl"}`} style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
-                      {isInactive && (
-                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-white/20 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
-                          Package not available
+                    <Card key={pkg.id} className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 ${isInactive || isOffline ? "opacity-50 grayscale" : "hover:shadow-xl"}`} style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
+                      {(isInactive || isOffline) && (
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+                          <div className="whitespace-nowrap rounded-full px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow"
+                            style={{ background: isOffline ? "rgba(239, 68, 68, 0.5)" : "rgba(255, 255, 255, 0.2)" }}>
+                            {isOffline ? "Package Offline" : "Package not available"}
+                          </div>
                         </div>
                       )}
                       <CardContent className="p-4 text-center space-y-3">
@@ -1468,14 +1476,14 @@ const Packages = () => {
                             <div className="space-y-1 text-xs text-white">
                               <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
                             </div>
-                            <Button variant="secondary" size="sm" disabled={isInactive} className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0 disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:border disabled:border-white/20" onClick={() => !isInactive && setPaymentPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
+                            <Button variant="secondary" size="sm" disabled={isInactive || isOffline} className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0 disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:border disabled:border-white/20" onClick={() => !isInactive && !isOffline && setPaymentPkg(pkg)}>{isOffline ? "Currently Offline" : isInactive ? "Not Available" : "Buy Now"}</Button>
                           </>
                         ) : (
                           <>
                             <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
                             <p className={`text-sm font-semibold uppercase tracking-wide ${networkColor}`}>{networkConfig[selectedNetwork as keyof typeof networkConfig]?.label || "Bundle"}</p>
                             <p className="text-xl font-bold text-white">GH₵{Number(pkg.price).toFixed(2)}</p>
-                            <Button variant="secondary" size="sm" disabled={isInactive} className="w-full mt-2 font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && setPaymentPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
+                            <Button variant="secondary" size="sm" disabled={isInactive || isOffline} className="w-full mt-2 font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && !isOffline && setPaymentPkg(pkg)}>{isOffline ? "Currently Offline" : isInactive ? "Not Available" : "Buy Now"}</Button>
                           </>
                         )}
                       </CardContent>

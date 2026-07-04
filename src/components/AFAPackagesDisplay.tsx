@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Zap, Check } from "lucide-react";
 import AFABundlesInfo from "./AFABundlesInfo";
+import PackageStatusIndicator, { PackageStatus } from "./PackageStatusIndicator";
 
 interface AFAPackage {
   id: string;
@@ -15,6 +16,8 @@ interface AFAPackage {
   base_price: number;
   commission_percent: number;
   is_active: boolean;
+  is_online?: boolean;
+  status?: PackageStatus;
 }
 
 interface AFADisplayProps {
@@ -305,9 +308,15 @@ export default function AFAPackagesDisplay({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {packages.map((pkg) => {
           const displayPrice = pricing[pkg.id]?.sell_price || pkg.base_price;
+          const packageStatus: PackageStatus = pkg.is_online === false ? 'offline' : (pkg.is_active ? 'available' : 'not_available');
 
           return (
             <Card key={pkg.id} className="flex flex-col hover:shadow-lg transition-shadow">
+              {packageStatus !== 'available' && (
+                <CardContent className="pt-4 pb-0">
+                  <PackageStatusIndicator status={packageStatus} packageName={pkg.name} />
+                </CardContent>
+              )}
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
