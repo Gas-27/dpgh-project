@@ -43,13 +43,13 @@ export default function PackageStatusIndicator({
         </button>
       </div>
 
-      {/* Dropdown showing reasons - fixed positioning so it's not cut off */}
+      {/* Dropdown showing reasons - wider to show all text */}
       {showDropdown && (
-        <div className="fixed bg-red-600 text-white rounded-lg shadow-lg z-50 p-4" style={{ maxWidth: '85vw', width: '280px' }}>
-          <p className="text-xs font-semibold mb-3">Why am I seeing this?</p>
-          <div className="space-y-2">
+        <div className="fixed bg-red-600 text-white rounded-lg shadow-lg z-50 p-4 left-0 right-0" style={{ width: 'min(90vw, 340px)', margin: '0 auto', top: '50%', transform: 'translateY(-50%)' }}>
+          <p className="text-xs font-semibold mb-3 whitespace-normal">Why am I seeing this?</p>
+          <div className="space-y-2.5">
             {OFFLINE_REASONS.map((reason, idx) => (
-              <div key={idx} className="text-xs leading-relaxed break-words">
+              <div key={idx} className="text-xs leading-relaxed whitespace-normal">
                 • {reason}
               </div>
             ))}
