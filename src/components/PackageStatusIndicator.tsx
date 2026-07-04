@@ -43,13 +43,13 @@ export default function PackageStatusIndicator({
         </button>
       </div>
 
-      {/* Dropdown showing reasons - wider to show all text */}
+      {/* Dropdown showing reasons - compact with left alignment */}
       {showDropdown && (
-        <div className="fixed bg-red-600 text-white rounded-lg shadow-lg z-50 p-4 left-0 right-0" style={{ width: 'min(90vw, 340px)', margin: '0 auto', top: '50%', transform: 'translateY(-50%)' }}>
-          <p className="text-xs font-semibold mb-3 whitespace-normal">Why am I seeing this?</p>
-          <div className="space-y-2.5">
+        <div className="fixed bg-red-600 text-white rounded-lg shadow-lg z-50 p-3" style={{ width: 'auto', minWidth: '220px', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+          <p className="text-xs font-semibold mb-2 text-left">Why am I seeing this?</p>
+          <div className="space-y-1.5">
             {OFFLINE_REASONS.map((reason, idx) => (
-              <div key={idx} className="text-xs leading-relaxed whitespace-normal">
+              <div key={idx} className="text-xs leading-snug text-left">
                 • {reason}
               </div>
             ))}
