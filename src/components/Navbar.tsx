@@ -1,4 +1,4 @@
-import { Zap, Menu, X, LayoutDashboard, Loader2 } from "lucide-react";
+import { Zap, Menu, X, LayoutDashboard, Loader2, Home, Search, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -76,36 +76,82 @@ const Navbar = () => {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-background px-6 py-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
-          <Link to="/packages" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Packages</Link>
-          <Link to="/#services" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Services</Link>
-          <Link to="/#agent" className="block text-sm text-muted-foreground" onClick={() => setMobileOpen(false)}>Become an Agent</Link>
-          <div className="flex gap-3 pt-2">
-            {loading ? (
-              <Button variant="ghost" size="sm" className="flex-1" disabled>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading
-              </Button>
-            ) : user ? (
-              <>
-                <Button variant="hero" size="sm" className="flex-1" asChild>
-                  <Link to={dashboardRoute} onClick={() => setMobileOpen(false)}>
-                    <LayoutDashboard className="h-4 w-4 mr-1" />
-                    {getDashboardLabel()}
+        <div className="md:hidden fixed inset-0 top-16 z-50 bg-slate-900 bg-opacity-95 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="h-full overflow-y-auto">
+            <div className="px-6 py-8 space-y-8">
+              {/* MENU Section */}
+              <div>
+                <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">MENU</h3>
+                <div className="space-y-2">
+                  <Link 
+                    to="/" 
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-500 bg-opacity-20 border border-blue-400 border-opacity-30 text-white hover:bg-opacity-30 transition-all"
+                  >
+                    <Home className="h-5 w-5" />
+                    <span className="font-medium">Home</span>
                   </Link>
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => { void signOut(); setMobileOpen(false); }}>Sign Out</Button>
-              </>
-            ) : (
-              <>
-                <Button variant="ghost" size="sm" className="flex-1" asChild>
-                  <Link to="/login" onClick={() => setMobileOpen(false)}>Log In</Link>
-                </Button>
-                <Button variant="hero" size="sm" className="flex-1" asChild>
-                  <Link to="/signup" onClick={() => setMobileOpen(false)}>Sign Up</Link>
-                </Button>
-              </>
-            )}
+                  <Link 
+                    to="/packages" 
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                  >
+                    <Search className="h-5 w-5" />
+                    <span className="font-medium">Packages</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* ACCOUNT Section */}
+              <div>
+                <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">ACCOUNT</h3>
+                <div className="space-y-2">
+                  {loading ? (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="font-medium">Loading</span>
+                    </div>
+                  ) : user ? (
+                    <>
+                      <Link 
+                        to={dashboardRoute}
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                      >
+                        <LayoutDashboard className="h-5 w-5" />
+                        <span className="font-medium">{getDashboardLabel()}</span>
+                      </Link>
+                      <button 
+                        onClick={() => { void signOut(); setMobileOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-red-500 hover:bg-opacity-20 transition-all"
+                      >
+                        <LogIn className="h-5 w-5" />
+                        <span className="font-medium">Sign Out</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link 
+                        to="/login"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                      >
+                        <LogIn className="h-5 w-5" />
+                        <span className="font-medium">Login</span>
+                      </Link>
+                      <Link 
+                        to="/signup"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                      >
+                        <UserPlus className="h-5 w-5" />
+                        <span className="font-medium">Sign Up</span>
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
