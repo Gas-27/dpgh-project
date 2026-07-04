@@ -1,6 +1,7 @@
 /**
- * CHATBOT KNOWLEDGE BASE - CORRECTED & COMPREHENSIVE
- * All information accurate and verified from codebase
+ * COMPREHENSIVE CHATBOT KNOWLEDGE BASE
+ * Contains ALL information from Agent Dashboard, Subagent Dashboard, Subsubagent Dashboard,
+ * Agent Storefront, Subagent Storefront, and all service information
  */
 
 interface KnowledgeEntry {
@@ -15,76 +16,21 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   // ============================================
   {
     questions: ["hello", "hi", "hey", "greetings", "welcome"],
-    answer: "Hello! Welcome! I'm here to help you with information about data packages, AFA bundles, agent programs, withdrawals, and support. What would you like to know?",
+    answer: "Hello! How can I help you today? I can answer questions about buying data, tracking orders, agent programs, withdrawals, AFA registration, and more.",
     category: "greeting"
-  },
-  
-  {
-    questions: ["what can you do", "help", "capabilities", "how can you help"],
-    answer: "I can help you with:\n\n📦 Data Packages - Check prices and availability\n⏱️ Delivery Times - <2 hours maximum\n👨‍🌾 AFA Program - Registration and approval process\n💰 Withdrawals - GH₵15 minimum\n🤝 Agent Program - Earn 5-10% commission\n💳 Payments - Methods and security\n📍 Order Tracking - Track your orders\n📞 Support - 24/7 WhatsApp help\n☎️ USSD Code - *1848# for checking status\n\nWhat would you like to know?",
-    category: "general"
-  },
-
-  {
-    questions: ["thanks", "thank you", "appreciate"],
-    answer: "You're welcome! Feel free to ask me anything else. I'm here 24/7!",
-    category: "general"
   },
 
   // ============================================
   // DATA PACKAGES & PRICING
   // ============================================
   {
-    questions: ["show packages", "available packages", "what data available", "data packages", "which packages available"],
-    answer: "I can fetch the latest available packages for you! Click the 'Show Available Packages' button to see:\n\n✓ All current packages in stock\n✓ Real-time pricing for each network\n✓ All available sizes grouped by network\n✓ Updated instantly\n\nJust click the green button at the top!",
+    questions: ["available packages", "data packages", "which packages", "what packages"],
+    answer: "We have data packages for MTN, AirtelTigo, and Telecel. Sizes range from 1GB to 100GB with varying prices. Click 'Show Available Packages' to see current prices and availability.",
     category: "packages"
   },
-
-  {
-    questions: ["data packages", "what packages", "available packages", "which packages"],
-    answer: "We offer data packages for three major networks:\n\n🔴 MTN Ghana\n🟠 AirtelTigo\n🟡 Telecel Ghana\n\nEach network has multiple sizes and prices. Click 'Show Available Packages' button to see:\n✓ Current prices\n✓ All available sizes\n✓ Real-time updates\n\nAll packages deliver within <2 hours!",
-    category: "packages"
-  },
-
   {
     questions: ["price", "cost", "how much", "pricing"],
-    answer: "💰 To See Current Prices\n\nClick the 'Show Available Packages' button above! You'll see:\n\n✓ Real-time pricing for each network\n✓ All available sizes\n✓ Current market rates\n✓ Prices grouped by network (MTN, AirtelTigo, Telecel)\n\nPrices are competitive and updated regularly!",
-    category: "packages"
-  },
-
-  {
-    questions: ["mtn", "mtn data", "mtn package"],
-    answer: "🔴 MTN Data Packages\n\nClick 'Show Available Packages' to see:\n✓ All MTN package sizes\n✓ Current MTN prices\n✓ Instant activation\n✓ Delivery within <2 hours\n\nOur MTN data is fast and reliable!",
-    category: "packages"
-  },
-
-  {
-    questions: ["airtel", "airteltigo", "tigo data"],
-    answer: "🟠 AirtelTigo Data Packages\n\nClick 'Show Available Packages' to see:\n✓ All AirtelTigo sizes\n✓ Current AirtelTigo prices\n✓ Instant activation\n✓ Delivery within <2 hours\n\nOur AirtelTigo data is fast and reliable!",
-    category: "packages"
-  },
-
-  {
-    questions: ["telecel", "vodafone", "telecel data"],
-    answer: "🟡 Telecel Data Packages\n\nClick 'Show Available Packages' to see:\n✓ All Telecel sizes\n✓ Current Telecel prices\n✓ Instant activation\n✓ Delivery within <2 hours\n\nOur Telecel data is fast and reliable!",
-    category: "packages"
-  },
-
-  {
-    questions: ["buy data", "purchase data", "how to buy"],
-    answer: "🛒 How to Buy Data\n\n3 Simple Steps:\n\n1️⃣ **Choose**\n   • Click 'Show Available Packages'\n   • Select your network\n   • Pick your size\n\n2️⃣ **Pay**\n   • Mobile Money (MTN, Vodafone)\n   • Bank Transfer\n   • Card Payment\n\n3️⃣ **Receive**\n   • Data delivered within <2 hours\n   • Check your balance\n   • Start using!\n\nNeed help? WhatsApp us!",
-    category: "packages"
-  },
-
-  {
-    questions: ["delivery", "how long", "delivery time", "when get data"],
-    answer: "⏱️ Delivery Time: <2 HOURS Maximum\n\nYour data is delivered within 2 hours after successful payment.\n\nIn most cases:\n✓ Much faster than 2 hours\n✓ Depends on network and traffic\n✓ Activated on your phone immediately\n\nIf you don't receive within 2 hours:\n📞 Contact WhatsApp support\n• Available 24/7\n• We resolve quickly\n\n99.9% uptime guaranteed!",
-    category: "packages"
-  },
-
-  {
-    questions: ["package offline", "offline", "why offline", "packages not available"],
-    answer: "⚠️ Why Packages Go Offline?\n\nPackages may show offline due to:\n\n✓ **Temporary maintenance** - Server updates\n✓ **Network stability** - Network provider issues\n✓ **High demand** - Many people buying\n✓ **Stock updates** - Refreshing inventory\n\n**What to do:**\n1. Try another size or network\n2. Refresh the page\n3. Try again in a few minutes\n4. Contact support if persists\n\nWe work to keep packages available! 📞",
+    answer: "Prices vary by network and package size. Click 'Show Available Packages' button to see exact current prices for all networks (MTN, AirtelTigo, Telecel).",
     category: "packages"
   },
 
@@ -92,211 +38,247 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   // ORDER TRACKING
   // ============================================
   {
-    questions: ["track order", "order status", "where order", "check order"],
-    answer: "📍 Track Your Order\n\n**2 Easy Ways:**\n\n1️⃣ **Click 'Track Order by Phone'** button\n   • Enter your phone number\n   • See your latest order\n\n2️⃣ **Click 'Track Order by ID'** button\n   • Enter your order ID\n   • See specific order details\n\n**You'll see:**\n✓ Order status\n✓ Delivery timeline\n✓ Network and size\n✓ Amount paid\n✓ Data balance\n\nCan't find your order? Contact WhatsApp support!",
+    questions: ["track", "order status", "where order", "check order", "tracking", "track this order", "track order for me"],
+    answer: "I can help track your order! Please provide your phone number so I can find your order details.",
     category: "orders"
   },
-
   {
-    questions: ["data not received", "no data", "didn't get", "missing data"],
-    answer: "⚠️ Data Not Received?\n\n**First, try these:**\n✓ Check balance on your phone\n✓ Restart your phone\n✓ Enable mobile data\n✓ Wait a bit longer (up to <2 hours)\n\n**Still no data after <2 hours?**\n\n📞 **Contact WhatsApp Support:**\n• Provide your phone number\n• Provide order ID\n• We investigate immediately\n• Issue resolved quickly\n\n24/7 Support Available!",
+    questions: ["data not received", "no data", "data missing", "didn't get data"],
+    answer: "If you don't receive data within 2 hours, please contact support via WhatsApp. They can resolve it immediately.",
     category: "orders"
   },
 
   // ============================================
-  // PAYMENT
+  // PAYMENT METHODS
   // ============================================
   {
-    questions: ["payment", "payment method", "how to pay"],
-    answer: "💳 Payment Methods We Accept\n\n✓ **Mobile Money**\n   - MTN Mobile Money\n   - Vodafone Cash\n   - AirtelTigo Money\n\n✓ **Bank Transfer**\n   - Direct to account\n   - Secure process\n\n✓ **Card Payments**\n   - Debit/Credit cards\n   - Secure gateway\n\nAll payments:\n🔒 Encrypted & secure\n⚡ Instant processing\n✅ Verified gateways\n\nChoose your preferred method at checkout!",
+    questions: ["payment", "payment method", "how to pay", "accept"],
+    answer: "We accept: Mobile Money (MTN, Vodafone, AirtelTigo), Bank Transfers, Card Payments, and Wallet transfers. All payments are secure and encrypted.",
     category: "payment"
   },
-
   {
-    questions: ["safe", "secure", "payment secure"],
-    answer: "🔒 Payment Security\n\n**Your payments are 100% safe:**\n\n✓ 256-bit SSL encryption\n✓ PCI DSS certified\n✓ Verified payment gateway\n✓ Card details never stored\n✓ Money-back guarantee on failures\n\n**Why trust us?**\n✓ 72K+ customers\n✓ 99.9% uptime\n✓ Zero breaches\n✓ Government licensed\n✓ Positive track record\n\nYour payment is completely safe! 💚",
+    questions: ["safe", "secure", "payment secure", "safety"],
+    answer: "Yes, all payments are 100% safe. We use 256-bit SSL encryption, PCI DSS certification, and Paystack gateway for security.",
     category: "payment"
   },
-
   {
     questions: ["refund", "money back", "failed payment"],
-    answer: "💰 Refunds & Failed Transactions\n\n**Automatic Refund:**\nIf payment fails:\n✓ Money automatically refunded\n✓ Usually appears within 24-48 hours\n✓ Check your payment history\n\n**Still not refunded after 48 hours?**\n\n📞 Contact WhatsApp Support:\n• Provide order ID\n• Provide phone number\n• Include payment proof\n• We resolve immediately\n\nWe ensure no one loses money!",
+    answer: "Failed transactions automatically refund within 24-48 hours. Check your payment history or contact support if not refunded.",
     category: "payment"
   },
 
   // ============================================
-  // AFA (AGRICULTURAL FINANCING)
+  // WITHDRAWAL & AGENT EARNINGS
   // ============================================
   {
-    questions: ["afa", "what is afa", "afa bundle", "agricultural"],
-    answer: "👨‍🌾 AFA - Agricultural Financing & Assurance\n\n**Special program with benefits:**\n\n✓ Government-subsidized data bundles\n✓ Affordable rates\n✓ Access to farming resources\n✓ Expert guidance\n✓ Community support\n\n**Key Details:**\n💵 Registration Fee: GH₵15 (one-time)\n⏱️ Approval Time: 24-72 hours\n📱 For MTN network\n☎️ Check status: Dial *1848#\n\n**Note:** You don't have to be a farmer to register! Anyone can join and benefit!\n\nInterested? Click 'AFA Bundles' button!",
-    category: "afa"
+    questions: ["withdraw", "withdrawal", "cash out", "get paid", "how to withdraw"],
+    answer: "To withdraw earnings:\n1. Go to your Dashboard\n2. Click 'Withdraw'\n3. Enter amount (minimum GH₵15)\n4. Select payment method (Mobile Money, Bank, Wallet)\n5. Confirm - money arrives in your account\n\nMinimum withdrawal: GH₵15",
+    category: "withdrawal"
   },
-
   {
-    questions: ["afa register", "join afa", "register afa"],
-    answer: "📋 AFA Registration - 5 Easy Steps\n\n1️⃣ **Click** 'AFA Bundles' button\n\n2️⃣ **Click** 'Register for AFA'\n\n3️⃣ **Fill** the registration form:\n   ✓ Full name\n   ✓ Phone number\n   ✓ Region/Town\n   ✓ Crop type (or none if not farming)\n   ✓ Other details\n\n4️⃣ **Pay** GH₵15 registration fee\n\n5️⃣ **Wait** 24-72 hours for MTN approval\n   ✓ Receive SMS confirmation\n   ✓ Start using AFA bundles!\n   ✓ Check status with *1848#\n\nKeep phone available during approval!",
-    category: "afa"
-  },
-
-  {
-    questions: ["afa approval", "how long afa", "72 hours", "afa time"],
-    answer: "⏱️ AFA Approval Timeline\n\n**Registration:** Instant (after payment) ✅\n\n**MTN Approval:** 24-72 HOURS\n(Most approvals complete within 48 hours)\n\n**Process:**\n1. Submit registration form\n2. Pay GH₵15 fee\n3. MTN reviews application\n4. Receive approval SMS\n5. Activate AFA bundles!\n\n**Check Your Status:**\n☎️ Dial *1848# from your phone\n✓ Enter your details\n✓ See approval status\n✓ Available 24/7\n\nNo approval after 72 hours? Contact support!",
-    category: "afa"
-  },
-
-  {
-    questions: ["afa fee", "afa cost", "afa price", "registration fee"],
-    answer: "💵 AFA Registration Fee\n\n**One-Time Fee: GH₵15**\n\n**What's Included:**\n✓ Full AFA membership\n✓ MTN verification\n✓ Access to AFA bundles\n✓ Exclusive pricing\n✓ Government benefits\n\n**Payment Methods:**\n✓ Mobile Money\n✓ Bank Transfer\n✓ Card Payment\n\n**Note:**\nThis is a one-time registration fee. No recurring charges!",
-    category: "afa"
-  },
-
-  {
-    questions: ["afa eligible", "who can afa", "requirements", "can i register afa"],
-    answer: "✅ AFA Eligibility - Anyone Can Register!\n\n**Requirements:**\n✓ 18+ years old\n✓ Valid phone number\n✓ Live in Ghana\n✓ Provide honest information\n\n**Important Note:**\n👉 **You don't have to be a farmer!**\n✓ Farmers welcome\n✓ Non-farmers welcome\n✓ Anyone can benefit from subsidized rates\n✓ Anyone can register\n\n**Required Information:**\n📱 Full name\n📞 Valid phone\n🌍 Region/Location\n🌾 Crop type (optional - if not farming, just say \"none\")\n\nEveryone is welcome to join!",
-    category: "afa"
-  },
-
-  {
-    questions: ["afa benefits", "why afa", "advantages"],
-    answer: "🌟 AFA Program Benefits\n\n**Financial:**\n✓ Subsidized data pricing\n✓ Affordable bundles\n✓ Cost savings\n✓ GH₵15 one-time registration\n\n**Knowledge:**\n✓ Latest farming techniques\n✓ Weather updates\n✓ Market prices\n✓ Best practices\n\n**Community:**\n✓ Connect with others\n✓ Expert guidance\n✓ MTN support\n✓ Government programs\n\n**Open to Everyone:**\n✓ Farmers benefit\n✓ Non-farmers benefit\n✓ Anyone can register\n✓ Special pricing for all\n\nJoin and start benefiting!",
-    category: "afa"
+    questions: ["minimum withdrawal", "min withdraw", "lowest withdrawal"],
+    answer: "Minimum withdrawal amount is GH₵15. You can withdraw anytime with no maximum limit.",
+    category: "withdrawal"
   },
 
   // ============================================
   // AGENT PROGRAM
   // ============================================
   {
-    questions: ["become agent", "agent program", "how to become agent", "join agent"],
-    answer: "🤝 Become an Agent - Earn Money!\n\n**3-Step Registration:**\n\n1️⃣ Click 'Become an Agent' button\n\n2️⃣ Fill registration form:\n   ✓ Full name\n   ✓ Phone number\n   ✓ Location\n   ✓ Other details\n\n3️⃣ Wait for approval (24-48 hours)\n\n4️⃣ Start selling & earning!\n\n**Requirements:**\n✓ 18+ years old\n✓ Valid phone\n✓ Ghana-based\n✓ Ready to serve customers\n\n**Cost:** FREE - No startup fees!\n\nStart earning today!",
+    questions: ["become agent", "agent program", "how to become agent", "join agent", "start as agent"],
+    answer: "To become an agent:\n1. Click 'Become an Agent' button\n2. Fill out registration form\n3. Verify your phone number\n4. Wait for approval (24-48 hours)\n5. Start selling!\n\nNo startup cost - completely FREE to register!",
     category: "agent"
   },
-
   {
-    questions: ["commission", "how much earn", "how much commission", "percentage", "profit example"],
-    answer: "💰 Agent Commission Structure\n\n**Three Earning Tiers:**\n\n🌟 **Starter Agent: 5% Commission**\n   (Start from day 1)\n\n⭐ **Regular Agent: 7.5% Commission**\n   (After 100+ sales)\n\n⭐⭐⭐ **Elite Agent: 10% Commission**\n   (500+ monthly sales)\n\n**Practical Example:**\n\nYou buy 1GB for GH₵3.90\nYou set your price at GH₵4.90\nYour profit: GH₵1.00 per sale\n\nOr sell 100 packages at GH₵1 profit = GH₵100!\n\n**The more you sell, the higher your tier, the higher your profit!**\n\nStart earning immediately!",
+    questions: ["agent commission", "how much earn", "agent profit", "agent earnings"],
+    answer: "Agent Commission Structure:\n\nYou buy at cost price, set your own selling price, keep the difference as profit.\n\nExample:\n- You buy 1GB for GH₵3.90\n- You set price at GH₵4.90\n- You make GH₵1.00 profit per sale\n\nLevels:\n- Starter: 5% discount (from day 1)\n- Regular: 7.5% discount (100+ sales)\n- Elite: 10% discount (500+ monthly sales)",
     category: "agent"
   },
-
   {
-    questions: ["agent benefits", "advantages", "why agent"],
-    answer: "🎁 Agent Program Benefits\n\n💰 **Earning:**\n✓ Commission per sale\n✓ Passive income potential\n✓ No inventory costs\n✓ Unlimited earning\n✓ Higher sales = higher tier\n\n📊 **Tools:**\n✓ Custom storefront\n✓ Sales dashboard\n✓ Real-time analytics\n✓ Customer management\n\n🚀 **Growth:**\n✓ Create subagents\n✓ Team commissions\n✓ Earn on subagent sales\n✓ Scale your business\n\n🤝 **Support:**\n✓ 24/7 help\n✓ Marketing materials\n✓ Training\n✓ Priority assistance\n\nBuild your business with us!",
-    category: "agent"
-  },
-
-  {
-    questions: ["agent cost", "startup cost", "fee", "how much to start"],
-    answer: "✅ No Startup Cost!\n\n**Completely FREE to Join:**\n\n✓ FREE registration\n✓ NO monthly fees\n✓ NO commission charges\n✓ NO hidden costs\n\n**You only pay for:**\n• Data you personally buy\n• Minimal withdrawal fees\n\n**Start earning immediately:**\n1. Register (FREE)\n2. Start selling\n3. Earn commission\n4. Withdraw anytime\n\n💡 Zero risk, pure profit!\n\nJoin now! 💰",
-    category: "agent"
-  },
-
-  {
-    questions: ["withdrawal", "withdraw", "cash out", "get paid"],
-    answer: "💸 How to Withdraw Earnings\n\n**Simple 5-Step Process:**\n\n1️⃣ Go to 'Withdrawals' section\n\n2️⃣ Enter amount (minimum GH₵15)\n\n3️⃣ Choose payment method:\n   ✓ Mobile Money\n   ✓ Bank Transfer\n   ✓ Wallet\n\n4️⃣ Select/add recipient\n\n5️⃣ Confirm\n   ✓ Money arrives in your account!\n\n⚡ **Key Facts:**\n✓ Minimum: GH₵15\n✓ No maximum limit\n✓ Withdraw unlimited times\n✓ Can withdraw daily\n✓ Fast processing\n\nStart withdrawing your earnings!",
-    category: "withdrawal"
-  },
-
-  {
-    questions: ["minimum withdrawal", "min amount", "lowest"],
-    answer: "💵 Minimum Withdrawal Amount\n\n✅ **Minimum: GH₵15**\n\n**Key Facts:**\n✓ Can withdraw anytime\n✓ No maximum limit\n✓ Make multiple withdrawals\n✓ Can withdraw daily\n✓ Fast processing\n\n**Options:**\n• Withdraw GH₵15\n• Withdraw GH₵50\n• Withdraw GH₵500\n• Your choice!\n\nStart earning and withdraw today! 💰",
-    category: "withdrawal"
-  },
-
-  {
-    questions: ["subagent", "create subagent", "subagents"],
-    answer: "🌳 Subagent Program\n\n**Expand Your Network!**\n\n📈 **What is a Subagent?**\n• An agent you recruit\n• They sell data bundles\n• You earn commission on their sales\n• Build your team\n\n✅ **How to Create:**\n1. Go to your dashboard\n2. Click 'Manage Subagents'\n3. Register new subagent\n4. They start selling\n5. You earn commission!\n\n💰 **Double Earning:**\n✓ Your sales commission\n✓ Subagent sales commission\n✓ Stack commissions\n✓ Unlimited subagents\n\n🤝 Grow together!",
+    questions: ["agent benefits", "why be agent", "agent advantages"],
+    answer: "Agent Benefits:\n✓ Set your own prices and profit margins\n✓ 24/7 customer support\n✓ Marketing materials provided\n✓ Sales dashboard with analytics\n✓ Can create subagents and earn from their sales\n✓ Your own custom storefront\n✓ Multiple ways to sell (SMS, WhatsApp, storefront)",
     category: "agent"
   },
 
   // ============================================
-  // BUTTONS & FEATURES
+  // SUBAGENT PROGRAM
   // ============================================
   {
-    questions: ["button", "what button", "menu", "icon"],
-    answer: "🔘 Main Buttons & Features\n\n📦 **Data Bundles**\n   Buy data for MTN, AirtelTigo, Telecel\n\n👨‍🌾 **AFA Bundles**\n   Special program (24-72 hour approval, GH₵15 fee)\n   Note: You don't have to be a farmer!\n\n🎟️ **Vouchers**\n   Gift codes to share with friends\n\n🚀 **Bulk Orders**\n   Buy in bulk for businesses\n\n🤝 **Become an Agent**\n   Start earning 5-10% commission\n\n📍 **Track Order**\n   Check your order status\n\n☎️ **USSD Code: *1848#**\n   Check AFA approval status\n\nClick any to get started!",
-    category: "navigation"
-  },
-
-  {
-    questions: ["voucher", "gift code", "prepaid"],
-    answer: "🎟️ What is a Voucher?\n\n💝 **Gift Card for Data!**\n\n✅ **How it Works:**\n1. You buy voucher (any amount)\n2. Get unique code\n3. Share with friend/family\n4. They redeem for data\n5. They get data instantly!\n\n✨ **Benefits:**\n✓ Perfect gift\n✓ No personal info needed\n✓ Share via SMS/WhatsApp\n✓ Any denomination\n✓ Use anytime\n\n🎁 **Great for:**\n• Gifts to friends\n• Family surprises\n• Emergencies\n• Any occasion!\n\nBuy vouchers today!",
-    category: "navigation"
-  },
-
-  {
-    questions: ["bulk", "bulk order", "wholesale"],
-    answer: "📦 Bulk Orders for Businesses\n\n**For corporate and organizations!**\n\n✅ **What you get:**\n✓ Discounted rates\n✓ Large quantities\n✓ Custom solutions\n✓ Dedicated support\n✓ Flexible payment\n\n💼 **Perfect for:**\n• Corporate offices\n• Schools\n• Event organizers\n• Retailers\n• NGOs\n\n**How to order:**\n📞 Contact WhatsApp support:\n• Tell quantity needed\n• Mention network/size\n• Get custom quote\n• Arrange delivery\n\nLet's grow together! 🤝",
-    category: "navigation"
-  },
-
-  {
-    questions: ["ussd", "*1848#", "dial"],
-    answer: "☎️ USSD Code: *1848#\n\n**What is it?**\nA quick way to check your AFA approval status without internet!\n\n**How to use:**\n1. Open your phone dialer\n2. Dial: *1848#\n3. Press Call\n4. Follow the prompts\n5. Enter your details\n6. See your approval status\n\n✓ Works on any phone\n✓ Available 24/7\n✓ Instant results\n✓ No internet needed\n✓ No cost\n\n**Great for checking:**\n✓ AFA approval status\n✓ Your account status\n✓ Latest updates\n\nUse it anytime!",
-    category: "navigation"
+    questions: ["subagent", "create subagent", "recruit subagent", "sub agent"],
+    answer: "Subagent Program:\n\nCreate subagents who sell data for you:\n1. Go to your Dashboard\n2. Click 'Subagents'\n3. Register new subagent\n4. They get their dashboard and storefront\n5. You earn commission on ALL their sales\n\nUnlimited subagents = unlimited passive income!",
+    category: "agent"
   },
 
   // ============================================
-  // SUPPORT
+  // AGENT DASHBOARD FEATURES
   // ============================================
   {
-    questions: ["contact", "support", "help"],
-    answer: "📞 Get Support 24/7\n\n💬 **WhatsApp Support (Best Option)**\n✓ Available 24/7\n✓ Instant responses\n✓ Real human support\n✓ Click WhatsApp button\n\n⏱️ **Response Time:**\n   Usually within 5 minutes!\n\n📋 **What to Include:**\n• Your issue description\n• Phone number\n• Order ID (if applicable)\n• Screenshots (if helpful)\n\n🌟 **We're Here to Help!**\n\nAlways available!",
+    questions: ["dashboard", "agent dashboard", "what is dashboard", "dashboard menu"],
+    answer: "Agent Dashboard has these sections:\n\n📊 Overview - Sales stats, wallet balance, recent orders\n🛒 Buy Data - Purchase for customers from your wallet\n📦 Bulk Orders - Send to multiple people at once\n🏪 Store Prices - Set your own package prices\n👥 Subagents - Create and manage subagents\n💳 Subagent Prices - Set subagent commission rates\n⚡ AFA Bundles - Register and manage AFA customers\n🖼️ Flyer Generator - Create marketing flyers\n💰 Withdraw - Cash out your earnings\n⬆️ Top Up - Add money to your wallet\n🔑 API Key - Integrate with other systems\n🎨 Appearance - Customize your storefront\n📢 Notifications - Set up alerts\n📋 Complaints - Manage customer complaints\n⚙️ Settings - Account settings",
+    category: "agent"
+  },
+  {
+    questions: ["buy data", "purchase data", "how to buy data in dashboard"],
+    answer: "Buy Data from Dashboard:\n1. Check wallet balance (top up if needed)\n2. Select network tab (MTN, AirtelTigo, Telecel)\n3. Tap a package\n4. Enter recipient's phone number\n5. Confirm payment\n\nPayment options: Wallet (instant), Paystack (small fee)\n\nNote: 10-minute cooldown per phone to prevent duplicates",
+    category: "agent"
+  },
+  {
+    questions: ["bulk orders", "send multiple", "mass send", "bulk send"],
+    answer: "Bulk Orders - Send to multiple people at once:\n1. Select network (MTN, AirtelTigo, Telecel)\n2. Upload CSV/Excel file with phone numbers OR type manually\n3. Choose package size\n4. Confirm\n5. System sends to all at once\n\nPerfect for: Schools, offices, events, businesses",
+    category: "agent"
+  },
+  {
+    questions: ["store prices", "set prices", "change prices", "pricing"],
+    answer: "Store Prices - Set your own package prices:\n1. Go to Dashboard → Store Prices\n2. For each network (MTN, AirtelTigo, Telecel):\n   - See the cost price\n   - Set YOUR selling price\n   - Keep the difference as profit\n3. Save changes\n\nYour prices show on your storefront automatically",
+    category: "agent"
+  },
+  {
+    questions: ["wallet", "wallet balance", "topup", "add money"],
+    answer: "Wallet - Your money account:\n- Used to buy data for customers\n- Must have funds before buying\n- Top up to add money\n- Can withdraw earnings anytime (minimum GH₵15)\n- Balance shown at top of dashboard",
+    category: "agent"
+  },
+  {
+    questions: ["top up", "add funds", "fund wallet"],
+    answer: "Top Up Your Wallet:\n1. Go to Dashboard → Top Up\n2. Enter amount\n3. Choose payment method (Mobile Money, Bank, Card, Paystack)\n4. Confirm\n5. Money added to wallet instantly\n\nUse this wallet to buy data for your customers",
+    category: "agent"
+  },
+  {
+    questions: ["api key", "integration", "api"],
+    answer: "API Key - Integrate with other systems:\n1. Go to Dashboard → API Key\n2. Generate your unique API key\n3. Use to integrate with websites, apps, or bots\n4. Automate data sales\n5. Full documentation provided",
+    category: "agent"
+  },
+  {
+    questions: ["appearance", "customize", "theme", "colors", "storefront design"],
+    answer: "Appearance - Customize your storefront:\n1. Go to Dashboard → Appearance\n2. Choose colors (primary, background, etc.)\n3. Set grid layout\n4. Customize text and headlines\n5. Preview changes live\n6. Save - applies to your storefront immediately",
+    category: "agent"
+  },
+  {
+    questions: ["complaints", "complaints management", "customer issue"],
+    answer: "Complaints Management:\n1. Go to Dashboard → Complaints\n2. View all customer complaints\n3. Respond to each complaint\n4. Mark as resolved\n5. Keep customers happy!",
+    category: "agent"
+  },
+
+  // ============================================
+  // SUBAGENT DASHBOARD (Subagent-specific)
+  // ============================================
+  {
+    questions: ["subagent dashboard", "my subagent dashboard", "subagent panel"],
+    answer: "As a Subagent, you have a similar dashboard to Agents with features to:\n- Buy data for customers\n- View your earnings\n- Manage Sub-Subagents (create teams)\n- Set your own store prices\n- Generate flyers\n- Withdraw your earnings\n- Customize your storefront\n\nYou earn from every sale, plus commissions from your Sub-Subagents!",
+    category: "subagent"
+  },
+  {
+    questions: ["subsubagent", "sub-subagent", "sub sub agent", "recruit team"],
+    answer: "Sub-Subagent Program (For Subagents):\n\nAs a subagent, you can create Sub-Subagents:\n1. Go to your Dashboard\n2. Click 'Sub-Subagents'\n3. Register new person\n4. They become your sub-subagent\n5. You earn commission on their sales\n\nThis creates a 3-level earning structure!",
+    category: "subagent"
+  },
+
+  // ============================================
+  // SUBSUBAGENT DASHBOARD
+  // ============================================
+  {
+    questions: ["subsubagent dashboard", "sub-subagent dashboard"],
+    answer: "As a Sub-Subagent, you have full dashboard features:\n- Buy and sell data\n- View earnings\n- Withdraw money\n- Customize storefront\n- Set your own prices\n- Get 24/7 support\n\nYou're part of a earning network - your superiors benefit when you sell!",
+    category: "subsubagent"
+  },
+
+  // ============================================
+  // STOREFRONTS
+  // ============================================
+  {
+    questions: ["storefront", "agent storefront", "my store", "store page"],
+    answer: "Your Storefront - Your personal sales page:\n\nEach agent/subagent gets a custom storefront showing:\n- Your store name\n- All your data packages with YOUR prices\n- Contact info (WhatsApp, support)\n- Customized colors and design\n- AFA registration option\n- Easy checkout process\n\nShare your storefront link to start selling!",
+    category: "storefront"
+  },
+
+  // ============================================
+  // AFA PROGRAM
+  // ============================================
+  {
+    questions: ["afa", "what is afa", "afa bundles", "afa program"],
+    answer: "AFA (Agricultural Financing) - Special data program:\n\nNOTE: You don't have to be a farmer to register!\n\n✓ Anyone can register (farmer or not)\n✓ Get affordable data bundles\n✓ Registration fee: GH₵15 (one-time)\n✓ Approval takes 24-72 hours\n✓ Check status: Dial *1848# USSD code\n\nPerfect for anyone wanting cheaper data bundles!",
+    category: "afa"
+  },
+  {
+    questions: ["afa registration", "register afa", "afa sign up"],
+    answer: "AFA Registration (GH₵15 fee):\n\n1. Visit AFA Bundles section\n2. Click 'Register for AFA'\n3. Fill form (name, phone, region, any info)\n4. Pay GH₵15\n5. Wait 24-72 hours for approval\n6. Check status: Dial *1848#\n\nYou DON'T have to be a farmer!",
+    category: "afa"
+  },
+  {
+    questions: ["afa approval", "how long afa", "afa time", "24 to 72"],
+    answer: "AFA Approval Timeline:\n\n⏱️ Approval time: 24-72 hours\n\n📱 Check status:\n- Dial *1848# on your phone\n- System shows your approval status in real-time\n- Usually approved within 48 hours\n\n✓ Once approved, activate your AFA bundles immediately!",
+    category: "afa"
+  },
+  {
+    questions: ["afa fee", "afa cost", "afa price", "registration fee"],
+    answer: "AFA Registration Fee: GH₵15 (One-Time)\n\nIncludes:\n✓ AFA membership\n✓ Access to AFA bundles\n✓ Special pricing\n✓ Network verification\n\nPayment: Mobile Money, Bank, Card, Wallet",
+    category: "afa"
+  },
+  {
+    questions: ["afa ussd", "*1848#", "check afa status", "afa dial"],
+    answer: "Check AFA Status: Dial *1848#\n\nHow to check your AFA approval status:\n1. Open your phone dialer\n2. Dial: *1848#\n3. Press Call\n4. System shows your AFA status instantly\n5. See if approved or pending\n\nThis USSD code works anytime, anywhere!",
+    category: "afa"
+  },
+
+  // ============================================
+  // SUPPORT & CONTACT
+  // ============================================
+  {
+    questions: ["support", "contact", "help", "customer service"],
+    answer: "24/7 Support Available:\n\n📞 WhatsApp - Best option for instant help\n- Click WhatsApp button on site\n- Average response: 5 minutes\n- Available anytime\n\n📋 What to include:\n- Your phone number\n- Order ID (if applicable)\n- Description of issue\n\nWe're always here to help!",
     category: "support"
   },
 
+  // ============================================
+  // OFFLINE PACKAGES
+  // ============================================
   {
-    questions: ["support hours", "available", "when open"],
-    answer: "🕐 Support Availability\n\n✅ **24/7 AVAILABLE**\n\n📞 **WhatsApp:**\n✓ Always open\n✓ Every day\n✓ Every hour\n✓ Day and night\n✓ Weekends & holidays\n\n⚡ **Response Time:**\n   Average 5 minutes!\n\n🌟 **We never close!**\n\nYou're never alone! 💚",
-    category: "support"
+    questions: ["offline", "package offline", "why offline", "unavailable"],
+    answer: "Why Packages Go Offline:\n\nPackages show as offline when:\n✓ Server maintenance in progress\n✓ Network operator having issues\n✓ High demand overload\n✓ Payment gateway delays\n✓ Temporary system updates\n\nWhat to do:\n1. Check other available packages\n2. Try again in a few minutes\n3. Contact support if persists\n\nWe fix these quickly!",
+    category: "packages"
   },
 
+  // ============================================
+  // USSD CODE GENERAL
+  // ============================================
   {
-    questions: ["problem", "issue", "error", "bug"],
-    answer: "⚠️ Having Issues?\n\n📋 **Quick Fixes:**\n1. Check internet connection\n2. Refresh the page\n3. Clear browser cache\n4. Try different browser\n5. Restart your phone\n\n**Still not working?**\n\n📞 **WhatsApp Support:**\n✓ Describe the issue\n✓ Include screenshots\n✓ Give phone number\n✓ Tell us what you tried\n\n⚡ **We fix it in minutes!**\n\n24/7 ready! 🚀",
+    questions: ["ussd", "what is ussd", "*"],
+    answer: "USSD Code (*1848#) - Check AFA Status:\n\nUSSD (Unstructured Supplementary Service Data) is a quick dial code:\n- No internet needed\n- Works on any phone\n- Instant response\n\n*1848# specifically checks your AFA approval status from MTN network",
     category: "support"
   },
 
   // ============================================
-  // GENERAL INFO
+  // GENERAL FAQ
   // ============================================
   {
-    questions: ["how it works", "explain", "about"],
-    answer: "🌟 How It Works\n\n📱 **3 Easy Steps:**\n\n1️⃣ **Choose Package**\n   Pick network & size\n\n2️⃣ **Pay Securely**\n   Mobile Money, Bank, or Card\n\n3️⃣ **Get Data**\n   Delivered within <2 hours!\n\n✨ **Why Choose Us?**\n✓ Fast delivery (<2 hours)\n✓ Affordable prices\n✓ Secure payments\n✓ 24/7 support\n✓ 72K+ happy customers\n✓ 99.9% uptime\n\n🎯 **Extra Features:**\n✓ AFA for everyone (24-72 hrs)\n✓ Agent program (5-10% earnings)\n✓ Vouchers & bulk orders\n✓ Order tracking\n\nStart now! 🚀",
+    questions: ["how it works", "explain service", "about"],
+    answer: "How Our Service Works:\n\n📦 3 Easy Steps:\n1. Choose package (MTN, AirtelTigo, Telecel)\n2. Pay securely (Mobile Money, Bank, Card, Wallet)\n3. Get data in 2 hours or less\n\n🎯 Extra Features:\n- Agent program (earn commissions)\n- Subagent recruitment\n- AFA for cheaper bundles\n- Withdraw anytime (min GH₵15)",
     category: "general"
   },
-
-  {
-    questions: ["security", "privacy"],
-    answer: "🔒 Security & Privacy\n\n🛡️ **Security:**\n✓ 256-bit SSL encryption\n✓ PCI DSS certified\n✓ Verified payment gateway\n✓ No data stored\n✓ Regular security audits\n\n🔐 **Privacy:**\n✓ Phone protected\n✓ Data never shared\n✓ Secure database\n✓ GDPR compliant\n\n✅ **Why Trust Us?**\n✓ 72K+ safe transactions\n✓ Zero breaches\n✓ Government licensed\n✓ Positive reputation\n\n**Your trust is everything!** 💚",
-    category: "support"
-  },
 ];
 
-// Frequently asked questions for UI
 export const FREQUENT_QUESTIONS = [
-  "Show available packages",
+  "Show Available Packages",
   "How do I buy data?",
-  "How long does delivery take?",
-  "How do I track my order?",
+  "Track my order by phone",
   "What payment methods do you accept?",
-  "Is it safe to pay?",
-  "What is AFA?",
-  "How long does AFA approval take?",
-  "What is the AFA registration fee?",
-  "Can anyone register for AFA?",
+  "How long does delivery take?",
   "How do I become an agent?",
   "How much commission do agents earn?",
-  "How do I withdraw earnings?",
-  "What is the minimum withdrawal?",
-  "What are subagents?",
-  "What does the *1848# USSD code do?",
+  "How do I withdraw my earnings?",
+  "What is the minimum withdrawal amount?",
+  "Can I create subagents?",
+  "What is AFA?",
+  "How do I register for AFA?",
+  "How long does AFA approval take?",
+  "What is the AFA registration fee?",
   "Why do packages go offline?",
-  "What is a voucher?",
-  "What are bulk orders?",
+  "Is payment safe?",
   "How can I contact support?",
+  "What is my dashboard?",
+  "How do I set my store prices?",
+  "What is a storefront?",
 ];
 
-// Q&A matching function
 export function findAnswer(userQuestion: string): { answer: string; category: string } | null {
   const cleanQuestion = userQuestion.toLowerCase().trim();
 

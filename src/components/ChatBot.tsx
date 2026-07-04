@@ -18,7 +18,7 @@ interface ChatBotProps {
 }
 
 interface ChatState {
-  mode: 'normal' | 'tracking_phone' | 'tracking_id' | 'packages';
+  mode: 'normal' | 'tracking_phone' | 'packages';
 }
 
 export default function ChatBot({ page }: ChatBotProps) {
@@ -180,21 +180,28 @@ What would you like to know?`;
       if (chatState.mode === 'tracking_phone') {
         answer = await fetchOrderByPhone(input.trim());
         setChatState({ mode: 'normal' });
-      } else if (chatState.mode === 'tracking_id') {
-        answer = await fetchOrderById(input.trim());
-        setChatState({ mode: 'normal' });
       } else if (chatState.mode === 'packages') {
         answer = await fetchAvailablePackages();
         setChatState({ mode: 'normal' });
       } else {
         // Check if user is asking about tracking
         const lowerInput = input.toLowerCase();
-        if (lowerInput.includes('track') || lowerInput.includes('order')) {
-          answer = "Would you like to track your order? I can help!\n\nPlease choose:\n1. **Enter your phone number** - I'll find your latest order\n2. **Enter your order ID** - I'll get specific order details\n\nWhat would you prefer?";
-          // Don't change state yet, let user choose
-        } else if (lowerInput.includes('available') || lowerInput.includes('package') || lowerInput.includes('data bundle')) {
+        
+        // Check for phone number input during tracking
+        if (lowerInput.match(/^\d{10}$/) && chatState.mode === 'tracking_phone') {
+          answer = await fetchOrderByPhone(input.trim());
+          setChatState({ mode: 'normal' });
+        } 
+        // Check if user wants to track order naturally
+        else if (lowerInput.includes('track') || lowerInput.includes('order') || 
+                 lowerInput.includes('where') || lowerInput.includes('status')) {
+          answer = "I can track your order! Please enter your phone number:";
+          setChatState({ mode: 'tracking_phone' });
+        } 
+        else if (lowerInput.includes('package') || lowerInput.includes('available')) {
           answer = await fetchAvailablePackages();
-        } else {
+        } 
+        else {
           answer = getAnswer(input);
         }
       }
@@ -339,33 +346,7 @@ What would you like to know?`;
                     📍 Track Order by Phone
                   </button>
 
-                  <button
-                    onClick={() => {
-                      const userMsg: Message = {
-                        id: `msg-${Date.now()}`,
-                        role: 'user',
-                        content: 'Track my order by ID',
-                        timestamp: Date.now(),
-                      };
-                      const updatedMessages = [...messages, userMsg];
-                      setMessages(updatedMessages);
-                      saveMessages(updatedMessages);
 
-                      const assistantMsg: Message = {
-                        id: `msg-${Date.now()}-1`,
-                        role: 'assistant',
-                        content: 'Please enter your order ID:',
-                        timestamp: Date.now(),
-                      };
-                      const finalMessages = [...updatedMessages, assistantMsg];
-                      setMessages(finalMessages);
-                      saveMessages(finalMessages);
-                      setChatState({ mode: 'tracking_id' });
-                    }}
-                    className="w-full text-left text-xs bg-purple-900 hover:bg-purple-800 text-purple-100 hover:text-white p-2 rounded border border-purple-700 hover:border-purple-500 transition-all font-semibold"
-                  >
-                    🔍 Track Order by ID
-                  </button>
 
                   <div className="border-t border-slate-700 pt-2 mt-2">
                     <p className="text-xs text-slate-400 px-2 py-1">Quick Questions:</p>
