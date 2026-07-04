@@ -98,6 +98,7 @@ interface DataPackage {
   price: number;
   size_gb_text?: string;
   active?: boolean;
+  is_online?: boolean;
 }
 
 interface Order {
@@ -172,7 +173,7 @@ const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 // ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
-// ───���───────────────────────────────���────────────────────���────────────────────
+// ───�����───────────────────────────────���────────────────────���────────────────────
 const OrderTrackingCard = ({
   order,
   store,

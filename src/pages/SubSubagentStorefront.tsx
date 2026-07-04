@@ -90,6 +90,7 @@ interface DataPackage {
   price: number;
   size_gb_text?: string;
   active?: boolean;
+  is_online?: boolean;
 }
 
 interface Order {
