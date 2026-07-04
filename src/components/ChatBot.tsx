@@ -78,12 +78,12 @@ export default function ChatBot({ page }: ChatBotProps) {
       let response = "📦 **Available Data Packages**\n\n";
       Object.entries(byNetwork).forEach(([network, packages]) => {
         response += `**${network}:**\n`;
-        packages.slice(0, 5).forEach(pkg => {
-          response += `• ${pkg.size_gb_text || pkg.size_gb + 'GB'} - GH₵${pkg.price}\n`;
+        packages.forEach(pkg => {
+          response += `• ${pkg.size_gb_text || pkg.size_gb + 'GB'}\n`;
         });
         response += "\n";
       });
-      response += "For complete pricing and all available packages, please visit the Packages page!";
+      response += "For pricing details, please visit the Packages page!";
       return response;
     } catch (error) {
       console.error('Error fetching packages:', error);
