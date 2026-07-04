@@ -45,11 +45,11 @@ export default function PackageStatusIndicator({
 
       {/* Dropdown showing reasons - fixed positioning so it's not cut off */}
       {showDropdown && (
-        <div className="fixed bg-red-600 text-white rounded-lg shadow-lg z-50 p-3 w-56" style={{ maxWidth: '90vw' }}>
-          <p className="text-xs font-semibold mb-2">Why am I seeing this?</p>
-          <div className="space-y-1">
+        <div className="fixed bg-red-600 text-white rounded-lg shadow-lg z-50 p-4" style={{ maxWidth: '85vw', width: '280px' }}>
+          <p className="text-xs font-semibold mb-3">Why am I seeing this?</p>
+          <div className="space-y-2">
             {OFFLINE_REASONS.map((reason, idx) => (
-              <div key={idx} className="text-xs leading-snug">
+              <div key={idx} className="text-xs leading-relaxed break-words">
                 • {reason}
               </div>
             ))}
