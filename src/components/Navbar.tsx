@@ -26,7 +26,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <Zap className="h-6 w-6 text-primary" />
@@ -76,9 +76,9 @@ const Navbar = () => {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 top-16 z-50 bg-slate-900 bg-opacity-95 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="md:hidden fixed inset-0 z-50 pt-16 bg-slate-950 bg-opacity-98 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden">
           <div className="h-full overflow-y-auto">
-            <div className="px-6 py-8 space-y-8">
+            <div className="px-6 py-8 space-y-8 pb-20">
               {/* MENU Section */}
               <div>
                 <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">MENU</h3>
