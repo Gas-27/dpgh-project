@@ -76,9 +76,8 @@ const Navbar = () => {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 pt-16 bg-slate-950 bg-opacity-98 backdrop-blur-sm animate-in fade-in duration-200 overflow-hidden">
-          <div className="h-full overflow-y-auto">
-            <div className="px-6 py-8 space-y-8 pb-20">
+        <div className="md:hidden fixed inset-0 z-50 bg-slate-950 bg-opacity-98 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+            <div className="pt-20 px-6 py-8 space-y-8 pb-20">
               {/* MENU Section */}
               <div>
                 <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">MENU</h3>
@@ -152,7 +151,6 @@ const Navbar = () => {
                 </div>
               </div>
             </div>
-          </div>
         </div>
       )}
     </nav>

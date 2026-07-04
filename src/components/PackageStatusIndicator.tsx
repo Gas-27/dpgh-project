@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 export type PackageStatus = 'available' | 'not_available' | 'offline';
 
@@ -28,18 +29,19 @@ export default function PackageStatusIndicator({
   return (
     <div className="relative w-full">
       {/* Badge - keep on one line */}
-      <div className="flex items-center gap-1 mb-1.5 px-3 py-1 rounded-lg bg-red-50 border border-red-200 whitespace-nowrap">
+      <div className="flex items-center gap-1.5 mb-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200">
         <p className="text-xs font-semibold text-red-700">
           Package is offline
         </p>
         
-        {/* Very small "Why?" button */}
+        {/* Tap to see why button with dropdown icon */}
         <button
           onClick={() => setShowDropdown(!showDropdown)}
-          className="text-[10px] text-red-600 hover:text-red-700 font-medium cursor-pointer ml-0.5"
+          className="flex items-center gap-0.5 text-[10px] text-red-600 hover:text-red-700 font-medium cursor-pointer whitespace-nowrap"
           title="Why am I seeing this?"
         >
-          Why?
+          <span>Tap to see why?</span>
+          <ChevronDown className={`h-3 w-3 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
         </button>
       </div>
 
@@ -48,13 +50,13 @@ export default function PackageStatusIndicator({
         Scroll down to see available packages
       </p>
 
-      {/* Dropdown showing reasons - compact with left alignment */}
+      {/* Dropdown showing reasons */}
       {showDropdown && (
-        <div className="fixed bg-red-600 text-white rounded-lg shadow-lg z-50 p-2.5" style={{ width: 'auto', minWidth: '240px', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-          <p className="text-[11px] font-semibold mb-1.5 text-left">Why am I seeing this?</p>
-          <div className="space-y-1">
+        <div className="absolute top-full left-0 mt-1 w-full bg-red-600 text-white rounded-lg shadow-lg z-50 p-3 max-w-xs">
+          <p className="text-[11px] font-semibold mb-2 text-left">Why am I seeing this?</p>
+          <div className="space-y-1.5">
             {OFFLINE_REASONS.map((reason, idx) => (
-              <div key={idx} className="text-[10px] leading-tight text-left">
+              <div key={idx} className="text-[10px] leading-snug text-left">
                 • {reason}
               </div>
             ))}
