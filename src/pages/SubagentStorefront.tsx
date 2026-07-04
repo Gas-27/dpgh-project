@@ -21,6 +21,7 @@ import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import DraggableFAB from "@/components/DraggableFAB";
 import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
+import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -1162,7 +1163,7 @@ export function SubagentStorefront() {
                       </div>
                       
                       {paystackFee > 0 && (
-                        <p className="text-sm text-muted-foreground text-center">Paystack fee (1.98%): GH₵ {paystackFee.toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground text-center">Paystack fee (1.98%): GH�� {paystackFee.toFixed(2)}</p>
                       )}
                       
                       <div className="flex gap-3 flex-wrap">
@@ -1269,12 +1270,10 @@ export function SubagentStorefront() {
                     style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBg, borderColor: "var(--border)" }}
                     onClick={() => { if (isInactive) return; setPaymentPkg(pkg); setPaymentOpen(true); }}
                   >
-                    {isInactive && (
-                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
-                        Package not available
-                      </div>
-                    )}
                     <CardContent className="p-6 text-center space-y-4">
+                      {isInactive && (
+                        <PackageStatusIndicator status="not_available" />
+                      )}
                       {isMTNMashup ? (
                         <>
                           <div className="relative bg-white/20 rounded-lg p-3 mb-3">

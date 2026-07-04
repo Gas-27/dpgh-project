@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
+import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -171,7 +172,7 @@ const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 // ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
-// ────────────────────────────────────────────────────────���────────────────────
+// ───────────────────────────────────���────────────────────���────────────────────
 const OrderTrackingCard = ({
   order,
   store,
@@ -1330,14 +1331,12 @@ const AgentStorefront = () => {
                       className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 group w-full ${isInactive ? "opacity-50 grayscale" : "hover:shadow-xl"}`}
                       style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBackground }}
                     >
-                      {isInactive && (
-                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
-                          Package not available
-                        </div>
-                      )}
                       {isMTNMashup ? (
                         <>
                           <CardContent className="p-6 text-center space-y-4">
+                            {isInactive && (
+                              <PackageStatusIndicator status="not_available" />
+                            )}
                             <div className="relative bg-white/20 rounded-lg p-3 mb-3">
                               {showExpress && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold">Express</div>}
                               <p className="font-semibold text-base text-white">Special MTN Mashup</p>
