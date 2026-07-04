@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, X, MessageCircle, ChevronDown } from 'lucide-react';
+import { Send, X, MessageCircle } from 'lucide-react';
+import { CHATBOT_KNOWLEDGE_BASE, findAnswer } from '@/data/chatbot-knowledge-base';
 
 interface Message {
   id: string;
@@ -13,58 +14,6 @@ interface Message {
 interface ChatBotProps {
   page: 'home' | 'packages' | 'agent-dashboard';
 }
-
-// Knowledge base for Q&A
-const KNOWLEDGE_BASE: Record<string, string> = {
-  // Package questions
-  'what packages do you have': 'We offer daily, weekly, and monthly data packages for MTN, AirtelTigo, and Telecel. All packages are affordable and come with instant activation.',
-  'data packages available': 'We have data bundles ranging from 100MB to 50GB for all major networks in Ghana. Check the Packages page to view all available options.',
-  'how much is data': 'Prices vary by network and data size. Visit our Packages page to see exact pricing for each bundle.',
-  'mtn data price': 'MTN data packages start from as low as GHS 0.50. Visit Packages page for complete pricing.',
-  'airtel data price': 'AirtelTigo data packages are very affordable. Check the Packages page for current rates.',
-  'telecel data price': 'Telecel data packages are available at competitive rates. View Packages page for details.',
-  'package offline': 'If a package shows as offline, it means it\'s temporarily unavailable. Please scroll down to see other available packages or check back later.',
-  'why is package offline': 'Packages go offline due to network maintenance, server stability issues, or temporary service interruptions. We\'re working to restore them soon.',
-
-  // Order tracking
-  'how do i track order': 'You can track your order using the Track Order card on the homepage. Just enter your phone number or order ID to see your order status.',
-  'track my order': 'Use the Track Order section to monitor your purchase. Enter your phone number or order ID for instant updates.',
-  'where is my order': 'Check the Track Order card on the homepage with your phone number or order ID to see your order status in real-time.',
-  'order status': 'Visit the Track Order card and enter your phone number or order ID to check your current order status.',
-
-  // Payment
-  'what payment methods': 'We accept mobile money (MTN Mobile Money, Vodafone Cash), bank transfers, and card payments. All transactions are secure and instant.',
-  'how do i pay': 'Simply select your package, choose your payment method, and complete the transaction. Payment is processed instantly.',
-  'payment options': 'We support MTN Mobile Money, Vodafone Cash, bank transfers, and card payments for your convenience.',
-  'is payment safe': 'Yes, all payments are encrypted and secure. We use trusted payment gateways to protect your information.',
-
-  // Delivery
-  'when will i get data': 'Data is delivered instantly after payment confirmation. In rare cases, please wait 5-10 minutes.',
-  'how long delivery': 'Our data is delivered within seconds of payment. If delayed, contact support immediately.',
-  'data not received': 'If you don\'t receive data within 15 minutes, please contact our WhatsApp support for immediate assistance.',
-  'instant delivery': 'Yes, all our data deliveries are instant. You\'ll get your bundle activated immediately after payment.',
-
-  // Agent questions
-  'become an agent': 'We\'re always looking for agents! Click the "Become an Agent" button to join our growing network. You\'ll earn 5-10% commission on sales.',
-  'how to become agent': 'To become an agent, fill out the registration form with your details, verify your phone number, and start selling. It\'s free and easy!',
-  'agent commission': 'Agents earn 5% commission as starters, 7.5% with 100+ sales, and up to 10% as elite agents with 500+ monthly sales.',
-  'agent benefits': 'As an agent, you get commission on every sale, priority customer support, exclusive bulk discounts, and the ability to build your own customer base.',
-  'sell data bundles': 'Become an agent and start selling data bundles today! Earn attractive commissions with every sale.',
-
-  // Support
-  'contact support': 'You can reach our support team via WhatsApp 24/7. Click the WhatsApp icon for instant chat.',
-  'customer service': 'Our customer service team is available 24/7 via WhatsApp. We respond within minutes.',
-  'how to contact': 'Contact us via the WhatsApp button on your screen. We\'re available 24 hours a day, 7 days a week.',
-  'support hours': 'We provide 24/7 customer support via WhatsApp. We\'re always here to help!',
-
-  // General
-  'hello': 'Hello! 👋 How can I help you today? Ask me about our data packages, orders, or becoming an agent.',
-  'hi': 'Hi there! What can I help you with? Feel free to ask about our services.',
-  'help': 'I can help you with: 📦 Data packages • 🚚 Order tracking • 💳 Payment info • 🤝 Becoming an agent • 📞 Support',
-  'what can you do': 'I can answer questions about our data packages, help you track orders, explain payment methods, provide agent information, and assist with general support.',
-  'thanks': 'You\'re welcome! Feel free to ask if you need anything else. 😊',
-  'thank you': 'Happy to help! Let me know if you have any other questions.',
-};
 
 export default function ChatBot({ page }: ChatBotProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -97,24 +46,24 @@ export default function ChatBot({ page }: ChatBotProps) {
     localStorage.setItem(storageKey, JSON.stringify(newMessages));
   };
 
-  // Find best matching answer
-  const findAnswer = (userQuery: string): string => {
-    const lowerQuery = userQuery.toLowerCase().trim();
-
-    // Exact match first
-    if (KNOWLEDGE_BASE[lowerQuery]) {
-      return KNOWLEDGE_BASE[lowerQuery];
+  // Enhanced answer finding with comprehensive knowledge base
+  const getAnswer = (userQuery: string): string => {
+    const match = findAnswer(userQuery);
+    if (match) {
+      return match.answer;
     }
 
-    // Partial match
-    for (const [key, answer] of Object.entries(KNOWLEDGE_BASE)) {
-      if (lowerQuery.includes(key) || key.includes(lowerQuery.split(' ')[0])) {
-        return answer;
-      }
-    }
-
-    // Default response
-    return `I'm not sure about that. Try asking about our data packages, orders, payment methods, or how to become an agent. You can also contact our support team via WhatsApp for more help!`;
+    // Fallback with helpful suggestions
+    return `I'm here to help! You can ask me about:
+    📦 Data packages & pricing
+    🚚 Order tracking & delivery
+    💳 Payment methods & safety
+    🤝 Becoming an agent & earning commissions
+    👨‍🌾 AFA bundles for farmers
+    💰 Withdrawals & payments
+    📞 Support & contact info
+    
+    What would you like to know?`;
   };
 
   const handleSendMessage = async () => {
@@ -136,7 +85,7 @@ export default function ChatBot({ page }: ChatBotProps) {
 
     // Simulate thinking time
     setTimeout(() => {
-      const answer = findAnswer(input);
+      const answer = getAnswer(input);
       const assistantMessage: Message = {
         id: `msg-${Date.now()}-1`,
         role: 'assistant',
