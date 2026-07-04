@@ -8,6 +8,7 @@ import ServicesSection from "@/components/ServicesSection";
 import AgentSection from "@/components/AgentSection";
 import Footer from "@/components/Footer";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+import ChatBot from "@/components/ChatBot";
 
 const Index = () => {
   const location = useLocation();
@@ -36,6 +37,7 @@ const Index = () => {
       <Footer />
 
       <WhatsAppFloatingButton />
+      <ChatBot page="home" />
     </div>
   );
 };

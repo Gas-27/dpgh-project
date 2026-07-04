@@ -10,6 +10,7 @@ import { DOMAINS } from "@/config/domains";
 import { useEffect } from "react";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import NotificationPrompt from "@/components/NotificationPrompt";
+import ChatBot from "@/components/ChatBot";
 
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Index = lazy(() => import("./pages/Index"));

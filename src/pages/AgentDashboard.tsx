@@ -28,6 +28,7 @@ import {
   Send, Eye, Upload, FileSpreadsheet, Layers, MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ChatBot from "@/components/ChatBot";
 import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import SubagentsList from "@/components/SubagentsList";
@@ -3444,6 +3445,8 @@ const AgentDashboard = () => {
           )}
         </DialogContent>
       </Dialog>
+      
+      <ChatBot page="agent-dashboard" />
     </div>
   );
 };

@@ -9,6 +9,7 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
+import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 import AgentSignupPrompt from "@/components/AgentSignupPrompt";
@@ -1824,6 +1825,8 @@ const Packages = () => {
       
       {/* Agent Signup Prompt - Shows on every packages page load */}
       <AgentSignupPrompt />
+      
+      <ChatBot page="packages" />
     </div>
   );
 };
