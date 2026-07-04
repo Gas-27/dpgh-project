@@ -26,6 +26,7 @@ const Navbar = () => {
   };
 
   return (
+    <>
     <nav className="fixed top-0 left-0 right-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
@@ -74,86 +75,90 @@ const Navbar = () => {
           {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
+    </nav>
 
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-slate-950 bg-opacity-98 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-            <div className="pt-20 px-6 py-8 space-y-8 pb-20">
-              {/* MENU Section */}
-              <div>
-                <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">MENU</h3>
-                <div className="space-y-2">
+    {/* Mobile Menu Overlay - Outside Nav */}
+    {mobileOpen && (
+      <div className="md:hidden fixed inset-0 top-0 z-30 bg-slate-950 bg-opacity-98 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+        <div className="pt-20 px-6 py-8 space-y-8 pb-20">
+          {/* MENU Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">MENU</h3>
+            <div className="space-y-2">
+              <Link 
+                to="/" 
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-500 bg-opacity-20 border border-blue-400 border-opacity-30 text-white hover:bg-opacity-30 transition-all"
+              >
+                <Home className="h-5 w-5" />
+                <span className="font-medium">Home</span>
+              </Link>
+              <Link 
+                to="/packages" 
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+              >
+                <Search className="h-5 w-5" />
+                <span className="font-medium">Packages</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* ACCOUNT Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">ACCOUNT</h3>
+            <div className="space-y-2">
+              {loading ? (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="font-medium">Loading</span>
+                </div>
+              ) : user ? (
+                <>
                   <Link 
-                    to="/" 
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-500 bg-opacity-20 border border-blue-400 border-opacity-30 text-white hover:bg-opacity-30 transition-all"
-                  >
-                    <Home className="h-5 w-5" />
-                    <span className="font-medium">Home</span>
-                  </Link>
-                  <Link 
-                    to="/packages" 
+                    to={dashboardRoute}
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
                   >
-                    <Search className="h-5 w-5" />
-                    <span className="font-medium">Packages</span>
+                    <LayoutDashboard className="h-5 w-5" />
+                    <span className="font-medium">{getDashboardLabel()}</span>
                   </Link>
-                </div>
-              </div>
-
-              {/* ACCOUNT Section */}
-              <div>
-                <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">ACCOUNT</h3>
-                <div className="space-y-2">
-                  {loading ? (
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      <span className="font-medium">Loading</span>
-                    </div>
-                  ) : user ? (
-                    <>
-                      <Link 
-                        to={dashboardRoute}
-                        onClick={() => setMobileOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
-                      >
-                        <LayoutDashboard className="h-5 w-5" />
-                        <span className="font-medium">{getDashboardLabel()}</span>
-                      </Link>
-                      <button 
-                        onClick={() => { void signOut(); setMobileOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-red-500 hover:bg-opacity-20 transition-all"
-                      >
-                        <LogIn className="h-5 w-5" />
-                        <span className="font-medium">Sign Out</span>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <Link 
-                        to="/login"
-                        onClick={() => setMobileOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
-                      >
-                        <LogIn className="h-5 w-5" />
-                        <span className="font-medium">Login</span>
-                      </Link>
-                      <Link 
-                        to="/signup"
-                        onClick={() => setMobileOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
-                      >
-                        <UserPlus className="h-5 w-5" />
-                        <span className="font-medium">Sign Up</span>
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
+                  <button 
+                    onClick={() => { void signOut(); setMobileOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-red-500 hover:bg-opacity-20 transition-all"
+                  >
+                    <LogIn className="h-5 w-5" />
+                    <span className="font-medium">Sign Out</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link 
+                    to="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                  >
+                    <LogIn className="h-5 w-5" />
+                    <span className="font-medium">Login</span>
+                  </Link>
+                  <Link 
+                    to="/signup"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                  >
+                    <UserPlus className="h-5 w-5" />
+                    <span className="font-medium">Sign Up</span>
+                  </Link>
+                </>
+              )}
             </div>
+          </div>
         </div>
-      )}
-    </nav>
+      </div>
+    )}
+    </>
+  );
+};
   );
 };
 
