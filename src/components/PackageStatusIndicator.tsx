@@ -26,7 +26,7 @@ export default function PackageStatusIndicator({
     return null;
   }
 
-  // Both offline and not_available show as "Package is currently offline"
+  // Both offline and not_available show as "Package is offline"
   return (
     <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-red-50 border border-red-200">
       {/* RED ALERT ICON */}
@@ -34,7 +34,7 @@ export default function PackageStatusIndicator({
       
       <div className="flex-1">
         <p className="text-sm font-semibold text-red-700">
-          Package is currently offline
+          Package is offline
         </p>
       </div>
 
