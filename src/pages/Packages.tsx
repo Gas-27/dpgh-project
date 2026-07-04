@@ -1443,7 +1443,7 @@ const Packages = () => {
             </div>
 
             {loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {filtered.map((pkg) => {
                   // COMMENTED OUT: mashup packages deactivated
                   const isMTNMashup = false; // selectedNetwork === "mtn_mashup";

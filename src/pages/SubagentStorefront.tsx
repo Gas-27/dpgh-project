@@ -1259,6 +1259,7 @@ export function SubagentStorefront() {
               filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
                 const isInactive = pkg.active === false;
+                const isOffline = pkg.is_online === false;
       // COMMENTED OUT: mashup packages deactivated
       const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
       // Show Express badge only on specific mtn_mashup packages (matching flyer image)
@@ -1271,8 +1272,8 @@ export function SubagentStorefront() {
                     onClick={() => { if (isInactive) return; setPaymentPkg(pkg); setPaymentOpen(true); }}
                   >
                     <CardContent className="p-6 text-center space-y-4">
-                      {isInactive && (
-                        <PackageStatusIndicator status="not_available" />
+                      {(isInactive || isOffline) && (
+                        <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />
                       )}
                       {isMTNMashup ? (
                         <>

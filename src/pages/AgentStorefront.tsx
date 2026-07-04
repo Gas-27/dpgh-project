@@ -172,7 +172,7 @@ const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 // ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
-// ───────────────────────────────────���────────────────────���────────────────────
+// ───���───────────────────────────────���────────────────────���────────────────────
 const OrderTrackingCard = ({
   order,
   store,
@@ -1321,6 +1321,7 @@ const AgentStorefront = () => {
               {filteredPackages.map((pkg) => {
                 const price = getPrice(pkg);
                 const isInactive = pkg.active === false;
+                const isOffline = pkg.is_online === false;
       // COMMENTED OUT: mashup packages deactivated
       const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
       // Show Express badge only on specific mtn_mashup packages (matching flyer image)
@@ -1334,8 +1335,8 @@ const AgentStorefront = () => {
                       {isMTNMashup ? (
                         <>
                           <CardContent className="p-6 text-center space-y-4">
-                            {isInactive && (
-                              <PackageStatusIndicator status="not_available" />
+                            {(isInactive || isOffline) && (
+                              <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />
                             )}
                             <div className="relative bg-white/20 rounded-lg p-3 mb-3">
                               {showExpress && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold">Express</div>}
