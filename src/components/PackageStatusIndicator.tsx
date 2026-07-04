@@ -45,11 +45,11 @@ export default function PackageStatusIndicator({
 
       {/* Dropdown showing reasons - compact with left alignment */}
       {showDropdown && (
-        <div className="fixed bg-red-600 text-white rounded-lg shadow-lg z-50 p-3" style={{ width: 'auto', minWidth: '220px', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-          <p className="text-xs font-semibold mb-2 text-left">Why am I seeing this?</p>
-          <div className="space-y-1.5">
+        <div className="fixed bg-red-600 text-white rounded-lg shadow-lg z-50 p-2.5" style={{ width: 'auto', minWidth: '240px', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+          <p className="text-[11px] font-semibold mb-1.5 text-left">Why am I seeing this?</p>
+          <div className="space-y-1">
             {OFFLINE_REASONS.map((reason, idx) => (
-              <div key={idx} className="text-xs leading-snug text-left">
+              <div key={idx} className="text-[10px] leading-tight text-left">
                 • {reason}
               </div>
             ))}
