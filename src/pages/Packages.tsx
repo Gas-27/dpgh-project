@@ -1443,7 +1443,7 @@ const Packages = () => {
             </div>
 
             {loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="flex flex-col items-center w-full max-w-2xl mx-auto gap-4">
                 {filtered.map((pkg) => {
                   // COMMENTED OUT: mashup packages deactivated
                   const isMTNMashup = false; // selectedNetwork === "mtn_mashup";
@@ -1452,7 +1452,7 @@ const Packages = () => {
                   const packageStatus: PackageStatus = isOffline ? 'offline' : (isInactive ? 'not_available' : 'available');
                   const networkColor = networkConfig[selectedNetwork as keyof typeof networkConfig]?.color || "text-cyan-400";
                   return (
-                    <Card key={pkg.id} className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 ${isInactive || isOffline ? "opacity-50 grayscale" : "hover:shadow-xl"}`} style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
+                    <Card key={pkg.id} className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 w-full sm:max-w-md ${isInactive || isOffline ? "opacity-50 grayscale" : "hover:shadow-xl"}`} style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
                       <CardContent className="p-4 text-center space-y-3">
                         {(isInactive || isOffline) && (
                           <PackageStatusIndicator status={packageStatus} />
