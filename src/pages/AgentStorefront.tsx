@@ -1355,6 +1355,9 @@ const AgentStorefront = () => {
                       ) : (
                         <>
                           <CardContent className={`${getPadding()} text-center space-y-1 sm:space-y-2 w-full`}>
+                            {(isInactive || isOffline) && (
+                              <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />
+                            )}
                             <p
                               className={`${getGbFontSize()} font-bold break-words`}
                               style={{ color: gbTextColor }}
