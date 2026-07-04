@@ -314,7 +314,7 @@ export default function AFAPackagesDisplay({
             <Card key={pkg.id} className="flex flex-col hover:shadow-lg transition-shadow">
               {packageStatus !== 'available' && (
                 <CardContent className="pt-4 pb-0">
-                  <PackageStatusIndicator status={packageStatus} packageName={pkg.name} />
+                  <PackageStatusIndicator status={packageStatus} />
                 </CardContent>
               )}
               <CardHeader>

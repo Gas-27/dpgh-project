@@ -1453,15 +1453,10 @@ const Packages = () => {
                   const networkColor = networkConfig[selectedNetwork as keyof typeof networkConfig]?.color || "text-cyan-400";
                   return (
                     <Card key={pkg.id} className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 ${isInactive || isOffline ? "opacity-50 grayscale" : "hover:shadow-xl"}`} style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
-                      {(isInactive || isOffline) && (
-                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
-                          <div className="whitespace-nowrap rounded-full px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow"
-                            style={{ background: isOffline ? "rgba(239, 68, 68, 0.5)" : "rgba(255, 255, 255, 0.2)" }}>
-                            {isOffline ? "Package Offline" : "Package not available"}
-                          </div>
-                        </div>
-                      )}
                       <CardContent className="p-4 text-center space-y-3">
+                        {(isInactive || isOffline) && (
+                          <PackageStatusIndicator status={packageStatus} />
+                        )}
                         {isMTNMashup ? (
                           <>
                             <div className="relative bg-white/20 rounded-lg p-2 mb-2">
