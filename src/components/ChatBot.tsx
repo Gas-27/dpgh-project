@@ -3,16 +3,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, X, MessageCircle } from 'lucide-react';
 import { CHATBOT_KNOWLEDGE_BASE, findAnswer, FREQUENT_QUESTIONS } from '@/data/chatbot-knowledge-base';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  isHtml?: boolean;
 }
 
 interface ChatBotProps {
   page: 'home' | 'packages' | 'agent-dashboard';
+}
+
+interface ChatState {
+  mode: 'normal' | 'tracking_phone' | 'tracking_id' | 'packages';
 }
 
 export default function ChatBot({ page }: ChatBotProps) {
@@ -20,6 +26,7 @@ export default function ChatBot({ page }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [chatState, setChatState] = useState<ChatState>({ mode: 'normal' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversation from localStorage
@@ -46,6 +53,90 @@ export default function ChatBot({ page }: ChatBotProps) {
     localStorage.setItem(storageKey, JSON.stringify(newMessages));
   };
 
+  // Fetch available packages from Supabase
+  const fetchAvailablePackages = async (): Promise<string> => {
+    try {
+      const { data, error } = await supabase
+        .from('data_packages')
+        .select('*')
+        .eq('active', true)
+        .order('network', { ascending: true });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        return "Currently, all packages are offline for maintenance. Please check back in a few minutes.";
+      }
+
+      // Group by network
+      const byNetwork: Record<string, any[]> = {};
+      data.forEach(pkg => {
+        if (!byNetwork[pkg.network]) byNetwork[pkg.network] = [];
+        byNetwork[pkg.network].push(pkg);
+      });
+
+      let response = "📦 **Available Data Packages**\n\n";
+      Object.entries(byNetwork).forEach(([network, packages]) => {
+        response += `**${network}:**\n`;
+        packages.slice(0, 5).forEach(pkg => {
+          response += `• ${pkg.size_gb_text || pkg.size_gb + 'GB'} - GH₵${pkg.price}\n`;
+        });
+        response += "\n";
+      });
+      response += "For complete pricing and all available packages, please visit the Packages page!";
+      return response;
+    } catch (error) {
+      console.error('Error fetching packages:', error);
+      return "I couldn't load available packages right now. Please check the Packages page on our site or contact support.";
+    }
+  };
+
+  // Fetch order by phone number
+  const fetchOrderByPhone = async (phoneNumber: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, network, size_gb, amount, status, fulfillment_status, created_at')
+        .eq('customer_number', phoneNumber)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        return `No orders found for phone number ${phoneNumber}. Please check the number or contact support.`;
+      }
+
+      const order = data[0];
+      return `📍 **Order Status for ${phoneNumber}**\n\n**Order ID:** ${order.id}\n**Network:** ${order.network}\n**Size:** ${order.size_gb}GB\n**Amount:** GH₵${order.amount}\n**Status:** ${order.status || 'Processing'}\n**Delivery Status:** ${order.fulfillment_status || 'Pending'}\n**Date:** ${new Date(order.created_at).toLocaleDateString()}\n\nIf you need more help, contact our WhatsApp support!`;
+    } catch (error) {
+      console.error('Error fetching order:', error);
+      return "I couldn't retrieve your order information. Please contact our WhatsApp support team for assistance.";
+    }
+  };
+
+  // Fetch order by order ID
+  const fetchOrderById = async (orderId: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at')
+        .eq('id', orderId)
+        .single();
+
+      if (error) throw error;
+
+      if (!data) {
+        return `Order ${orderId} not found. Please check the ID and try again.`;
+      }
+
+      return `📍 **Order Status for ${data.customer_number}**\n\n**Order ID:** ${data.id}\n**Network:** ${data.network}\n**Size:** ${data.size_gb}GB\n**Amount:** GH₵${data.amount}\n**Status:** ${data.status || 'Processing'}\n**Delivery Status:** ${data.fulfillment_status || 'Pending'}\n**Date:** ${new Date(data.created_at).toLocaleDateString()}\n\nIf you need more help, contact our WhatsApp support!`;
+    } catch (error) {
+      console.error('Error fetching order:', error);
+      return "I couldn't retrieve that order. Please verify the order ID or contact support.";
+    }
+  };
+
   // Enhanced answer finding with comprehensive knowledge base
   const getAnswer = (userQuery: string): string => {
     const match = findAnswer(userQuery);
@@ -55,21 +146,20 @@ export default function ChatBot({ page }: ChatBotProps) {
 
     // Fallback with helpful suggestions
     return `I'm here to help! You can ask me about:
-    📦 Data packages & pricing
-    🚚 Order tracking & delivery
-    💳 Payment methods & safety
-    🤝 Becoming an agent & earning commissions
-    👨‍🌾 AFA bundles for farmers
-    💰 Withdrawals & payments
-    📞 Support & contact info
-    
-    What would you like to know?`;
+📦 Data packages & pricing
+🚚 Order tracking & delivery
+💳 Payment methods & safety
+🤝 Becoming an agent & earning commissions
+👨‍🌾 AFA bundles for farmers
+💰 Withdrawals & payments
+📞 Support & contact info
+
+What would you like to know?`;
   };
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
-    // Add user message
     const userMessage: Message = {
       id: `msg-${Date.now()}`,
       role: 'user',
@@ -83,9 +173,32 @@ export default function ChatBot({ page }: ChatBotProps) {
     setInput('');
     setIsLoading(true);
 
-    // Simulate thinking time
-    setTimeout(() => {
-      const answer = getAnswer(input);
+    setTimeout(async () => {
+      let answer = '';
+
+      // Handle tracking modes
+      if (chatState.mode === 'tracking_phone') {
+        answer = await fetchOrderByPhone(input.trim());
+        setChatState({ mode: 'normal' });
+      } else if (chatState.mode === 'tracking_id') {
+        answer = await fetchOrderById(input.trim());
+        setChatState({ mode: 'normal' });
+      } else if (chatState.mode === 'packages') {
+        answer = await fetchAvailablePackages();
+        setChatState({ mode: 'normal' });
+      } else {
+        // Check if user is asking about tracking
+        const lowerInput = input.toLowerCase();
+        if (lowerInput.includes('track') || lowerInput.includes('order')) {
+          answer = "Would you like to track your order? I can help!\n\nPlease choose:\n1. **Enter your phone number** - I'll find your latest order\n2. **Enter your order ID** - I'll get specific order details\n\nWhat would you prefer?";
+          // Don't change state yet, let user choose
+        } else if (lowerInput.includes('available') || lowerInput.includes('package') || lowerInput.includes('data bundle')) {
+          answer = await fetchAvailablePackages();
+        } else {
+          answer = getAnswer(input);
+        }
+      }
+
       const assistantMessage: Message = {
         id: `msg-${Date.now()}-1`,
         role: 'assistant',
@@ -163,14 +276,107 @@ export default function ChatBot({ page }: ChatBotProps) {
                   Select a question below or ask anything
                 </p>
                 
-                {/* Frequently Asked Questions */}
+                {/* Frequently Asked Questions and Quick Actions */}
                 <div className="w-full px-2 space-y-2 max-h-72 overflow-y-auto">
-                  {FREQUENT_QUESTIONS.map((question, idx) => (
+                  {/* Quick Action Buttons */}
+                  <button
+                    onClick={async () => {
+                      const userMsg: Message = {
+                        id: `msg-${Date.now()}`,
+                        role: 'user',
+                        content: 'Show available packages',
+                        timestamp: Date.now(),
+                      };
+                      const updatedMessages = [...messages, userMsg];
+                      setMessages(updatedMessages);
+                      saveMessages(updatedMessages);
+                      setIsLoading(true);
+
+                      setTimeout(async () => {
+                        const answer = await fetchAvailablePackages();
+                        const assistantMsg: Message = {
+                          id: `msg-${Date.now()}-1`,
+                          role: 'assistant',
+                          content: answer,
+                          timestamp: Date.now(),
+                        };
+                        const finalMessages = [...updatedMessages, assistantMsg];
+                        setMessages(finalMessages);
+                        saveMessages(finalMessages);
+                        setIsLoading(false);
+                      }, 500);
+                    }}
+                    className="w-full text-left text-xs bg-green-900 hover:bg-green-800 text-green-100 hover:text-white p-2 rounded border border-green-700 hover:border-green-500 transition-all font-semibold"
+                  >
+                    📦 Show Available Packages
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const userMsg: Message = {
+                        id: `msg-${Date.now()}`,
+                        role: 'user',
+                        content: 'Track my order by phone',
+                        timestamp: Date.now(),
+                      };
+                      const updatedMessages = [...messages, userMsg];
+                      setMessages(updatedMessages);
+                      saveMessages(updatedMessages);
+
+                      const assistantMsg: Message = {
+                        id: `msg-${Date.now()}-1`,
+                        role: 'assistant',
+                        content: 'Please enter your phone number (e.g., 0501234567):',
+                        timestamp: Date.now(),
+                      };
+                      const finalMessages = [...updatedMessages, assistantMsg];
+                      setMessages(finalMessages);
+                      saveMessages(finalMessages);
+                      setChatState({ mode: 'tracking_phone' });
+                    }}
+                    className="w-full text-left text-xs bg-blue-900 hover:bg-blue-800 text-blue-100 hover:text-white p-2 rounded border border-blue-700 hover:border-blue-500 transition-all font-semibold"
+                  >
+                    📍 Track Order by Phone
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const userMsg: Message = {
+                        id: `msg-${Date.now()}`,
+                        role: 'user',
+                        content: 'Track my order by ID',
+                        timestamp: Date.now(),
+                      };
+                      const updatedMessages = [...messages, userMsg];
+                      setMessages(updatedMessages);
+                      saveMessages(updatedMessages);
+
+                      const assistantMsg: Message = {
+                        id: `msg-${Date.now()}-1`,
+                        role: 'assistant',
+                        content: 'Please enter your order ID:',
+                        timestamp: Date.now(),
+                      };
+                      const finalMessages = [...updatedMessages, assistantMsg];
+                      setMessages(finalMessages);
+                      saveMessages(finalMessages);
+                      setChatState({ mode: 'tracking_id' });
+                    }}
+                    className="w-full text-left text-xs bg-purple-900 hover:bg-purple-800 text-purple-100 hover:text-white p-2 rounded border border-purple-700 hover:border-purple-500 transition-all font-semibold"
+                  >
+                    🔍 Track Order by ID
+                  </button>
+
+                  <div className="border-t border-slate-700 pt-2 mt-2">
+                    <p className="text-xs text-slate-400 px-2 py-1">Quick Questions:</p>
+                  </div>
+
+                  {/* FAQ Questions */}
+                  {FREQUENT_QUESTIONS.slice(0, 15).map((question, idx) => (
                     <button
                       key={idx}
                       onClick={() => {
                         setInput(question);
-                        // Trigger send message
                         const userMsg: Message = {
                           id: `msg-${Date.now()}`,
                           role: 'user',
@@ -219,7 +425,13 @@ export default function ChatBot({ page }: ChatBotProps) {
                         : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'
                     }`}
                   >
-                    <p>{msg.content}</p>
+                    <div className="whitespace-pre-wrap break-words text-sm">
+                      {msg.content.split('\n').map((line, i) => (
+                        <div key={i} className={line.startsWith('**') ? 'font-semibold' : ''}>
+                          {line.replace(/\*\*/g, '')}
+                        </div>
+                      ))}
+                    </div>
                     <p className="text-xs mt-1 opacity-60">
                       {formatTime(msg.timestamp)}
                     </p>
