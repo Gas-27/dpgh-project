@@ -123,18 +123,19 @@ export const CHATBOT_KNOWLEDGE_BASE = {
   withdrawal: {
     requirements:
       "Only agents and subagents can withdraw. Regular customers cannot withdraw.",
-    minimumAmount: "GH₵5",
+    minimumAmount: "GH₵16",
     paymentMethods: ["Mobile Money", "Bank Transfer", "Wallet"],
-    processingTime: "Same day or within 24 hours",
+    processingTime: "Less than 2 minutes",
+    processingTimeDetail: "Money arrives in your account within 2 minutes after confirmation",
     steps: [
       "Go to Withdrawals page (for agents/subagents)",
-      "Enter the amount you want to withdraw",
+      "Enter the amount (minimum GH₵16)",
       "Select payment method (Mobile Money, Bank Transfer, or Wallet)",
       "Add recipient if not already saved",
       "Confirm withdrawal",
-      "Wait for processing (same day - 24 hours)",
+      "Receive money in less than 2 minutes",
     ],
-    fees: "Minimal processing fees apply (usually GH₵0.50-1.00)",
+    fees: "Minimal processing fees apply",
     recipients: {
       description: "Save multiple recipients for faster withdrawals",
       info: "Mobile money number or bank account details",
@@ -299,7 +300,15 @@ export const CHATBOT_KNOWLEDGE_BASE = {
       },
       {
         q: "How do I withdraw my earnings?",
-        a: "Go to your Withdrawals section, enter amount, select payment method, and confirm. Processing takes same day to 24 hours.",
+        a: "Go to your Withdrawals section, enter amount (minimum GH₵16), select payment method, and confirm. Money arrives in less than 2 minutes!",
+      },
+      {
+        q: "What is the minimum withdrawal amount?",
+        a: "The minimum withdrawal amount is GH₵16. Any amount below this cannot be withdrawn.",
+      },
+      {
+        q: "How long does withdrawal take?",
+        a: "Withdrawals are processed in less than 2 minutes. Once you confirm, money reaches your account almost instantly.",
       },
       {
         q: "Can I create subagents?",
@@ -360,6 +369,44 @@ export const CHATBOT_KNOWLEDGE_BASE = {
     guarantee: "Fast, reliable, and affordable data bundles",
   },
 };
+
+// ============================================
+// FREQUENTLY ASKED QUESTIONS LIST FOR UI
+// ============================================
+
+export const FREQUENT_QUESTIONS = [
+  // Quick actions
+  "How do I buy data?",
+  "How long does delivery take?",
+  "What payment methods do you accept?",
+  "How do I track my order?",
+  "Is it safe to pay online?",
+  
+  // Packages
+  "What data sizes are available?",
+  "Which networks do you support?",
+  "Do unused data roll over?",
+  
+  // AFA Program
+  "What is AFA?",
+  "How long does AFA registration take?",
+  "Who is eligible for AFA?",
+  
+  // Agent Program
+  "How do I become an agent?",
+  "How much commission do agents earn?",
+  "How do I withdraw my earnings?",
+  "What is the minimum withdrawal amount?",
+  "How long does withdrawal take?",
+  "Can I create subagents?",
+  
+  // Support & Other
+  "How can I contact support?",
+  "What do the buttons mean?",
+  "What is a voucher?",
+  "What are bulk orders?",
+  "Is there a startup cost to be an agent?",
+];
 
 // ============================================
 // Q&A MATCHING FUNCTION

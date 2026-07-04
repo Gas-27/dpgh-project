@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Send, X, MessageCircle } from 'lucide-react';
-import { CHATBOT_KNOWLEDGE_BASE, findAnswer } from '@/data/chatbot-knowledge-base';
+import { CHATBOT_KNOWLEDGE_BASE, findAnswer, FREQUENT_QUESTIONS } from '@/data/chatbot-knowledge-base';
 
 interface Message {
   id: string;
@@ -156,12 +156,55 @@ export default function ChatBot({ page }: ChatBotProps) {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-slate-400">
+              <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 pb-20">
                 <MessageCircle className="h-12 w-12 mb-3 opacity-50" />
-                <p className="text-sm">No messages yet</p>
-                <p className="text-xs mt-1 opacity-75">
-                  Ask about packages, orders, or support
+                <p className="text-sm font-semibold mb-2">How can we help?</p>
+                <p className="text-xs mb-4 opacity-75">
+                  Select a question below or ask anything
                 </p>
+                
+                {/* Frequently Asked Questions */}
+                <div className="w-full px-2 space-y-2 max-h-72 overflow-y-auto">
+                  {FREQUENT_QUESTIONS.map((question, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setInput(question);
+                        // Trigger send message
+                        const userMsg: Message = {
+                          id: `msg-${Date.now()}`,
+                          role: 'user',
+                          content: question,
+                          timestamp: Date.now(),
+                        };
+                        const updatedMessages = [...messages, userMsg];
+                        setMessages(updatedMessages);
+                        saveMessages(updatedMessages);
+                        setInput('');
+                        setIsLoading(true);
+
+                        setTimeout(() => {
+                          const match = findAnswer(question);
+                          const answer = match?.answer || `I'm here to help! You can ask me about data packages, pricing, delivery, becoming an agent, AFA programs, withdrawals, and more. What would you like to know?`;
+                          const assistantMsg: Message = {
+                            id: `msg-${Date.now()}-1`,
+                            role: 'assistant',
+                            content: answer,
+                            timestamp: Date.now(),
+                          };
+                          const finalMessages = [...updatedMessages, assistantMsg];
+                          setMessages(finalMessages);
+                          saveMessages(finalMessages);
+                          setIsLoading(false);
+                        }, 500);
+                      }}
+                      className="w-full text-left text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2 rounded border border-slate-700 hover:border-cyan-500 transition-all truncate"
+                      title={question}
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               messages.map((msg) => (
