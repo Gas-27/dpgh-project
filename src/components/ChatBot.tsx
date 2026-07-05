@@ -59,7 +59,6 @@ export default function ChatBot({ page }: ChatBotProps) {
       const { data, error } = await supabase
         .from('data_packages')
         .select('*')
-        .eq('active', true)
         .order('network', { ascending: true });
 
       if (error) throw error;
@@ -68,21 +67,49 @@ export default function ChatBot({ page }: ChatBotProps) {
         return "Currently, all packages are offline for maintenance. Please check back in a few minutes.";
       }
 
+      // Separate active and offline packages
+      const activePackages = data.filter(pkg => pkg.active && pkg.is_online !== false);
+      const offlinePackages = data.filter(pkg => !pkg.active || pkg.is_online === false);
+
       // Group by network
-      const byNetwork: Record<string, any[]> = {};
-      data.forEach(pkg => {
-        if (!byNetwork[pkg.network]) byNetwork[pkg.network] = [];
-        byNetwork[pkg.network].push(pkg);
+      const activeByNetwork: Record<string, any[]> = {};
+      const offlineByNetwork: Record<string, any[]> = {};
+
+      activePackages.forEach(pkg => {
+        if (!activeByNetwork[pkg.network]) activeByNetwork[pkg.network] = [];
+        activeByNetwork[pkg.network].push(pkg);
+      });
+
+      offlinePackages.forEach(pkg => {
+        if (!offlineByNetwork[pkg.network]) offlineByNetwork[pkg.network] = [];
+        offlineByNetwork[pkg.network].push(pkg);
       });
 
       let response = "📦 **Available Data Packages**\n\n";
-      Object.entries(byNetwork).forEach(([network, packages]) => {
-        response += `**${network}:**\n`;
-        packages.forEach(pkg => {
-          response += `• ${pkg.size_gb_text || pkg.size_gb + 'GB'}\n`;
+
+      // Show active packages
+      if (Object.keys(activeByNetwork).length > 0) {
+        Object.entries(activeByNetwork).forEach(([network, packages]) => {
+          response += `**${network}:**\n`;
+          packages.forEach(pkg => {
+            response += `• ${pkg.size_gb_text || pkg.size_gb + 'GB'}\n`;
+          });
+          response += "\n";
         });
-        response += "\n";
-      });
+      }
+
+      // Show offline packages if any
+      if (Object.keys(offlineByNetwork).length > 0) {
+        response += "🔴 **Offline Packages:**\n";
+        Object.entries(offlineByNetwork).forEach(([network, packages]) => {
+          response += `**${network}:**\n`;
+          packages.forEach(pkg => {
+            response += `• ${pkg.size_gb_text || pkg.size_gb + 'GB'} (Offline)\n`;
+          });
+          response += "\n";
+        });
+      }
+
       response += "For pricing details, please visit the Packages page!";
       return response;
     } catch (error) {
