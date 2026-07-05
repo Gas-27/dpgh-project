@@ -270,13 +270,6 @@ What would you like to know?`;
               <X className="h-5 w-5" />
             </button>
           </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:bg-cyan-600 rounded-lg p-2 transition"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900">
