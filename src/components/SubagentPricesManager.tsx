@@ -48,9 +48,14 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
   }, [agentStoreId]);
 
   const filteredPackages = packages.filter(p => {
-    const networkMatch = networkFilter === "mtn_mashup" 
-      ? (p.network === "mtn_mashup" || p.network === "mashup")
-      : p.network === networkFilter;
+    let networkMatch;
+    if (networkFilter === "mtn_mashup") {
+      networkMatch = p.network === "mtn_mashup" || p.network === "mashup";
+    } else if (networkFilter === "airteltigo") {
+      networkMatch = p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+    } else {
+      networkMatch = p.network === networkFilter;
+    }
     return networkMatch && p.active !== false;
   });
 
