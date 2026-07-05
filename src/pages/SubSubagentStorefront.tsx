@@ -780,6 +780,9 @@ export function SubSubagentStorefront() {
       if (false && networkFilter === "mtn_mashup") {
         return p.network === "mtn_mashup" || p.network === "mashup";
     }
+    if (networkFilter === "airteltigo") {
+      return p.network === "airteltigo" || p.network === "atbigtime";
+    }
     return p.network === networkFilter;
   });
   const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;

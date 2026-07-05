@@ -1251,6 +1251,9 @@ const Packages = () => {
     if (false && selectedNetwork === "mtn_mashup") {
       return p.network === "mtn_mashup" || p.network === "mashup";
     }
+    if (selectedNetwork === "airteltigo") {
+      return p.network === "airteltigo" || p.network === "atbigtime";
+    }
     return p.network === selectedNetwork;
   }), [packages, selectedNetwork]);
 

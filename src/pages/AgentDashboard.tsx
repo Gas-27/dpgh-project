@@ -1382,7 +1382,7 @@ const AgentDashboard = () => {
   // ==================== FLYER FUNCTIONS ====================
   const getFlyerPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const getMtnPkgs = () => MTN_SIZES.map(s => { const p = packages.find(x => x.network === "mtn" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
-  const getAirtelPkgs = () => AIRTEL_SIZES.map(s => { const p = packages.find(x => x.network === "airteltigo" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
+  const getAirtelPkgs = () => AIRTEL_SIZES.map(s => { const p = packages.find(x => (x.network === "airteltigo" || x.network === "atbigtime") && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
   const getTelecelPkgs = () => TELECEL_SIZES.map(s => { const p = packages.find(x => x.network === "telecel" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
 
   const saveFlyerColors = (c: typeof flyerColors) => { setFlyerColors(c); localStorage.setItem("flyerColors", JSON.stringify(c)); toast({ title: "Colours saved!" }); };
@@ -1545,6 +1545,9 @@ const AgentDashboard = () => {
   const filteredPackages = packages.filter(p => {
     if (networkFilter === "mtn_mashup") {
       return p.network === "mtn_mashup" || p.network === "mashup";
+    }
+    if (networkFilter === "airteltigo") {
+      return p.network === "airteltigo" || p.network === "atbigtime";
     }
     return p.network === networkFilter;
   });
@@ -1949,7 +1952,10 @@ const AgentDashboard = () => {
                 if (false && networkFilter === "mtn_mashup") {
                   return p.network === "mtn_mashup" || p.network === "mashup";
                 }
-                return p.network === networkFilter;
+      if (networkFilter === "airteltigo") {
+        return p.network === "airteltigo" || p.network === "atbigtime";
+      }
+      return p.network === networkFilter;
               }).map((pkg) => {
                 const price = Number(pkg.agent_price || pkg.price);
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
@@ -2981,7 +2987,12 @@ const AgentDashboard = () => {
                     ))}
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {packages.filter(p => p.network === networkFilter).map((pkg) => {
+                    {packages.filter(p => {
+                      if (networkFilter === "airteltigo") {
+                        return p.network === "airteltigo" || p.network === "atbigtime";
+                      }
+                      return p.network === networkFilter;
+                    }).map((pkg) => {
                       const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
                       return (
                         <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">

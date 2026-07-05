@@ -1397,12 +1397,18 @@ const SubagentDashboard = () => {
     if (false && networkFilter === "mtn_mashup") {
       return p.network === "mtn_mashup" || p.network === "mashup";
     }
+    if (networkFilter === "airteltigo") {
+      return p.network === "airteltigo" || p.network === "atbigtime";
+    }
     return p.network === networkFilter;
   });
 
   const filteredSubSubagentPackages = packages.filter(p => {
     if (false && subSubagentNetworkFilter === "mtn_mashup") {
       return p.network === "mtn_mashup" || p.network === "mashup";
+    }
+    if (subSubagentNetworkFilter === "airteltigo") {
+      return p.network === "airteltigo" || p.network === "atbigtime";
     }
     return p.network === subSubagentNetworkFilter;
   });

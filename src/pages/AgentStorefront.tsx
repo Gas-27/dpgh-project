@@ -914,6 +914,9 @@ const AgentStorefront = () => {
         // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
         return p.network === "mtn_mashup" || p.network === "mashup";
     }
+    if (networkFilter === "airteltigo") {
+      return p.network === "airteltigo" || p.network === "atbigtime";
+    }
     return p.network === networkFilter;
   });
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
