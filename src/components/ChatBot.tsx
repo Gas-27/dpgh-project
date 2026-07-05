@@ -303,26 +303,47 @@ What would you like to know?`;
 
   return (
     <>
-      {/* Chat Widget */}
+      {/* Chat Widget - Desktop */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-8 right-8 z-40 md:flex hidden items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-4 py-3 shadow-lg transition-all hover:scale-105"
-          title="Ask the chatbot any question"
+        <div
+          className="fixed z-40 md:flex hidden"
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px)`,
+            bottom: position.y === 0 ? '32px' : 'auto',
+            right: position.x === 0 ? '32px' : 'auto',
+          }}
         >
-          <MessageCircle className="h-5 w-5" />
-          <span className="font-semibold text-sm">Ask Chatbot</span>
-        </button>
+          <button
+            onMouseDown={handleDragStart}
+            onClick={() => setIsOpen(true)}
+            className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-4 py-3 shadow-lg transition-all hover:scale-105 cursor-grab active:cursor-grabbing"
+            title="Ask the chatbot any question - Click to open, drag to move"
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span className="font-semibold text-sm">Ask Chatbot</span>
+          </button>
+        </div>
       )}
 
       {/* Mobile Chat Button */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 md:hidden flex items-center justify-center bg-cyan-500 hover:bg-cyan-600 text-white rounded-full w-14 h-14 shadow-lg transition-all hover:scale-105"
+        <div
+          className="fixed z-40 md:hidden flex"
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px)`,
+            bottom: position.y === 0 ? '24px' : 'auto',
+            right: position.x === 0 ? '24px' : 'auto',
+          }}
         >
-          <MessageCircle className="h-6 w-6" />
-        </button>
+          <button
+            onMouseDown={handleDragStart}
+            onClick={() => setIsOpen(true)}
+            className="flex items-center justify-center bg-cyan-500 hover:bg-cyan-600 text-white rounded-full w-14 h-14 shadow-lg transition-all hover:scale-105 cursor-grab active:cursor-grabbing"
+            title="Ask the chatbot - Drag to move"
+          >
+            <MessageCircle className="h-6 w-6" />
+          </button>
+        </div>
       )}
 
       {/* Chat Window */}

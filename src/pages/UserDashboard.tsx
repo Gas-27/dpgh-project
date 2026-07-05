@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,8 @@ interface DataPackage {
   size_gb_text?: string;
   price: number;
   api_price: number;
+  active: boolean;
+  is_online?: boolean;
 }
 
 interface Order {
@@ -143,11 +145,10 @@ const UserDashboard = () => {
           setTopupReference(userWalletData.topup_reference);
         }
 
-        // Fetch available packages
+        // Fetch all packages (including inactive/offline ones)
         const { data: packagesData } = await supabase
           .from("data_packages")
           .select("*")
-          .eq("active", true)
           .order("size_gb");
 
         if (packagesData) {
@@ -406,8 +407,9 @@ const UserDashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className="grid grid-cols-6 w-full">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="api-packages">API Packages</TabsTrigger>
             <TabsTrigger value="api-key">API Key</TabsTrigger>
             <TabsTrigger value="buy-data">Buy Data</TabsTrigger>
             <TabsTrigger value="top-up">Top Up</TabsTrigger>
@@ -416,6 +418,45 @@ const UserDashboard = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Wallet Balance Card */}
+              <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-blue-500/5 hover:border-cyan-500/50 transition-all">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
+                    <Wallet className="h-5 w-5 text-cyan-400" />
+                  </div>
+                  <p className="font-display text-3xl font-bold text-cyan-400">GH₵ {Number(normalWallet).toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground mt-2">For regular purchases</p>
+                </CardContent>
+              </Card>
+
+              {/* API Wallet Card */}
+              <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-pink-500/5 hover:border-purple-500/50 transition-all">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-medium text-muted-foreground">API Wallet</p>
+                    <Zap className="h-5 w-5 text-purple-400" />
+                  </div>
+                  <p className="font-display text-3xl font-bold text-purple-400">GH₵ {Number(apiWallet).toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground mt-2">For API purchases</p>
+                </CardContent>
+              </Card>
+
+              {/* Stats Card */}
+              <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/5 hover:border-amber-500/50 transition-all">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-medium text-muted-foreground">Total Purchased</p>
+                    <TrendingUp className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <p className="font-display text-3xl font-bold text-amber-400">{totalDataPurchased.toFixed(1)}GB</p>
+                  <p className="text-xs text-muted-foreground mt-2">Spent: GH₵ {Number(totalSpent).toFixed(2)}</p>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Top-up Reference Card */}
             <Card className="border-blue-500/30 bg-blue-500/5">
               <CardHeader>
@@ -469,6 +510,91 @@ const UserDashboard = () => {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* API Packages Tab */}
+          <TabsContent value="api-packages" className="space-y-6">
+            <Card className="border-purple-500/30 bg-purple-500/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-purple-400" />
+                  API Packages & Pricing
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  View all available data packages with their API prices. Packages marked as offline are currently unavailable.
+                </p>
+                
+                <div className="space-y-4">
+                  {/* Network Filter */}
+                  <div className="flex gap-2">
+                    {['mtn', 'telecel', 'airteltigo', 'atbigtime', 'atbigshare'].map(network => (
+                      <button
+                        key={network}
+                        onClick={() => setNetworkFilter(network)}
+                        className={`px-3 py-1 rounded text-sm font-medium transition-all ${
+                          networkFilter === network
+                            ? 'bg-purple-500 text-white'
+                            : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
+                        }`}
+                      >
+                        {network.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Packages Table */}
+                  {packages.length > 0 ? (
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>Size</TableHead>
+                            <TableHead>User Price</TableHead>
+                            <TableHead>API Price</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {packages
+                            .filter(pkg => pkg.network.toLowerCase() === networkFilter.toLowerCase() || 
+                                         (networkFilter === 'airteltigo' && ['airteltigo', 'atbigtime', 'atbigshare'].includes(pkg.network.toLowerCase())))
+                            .map((pkg) => {
+                              const isOffline = !pkg.active || pkg.is_online === false;
+                              return (
+                                <TableRow key={pkg.id} className={isOffline ? 'opacity-60 bg-red-500/5' : ''}>
+                                  <TableCell className="font-medium">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
+                                  <TableCell>GH₵ {Number(pkg.price).toFixed(2)}</TableCell>
+                                  <TableCell className={isOffline ? 'text-muted-foreground line-through' : 'text-purple-400 font-semibold'}>
+                                    GH₵ {Number(pkg.api_price || pkg.price).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {isOffline ? (
+                                      <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
+                                        Offline
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="default" className="bg-green-500/20 text-green-400 border-green-500/30">
+                                        Active
+                                      </Badge>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No packages available for this network</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* API Key Tab */}
