@@ -240,9 +240,10 @@ What would you like to know?`;
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-8 right-8 z-40 md:flex hidden items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-4 py-3 shadow-lg transition-all hover:scale-105"
+          title="Ask the chatbot any question"
         >
           <MessageCircle className="h-5 w-5" />
-          <span className="font-semibold text-sm">Chat with us</span>
+          <span className="font-semibold text-sm">Ask Chatbot</span>
         </button>
       )}
 
@@ -260,11 +261,15 @@ What would you like to know?`;
       {isOpen && (
         <div className="fixed bottom-0 right-0 md:bottom-8 md:right-8 z-40 w-full md:w-96 h-full md:h-[600px] bg-slate-900 rounded-none md:rounded-lg shadow-2xl flex flex-col border border-slate-700 animate-in slide-in-from-bottom-2 duration-200">
           {/* Header */}
-          <div className="bg-gradient-to-r from-cyan-600 to-cyan-500 text-white p-4 rounded-none md:rounded-t-lg flex justify-between items-center">
-            <div>
-              <h3 className="font-bold text-base">Customer Support</h3>
-              <p className="text-xs text-cyan-100">Always here to help</p>
-            </div>
+          <div className="flex items-center justify-between bg-slate-950 border-b border-slate-700 p-4">
+            <h2 className="font-semibold text-white">Chatbot Assistant</h2>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
             <button
               onClick={() => setIsOpen(false)}
               className="text-white hover:bg-cyan-600 rounded-lg p-2 transition"
@@ -278,9 +283,9 @@ What would you like to know?`;
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 pb-20">
                 <MessageCircle className="h-12 w-12 mb-3 opacity-50" />
-                <p className="text-sm font-semibold mb-2">How can we help?</p>
+                <p className="text-sm font-semibold mb-2">Hi! I'm your Chatbot Assistant</p>
                 <p className="text-xs mb-4 opacity-75">
-                  Select a question below or ask anything
+                  Ask me anything about packages, agents, AFA, APIs, features, or anything else. I'm here 24/7!
                 </p>
                 
                 {/* Frequently Asked Questions and Quick Actions */}
