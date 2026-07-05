@@ -28,6 +28,11 @@ export default function ChatBot({ page }: ChatBotProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [chatState, setChatState] = useState<ChatState>({ mode: 'normal' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatWindowRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0 });
 
   // Load conversation from localStorage
   useEffect(() => {
@@ -52,6 +57,42 @@ export default function ChatBot({ page }: ChatBotProps) {
     const storageKey = `chatbot_${page}`;
     localStorage.setItem(storageKey, JSON.stringify(newMessages));
   };
+
+  // Handle drag start
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) {
+      return; // Don't drag if clicking buttons or inputs
+    }
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  // Handle drag move
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      setPosition(prev => ({
+        x: prev.x + dx,
+        y: prev.y + dy
+      }));
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   // Fetch available packages from Supabase
   const fetchAvailablePackages = async (): Promise<string> => {
@@ -286,9 +327,19 @@ What would you like to know?`;
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-0 right-0 md:bottom-8 md:right-8 z-40 w-full md:w-96 h-full md:h-[600px] bg-slate-900 rounded-none md:rounded-lg shadow-2xl flex flex-col border border-slate-700 animate-in slide-in-from-bottom-2 duration-200">
+        <div
+          ref={chatWindowRef}
+          className="fixed bottom-0 right-0 md:bottom-8 md:right-8 z-40 w-full md:w-96 h-full md:h-[600px] bg-slate-900 rounded-none md:rounded-lg shadow-2xl flex flex-col border border-slate-700 animate-in slide-in-from-bottom-2 duration-200"
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px)`,
+            cursor: isDragging ? 'grabbing' : 'grab',
+          }}
+        >
           {/* Header */}
-          <div className="flex items-center justify-between bg-slate-950 border-b border-slate-700 p-4">
+          <div 
+            onMouseDown={handleDragStart}
+            className="flex items-center justify-between bg-slate-950 border-b border-slate-700 p-4 cursor-grab hover:bg-slate-900 transition-colors"
+          >
             <h2 className="font-semibold text-white">Chatbot Assistant</h2>
             <button
               onClick={() => setIsOpen(false)}

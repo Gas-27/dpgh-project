@@ -1305,9 +1305,9 @@ const Packages = () => {
 
   const catIcons: Record<string, React.ReactNode> = {
     data: <Wifi className="h-4 w-4 mr-2" />, afa: <Package className="h-4 w-4 mr-2" />,
-    vouchers: <CheckCircle className="h-4 w-4 mr-2" />, services: <Rocket className="h-4 w-4 mr-2" />,
+    vouchers: <CheckCircle className="h-4 w-4 mr-2" />, services: <Wifi className="h-4 w-4 mr-2" />,
   };
-  const catLabels: Record<string, string> = { data: "Data Bundles", afa: "AFA Bundles", vouchers: "Instant Data", services: "Internet Services", bulk: "Bulk Orders" };
+  const catLabels: Record<string, string> = { data: "Data Bundles", afa: "AFA Bundles", vouchers: "Instant Data", services: "Services", bulk: "Bulk Orders" };
 
   return (
     <div className="min-h-screen bg-background">

@@ -1156,7 +1156,7 @@ const AgentStorefront = () => {
               data: "Data",
               afa: "AFA Bundles",
               vouchers: "Instant Data",
-              services: "Internet Services",
+              services: "Services",
               bulk: "Bulk Orders",
             };
             return (
