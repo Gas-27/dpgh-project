@@ -339,7 +339,37 @@ What would you like to know?`;
                     📍 Track Order by Phone
                   </button>
 
+                  <button
+                    onClick={async () => {
+                      const userMsg: Message = {
+                        id: `msg-${Date.now()}`,
+                        role: 'user',
+                        content: 'Show available packages',
+                        timestamp: Date.now(),
+                      };
+                      const updatedMessages = [...messages, userMsg];
+                      setMessages(updatedMessages);
+                      saveMessages(updatedMessages);
+                      setIsLoading(true);
 
+                      setTimeout(async () => {
+                        const answer = await fetchAvailablePackages();
+                        const assistantMsg: Message = {
+                          id: `msg-${Date.now()}-1`,
+                          role: 'assistant',
+                          content: answer,
+                          timestamp: Date.now(),
+                        };
+                        const finalMessages = [...updatedMessages, assistantMsg];
+                        setMessages(finalMessages);
+                        saveMessages(finalMessages);
+                        setIsLoading(false);
+                      }, 500);
+                    }}
+                    className="w-full text-left text-xs bg-green-900 hover:bg-green-800 text-green-100 hover:text-white p-2 rounded border border-green-700 hover:border-green-500 transition-all font-semibold"
+                  >
+                    📦 Show Available Packages
+                  </button>
 
                   <div className="border-t border-slate-700 pt-2 mt-2">
                     <p className="text-xs text-slate-400 px-2 py-1">Quick Questions:</p>
