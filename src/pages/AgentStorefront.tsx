@@ -915,7 +915,7 @@ const AgentStorefront = () => {
         return p.network === "mtn_mashup" || p.network === "mashup";
     }
     if (networkFilter === "airteltigo") {
-      return p.network === "airteltigo" || p.network === "atbigtime";
+      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
     return p.network === networkFilter;
   });

@@ -1382,7 +1382,7 @@ const AgentDashboard = () => {
   // ==================== FLYER FUNCTIONS ====================
   const getFlyerPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const getMtnPkgs = () => MTN_SIZES.map(s => { const p = packages.find(x => x.network === "mtn" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
-  const getAirtelPkgs = () => AIRTEL_SIZES.map(s => { const p = packages.find(x => (x.network === "airteltigo" || x.network === "atbigtime") && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
+  const getAirtelPkgs = () => AIRTEL_SIZES.map(s => { const p = packages.find(x => (x.network === "airteltigo" || x.network === "atbigtime" || x.network === "atbigshare") && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
   const getTelecelPkgs = () => TELECEL_SIZES.map(s => { const p = packages.find(x => x.network === "telecel" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
 
   const saveFlyerColors = (c: typeof flyerColors) => { setFlyerColors(c); localStorage.setItem("flyerColors", JSON.stringify(c)); toast({ title: "Colours saved!" }); };
@@ -1953,7 +1953,7 @@ const AgentDashboard = () => {
                   return p.network === "mtn_mashup" || p.network === "mashup";
                 }
       if (networkFilter === "airteltigo") {
-        return p.network === "airteltigo" || p.network === "atbigtime";
+        return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
       }
       return p.network === networkFilter;
               }).map((pkg) => {
@@ -2989,7 +2989,7 @@ const AgentDashboard = () => {
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {packages.filter(p => {
                       if (networkFilter === "airteltigo") {
-                        return p.network === "airteltigo" || p.network === "atbigtime";
+                        return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
                       }
                       return p.network === networkFilter;
                     }).map((pkg) => {
@@ -3452,7 +3452,7 @@ const AgentDashboard = () => {
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>
               </>
-            <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠���� You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="wallet"><span className="flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet (GH₵ {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span></SelectItem><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" />Paystack (+ charges)</span></SelectItem></SelectContent></Select></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
+            <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠���� You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="wallet"><span className="flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet (GH�� {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span></SelectItem><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" />Paystack (+ charges)</span></SelectItem></SelectContent></Select></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
           )}
         </DialogContent>
       </Dialog>

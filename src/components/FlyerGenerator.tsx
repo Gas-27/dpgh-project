@@ -85,7 +85,7 @@ const FlyerGenerator = ({
 
     // Get packages by network
     const mtnPackages = packages.filter(p => p.network === "mtn" && p.active !== false);
-    const airtelPackages = packages.filter(p => p.network === "airteltigo" && p.active !== false);
+    const airtelPackages = packages.filter(p => (p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare") && p.active !== false);
     const telecelPackages = packages.filter(p => p.network === "telecel" && p.active !== false);
 
     // Get sorted packages for flyer

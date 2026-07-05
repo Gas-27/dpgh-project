@@ -3559,7 +3559,7 @@ const AdminDashboard = () => {
                   {packages
                     .filter(pkg => {
                       if (agentPriceNetworkFilter === "airteltigo") {
-                        return (pkg.network === "airteltigo" || pkg.network === "atbigtime") && pkg.active;
+                        return (pkg.network === "airteltigo" || pkg.network === "atbigtime" || pkg.network === "atbigshare") && pkg.active;
                       }
                       return pkg.network === agentPriceNetworkFilter && pkg.active;
                     })
