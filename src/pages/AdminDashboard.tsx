@@ -1727,7 +1727,12 @@ const AdminDashboard = () => {
   // ======================== Helpers ========================
   const canSee = (section: Section) => currentUserSections.includes(section);
 
-  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const filteredPackages = packages.filter((p) => {
+    if (networkFilter === "airteltigo") {
+      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+    }
+    return p.network === networkFilter;
+  });
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
   
