@@ -3558,6 +3558,9 @@ const AdminDashboard = () => {
                 <TableBody>
                   {packages
                     .filter(pkg => {
+                      if (agentPriceNetworkFilter === "airteltigo") {
+                        return (pkg.network === "airteltigo" || pkg.network === "atbigtime") && pkg.active;
+                      }
                       return pkg.network === agentPriceNetworkFilter && pkg.active;
                     })
                     .map((pkg) => (

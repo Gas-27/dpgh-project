@@ -1155,7 +1155,7 @@ const AgentStorefront = () => {
             const labels: Record<string, string> = {
               data: "Data",
               afa: "AFA Bundles",
-              vouchers: "Vouchers",
+              vouchers: "Instant Data",
               services: "Internet Services",
               bulk: "Bulk Orders",
             };
