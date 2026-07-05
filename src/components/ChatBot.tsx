@@ -329,16 +329,17 @@ What would you like to know?`;
       {isOpen && (
         <div
           ref={chatWindowRef}
-          className="fixed bottom-0 right-0 md:bottom-8 md:right-8 z-40 w-full md:w-96 h-full md:h-[600px] bg-slate-900 rounded-none md:rounded-lg shadow-2xl flex flex-col border border-slate-700 animate-in slide-in-from-bottom-2 duration-200"
+          className={`fixed z-40 w-full md:w-96 h-full md:h-[600px] bg-slate-900 rounded-none md:rounded-lg shadow-2xl flex flex-col border border-slate-700 ${position.x === 0 && position.y === 0 ? 'bottom-0 right-0 md:bottom-8 md:right-8 animate-in slide-in-from-bottom-2 duration-200' : ''}`}
           style={{
             transform: `translate(${position.x}px, ${position.y}px)`,
             cursor: isDragging ? 'grabbing' : 'grab',
+            ...(position.x !== 0 || position.y !== 0 ? { bottom: 'auto', right: 'auto' } : {}),
           }}
         >
           {/* Header */}
           <div 
             onMouseDown={handleDragStart}
-            className="flex items-center justify-between bg-slate-950 border-b border-slate-700 p-4 cursor-grab hover:bg-slate-900 transition-colors"
+            className="flex items-center justify-between bg-slate-950 border-b border-slate-700 p-4 cursor-grab hover:bg-slate-900 transition-colors select-none"
           >
             <h2 className="font-semibold text-white">Chatbot Assistant</h2>
             <button
