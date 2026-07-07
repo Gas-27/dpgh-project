@@ -657,7 +657,9 @@ const AdminDashboard = () => {
 
   // Load data when active tab changes
   useEffect(() => {
-    if (activeTab === "sub_subagents") {
+    if (activeTab === "subagents" && subagents.length === 0) {
+      handleTabChange("subagents");
+    } else if (activeTab === "sub_subagents") {
       fetchSubSubagents();
     } else if (activeTab === "customers" && customers.length === 0) {
       fetchCustomers();
