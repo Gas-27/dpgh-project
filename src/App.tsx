@@ -16,6 +16,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const Signup = lazy(() => import("./pages/Signup"));
 const Packages = lazy(() => import("./pages/Packages"));
 const AgentOnboarding = lazy(() => import("./pages/AgentOnboarding"));
@@ -133,6 +134,7 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
+                  <Route path="/only-admin/log.in" element={<AdminLogin />} />
                   <Route path="/packages" element={<Packages />} />
                   <Route path="/agent-onboarding" element={<AgentOnboarding />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />

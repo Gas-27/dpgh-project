@@ -61,9 +61,8 @@ const Login = () => {
     let redirectTo = "/"; // default home
     if (!rolesError && rolesData) {
       const roles = rolesData.map(r => r.role);
-      if (roles.includes("admin")) {
-        redirectTo = "/admin";
-      } else if (roles.includes("agent")) {
+      // Admin users are NOT redirected to /admin from here - they must use /only-admin/log.in
+      if (roles.includes("agent")) {
         redirectTo = "/agent";
       } else if (roles.includes("subagent")) {
         redirectTo = "/subagent-dashboard";
