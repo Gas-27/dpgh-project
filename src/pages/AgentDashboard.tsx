@@ -1286,8 +1286,8 @@ const AgentDashboard = () => {
   // Handle saving a new recipient (Step 1 of withdrawal)
   const handleAddRecipient = async () => {
     if (!user?.id) return;
-    if (transferRecipients.length >= 10) { 
-      toast({ title: "Maximum 10 recipients allowed", variant: "destructive" }); 
+    if (transferRecipients.length >= 2) { 
+      toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
       return; 
     }
     if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
@@ -1352,8 +1352,8 @@ const AgentDashboard = () => {
     
     // Validate new recipient form if creating new
     if (createNewRecipient) {
-      if (transferRecipients.length >= 10) { 
-        toast({ title: "Maximum 10 recipients allowed", variant: "destructive" }); 
+      if (transferRecipients.length >= 2) { 
+        toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
         return; 
       }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
@@ -2669,10 +2669,10 @@ const AgentDashboard = () => {
                       variant="outline" 
                       className="w-full" 
                       onClick={() => setCreateNewRecipient(true)}
-                      disabled={transferRecipients.length >= 10 || !!impersonatedUserId}
+                      disabled={transferRecipients.length >= 2 || !!impersonatedUserId}
                       title={impersonatedUserId ? "Cannot create new recipients while impersonating. Use existing recipients only." : ""}
                     >
-                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/10)`}
+                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/2)`}
                     </Button>
                   </>
                 ) : (
@@ -2787,7 +2787,7 @@ const AgentDashboard = () => {
                         <Button 
                           variant="hero" 
                           className="self-end bg-cyan-600 hover:bg-cyan-700"
-                          disabled={!withdrawAmount || Number(withdrawAmount) < 15 || Number(withdrawAmount) > withdrawalBalance || withdrawLoading}
+                          disabled={withdrawLoading}
                           onClick={() => handleWithdraw()}
                         >
                           {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
