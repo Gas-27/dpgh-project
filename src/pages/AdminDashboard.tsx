@@ -968,12 +968,16 @@ const AdminDashboard = () => {
       .eq("user_id", userId)
       .single();
     
+    console.log("[v0] Admin permissions fetch:", { userId, data, error });
+    
     // If user has permissions record, use those. Otherwise grant all sections by default
     if (data && data.sections) {
+      console.log("[v0] Setting sections from DB:", data.sections);
       setCurrentUserSections(data.sections as Section[]);
     } else {
       // Default to all sections if no permissions found or error
       const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "settings"];
+      console.log("[v0] Setting default sections:", allSections);
       setCurrentUserSections(allSections);
     }
   };
@@ -1731,7 +1735,13 @@ const AdminDashboard = () => {
   };
 
   // ======================== Helpers ========================
-  const canSee = (section: Section) => currentUserSections.includes(section);
+  const canSee = (section: Section) => {
+    const hasAccess = currentUserSections.includes(section);
+    if (!hasAccess && section === "subagents") {
+      console.log("[v0] Access check - Section:", section, "currentUserSections:", currentUserSections, "hasAccess:", hasAccess);
+    }
+    return hasAccess;
+  };
 
   const filteredPackages = packages.filter((p) => {
     if (networkFilter === "airteltigo") {
