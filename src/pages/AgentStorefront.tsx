@@ -245,6 +245,7 @@ const OrderTrackingCard = ({
   } else if (order.network === "mtn") {
     // Status-based logic for MTN orders
     const orderStatus = order.order_status?.toLowerCase().trim() || "";
+    console.log("[v0] MTN Order Debug:", { orderId: order.id, orderStatus, elapsedMinutes, createdAt: order.created_at });
     
     if (orderStatus === "delivered") {
       currentStep = 4;
@@ -856,6 +857,7 @@ const AgentStorefront = () => {
         { event: "UPDATE", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` },
         (payload) => {
           const updatedOrder = payload.new as Order;
+          console.log("[v0] Real-time order update received:", { orderId: updatedOrder.id, network: updatedOrder.network, orderStatus: updatedOrder.order_status });
           setOrders(prevOrders =>
             prevOrders.map(order =>
               order.id === updatedOrder.id
