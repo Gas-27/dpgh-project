@@ -1209,31 +1209,20 @@ const SubagentDashboard = () => {
     
     setWithdrawLoading(true);
     try {
-      // Call Supabase function to create recipient in Paystack and database
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      
-      if (!token) {
-        toast({ title: "Session expired", description: "Please refresh and try again", variant: "destructive" });
-        return;
-      }
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-transfer-recipient`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            account_holder_name: recipientName,
-            provider_type: "mobile_money",
-            mobile_money_network: mobileNetwork,
-            mobile_money_number: mobileNumber,
-          }),
-        }
-      );
+      // Call API route to create recipient in Paystack and database
+      const response = await fetch("/api/create-recipient", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          account_holder_name: recipientName,
+          provider_type: "mobile_money",
+          mobile_money_network: mobileNetwork,
+          mobile_money_number: mobileNumber,
+        }),
+      });
       
       const result = await response.json();
       
@@ -3509,7 +3498,7 @@ const SubagentDashboard = () => {
                   )}
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />������ Markup Explanation (Remember to click save after applying markup)</p>
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />�������� Markup Explanation (Remember to click save after applying markup)</p>
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>

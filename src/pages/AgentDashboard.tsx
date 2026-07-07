@@ -1295,31 +1295,20 @@ const AgentDashboard = () => {
     
     setWithdrawLoading(true);
     try {
-      // Call Supabase function to create recipient in Paystack and database
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      
-      if (!token) {
-        toast({ title: "Session expired", description: "Please refresh and try again", variant: "destructive" });
-        return;
-      }
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-transfer-recipient`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            account_holder_name: recipientName,
-            provider_type: "mobile_money",
-            mobile_money_network: mobileNetwork,
-            mobile_money_number: mobileNumber,
-          }),
-        }
-      );
+      // Call API route to create recipient in Paystack and database
+      const response = await fetch("/api/create-recipient", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          account_holder_name: recipientName,
+          provider_type: "mobile_money",
+          mobile_money_network: mobileNetwork,
+          mobile_money_number: mobileNumber,
+        }),
+      });
       
       const result = await response.json();
       
