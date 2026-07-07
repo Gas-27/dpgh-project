@@ -1197,6 +1197,54 @@ const SubagentDashboard = () => {
     }
   };
 
+  // Handle saving a new recipient (Step 1 of withdrawal)
+  const handleAddRecipient = async () => {
+    if (!subagentStore) return;
+    if (transferRecipients.length >= 10) { 
+      toast({ title: "Maximum 10 recipients allowed", variant: "destructive" }); 
+      return; 
+    }
+    if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
+    if (!mobileNumber.trim()) { toast({ title: "Enter mobile number", variant: "destructive" }); return; }
+    
+    setWithdrawLoading(true);
+    try {
+      const recipientCode = `recipient_${Date.now()}`;
+      const { error } = await supabase
+        .from("transfer_recipients")
+        .insert({
+          recipient_code: recipientCode,
+          user_id: subagentStore.id,
+          account_holder_name: recipientName,
+          provider_type: "mobile_money",
+          mobile_money_network: mobileNetwork,
+          mobile_money_number: mobileNumber,
+          status: "active"
+        });
+      
+      if (error) throw error;
+      
+      // Refresh recipients list
+      const { data: updated } = await supabase
+        .from("transfer_recipients")
+        .select("*")
+        .eq("user_id", subagentStore.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      
+      setTransferRecipients(updated ?? []);
+      setCreateNewRecipient(false);
+      setRecipientName("");
+      setMobileNetwork("mtn");
+      setMobileNumber("");
+      toast({ title: "Recipient saved successfully!", description: "You can now select this recipient for withdrawal." });
+    } catch (error: any) {
+      toast({ title: "Failed to save recipient", description: error.message, variant: "destructive" });
+    } finally {
+      setWithdrawLoading(false);
+    }
+  };
+
   const handleDeleteRecipient = async (recipientCode: string) => {
     if (!window.confirm("Are you sure you want to delete this recipient? This action cannot be undone.")) {
       return;
@@ -1291,8 +1339,8 @@ const SubagentDashboard = () => {
     
     // Validate new recipient form if creating new
     if (createNewRecipient) {
-      if (transferRecipients.length >= 4) { 
-        toast({ title: "Maximum 4 recipients allowed", variant: "destructive" }); 
+      if (transferRecipients.length >= 10) { 
+        toast({ title: "Maximum 10 recipients allowed", variant: "destructive" }); 
         return; 
       }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
@@ -2695,10 +2743,10 @@ const SubagentDashboard = () => {
                       variant="outline" 
                       className="w-full" 
                       onClick={() => setCreateNewRecipient(true)}
-                      disabled={transferRecipients.length >= 4 || !!impersonatedUserId}
+                      disabled={transferRecipients.length >= 10 || !!impersonatedUserId}
                       title={impersonatedUserId ? "Cannot create new recipients while impersonating. Use existing recipients only." : ""}
                     >
-                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/4)`}
+                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/10)`}
                     </Button>
                   </>
                 ) : (
@@ -2778,15 +2826,9 @@ const SubagentDashboard = () => {
                         ) : (
                           <Button 
                             variant="hero"
-                            className="flex-1"
+                            className="flex-1 bg-green-600 hover:bg-green-700"
                             disabled={!recipientName.trim() || !mobileNumber.trim()}
-                            onClick={() => {
-                              setCreateNewRecipient(false);
-                              setRecipientName("");
-                              setMobileNetwork("mtn");
-                              setMobileNumber("");
-                              toast({ title: "Recipient saved", description: "You can now select it for withdrawals." });
-                            }}
+                            onClick={() => handleAddRecipient()}
                           >
                             <Save className="h-4 w-4 mr-2" />
                             Save Recipient

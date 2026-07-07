@@ -1274,6 +1274,54 @@ const AgentDashboard = () => {
     }
   };
 
+  // Handle saving a new recipient (Step 1 of withdrawal)
+  const handleAddRecipient = async () => {
+    if (!store) return;
+    if (transferRecipients.length >= 10) { 
+      toast({ title: "Maximum 10 recipients allowed", variant: "destructive" }); 
+      return; 
+    }
+    if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
+    if (!mobileNumber.trim()) { toast({ title: "Enter mobile number", variant: "destructive" }); return; }
+    
+    setWithdrawLoading(true);
+    try {
+      const recipientCode = `recipient_${Date.now()}`;
+      const { error } = await supabase
+        .from("transfer_recipients")
+        .insert({
+          recipient_code: recipientCode,
+          user_id: store.id,
+          account_holder_name: recipientName,
+          provider_type: "mobile_money",
+          mobile_money_network: mobileNetwork,
+          mobile_money_number: mobileNumber,
+          status: "active"
+        });
+      
+      if (error) throw error;
+      
+      // Refresh recipients list
+      const { data: updated } = await supabase
+        .from("transfer_recipients")
+        .select("*")
+        .eq("user_id", store.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      
+      setTransferRecipients(updated ?? []);
+      setCreateNewRecipient(false);
+      setRecipientName("");
+      setMobileNetwork("mtn");
+      setMobileNumber("");
+      toast({ title: "Recipient saved successfully!", description: "You can now select this recipient for withdrawal." });
+    } catch (error: any) {
+      toast({ title: "Failed to save recipient", description: error.message, variant: "destructive" });
+    } finally {
+      setWithdrawLoading(false);
+    }
+  };
+
   const handleWithdraw = async () => {
     if (!store) return;
     if (hasPendingWithdrawal) { toast({ title: "Pending withdrawal exists", variant: "destructive" }); return; }
@@ -1295,8 +1343,8 @@ const AgentDashboard = () => {
     
     // Validate new recipient form if creating new
     if (createNewRecipient) {
-      if (transferRecipients.length >= 4) { 
-        toast({ title: "Maximum 4 recipients allowed", variant: "destructive" }); 
+      if (transferRecipients.length >= 10) { 
+        toast({ title: "Maximum 10 recipients allowed", variant: "destructive" }); 
         return; 
       }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
@@ -2612,10 +2660,10 @@ const AgentDashboard = () => {
                       variant="outline" 
                       className="w-full" 
                       onClick={() => setCreateNewRecipient(true)}
-                      disabled={transferRecipients.length >= 4 || !!impersonatedUserId}
+                      disabled={transferRecipients.length >= 10 || !!impersonatedUserId}
                       title={impersonatedUserId ? "Cannot create new recipients while impersonating. Use existing recipients only." : ""}
                     >
-                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/4)`}
+                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/10)`}
                     </Button>
                   </>
                 ) : (
@@ -2668,50 +2716,10 @@ const AgentDashboard = () => {
                         />
                       </div>
                       
-                      <div className="space-y-1 pt-3 border-t border-border">
-                        <Label>Amount (GH₵)</Label>
-                        <Input
-                          type="number"
-                          placeholder="Enter amount"
-                          value={withdrawAmount}
-                          onChange={(e) => setWithdrawAmount(e.target.value)}
-                          className="text-lg"
-                        />
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                        <p className="text-xs text-blue-400 font-medium">📝 Step 1: Create Recipient</p>
+                        <p className="text-xs text-blue-300 mt-1">First, save this recipient. Then you can select them and enter your withdrawal amount.</p>
                       </div>
-
-                      {withdrawAmount && Number(withdrawAmount) > 0 && (
-                        <div className="space-y-2 text-sm">
-                          {(() => {
-                            const amount = Number(withdrawAmount);
-                            const feeRate = amount >= 100 ? 0.015 : 0.05;
-                            const feeAmount = amount * feeRate;
-                            const recipientAmount = amount - feeAmount;
-                            return (
-                              <>
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Amount to Deduct:</span>
-                                  <span className="font-semibold">GH₵ {amount.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Fee ({(feeRate * 100).toFixed(1)}%):</span>
-                                  <span className="font-semibold text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between border-t border-border pt-2">
-                                  <span className="text-muted-foreground">Recipient Receives:</span>
-                                  <span className="font-semibold text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                        <p className="text-xs text-red-400 font-medium">⚠️ IMPORTANT WARNING</p>
-                        <p className="text-xs text-red-300 mt-1">Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming.</p>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
 
                       <div className="flex gap-2 pt-2">
                         <Button 
@@ -2740,12 +2748,12 @@ const AgentDashboard = () => {
                         ) : (
                           <Button 
                             variant="hero"
-                            className="flex-1 bg-cyan-600 hover:bg-cyan-700"
-                            disabled={!recipientName.trim() || !mobileNumber.trim() || !withdrawAmount || Number(withdrawAmount) < 15 || Number(withdrawAmount) > effectiveBalance || withdrawLoading}
-                            onClick={() => handleWithdraw()}
+                            className="flex-1 bg-green-600 hover:bg-green-700"
+                            disabled={!recipientName.trim() || !mobileNumber.trim()}
+                            onClick={() => handleAddRecipient()}
                           >
-                            {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
-                            Send Transfer
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Recipient
                           </Button>
                         )}
                       </div>
