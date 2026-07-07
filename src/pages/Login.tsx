@@ -58,25 +58,43 @@ const Login = () => {
       .select("role")
       .eq("user_id", userId);
 
-    let redirectTo = "/"; // default home
     if (!rolesError && rolesData) {
       const roles = rolesData.map(r => r.role);
-      // Admin users are NOT redirected to /admin from here - they must use /only-admin/log.in
+      
+      // Check if user is admin - admins cannot login from here
+      if (roles.includes("admin")) {
+        // Sign out the admin user immediately
+        await supabase.auth.signOut();
+        
+        toast({
+          title: "Admin Access Restricted",
+          description: "Admins must login using the dedicated admin login page. Please visit /only-admin/log.in",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Non-admin user routing
+      let redirectTo = "/";
       if (roles.includes("agent")) {
         redirectTo = "/agent";
       } else if (roles.includes("subagent")) {
         redirectTo = "/subagent-dashboard";
       } else if (roles.includes("customer")) {
         redirectTo = "/user-dashboard";
-      } else {
-        redirectTo = "/";
       }
-    } else {
-      console.warn("Could not fetch roles, redirecting to home", rolesError);
-    }
 
-    toast({ title: "Welcome back!", description: "Redirecting..." });
-    navigate(redirectTo, { replace: true });
+      toast({ title: "Welcome back!", description: "Redirecting..." });
+      navigate(redirectTo, { replace: true });
+    } else {
+      toast({
+        title: "Error",
+        description: "Could not verify user role",
+        variant: "destructive",
+      });
+    }
+    
     setLoading(false);
   };
 

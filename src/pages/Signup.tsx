@@ -22,7 +22,7 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -33,6 +33,24 @@ const Signup = () => {
     if (error) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
     } else {
+      // Safety check: verify new user is not an admin
+      if (data.user?.id) {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id);
+        
+        if (rolesData?.some(r => r.role === "admin")) {
+          await supabase.auth.signOut();
+          toast({ 
+            title: "Access Denied", 
+            description: "Admin accounts cannot be created through signup", 
+            variant: "destructive" 
+          });
+          return;
+        }
+      }
+      
       toast({ title: "Account created!", description: "Welcome to Data Plug STORE!" });
       navigate(userType === "agent" ? "/agent-onboarding" : "/packages");
     }
