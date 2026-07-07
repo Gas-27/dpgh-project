@@ -967,10 +967,14 @@ const AdminDashboard = () => {
       .select("sections")
       .eq("user_id", userId)
       .single();
-    if (!error && data) {
+    
+    // If user has permissions record, use those. Otherwise grant all sections by default
+    if (data && data.sections) {
       setCurrentUserSections(data.sections as Section[]);
     } else {
-      setCurrentUserSections(["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "settings"]);
+      // Default to all sections if no permissions found or error
+      const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "settings"];
+      setCurrentUserSections(allSections);
     }
   };
 
