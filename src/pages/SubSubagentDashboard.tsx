@@ -32,42 +32,20 @@ import { DOMAINS } from "@/config/domains";
 function getOrderStage(order: any): string {
   const elapsed = (Date.now() - new Date(order.created_at).getTime()) / 1000;
   const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  // COMMENTED OUT: mashup packages deactivated
-  const isMashup = false; // order.network === "mtn_mashup" || order.network === "mashup";
+  const elapsedMinutes = elapsed / 60;
   
-  // MTN orders use status-based delivery
-  if (order.network === "mtn") {
-    if (orderStatus === "delivered") {
-      return "Order Delivered";
-    } else if (orderStatus === "processing") {
-      if (elapsed >= 12 * 60) {
-        return "Network Validation";
-      } else if (elapsed >= 2 * 60) {
-        return "Sent to Network";
-      } else {
-        return "Order Placed";
-      }
-    }
-    return "Order Placed";
-  } else if (isMashup) {
-    if (orderStatus === "delivered" || orderStatus === "completed") {
-      return "Order Delivered";
-    } else if (elapsed >= 5) {
-      return "Network Validation";
-    } else {
-      return "Order Placed";
-    }
+  // Step 4 ONLY when order_status is "delivered"
+  if (orderStatus === "delivered") {
+    return "Order Delivered";
+  }
+  
+  // Steps 1-3 are time-based for all networks
+  if (elapsedMinutes >= 15) {
+    return "Network Validation";
+  } else if (elapsedMinutes >= 9) {
+    return "Sent to Network";
   } else {
-    // Other networks (time-based)
-    if (elapsed >= 300 * 60) {
-      return "Order Delivered";
-    } else if (elapsed >= 60 * 60) {
-      return "Network Validation";
-    } else if (elapsed >= 9 * 60) {
-      return "Sent to Network";
-    } else {
-      return "Order Placed";
-    }
+    return "Order Placed";
   }
 }
 

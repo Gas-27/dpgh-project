@@ -47,43 +47,21 @@ import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/ph
 // Helper function to get current order stage
 function getOrderStage(order: any): string {
   const elapsed = (Date.now() - new Date(order.created_at).getTime()) / 1000;
+  const elapsedMinutes = elapsed / 60;
   const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  // COMMENTED OUT: mashup packages deactivated
-  const isMashup = false; // order.network === "mtn_mashup" || order.network === "mashup";
   
-  // MTN orders use status-based delivery
-  if (order.network === "mtn") {
-    if (orderStatus === "delivered") {
-      return "Order Delivered";
-    } else if (orderStatus === "processing") {
-      if (elapsed >= 12 * 60) {
-        return "Network Validation";
-      } else if (elapsed >= 2 * 60) {
-        return "Sent to Network";
-      } else {
-        return "Order Placed";
-      }
-    }
-    return "Order Placed";
-  } else if (isMashup) {
-    if (orderStatus === "delivered" || orderStatus === "completed") {
-      return "Order Delivered";
-    } else if (elapsed >= 5) {
-      return "Network Validation";
-    } else {
-      return "Order Placed";
-    }
+  // Step 4 ONLY when order_status is "delivered"
+  if (orderStatus === "delivered") {
+    return "Order Delivered";
+  }
+  
+  // Steps 1-3 are time-based for all networks
+  if (elapsedMinutes >= 15) {
+    return "Network Validation";
+  } else if (elapsedMinutes >= 9) {
+    return "Sent to Network";
   } else {
-    // Other networks (time-based)
-    if (elapsed >= 300 * 60) {
-      return "Order Delivered";
-    } else if (elapsed >= 60 * 60) {
-      return "Network Validation";
-    } else if (elapsed >= 9 * 60) {
-      return "Sent to Network";
-    } else {
-      return "Order Placed";
-    }
+    return "Order Placed";
   }
 }
 
@@ -1572,7 +1550,7 @@ const AgentDashboard = () => {
     }
   };
   
-  // ──��� GUARDS ───────────��────────────────────────────────────────────����──────
+  // ──��� GUARDS ───────────��─────────────────────────��──────────────────����──────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>

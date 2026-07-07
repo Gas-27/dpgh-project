@@ -227,11 +227,11 @@ const OrderTrackingCard = ({
   let statusMessage = "";
   let extraNote: string | null = null;
 
-  // ── Status-based delivery for ALL orders (no time-based delivery) ──
+  // ── Time-based Steps 1-3, Status-based Step 4 ──
   const orderStatus = order.order_status?.toLowerCase().trim() || "";
   
   if (orderStatus === "delivered") {
-    // Only move to Step 4 when order_status is "delivered"
+    // Step 4 ONLY when order_status is "delivered"
     currentStep = 4;
     statusMessage = "Your data bundle has been delivered successfully.";
     if (order.network === "mtn")
@@ -243,21 +243,27 @@ const OrderTrackingCard = ({
     else
       extraNote = "Please check your messages for delivery confirmation.";
   } else {
-    // All other statuses stay in Network Validation (Step 3)
-    currentStep = 3;
-    if (order.network === "mtn")
-      statusMessage = "Your order can be delivered any moment from now. Please wait for delivery confirmation.";
-    else if (order.network === "airteltigo")
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
-    else if (order.network === "telecel")
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
-    else
-      statusMessage =
-        "Your order is being processed. Please wait for delivery.";
-    extraNote =
-      "The order will only move to delivered once the order status has been updated to 'delivered'.";
+    // Steps 1-3 are time-based
+    if (elapsedMinutes >= 15) {
+      currentStep = 3;
+      if (order.network === "mtn")
+        statusMessage = "Your order can be delivered any moment from now. Please wait for delivery confirmation.";
+      else if (order.network === "airteltigo")
+        statusMessage = "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
+      else if (order.network === "telecel")
+        statusMessage = "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
+      else
+        statusMessage = "Your order is being processed. Please wait for delivery.";
+      extraNote = "The order will only move to delivered once the order status has been updated to 'delivered'.";
+    } else if (elapsedMinutes >= 9) {
+      currentStep = 2;
+      statusMessage = `Order sent to ${formatNetworkName(order.network)} for validation`;
+      extraNote = "Now waiting for validation from the network to deliver your data.";
+    } else {
+      currentStep = 1;
+      statusMessage = "Order being processed...";
+      extraNote = "Initializing your order...";
+    }
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
