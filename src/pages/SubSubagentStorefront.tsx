@@ -724,7 +724,7 @@ export function SubSubagentStorefront() {
     // Search subagent orders first
     let subagentQuery = supabase
       .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at, package_id")
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id")
       .eq("subagent_store_id", store?.id);
 
     if (noSpaces.length === 36 && raw.includes("-")) {
@@ -742,7 +742,7 @@ export function SubSubagentStorefront() {
     if (store?.agent_store_id) {
       let agentQuery = supabase
         .from("orders")
-        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at, package_id")
+        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id")
         .eq("agent_store_id", store.agent_store_id)
         .is("subagent_store_id", null); // Only direct agent orders
 

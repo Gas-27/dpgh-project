@@ -229,7 +229,6 @@ const OrderTrackingCard = ({
 
   // ── Time-based Steps 1-3, Status-based Step 4 ──
   const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  console.log("[v0] Order Status Check:", { orderId: order.id, orderStatus, order_status_raw: order.order_status, currentStep, elapsedMinutes });
   
   if (orderStatus === "delivered") {
     // Step 4 ONLY when order_status is "delivered"
@@ -879,7 +878,7 @@ const AgentStorefront = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at, package_id");
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id");
 
     // If it looks like a UUID, search by ID directly
     if (noSpaces.length === 36 && raw.includes("-")) {

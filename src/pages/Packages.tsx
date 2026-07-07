@@ -1287,7 +1287,7 @@ const Packages = () => {
     let q = searchQuery.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
     q = q.replace(/\s/g, "");
-    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,created_at,package_id");
+    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,order_status,created_at,package_id");
     // If query is a UUID (contains hyphens), search by ID; otherwise search by phone number (without spaces)
     if (q.length === 36 && q.includes("-")) {
       query = query.eq("id", q);
