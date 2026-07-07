@@ -54,6 +54,7 @@ interface Order {
   amount: number;
   status: string;
   fulfillment_status: string;
+  order_status: string;
   created_at: string;
 }
 
@@ -1238,6 +1239,29 @@ const Packages = () => {
       supabase.removeChannel(packagesChannel);
       supabase.removeChannel(siteConfigChannel);
     };
+  }, []);
+
+  // ── Real-time order status updates ──
+  useEffect(() => {
+    const ordersChannel = supabase
+      .channel("orders-updates")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders" },
+        (payload) => {
+          const updatedOrder = payload.new as Order;
+          setOrders(prevOrders =>
+            prevOrders.map(order =>
+              order.id === updatedOrder.id
+                ? { ...order, ...updatedOrder }
+                : order
+            )
+          );
+        }
+      )
+      .subscribe();
+    
+    return () => { supabase.removeChannel(ordersChannel); };
   }, []);
 
   // Fetch Special MTN Mashup pricing
