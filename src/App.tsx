@@ -145,7 +145,7 @@ const App = () => {
                   <Route path="/subagent-approval-payment" element={<SubagentApprovalPayment />} />
                   <Route path="/verify-subagent-payment" element={<VerifySubagentPayment />} />
                   <Route
-                    path="/admin/Ga.s:admin"
+                    path="/admin"
                     element={
                       <AuthGuard requiredRole="admin">
                         <AdminDashboard />
