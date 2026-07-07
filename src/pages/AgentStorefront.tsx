@@ -241,15 +241,39 @@ const OrderTrackingCard = ({
       statusMessage = "Order being processed...";
       extraNote = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
     }
+  } else if (order.network === "mtn") {
+    // Status-based logic for MTN orders
+    const orderStatus = order.order_status?.toLowerCase().trim() || "";
+    
+    if (orderStatus === "delivered") {
+      currentStep = 4;
+      statusMessage = "Your data bundle has been delivered successfully.";
+      extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
+    } else if (orderStatus === "processing") {
+      if (elapsedMinutes >= 12) {
+        currentStep = 3;
+        statusMessage = "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
+      } else if (elapsedMinutes >= 2) {
+        currentStep = 2;
+        statusMessage = "Processing your order...";
+        extraNote = "Your order is being processed.";
+      } else {
+        currentStep = 1;
+        statusMessage = "Order being processed...";
+        extraNote = "Initializing your order...";
+      }
+    } else {
+      // Fallback for unknown status
+      currentStep = 2;
+      statusMessage = "Processing your order...";
+    }
   } else {
-    // Original logic for other networks
+    // Original logic for other networks (AirtelTigo, Telecel)
     // Step 4 (Delivered) only after 200 minutes
     if (elapsedMinutes >= 200) {
       currentStep = 4;
       statusMessage = "Your data bundle has been delivered successfully.";
-      if (order.network === "mtn")
-        extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
-      else if (order.network === "airteltigo")
+      if (order.network === "airteltigo")
         extraNote =
           "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
       else if (order.network === "telecel")
@@ -257,10 +281,7 @@ const OrderTrackingCard = ({
       else extraNote = "Please check your messages for delivery confirmation.";
     } else if (elapsedMinutes >= 60) {
       currentStep = 3;
-      if (order.network === "mtn")
-        statusMessage =
-          "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
-      else if (order.network === "airteltigo")
+      if (order.network === "airteltigo")
         statusMessage =
           "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
       else if (order.network === "telecel")
@@ -295,11 +316,14 @@ const OrderTrackingCard = ({
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
-  // Support button: show after 132 min if still not delivered
-  const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
+  // Support button: show after 132 min if still not delivered (or immediately for MTN if not delivered after 2 hours)
+  const isMTNOrder = order.network === "mtn";
+  const showSupportButton = isMTNOrder 
+    ? (currentStep !== 4 && elapsedMinutes >= 120) // For MTN: show after 2 hours if not delivered
+    : (elapsedMinutes >= 132 && currentStep !== 4); // For others: after 132 min
+  
   // Report button: show once delivered, within a reasonable window
-  const showReportButton =
-    currentStep === 4 && elapsedMinutes >= 200 && elapsedMinutes < 3030;
+  const showReportButton = currentStep === 4 && elapsedMinutes < 3030;
 
   const stepLabels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
 
