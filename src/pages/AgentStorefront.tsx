@@ -322,8 +322,9 @@ const OrderTrackingCard = ({
     ? (currentStep !== 4 && elapsedMinutes >= 120) // For MTN: show after 2 hours if not delivered
     : (elapsedMinutes >= 132 && currentStep !== 4); // For others: after 132 min
   
-  // Report button: show once delivered, within a reasonable window
-  const showReportButton = currentStep === 4 && elapsedMinutes < 3030;
+  // Report button: show only when order status is "delivered"
+  const orderStatus = order.order_status?.toLowerCase().trim() || "";
+  const showReportButton = orderStatus === "delivered";
 
   const stepLabels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
 
@@ -572,7 +573,7 @@ const AgentStorefront = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
 
-  // ── Notifications ──
+  // ─��� Notifications ──
   const [showGroupTooltip, setShowGroupTooltip] = useState(true);
   const [whatsappPos, setWhatsappPos] = useState({ x: 0, y: 0 });
   const [isDraggingWhatsapp, setIsDraggingWhatsapp] = useState(false);
