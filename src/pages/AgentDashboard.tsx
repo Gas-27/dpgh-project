@@ -51,7 +51,21 @@ function getOrderStage(order: any): string {
   // COMMENTED OUT: mashup packages deactivated
   const isMashup = false; // order.network === "mtn_mashup" || order.network === "mashup";
   
-  if (isMashup) {
+  // MTN orders use status-based delivery
+  if (order.network === "mtn") {
+    if (orderStatus === "delivered") {
+      return "Order Delivered";
+    } else if (orderStatus === "processing") {
+      if (elapsed >= 12 * 60) {
+        return "Network Validation";
+      } else if (elapsed >= 2 * 60) {
+        return "Sent to Network";
+      } else {
+        return "Order Placed";
+      }
+    }
+    return "Order Placed";
+  } else if (isMashup) {
     if (orderStatus === "delivered" || orderStatus === "completed") {
       return "Order Delivered";
     } else if (elapsed >= 5) {
@@ -60,7 +74,7 @@ function getOrderStage(order: any): string {
       return "Order Placed";
     }
   } else {
-    // Standard networks (time-based)
+    // Other networks (time-based)
     if (elapsed >= 300 * 60) {
       return "Order Delivered";
     } else if (elapsed >= 60 * 60) {
@@ -83,7 +97,7 @@ interface AgentStore {
   theme_config: { primary: string; primary_foreground: string; background: string; card_background: string; gridColumns: number; };
   }
 interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; }
-interface Order { id: string; customer_number: string; network: string; size_gb: number; amount: number; status: string; fulfillment_status: string; payment_method: string; created_at: string; package_id: string; }
+interface Order { id: string; customer_number: string; network: string; size_gb: number; amount: number; status: string; fulfillment_status: string; order_status: string; payment_method: string; created_at: string; package_id: string; }
 interface WithdrawalRequest { id: string; amount: number; status: string; created_at: string; }
 interface ProfitStats { totalRevenue: number; totalCost: number; totalProfit: number; availableForWithdrawal: number; }
 interface Notification { id: string; message: string; is_active: boolean; created_at: string; expires_at: string | null; }
@@ -995,6 +1009,31 @@ const AgentDashboard = () => {
   };
   useEffect(() => { 
     if (store?.id) fetchSubagentNotifications(); 
+  }, [store?.id]);
+
+  // ── Real-time order status updates ──
+  useEffect(() => {
+    if (!store?.id) return;
+    
+    const ordersChannel = supabase
+      .channel(`orders-${store.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` },
+        (payload) => {
+          const updatedOrder = payload.new as Order;
+          setOrders(prevOrders =>
+            prevOrders.map(order =>
+              order.id === updatedOrder.id
+                ? { ...order, ...updatedOrder }
+                : order
+            )
+          );
+        }
+      )
+      .subscribe();
+    
+    return () => { supabase.removeChannel(ordersChannel); };
   }, [store?.id]);
 
   const sendSubagentNotification = async () => {
