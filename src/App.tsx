@@ -147,7 +147,7 @@ const App = () => {
                   <Route path="/subagent-approval-payment" element={<SubagentApprovalPayment />} />
                   <Route path="/verify-subagent-payment" element={<VerifySubagentPayment />} />
                   <Route
-                    path="/admin"
+                    path="/admin-only"
                     element={
                       <AuthGuard requiredRole="admin">
                         <AdminDashboard />

@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const getDashboardRoute = useCallback(() => {
-    if (roles.includes("admin")) return "/admin";
+    if (roles.includes("admin")) return "/admin-only";
     if (roles.includes("agent")) return "/agent";
     if (roles.includes("sub_subagent")) return "/sub-subagent-dashboard";
     if (roles.includes("subagent")) return "/subagent-dashboard";

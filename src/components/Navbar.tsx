@@ -15,7 +15,6 @@ const Navbar = () => {
 
   // Helper to get the button label based on role
   const getDashboardLabel = () => {
-    if (isAdmin) return "Admin Dashboard";
     if (isAgent) return "Agent Dashboard";
     return "My Dashboard";
   };
@@ -51,12 +50,14 @@ const Navbar = () => {
             </Button>
           ) : user ? (
             <>
-              <Button variant="hero" size="sm" asChild>
-                <Link to={dashboardRoute}>
-                  <LayoutDashboard className="h-4 w-4 mr-1" />
-                  {getDashboardLabel()}
-                </Link>
-              </Button>
+              {!isAdmin && (
+                <Button variant="hero" size="sm" asChild>
+                  <Link to={dashboardRoute}>
+                    <LayoutDashboard className="h-4 w-4 mr-1" />
+                    {getDashboardLabel()}
+                  </Link>
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={signOut}>Sign Out</Button>
             </>
           ) : (

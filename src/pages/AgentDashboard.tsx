@@ -1723,7 +1723,6 @@ const AgentDashboard = () => {
             </SheetContent>
           </Sheet>
           <div className="flex items-center gap-3">
-            {isAdmin && <Button variant="ghost" size="sm" asChild><Link to="/admin">Admin</Link></Button>}
             <Button variant="ghost" size="sm" asChild><Link to="/">Home</Link></Button>
             <Button variant="outline" size="sm" onClick={signOut}><LogOut className="h-4 w-4 mr-1" /> Sign Out</Button>
           </div>

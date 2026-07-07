@@ -85,7 +85,7 @@ const AdminLogin = () => {
 
     // Admin verified - redirect to admin dashboard
     toast({ title: "Welcome Admin!", description: "Redirecting to dashboard..." });
-    navigate("/admin", { replace: true });
+    navigate("/admin-only", { replace: true });
     setLoading(false);
   };
 
