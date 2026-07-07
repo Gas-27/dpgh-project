@@ -962,22 +962,21 @@ const AdminDashboard = () => {
 
   // ======================== Admin permissions ========================
   const fetchCurrentUserPermissions = async (userId: string) => {
+    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "settings"];
+    
     const { data, error } = await supabase
       .from("admin_permissions")
       .select("sections")
       .eq("user_id", userId)
       .single();
     
-    console.log("[v0] Admin permissions fetch:", { userId, data, error });
-    
-    // If user has permissions record, use those. Otherwise grant all sections by default
-    if (data && data.sections) {
-      console.log("[v0] Setting sections from DB:", data.sections);
-      setCurrentUserSections(data.sections as Section[]);
+    // Always use all sections (merge DB sections with all available sections to ensure new sections are always accessible)
+    if (data && data.sections && Array.isArray(data.sections)) {
+      // Merge database sections with all available sections to ensure new sections added later are included
+      const mergedSections = Array.from(new Set([...data.sections, ...allSections])) as Section[];
+      setCurrentUserSections(mergedSections);
     } else {
-      // Default to all sections if no permissions found or error
-      const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "settings"];
-      console.log("[v0] Setting default sections:", allSections);
+      // No record or error - grant all sections by default
       setCurrentUserSections(allSections);
     }
   };
@@ -1735,13 +1734,7 @@ const AdminDashboard = () => {
   };
 
   // ======================== Helpers ========================
-  const canSee = (section: Section) => {
-    const hasAccess = currentUserSections.includes(section);
-    if (!hasAccess && section === "subagents") {
-      console.log("[v0] Access check - Section:", section, "currentUserSections:", currentUserSections, "hasAccess:", hasAccess);
-    }
-    return hasAccess;
-  };
+  const canSee = (section: Section) => currentUserSections.includes(section);
 
   const filteredPackages = packages.filter((p) => {
     if (networkFilter === "airteltigo") {
