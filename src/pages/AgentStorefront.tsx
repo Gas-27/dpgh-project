@@ -109,6 +109,7 @@ interface Order {
   amount: number;
   status: string;
   fulfillment_status: string;
+  order_status: string;
   created_at: string;
 }
 
@@ -842,6 +843,31 @@ const AgentStorefront = () => {
       .subscribe();
     
     return () => { supabase.removeChannel(storeChannel); };
+  }, [store?.id]);
+
+  // ── Real-time order status updates for MTN orders ──
+  useEffect(() => {
+    if (!store?.id) return;
+    
+    const ordersChannel = supabase
+      .channel(`orders-${store.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` },
+        (payload) => {
+          const updatedOrder = payload.new as Order;
+          setOrders(prevOrders =>
+            prevOrders.map(order =>
+              order.id === updatedOrder.id
+                ? { ...order, ...updatedOrder }
+                : order
+            )
+          );
+        }
+      )
+      .subscribe();
+    
+    return () => { supabase.removeChannel(ordersChannel); };
   }, [store?.id]);
 
   // ── Notifications ──
