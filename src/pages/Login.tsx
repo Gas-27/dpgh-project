@@ -67,8 +67,8 @@ const Login = () => {
         await supabase.auth.signOut();
         
         toast({
-          title: "Admin Access Restricted",
-          description: "Admins must login using the dedicated admin login page. Please visit /only-admin/log.in",
+          title: "Access Denied",
+          description: "You cannot login from this page",
           variant: "destructive",
         });
         setLoading(false);
