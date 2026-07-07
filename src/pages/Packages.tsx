@@ -192,86 +192,33 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
 
   const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 1000; // in seconds
   let step = 1, msg = "", note: string | null = null;
-  const [latestOrderStatus, setLatestOrderStatus] = useState<string>(order.order_status || "pending");
-  const [hasMovedToNetworkValidation, setHasMovedToNetworkValidation] = useState(false);
 
-  // COMMENTED OUT: mashup packages deactivated
-  // For mashup and mtn_mashup: Poll database for order_status changes
-  // Standard networks use time-based logic, mashup uses database polling
-  useEffect(() => {
-    if (false && (order.network === "mtn_mashup" || order.network === "mashup")) {
-      const pollOrderStatus = async () => {
-        try {
-          const { data } = await supabase
-            .from("orders")
-            .select("order_status")
-            .eq("id", order.id)
-            .single();
-          
-          if (data) {
-            setLatestOrderStatus(data.order_status);
-            console.log("[v0] Mashup order_status:", data.order_status);
-          }
-        } catch (e) {
-          console.error("[v0] Error fetching order_status:", e);
-        }
-      };
-
-      pollOrderStatus();
-      const interval = setInterval(pollOrderStatus, 3000); // Poll every 3 seconds
-      return () => clearInterval(interval);
-    }
-  }, [order.id, order.network]);
-
-  // Timer to move from "Order Placed" to "Network Validation" after 5 seconds
-  useEffect(() => {
-    if (order.network === "mtn_mashup" || order.network === "mashup") {
-      if (elapsed >= 5 && !hasMovedToNetworkValidation) {
-        setHasMovedToNetworkValidation(true);
-      }
-    }
-  }, [elapsed, hasMovedToNetworkValidation, order.network]);
-
-  // Special handling for mtn_mashup and mashup - DATABASE DRIVEN (not time-based)
-  if (order.network === "mtn_mashup" || order.network === "mashup") {
-    const normalizedStatus = latestOrderStatus?.toLowerCase().trim();
-    if (normalizedStatus === "delivered" || normalizedStatus === "completed") {
-      step = 3; // Only 3 steps for mashup: Order Placed -> Network Validation -> Delivered
-      msg = "Your data bundle has been delivered successfully.";
-      note = "No SMS notification will be sent. Check your current Mashup Data or Voice balance NOW OR BEFORE purchase , then check again after delivery to confirm the bundle has been credited.";
-    } else if (elapsed >= 5 || hasMovedToNetworkValidation) {
-      // Move to Network Validation after 5 seconds and stay until order_status changes to "delivered"
-      step = 2;
-      msg = "Your order is being validated and processed by the network.";
-      note = "No SMS notification will be sent. Check your current Mashup Data or Voice balance NOW OR BEFORE purchase , then check again after delivery to confirm the bundle has been credited.";
-    } else {
-      // Order Placed - stay for 5 seconds
-      step = 1;
-      msg = "Your order has been placed successfully.";
-      note = "No SMS notification will be sent. Check your current Mashup Data or Voice balance NOW OR BEFORE purchase , then check again after delivery to confirm the bundle has been credited.";
-    }
+  // ── Time-based Steps 1-3, Status-based Step 4 (ALL NETWORKS) ──
+  const orderStatus = order.order_status?.toLowerCase().trim() || "";
+  const elapsedMinutes = elapsed / 60;
+  
+  if (orderStatus === "delivered") {
+    // Step 4 ONLY when order_status is "delivered"
+    step = 4;
+    msg = "Your data bundle has been delivered successfully.";
+    note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
+      : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
+        : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
   } else {
-    // Original logic for other networks (time-based)
-    // 🔁 CHANGED: delivery threshold from 90 minutes to 300 minutes
-    if (elapsed >= 300 * 60) {
-      step = 4; msg = "Your data bundle has been delivered successfully.";
-      note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
-        : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
-          : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
-    } else if (elapsed >= 60 * 60) {
+    // Steps 1-3 are time-based
+    if (elapsedMinutes >= 15) {
       step = 3;
-      msg = order.network === "mtn" ? "Expecting your data soon. Check MTN / MTNUP2U messages."
-        : order.network === "airteltigo" ? "Expecting your data soon. Check AirtelTigo iShare / BigTime."
-          : order.network === "telecel" ? "Expecting your data soon. Check Telecel messages." : "Expecting your data soon.";
-      note = "Order is now with the network. Any further delay is from them.";
-    } else if (elapsed >= 15 * 60) {
-      step = 3; msg = "Your order can be delivered any moment. Report only if it shows 'Delivered' but you didn't receive.";
-    } else if (elapsed >= 12 * 60) {
-      step = 3; msg = `Waiting for validation from ${formatNetworkName(order.network)}…`;
-    } else if (elapsed >= 9 * 60) {
-      step = 2; msg = `Order sent to ${formatNetworkName(order.network)} for validation.`;
+      msg = order.network === "mtn" ? "Your order can be delivered any moment. Please wait for delivery confirmation."
+        : order.network === "airteltigo" ? "Your order can be delivered any moment. Please wait for delivery confirmation."
+          : order.network === "telecel" ? "Your order can be delivered any moment. Please wait for delivery confirmation." 
+            : "Your order can be delivered any moment. Please wait for delivery confirmation.";
+      note = "The order will only move to delivered once the order status has been updated to 'delivered'.";
+    } else if (elapsedMinutes >= 9) {
+      step = 2;
+      msg = `Order sent to ${formatNetworkName(order.network)} for validation.`;
       note = "Delay from here is from the network.";
     } else {
+      step = 1;
       msg = "Order being processed…";
     }
   }
@@ -300,10 +247,8 @@ Please investigate and assist. Thank you.`;
   const waLink = `https://wa.me/233200511211?text=${encodeURIComponent(reportMessage)}`;
   const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${encodeURIComponent("Order Support - Delivered but not received")}&body=${encodeURIComponent(reportMessage)}`;
 
-  // For mashup/mtn_mashup: only 3 steps. For other networks: 4 steps
-  const labels = (order.network === "mtn_mashup" || order.network === "mashup") 
-    ? ["Order Placed", "Network Validation", "Delivered"]
-    : ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
+  // All networks now use 4 steps: Order Placed → Sent to Network → Network Validation → Delivered
+  const labels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
 
   if (step === 4) return (
     <div className="space-y-4">
@@ -325,15 +270,9 @@ Please investigate and assist. Thank you.`;
       <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
         <p className="text-sm font-medium">{msg}</p>
         {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-600/20">{note}</p>}
-        {/* Display order_status for mashup and mtn_mashup from database */}
-        {(order.network === "mashup" || order.network === "mtn_mashup") && (
-          <div className="mt-3 pt-3 border-t border-green-600/20">
-            <p className="text-xs font-medium text-green-400">Database Status: <span className="text-green-300 capitalize">{latestOrderStatus}</span></p>
-          </div>
-        )}
       </div>
-      {/* Report button now appears after 300 minutes - NOT for mashup/mtn_mashup */}
-      {elapsed >= 300 && elapsed < 3030 && !complaintStatus && order.network !== "mashup" && order.network !== "mtn_mashup" && (
+      {/* Report button only shows when order status is "delivered" */}
+      {orderStatus === "delivered" && !complaintStatus && (
         <Button 
           variant="outline" 
           size="sm" 
