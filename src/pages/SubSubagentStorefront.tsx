@@ -250,58 +250,33 @@ const SubSubagentOrderTrackingCard = ({
   let statusMessage = "";
   let extraNote: string | null = null;
 
-      // COMMENTED OUT: mashup packages deactivated
-      // Special handling for mtn_mashup
-      if (false && order.network === "mtn_mashup") {
-    if (elapsedMinutes >= 300) { // 5 hours
-      currentStep = 4;
-      statusMessage = "Your data bundle has been delivered successfully.";
-      extraNote = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
-    } else if (elapsedMinutes >= 2) {
-      currentStep = 2;
-      statusMessage = "Expect delivery within 10 minutes to 5 hours.";
-      extraNote = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
-    } else {
-      statusMessage = "Order being processed...";
-      extraNote = "YOU WILL NOT RECEIVE AN SMS WHEN IS DELIVERED SO BE CHECKING YOUR BALANCE AFTER SOME TIME";
-    }
+  // ── Status-based delivery for ALL orders (no time-based delivery) ──
+  const orderStatus = order.order_status?.toLowerCase().trim() || "";
+  
+  if (orderStatus === "delivered") {
+    // Only move to Step 4 when order_status is "delivered"
+    currentStep = 4;
+    statusMessage = "Your data bundle has been delivered successfully.";
+    if (order.network === "mtn")
+      extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
+    else if (order.network === "airteltigo")
+      extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+    else if (order.network === "telecel")
+      extraNote = "Please check your Telecel messages for delivery confirmation.";
+    else
+      extraNote = "Please check your messages for delivery confirmation.";
   } else {
-    // Original logic for other networks
-    if (elapsedMinutes >= 200) {
-      currentStep = 4;
-      statusMessage = "Your data bundle has been delivered successfully.";
-      if (order.network === "mtn")
-        extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
-      else if (order.network === "airteltigo")
-        extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
-      else if (order.network === "telecel")
-        extraNote = "Please check your Telecel messages for delivery confirmation.";
-      else extraNote = "Please check your messages for delivery confirmation.";
-    } else if (elapsedMinutes >= 60) {
-      currentStep = 3;
-      if (order.network === "mtn")
-        statusMessage = "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
-      else if (order.network === "airteltigo")
-        statusMessage = "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
-      else if (order.network === "telecel")
-        statusMessage = "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
-      else
-        statusMessage = "Please be expecting your data any moment from now. Check your messages for delivery confirmation.";
-      extraNote = "The order has left our system and is now with the network you bought the data from. All delays from now are from them.";
-    } else if (elapsedMinutes >= 15) {
-      currentStep = 3;
-      statusMessage = "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
-    } else if (elapsedMinutes >= 12) {
-      currentStep = 3;
-      statusMessage = `Waiting for validation from ${order.network?.toUpperCase()}...`;
-    } else if (elapsedMinutes >= 9) {
-      currentStep = 2;
-      statusMessage = `Order sent to ${order.network?.toUpperCase()} for validation`;
-      extraNote = "Now waiting for validation from the network to deliver your data. All delay now is from the network you bought the data from.";
-    } else {
-      currentStep = 1;
-      statusMessage = "Order being processed...";
-    }
+    // All other statuses stay in Network Validation (Step 3)
+    currentStep = 3;
+    if (order.network === "mtn")
+      statusMessage = "Your order can be delivered any moment from now. Please wait for delivery confirmation.";
+    else if (order.network === "airteltigo")
+      statusMessage = "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
+    else if (order.network === "telecel")
+      statusMessage = "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
+    else
+      statusMessage = "Your order is being processed. Please wait for delivery.";
+    extraNote = "The order will only move to delivered once the order status has been updated to 'delivered'.";
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
@@ -313,10 +288,10 @@ const SubSubagentOrderTrackingCard = ({
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
-  // Support button: show after 132 min if still not delivered
-  const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
-  // Report button: show once delivered, within a reasonable window
-  const showReportButton = currentStep === 4 && elapsedMinutes >= 200 && elapsedMinutes < 3030;
+  // Support button: show after 2 hours if still not delivered
+  const showSupportButton = currentStep !== 4 && elapsedMinutes >= 120;
+  // Report button: show only when order status is "delivered"
+  const showReportButton = orderStatus === "delivered";
 
   const stepLabels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
   const theme = store.theme_config || defaultTheme;
