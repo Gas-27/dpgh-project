@@ -408,6 +408,15 @@ const AgentDashboard = () => {
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
   const effectiveBalance = Math.max(0, profitStats.availableForWithdrawal - pendingWithdrawalAmount);
+  
+  // Calculate balance based on selected withdrawal source
+  const getWithdrawalBalance = () => {
+    if (withdrawSource === "subagent_commission") {
+      return Number(store?.subagent_commission_balance ?? 0);
+    }
+    return Math.max(0, Number(store?.wallet_balance ?? 0) - pendingWithdrawalAmount);
+  };
+  const withdrawalBalance = getWithdrawalBalance();
 
   // ─── flyer scale ──────────────────────────────────────────────────────────
   const recalcScale = useCallback(() => {
@@ -2778,7 +2787,7 @@ const AgentDashboard = () => {
                         <Button 
                           variant="hero" 
                           className="self-end bg-cyan-600 hover:bg-cyan-700"
-                          disabled={!withdrawAmount || Number(withdrawAmount) < 1 || Number(withdrawAmount) > effectiveBalance || withdrawLoading}
+                          disabled={!withdrawAmount || Number(withdrawAmount) < 15 || Number(withdrawAmount) > withdrawalBalance || withdrawLoading}
                           onClick={() => handleWithdraw()}
                         >
                           {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
