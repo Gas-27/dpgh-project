@@ -1209,20 +1209,37 @@ const SubagentDashboard = () => {
     
     setWithdrawLoading(true);
     try {
-      const recipientCode = `recipient_${Date.now()}`;
-      const { error } = await supabase
-        .from("transfer_recipients")
-        .insert({
-          recipient_code: recipientCode,
-          user_id: user.id,
-          account_holder_name: recipientName,
-          provider_type: "mobile_money",
-          mobile_money_network: mobileNetwork,
-          mobile_money_number: mobileNumber,
-          status: "active"
-        });
+      // Call Supabase function to create recipient in Paystack and database
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       
-      if (error) throw error;
+      if (!token) {
+        toast({ title: "Session expired", description: "Please refresh and try again", variant: "destructive" });
+        return;
+      }
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-transfer-recipient`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            account_holder_name: recipientName,
+            provider_type: "mobile_money",
+            mobile_money_network: mobileNetwork,
+            mobile_money_number: mobileNumber,
+          }),
+        }
+      );
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to create recipient");
+      }
       
       // Refresh recipients list
       const { data: updated } = await supabase
@@ -1237,7 +1254,7 @@ const SubagentDashboard = () => {
       setRecipientName("");
       setMobileNetwork("mtn");
       setMobileNumber("");
-      toast({ title: "Recipient saved successfully!", description: "You can now select this recipient for withdrawal." });
+      toast({ title: "Recipient saved successfully!", description: "Recipient verified with Paystack. You can now select this recipient for withdrawal." });
     } catch (error: any) {
       toast({ title: "Failed to save recipient", description: error.message, variant: "destructive" });
     } finally {
@@ -3035,7 +3052,7 @@ const SubagentDashboard = () => {
                         </p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ���</p>
                     </div>
                   </>
                 )}
