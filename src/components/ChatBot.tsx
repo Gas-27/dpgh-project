@@ -303,7 +303,8 @@ What would you like to know?`;
 
   return (
     <>
-      {/* Chat Widget - Desktop */}
+      {/* Chat Widget - Disabled for now */}
+      {/* 
       {!isOpen && (
         <div
           className="fixed z-40 md:flex hidden"
@@ -325,7 +326,6 @@ What would you like to know?`;
         </div>
       )}
 
-      {/* Mobile Chat Button */}
       {!isOpen && (
         <div
           className="fixed z-40 md:hidden flex"
@@ -345,6 +345,7 @@ What would you like to know?`;
           </button>
         </div>
       )}
+      */}
 
       {/* Chat Window */}
       {isOpen && (
