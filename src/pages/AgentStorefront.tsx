@@ -229,6 +229,7 @@ const OrderTrackingCard = ({
 
   // ── Time-based Steps 1-3, Status-based Step 4 ──
   const orderStatus = order.order_status?.toLowerCase().trim() || "";
+  console.log("[v0] Order Status Check:", { orderId: order.id, orderStatus, order_status_raw: order.order_status, currentStep, elapsedMinutes });
   
   if (orderStatus === "delivered") {
     // Step 4 ONLY when order_status is "delivered"
@@ -537,7 +538,7 @@ const AgentStorefront = () => {
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // ── Report complaint dialog ──
+  // ── Report complaint dialog ─��
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
   
