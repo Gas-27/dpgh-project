@@ -1276,7 +1276,7 @@ const AgentDashboard = () => {
 
   // Handle saving a new recipient (Step 1 of withdrawal)
   const handleAddRecipient = async () => {
-    if (!store) return;
+    if (!user?.id) return;
     if (transferRecipients.length >= 10) { 
       toast({ title: "Maximum 10 recipients allowed", variant: "destructive" }); 
       return; 
@@ -1291,7 +1291,7 @@ const AgentDashboard = () => {
         .from("transfer_recipients")
         .insert({
           recipient_code: recipientCode,
-          user_id: store.id,
+          user_id: user.id,
           account_holder_name: recipientName,
           provider_type: "mobile_money",
           mobile_money_network: mobileNetwork,
@@ -1305,7 +1305,7 @@ const AgentDashboard = () => {
       const { data: updated } = await supabase
         .from("transfer_recipients")
         .select("*")
-        .eq("user_id", store.id)
+        .eq("user_id", user.id)
         .eq("status", "active")
         .order("created_at", { ascending: false });
       
