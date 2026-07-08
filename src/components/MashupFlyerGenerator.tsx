@@ -132,15 +132,34 @@ const MashupFlyerGenerator = ({
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], "mashup-flyer.png", { type: "image/png" });
 
-      if (navigator.share) {
-        await navigator.share({
-          title: "Special MTN Mashup Flyer",
-          text: shareText,
-          files: [file],
-        });
-        toast({ title: "Shared successfully!" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: "Special MTN Mashup Flyer",
+            text: shareText,
+            files: [file],
+          });
+          toast({ title: "Shared successfully!" });
+        } catch (shareError: any) {
+          // If share fails (user cancelled, permission denied, etc.), fall back to manual share
+          if (shareError.name === "AbortError") {
+            // User cancelled - silently return
+            return;
+          }
+          // For other errors, fall back to download + copy text
+          await navigator.clipboard.writeText(shareText).catch(() => {});
+          const link = document.createElement("a");
+          link.download = "mashup-flyer.png";
+          link.href = dataUrl;
+          link.click();
+          toast({
+            title: "Flyer downloaded!",
+            description: "Attach to WhatsApp manually or use the text below.",
+          });
+        }
       } else {
-        await navigator.clipboard.writeText(shareText);
+        // Device doesn't support Web Share API - download + copy text
+        await navigator.clipboard.writeText(shareText).catch(() => {});
         toast({
           title: "Text copied!",
           description: "Share text copied. You can now share the image manually.",
@@ -151,9 +170,9 @@ const MashupFlyerGenerator = ({
         link.click();
       }
     } catch (error: any) {
-      if (error.name !== "AbortError") {
-        toast({ title: "Error", description: "Could not share flyer.", variant: "destructive" });
-      }
+      console.error("[v0] Share error:", error);
+      // Generic fallback - just download
+      downloadFlyer();
     } finally {
       setGenerating(false);
     }
