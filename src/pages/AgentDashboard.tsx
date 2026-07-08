@@ -157,7 +157,7 @@ Tips:
     icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price ������������������� set any amount above the base price.
+• Your Selling Price �������������������� set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -1526,43 +1526,74 @@ const AgentDashboard = () => {
 
       // 1. Try to share the image file (mobile browsers that support file sharing)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: `${store?.store_name} – Data Bundles`,
-          text: shareText,
-          files: [file],
-        });
-        toast({ title: "Shared!", description: "Image and text sent via WhatsApp." });
-        setGeneratingFlyer(false);
-        return;
+        try {
+          await navigator.share({
+            title: `${store?.store_name} – Data Bundles`,
+            text: shareText,
+            files: [file],
+          });
+          toast({ title: "Shared!", description: "Image and text sent via WhatsApp." });
+          setGeneratingFlyer(false);
+          return;
+        } catch (shareErr: any) {
+          // If file share fails, fall back to text share
+          if (shareErr.name !== "AbortError") {
+            console.log("[v0] File share failed, falling back to text share");
+            // Continue to next fallback instead of throwing
+          } else {
+            setGeneratingFlyer(false);
+            return;
+          }
+        }
       }
 
       // 2. If share is available but cannot share files, share text and download image
       if (navigator.share) {
-        await navigator.share({
-          title: `${store?.store_name} – Data Bundles`,
-          text: shareText,
-        });
-        // Also download the image for the user
-        const a = document.createElement("a");
-        a.download = "flyer.png";
-        a.href = dataUrl;
-        a.click();
-        toast({ title: "Text shared!", description: "Image saved to your device. Attach it in WhatsApp." });
-        setGeneratingFlyer(false);
-        return;
+        try {
+          await navigator.share({
+            title: `${store?.store_name} – Data Bundles`,
+            text: shareText,
+          });
+          // Also download the image for the user
+          const a = document.createElement("a");
+          a.download = "flyer.png";
+          a.href = dataUrl;
+          a.click();
+          toast({ title: "Text shared!", description: "Image saved to your device. Attach it in WhatsApp." });
+          setGeneratingFlyer(false);
+          return;
+        } catch (shareErr: any) {
+          // If share fails due to permission denied, fall through to download fallback
+          if (shareErr.name !== "AbortError") {
+            console.log("[v0] Text share failed, using download fallback");
+          } else {
+            setGeneratingFlyer(false);
+            return;
+          }
+        }
       }
 
-      // 3. Desktop fallback: download image + open WhatsApp with text
+      // 3. Desktop fallback: download image + copy text or open WhatsApp
       const a = document.createElement("a");
       a.download = "flyer.png";
       a.href = dataUrl;
       a.click();
-      const encodedText = encodeURIComponent(shareText);
-      window.open(`https://wa.me/?text=${encodedText}`, "_blank");
-      toast({ title: "Image downloaded & WhatsApp opened", description: "Attach the image to complete the share." });
+      
+      // Try to copy text to clipboard
+      try {
+        await navigator.clipboard.writeText(shareText);
+        toast({ title: "Image downloaded!", description: "Share text copied. Paste in WhatsApp." });
+      } catch {
+        // If clipboard fails, open WhatsApp directly
+        const encodedText = encodeURIComponent(shareText);
+        window.open(`https://wa.me/?text=${encodedText}`, "_blank");
+        toast({ title: "Image downloaded & WhatsApp opened", description: "Attach the image to complete the share." });
+      }
     } catch (err: any) {
-      if (err.name !== "AbortError") {
-        toast({ title: "Sharing failed", description: err.message, variant: "destructive" });
+      console.error("[v0] Share error:", err);
+      // Only show error for non-permission/non-abort errors
+      if (err.name !== "AbortError" && !err.message?.includes("permission")) {
+        toast({ title: "Could not generate flyer", description: err.message, variant: "destructive" });
       }
     } finally {
       setGeneratingFlyer(false);
