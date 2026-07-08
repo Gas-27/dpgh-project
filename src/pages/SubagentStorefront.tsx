@@ -185,39 +185,6 @@ const SubagentOrderTrackingCard = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // ── WhatsApp drag handlers ──
-  const handleWhatsappMouseDown = (e: React.MouseEvent) => {
-    setIsDraggingWhatsapp(true);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setDragOffsetWhatsapp({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-  };
-
-  useEffect(() => {
-    if (!isDraggingWhatsapp) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      setWhatsappPos({
-        x: e.clientX - dragOffsetWhatsapp.x,
-        y: e.clientY - dragOffsetWhatsapp.y
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsDraggingWhatsapp(false);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDraggingWhatsapp, dragOffsetWhatsapp]);
-
   // Fetch complaint status for this order
   useEffect(() => {
     const fetchComplaintStatus = async () => {
@@ -508,6 +475,40 @@ export function SubagentStorefront() {
     name: string;
     price: number;
   } | null>(null);
+
+  // ── WhatsApp drag handler ──
+  const handleWhatsappMouseDown = (e: React.MouseEvent) => {
+    setIsDraggingWhatsapp(true);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDragOffsetWhatsapp({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
+
+  // ── WhatsApp drag effect ──
+  useEffect(() => {
+    if (!isDraggingWhatsapp) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setWhatsappPos({
+        x: e.clientX - dragOffsetWhatsapp.x,
+        y: e.clientY - dragOffsetWhatsapp.y
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingWhatsapp(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingWhatsapp, dragOffsetWhatsapp]);
 
   // Handle bulk payment callback - show success message after returning from Paystack
   useEffect(() => {
