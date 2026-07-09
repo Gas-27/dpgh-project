@@ -1209,35 +1209,22 @@ const SubagentDashboard = () => {
     
     setWithdrawLoading(true);
     try {
-      // Call API route to create recipient in Paystack and database
-      const response = await fetch("/api/create-recipient", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: user.id,
+      // Call Supabase Edge Function to create recipient in Paystack and database
+      const { data, error } = await supabase.functions.invoke('create-transfer-recipient', {
+        body: {
           account_holder_name: recipientName,
           provider_type: "mobile_money",
           mobile_money_network: mobileNetwork,
           mobile_money_number: mobileNumber,
-        }),
+        }
       });
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+
+      if (error) {
+        throw new Error(error.message || "Failed to create recipient");
       }
 
-      let result;
-      try {
-        result = await response.json();
-      } catch (parseError) {
-        console.error("[v0] Failed to parse API response:", parseError);
-        throw new Error("Invalid response from server");
-      }
-      
-      if (!result || !result.success) {
-        throw new Error(result?.error || "Failed to create recipient");
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to create recipient");
       }
       
       // Refresh recipients list
@@ -1255,6 +1242,7 @@ const SubagentDashboard = () => {
       setMobileNumber("");
       toast({ title: "Recipient saved successfully!", description: "Recipient verified with Paystack. You can now select this recipient for withdrawal." });
     } catch (error: any) {
+      console.error("[v0] Recipient creation error:", error);
       toast({ title: "Failed to save recipient", description: error.message, variant: "destructive" });
     } finally {
       setWithdrawLoading(false);
