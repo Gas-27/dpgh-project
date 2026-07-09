@@ -1199,25 +1199,49 @@ const SubagentDashboard = () => {
 
   // Handle saving a new recipient (Step 1 of withdrawal)
   const handleAddRecipient = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      toast({ title: "Not authenticated", variant: "destructive" });
+      return;
+    }
+    
     if (transferRecipients.length >= 2) { 
       toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
       return; 
     }
-    if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
-    if (!mobileNumber.trim()) { toast({ title: "Enter mobile number", variant: "destructive" }); return; }
+    if (!recipientName.trim()) { 
+      toast({ title: "Enter recipient name", variant: "destructive" }); 
+      return; 
+    }
+    if (!mobileNumber.trim()) { 
+      toast({ title: "Enter mobile number", variant: "destructive" }); 
+      return; 
+    }
     
     setWithdrawLoading(true);
     try {
-      // Call Supabase Edge Function to create recipient in Paystack and database
+      console.log("[v0] Calling create-transfer-recipient with user:", user.id);
+      
+      // Get fresh session to ensure auth token is current
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("You must be logged in to add a recipient");
+      }
+
+      // Call Supabase Edge Function with explicit auth
       const { data, error } = await supabase.functions.invoke('create-transfer-recipient', {
         body: {
           account_holder_name: recipientName,
           provider_type: "mobile_money",
           mobile_money_network: mobileNetwork,
           mobile_money_number: mobileNumber,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         }
       });
+
+      console.log("[v0] Function response:", { data, error });
 
       if (error) {
         throw new Error(error.message || "Failed to create recipient");
