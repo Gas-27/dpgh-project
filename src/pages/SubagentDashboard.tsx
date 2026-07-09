@@ -1219,25 +1219,22 @@ const SubagentDashboard = () => {
     
     setWithdrawLoading(true);
     try {
-      console.log("[v0] Calling create-transfer-recipient with user:", user.id);
-      
-      // Get fresh session to ensure auth token is current
+      // Get fresh session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         throw new Error("You must be logged in to add a recipient");
       }
 
-      // Call Supabase Edge Function with explicit auth
+      console.log("[v0] Calling create-transfer-recipient...");
+
+      // Call Supabase Edge Function - Supabase client handles auth automatically
       const { data, error } = await supabase.functions.invoke('create-transfer-recipient', {
         body: {
           account_holder_name: recipientName,
           provider_type: "mobile_money",
           mobile_money_network: mobileNetwork,
           mobile_money_number: mobileNumber,
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
         }
       });
 
@@ -1264,7 +1261,7 @@ const SubagentDashboard = () => {
       setRecipientName("");
       setMobileNetwork("mtn");
       setMobileNumber("");
-      toast({ title: "Recipient saved successfully!", description: "Recipient verified with Paystack. You can now select this recipient for withdrawal." });
+      toast({ title: "Recipient saved successfully!", description: "Recipient verified with Paystack." });
     } catch (error: any) {
       console.error("[v0] Recipient creation error:", error);
       toast({ title: "Failed to save recipient", description: error.message, variant: "destructive" });
