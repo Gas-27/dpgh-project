@@ -108,7 +108,34 @@ export default async function handler(
       }
     );
 
-    const paystackResult = await paystackRes.json();
+    // Check if response is ok
+    if (!paystackRes.ok) {
+      const errorText = await paystackRes.text();
+      console.error("[CREATE-RECIPIENT] Paystack HTTP error:", {
+        status: paystackRes.status,
+        statusText: paystackRes.statusText,
+        body: errorText,
+      });
+      return res.status(paystackRes.status).json({
+        success: false,
+        error: `Paystack error: ${paystackRes.statusText}`,
+      });
+    }
+
+    let paystackResult;
+    try {
+      const responseText = await paystackRes.text();
+      if (!responseText) {
+        throw new Error("Empty response from Paystack");
+      }
+      paystackResult = JSON.parse(responseText);
+    } catch (parseError: any) {
+      console.error("[CREATE-RECIPIENT] Failed to parse Paystack response:", parseError);
+      return res.status(500).json({
+        success: false,
+        error: "Invalid response from payment service",
+      });
+    }
 
     console.log("[CREATE-RECIPIENT] Paystack response:", paystackResult);
 
@@ -158,9 +185,11 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error("[CREATE-RECIPIENT] Error:", error);
+    // Ensure we always return valid JSON
+    const errorMessage = typeof error === 'string' ? error : (error?.message || "Internal server error");
     return res.status(500).json({
       success: false,
-      error: error.message || "Internal server error",
+      error: errorMessage,
     });
   }
 }

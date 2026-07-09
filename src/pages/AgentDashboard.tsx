@@ -1310,10 +1310,20 @@ const AgentDashboard = () => {
         }),
       });
       
-      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      let result;
+      try {
+        result = await response.json();
+      } catch (parseError) {
+        console.error("[v0] Failed to parse API response:", parseError);
+        throw new Error("Invalid response from server");
+      }
       
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to create recipient");
+      if (!result || !result.success) {
+        throw new Error(result?.error || "Failed to create recipient");
       }
       
       // Refresh recipients list
