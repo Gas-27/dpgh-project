@@ -10,7 +10,14 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  console.log("[CREATE-RECIPIENT] Incoming request:", {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+  });
+
   if (req.method !== "POST") {
+    console.error("[CREATE-RECIPIENT] Invalid method:", req.method);
     return res.status(405).json({ error: "Method not allowed" });
   }
 
