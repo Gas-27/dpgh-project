@@ -691,11 +691,13 @@ const AgentDashboard = () => {
   momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
   });
 
-      const [pkgR, priceR, orderR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR] = await Promise.all([
+      const [pkgR, priceR, agentOrdersR, apiOrdersR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
-        // Fetch orders from agent store OR API orders made by this user
-        supabase.from("orders").select("*", { count: "exact" }).or(`agent_store_id.eq.${sd.id},and(source.eq.api,user_id.eq.${effectiveUserId})`).order("created_at", { ascending: false }).range(0, 99999),
+        // Fetch normal agent store orders
+        supabase.from("orders").select("*", { count: "exact" }).eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999),
+        // Fetch API orders made by this user
+        supabase.from("orders").select("*", { count: "exact" }).eq("source", "api").eq("user_id", effectiveUserId).order("created_at", { ascending: false }).range(0, 99999),
         supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
@@ -703,6 +705,19 @@ const AgentDashboard = () => {
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
         supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
       ]);
+      
+      // Combine agent store orders and API orders
+      const combinedOrders = [
+        ...(agentOrdersR.data ?? []),
+        ...(apiOrdersR.data ?? []),
+      ].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      const orderR = {
+        data: combinedOrders,
+        count: (agentOrdersR.count ?? 0) + (apiOrdersR.count ?? 0),
+        error: agentOrdersR.error || apiOrdersR.error,
+        status: agentOrdersR.status || apiOrdersR.status,
+      };
 
       // Apply custom base prices set by admin - override agent_price with custom_base_price
       const customPriceMap: Record<string, number> = {};
