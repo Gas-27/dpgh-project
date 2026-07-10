@@ -1231,29 +1231,6 @@ const SubagentDashboard = () => {
       description: "Use the Withdrawal Requests section instead.",
       variant: "destructive" 
     });
-        .update({
-          account_holder_name: recipientName,
-          mobile_money_network: mobileNetwork,
-          mobile_money_number: mobileNumber,
-        })
-        .eq("recipient_code", editingRecipient.recipient_code);
-      
-      if (error) throw error;
-      
-      toast({ title: "Recipient updated successfully" });
-      setTransferRecipients(transferRecipients.map(r => 
-        r.recipient_code === editingRecipient.recipient_code 
-          ? { ...r, account_holder_name: recipientName, mobile_money_network: mobileNetwork, mobile_money_number: mobileNumber }
-          : r
-      ));
-      setEditingRecipient(null);
-      setRecipientName("");
-      setMobileNetwork("mtn");
-      setMobileNumber("");
-      setCreateNewRecipient(false);
-    } catch (error: any) {
-      toast({ title: "Failed to update recipient", description: error.message, variant: "destructive" });
-    }
   };
 
   const handleRequestWithdrawal = async () => {
