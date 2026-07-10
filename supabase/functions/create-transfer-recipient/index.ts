@@ -111,18 +111,27 @@ Deno.serve(async (req) => {
       };
       const bankCode = bankCodeMapping[mobile_money_network] || "MTN";
 
-      // Format phone number: remove leading 0 and add country code if needed
+      // Format phone number for Paystack: must be in format 233XXXXXXXXX
       let formattedNumber = mobile_money_number.trim();
       
-      // Remove leading 0 if present
-      if (formattedNumber.startsWith("0")) {
-        formattedNumber = formattedNumber.substring(1);
+      // Remove all non-digit characters except leading +
+      if (formattedNumber.startsWith("+")) {
+        formattedNumber = formattedNumber.substring(1); // Remove +
       }
       
-      // Add Ghana country code if not already present
-      if (!formattedNumber.startsWith("233")) {
-        formattedNumber = "233" + formattedNumber;
+      // Remove all leading zeros
+      formattedNumber = formattedNumber.replace(/^0+/, "");
+      
+      // Remove country code if it's 233 so we can add it fresh
+      if (formattedNumber.startsWith("233")) {
+        formattedNumber = formattedNumber.substring(3);
       }
+      
+      // Ensure we have exactly 10 digits for Ghana numbers
+      formattedNumber = formattedNumber.slice(-10);
+      
+      // Add Ghana country code
+      formattedNumber = "233" + formattedNumber;
 
       paystackPayload = {
         type: "mobile_money",
