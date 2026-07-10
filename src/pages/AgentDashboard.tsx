@@ -554,15 +554,15 @@ const AgentDashboard = () => {
   };
 
   // Fetch existing API key for agent
-  const fetchApiKey = async (storeId: string) => {
+  const fetchApiKey = async (userId: string) => {
     try {
       setLoadingApiKey(true);
-      console.log("[v0] Fetching API key for store:", storeId);
+      console.log("[v0] Fetching API key for user:", userId);
       
       const { data, error } = await supabase
         .from("api_users")
         .select("api_key, wallet")
-        .eq("identity_id", storeId)
+        .eq("identity_id", userId)
         .eq("is_agent", true)
         .maybeSingle();
       
