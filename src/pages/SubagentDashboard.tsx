@@ -502,7 +502,8 @@ const SubagentDashboard = () => {
           payoutReqResult,
           registrationsResult
         ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
+          // Fetch orders from subagent store OR API orders made by this user
+          supabase.from("orders").select("*", { count: "exact" }).or(`subagent_store_id.eq.${store.id},and(source.eq.api,user_id.eq.${user.id})`).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
@@ -664,7 +665,8 @@ const SubagentDashboard = () => {
           agentInfoResult,
           subSubagentsResult
         ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
+          // Fetch orders from subagent store OR API orders made by this user
+          supabase.from("orders").select("*", { count: "exact" }).or(`subagent_store_id.eq.${store.id},and(source.eq.api,user_id.eq.${user.id})`).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
@@ -782,7 +784,8 @@ const SubagentDashboard = () => {
           topupsResult,
           agentInfoResult
         ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
+          // Fetch orders from subagent store OR API orders made by this user
+          supabase.from("orders").select("*", { count: "exact" }).or(`subagent_store_id.eq.${store.id},and(source.eq.api,user_id.eq.${user.id})`).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
@@ -2449,7 +2452,7 @@ const SubagentDashboard = () => {
                                 <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
                                   GH₵{Number(profit).toFixed(2)}
                                 </TableCell>
-                                <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
+                                <TableCell className="capitalize text-sm">{(order as any).source === "api" ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
                                 <TableCell className="capitalize text-sm">
                                   <Badge variant="outline" className="text-xs">
                                     {getOrderStage(order)}
@@ -2678,7 +2681,7 @@ const SubagentDashboard = () => {
                               <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
                               <TableCell>{order.network.toUpperCase()}</TableCell>
                               <TableCell>{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</TableCell>
-                              <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
+                              <TableCell className="capitalize text-sm">{(order as any).source === "api" ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
                               <TableCell className="font-semibold">GH₵{Number(sellPrice).toFixed(2)}</TableCell>
                               <TableCell className="text-muted-foreground">GH₵{Number(baseCost).toFixed(2)}</TableCell>
                               <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
