@@ -2835,24 +2835,24 @@ const SubagentDashboard = () => {
                       </summary>
                       <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3 mt-1 space-y-2 text-xs">
                         <p className="text-blue-300">A small fee applies based on your withdrawal amount:</p>
-                          <div className="space-y-1 pl-2">
-                            <p className="text-muted-foreground">• Less than GH₵ 100: 5% fee</p>
-                            <p className="text-muted-foreground">• GH₵ 100 or more: 1.5% fee</p>
-                          </div>
+                        <div className="space-y-1 pl-2">
+                          <p className="text-muted-foreground">• Less than GH₵ 100: 5% fee</p>
+                          <p className="text-muted-foreground">• GH₵ 100 or more: 1.5% fee</p>
                         </div>
-                      </details>
-
-                      <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                        <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
-                        <p className="text-xs text-red-300">
-                          Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
-                        </p>
                       </div>
+                    </details>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
+                    <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
+                      <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
+                      <p className="text-xs text-red-300">
+                        Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
+                      </p>
                     </div>
-                  </>
-                )}
+
+                    <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
+                  </div>
+                </>
+              )}
 
                 {createNewRecipient && (
                   <>
