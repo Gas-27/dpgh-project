@@ -2777,6 +2777,96 @@ const SubagentDashboard = () => {
                   </>
                 ) : (
                   <>
+                    <Button 
+                      variant="ghost" 
+                      className="text-xs" 
+                      onClick={() => {
+                        setCreateNewRecipient(false);
+                        setEditingRecipient(null);
+                        setRecipientName("");
+                        setMobileNetwork("mtn");
+                        setMobileNumber("");
+                      }}
+                    >
+                      ← Back to Recipients
+                    </Button>
+                    
+                    <div className="space-y-3 border border-border rounded-lg p-4">
+                      <h3 className="font-medium">{editingRecipient ? "Edit Recipient" : "Create New Recipient"}</h3>
+                      <div className="space-y-1">
+                        <Label>Full Name</Label>
+                        <Input 
+                          placeholder="John Doe" 
+                          value={recipientName}
+                          onChange={e => setRecipientName(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label>Mobile Network</Label>
+                        <Select value={mobileNetwork} onValueChange={setMobileNetwork}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mtn">MTN</SelectItem>
+                            <SelectItem value="telecel">Telecel</SelectItem>
+                            <SelectItem value="airteltigo">AirtelTigo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label>Mobile Number</Label>
+                        <Input 
+                          placeholder="024XXXXXXX" 
+                          value={mobileNumber}
+                          onChange={e => setMobileNumber(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => {
+                            setCreateNewRecipient(false);
+                            setEditingRecipient(null);
+                            setRecipientName("");
+                            setMobileNetwork("mtn");
+                            setMobileNumber("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        {editingRecipient ? (
+                          <Button 
+                            variant="hero"
+                            className="flex-1 bg-amber-600 hover:bg-amber-700"
+                            disabled={!recipientName.trim() || !mobileNumber.trim()}
+                            onClick={() => handleSaveEditedRecipient()}
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Changes
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="hero"
+                            className="flex-1 bg-green-600 hover:bg-green-700"
+                            disabled={!recipientName.trim() || !mobileNumber.trim()}
+                            onClick={() => handleAddRecipient()}
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Recipient
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {!createNewRecipient && (transferRecipients.length > 0 || selectedRecipient) && (
+                  <>
                     <div className="space-y-3">
                       <div className="flex gap-2 items-end">
                         <div className="flex-1 space-y-1">
@@ -2826,33 +2916,32 @@ const SubagentDashboard = () => {
                           })()}
                         </div>
                       )}
-                    </div>
-                    
-                    <details className="cursor-pointer group">
-                      <summary className="text-xs text-blue-400 font-semibold p-2 rounded hover:bg-blue-500/10 flex items-center gap-2">
-                        <span>Withdrawal Fees</span>
-                        <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
-                      </summary>
-                      <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3 mt-1 space-y-2 text-xs">
-                        <p className="text-blue-300">A small fee applies based on your withdrawal amount:</p>
-                        <div className="space-y-1 pl-2">
-                          <p className="text-muted-foreground">• Less than GH₵ 100: 5% fee</p>
-                          <p className="text-muted-foreground">• GH₵ 100 or more: 1.5% fee</p>
+
+                      <details className="cursor-pointer group">
+                        <summary className="text-xs text-blue-400 font-semibold p-2 rounded hover:bg-blue-500/10 flex items-center gap-2">
+                          <span>Withdrawal Fees</span>
+                          <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
+                        </summary>
+                        <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3 mt-1 space-y-2 text-xs">
+                          <p className="text-blue-300">A small fee applies based on your withdrawal amount:</p>
+                          <div className="space-y-1 pl-2">
+                            <p className="text-muted-foreground">• Less than GH₵ 100: 5% fee</p>
+                            <p className="text-muted-foreground">• GH₵ 100 or more: 1.5% fee</p>
+                          </div>
                         </div>
+                      </details>
+
+                      <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
+                        <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
+                        <p className="text-xs text-red-300">
+                          Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
+                        </p>
                       </div>
-                    </details>
 
-                    <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                      <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
-                      <p className="text-xs text-red-300">
-                        Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
-                      </p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
                     </div>
-
-                    <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
 
                 {createNewRecipient && (
                   <>
