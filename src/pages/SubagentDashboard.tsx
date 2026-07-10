@@ -531,8 +531,7 @@ const SubagentDashboard = () => {
           };
         });
         setWithdrawals(payoutData);
-        // Subagents do not manage transfer recipients - they use withdrawal requests instead
-        // setTransferRecipients(recipientsResult.data || []);
+        setTransferRecipients(recipientsResult.data || []);
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
@@ -1199,38 +1198,140 @@ const SubagentDashboard = () => {
   };
 
   // Subagents use withdrawal requests system, not recipient creation
+  // Handle saving a new recipient (Step 1 of withdrawal) - Creates in Paystack first
   const handleAddRecipient = async () => {
-    toast({ 
-      title: "Withdrawal via Paystack not available for subagents", 
-      description: "Subagents should submit withdrawal requests through the Withdrawal Requests section. Contact your agent for API-based withdrawals.",
-      variant: "destructive" 
-    });
-    setCreateNewRecipient(false);
+    if (!user?.id) {
+      toast({ title: "Not authenticated", variant: "destructive" });
+      return;
+    }
+    
+    if (transferRecipients.length >= 2) { 
+      toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
+      return; 
+    }
+    if (!recipientName.trim()) { 
+      toast({ title: "Enter recipient name", variant: "destructive" }); 
+      return; 
+    }
+    if (!mobileNumber.trim()) { 
+      toast({ title: "Enter mobile number", variant: "destructive" }); 
+      return; 
+    }
+    
+    setWithdrawLoading(true);
+    try {
+      // Get fresh session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("You must be logged in to add a recipient");
+      }
+
+      console.log("[v0] Calling create-transfer-recipient...");
+
+      // Call Supabase Edge Function - Supabase client handles auth automatically
+      const { data, error } = await supabase.functions.invoke('create-transfer-recipient', {
+        body: {
+          account_holder_name: recipientName,
+          provider_type: "mobile_money",
+          mobile_money_network: mobileNetwork,
+          mobile_money_number: mobileNumber,
+        }
+      });
+
+      console.log("[v0] Function response:", { data, error });
+
+      if (error) {
+        throw new Error(error.message || "Failed to create recipient");
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to create recipient");
+      }
+      
+      // Refresh recipients list
+      const { data: updated } = await supabase
+        .from("transfer_recipients")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+      
+      setTransferRecipients(updated ?? []);
+      setCreateNewRecipient(false);
+      setRecipientName("");
+      setMobileNetwork("mtn");
+      setMobileNumber("");
+      toast({ title: "Recipient saved successfully!", description: "Recipient verified with Paystack." });
+    } catch (error: any) {
+      console.error("[v0] Recipient creation error:", error);
+      toast({ title: "Failed to save recipient", description: error.message, variant: "destructive" });
+    } finally {
+      setWithdrawLoading(false);
+    }
   };
 
-  // Subagents cannot manage recipients - they use withdrawal requests instead
-  const handleDeleteRecipient = () => {
-    toast({ 
-      title: "Withdrawal management not available for subagents",
-      description: "Use the Withdrawal Requests section instead.",
-      variant: "destructive" 
-    });
+  const handleDeleteRecipient = async (recipientCode: string) => {
+    if (!window.confirm("Are you sure you want to delete this recipient? This action cannot be undone.")) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("transfer_recipients")
+        .delete()
+        .eq("recipient_code", recipientCode);
+      
+      if (error) throw error;
+      
+      toast({ title: "Recipient deleted successfully" });
+      setTransferRecipients(transferRecipients.filter(r => r.recipient_code !== recipientCode));
+      if (selectedRecipient === recipientCode) {
+        setSelectedRecipient("");
+      }
+    } catch (error: any) {
+      toast({ title: "Failed to delete recipient", description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleEditRecipient = () => {
-    toast({ 
-      title: "Withdrawal management not available for subagents",
-      description: "Use the Withdrawal Requests section instead.",
-      variant: "destructive" 
-    });
+  const handleEditRecipient = (recipient: any) => {
+    setEditingRecipient(recipient);
+    setRecipientName(recipient.account_holder_name);
+    setMobileNetwork(recipient.mobile_money_network || "mtn");
+    setMobileNumber(recipient.mobile_money_number);
+    setCreateNewRecipient(true);
   };
 
-  const handleSaveEditedRecipient = () => {
-    toast({ 
-      title: "Withdrawal management not available for subagents",
-      description: "Use the Withdrawal Requests section instead.",
-      variant: "destructive" 
-    });
+  const handleSaveEditedRecipient = async () => {
+    if (!recipientName.trim() || !mobileNumber.trim()) {
+      toast({ title: "Please fill all fields", variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("transfer_recipients")
+        .update({
+          account_holder_name: recipientName,
+          mobile_money_network: mobileNetwork,
+          mobile_money_number: mobileNumber,
+        })
+        .eq("recipient_code", editingRecipient.recipient_code);
+      
+      if (error) throw error;
+      
+      toast({ title: "Recipient updated successfully" });
+      setTransferRecipients(transferRecipients.map(r => 
+        r.recipient_code === editingRecipient.recipient_code 
+          ? { ...r, account_holder_name: recipientName, mobile_money_network: mobileNetwork, mobile_money_number: mobileNumber }
+          : r
+      ));
+      setEditingRecipient(null);
+      setRecipientName("");
+      setMobileNetwork("mtn");
+      setMobileNumber("");
+      setCreateNewRecipient(false);
+    } catch (error: any) {
+      toast({ title: "Failed to update recipient", description: error.message, variant: "destructive" });
+    }
   };
 
   const handleRequestWithdrawal = async () => {
@@ -2616,14 +2717,65 @@ const SubagentDashboard = () => {
                   </div>
                 )}
                 
-                {/* Recipient Management - Not Available for Subagents */}
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-                  <p className="text-sm text-amber-400 font-medium">
-                    Subagents use the Withdrawal Requests system for payouts. Direct Paystack transfers via API are only available for Agent Stores and Users.
-                  </p>
-                </div>
-
-                {!createNewRecipient && (
+                {/* Recipient Selection or Creation */}
+                {!createNewRecipient ? (
+                  <>
+                    {transferRecipients.length > 0 && (
+                      <div className="space-y-2 mb-4">
+                        <Label>Select Recipient</Label>
+                        <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a recipient..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {transferRecipients.map((r: any) => (
+                              <SelectItem key={r.recipient_code} value={r.recipient_code}>
+                                {r.account_holder_name} • {r.provider_type === "mobile_money" ? `${r.mobile_money_network?.toUpperCase()}: ${r.mobile_money_number}` : `Bank: ${r.account_number}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="space-y-1 mt-3">
+                          {transferRecipients.map((r: any) => (
+                            <div key={r.recipient_code} className="flex items-center justify-between gap-2 p-2 rounded border border-border text-sm bg-muted/30">
+                              <span className="flex-1 truncate text-sm">{r.account_holder_name} • {r.mobile_money_network?.toUpperCase()}</span>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => handleEditRecipient(r)}
+                                  title="Edit recipient"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
+                                  onClick={() => handleDeleteRecipient(r.recipient_code)}
+                                  title="Delete recipient"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <Button 
+                      variant="outline" 
+                      className="w-full mb-4" 
+                      onClick={() => setCreateNewRecipient(true)}
+                      disabled={transferRecipients.length >= 2 || !!impersonatedUserId}
+                      title={impersonatedUserId ? "Cannot create new recipients while impersonating. Use existing recipients only." : ""}
+                    >
+                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/2)`}
+                    </Button>
+                  </>
+                ) : (
                   <>
                     <div className="space-y-3">
                       <div className="flex gap-2 items-end">
@@ -2676,63 +2828,13 @@ const SubagentDashboard = () => {
                       )}
                     </div>
                     
-                    <div className="space-y-3">
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1 space-y-1">
-                          <Label>Amount (GH₵)</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="e.g. 20.00"
-                            value={withdrawAmount}
-                            onChange={e => setWithdrawAmount(e.target.value)}
-                            disabled={hasPendingWithdrawal}
-                          />
-                        </div>
-                        <Button 
-                          variant="hero" 
-                          onClick={handleRequestWithdrawal} 
-                          disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient}
-                        >
-                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                          Transfer
-                        </Button>
-                      </div>
-
-                      {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-                        <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
-                          {(() => {
-                            const amt = parseFloat(withdrawAmount);
-                            const feePercentage = amt < 100 ? 0.05 : 0.015;
-                            const feeAmount = amt * feePercentage;
-                            const recipientAmount = amt - feeAmount;
-                            return (
-                              <>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Amount to Deduct:</span>
-                                  <span>GH₵ {amt.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
-                                  <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
-                                </div>
-                                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
-                                  <span>Recipient Receives:</span>
-                                  <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      <details className="cursor-pointer group">
-                        <summary className="text-xs text-blue-400 font-semibold p-2 rounded hover:bg-blue-500/10 flex items-center gap-2">
-                          <span>Withdrawal Fees</span>
-                          <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
-                        </summary>
-                        <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3 mt-1 space-y-2 text-xs">
-                          <p className="text-blue-300">A small fee applies based on your withdrawal amount:</p>
+                    <details className="cursor-pointer group">
+                      <summary className="text-xs text-blue-400 font-semibold p-2 rounded hover:bg-blue-500/10 flex items-center gap-2">
+                        <span>Withdrawal Fees</span>
+                        <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3 mt-1 space-y-2 text-xs">
+                        <p className="text-blue-300">A small fee applies based on your withdrawal amount:</p>
                           <div className="space-y-1 pl-2">
                             <p className="text-muted-foreground">• Less than GH₵ 100: 5% fee</p>
                             <p className="text-muted-foreground">• GH₵ 100 or more: 1.5% fee</p>
