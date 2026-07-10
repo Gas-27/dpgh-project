@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
         currency: "GHS",
       };
     } else {
-      // Mobile money
+      // Mobile money - format account number for Paystack
       const bankCodeMapping: Record<string, string> = {
         "mtn": "MTN",
         "telecel": "VOD",
@@ -111,10 +111,23 @@ Deno.serve(async (req) => {
       };
       const bankCode = bankCodeMapping[mobile_money_network] || "MTN";
 
+      // Format phone number: remove leading 0 and add country code if needed
+      let formattedNumber = mobile_money_number.trim();
+      
+      // Remove leading 0 if present
+      if (formattedNumber.startsWith("0")) {
+        formattedNumber = formattedNumber.substring(1);
+      }
+      
+      // Add Ghana country code if not already present
+      if (!formattedNumber.startsWith("233")) {
+        formattedNumber = "233" + formattedNumber;
+      }
+
       paystackPayload = {
         type: "mobile_money",
         name: account_holder_name,
-        account_number: mobile_money_number,
+        account_number: formattedNumber,
         bank_code: bankCode,
         currency: "GHS",
       };
