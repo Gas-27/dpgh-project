@@ -691,13 +691,21 @@ const AgentDashboard = () => {
   momo_number: sd.momo_number, momo_name: sd.momo_name, momo_network: sd.momo_network,
   });
 
+      // First fetch API user data to get identity for API order filtering
+      const { data: apiUserData } = await supabase
+        .from("api_users")
+        .select("identity_id")
+        .eq("identity_id", effectiveUserId)
+        .eq("is_agent", true)
+        .maybeSingle();
+
       const [pkgR, priceR, agentOrdersR, apiOrdersR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         // Fetch normal agent store orders
         supabase.from("orders").select("*", { count: "exact" }).eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999),
-        // Fetch API orders made by this user
-        supabase.from("orders").select("*", { count: "exact" }).eq("source", "api").eq("user_id", effectiveUserId).order("created_at", { ascending: false }).range(0, 99999),
+        // Fetch API orders made by this api_user (orders where source=api and user_id is the api_user's identity)
+        apiUserData ? supabase.from("orders").select("*", { count: "exact" }).eq("source", "api").eq("user_id", apiUserData.identity_id).order("created_at", { ascending: false }).range(0, 99999) : Promise.resolve({ data: [], count: 0, error: null }),
         supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
