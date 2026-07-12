@@ -216,7 +216,7 @@ export default function SubagentsList({ agentStoreId, subagents, onRefresh }: Su
                       <Wallet className="h-4 w-4 text-green-400" />
                       <p className="text-sm text-muted-foreground">Wallet Balance</p>
                     </div>
-                    <p className="text-2xl font-bold text-green-400">GH₵ {(selectedSubagent.calculated_balance ?? 0).toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-green-400">GHC {(selectedSubagent.calculated_balance ?? 0).toFixed(2)}</p>
                   </CardContent>
                 </Card>
                 <Card className="border-blue-500/30 bg-blue-500/10">
@@ -255,7 +255,7 @@ export default function SubagentsList({ agentStoreId, subagents, onRefresh }: Su
                           <p className="text-xs text-muted-foreground">{order.customer_number}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">GH₵ {Number(order.selling_price || order.amount).toFixed(2)}</p>
+                          <p className="font-semibold">GHC {Number(order.selling_price || order.amount).toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</p>
                         </div>
                         <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30 ml-2" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30 ml-2"}>

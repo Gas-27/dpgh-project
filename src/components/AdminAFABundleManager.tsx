@@ -192,7 +192,7 @@ export default function AdminAFABundleManager() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Base Registration Fee (GH₵)</Label>
+                  <Label>Base Registration Fee (GHC)</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -228,7 +228,7 @@ export default function AdminAFABundleManager() {
 
               <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-900 dark:text-blue-100">
-                  <strong>Expected Agent Price Range:</strong> GH₵{Number(settings.registration_fee || 0).toFixed(2)} - GH₵{(Number(settings.registration_fee || 0) * (1 + Number(settings.agent_commission_percent || 0) / 100)).toFixed(2)}
+                  <strong>Expected Agent Price Range:</strong> GHC{Number(settings.registration_fee || 0).toFixed(2)} - GHC{(Number(settings.registration_fee || 0) * (1 + Number(settings.agent_commission_percent || 0) / 100)).toFixed(2)}
                 </p>
               </div>
 
@@ -259,7 +259,7 @@ export default function AdminAFABundleManager() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Base Registration Fee</p>
-                <p className="text-2xl font-bold mt-2">GH₵{Number(settings.registration_fee || 0).toFixed(2)}</p>
+                <p className="text-2xl font-bold mt-2">GHC{Number(settings.registration_fee || 0).toFixed(2)}</p>
               </div>
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Agent Commission</p>
@@ -310,7 +310,7 @@ export default function AdminAFABundleManager() {
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">GH₵{Number(totalRevenue || 0).toFixed(2)}</p>
+            <p className="text-2xl font-bold">GHC{Number(totalRevenue || 0).toFixed(2)}</p>
           </CardContent>
         </Card>
       </div>
@@ -369,7 +369,7 @@ export default function AdminAFABundleManager() {
                     <TableCell className="text-sm">
                       {reg.agent_stores?.store_name || reg.subagent_stores?.store_name || 'N/A'}
                     </TableCell>
-                    <TableCell className="font-medium">GH₵{Number(reg.amount_paid || 0).toFixed(2)}</TableCell>
+                    <TableCell className="font-medium">GHC{Number(reg.amount_paid || 0).toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge variant={reg.status === 'completed' ? 'default' : 'secondary'}>
                         {reg.status === 'completed' ? (

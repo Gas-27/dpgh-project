@@ -125,7 +125,7 @@ export default function AdminAFASettings() {
           {/* Base Registration Fee */}
           <div className="space-y-2">
             <Label htmlFor="bundle-price" className="text-base font-semibold">
-              Base Registration Fee (GH₵)
+              Base Registration Fee (GHC)
             </Label>
             <p className="text-sm text-muted-foreground">
               Minimum price charged for AFA registration. This is the amount you receive.
@@ -144,7 +144,7 @@ export default function AdminAFASettings() {
               placeholder="0.00"
             />
             <p className="text-sm font-medium text-green-600">
-              You will receive: GH₵{settings.bundle_price.toFixed(2)} per registration
+              You will receive: GHC{settings.bundle_price.toFixed(2)} per registration
             </p>
           </div>
 
@@ -171,7 +171,7 @@ export default function AdminAFASettings() {
               placeholder="0"
             />
             <p className="text-sm text-muted-foreground">
-              Agents can charge from GH₵{settings.bundle_price.toFixed(2)} to GH₵{agentPrice.toFixed(2)}
+              Agents can charge from GHC{settings.bundle_price.toFixed(2)} to GHC{agentPrice.toFixed(2)}
             </p>
           </div>
 
@@ -181,9 +181,9 @@ export default function AdminAFASettings() {
             <AlertDescription className="text-blue-900">
               <strong>Price Structure:</strong>
               <ul className="mt-2 space-y-1 ml-4">
-                <li>• Admin minimum price: GH₵{settings.bundle_price.toFixed(2)}</li>
+                <li>• Admin minimum price: GHC{settings.bundle_price.toFixed(2)}</li>
                 <li>• Agent commission allowed: {settings.agent_commission_percent.toFixed(1)}%</li>
-                <li>• Max agent can charge: GH₵{agentPrice.toFixed(2)}</li>
+                <li>• Max agent can charge: GHC{agentPrice.toFixed(2)}</li>
               </ul>
             </AlertDescription>
           </Alert>
@@ -230,7 +230,7 @@ export default function AdminAFASettings() {
             <div>
               <p className="font-semibold text-sm">Your Revenue</p>
               <p className="text-sm text-muted-foreground">
-                You receive GH₵{settings.bundle_price.toFixed(2)} per successful registration
+                You receive GHC{settings.bundle_price.toFixed(2)} per successful registration
               </p>
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function AdminAFASettings() {
             <div>
               <p className="font-semibold text-sm">Agent Flexibility</p>
               <p className="text-sm text-muted-foreground">
-                Agents can set prices between GH₵{settings.bundle_price.toFixed(2)} - GH₵{agentPrice.toFixed(2)}
+                Agents can set prices between GHC{settings.bundle_price.toFixed(2)} - GHC{agentPrice.toFixed(2)}
               </p>
             </div>
           </div>

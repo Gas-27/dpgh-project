@@ -226,7 +226,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   const getDetailedReportMessage = (): string => {
     const orderDate = new Date(order.created_at).toLocaleString();
     const networkName = formatNetworkName(order.network);
-    const amountFormatted = `GH₵ ${Number(order.amount).toFixed(2)}`;
+    const amountFormatted = `GHC ${Number(order.amount).toFixed(2)}`;
     const orderStatus = `${order.status} / ${order.fulfillment_status}`;
 
     return `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.
@@ -904,7 +904,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
         <DialogHeader>
           <DialogTitle className="text-xl font-black text-center text-white">🎡 Spin &amp; Win Data!</DialogTitle>
           <DialogDescription className="text-center text-purple-300 text-xs">
-            {paymentRequired ? `Pay GH₵${config.payment_amount} for 2 spins` : "Free — 2 spins every 8 hours per number"}
+            {paymentRequired ? `Pay GHC${config.payment_amount} for 2 spins` : "Free — 2 spins every 8 hours per number"}
           </DialogDescription>
         </DialogHeader>
 
@@ -978,7 +978,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
             paymentRequired ? (
               <Button onClick={handlePay} disabled={paymentLoading} className="w-full bg-green-600 hover:bg-green-700 font-bold">
                 {paymentLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Gift className="mr-2 h-4 w-4" />}
-                Pay GH₵{config.payment_amount} for 2 Spins
+                Pay GHC{config.payment_amount} for 2 Spins
               </Button>
             ) : (
               <Button onClick={handleGetFreeSpins} className="w-full bg-green-600 hover:bg-green-700 font-bold">
@@ -1308,7 +1308,7 @@ const Packages = () => {
         {spinConfig?.enabled && !(spinConfig.auto_disable_enabled && (spinConfig.current_spin_orders ?? 0) >= (spinConfig.auto_disable_order_limit ?? 100)) && (
           <div className="flex flex-col items-center gap-1">
             <Button variant="hero" className="bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 font-bold shadow-lg" onClick={() => setShowSpinWheel(true)}>
-              <Gift className="h-4 w-4 mr-2" />Win Free Data{spinConfig.payment_required ? ` (GH₵${spinConfig.payment_amount})` : " (Free)"}
+              <Gift className="h-4 w-4 mr-2" />Win Free Data{spinConfig.payment_required ? ` (GHC${spinConfig.payment_amount})` : " (Free)"}
             </Button>
             {spinConfig.auto_disable_enabled && (
               <p className="text-xs text-muted-foreground">
@@ -1368,7 +1368,7 @@ const Packages = () => {
                                     <div className="flex items-center gap-3 text-sm">
                                       <span className="uppercase text-muted-foreground">{order.network}</span>
                                       <span className="font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
-                                      <span className="text-primary">GH₵ {Number(order.amount).toFixed(2)}</span>
+                                      <span className="text-primary">GHC {Number(order.amount).toFixed(2)}</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
                                   </div>
@@ -1434,7 +1434,7 @@ const Packages = () => {
                               <p className="text-xs opacity-90 text-white">Data Bundle</p>
                             </div>
                             <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text}</p>
-                            <p className="text-sm font-medium text-white">GH₵ {Number(pkg.price).toFixed(2)} - Valid forever</p>
+                            <p className="text-sm font-medium text-white">GHC {Number(pkg.price).toFixed(2)} - Valid forever</p>
                             <div className="space-y-1 text-xs text-white">
                               <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
                             </div>
@@ -1444,7 +1444,7 @@ const Packages = () => {
                           <>
                             <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
                             <p className={`text-sm font-semibold uppercase tracking-wide ${networkColor}`}>{networkConfig[selectedNetwork as keyof typeof networkConfig]?.label || "Bundle"}</p>
-                            <p className="text-xl font-bold text-white">GH₵{Number(pkg.price).toFixed(2)}</p>
+                            <p className="text-xl font-bold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
                             <Button variant="secondary" size="sm" disabled={isInactive || isOffline} className="w-full mt-2 font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && !isOffline && setPaymentPkg(pkg)}>{isOffline ? "Currently Offline" : isInactive ? "Not Available" : "Buy Now"}</Button>
                           </>
                         )}
@@ -1548,7 +1548,7 @@ const Packages = () => {
                   >
                     <option value="none">None (use per-line sizes)</option>
                     {packages.filter(p => p.network.toLowerCase() === bulkNetwork && p.active).map(p => (
-                      <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {p.price.toFixed(2)}</option>
+                      <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GHC {p.price.toFixed(2)}</option>
                     ))}
                   </select>
                 </div>
@@ -1584,17 +1584,17 @@ const Packages = () => {
                             <p className="text-xs text-muted-foreground">Total Data</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                            <p className="text-2xl font-bold text-yellow-500">GH₵ {totalCost.toFixed(2)}</p>
+                            <p className="text-2xl font-bold text-yellow-500">GHC {totalCost.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">Data Cost</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                            <p className="text-2xl font-bold text-green-500">GH₵ {grandTotal.toFixed(2)}</p>
+                            <p className="text-2xl font-bold text-green-500">GHC {grandTotal.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">Total (incl. fees)</p>
                           </div>
                         </div>
                         
                         {paystackFee > 0 && (
-                          <p className="text-sm text-muted-foreground text-center">Paystack fee (1.98%): GH₵ {paystackFee.toFixed(2)}</p>
+                          <p className="text-sm text-muted-foreground text-center">Paystack fee (1.98%): GHC {paystackFee.toFixed(2)}</p>
                         )}
                         
                         <div className="flex gap-3 flex-wrap">
@@ -1649,7 +1649,7 @@ const Packages = () => {
                               }
                             }}
                           >
-                            {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <>Pay with Paystack (GH₵ {grandTotal.toFixed(2)})</>}
+                            {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <>Pay with Paystack (GHC {grandTotal.toFixed(2)})</>}
                           </Button>
                           <Button variant="outline" onClick={() => { setBulkRecipients(""); setBulkGlobalSize(null); }}>
                             <RotateCcw className="h-4 w-4 mr-2" /> Clear

@@ -337,7 +337,7 @@ export default function AFAPackagesDisplay({
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <p className="text-xs text-muted-foreground">Package Price</p>
                     <p className="text-2xl font-bold" style={{ color: themeColor }}>
-                      GH₵ {displayPrice.toFixed(2)}
+                      GHC {displayPrice.toFixed(2)}
                     </p>
                   </div>
 

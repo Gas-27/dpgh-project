@@ -217,7 +217,7 @@ export default function SubagentApprovalPayment() {
                 <p className="text-sm font-semibold text-primary">Registration Fee</p>
               </div>
               <div className="text-3xl font-bold text-primary">
-                GH₵ {registration.fee_amount.toFixed(2)}
+                GHC {registration.fee_amount.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground">
                 One-time payment to activate your subagent store

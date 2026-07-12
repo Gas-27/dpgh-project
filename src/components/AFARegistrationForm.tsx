@@ -171,7 +171,7 @@ export default function AFARegistrationForm({
       <CardHeader>
         <CardTitle>AFA Registration</CardTitle>
         <CardDescription>
-          Register for {packageName} - GH₵ {amount.toFixed(2)}
+          Register for {packageName} - GHC {amount.toFixed(2)}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -183,7 +183,7 @@ export default function AFARegistrationForm({
               <div className="space-y-2">
                 <p className="font-semibold text-blue-900">Important Notice</p>
                 <p className="text-sm text-blue-800">
-                  Registration fee is <strong>GH₵{amount.toFixed(2)}</strong> and is <strong>non-refundable</strong>. 
+                  Registration fee is <strong>GHC{amount.toFixed(2)}</strong> and is <strong>non-refundable</strong>. 
                   Ensure all details are correct before submitting.
                 </p>
               </div>

@@ -114,7 +114,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
         if (price < basePrice) {
           toast({
             title: "Invalid Price",
-            description: `Subagent price cannot be below your cost price (GH₵ ${basePrice.toFixed(2)})`,
+            description: `Subagent price cannot be below your cost price (GHC ${basePrice.toFixed(2)})`,
             variant: "destructive"
           });
           setSavingPrices(false);
@@ -237,7 +237,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                   return (
                     <TableRow key={pkg.id}>
                       <TableCell className="font-display font-bold">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
-                      <TableCell className="text-muted-foreground">GH₵ {Number(basePrice).toFixed(2)}</TableCell>
+                      <TableCell className="text-muted-foreground">GHC {Number(basePrice).toFixed(2)}</TableCell>
                       <TableCell>
                         <Input
                           type="number"
@@ -249,7 +249,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                         />
                       </TableCell>
                       <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
-                        GH₵ {profit.toFixed(2)}
+                        GHC {profit.toFixed(2)}
                       </TableCell>
                     </TableRow>
                   );

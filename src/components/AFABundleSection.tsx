@@ -180,7 +180,7 @@ export default function AFABundleSection({
                 Register for {selectedPackage.name}
               </CardTitle>
               <CardDescription>
-                Registration Fee: <span className="font-bold text-blue-600">GH₵{agentBundlePrice.toFixed(2)}</span>
+                Registration Fee: <span className="font-bold text-blue-600">GHC{agentBundlePrice.toFixed(2)}</span>
               </CardDescription>
             </CardHeader>
             <CardContent>

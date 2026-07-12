@@ -227,7 +227,7 @@ export default function AdminAFABundleRegistrations() {
                     <TableCell>{reg.region}</TableCell>
                     <TableCell>{reg.crop}</TableCell>
                     <TableCell className="text-sm">{reg.store_name}</TableCell>
-                    <TableCell>GH₵{reg.amount_paid?.toFixed(2) || '0.00'}</TableCell>
+                    <TableCell>GHC{reg.amount_paid?.toFixed(2) || '0.00'}</TableCell>
                     <TableCell>{getStatusBadge(reg.registration_status)}</TableCell>
                     <TableCell>
                       {reg.registration_status === 'failed' ? (
@@ -307,7 +307,7 @@ export default function AdminAFABundleRegistrations() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              GH₵{filteredRegistrations.reduce((sum, r) => sum + (r.amount_paid || 0), 0).toFixed(2)}
+              GHC{filteredRegistrations.reduce((sum, r) => sum + (r.amount_paid || 0), 0).toFixed(2)}
             </div>
           </CardContent>
         </Card>

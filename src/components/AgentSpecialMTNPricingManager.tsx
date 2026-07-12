@@ -125,7 +125,7 @@ export default function AgentSpecialMTNPricingManager() {
     if (tier1Price < adminBasePrices.tier1) {
       toast({
         title: 'Price Too Low',
-        description: `Tier 1 price cannot be below admin base (GH₵ ${adminBasePrices.tier1.toFixed(2)})`,
+        description: `Tier 1 price cannot be below admin base (GHC ${adminBasePrices.tier1.toFixed(2)})`,
         variant: 'destructive',
       });
       return;
@@ -133,7 +133,7 @@ export default function AgentSpecialMTNPricingManager() {
     if (tier2Price < adminBasePrices.tier2) {
       toast({
         title: 'Price Too Low',
-        description: `Tier 2 price cannot be below admin base (GH₵ ${adminBasePrices.tier2.toFixed(2)})`,
+        description: `Tier 2 price cannot be below admin base (GHC ${adminBasePrices.tier2.toFixed(2)})`,
         variant: 'destructive',
       });
       return;
@@ -141,7 +141,7 @@ export default function AgentSpecialMTNPricingManager() {
     if (tier3Price < adminBasePrices.tier3) {
       toast({
         title: 'Price Too Low',
-        description: `Tier 3 price cannot be below admin base (GH₵ ${adminBasePrices.tier3.toFixed(2)})`,
+        description: `Tier 3 price cannot be below admin base (GHC ${adminBasePrices.tier3.toFixed(2)})`,
         variant: 'destructive',
       });
       return;
@@ -149,7 +149,7 @@ export default function AgentSpecialMTNPricingManager() {
     if (tier4Price < adminBasePrices.tier4) {
       toast({
         title: 'Price Too Low',
-        description: `Tier 4 price cannot be below admin base (GH₵ ${adminBasePrices.tier4.toFixed(2)})`,
+        description: `Tier 4 price cannot be below admin base (GHC ${adminBasePrices.tier4.toFixed(2)})`,
         variant: 'destructive',
       });
       return;
@@ -233,7 +233,7 @@ export default function AgentSpecialMTNPricingManager() {
               <p className="text-xs text-muted-foreground">Admin base: GHS {adminBasePrices.tier1.toFixed(2)}</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Your Price (GH₵)</Label>
+              <Label className="text-xs">Your Price (GHC)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -242,7 +242,7 @@ export default function AgentSpecialMTNPricingManager() {
                 className={parseFloat(agentPricing.tier1_price) < adminBasePrices.tier1 ? 'border-red-500' : ''}
               />
               {parseFloat(agentPricing.tier1_price) < adminBasePrices.tier1 && (
-                <p className="text-xs text-red-500">Minimum price: GH₵ {adminBasePrices.tier1.toFixed(2)}</p>
+                <p className="text-xs text-red-500">Minimum price: GHC {adminBasePrices.tier1.toFixed(2)}</p>
               )}
             </div>
           </div>
@@ -254,7 +254,7 @@ export default function AgentSpecialMTNPricingManager() {
               <p className="text-xs text-muted-foreground">Admin base: GHS {adminBasePrices.tier2.toFixed(2)}</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Your Price (GH₵)</Label>
+              <Label className="text-xs">Your Price (GHC)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -263,7 +263,7 @@ export default function AgentSpecialMTNPricingManager() {
                 className={parseFloat(agentPricing.tier2_price) < adminBasePrices.tier2 ? 'border-red-500' : ''}
               />
               {parseFloat(agentPricing.tier2_price) < adminBasePrices.tier2 && (
-                <p className="text-xs text-red-500">Minimum price: GH₵ {adminBasePrices.tier2.toFixed(2)}</p>
+                <p className="text-xs text-red-500">Minimum price: GHC {adminBasePrices.tier2.toFixed(2)}</p>
               )}
             </div>
           </div>
@@ -275,7 +275,7 @@ export default function AgentSpecialMTNPricingManager() {
               <p className="text-xs text-muted-foreground">Admin base: GHS {adminBasePrices.tier3.toFixed(2)}</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Your Price (GH₵)</Label>
+              <Label className="text-xs">Your Price (GHC)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -284,7 +284,7 @@ export default function AgentSpecialMTNPricingManager() {
                 className={parseFloat(agentPricing.tier3_price) < adminBasePrices.tier3 ? 'border-red-500' : ''}
               />
               {parseFloat(agentPricing.tier3_price) < adminBasePrices.tier3 && (
-                <p className="text-xs text-red-500">Minimum price: GH₵ {adminBasePrices.tier3.toFixed(2)}</p>
+                <p className="text-xs text-red-500">Minimum price: GHC {adminBasePrices.tier3.toFixed(2)}</p>
               )}
             </div>
           </div>
@@ -296,7 +296,7 @@ export default function AgentSpecialMTNPricingManager() {
               <p className="text-xs text-muted-foreground">Admin base: GHS {adminBasePrices.tier4.toFixed(2)}</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Your Price (GH₵)</Label>
+              <Label className="text-xs">Your Price (GHC)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -305,7 +305,7 @@ export default function AgentSpecialMTNPricingManager() {
                 className={parseFloat(agentPricing.tier4_price) < adminBasePrices.tier4 ? 'border-red-500' : ''}
               />
               {parseFloat(agentPricing.tier4_price) < adminBasePrices.tier4 && (
-                <p className="text-xs text-red-500">Minimum price: GH₵ {adminBasePrices.tier4.toFixed(2)}</p>
+                <p className="text-xs text-red-500">Minimum price: GHC {adminBasePrices.tier4.toFixed(2)}</p>
               )}
             </div>
           </div>

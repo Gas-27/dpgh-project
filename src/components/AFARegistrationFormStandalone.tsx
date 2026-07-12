@@ -257,7 +257,7 @@ export default function AFARegistrationFormStandalone({
               <div className="space-y-2">
                 <p className="font-semibold text-blue-900">Important Notice</p>
                 <p className="text-sm text-blue-800">
-                  Registration fee is <strong>GH₵{registrationFee.toFixed(2)}</strong> and is <strong>non-refundable</strong>. 
+                  Registration fee is <strong>GHC{registrationFee.toFixed(2)}</strong> and is <strong>non-refundable</strong>. 
                   Ensure all details are correct before submitting.
                 </p>
               </div>
@@ -416,7 +416,7 @@ export default function AFARegistrationFormStandalone({
           {/* Submit Button */}
           <Button type="submit" className="w-full" disabled={loading} size="lg">
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {loading ? 'Submitting...' : `Register (GH₵${registrationFee.toFixed(2)})`}
+            {loading ? 'Submitting...' : `Register (GHC${registrationFee.toFixed(2)})`}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">

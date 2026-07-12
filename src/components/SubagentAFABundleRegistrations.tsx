@@ -115,7 +115,7 @@ export default function SubagentAFABundleRegistrations({
       reg.occupation,
       reg.region,
       reg.crop,
-      `GH₵${reg.amount_paid.toFixed(2)}`,
+      `GHC${reg.amount_paid.toFixed(2)}`,
       reg.registration_status,
     ]);
 
@@ -186,7 +186,7 @@ export default function SubagentAFABundleRegistrations({
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold" style={{ color: primaryColor }}>
-              GH₵{totalRevenue.toFixed(2)}
+              GHC{totalRevenue.toFixed(2)}
             </div>
           </CardContent>
         </Card>
@@ -244,7 +244,7 @@ export default function SubagentAFABundleRegistrations({
                       <TableCell className="text-sm font-medium">{reg.customer_name}</TableCell>
                       <TableCell className="text-sm">{reg.customer_phone}</TableCell>
                       <TableCell className="text-sm">{reg.region}</TableCell>
-                      <TableCell className="text-sm font-medium">GH₵{reg.amount_paid.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm font-medium">GHC{reg.amount_paid.toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge
                           variant={reg.registration_status === 'completed' ? 'default' : reg.registration_status === 'pending' ? 'secondary' : 'destructive'}
@@ -322,7 +322,7 @@ export default function SubagentAFABundleRegistrations({
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Amount Paid</p>
-                  <p className="font-bold text-lg">GH₵{selectedRegistration.amount_paid.toFixed(2)}</p>
+                  <p className="font-bold text-lg">GHC{selectedRegistration.amount_paid.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Status</p>

@@ -1585,7 +1585,7 @@ const AdminDashboard = () => {
     setAgents((prev) => prev.map((a) => a.id === topupAgent.id ? { ...a, wallet_balance: newBalance } : a));
     setTopupAgent({ ...topupAgent, wallet_balance: newBalance });
     setTopupAmount("");
-    toast({ title: "Wallet credited!", description: `GH₵ ${Number(amount || 0).toFixed(2)} added to ${topupAgent.store_name}` });
+    toast({ title: "Wallet credited!", description: `GHC ${Number(amount || 0).toFixed(2)} added to ${topupAgent.store_name}` });
     setTopupLoading(false);
   };
 
@@ -1676,7 +1676,7 @@ const AdminDashboard = () => {
         setSubagents((prev) => prev.map((s) => s.id === withdrawalData.sub_subagent_store_id ? { ...s, wallet_balance: newBalance } : s));
         setWithdrawals((prev) => prev.map((w) => w.id === withdrawalId ? { ...w, status: "completed", processed_at: new Date().toISOString() } : w));
         
-        toast({ title: "Withdrawal processed!", description: `GH₵ ${Number(amount || 0).toFixed(2)} deducted from SubSubagent wallet. New balance: GH₵ ${Number(newBalance || 0).toFixed(2)}.` });
+        toast({ title: "Withdrawal processed!", description: `GHC ${Number(amount || 0).toFixed(2)} deducted from SubSubagent wallet. New balance: GHC ${Number(newBalance || 0).toFixed(2)}.` });
       } else if (isSubagentWithdrawal) {
         // SUBAGENT WITHDRAWAL - fetch fresh balance from database first
         const { data: freshSubagent, error: fetchError } = await supabase
@@ -1697,7 +1697,7 @@ const AdminDashboard = () => {
         setSubagents((prev) => prev.map((s) => s.id === withdrawalData.subagent_store_id ? { ...s, wallet_balance: newBalance } : s));
         setWithdrawals((prev) => prev.map((w) => w.id === withdrawalId ? { ...w, status: "completed", processed_at: new Date().toISOString() } : w));
         
-        toast({ title: "Withdrawal processed!", description: `GH₵ ${Number(amount || 0).toFixed(2)} deducted from Subagent wallet. New balance: GH₵ ${Number(newBalance || 0).toFixed(2)}.` });
+        toast({ title: "Withdrawal processed!", description: `GHC ${Number(amount || 0).toFixed(2)} deducted from Subagent wallet. New balance: GHC ${Number(newBalance || 0).toFixed(2)}.` });
       } else {
         // AGENT WITHDRAWAL - fetch fresh balance from database first
         const { data: freshAgent, error: fetchError } = await supabase
@@ -1724,7 +1724,7 @@ const AdminDashboard = () => {
         setWithdrawals((prev) => prev.map((w) => w.id === withdrawalId ? { ...w, status: "completed", processed_at: new Date().toISOString() } : w));
         
         const sourceLabel = isSubagentProfit ? "Subagent Profit" : "Wallet";
-        toast({ title: "Withdrawal processed!", description: `GH₵ ${Number(amount || 0).toFixed(2)} deducted from ${sourceLabel}. New balance: GH₵ ${Number(newBalance || 0).toFixed(2)}.` });
+        toast({ title: "Withdrawal processed!", description: `GHC ${Number(amount || 0).toFixed(2)} deducted from ${sourceLabel}. New balance: GHC ${Number(newBalance || 0).toFixed(2)}.` });
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -1856,7 +1856,7 @@ const AdminDashboard = () => {
               </div>
               <Card className="border-border">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Size</TableHead><TableHead>User Price (GH₵)</TableHead><TableHead>Agent Price (GH₵)</TableHead><TableHead>API Price (GH₵)</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Size</TableHead><TableHead>User Price (GHC)</TableHead><TableHead>Agent Price (GHC)</TableHead><TableHead>API Price (GHC)</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {filteredPackages.map((pkg) => (
                       <TableRow key={pkg.id}>
@@ -2010,7 +2010,7 @@ const AdminDashboard = () => {
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
-                                <TableCell>GH₵ {Number(order.amount || 0).toFixed(2)}</TableCell>
+                                <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                                 <TableCell>
                                   <Badge 
                                     variant="outline" 
@@ -2138,8 +2138,8 @@ const AdminDashboard = () => {
                               <p className="text-sm text-muted-foreground">WhatsApp: {agent.whatsapp_number}</p>
                               <p className="text-sm text-muted-foreground">Support: {agent.support_number}</p>
                               <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} • {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
-                              <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GH₵ {Number(agent.wallet_balance || 0).toFixed(2)}</span></p>
-                              <p className="text-xs text-muted-foreground">Subagent Profit: <span className="font-bold text-purple-400">GH₵ {Number(agent.subagent_commission_balance || 0).toFixed(2)}</span></p>
+                              <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GHC {Number(agent.wallet_balance || 0).toFixed(2)}</span></p>
+                              <p className="text-xs text-muted-foreground">Subagent Profit: <span className="font-bold text-purple-400">GHC {Number(agent.subagent_commission_balance || 0).toFixed(2)}</span></p>
                               {agent.approved && <a href={DOMAINS.getAgentStoreUrl(agent.store_name)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</a>}
                             </div>
                             <div className="flex flex-col gap-2">
@@ -2265,7 +2265,7 @@ const AdminDashboard = () => {
                               </div>
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Wallet Balance</p>
-                                <p className="font-bold text-yellow-400">GH₵ {Number(subagent.wallet_balance || 0).toFixed(2)}</p>
+                                <p className="font-bold text-yellow-400">GHC {Number(subagent.wallet_balance || 0).toFixed(2)}</p>
                               </div>
                             </div>
                           </div>
@@ -2416,7 +2416,7 @@ const AdminDashboard = () => {
                               </div>
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Wallet Balance</p>
-                                <p className="font-bold text-yellow-400">GH₵ {Number(subSubagent.wallet_balance || 0).toFixed(2)}</p>
+                                <p className="font-bold text-yellow-400">GHC {Number(subSubagent.wallet_balance || 0).toFixed(2)}</p>
                               </div>
                             </div>
                           </div>
@@ -2478,10 +2478,10 @@ const AdminDashboard = () => {
                         <div><p className="text-muted-foreground">Store</p><p className="font-bold text-foreground">{topupAgent.store_name}</p></div>
                         <div><p className="text-muted-foreground">Reference</p><p className="font-bold text-primary">{topupAgent.topup_reference}</p></div>
                         <div><p className="text-muted-foreground">MoMo</p><p className="font-bold text-foreground">{topupAgent.momo_name}</p></div>
-                        <div><p className="text-muted-foreground">Balance</p><p className="font-bold text-green-400">GH₵ {Number(topupAgent.wallet_balance || 0).toFixed(2)}</p></div>
+                        <div><p className="text-muted-foreground">Balance</p><p className="font-bold text-green-400">GHC {Number(topupAgent.wallet_balance || 0).toFixed(2)}</p></div>
                       </div>
                       <div className="flex gap-2 items-end">
-                        <div className="flex-1 space-y-1"><Label>Amount to Credit (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 50.00" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} /></div>
+                        <div className="flex-1 space-y-1"><Label>Amount to Credit (GHC)</Label><Input type="number" step="0.01" placeholder="e.g. 50.00" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} /></div>
                         <Button variant="hero" onClick={creditWallet} disabled={topupLoading}>{topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Wallet className="h-4 w-4 mr-1" />} Credit</Button>
                       </div>
                     </div>
@@ -2539,8 +2539,8 @@ const AdminDashboard = () => {
                                 <TableCell className="font-medium">{t.agent_stores?.store_name ?? "—"}</TableCell>
                                 <TableCell className="text-primary">{t.agent_stores?.topup_reference ?? "—"}</TableCell>
                                 <TableCell>{t.agent_stores?.momo_name ?? "—"}</TableCell>
-                                <TableCell>GH₵ {Number(t.amount || 0).toFixed(2)}</TableCell>
-                                <TableCell>GH₵ {(t.agent_stores?.wallet_balance ? Number(t.agent_stores.wallet_balance || 0).toFixed(2) : "—")}</TableCell>
+                                <TableCell>GHC {Number(t.amount || 0).toFixed(2)}</TableCell>
+                                <TableCell>GHC {(t.agent_stores?.wallet_balance ? Number(t.agent_stores.wallet_balance || 0).toFixed(2) : "—")}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -2630,8 +2630,8 @@ const AdminDashboard = () => {
                                     </Badge>
                                   </TableCell>
                                   <TableCell><Badge className={isSubagentProfit ? "bg-purple-600/20 text-purple-400 border-purple-600/30" : "bg-blue-600/20 text-blue-400 border-blue-600/30"}>{isSubagentProfit ? "Subagent Profit" : "Wallet"}</Badge></TableCell>
-                                  <TableCell className="font-display font-bold text-primary">GH₵ {Number(w.amount || 0).toFixed(2)}</TableCell>
-                                  <TableCell className="font-bold text-green-400">GH₵ {Number(walletBalance || 0).toFixed(2)}</TableCell>
+                                  <TableCell className="font-display font-bold text-primary">GHC {Number(w.amount || 0).toFixed(2)}</TableCell>
+                                  <TableCell className="font-bold text-green-400">GHC {Number(walletBalance || 0).toFixed(2)}</TableCell>
                                   <TableCell>{momoName || "—"}</TableCell>
                                   <TableCell className="font-mono">{momoNumber || "—"}</TableCell>
                                   <TableCell className="uppercase text-sm">{momoNetwork || "—"}</TableCell>
@@ -2819,7 +2819,7 @@ const AdminDashboard = () => {
                               </div>
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Total Spent</p>
-                                <p className="font-bold text-green-400">GH₵ {Number(customer.total_purchases || 0).toFixed(2)}</p>
+                                <p className="font-bold text-green-400">GHC {Number(customer.total_purchases || 0).toFixed(2)}</p>
                               </div>
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Member Since</p>
@@ -3250,7 +3250,7 @@ const AdminDashboard = () => {
                       </div>
                       <div className="flex gap-4 items-end">
                         <div className="flex-1 space-y-2">
-                          <Label>Fee Amount (GH₵)</Label>
+                          <Label>Fee Amount (GHC)</Label>
                           <Input 
                             type="number" 
                             min="0" 
@@ -3264,7 +3264,7 @@ const AdminDashboard = () => {
                           Save
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Current fee: GH₵{Number(agentRegistrationFee || 0).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">Current fee: GHC{Number(agentRegistrationFee || 0).toFixed(2)}</p>
                     </div>
 
                     {/* AFA Registration Fee section removed - moved to dedicated AFA tab */}
@@ -3372,7 +3372,7 @@ const AdminDashboard = () => {
                       </div>
                       <div className="space-y-3">
                         <div className="space-y-2">
-                          <Label className="text-xs">User Price (GH₵)</Label>
+                          <Label className="text-xs">User Price (GHC)</Label>
                           <Input 
                             type="number" 
                             step="0.01"
@@ -3382,7 +3382,7 @@ const AdminDashboard = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs">Agent Base Price (GH₵)</Label>
+                          <Label className="text-xs">Agent Base Price (GHC)</Label>
                           <Input 
                             type="number" 
                             step="0.01"
@@ -3405,7 +3405,7 @@ const AdminDashboard = () => {
                       </div>
                       <div className="space-y-3">
                         <div className="space-y-2">
-                          <Label className="text-xs">User Price (GH₵)</Label>
+                          <Label className="text-xs">User Price (GHC)</Label>
                           <Input 
                             type="number" 
                             step="0.01"
@@ -3415,7 +3415,7 @@ const AdminDashboard = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs">Agent Base Price (GH₵)</Label>
+                          <Label className="text-xs">Agent Base Price (GHC)</Label>
                           <Input 
                             type="number" 
                             step="0.01"
@@ -3438,7 +3438,7 @@ const AdminDashboard = () => {
                       </div>
                       <div className="space-y-3">
                         <div className="space-y-2">
-                          <Label className="text-xs">User Price (GH₵)</Label>
+                          <Label className="text-xs">User Price (GHC)</Label>
                           <Input 
                             type="number" 
                             step="0.01"
@@ -3448,7 +3448,7 @@ const AdminDashboard = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs">Agent Base Price (GH₵)</Label>
+                          <Label className="text-xs">Agent Base Price (GHC)</Label>
                           <Input 
                             type="number" 
                             step="0.01"
@@ -3471,7 +3471,7 @@ const AdminDashboard = () => {
                       </div>
                       <div className="space-y-3">
                         <div className="space-y-2">
-                          <Label className="text-xs">User Price (GH₵)</Label>
+                          <Label className="text-xs">User Price (GHC)</Label>
                           <Input 
                             type="number" 
                             step="0.01"
@@ -3481,7 +3481,7 @@ const AdminDashboard = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs">Agent Base Price (GH₵)</Label>
+                          <Label className="text-xs">Agent Base Price (GHC)</Label>
                           <Input 
                             type="number" 
                             step="0.01"
@@ -3514,9 +3514,9 @@ const AdminDashboard = () => {
           <div className="space-y-4 pt-2">
             <div className="space-y-2"><Label>Network</Label><Select value={newPkg.network} onValueChange={(v) => setNewPkg((p) => ({ ...p, network: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="mtn">MTN</SelectItem><SelectItem value="airteltigo">AirtelTigo</SelectItem><SelectItem value="telecel">Telecel</SelectItem></SelectContent></Select></div>
             <div className="space-y-2"><Label>Size (GB)</Label><Input type="number" placeholder="e.g. 5" value={newPkg.size_gb} onChange={(e) => setNewPkg((p) => ({ ...p, size_gb: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>User Price (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 15.00" value={newPkg.price} onChange={(e) => setNewPkg((p) => ({ ...p, price: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Agent Price (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 12.00" value={newPkg.agent_price} onChange={(e) => setNewPkg((p) => ({ ...p, agent_price: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>API Price (GH₵)</Label><Input type="number" step="0.01" placeholder="e.g. 10.00" value={newPkg.api_price} onChange={(e) => setNewPkg((p) => ({ ...p, api_price: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>User Price (GHC)</Label><Input type="number" step="0.01" placeholder="e.g. 15.00" value={newPkg.price} onChange={(e) => setNewPkg((p) => ({ ...p, price: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Agent Price (GHC)</Label><Input type="number" step="0.01" placeholder="e.g. 12.00" value={newPkg.agent_price} onChange={(e) => setNewPkg((p) => ({ ...p, agent_price: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>API Price (GHC)</Label><Input type="number" step="0.01" placeholder="e.g. 10.00" value={newPkg.api_price} onChange={(e) => setNewPkg((p) => ({ ...p, api_price: e.target.value }))} /></div>
             <Button variant="hero" className="w-full" onClick={addPackage}><Plus className="h-4 w-4 mr-1" /> Add Package</Button>
           </div>
         </DialogContent>
@@ -3565,8 +3565,8 @@ const AdminDashboard = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Size</TableHead>
-                    <TableHead>Default Price (GH₵)</TableHead>
-                    <TableHead>Custom Price (GH₵)</TableHead>
+                    <TableHead>Default Price (GHC)</TableHead>
+                    <TableHead>Custom Price (GHC)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -3580,7 +3580,7 @@ const AdminDashboard = () => {
                     .map((pkg) => (
                       <TableRow key={pkg.id}>
                         <TableCell className="font-display font-bold">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
-                        <TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">GHC {Number(pkg.agent_price || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <Input
                             type="number"

@@ -37,12 +37,12 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   // AFA Program
   {
     questions: ["afa", "what is afa"],
-    answer: "AFA is an affordable data program. You don't need to be a farmer. Registration fee: GH₵15. Approval: 24-72 hours. Check status: Dial *1848#",
+    answer: "AFA is an affordable data program. You don't need to be a farmer. Registration fee: GHC15. Approval: 24-72 hours. Check status: Dial *1848#",
     category: "afa"
   },
   {
     questions: ["afa register", "register afa"],
-    answer: "1. Click AFA Bundles\n2. Click Register\n3. Fill form\n4. Pay GH₵15\n5. Wait 24-72 hours\n6. Get SMS approval\n7. Start using AFA",
+    answer: "1. Click AFA Bundles\n2. Click Register\n3. Fill form\n4. Pay GHC15\n5. Wait 24-72 hours\n6. Get SMS approval\n7. Start using AFA",
     category: "afa"
   },
   {
@@ -64,7 +64,7 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   },
   {
     questions: ["agent commission", "how much earn"],
-    answer: "You set prices and keep profit!\nExample: We give 1GB for GH₵3.90, you sell for GH₵4.90 = GH₵1 profit.\n\nCommission tiers:\n- Starter: 5%\n- Regular: 7.5%\n- Elite: 10%",
+    answer: "You set prices and keep profit!\nExample: We give 1GB for GHC3.90, you sell for GHC4.90 = GHC1 profit.\n\nCommission tiers:\n- Starter: 5%\n- Regular: 7.5%\n- Elite: 10%",
     category: "agent"
   },
   {
@@ -95,12 +95,12 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   // Payments & Withdrawals
   {
     questions: ["withdraw", "cash out", "get money"],
-    answer: "To withdraw:\n1. Go to Withdrawals\n2. Enter amount (minimum GH₵15)\n3. Choose method (Mobile Money, Bank, Wallet)\n4. Add recipient\n5. Confirm\n6. Money arrives in <2 minutes",
+    answer: "To withdraw:\n1. Go to Withdrawals\n2. Enter amount (minimum GHC15)\n3. Choose method (Mobile Money, Bank, Wallet)\n4. Add recipient\n5. Confirm\n6. Money arrives in <2 minutes",
     category: "withdrawal"
   },
   {
     questions: ["minimum withdraw", "min amount"],
-    answer: "Minimum withdrawal: GH₵15. You can withdraw anytime, no maximum limit.",
+    answer: "Minimum withdrawal: GHC15. You can withdraw anytime, no maximum limit.",
     category: "withdrawal"
   },
   {

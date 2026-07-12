@@ -155,7 +155,7 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
     if (agentBundlePrice < minimumPrice) {
       toast({
         title: "Price too low",
-        description: `AFA registration price must be at least GH₵${minimumPrice.toFixed(2)}`,
+        description: `AFA registration price must be at least GHC${minimumPrice.toFixed(2)}`,
         variant: "destructive",
       });
       return;
@@ -186,7 +186,7 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
 
       toast({
         title: "Success",
-        description: `AFA registration price updated to GH₵${agentBundlePrice.toFixed(2)}`,
+        description: `AFA registration price updated to GHC${agentBundlePrice.toFixed(2)}`,
       });
 
       // Notify parent component to refresh data
@@ -244,17 +244,17 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
             AFA Bundle Registration Price
           </CardTitle>
           <CardDescription>
-            Set the price customers must pay to register for AFA. Minimum price set by admin: GH₵{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '14.00'}
+            Set the price customers must pay to register for AFA. Minimum price set by admin: GHC{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '14.00'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-sm font-medium">Admin Minimum Price</Label>
-              <div className="text-2xl font-bold text-green-600 mt-2">GH₵{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '14.00'}</div>
+              <div className="text-2xl font-bold text-green-600 mt-2">GHC{minBundlePrice !== null ? minBundlePrice.toFixed(2) : '14.00'}</div>
             </div>
             <div>
-              <Label htmlFor="bundlePrice" className="text-sm font-medium">Your Asking Price (GH₵)</Label>
+              <Label htmlFor="bundlePrice" className="text-sm font-medium">Your Asking Price (GHC)</Label>
               <Input
                 id="bundlePrice"
                 type="number"
@@ -285,7 +285,7 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
           </div>
           {agentBundlePrice > 0 && agentBundlePrice >= (minBundlePrice !== null ? minBundlePrice : 14) && (
             <div className="text-sm text-green-700 bg-green-50 p-3 rounded">
-              Your customers will pay GH₵{agentBundlePrice.toFixed(2)} to register for AFA
+              Your customers will pay GHC{agentBundlePrice.toFixed(2)} to register for AFA
             </div>
           )}
         </CardContent>

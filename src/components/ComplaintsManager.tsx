@@ -334,7 +334,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
                         {complaint.orders && (
                           <div className="space-y-1">
                             <p>{complaint.orders.network} - {complaint.orders.size_gb}GB</p>
-                            <p>GH₵{complaint.orders.amount}</p>
+                            <p>GHC{complaint.orders.amount}</p>
                             <p className="text-muted-foreground">{complaint.orders.fulfillment_status}</p>
                             <p className="text-muted-foreground text-xs">Order: {new Date(complaint.orders.created_at).toLocaleString()}</p>
                           </div>

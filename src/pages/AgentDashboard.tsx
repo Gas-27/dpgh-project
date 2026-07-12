@@ -191,7 +191,7 @@ Sharing:
   {
     icon: "i", title: "Withdraw", content: `Cash out your wallet balance to your MoMo account.
 
-• Minimum: GH₵ 10.00.
+• Minimum: GHC 10.00.
 • Processed within 24 hours.
 • Only one pending withdrawal at a time.
 • Your MoMo details are shown for confirmation before submitting.
@@ -243,11 +243,11 @@ Subagent Profit Split:
 • Their profit = Their Selling Price - Your Base Price for them.
 
 Example:
-• Your cost (agent price): GH₵ 4.00
-• Base price for subagents: GH₵ 4.30
-• Subagent sells at: GH₵ 4.50
-• Subagent profit: GH₵ 0.20
-• Your commission (10%): GH₵ 0.02` },
+• Your cost (agent price): GHC 4.00
+• Base price for subagents: GHC 4.30
+• Subagent sells at: GHC 4.50
+• Subagent profit: GHC 0.20
+• Your commission (10%): GHC 0.02` },
   {
     icon: "i", title: "Notifications", content: `Send pop-up announcements that appear on your public store page.
 
@@ -1213,7 +1213,7 @@ const AgentDashboard = () => {
       const ap = Number(buyPkg.agent_price);
       const balanceAfterBuy = Number(store.wallet_balance) - ap;
       if (balanceAfterBuy < pendingWithdrawalAmount) {
-        toast({ title: "Purchase blocked", description: `Pending withdrawal of GH₵ ${pendingWithdrawalAmount.toFixed(2)} would leave balance too low.`, variant: "destructive" });
+        toast({ title: "Purchase blocked", description: `Pending withdrawal of GHC ${pendingWithdrawalAmount.toFixed(2)} would leave balance too low.`, variant: "destructive" });
         setBuyLoading(false); return;
       }
     }
@@ -1421,7 +1421,7 @@ const AgentDashboard = () => {
     if (hasPendingWithdrawal) { toast({ title: "Pending withdrawal exists", variant: "destructive" }); return; }
     
     const amt = parseFloat(withdrawAmount);
-    if (!amt || amt < 15) { toast({ title: "Minimum withdrawal is GH₵ 15.00", variant: "destructive" }); return; }
+    if (!amt || amt < 15) { toast({ title: "Minimum withdrawal is GHC 15.00", variant: "destructive" }); return; }
     
     const availableBalance = withdrawSource === "subagent_commission" 
       ? Number(store.subagent_commission_balance ?? 0) 
@@ -1522,7 +1522,7 @@ const AgentDashboard = () => {
         throw new Error(data.error || "Withdrawal failed");
       }
 
-      toast({ title: "Transfer Sent!", description: `GH₵ ${amountAfterFee.toFixed(2)} sent instantly (after 5% fee)` });
+      toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent instantly (after 5% fee)` });
       setWithdrawAmount("");
       setSelectedRecipient("");
       setCreateNewRecipient(false);
@@ -1989,17 +1989,17 @@ const AgentDashboard = () => {
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Store Status</p><Badge className="mt-2 bg-green-600/20 text-green-400 border-green-600/30">Active</Badge></CardContent></Card>
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Pending (Filtered)" : "Pending"}</p><p className="font-display text-2xl font-bold mt-1 text-primary">{pendingOrders}</p></CardContent></Card>
-              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GH₵ {filteredProfitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
+              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {filteredProfitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div className="flex-1"><p className="text-sm text-muted-foreground">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GH₵ {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p><details className="mt-2 cursor-pointer group"><summary className="text-xs text-green-300 font-semibold hover:text-green-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-green-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-green-500/10 border border-green-500/30 rounded text-xs space-y-1"><div className="text-muted-foreground text-xs leading-relaxed"><p><strong>Total Profit</strong></p><p className="mt-1">This is a display of your profit from store sales and PROFIT FROM subagent. This money is already part of your wallet balance and you can spend or withdraw it anytime.</p></div></div></details></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
+              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div className="flex-1"><p className="text-sm text-muted-foreground">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GHC {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p><details className="mt-2 cursor-pointer group"><summary className="text-xs text-green-300 font-semibold hover:text-green-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-green-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-green-500/10 border border-green-500/30 rounded text-xs space-y-1"><div className="text-muted-foreground text-xs leading-relaxed"><p><strong>Total Profit</strong></p><p className="mt-1">This is a display of your profit from store sales and PROFIT FROM subagent. This money is already part of your wallet balance and you can spend or withdraw it anytime.</p></div></div></details></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
               <Card className="border-yellow-500/30 bg-yellow-500/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <p className="text-sm text-muted-foreground">My Wallet</p>
-                      <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
-                      {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
+                      <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GHC {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
+                      {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GHC {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
                       <details className="mt-3 cursor-pointer group">
                         <summary className="text-xs text-yellow-300 font-semibold hover:text-yellow-200 transition-colors flex items-center gap-2 p-2 rounded hover:bg-yellow-500/10">
                           <span>How is my wallet calculated?</span>
@@ -2023,7 +2023,7 @@ const AgentDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Profit from Subagents</p><p className="font-display text-2xl font-bold text-primary mt-1">GH₵ {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Withdraw separately in Wallet tab</p></div><Users className="h-8 w-8 text-primary opacity-50" /></div></CardContent></Card>
+              <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Profit from Subagents</p><p className="font-display text-2xl font-bold text-primary mt-1">GHC {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Withdraw separately in Wallet tab</p></div><Users className="h-8 w-8 text-primary opacity-50" /></div></CardContent></Card>
             </div>
             
             {/* USSD Access Code Card */}
@@ -2101,7 +2101,7 @@ const AgentDashboard = () => {
                         const isAPIOrder = (order as any).source === "api";
                         const paymentMethodDisplay = isAPIOrder ? "API Wallet" : (order.payment_method === "wallet" ? "Wallet" : "Paystack");
                         
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GH₵ {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GH₵ {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">Subagent</Badge> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell className="capitalize text-sm"><Badge variant="outline" className="text-xs">{getOrderStage(order)}</Badge></TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">Subagent</Badge> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell className="capitalize text-sm"><Badge variant="outline" className="text-xs">{getOrderStage(order)}</Badge></TableCell><TableCell><Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
                     {/* Load More Button */}
                     {currentPage * ordersPerPage < filteredOrders.length && (
                       <div className="flex items-center justify-center mt-6">
@@ -2122,7 +2122,7 @@ const AgentDashboard = () => {
           {/* ============================= BUY DATA ============================= */}
           <TabsContent value="buy" className="space-y-4 mt-0">
             {store && (<Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
-              <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GH₵ {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GH₵ {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
+              <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
             <div className="flex gap-2 flex-wrap">
               {["mtn", "airteltigo", "telecel"].map(net => (
@@ -2159,7 +2159,7 @@ const AgentDashboard = () => {
                     )}
                     <CardContent>
                       <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                      <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
                       {wouldUnderflow && !isInactive ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}
                       <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow || isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
@@ -2199,7 +2199,7 @@ const AgentDashboard = () => {
             </div>
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
             <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
-              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = cur - pkg.agent_price; const isInactive = pkg.active === false; return (<TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}><TableCell className="font-display font-bold">{pkg.size_gb_text || pkg.size_gb + "GB"}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell><TableCell className="text-muted-foreground">GH₵ {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GH₵ {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
+              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = cur - pkg.agent_price; const isInactive = pkg.active === false; return (<TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}><TableCell className="font-display font-bold">{pkg.size_gb_text || pkg.size_gb + "GB"}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell><TableCell className="text-muted-foreground">GHC {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GHC {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
           </TabsContent>
 
           {/* ============================= FLYER GENERATOR ============================= */}
@@ -2401,7 +2401,7 @@ const AgentDashboard = () => {
                     <SelectContent>
                       <SelectItem value="none">None (use per-line sizes)</SelectItem>
                       {packages.filter(p => p.network.toLowerCase() === bulkNetwork && p.active).map(p => (
-                        <SelectItem key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {(p.agent_price ?? p.price).toFixed(2)}</SelectItem>
+                        <SelectItem key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GHC {(p.agent_price ?? p.price).toFixed(2)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -2438,11 +2438,11 @@ const AgentDashboard = () => {
                             <p className="text-xs text-muted-foreground">Total Data</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                            <p className="text-2xl font-bold text-yellow-500">GH₵ {totalCost.toFixed(2)}</p>
+                            <p className="text-2xl font-bold text-yellow-500">GHC {totalCost.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">Total Cost</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                            <p className={`text-2xl font-bold ${walletBalance >= totalCost ? "text-green-500" : "text-red-500"}`}>GH₵ {walletBalance.toFixed(2)}</p>
+                            <p className={`text-2xl font-bold ${walletBalance >= totalCost ? "text-green-500" : "text-red-500"}`}>GHC {walletBalance.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">Wallet Balance</p>
                           </div>
                         </div>
@@ -2512,7 +2512,7 @@ const AgentDashboard = () => {
                               fetchData();
                             }}
                           >
-                            {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Wallet className="h-4 w-4 mr-2" /> Pay with Wallet (GH₵ {totalCost.toFixed(2)})</>}
+                            {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Wallet className="h-4 w-4 mr-2" /> Pay with Wallet (GHC {totalCost.toFixed(2)})</>}
                           </Button>
                           <Button variant="outline" onClick={() => { setBulkRecipients(""); setBulkResults([]); setBulkGlobalSize(null); }}>
                             <RotateCcw className="h-4 w-4 mr-2" /> Clear
@@ -2588,7 +2588,7 @@ const AgentDashboard = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Amount (GH₵)</Label>
+                  <Label>Amount (GHC)</Label>
                   <Input
                     type="number"
                     placeholder="Enter amount"
@@ -2615,11 +2615,11 @@ const AgentDashboard = () => {
                 <CardTitle className="font-display flex items-center gap-2">
                   <Coins className="h-5 w-5 text-yellow-400" /> Manual Top Up via MoMo
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">Transfer directly via MTN MoMo (minimum GH₵ 100)</p>
+                <p className="text-sm text-muted-foreground">Transfer directly via MTN MoMo (minimum GHC 100)</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-yellow-400">🏷️ Minimum top up amount: GH₵ 100</p>
+                  <p className="text-xs font-semibold text-yellow-400">🏷️ Minimum top up amount: GHC 100</p>
                 </div>
 
                 <div className="space-y-3 text-sm">
@@ -2637,7 +2637,7 @@ const AgentDashboard = () => {
                   </div>
                   <div className="flex gap-3">
                     <span className="font-bold text-primary flex-shrink-0">4.</span>
-                    <span>Enter the amount (minimum GH₵ 100)</span>
+                    <span>Enter the amount (minimum GHC 100)</span>
                   </div>
                   <div className="flex gap-3">
                     <span className="font-bold text-primary flex-shrink-0">5.</span>
@@ -2690,7 +2690,7 @@ const AgentDashboard = () => {
                         {topupHistory.map((t) => (
                           <TableRow key={t.id}>
                             <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
-                            <TableCell className="font-semibold text-green-400">GH₵ {Number(t.amount).toFixed(2)}</TableCell>
+                            <TableCell className="font-semibold text-green-400">GHC {Number(t.amount).toFixed(2)}</TableCell>
                             <TableCell><Badge variant={t.source === "Paystack" ? "default" : "secondary"}>{t.source}</Badge></TableCell>
                             <TableCell className="font-mono text-xs">{t.paystack_reference || "Admin credit"}</TableCell>
                           </TableRow>
@@ -2710,7 +2710,7 @@ const AgentDashboard = () => {
                 <CardContent className="p-6 text-center space-y-2">
                   <ArrowDownToLine className="h-10 w-10 text-yellow-400 mx-auto" />
 <p className="text-muted-foreground text-sm">My Wallet</p>
-  <p className="font-display text-3xl font-bold text-yellow-400">GH₵ {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
+  <p className="font-display text-3xl font-bold text-yellow-400">GHC {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
                   {withdrawSource === "wallet" && <Badge className="bg-yellow-500 text-black">Selected</Badge>}
                 </CardContent>
               </Card>
@@ -2718,7 +2718,7 @@ const AgentDashboard = () => {
                 <CardContent className="p-6 text-center space-y-2">
                   <Users className="h-10 w-10 text-primary mx-auto" />
                   <p className="text-muted-foreground text-sm">Profit from Subagents</p>
-                  <p className="font-display text-3xl font-bold text-primary">GH₵ {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p>
+                  <p className="font-display text-3xl font-bold text-primary">GHC {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p>
                   {withdrawSource === "subagent_commission" && <Badge className="bg-primary text-black">Selected</Badge>}
                 </CardContent>
               </Card>
@@ -2730,7 +2730,7 @@ const AgentDashboard = () => {
               <CardContent className="space-y-4">
                 {hasPendingWithdrawal && (
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                    <p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
+                    <p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
                   </div>
                 )}
                 
@@ -2892,7 +2892,7 @@ const AgentDashboard = () => {
                     <div className="space-y-3">
                       <div className="flex gap-2 items-end">
                         <div className="flex-1 space-y-1">
-                          <Label>Amount (GH₵)</Label>
+                          <Label>Amount (GHC)</Label>
                           <Input
                             type="number"
                             placeholder="Enter amount"
@@ -2935,15 +2935,15 @@ const AgentDashboard = () => {
                               <>
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Amount to Deduct:</span>
-                                  <span className="font-semibold">GH₵ {amount.toFixed(2)}</span>
+                                  <span className="font-semibold">GHC {amount.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Fee ({(feeRate * 100).toFixed(1)}%):</span>
-                                  <span className="font-semibold text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                                  <span className="font-semibold text-red-400">GHC {feeAmount.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between border-t border-border pt-2">
                                   <span className="text-muted-foreground">Recipient Receives:</span>
-                                  <span className="font-semibold text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                                  <span className="font-semibold text-green-400">GHC {recipientAmount.toFixed(2)}</span>
                                 </div>
                               </>
                             );
@@ -2960,8 +2960,8 @@ const AgentDashboard = () => {
                         <CollapsibleContent className="mt-3 bg-slate-800/50 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
                           <p>A small fee applies based on your withdrawal amount:</p>
                           <ul className="list-disc list-inside space-y-1">
-                            <li>Less than GH₵ 100: 5% fee</li>
-                            <li>GH₵ 100 or more: 1.5% fee</li>
+                            <li>Less than GHC 100: 5% fee</li>
+                            <li>GHC 100 or more: 1.5% fee</li>
                           </ul>
                         </CollapsibleContent>
                       </Collapsible>
@@ -2972,7 +2972,7 @@ const AgentDashboard = () => {
                         <p className="text-xs text-red-300 mt-1">Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.</p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GHC 15.00 | Processed Instantly</p>
                     </div>
                   </>
                 )}
@@ -3003,7 +3003,7 @@ const AgentDashboard = () => {
                         {withdrawals.map((w) => (
                           <TableRow key={w.id}>
                             <TableCell className="text-sm">{new Date(w.created_at).toLocaleDateString([], { year: 'numeric', month: 'numeric', day: 'numeric' })}, {new Date(w.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</TableCell>
-                            <TableCell className="font-semibold">GH₵ {Number(w.amount).toFixed(2)}</TableCell>
+                            <TableCell className="font-semibold">GHC {Number(w.amount).toFixed(2)}</TableCell>
                             <TableCell className="text-sm">
                               <div>
                                 <div className="font-medium">{w.account_holder_name || w.recipient_account_name || "Unknown"}</div>
@@ -3032,7 +3032,7 @@ const AgentDashboard = () => {
           <TabsContent value="appearance" className="mt-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-border"><CardHeader><CardTitle className="font-display">Customise Your Storefront</CardTitle></CardHeader><CardContent className="space-y-5"><div className="space-y-2"><Label>Store Headline</Label><Textarea value={storeHeadline} onChange={e => setStoreHeadline(e.target.value)} rows={2} placeholder="Get the best data deals from ..." /><Button variant="outline" size="sm" onClick={saveStoreHeadline} disabled={savingHeadline}>{savingHeadline ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Save Headline</Button></div><div className="border-t border-border pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">{[{ label: "Primary Colour", key: "primary" }, { label: "Text on Primary", key: "primary_foreground" }, { label: "Page Background", key: "background" }, { label: "Card Background", key: "card_background" }].map(({ label, key }) => (<div key={key} className="space-y-1"><Label className="text-sm">{label}</Label><div className="flex gap-2 items-center"><Input type="color" value={(themeColors as any)[key]} onChange={e => setThemeColors({ ...themeColors, [key]: e.target.value })} className="w-12 h-9 p-1 cursor-pointer" /><Input type="text" value={(themeColors as any)[key]} onChange={e => setThemeColors({ ...themeColors, [key]: e.target.value })} className="flex-1 font-mono text-sm" /></div></div>))}</div><div className="border-t border-border pt-4"><Label className="mb-2 block font-semibold flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-primary" /> Grid Layout</Label><div className="flex items-center gap-2 max-w-xs"><span className="text-sm font-semibold">1 column per row (Fixed)</span></div><p className="text-xs text-muted-foreground mt-2">Display is locked to single column for optimal mobile experience.</p></div><div className="flex gap-3 pt-2"><Button variant="hero" onClick={saveThemeColors} disabled={savingTheme} className="flex-1">{savingTheme ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Save Theme</Button><Button variant="outline" onClick={resetToDefault} className="flex-1"><RotateCcw className="h-4 w-4 mr-1" />Reset</Button></div></CardContent></Card>
-              <Card className="border-border"><CardHeader><CardTitle className="font-display text-base">Live Preview</CardTitle><p className="text-xs text-muted-foreground">This is exactly how your public store will look.</p></CardHeader><CardContent><div className="rounded-xl overflow-hidden border border-border" style={{ backgroundColor: themeColors.background, minHeight: 320 }}><div className="p-4" style={{ backgroundColor: themeColors.background }}><div className="text-center mb-3"><p className="font-bold text-sm" style={{ color: themeColors.primary }}>{store?.store_name || "Your Store Name"}</p><p className="text-xs mt-1" style={{ color: `${themeColors.primary}99` }}>{storeHeadline || "Your store headline"}</p></div><div className="grid gap-2 mt-3" style={{ gridTemplateColumns: `repeat(1, minmax(0, 1fr))` }}>{Array.from({ length: 2 }).map((_, i) => (<div key={i} className="rounded-lg p-2 text-center text-xs" style={{ backgroundColor: themeColors.card_background, border: `1px solid ${themeColors.primary}30` }}><div className="font-bold text-white text-sm">{[1, 2, 3, 4, 5, 6, 8, 10][i] || i + 1}GB</div><div className="text-xs mt-1" style={{ color: `${themeColors.primary}cc` }}>MTN</div><div className="text-xs" style={{ color: "#ccc" }}>GH₵ {(4 + i * 3).toFixed(2)}</div><div className="mt-1 rounded text-xs py-0.5 font-bold" style={{ backgroundColor: themeColors.primary, color: themeColors.primary_foreground }}>Buy</div></div>))}</div></div></div><p className="text-xs text-muted-foreground mt-2 text-center">1 column per row • Changes apply live after saving</p></CardContent></Card>
+              <Card className="border-border"><CardHeader><CardTitle className="font-display text-base">Live Preview</CardTitle><p className="text-xs text-muted-foreground">This is exactly how your public store will look.</p></CardHeader><CardContent><div className="rounded-xl overflow-hidden border border-border" style={{ backgroundColor: themeColors.background, minHeight: 320 }}><div className="p-4" style={{ backgroundColor: themeColors.background }}><div className="text-center mb-3"><p className="font-bold text-sm" style={{ color: themeColors.primary }}>{store?.store_name || "Your Store Name"}</p><p className="text-xs mt-1" style={{ color: `${themeColors.primary}99` }}>{storeHeadline || "Your store headline"}</p></div><div className="grid gap-2 mt-3" style={{ gridTemplateColumns: `repeat(1, minmax(0, 1fr))` }}>{Array.from({ length: 2 }).map((_, i) => (<div key={i} className="rounded-lg p-2 text-center text-xs" style={{ backgroundColor: themeColors.card_background, border: `1px solid ${themeColors.primary}30` }}><div className="font-bold text-white text-sm">{[1, 2, 3, 4, 5, 6, 8, 10][i] || i + 1}GB</div><div className="text-xs mt-1" style={{ color: `${themeColors.primary}cc` }}>MTN</div><div className="text-xs" style={{ color: "#ccc" }}>GHC {(4 + i * 3).toFixed(2)}</div><div className="mt-1 rounded text-xs py-0.5 font-bold" style={{ backgroundColor: themeColors.primary, color: themeColors.primary_foreground }}>Buy</div></div>))}</div></div></div><p className="text-xs text-muted-foreground mt-2 text-center">1 column per row • Changes apply live after saving</p></CardContent></Card>
             </div>
           </TabsContent>
 
@@ -3158,7 +3158,7 @@ const AgentDashboard = () => {
                         <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
                           <CardContent>
                             <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                            <p className="text-lg font-bold text-cyan-400">GH₵ {apiPrice.toFixed(2)}</p>
+                            <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">API Price</p>
                           </CardContent>
                         </Card>
@@ -3321,7 +3321,7 @@ const AgentDashboard = () => {
               <Card className="border-border">
                 <CardContent className="pt-6">
                   <p className="text-sm text-muted-foreground mb-2">Total Profit from Subagents</p>
-                  <p className="text-3xl font-bold text-green-400">GH₵{subagentProfitForAgent.toFixed(2)}</p>
+                  <p className="text-3xl font-bold text-green-400">GHC{subagentProfitForAgent.toFixed(2)}</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
@@ -3395,7 +3395,7 @@ const AgentDashboard = () => {
 
                       {store?.subagent_fee_enabled && (
                         <div className="border-t border-green-500/20 pt-4">
-                          <Label className="text-sm font-semibold mb-2 block">Fee Amount (GH₵)</Label>
+                          <Label className="text-sm font-semibold mb-2 block">Fee Amount (GHC)</Label>
                           <div className="flex gap-2">
                             <Input
                               type="number"
@@ -3416,7 +3416,7 @@ const AgentDashboard = () => {
                                     .update({ subagent_fee_amount: store?.subagent_fee_amount || 0 })
                                     .eq('id', store?.id);
                                   if (error) throw error;
-                                  toast({ title: "Fee updated", description: `Registration fee set to GH₵ ${store?.subagent_fee_amount?.toFixed(2)}` });
+                                  toast({ title: "Fee updated", description: `Registration fee set to GHC ${store?.subagent_fee_amount?.toFixed(2)}` });
                                 } catch (error) {
                                   console.error('Error updating fee:', error);
                                   toast({ title: "Error", description: "Failed to update fee", variant: "destructive" });
@@ -3612,7 +3612,7 @@ const AgentDashboard = () => {
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>
               </>
-            <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GH₵ {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠���� You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="wallet"><span className="flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet (GH�� {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span></SelectItem><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" />Paystack (+ charges)</span></SelectItem></SelectContent></Select></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
+            <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GHC {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠���� You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="wallet"><span className="flex items-center gap-2"><Wallet className="h-4 w-4" />Wallet (GH�� {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span></SelectItem><SelectItem value="paystack"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" />Paystack (+ charges)</span></SelectItem></SelectContent></Select></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
           )}
         </DialogContent>
       </Dialog>

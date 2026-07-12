@@ -68,7 +68,7 @@ export async function validateSubagentPrice(
       return {
         valid: false,
         minPrice,
-        error: `Price must be at least GH₵${minPrice.toFixed(2)} (agent's price)`,
+        error: `Price must be at least GHC${minPrice.toFixed(2)} (agent's price)`,
       };
     }
 
@@ -154,5 +154,5 @@ export function calculateProfit(
  * Format price with currency symbol
  */
 export function formatPrice(price: number): string {
-  return `GH₵${price.toFixed(2)}`;
+  return `GHC${price.toFixed(2)}`;
 }

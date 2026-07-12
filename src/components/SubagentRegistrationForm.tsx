@@ -387,7 +387,7 @@ export default function SubagentRegistrationForm({
               <div>
                 <p className="font-semibold text-blue-400 mb-1">Registration Fee Required</p>
                 <p className="text-sm text-muted-foreground">
-                  To complete your registration as an agent, you need to pay a one-time fee of <span className="font-bold text-blue-300">GH₵ {agentStore.subagent_fee_amount.toFixed(2)}</span>. Your agent account will be created immediately after successful payment.
+                  To complete your registration as an agent, you need to pay a one-time fee of <span className="font-bold text-blue-300">GHC {agentStore.subagent_fee_amount.toFixed(2)}</span>. Your agent account will be created immediately after successful payment.
                 </p>
               </div>
             </div>
@@ -536,7 +536,7 @@ export default function SubagentRegistrationForm({
               </>
             ) : (
               agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0
-                ? `Pay GH₵ ${agentStore.subagent_fee_amount.toFixed(2)} to Create Agent Account`
+                ? `Pay GHC ${agentStore.subagent_fee_amount.toFixed(2)} to Create Agent Account`
                 : "Create Agent Account"
             )}
           </Button>

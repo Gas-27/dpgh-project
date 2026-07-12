@@ -81,7 +81,7 @@ export default function WalletTopupDialog({
       // Show confirmation with fee breakdown
       toast({
         title: "Payment Initialized",
-        description: `Amount: GH₵${response.data.base_amount.toFixed(2)} + GH₵${response.data.fee_amount.toFixed(2)} fee = GH₵${response.data.amount.toFixed(2)}`,
+        description: `Amount: GHC${response.data.base_amount.toFixed(2)} + GHC${response.data.fee_amount.toFixed(2)} fee = GHC${response.data.amount.toFixed(2)}`,
       });
 
       // Redirect to Paystack
@@ -129,17 +129,17 @@ export default function WalletTopupDialog({
           <div className="bg-muted p-4 rounded-lg border border-border">
             <p className="text-sm text-muted-foreground">Current Balance</p>
             <p className="text-3xl font-display font-bold text-primary">
-              GH₵ {currentBalance.toFixed(2)}
+              GHC {currentBalance.toFixed(2)}
             </p>
           </div>
 
           {/* Amount Input */}
           <div className="space-y-3">
-            <Label htmlFor="topup-amount">Amount (GH₵)</Label>
+            <Label htmlFor="topup-amount">Amount (GHC)</Label>
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">
-                  GH₵
+                  GHC
                 </span>
                 <Input
                   id="topup-amount"
@@ -163,7 +163,7 @@ export default function WalletTopupDialog({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Minimum amount: GH₵ 1.00
+              Minimum amount: GHC 1.00
             </p>
           </div>
 
@@ -179,7 +179,7 @@ export default function WalletTopupDialog({
                   onClick={() => handleQuickAmount(quickAmount)}
                   disabled={loading}
                 >
-                  GH₵ {quickAmount}
+                  GHC {quickAmount}
                 </Button>
               ))}
             </div>

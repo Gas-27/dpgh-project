@@ -155,7 +155,7 @@ export default function SpecialMTNMashupPricingManager() {
                 </div>
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label className="text-xs">User Price (GH₵)</Label>
+                    <Label className="text-xs">User Price (GHC)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -168,7 +168,7 @@ export default function SpecialMTNMashupPricingManager() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Agent Base Price (GH₵)</Label>
+                    <Label className="text-xs">Agent Base Price (GHC)</Label>
                     <Input
                       type="number"
                       step="0.01"

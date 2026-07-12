@@ -256,7 +256,7 @@ export function SubagentManagement({ agentStoreId }: SubagentManagementProps) {
                       <TableCell className="font-medium">{subagent.store_name}</TableCell>
                       <TableCell className="text-sm">{subagent.whatsapp_number}</TableCell>
                       <TableCell className="text-sm">
-                        GH₵{subagent.wallet_balance.toFixed(2)}
+                        GHC{subagent.wallet_balance.toFixed(2)}
                       </TableCell>
                       <TableCell>
                         {subagent.approved ? (

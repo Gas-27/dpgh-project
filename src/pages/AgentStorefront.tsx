@@ -267,11 +267,11 @@ const OrderTrackingCard = ({
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
+  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GHC ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
   const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
-    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
+    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GHC ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
@@ -1268,7 +1268,7 @@ const AgentStorefront = () => {
                                   </span>
                                   <span className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
                                   <span className="text-primary">
-                                    GH₵ {Number(order.amount).toFixed(2)}
+                                    GHC {Number(order.amount).toFixed(2)}
                                   </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
@@ -1398,7 +1398,7 @@ const AgentStorefront = () => {
                               <p className="text-xs opacity-90 text-white">Data Bundle</p>
                             </div>
                             <p className="text-4xl md:text-5xl font-bold text-white">{pkg.size_gb_text}</p>
-                            <p className="text-base font-medium text-white">GH₵ {Number(price).toFixed(2)} - Valid forever</p>
+                            <p className="text-base font-medium text-white">GHC {Number(price).toFixed(2)} - Valid forever</p>
                             <div className="space-y-2 text-sm text-white">
                               <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
                             </div>
@@ -1559,7 +1559,7 @@ const AgentStorefront = () => {
                   <option value="none">None (use per-line sizes)</option>
                   {packages.filter(p => p.network.toLowerCase() === bulkNetwork).map(p => {
                     const price = agentPrices[p.id] ?? p.price;
-                    return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {price.toFixed(2)}</option>;
+                    return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GHC {price.toFixed(2)}</option>;
                   })}
                 </select>
               </div>
@@ -1596,17 +1596,17 @@ const AgentStorefront = () => {
                           <p className="text-xs text-muted-foreground">Total Data</p>
                         </div>
                         <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold" style={{ color: primaryColor }}>GH₵ {totalCost.toFixed(2)}</p>
+                          <p className="text-2xl font-bold" style={{ color: primaryColor }}>GHC {totalCost.toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">Data Cost</p>
                         </div>
                         <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-2xl font-bold text-green-500">GH₵ {grandTotal.toFixed(2)}</p>
+                          <p className="text-2xl font-bold text-green-500">GHC {grandTotal.toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">Total (incl. fees)</p>
                         </div>
                       </div>
                       
                       {paystackFee > 0 && (
-                        <p className="text-sm text-muted-foreground text-center">Paystack fee (1.98%): GH₵ {paystackFee.toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground text-center">Paystack fee (1.98%): GHC {paystackFee.toFixed(2)}</p>
                       )}
                       
                       <div className="flex gap-3 flex-wrap">
@@ -1662,7 +1662,7 @@ const AgentStorefront = () => {
                             }
                           }}
                         >
-                          {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <>Pay with Paystack (GH₵ {grandTotal.toFixed(2)})</>}
+                          {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <>Pay with Paystack (GHC {grandTotal.toFixed(2)})</>}
                         </Button>
                         <Button variant="outline" onClick={() => { setBulkRecipients(""); setBulkGlobalSize(null); }}>
                           <RotateCcw className="h-4 w-4 mr-2" /> Clear

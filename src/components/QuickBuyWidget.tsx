@@ -116,7 +116,7 @@ const QuickBuyWidget = () => {
                   {isInactive ? (
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</p>
                   ) : (
-                    <p className="text-xs text-muted-foreground">GH₵ {Number(plan.price).toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">GHC {Number(plan.price).toFixed(2)}</p>
                   )}
                 </button>
               );

@@ -235,7 +235,7 @@ export default function AdminAFAManager() {
                 <>
                   {/* Registration Fee */}
                   <div className="space-y-2">
-                    <Label htmlFor="reg-fee">Base Registration Fee (GH₵)</Label>
+                    <Label htmlFor="reg-fee">Base Registration Fee (GHC)</Label>
                     <Input
                       id="reg-fee"
                       type="number"

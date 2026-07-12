@@ -121,7 +121,7 @@ export default function AFAStandaloneRegistration({
           <div className="bg-white border-2 border-green-500 rounded-lg p-6">
             <p className="text-sm text-muted-foreground mb-2">Registration Fee</p>
             <p className="text-4xl font-bold text-green-600">
-              GH₵ {registrationPrice.toFixed(2)}
+              GHC {registrationPrice.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground mt-3">
               One-time, non-refundable registration for farmer profile activation
@@ -153,7 +153,7 @@ export default function AFAStandaloneRegistration({
               <div className="space-y-1">
                 <p className="font-semibold text-sm text-blue-900">Important Notice</p>
                 <p className="text-sm text-blue-800">
-                  Registration fee of <strong>GH₵{registrationPrice.toFixed(2)}</strong> is <strong>non-refundable</strong>. 
+                  Registration fee of <strong>GHC{registrationPrice.toFixed(2)}</strong> is <strong>non-refundable</strong>. 
                   Ensure all your details are correct before submitting.
                 </p>
               </div>
@@ -177,7 +177,7 @@ export default function AFAStandaloneRegistration({
           <DialogHeader>
             <DialogTitle>AFA Bundle Registration Form</DialogTitle>
             <DialogDescription>
-              Complete your registration - Fee: GH₵{registrationPrice.toFixed(2)}
+              Complete your registration - Fee: GHC{registrationPrice.toFixed(2)}
             </DialogDescription>
           </DialogHeader>
           <AFARegistrationForm

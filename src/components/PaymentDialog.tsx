@@ -574,21 +574,21 @@ const PaymentDialog = ({
 
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Data Price</span>
-                    <span>GH₵ {price.toFixed(2)}</span>
+                    <span>GHC {price.toFixed(2)}</span>
                   </div>
 
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
                       Paystack Charge ({PAYSTACK_CHARGE_PERCENT}%)
                     </span>
-                    <span>GH₵ {charge.toFixed(2)}</span>
+                    <span>GHC {charge.toFixed(2)}</span>
                   </div>
 
                   <div className="border-t border-border my-1" />
 
                   <div className="flex justify-between text-base font-bold">
                     <span>Total</span>
-                    <span className="text-primary">GH₵ {total.toFixed(2)}</span>
+                    <span className="text-primary">GHC {total.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -626,7 +626,7 @@ const PaymentDialog = ({
                         Processing...
                       </>
                     ) : (
-                      `Pay GH₵ ${total.toFixed(2)}`
+                      `Pay GHC ${total.toFixed(2)}`
                     )}
                   </Button>
                 </div>

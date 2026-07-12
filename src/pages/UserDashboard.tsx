@@ -427,7 +427,7 @@ const UserDashboard = () => {
                     <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
                     <Wallet className="h-5 w-5 text-cyan-400" />
                   </div>
-                  <p className="font-display text-3xl font-bold text-cyan-400">GH₵ {Number(normalWallet).toFixed(2)}</p>
+                  <p className="font-display text-3xl font-bold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</p>
                   <p className="text-xs text-muted-foreground mt-2">For regular purchases</p>
                 </CardContent>
               </Card>
@@ -439,7 +439,7 @@ const UserDashboard = () => {
                     <p className="text-sm font-medium text-muted-foreground">API Wallet</p>
                     <Zap className="h-5 w-5 text-purple-400" />
                   </div>
-                  <p className="font-display text-3xl font-bold text-purple-400">GH₵ {Number(apiWallet).toFixed(2)}</p>
+                  <p className="font-display text-3xl font-bold text-purple-400">GHC {Number(apiWallet).toFixed(2)}</p>
                   <p className="text-xs text-muted-foreground mt-2">For API purchases</p>
                 </CardContent>
               </Card>
@@ -452,7 +452,7 @@ const UserDashboard = () => {
                     <TrendingUp className="h-5 w-5 text-amber-400" />
                   </div>
                   <p className="font-display text-3xl font-bold text-amber-400">{totalDataPurchased.toFixed(1)}GB</p>
-                  <p className="text-xs text-muted-foreground mt-2">Spent: GH₵ {Number(totalSpent).toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground mt-2">Spent: GHC {Number(totalSpent).toFixed(2)}</p>
                 </CardContent>
               </Card>
             </div>
@@ -500,7 +500,7 @@ const UserDashboard = () => {
                         <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
                           <CardContent>
                             <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                            <p className="text-lg font-bold text-cyan-400">GH₵ {apiPrice.toFixed(2)}</p>
+                            <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">API Price</p>
                           </CardContent>
                         </Card>
@@ -565,9 +565,9 @@ const UserDashboard = () => {
                               return (
                                 <TableRow key={pkg.id} className={isOffline ? 'opacity-60 bg-red-500/5' : ''}>
                                   <TableCell className="font-medium">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
-                                  <TableCell>GH₵ {Number(pkg.price).toFixed(2)}</TableCell>
+                                  <TableCell>GHC {Number(pkg.price).toFixed(2)}</TableCell>
                                   <TableCell className={isOffline ? 'text-muted-foreground line-through' : 'text-purple-400 font-semibold'}>
-                                    GH₵ {Number(pkg.api_price || pkg.price).toFixed(2)}
+                                    GHC {Number(pkg.api_price || pkg.price).toFixed(2)}
                                   </TableCell>
                                   <TableCell>
                                     {isOffline ? (
@@ -702,7 +702,7 @@ const UserDashboard = () => {
               <CardContent className="space-y-4">
                 <div className="bg-muted p-6 rounded-lg border border-border text-center">
                   <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
-                  <p className="font-display text-3xl font-bold text-yellow-400">GH₵ {Number(apiWallet).toFixed(2)}</p>
+                  <p className="font-display text-3xl font-bold text-yellow-400">GHC {Number(apiWallet).toFixed(2)}</p>
                 </div>
                 <p className="text-xs text-muted-foreground text-center">Use this wallet exclusively for API-based purchases and automated requests.</p>
                 
@@ -731,7 +731,7 @@ const UserDashboard = () => {
                     <Wallet className="h-5 w-5 text-primary" />
                     <span className="font-medium">Wallet Balance:</span>
                   </div>
-                  <span className="font-display text-xl font-bold text-primary">GH₵ {normalWallet.toFixed(2)}</span>
+                  <span className="font-display text-xl font-bold text-primary">GHC {normalWallet.toFixed(2)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -758,7 +758,7 @@ const UserDashboard = () => {
                   <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
                     <CardContent>
                       <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                      <p className="text-lg font-bold text-cyan-400">GH₵ {price.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">User Price</p>
                       <Button 
                         variant="hero" 
@@ -804,7 +804,7 @@ const UserDashboard = () => {
                 {/* Top Up Normal Wallet Section */}
                 <div className="space-y-3">
                   <p className="text-sm font-semibold">Top Up Normal Wallet (Data Purchases)</p>
-                  <p className="text-xs text-muted-foreground">Balance: <strong>GH₵ {normalWallet.toFixed(2)}</strong></p>
+                  <p className="text-xs text-muted-foreground">Balance: <strong>GHC {normalWallet.toFixed(2)}</strong></p>
                   <Button
                     variant="hero"
                     className="w-full"
@@ -935,7 +935,7 @@ const UserDashboard = () => {
                   <div className="border-t border-border my-1" />
                   <div className="flex justify-between text-base font-bold">
                     <span>Price</span>
-                    <span className="text-primary">GH₵ {Number(buyPkg?.price ?? 0).toFixed(2)}</span>
+                    <span className="text-primary">GHC {Number(buyPkg?.price ?? 0).toFixed(2)}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -948,7 +948,7 @@ const UserDashboard = () => {
                       <SelectItem value="wallet">
                         <span className="flex items-center gap-2">
                           <Wallet className="h-4 w-4" />
-                          Wallet (GH₵ {normalWallet.toFixed(2)})
+                          Wallet (GHC {normalWallet.toFixed(2)})
                         </span>
                       </SelectItem>
                       <SelectItem value="paystack">

@@ -176,7 +176,7 @@ export default function ChatBot({ page }: ChatBotProps) {
       }
 
       const order = data[0];
-      return `📍 **Order Status for ${phoneNumber}**\n\n**Order ID:** ${order.id}\n**Network:** ${order.network}\n**Size:** ${order.size_gb}GB\n**Amount:** GH₵${order.amount}\n**Status:** ${order.status || 'Processing'}\n**Delivery Status:** ${order.fulfillment_status || 'Pending'}\n**Date:** ${new Date(order.created_at).toLocaleDateString()}\n\nIf you need more help, contact our WhatsApp support!`;
+      return `📍 **Order Status for ${phoneNumber}**\n\n**Order ID:** ${order.id}\n**Network:** ${order.network}\n**Size:** ${order.size_gb}GB\n**Amount:** GHC${order.amount}\n**Status:** ${order.status || 'Processing'}\n**Delivery Status:** ${order.fulfillment_status || 'Pending'}\n**Date:** ${new Date(order.created_at).toLocaleDateString()}\n\nIf you need more help, contact our WhatsApp support!`;
     } catch (error) {
       console.error('Error fetching order:', error);
       return "I couldn't retrieve your order information. Please contact our WhatsApp support team for assistance.";
@@ -198,7 +198,7 @@ export default function ChatBot({ page }: ChatBotProps) {
         return `Order ${orderId} not found. Please check the ID and try again.`;
       }
 
-      return `📍 **Order Status for ${data.customer_number}**\n\n**Order ID:** ${data.id}\n**Network:** ${data.network}\n**Size:** ${data.size_gb}GB\n**Amount:** GH₵${data.amount}\n**Status:** ${data.status || 'Processing'}\n**Delivery Status:** ${data.fulfillment_status || 'Pending'}\n**Date:** ${new Date(data.created_at).toLocaleDateString()}\n\nIf you need more help, contact our WhatsApp support!`;
+      return `📍 **Order Status for ${data.customer_number}**\n\n**Order ID:** ${data.id}\n**Network:** ${data.network}\n**Size:** ${data.size_gb}GB\n**Amount:** GHC${data.amount}\n**Status:** ${data.status || 'Processing'}\n**Delivery Status:** ${data.fulfillment_status || 'Pending'}\n**Date:** ${new Date(data.created_at).toLocaleDateString()}\n\nIf you need more help, contact our WhatsApp support!`;
     } catch (error) {
       console.error('Error fetching order:', error);
       return "I couldn't retrieve that order. Please verify the order ID or contact support.";

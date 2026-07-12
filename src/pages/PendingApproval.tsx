@@ -236,7 +236,7 @@ const PendingApproval = () => {
           {/* Payment Amount */}
           <div className="text-center py-4">
             <p className="text-sm text-muted-foreground mb-2">Registration Fee</p>
-            <span className="text-4xl font-bold text-primary">GH₵ {registrationFee.toFixed(2)}</span>
+            <span className="text-4xl font-bold text-primary">GHC {registrationFee.toFixed(2)}</span>
           </div>
 
           {/* Paystack Payment Button */}

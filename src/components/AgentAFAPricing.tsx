@@ -152,13 +152,13 @@ export default function AgentAFAPricing() {
         {/* Base Price Display */}
         <div className="p-4 bg-muted rounded-lg space-y-2">
           <p className="text-sm font-semibold text-muted-foreground">Base Price (Set by Admin)</p>
-          <p className="text-3xl font-bold">GH₵{basePrice.toFixed(2)}</p>
+          <p className="text-3xl font-bold">GHC{basePrice.toFixed(2)}</p>
         </div>
 
         {/* Markup Calculation */}
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="markup">Your Markup Amount (GH₵)</Label>
+            <Label htmlFor="markup">Your Markup Amount (GHC)</Label>
             <Input
               id="markup"
               type="number"
@@ -176,25 +176,25 @@ export default function AgentAFAPricing() {
           {/* Sell Price Display */}
           <div className="p-4 bg-primary/5 rounded-lg space-y-2 border border-primary/20">
             <p className="text-sm font-semibold text-muted-foreground">Your Selling Price</p>
-            <p className="text-3xl font-bold text-primary">GH₵{sellPrice.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-primary">GHC{sellPrice.toFixed(2)}</p>
             <div className="flex gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Base</p>
-                <p className="font-semibold">GH₵{basePrice.toFixed(2)}</p>
+                <p className="font-semibold">GHC{basePrice.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">+</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Your Markup</p>
-                <p className="font-semibold">GH₵{markupAmount.toFixed(2)}</p>
+                <p className="font-semibold">GHC{markupAmount.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">=</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Final Price</p>
-                <p className="font-semibold text-primary">GH₵{sellPrice.toFixed(2)}</p>
+                <p className="font-semibold text-primary">GHC{sellPrice.toFixed(2)}</p>
               </div>
             </div>
           </div>

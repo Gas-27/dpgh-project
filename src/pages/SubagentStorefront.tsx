@@ -258,11 +258,11 @@ const SubagentOrderTrackingCard = ({
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  const contactMessage = `Order from ${orderDate}\nNetwork: ${order.network?.toUpperCase()}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
+  const contactMessage = `Order from ${orderDate}\nNetwork: ${order.network?.toUpperCase()}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GHC ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
   const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
-    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${order.network?.toUpperCase()}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
+    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${order.network?.toUpperCase()}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GHC ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
@@ -1014,7 +1014,7 @@ export function SubagentStorefront() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-mono text-sm">{order.customer_number}</p>
-                            <p className="text-xs text-muted-foreground">{(order as any).size_gb_text || order.size_gb + "GB"} {formatNetworkName(order.network)} - GH₵{Number(order.amount).toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">{(order as any).size_gb_text || order.size_gb + "GB"} {formatNetworkName(order.network)} - GHC{Number(order.amount).toFixed(2)}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             {getStatusIcon(order.status)}
@@ -1213,11 +1213,11 @@ export function SubagentStorefront() {
                           <p className="text-xs text-muted-foreground">Total Data</p>
                         </div>
                         <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-xl sm:text-2xl font-bold" style={{ color: primaryColor }}>GH₵ {totalCost.toFixed(2)}</p>
+                          <p className="text-xl sm:text-2xl font-bold" style={{ color: primaryColor }}>GHC {totalCost.toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">Data Cost</p>
                         </div>
                         <div className="text-center p-2 sm:p-3 bg-secondary/50 rounded-lg">
-                          <p className="text-xl sm:text-2xl font-bold text-green-500">GH₵ {grandTotal.toFixed(2)}</p>
+                          <p className="text-xl sm:text-2xl font-bold text-green-500">GHC {grandTotal.toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">Total (incl. fees)</p>
                         </div>
                       </div>
@@ -1279,7 +1279,7 @@ export function SubagentStorefront() {
                             }
                           }}
                         >
-                          {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <>Pay with Paystack (GH₵ {grandTotal.toFixed(2)})</>}
+                          {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <>Pay with Paystack (GHC {grandTotal.toFixed(2)})</>}
                         </Button>
                         <Button variant="outline" onClick={() => { setBulkRecipients(""); setBulkGlobalSize(null); }}>
                           <RotateCcw className="h-4 w-4 mr-2" /> Clear
@@ -1343,7 +1343,7 @@ export function SubagentStorefront() {
                             <p className="text-xs opacity-90 text-white">Data Bundle</p>
                           </div>
                           <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-white">{pkg.size_gb_text}</p>
-                          <p className="text-base font-medium text-white">GH₵ {Number(price).toFixed(2)} - Valid forever</p>
+                          <p className="text-base font-medium text-white">GHC {Number(price).toFixed(2)} - Valid forever</p>
                           <div className="space-y-2 text-sm text-white">
                             <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
                           </div>
@@ -1353,7 +1353,7 @@ export function SubagentStorefront() {
                         <>
                           <Badge style={{ background: getNetworkColor(pkg.network), color: "#000" }}>{formatNetworkName(pkg.network)}</Badge>
                           <p className="text-3xl font-bold" style={{ color: primaryColor }}>{pkg.size_gb}<span className="text-lg text-muted-foreground">GB</span></p>
-                          <p className="text-xl font-semibold text-green-400">GH₵ {Number(price).toFixed(2)}</p>
+                          <p className="text-xl font-semibold text-green-400">GHC {Number(price).toFixed(2)}</p>
                           <Button size="lg" disabled={isInactive} className="w-full font-semibold disabled:opacity-100 disabled:cursor-not-allowed" style={isInactive ? { background: "transparent", color: "inherit", border: "1px solid var(--border)" } : { background: primaryColor, color: primaryForeground }}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                         </>
                       )}

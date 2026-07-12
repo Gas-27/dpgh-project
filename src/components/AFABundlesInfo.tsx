@@ -227,12 +227,12 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
           <div className="space-y-2">
             <h4 className="font-semibold text-green-900 dark:text-green-100 text-sm md:text-base">💰 AFA Voice Packages</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs md:text-sm text-green-800 dark:text-green-200 ml-4">
-              <div>• GH₵6 → 220 min</div>
-              <div>• GH₵12 → 440 min</div>
-              <div>• GH₵18 → 660 min</div>
-              <div>• GH₵24 → 880 min</div>
-              <div>• GH₵30 → 1,100 min</div>
-              <div>• GH₵36 → 1,320 min</div>
+              <div>• GHC6 → 220 min</div>
+              <div>• GHC12 → 440 min</div>
+              <div>• GHC18 → 660 min</div>
+              <div>• GHC24 → 880 min</div>
+              <div>• GHC30 → 1,100 min</div>
+              <div>• GHC36 → 1,320 min</div>
             </div>
           </div>
 

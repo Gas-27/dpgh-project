@@ -45,7 +45,7 @@ export default function ReportComplaintDialog({
 Order Date: ${new Date(order.created_at).toLocaleString()}
 Network: ${formatNetworkName(order.network)}
 Data: ${order.size_gb}GB
-Amount: GH₵ ${Number(order.amount).toFixed(2)}
+Amount: GHC ${Number(order.amount).toFixed(2)}
 Customer: ${order.customer_number}
 Status: Delivered (Not Received)
 Order ID: ${order.id}

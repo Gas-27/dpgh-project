@@ -1390,7 +1390,7 @@ const SubagentDashboard = () => {
     
     // Validate minimum withdrawal
     if (amount < 15) {
-      toast({ title: "Error", description: "Minimum withdrawal is GH₵ 15.00", variant: "destructive" });
+      toast({ title: "Error", description: "Minimum withdrawal is GHC 15.00", variant: "destructive" });
       return;
     }
     
@@ -1473,7 +1473,7 @@ const SubagentDashboard = () => {
         throw new Error(data.error || "Withdrawal failed");
       }
 
-      toast({ title: "Transfer Sent!", description: `GH₵ ${amountAfterFee.toFixed(2)} sent instantly (after 5% fee)` });
+      toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent instantly (after 5% fee)` });
       setWithdrawAmount("");
       setSelectedRecipient("");
       setCreateNewRecipient(false);
@@ -1611,7 +1611,7 @@ const SubagentDashboard = () => {
         if (price < basePrice) {
           toast({
             title: "Invalid Price",
-            description: `Your price cannot be below agent's base price (GH₵ ${basePrice.toFixed(2)})`,
+            description: `Your price cannot be below agent's base price (GHC ${basePrice.toFixed(2)})`,
             variant: "destructive"
           });
           setSavingPrices(false);
@@ -2190,17 +2190,17 @@ const SubagentDashboard = () => {
                     <Wallet className="h-5 w-5 text-primary" />
                     <span className="font-medium">Wallet Balance:</span>
                   </div>
-                  <span className="font-display text-xl font-bold text-primary">GH₵ {availableWalletBalance.toFixed(2)}</span>
+                  <span className="font-display text-xl font-bold text-primary">GHC {availableWalletBalance.toFixed(2)}</span>
                 </div>
                 {hasPendingWithdrawal && (
-                  <p className="text-xs text-orange-400">WARNING: GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GH₵ {(availableWalletBalance - pendingWithdrawalAmount).toFixed(2)}</strong></p>
+                  <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {(availableWalletBalance - pendingWithdrawalAmount).toFixed(2)}</strong></p>
                 )}
               </CardContent>
             </Card>
 
                 {hasPendingWithdrawal && (
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                    <p className="text-sm text-yellow-400 font-medium">WARNING: You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
+                    <p className="text-sm text-yellow-400 font-medium">WARNING: You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
                   </div>
                 )}
 
@@ -2412,15 +2412,15 @@ const SubagentDashboard = () => {
                         <>
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Amount to Deduct:</span>
-                            <span>GH₵ {amt.toFixed(2)}</span>
+                            <span>GHC {amt.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
-                            <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                            <span className="text-red-400">GHC {feeAmount.toFixed(2)}</span>
                           </div>
                           <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
                             <span>Recipient Receives:</span>
-                            <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                            <span className="text-green-400">GHC {recipientAmount.toFixed(2)}</span>
                           </div>
                         </>
                       );
@@ -2436,8 +2436,8 @@ const SubagentDashboard = () => {
                   <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3 mt-1 space-y-2 text-xs">
                     <p className="text-blue-300">A small fee applies based on your withdrawal amount:</p>
                     <div className="space-y-1 pl-2">
-                      <p className="text-muted-foreground">• Less than GH₵ 100: 5% fee</p>
-                      <p className="text-muted-foreground">• GH₵ 100 or more: 1.5% fee</p>
+                      <p className="text-muted-foreground">• Less than GHC 100: 5% fee</p>
+                      <p className="text-muted-foreground">• GHC 100 or more: 1.5% fee</p>
                     </div>
                   </div>
                 </details>
@@ -2449,7 +2449,7 @@ const SubagentDashboard = () => {
                   </p>
                 </div>
 
-                <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly</p>
+                <p className="text-xs text-muted-foreground text-center">Minimum: GHC 15.00 | Processed Instantly</p>
               </div>
             )}
           </CardContent>
@@ -2492,15 +2492,15 @@ const SubagentDashboard = () => {
                               <>
                                 <div className="flex justify-between text-sm">
                                   <span className="text-muted-foreground">Amount to Deduct:</span>
-                                  <span>GH₵ {amt.toFixed(2)}</span>
+                                  <span>GHC {amt.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                   <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
-                                  <span className="text-red-400">GH₵ {feeAmount.toFixed(2)}</span>
+                                  <span className="text-red-400">GHC {feeAmount.toFixed(2)}</span>
                                 </div>
                                 <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
                                   <span>Recipient Receives:</span>
-                                  <span className="text-green-400">GH₵ {recipientAmount.toFixed(2)}</span>
+                                  <span className="text-green-400">GHC {recipientAmount.toFixed(2)}</span>
                                 </div>
                               </>
                             );
@@ -2515,7 +2515,7 @@ const SubagentDashboard = () => {
                         </p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GHC 15.00 | Processed Instantly</p>
                     </div>
                   </>
                 )}
@@ -2534,7 +2534,7 @@ const SubagentDashboard = () => {
                     {withdrawals.map(w => (
                       <div key={w.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
                         <div className="flex-1">
-                          <p className="font-medium">GH₵ {w.amount.toFixed(2)}</p>
+                          <p className="font-medium">GHC {w.amount.toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</p>
                           <p className="text-xs text-muted-foreground mt-1">
                             {w.provider_type === "mobile_money" 
@@ -2566,7 +2566,7 @@ const SubagentDashboard = () => {
               <CardContent className="space-y-4">
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <Label className="text-sm mb-1 block">Amount (GH₵)</Label>
+                    <Label className="text-sm mb-1 block">Amount (GHC)</Label>
                     <Input 
                       type="number" 
                       placeholder="Enter amount" 
@@ -2614,7 +2614,7 @@ const SubagentDashboard = () => {
                         {topupHistory.map((t) => (
                           <TableRow key={t.id}>
                             <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
-                            <TableCell className="font-semibold text-green-400">GH₵ {Number(t.amount).toFixed(2)}</TableCell>
+                            <TableCell className="font-semibold text-green-400">GHC {Number(t.amount).toFixed(2)}</TableCell>
                             <TableCell className="font-mono text-xs">{agentInfo?.store_name || ""} - {t.paystack_reference || "Manual"}</TableCell>
                           </TableRow>
                         ))}
@@ -2716,7 +2716,7 @@ const SubagentDashboard = () => {
                       <SelectItem value="none">None (use per-line sizes)</SelectItem>
                       {packages.filter(p => p.network.toLowerCase() === bulkNetwork && p.active).map(p => {
                         const price = basePrices[p.id] ?? p.price;
-                        return <SelectItem key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GH₵ {price.toFixed(2)}</SelectItem>;
+                        return <SelectItem key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GHC {price.toFixed(2)}</SelectItem>;
                       })}
                     </SelectContent>
                   </Select>
@@ -2757,14 +2757,14 @@ const SubagentDashboard = () => {
                             <p className="text-xs text-muted-foreground">Total Cost</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                            <p className={`text-2xl font-bold ${walletBalance >= totalCost ? "text-green-500" : "text-red-500"}`}>GH₵ {walletBalance.toFixed(2)}</p>
+                            <p className={`text-2xl font-bold ${walletBalance >= totalCost ? "text-green-500" : "text-red-500"}`}>GHC {walletBalance.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">Wallet Balance</p>
                           </div>
                         </div>
                         
                         {walletBalance < totalCost && parsed.length > 0 && (
                           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-500 text-sm">
-                            Insufficient wallet balance. You need GH₵ {(totalCost - walletBalance).toFixed(2)} more.
+                            Insufficient wallet balance. You need GHC {(totalCost - walletBalance).toFixed(2)} more.
                           </div>
                         )}
                         
@@ -2879,7 +2879,7 @@ const SubagentDashboard = () => {
                               fetchData();
                             }}
                           >
-                            {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Wallet className="h-4 w-4 mr-2" /> Pay with Wallet (GH₵ {totalCost.toFixed(2)})</>}
+                            {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Wallet className="h-4 w-4 mr-2" /> Pay with Wallet (GHC {totalCost.toFixed(2)})</>}
                           </Button>
                           <Button variant="outline" onClick={() => { setBulkRecipients(""); setBulkResults([]); setBulkGlobalSize(null); }}>
                             <RotateCcw className="h-4 w-4 mr-2" /> Clear
@@ -3001,7 +3001,7 @@ const SubagentDashboard = () => {
                               <TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}>
                                 <TableCell className="font-display font-bold">{pkg.size_gb}GB{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
                                 <TableCell className="text-muted-foreground">
-                                  GH₵ {Number(costFromAgent).toFixed(2)}
+                                  GHC {Number(costFromAgent).toFixed(2)}
                                 </TableCell>
                                 <TableCell>
                                   <div className="space-y-1">
@@ -3014,7 +3014,7 @@ const SubagentDashboard = () => {
                                       className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !editedPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />
                                     {isInvalid && (
-                                      <p className="text-xs text-red-500">Min: GH₵ {costFromAgent.toFixed(2)}</p>
+                                      <p className="text-xs text-red-500">Min: GHC {costFromAgent.toFixed(2)}</p>
                                     )}
                                     {hasSavedPrice && !editedPrices[pkg.id] && (
                                       <p className="text-xs text-green-500">Saved</p>
@@ -3022,7 +3022,7 @@ const SubagentDashboard = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
-                                  GH₵ {profit.toFixed(2)}
+                                  GHC {profit.toFixed(2)}
                                 </TableCell>
                               </TableRow>
                             );
@@ -3144,7 +3144,7 @@ const SubagentDashboard = () => {
                           >
                             <div className="font-bold text-white text-sm">{[1, 2, 3, 4, 5, 6, 8, 10][i] || i + 1}GB</div>
                             <div className="text-xs mt-1" style={{ color: `${themeColors.primary}cc` }}>MTN</div>
-                            <div className="text-xs" style={{ color: "#ccc" }}>GH₵ {(4 + i * 3).toFixed(2)}</div>
+                            <div className="text-xs" style={{ color: "#ccc" }}>GHC {(4 + i * 3).toFixed(2)}</div>
                             <div
                               className="mt-1 rounded text-xs py-0.5 font-bold"
                               style={{ backgroundColor: themeColors.primary, color: themeColors.primary_foreground }}
@@ -3344,7 +3344,7 @@ const SubagentDashboard = () => {
               <Card className="border-border">
                 <CardContent className="pt-6">
                   <p className="text-sm text-muted-foreground mb-2">Total Profit from Sub-Subagents</p>
-                  <p className="text-3xl font-bold text-green-400">GH₵ {subSubagentProfitForSubagent?.toFixed(2) || "0.00"}</p>
+                  <p className="text-3xl font-bold text-green-400">GHC {subSubagentProfitForSubagent?.toFixed(2) || "0.00"}</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
@@ -3479,7 +3479,7 @@ const SubagentDashboard = () => {
                               <TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}>
                                 <TableCell className="font-display font-bold">{pkg.size_gb}GB{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
                                 <TableCell className="text-muted-foreground">
-                                  GH₵ {Number(costFromAgent).toFixed(2)}
+                                  GHC {Number(costFromAgent).toFixed(2)}
                                 </TableCell>
                                 <TableCell>
                                   <div className="space-y-1">
@@ -3492,7 +3492,7 @@ const SubagentDashboard = () => {
                                       className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !subSubagentEditedSubSubPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />
                                     {isInvalid && (
-                                      <p className="text-xs text-red-500">Min: GH₵ {costFromAgent.toFixed(2)}</p>
+                                      <p className="text-xs text-red-500">Min: GHC {costFromAgent.toFixed(2)}</p>
                                     )}
                                     {hasSavedPrice && !subSubagentEditedSubSubPrices[pkg.id] && (
                                       <p className="text-xs text-green-500">Saved</p>
@@ -3500,7 +3500,7 @@ const SubagentDashboard = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
-                                  GH₵ {profit.toFixed(2)}
+                                  GHC {profit.toFixed(2)}
                                 </TableCell>
                               </TableRow>
                             );
