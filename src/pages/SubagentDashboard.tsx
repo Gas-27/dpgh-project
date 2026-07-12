@@ -2172,11 +2172,539 @@ const SubagentDashboard = () => {
         </Dialog>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="hidden" />
+      <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="container flex h-16 items-center justify-between">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <div className="flex items-center gap-2 cursor-pointer">
+                <Menu className="h-5 w-5 text-primary" />
+                <span className="font-display text-lg font-bold text-primary">MENU</span>
+              </div>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-4 bg-card border-r border-border flex flex-col">
+              <SheetHeader className="mb-4">
+                <SheetTitle className="flex items-center gap-2">
+                  <Store className="h-5 w-5 text-primary" /> Menu
+                </SheetTitle>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto">
+                <div className="flex flex-col gap-2 pb-4">
+                  {menuItems.map(item => (
+                    <SheetClose asChild key={item.id}>
+                      <button
+                        onClick={() => setActiveTab(item.id)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full"
+                      >
+                        <item.icon className="h-5 w-5 text-primary" />
+                        <span className="font-medium">{item.label}</span>
+                      </button>
+                    </SheetClose>
+                  ))}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/">Home</Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-1" /> Sign Out
+            </Button>
+          </div>
+        </div>
+      </nav>
 
-        {/* WITHDRAW TAB */}
-        <TabsContent value="withdraw" className="mt-0 space-y-4">
+      <div className="container py-8 space-y-6">
+        {/* Store Link Card */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Your Store Link</p>
+              <p className="text-xs text-muted-foreground">{storeUrl || "Store URL not available"}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={copyStoreLink} disabled={!storeUrl}>
+                <Copy className="h-4 w-4 mr-1" /> Copy Link
+              </Button>
+              <Button
+                variant="hero"
+                size="sm"
+                onClick={() => {
+                  if (storeUrl) {
+                    window.open(storeUrl, "_blank");
+                  } else {
+                    toast({ title: "Error", description: "Store URL not available", variant: "destructive" });
+                  }
+                }}
+                disabled={!storeUrl}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" /> Visit Store
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="hidden" />
+
+          {/* OVERVIEW */}
+          <TabsContent value="overview" className="mt-0 space-y-6">
+            {/* Instruction Manual Dropdown */}
+            <Card className="border-primary/30 bg-primary/5">
+              <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-display font-bold text-foreground">Dashboard Instruction Manual</p>
+                    <p className="text-xs text-muted-foreground">Tap to {manualOpen ? "hide" : "view"} a full guide on how every section works</p>
+                  </div>
+                </div>
+                {manualOpen ? <ChevronUp className="h-5 w-5 text-primary" /> : <ChevronDown className="h-5 w-5 text-primary" />}
+              </button>
+              {manualOpen && (
+                <div className="px-4 pb-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">Tap any section to expand its guide. Tap on the MENU above to see these sections.</p>
+                  {MANUAL_SECTIONS.map((sec, i) => (
+                    <div key={i} className="border border-border rounded-lg overflow-hidden">
+                      <button onClick={() => setOpenManualSection(openManualSection === i ? null : i)} className="w-full flex items-center justify-between p-3 text-left bg-card hover:bg-secondary/50 transition-colors">
+                        <span className="font-semibold text-foreground flex items-center gap-2"><span>{sec.icon}</span> {sec.title}</span>
+                        {openManualSection === i ? <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                      </button>
+                      {openManualSection === i && (
+                        <div className="p-3 bg-background border-t border-border">
+                          <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{sec.content}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* TRAINING VIDEOS */}
+            <SubagentYouTubeSection />
+
+            {/* Date Filter for Stats */}
+            <div className="flex flex-wrap items-center gap-2 bg-card p-3 rounded-lg border border-border">
+              <span className="text-sm font-medium">Filter Stats & Orders:</span>
+              {(["all", "today", "yesterday", "week", "month", "custom"] as const).map(filter => (
+                <Button
+                  key={filter}
+                  variant={dateFilter === filter ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => { setDateFilter(filter); setCurrentPage(1); }}
+                  className="text-xs"
+                >
+                  {filter === "all" ? "All Time" : filter === "week" ? "This Week" : filter === "month" ? "This Month" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </Button>
+              ))}
+              {dateFilter === "custom" && (
+                <>
+                  <Input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="w-36 h-8" />
+                  <span className="text-muted-foreground">to</span>
+                  <Input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="w-36 h-8" />
+                </>
+              )}
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="border-border">
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground text-sm">Store Status</p>
+                  <Badge className="mt-2 bg-green-600/20 text-green-400 border-green-600/30">
+                    {subagentStore.approved ? "Active" : "Pending"}
+                  </Badge>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground text-sm">
+                    {dateFilter !== "all" ? `Orders (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Orders"}
+                  </p>
+                  <p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground text-sm">
+                    {dateFilter !== "all" ? `Revenue (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Revenue"}
+                  </p>
+                  <p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {totalRevenue.toFixed(2)}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-muted-foreground text-sm">
+                        {dateFilter !== "all" ? `Profit (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Profit"}
+                      </p>
+                      <p className="font-display text-2xl font-bold mt-1 text-yellow-400">GHC {totalProfit.toFixed(2)}</p>
+                      <details className="mt-2 cursor-pointer group"><summary className="text-xs text-yellow-300 font-semibold hover:text-yellow-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-yellow-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-1"><div className="text-muted-foreground text-xs leading-relaxed"><p>This is a display of your profit from store sales and profit from sub-subagent</p><p className="mt-1">This money is already part of your wallet balance and you can spend or withdraw it anytime</p></div></div></details>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* My Wallet Card */}
+            <Card className="border-yellow-500/30 bg-yellow-500/5">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">My Wallet</p>
+                    <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GHC {availableWalletBalance.toFixed(2)}</p>
+                    {hasPendingWithdrawal && <p className="text-xs text-orange-400 mt-1">GHC {pendingWithdrawalAmount.toFixed(2)} pending withdrawal</p>}
+                    <details className="mt-3 cursor-pointer group">
+                      <summary className="text-xs text-yellow-300 font-semibold hover:text-yellow-200 transition-colors flex items-center gap-2 p-2 rounded hover:bg-yellow-500/10">
+                        <span>How is my wallet calculated?</span>
+                        <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-2">
+                        <p className="text-yellow-300 font-semibold mb-3">Your wallet balance is calculated from:</p>
+                        <div className="space-y-1 text-muted-foreground leading-relaxed">
+                          <p>+ Profits from store sales</p>
+                          {profitBreakdown.subSubagentProfit > 0 && (
+                            <p>+ Profit from sub-subagent registration (only if you have set it up)</p>
+                          )}
+                          <p>+ Wallet top-ups</p>
+                          <p className="text-xs text-muted-foreground mt-1">- Data purchases made using your wallet (Buy Data)</p>
+                          <p className="text-xs text-muted-foreground">- Total withdrawals</p>
+                          <p className="text-yellow-300 font-semibold mt-2">The remaining amount is your current wallet balance.</p>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                  <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
+                </div>
+                {subagentStore?.topup_reference && (
+                  <div className="mt-4 pt-4 border-t border-yellow-500/20">
+                    <div className="text-center space-y-3">
+                      <p className="text-xs text-muted-foreground">Your customers can buy data via USSD</p>
+                      <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
+                        <p className="text-2xl font-bold font-mono text-primary">*380*455#</p>
+                        <p className="text-sm text-muted-foreground mt-2">Access Code:</p>
+                        <p className="text-3xl font-bold font-mono text-foreground">{subagentStore.topup_reference}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          navigator.clipboard.writeText("*380*455#");
+                          toast({ title: "Copied!", description: "USSD code copied to clipboard" });
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" /> Copy USSD Code
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Orders Table */}
+            <Card className="border-border">
+              <CardHeader className="flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="font-display text-lg">Orders ({filteredOrders.length})</CardTitle>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search by number..." value={orderSearch} onChange={e => { setOrderSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {filteredOrders.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No orders found.</p>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date & Time</TableHead>
+                            <TableHead>Number</TableHead>
+                            <TableHead>Network</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead>Selling Price</TableHead>
+                            <TableHead>Base Cost</TableHead>
+                            <TableHead>Profit</TableHead>
+                            <TableHead>Payment Method</TableHead>
+                            <TableHead>Order Status</TableHead>
+                            <TableHead>Payment Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedOrders.map(order => {
+                            const storedSellPrice = order.selling_price ?? null;
+                            const storedBaseCost = order.base_price ?? null;
+                            const storedProfit = order.profit ?? null;
+                            const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+                            const fallbackProfit = order.amount - fallbackBaseCost;
+                            const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
+                            const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
+                            const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
+                            return (
+                              <TableRow key={order.id}>
+                                <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
+                                <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                                <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                                <TableCell className="font-display font-bold">{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</TableCell>
+                                <TableCell className="font-semibold">GHC {Number(sellPrice).toFixed(2)}</TableCell>
+                                <TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell>
+                                <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
+                                  GHC {Number(profit).toFixed(2)}
+                                </TableCell>
+                                <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
+                                <TableCell className="capitalize text-sm">
+                                  <Badge variant="outline" className="text-xs">
+                                    {getOrderStage(order)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
+                                    {order.status === "paid" ? "completed" : order.status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {currentPage * ordersPerPage < filteredOrders.length && (
+                      <div className="flex items-center justify-center mt-6">
+                        <Button onClick={() => setCurrentPage(p => p + 1)} className="w-full sm:w-auto">
+                          Load More Orders ({filteredOrders.length - currentPage * ordersPerPage} remaining)
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* BUY DATA */}
+          <TabsContent value="buy" className="mt-0 space-y-6">
+            <Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
+              <CardContent className="p-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Wallet Balance:</span>
+                  </div>
+                  <span className="font-display text-xl font-bold text-primary">GHC {availableWalletBalance.toFixed(2)}</span>
+                </div>
+                {hasPendingWithdrawal && <p className="text-xs text-orange-400">GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal.</p>}
+              </CardContent>
+            </Card>
+            <div className="flex gap-2 flex-wrap">
+              {["mtn", "airteltigo", "telecel"].map(net => (
+                <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
+                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {filteredPackages.map(pkg => {
+                const basePrice = basePrices[pkg.id] || pkg.price || 0;
+                const isInactive = pkg.active === false;
+                return (
+                  <Card key={pkg.id} className={`border-border transition-all relative ${isInactive ? "opacity-50 grayscale" : "hover:border-primary/50"}`}>
+                    {isInactive && (
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
+                        Not available
+                      </div>
+                    )}
+                    <CardContent className="p-4 text-center space-y-3">
+                      <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb}GB</p>
+                      <p className="text-lg font-bold text-primary">GHC {Number(basePrice).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">Agent Base Price</p>
+                      <Button variant="hero" size="sm" disabled={isInactive} className="w-full disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && setBuyingPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {buyingPkg && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-md border-border">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="font-display">Buy {buyingPkg.size_gb}GB {buyingPkg.network.toUpperCase()}</CardTitle>
+                    <button onClick={() => { setBuyingPkg(null); setBuyCustomerNumber(""); }} className="text-muted-foreground hover:text-foreground text-2xl">x</button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 text-center">
+                      <p className="text-sm text-muted-foreground">Price</p>
+                      <p className="font-display text-2xl font-bold text-primary">GHC {Number(basePrices[buyingPkg.id] || buyingPkg.price || 0).toFixed(2)}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Customer Phone Number (exactly 10 digits)</Label>
+                      <Input
+                        placeholder="e.g. 0551234567"
+                        maxLength={10}
+                        value={buyCustomerNumber}
+                        onChange={e => setBuyCustomerNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        className={buyCustomerNumber.length > 0 && buyCustomerNumber.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}
+                      />
+                      {buyCustomerNumber.length > 0 && buyCustomerNumber.length < 10 && (
+                        <p className="text-xs text-red-500">{10 - buyCustomerNumber.length} digit{10 - buyCustomerNumber.length !== 1 ? "s" : ""} remaining</p>
+                      )}
+                      <NetworkIndicator phone={buyCustomerNumber} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        variant="outline"
+                        className="w-full border-green-500 text-green-500 hover:bg-green-500/10"
+                        onClick={handleBuyData}
+                        disabled={buyLoading || !buyCustomerNumber || (basePrices[buyingPkg.id] || buyingPkg.price || 0) > availableWalletBalance}
+                      >
+                        {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
+                        Pay with Wallet
+                      </Button>
+                      <Button
+                        variant="hero"
+                        className="w-full"
+                        onClick={async () => {
+                          const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
+                          if (!buyCustomerNumber) {
+                            toast({ title: "Error", description: "Enter customer phone number", variant: "destructive" });
+                            return;
+                          }
+                          if (!isValidPhoneLength(buyCustomerNumber)) {
+                            toast({ title: "Error", description: "Phone number must be exactly 10 digits", variant: "destructive" });
+                            return;
+                          }
+                          const isValidForMTNMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detectNetwork(buyCustomerNumber) === "mtn";
+                          if (!isValidForMTNMashup && buyingPkg.network !== "mashup" && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
+                            const detected = detectNetwork(buyCustomerNumber);
+                            toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
+                            return;
+                          }
+                          setBuyLoading(true);
+                          try {
+                            const email = user?.email || `${buyCustomerNumber.replace(/^0/, "233")}@dataplug.store`;
+                            const { data, error } = await supabase.functions.invoke("initialize-payment", {
+                              body: {
+                                email,
+                                amount: price,
+                                phone: buyCustomerNumber.trim(),
+                                callback_url: `${window.location.origin}/dashboard`,
+                                metadata: {
+                                  package_id: buyingPkg.id,
+                                  network: buyingPkg.network,
+                                  package_name: `${(buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") ? (buyingPkg as any).size_gb_text : buyingPkg.size_gb + "GB"}`,
+                                  subagent_store_id: subagentStore?.id,
+                                  agent_store_id: subagentStore?.agent_store_id,
+                                  payment_method: "paystack",
+                                  is_subagent_order: true,
+                                  ...((buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && { data_package_id: (buyingPkg as any).data_package_id }),
+                                },
+                              },
+                            });
+                            if (error || !data?.authorization_url) {
+                              throw new Error(error?.message || data?.error || "Payment initialization failed");
+                            }
+                            window.location.href = data.authorization_url;
+                          } catch (err: any) {
+                            console.error("Paystack init error:", err);
+                            toast({ title: "Error", description: err.message || "Could not initialize payment", variant: "destructive" });
+                          } finally {
+                            setBuyLoading(false);
+                          }
+                        }}
+                        disabled={buyLoading || !buyCustomerNumber}
+                      >
+                        {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Pay with Paystack
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Wallet Balance: GHC {availableWalletBalance.toFixed(2)}
+                      {pendingWithdrawalAmount > 0 && (
+                        <span className="text-yellow-400 text-xs block mt-1">
+                          (GHC {pendingWithdrawalAmount.toFixed(2)} pending withdrawal)
+                        </span>
+                      )}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ORDERS */}
+          <TabsContent value="orders" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Recent Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {orders.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No orders yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Customer</TableHead>
+                          <TableHead>Network</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Payment Method</TableHead>
+                          <TableHead>Selling Price</TableHead>
+                          <TableHead>Base Cost</TableHead>
+                          <TableHead>Profit</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {orders.slice(0, 10).map(order => {
+                          const storedSellPrice = order.selling_price ?? null;
+                          const storedBaseCost = order.base_price ?? null;
+                          const storedProfit = order.profit ?? null;
+                          const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+                          const fallbackProfit = order.amount - fallbackBaseCost;
+                          const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
+                          const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
+                          const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
+                          return (
+                            <TableRow key={order.id}>
+                              <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                              <TableCell>{order.network.toUpperCase()}</TableCell>
+                              <TableCell>{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</TableCell>
+                              <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
+                              <TableCell className="font-semibold">GHC {Number(sellPrice).toFixed(2)}</TableCell>
+                              <TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell>
+                              <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
+                                GHC {Number(profit).toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={order.fulfillment_status === "delivered" ? "default" : "secondary"}>
+                                  {getOrderStage(order)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {new Date(order.created_at).toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* WITHDRAW TAB */}
+          <TabsContent value="withdraw" className="mt-0 space-y-4">
           {/* Withdrawal Request Card */}
           {!agentNotifications.length || !showAgentNotificationPopup ? (
         <Card className="border-border">
@@ -3629,8 +4157,9 @@ const SubagentDashboard = () => {
                 )}
               </CardContent>
             </Card>
-        </TabsContent>
+          </TabsContent>
         </Tabs>
+      </div>
     </div>
   );
 };
