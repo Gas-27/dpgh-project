@@ -2172,8 +2172,13 @@ const SubagentDashboard = () => {
         </Dialog>
       )}
 
-      {/* Withdrawal Request Card */}
-      {!agentNotifications.length || !showAgentNotificationPopup ? (
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="hidden" />
+
+        {/* WITHDRAW TAB */}
+        <TabsContent value="withdraw" className="mt-0 space-y-4">
+          {/* Withdrawal Request Card */}
+          {!agentNotifications.length || !showAgentNotificationPopup ? (
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -2456,106 +2461,40 @@ const SubagentDashboard = () => {
         </Card>
       ) : null}
 
-                {createNewRecipient && (
-                  <>
-                    
-                    <div className="space-y-3">
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1 space-y-1">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="e.g. 20.00"
-                            value={withdrawAmount}
-                            onChange={e => setWithdrawAmount(e.target.value)}
-                            disabled={hasPendingWithdrawal}
-                          />
-                        </div>
-                        <Button 
-                          variant="hero" 
-                          onClick={handleRequestWithdrawal} 
-                          disabled={withdrawLoading || hasPendingWithdrawal}
-                        >
-                          {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                          Transfer
-                        </Button>
-                      </div>
-
-                      {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-                        <div className="bg-slate-900/50 border border-slate-700 rounded p-3 space-y-2">
-                          {(() => {
-                            const amt = parseFloat(withdrawAmount);
-                            const feePercentage = amt < 100 ? 0.05 : 0.015;
-                            const feeAmount = amt * feePercentage;
-                            const recipientAmount = amt - feeAmount;
-                            return (
-                              <>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Amount to Deduct:</span>
-                                  <span>GHC {amt.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">Fee ({(feePercentage * 100).toFixed(1)}%):</span>
-                                  <span className="text-red-400">GHC {feeAmount.toFixed(2)}</span>
-                                </div>
-                                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-semibold">
-                                  <span>Recipient Receives:</span>
-                                  <span className="text-green-400">GHC {recipientAmount.toFixed(2)}</span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                        <p className="text-xs text-red-400 font-semibold mb-1">IMPORTANT WARNING</p>
-                        <p className="text-xs text-red-300">
-                          Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle>Payout History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {withdrawals.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No transfers yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {withdrawals.map(w => (
+                    <div key={w.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
+                      <div className="flex-1">
+                        <p className="font-medium">GHC {w.amount.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {w.provider_type === "mobile_money"
+                            ? `${w.account_holder_name} • ${w.mobile_money_network?.toUpperCase()}: ${w.mobile_money_number}`
+                            : `${w.account_holder_name} • Bank: ${w.account_number}`
+                          }
                         </p>
                       </div>
-
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GHC 15.00 | Processed Instantly</p>
+                      <Badge variant={w.status === "completed" ? "default" : w.status === "pending" ? "secondary" : "destructive"}>
+                        {w.status}
+                      </Badge>
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle>Payout History</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {withdrawals.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No transfers yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {withdrawals.map(w => (
-                      <div key={w.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
-                        <div className="flex-1">
-                          <p className="font-medium">GHC {w.amount.toFixed(2)}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {w.provider_type === "mobile_money" 
-                              ? `${w.account_holder_name} • ${w.mobile_money_network?.toUpperCase()}: ${w.mobile_money_number}`
-                              : `${w.account_holder_name} • Bank: ${w.account_number}`
-                            }
-                          </p>
-                        </div>
-                        <Badge variant={w.status === "completed" ? "default" : w.status === "pending" ? "secondary" : "destructive"}>
-                          {w.status}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* TOP UP */}
-          <TabsContent value="topup" className="mt-0 space-y-6">
+        {/* TOP UP */}
+        <TabsContent value="topup" className="mt-0 space-y-6">
             <Card className="border-green-500/30 bg-green-500/5">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2 text-green-400">
@@ -2624,10 +2563,10 @@ const SubagentDashboard = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+        </TabsContent>
 
           {/* BULK ORDERS */}
-          <TabsContent value="bulk" className="space-y-6 mt-0">
+        <TabsContent value="bulk" className="space-y-6 mt-0">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5" /> Bulk Orders</CardTitle>
@@ -2925,10 +2864,10 @@ const SubagentDashboard = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+        </TabsContent>
 
           {/* STORE PRICES */}
-          <TabsContent value="store" className="space-y-4 mt-0">
+        <TabsContent value="store" className="space-y-4 mt-0">
             {packages.length === 0 ? (
               <Card className="border-border">
                 <CardContent className="py-12 text-center">
@@ -2972,7 +2911,7 @@ const SubagentDashboard = () => {
                   )}
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one — Markup Explanation (Remember to click save after applying markup)</p>
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one - Markup Explanation (Remember to click save after applying markup)</p>
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
@@ -3040,10 +2979,10 @@ const SubagentDashboard = () => {
                 </Card>
               </>
             )}
-          </TabsContent>
+        </TabsContent>
 
           {/* APPEARANCE */}
-          <TabsContent value="appearance" className="mt-0">
+        <TabsContent value="appearance" className="mt-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-border">
                 <CardHeader>
@@ -3162,10 +3101,10 @@ const SubagentDashboard = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+        </TabsContent>
 
           {/* NOTIFICATIONS */}
-          <TabsContent value="notifications" className="mt-0 space-y-6">
+        <TabsContent value="notifications" className="mt-0 space-y-6">
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display text-lg">Send Notification</CardTitle>
@@ -3252,10 +3191,10 @@ const SubagentDashboard = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+        </TabsContent>
 
           {/* FLYER GENERATOR */}
-          <TabsContent value="flyer" className="mt-0 space-y-6">
+        <TabsContent value="flyer" className="mt-0 space-y-6">
             {subagentStore && (
               <FlyerGenerator
                 storeName={subagentStore.store_name}
@@ -3268,11 +3207,11 @@ const SubagentDashboard = () => {
                 topupReference={subagentStore.topup_reference || ""}
               />
             )}
-          </TabsContent>
+        </TabsContent>
 
           {/* COMMENTED OUT: mashup packages deactivated
           MTN MASHUP FLYER
-          <TabsContent value="mashup-flyer" className="mt-0 space-y-6">
+        <TabsContent value="mashup-flyer" className="mt-0 space-y-6">
             {subagentStore && (
               <MashupFlyerGenerator
                 storeName={subagentStore.store_name}
@@ -3285,11 +3224,11 @@ const SubagentDashboard = () => {
                 isSubagent={true}
               />
             )}
-          </TabsContent>
+        </TabsContent>
           */}
 
           {/* SUB-SUBAGENTS */}
-          <TabsContent value="sub-subagents" className="mt-0 space-y-6">
+        <TabsContent value="sub-subagents" className="mt-0 space-y-6">
             {/* Send Notification to Sub-Subagents - AT THE TOP */}
             <Card className="border-orange-500/30 bg-orange-500/5">
               <CardHeader>
@@ -3403,11 +3342,11 @@ const SubagentDashboard = () => {
                 />
               </CardContent>
             </Card>
-          </TabsContent>
+        </TabsContent>
 
           {/* SUB-SUBAGENT PRICING */}
           {/* SUB-SUBAGENT PRICING */}
-          <TabsContent value="sub-subagent-pricing" className="space-y-4 mt-0">
+        <TabsContent value="sub-subagent-pricing" className="space-y-4 mt-0">
             {packages.length === 0 ? (
               <Card className="border-border">
                 <CardContent className="py-12 text-center">
@@ -3450,7 +3389,7 @@ const SubagentDashboard = () => {
                   )}
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one — Markup Explanation (Remember to click save after applying markup)</p>
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one - Markup Explanation (Remember to click save after applying markup)</p>
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your prices to sub-subagents for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (your cost price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Sub-Subagent Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
@@ -3518,10 +3457,10 @@ const SubagentDashboard = () => {
                 </Card>
               </>
             )}
-          </TabsContent>
+        </TabsContent>
 
           {/* SETTINGS */}
-          <TabsContent value="settings" className="mt-0 space-y-6">
+        <TabsContent value="settings" className="mt-0 space-y-6">
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Store Information</CardTitle>
@@ -3690,9 +3629,8 @@ const SubagentDashboard = () => {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+        </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 };
