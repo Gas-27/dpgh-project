@@ -25,7 +25,7 @@ import {
   TrendingUp, Search, Palette, RotateCcw, Bell, Plus, Trash2, Calendar,
   LayoutGrid, Minus, Plus as PlusIcon, Coins, Menu, Image, Download, Share2,
   ChevronDown, ChevronUp, BookOpen, Percent, Users, AlertCircle, ShieldAlert,
-  Send, Eye, Upload, FileSpreadsheet, Layers, MessageCircle,
+  Send, Eye, Upload, FileSpreadsheet, Layers, MessageCircle, Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ChatBot from "@/components/ChatBot";
@@ -404,6 +404,8 @@ const AgentDashboard = () => {
     catch { return DEFAULT_FLYER_COLORS; }
   });
   const [shareText, setShareText] = useState("");
+  const [withdrawalCooldownEndTime, setWithdrawalCooldownEndTime] = useState<number | null>(null);
+  const [cooldownTimeRemaining, setCooldownTimeRemaining] = useState<string | null>(null);
 
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
@@ -820,6 +822,40 @@ const AgentDashboard = () => {
   };
 
   useEffect(() => { if (user || isImpersonating) fetchAllData(); }, [user, isImpersonating, impersonatedUserId]);
+
+  // 24-hour withdrawal cooldown timer
+  useEffect(() => {
+    if (!store?.last_withdrawal_at) {
+      setWithdrawalCooldownEndTime(null);
+      setCooldownTimeRemaining(null);
+      return;
+    }
+
+    const lastWithdrawalTime = new Date(store.last_withdrawal_at).getTime();
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    const cooldownEndTime = lastWithdrawalTime + TWENTY_FOUR_HOURS;
+    
+    setWithdrawalCooldownEndTime(cooldownEndTime);
+
+    // Update countdown every second
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const remaining = cooldownEndTime - now;
+
+      if (remaining <= 0) {
+        setCooldownTimeRemaining(null);
+        setWithdrawalCooldownEndTime(null);
+        clearInterval(interval);
+      } else {
+        const hours = Math.floor(remaining / (60 * 60 * 1000));
+        const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+        const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
+        setCooldownTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [store?.last_withdrawal_at]);
 
   // Subscribe to real-time changes in agent_stores for bundle price and other updates
   useEffect(() => {
@@ -2868,13 +2904,23 @@ const AgentDashboard = () => {
                         <Button 
                           variant="hero" 
                           className="self-end bg-cyan-600 hover:bg-cyan-700"
-                          disabled={withdrawLoading}
+                          disabled={withdrawLoading || !!cooldownTimeRemaining}
                           onClick={() => handleWithdraw()}
                         >
                           {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
-                          Transfer
+                          {cooldownTimeRemaining ? `Cooldown: ${cooldownTimeRemaining}` : "Transfer"}
                         </Button>
                       </div>
+
+                      {cooldownTimeRemaining && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded p-3 flex items-start gap-2">
+                          <Clock className="h-5 w-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-sm">
+                            <p className="font-semibold text-amber-400">Withdrawal Cooldown Active</p>
+                            <p className="text-amber-300 text-xs mt-1">You can make your next withdrawal in <strong>{cooldownTimeRemaining}</strong></p>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Fee Breakdown */}
                       {withdrawAmount && Number(withdrawAmount) > 0 && (

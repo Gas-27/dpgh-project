@@ -177,6 +177,31 @@ Deno.serve(async (req) => {
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // =============================================
+    // CHECK 24-HOUR WITHDRAWAL COOLDOWN
+    // =============================================
+    const lastWithdrawalAt = requesterData.last_withdrawal_at;
+    if (lastWithdrawalAt) {
+      const lastWithdrawalTime = new Date(lastWithdrawalAt).getTime();
+      const now = Date.now();
+      const timeSinceLastWithdrawal = now - lastWithdrawalTime;
+      const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+      if (timeSinceLastWithdrawal < TWENTY_FOUR_HOURS) {
+        const remainingTime = TWENTY_FOUR_HOURS - timeSinceLastWithdrawal;
+        const hoursRemaining = Math.ceil(remainingTime / (60 * 60 * 1000));
+        const minutesRemaining = Math.ceil((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+        
+        console.log(`[CREATE-PAYOUT] Cooldown active. Hours remaining: ${hoursRemaining}, Minutes: ${minutesRemaining}`);
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Withdrawal cooldown active. Try again in ${hoursRemaining}h ${minutesRemaining}m`,
+          cooldown_remaining_ms: remainingTime,
+          retry_after: new Date(now + remainingTime).toISOString(),
+        }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     // The owner of the store/recipient rows (matters when an admin acts on behalf of a store)
     const storeUserId = requesterData.user_id as string;
 
@@ -481,6 +506,8 @@ Deno.serve(async (req) => {
     // STEP 6: Handle transfer result
     // =============================================
     if (transferSuccess && transferData) {
+      const now = new Date().toISOString();
+      
       const { error: updateError } = await supabase
         .from("payout_requests")
         .update({
@@ -489,12 +516,27 @@ Deno.serve(async (req) => {
           paystack_reference: transferReference,
           paystack_response: transferData,
           source_balance_after: balanceAfter,
-          completed_at: new Date().toISOString(),
+          completed_at: now,
         })
         .eq("id", payoutId);
 
       if (updateError) {
         console.error(`[CREATE-PAYOUT] Failed to update payout request:`, updateError.message);
+      }
+
+      // Update last_withdrawal_at for 24-hour cooldown
+      if (requester_type === "agent") {
+        const { error: cooldownError } = await supabase
+          .from("agent_stores")
+          .update({ last_withdrawal_at: now })
+          .eq("id", requester_id);
+        if (cooldownError) console.error(`[CREATE-PAYOUT] Failed to set cooldown:`, cooldownError.message);
+      } else {
+        const { error: cooldownError } = await supabase
+          .from("subagent_stores")
+          .update({ last_withdrawal_at: now })
+          .eq("id", requester_id);
+        if (cooldownError) console.error(`[CREATE-PAYOUT] Failed to set cooldown:`, cooldownError.message);
       }
 
       console.log(`[CREATE-PAYOUT] Transfer successful: ${transferData.transfer_code}`);
