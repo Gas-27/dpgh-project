@@ -2711,6 +2711,22 @@ const SubagentDashboard = () => {
                 <CardTitle className="font-display text-lg">Request Paystack Transfer</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Wallet Balance Display */}
+                <Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
+                  <CardContent className="p-4 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-5 w-5 text-primary" />
+                        <span className="font-medium">Wallet Balance:</span>
+                      </div>
+                      <span className="font-display text-xl font-bold text-primary">GH₵ {availableWalletBalance.toFixed(2)}</span>
+                    </div>
+                    {hasPendingWithdrawal && (
+                      <p className="text-xs text-orange-400">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GH₵ {(availableWalletBalance - pendingWithdrawalAmount).toFixed(2)}</strong></p>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {hasPendingWithdrawal && (
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
                     <p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
@@ -2945,14 +2961,6 @@ const SubagentDashboard = () => {
 
                 {createNewRecipient && (
                   <>
-                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                      <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH₵ {availableWalletBalance.toFixed(2)}</span></p>
-                      {pendingWithdrawalAmount > 0 && (
-                        <p className="text-xs text-yellow-400 mt-2">
-                          (GH₵ {pendingWithdrawalAmount.toFixed(2)} pending withdrawal - cannot be used)
-                        </p>
-                      )}
-                    </div>
                     
                     <div className="space-y-3">
                       <div className="flex gap-2 items-end">
