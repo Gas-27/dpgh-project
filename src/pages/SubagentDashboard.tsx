@@ -2193,23 +2193,23 @@ const SubagentDashboard = () => {
                   <span className="font-display text-xl font-bold text-primary">GH₵ {availableWalletBalance.toFixed(2)}</span>
                 </div>
                 {hasPendingWithdrawal && (
-                  <p className="text-xs text-orange-400">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GH₵ {(availableWalletBalance - pendingWithdrawalAmount).toFixed(2)}</strong></p>
+                  <p className="text-xs text-orange-400">WARNING: GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GH₵ {(availableWalletBalance - pendingWithdrawalAmount).toFixed(2)}</strong></p>
                 )}
               </CardContent>
             </Card>
 
-            {hasPendingWithdrawal && (
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                <p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
-              </div>
-            )}
+                {hasPendingWithdrawal && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                    <p className="text-sm text-yellow-400 font-medium">WARNING: You have a pending withdrawal of GH₵ {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
+                  </div>
+                )}
 
-            {transferRecipients.length > 0 && (
-              <div className="space-y-2 mb-4">
-                <div className="space-y-1">
-                  <Label>Select Recipient</Label>
-                  <p className="text-xs text-muted-foreground">Tap on the dropdown to select a recipient</p>
-                </div>
+                {transferRecipients.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    <div className="space-y-1">
+                      <Label>Select Recipient</Label>
+                      <p className="text-xs text-muted-foreground">Tap on the dropdown to select a recipient</p>
+                    </div>
                 <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a recipient..." />
@@ -2443,13 +2443,13 @@ const SubagentDashboard = () => {
                 </details>
 
                 <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                  <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
+                  <p className="text-xs text-red-400 font-semibold mb-1">IMPORTANT WARNING</p>
                   <p className="text-xs text-red-300">
                     Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
                   </p>
                 </div>
 
-                <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
+                <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly</p>
               </div>
             )}
           </CardContent>
@@ -2539,7 +2539,7 @@ const SubagentDashboard = () => {
                           <p className="text-xs text-muted-foreground mt-1">
                             {w.provider_type === "mobile_money" 
                               ? `${w.account_holder_name} • ${w.mobile_money_network?.toUpperCase()}: ${w.mobile_money_number}`
-                              : `${w.account_holder_name} �� Bank: ${w.account_number}`
+                              : `${w.account_holder_name} • Bank: ${w.account_number}`
                             }
                           </p>
                         </div>

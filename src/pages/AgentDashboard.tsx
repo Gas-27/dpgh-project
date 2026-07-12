@@ -113,7 +113,7 @@ const menuItems = [
 
 const MANUAL_SECTIONS = [
   {
-    icon: "📊", title: "Overview", content: `Your command centre. At a glance:
+    icon: "i", title: "Overview", content: `Your command centre. At a glance:
 • Store Status – confirms your store is live.
 • Total Orders – every order ever placed through your store.
 • Pending Orders – orders still being processed.
@@ -123,7 +123,7 @@ const MANUAL_SECTIONS = [
 
 The Recent Orders table loads 100 orders at a time. Click "Load More" to see the next 100. Use the search box to filter by phone number or order ID.` },
   {
-    icon: "🛒", title: "Buy Data", content: `Buy data for a customer or yourself from your wallet.
+    icon: "i", title: "Buy Data", content: `Buy data for a customer or yourself from your wallet.
 
 1. Check your wallet balance at the top — top up if needed.
 2. Select a network tab (MTN, AirtelTigo, Telecel).
@@ -133,11 +133,11 @@ Payment Methods:
 • Wallet – deducts from your pre-loaded wallet. Instant, no extra charges.
 • Paystack – pay per order with a small Paystack fee added.
 
-⚠️ If you have a pending withdrawal, the system will prevent you from buying data that would push your balance below the pending withdrawal amount to protect your funds.
+NOTE: If you have a pending withdrawal, the system will prevent you from buying data that would push your balance below the pending withdrawal amount to protect your funds.
 
 Note: 10-minute cooldown per phone number to prevent duplicate orders.` },
   {
-    icon: "📦", title: "Bulk Orders", content: `Send data to multiple recipients at once using your wallet.
+    icon: "i", title: "Bulk Orders", content: `Send data to multiple recipients at once using your wallet.
 
 How to use:
 1. SELECT NETWORK – Choose MTN, Telecel, or AirtelTigo.
@@ -154,10 +154,10 @@ Tips:
 • Results table shows success/failure for each recipient after processing.
 • Insufficient wallet balance will prevent processing.` },
   {
-    icon: "🏷️", title: "Store Prices", content: `Set what your customers pay on your public store.
+    icon: "i", title: "Store Prices", content: `Set what your customers pay on your public store.
 
 • Base Price (Cost) – fixed price you pay. You cannot sell below this.
-• Your Selling Price �������������������� set any amount above the base price.
+• Your Selling Price – set any amount above the base price.
 • Profit – auto-calculated: Selling Price minus Base Price.
 
 How to update:
@@ -167,15 +167,15 @@ How to update:
 
 Your live store reflects changes immediately.
 
-💡 Markup Feature:
+TIP - Markup Feature:
 • Enter a percentage (e.g., +10) and click "Apply Markup".
 • The markup is applied to the BASE PRICE of the currently selected network.
 • Example: If base price = GHC 4.10, +10% becomes GHC 4.51.
 • After applying, you must click "Save Prices" to store the changes permanently.` },
   {
-    icon: "🖼️", title: "Flyer Generator", content: `Generate a professional promotional flyer showing all your current prices.
+    icon: "i", title: "Flyer Generator", content: `Generate a professional promotional flyer showing all your current prices.
 
-• Flyer is 1080 × 1920 px (portrait) — ideal for WhatsApp, Facebook, Instagram stories.
+• Flyer is 1080 x 1920 px (portrait) — ideal for WhatsApp, Facebook, Instagram stories.
 • Prices are pulled automatically from your Store Prices.
 • Your store name appears at the top instead of "DATA PLUG .STORE".
 • Your support contact number appears in the footer.
@@ -186,10 +186,10 @@ Customisation:
 
 Sharing:
 • "Download PNG" saves the full-resolution image to your device.
-• "Preview as Image" opens the flyer in a new tab – from there you can long‑press / right‑click and save or share.
+• "Preview as Image" opens the flyer in a new tab – from there you can long-press / right-click and save or share.
 • "Share Flyer" uses the native share sheet to send the image directly to WhatsApp (on mobile) or downloads the image and opens WhatsApp (on desktop).` },
   {
-    icon: "💸", title: "Withdraw", content: `Cash out your wallet balance to your MoMo account.
+    icon: "i", title: "Withdraw", content: `Cash out your wallet balance to your MoMo account.
 
 • Minimum: GH₵ 10.00.
 • Processed within 24 hours.
@@ -198,7 +198,7 @@ Sharing:
 
 Withdrawal History shows all past requests and their status.` },
   {
-    icon: "💰", title: "Top Up Wallet", content: `Add money to your wallet to buy data without Paystack charges.
+    icon: "i", title: "Top Up Wallet", content: `Add money to your wallet to buy data without Paystack charges.
 
 Steps:
 1. Dial *170# on your MTN MoMo phone.
@@ -209,20 +209,20 @@ Steps:
 6. Send the transaction ID to admin via WhatsApp or call.
 7. Wallet credited after admin verifies.
 
-⚠️ Always include your reference code or your wallet will not be credited.` },
+NOTE: Always include your reference code or your wallet will not be credited.` },
   {
-    icon: "🎨", title: "Appearance", content: `Customise how your public store looks.
+    icon: "i", title: "Appearance", content: `Customise how your public store looks.
 
 • Store Headline – text shown at the top of your store page.
 • Primary Colour – buttons and accents across your storefront.
 • Text on Primary – text colour on buttons.
 • Page Background – main background colour.
 • Card Background – colour of each product card.
-• Grid Columns – products shown side by side (1–6).
+• Grid Columns – products shown side by side (1-6).
 
 A live preview shows exactly how your store will look. Click Save to apply changes.` },
   {
-    icon: "👥", title: "Subagents", content: `Manage people who sell under your store.
+    icon: "i", title: "Subagents", content: `Manage people who sell under your store.
 
 • Subagents are sellers who have their own store but operate under you.
 • When a subagent makes a sale, you earn a commission from their profit.
@@ -235,7 +235,7 @@ Subagent Profit Split:
   - You earn a commission percentage from that profit
   - Commission rate is set in your settings (default 10%)` },
   {
-    icon: "💰", title: "Subagent Prices", content: `Set the base prices your subagents will use.
+    icon: "i", title: "Subagent Prices", content: `Set the base prices your subagents will use.
 
 • Base Price for Subagents – The minimum price your subagents can sell at.
 • This is different from your storefront selling price.
@@ -249,21 +249,21 @@ Example:
 • Subagent profit: GH₵ 0.20
 • Your commission (10%): GH₵ 0.02` },
   {
-    icon: "🔔", title: "Notifications", content: `Send pop-up announcements that appear on your public store page.
+    icon: "i", title: "Notifications", content: `Send pop-up announcements that appear on your public store page.
 
 Examples:
-• "🎉 Special promo: 20% off AirtelTigo this weekend!"
-• "⚡ New Telecel packages added!"
-• "📢 Temporarily offline for maintenance."
+• "Special promo: 20% off AirtelTigo this weekend!"
+• "New Telecel packages added!"
+• "Temporarily offline for maintenance."
 
 How to create:
 1. Type your message.
 2. Optionally set an expiry date.
 3. Click Send.
 
-Managing: Toggle Active/Inactive to show or hide without deleting. Bin icon to delete permanently.` },
+Managing: Toggle Active/Inactive to show or hide without deleting. Delete to remove permanently.` },
   {
-    icon: "⚙️", title: "Settings", content: `Update your store's core information.
+    icon: "i", title: "Settings", content: `Update your store's core information.
 
 • Store Name – displayed on your storefront and used to generate your store URL.
 • WhatsApp Number – customers can message you on this number.
@@ -275,7 +275,7 @@ Managing: Toggle Active/Inactive to show or hide without deleting. Bin icon to d
 
 Note: The Support Number shown here is what appears in the contact footer of your generated flyer.` },
   {
-    icon: "📢", title: "Complaints", content: `View and manage customer complaints from your stores.
+    icon: "i", title: "Complaints", content: `View and manage customer complaints from your stores.
 
 The Complaints section has two tabs:
 • Storefront Complaints – Issues reported from your main storefront.
@@ -288,7 +288,7 @@ For subagent store complaints, you'll see:
 
 Important: All complaints sent to your storefront and subagent stores are automatically forwarded to admin for resolution. You can track their status here.` },
   {
-    icon: "📜", title: "Rules", content: `Before making an order, make sure you are not owing airtime, MoMo, or bundles.
+    icon: "i", title: "Rules", content: `Before making an order, make sure you are not owing airtime, MoMo, or bundles.
 You cannot make an order for the same number when the first order has not been delivered (either from our site or other sites) – this can override your previous order.
 Before bringing a report from a customer to the admin, make sure to ask them the questions above before reporting.` },
 ];
@@ -2122,7 +2122,7 @@ const AgentDashboard = () => {
           {/* ============================= BUY DATA ============================= */}
           <TabsContent value="buy" className="space-y-4 mt-0">
             {store && (<Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
-              <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GH₵ {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">⚠️ GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GH₵ {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
+              <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GH₵ {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GH₵ {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GH₵ {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
             <div className="flex gap-2 flex-wrap">
               {["mtn", "airteltigo", "telecel"].map(net => (
@@ -2968,11 +2968,11 @@ const AgentDashboard = () => {
 
                       {/* Important Warning */}
                       <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                        <p className="text-xs text-red-400 font-medium">⚠️ IMPORTANT WARNING</p>
+                        <p className="text-xs text-red-400 font-medium">IMPORTANT WARNING</p>
                         <p className="text-xs text-red-300 mt-1">Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.</p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ⚡</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly</p>
                     </div>
                   </>
                 )}
@@ -3041,7 +3041,7 @@ const AgentDashboard = () => {
             {/* API Key Warning */}
             <Card className="border-red-500/50 bg-red-500/10">
               <CardHeader>
-                <CardTitle className="text-base text-red-500">⚠️ Important: API Key Warning</CardTitle>
+                <CardTitle className="text-base text-red-500">Important: API Key Warning</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <p className="text-red-400 font-semibold">
@@ -3552,7 +3552,7 @@ const AgentDashboard = () => {
                       </Button>
                     </div>
                     <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
-                      ⚠️ Keep this key secret. Never share it publicly.
+                      ⚠��� Keep this key secret. Never share it publicly.
                     </p>
                   </div>
                 ) : (
