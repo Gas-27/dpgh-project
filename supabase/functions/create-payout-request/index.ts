@@ -399,19 +399,23 @@ Deno.serve(async (req) => {
 
     if (requester_type === "agent") {
       if (withdrawal_source === "wallet_balance") {
+        console.log(`[CREATE-PAYOUT] Updating agent wallet - Before: ${currentBalance}, After: ${balanceAfter}`);
         const { error: updateError } = await supabase
           .from("agent_stores")
           .update({ wallet_balance: balanceAfter })
           .eq("id", requester_id);
 
         if (updateError) {
-          console.error(`[CREATE-PAYOUT] Failed to deduct agent wallet:`, updateError.message);
+          console.error(`[CREATE-PAYOUT] ❌ CRITICAL: Failed to deduct agent wallet:`, updateError.message);
+          console.error(`[CREATE-PAYOUT] Store ID: ${requester_id}, Attempted balance: ${balanceAfter}`);
           await supabase.from("payout_requests").delete().eq("id", payoutId);
           return new Response(JSON.stringify({ success: false, error: "Failed to process withdrawal" }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+        console.log(`[CREATE-PAYOUT] ✅ Agent wallet updated successfully: ${requester_id}`);
+      }
       } else {
         const { error: updateError } = await supabase
           .from("agent_stores")
@@ -428,22 +432,27 @@ Deno.serve(async (req) => {
         }
       }
     } else {
+      console.log(`[CREATE-PAYOUT] Updating subagent wallet - Before: ${currentBalance}, After: ${balanceAfter}`);
       const { error: updateError } = await supabase
         .from("subagent_stores")
         .update({ wallet_balance: balanceAfter })
         .eq("id", requester_id);
 
       if (updateError) {
-        console.error(`[CREATE-PAYOUT] Failed to deduct subagent wallet:`, updateError.message);
+        console.error(`[CREATE-PAYOUT] ❌ CRITICAL: Failed to deduct subagent wallet:`, updateError.message);
+        console.error(`[CREATE-PAYOUT] Store ID: ${requester_id}, Attempted balance: ${balanceAfter}`);
         await supabase.from("payout_requests").delete().eq("id", payoutId);
         return new Response(JSON.stringify({ success: false, error: "Failed to process withdrawal" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      console.log(`[CREATE-PAYOUT] ✅ Subagent wallet updated successfully: ${requester_id}`);
     }
 
-    console.log(`[CREATE-PAYOUT] Balance deducted: ${currentBalance} -> ${balanceAfter}`);
+    console.log(`[CREATE-PAYOUT] ✅ BALANCE DEDUCTED: ${currentBalance} -> ${balanceAfter}`);
+    console.log(`[CREATE-PAYOUT] Database Update Result: Deducted GHS ${amount} from ${requester_type} ${requester_id}`);
+    console.log(`[CREATE-PAYOUT] Payout Request ID: ${payoutId}`);
 
     // =============================================
     // STEP 5: Initiate Paystack Transfer
