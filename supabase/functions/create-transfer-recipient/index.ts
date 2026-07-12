@@ -113,6 +113,7 @@ Deno.serve(async (req) => {
 
       // Format phone number for Paystack: must be in format 233XXXXXXXXX
       let formattedNumber = mobile_money_number.trim();
+      console.log(`[CREATE-RECIPIENT] Original phone number: ${formattedNumber}`);
       
       // Remove all non-digit characters except leading +
       if (formattedNumber.startsWith("+")) {
@@ -121,6 +122,7 @@ Deno.serve(async (req) => {
       
       // Remove all leading zeros
       formattedNumber = formattedNumber.replace(/^0+/, "");
+      console.log(`[CREATE-RECIPIENT] After removing leading zeros: ${formattedNumber}`);
       
       // Remove country code if it's 233 so we can add it fresh
       if (formattedNumber.startsWith("233")) {
@@ -132,6 +134,7 @@ Deno.serve(async (req) => {
       
       // Add Ghana country code
       formattedNumber = "233" + formattedNumber;
+      console.log(`[CREATE-RECIPIENT] Final formatted phone: ${formattedNumber}`);
 
       paystackPayload = {
         type: "mobile_money",
@@ -204,6 +207,43 @@ Deno.serve(async (req) => {
       .single();
 
     if (insertError) {
+      console.error(`[CREATE-RECIPIENT] Save error:`, insertError);
+      
+      // Handle duplicate recipient code - check if it's already owned by this user
+      if (insertError.code === "23505" && insertError.details?.includes("recipient_code")) {
+        console.log(`[CREATE-RECIPIENT] Recipient code already exists: ${recipientCode}`);
+        
+        // Check if this recipient already exists for the current user
+        const { data: existingRecipient, error: fetchError } = await supabase
+          .from("transfer_recipients")
+          .select("id, recipient_code, account_holder_name, mobile_money_network, mobile_money_number, provider_type")
+          .eq("recipient_code", recipientCode)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        if (!fetchError && existingRecipient) {
+          console.log(`[CREATE-RECIPIENT] Recipient already exists for this user`);
+          return new Response(
+            JSON.stringify({
+              success: true,
+              recipient: existingRecipient,
+              message: "Recipient already exists",
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // If not owned by this user, it's a conflict
+        console.log(`[CREATE-RECIPIENT] Recipient code belongs to another user`);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "This recipient account is already registered by another user. Please use a different account.",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       console.error(`[CREATE-RECIPIENT] Failed to save recipient:`, insertError.message);
       return new Response(
         JSON.stringify({
