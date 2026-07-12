@@ -662,7 +662,8 @@ const SubagentDashboard = () => {
           subagentPricesResult,
           topupsResult,
           agentInfoResult,
-          subSubagentsResult
+          subSubagentsResult,
+          recipientsResult
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -672,7 +673,8 @@ const SubagentDashboard = () => {
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
-          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false })
+          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false })
         ]);
 
         // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
@@ -699,6 +701,7 @@ const SubagentDashboard = () => {
           };
         });
         setWithdrawals(payoutData2);
+        setTransferRecipients(recipientsResult.data || []);
         setPackages(packagesResult.data || []);
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
