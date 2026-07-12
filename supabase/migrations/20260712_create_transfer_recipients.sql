@@ -41,8 +41,13 @@ CREATE POLICY "Users can delete own recipients" ON public.transfer_recipients
 
 -- Admins can view all recipients
 CREATE POLICY "Admins can view all recipients" ON public.transfer_recipients
-  FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.user_roles 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
 
 -- Create indexes for faster queries
 CREATE INDEX idx_transfer_recipients_user_id ON public.transfer_recipients(user_id);

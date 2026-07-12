@@ -38,8 +38,13 @@ CREATE POLICY "Subagents can view own payouts" ON public.payout_requests
 
 -- Admins can view all payouts
 CREATE POLICY "Admins can view all payouts" ON public.payout_requests
-  FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.user_roles 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
 
 -- Create index for faster queries
 CREATE INDEX idx_payout_requests_requester ON public.payout_requests(requester_type, requester_id);
