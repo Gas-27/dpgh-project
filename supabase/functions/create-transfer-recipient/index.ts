@@ -188,11 +188,14 @@ Deno.serve(async (req) => {
 
     const recipientCode = paystackResult.data.recipient_code;
 
-    // Save to database
+    // Save to database - use the context user_id from request body which handles subagent cases
+    const recipientUserId = user_id || user.id;
+    console.log(`[CREATE-RECIPIENT] Saving recipient with user_id: ${recipientUserId}`);
+    
     const { data: newRecipient, error: insertError } = await supabase
       .from("transfer_recipients")
       .insert({
-        user_id: user.id,
+        user_id: recipientUserId,
         recipient_code: recipientCode,
         account_holder_name: account_holder_name,
         provider_type: provider_type,

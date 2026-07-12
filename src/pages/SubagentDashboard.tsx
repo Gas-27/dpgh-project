@@ -1236,9 +1236,10 @@ const SubagentDashboard = () => {
 
       console.log("[v0] Calling create-transfer-recipient...");
 
-      // Call Supabase Edge Function - Supabase client handles auth automatically
+      // Call Supabase Edge Function - pass explicit user_id for proper association
       const { data, error } = await supabase.functions.invoke('create-transfer-recipient', {
         body: {
+          user_id: user.id,  // Explicitly pass the user_id to ensure recipients are saved with correct owner
           account_holder_name: recipientName,
           provider_type: "mobile_money",
           mobile_money_network: mobileNetwork,
@@ -1256,7 +1257,8 @@ const SubagentDashboard = () => {
         throw new Error(data?.error || "Failed to create recipient");
       }
       
-      // Refresh recipients list
+      // Refresh recipients list - must use same user_id that we just saved with
+      console.log("[v0] Refreshing recipients with user_id:", user.id);
       const { data: updated } = await supabase
         .from("transfer_recipients")
         .select("*")
@@ -1264,6 +1266,7 @@ const SubagentDashboard = () => {
         .eq("status", "active")
         .order("created_at", { ascending: false });
       
+      console.log("[v0] Updated recipients:", updated);
       setTransferRecipients(updated ?? []);
       setCreateNewRecipient(false);
       setRecipientName("");
