@@ -207,11 +207,14 @@ Deno.serve(async (req) => {
       .single();
 
     if (insertError) {
-      console.error(`[CREATE-RECIPIENT] Save error:`, insertError);
+      console.error(`[CREATE-RECIPIENT] Save error:`, JSON.stringify(insertError));
       
       // Handle duplicate recipient code - check if it's already owned by this user
-      if (insertError.code === "23505" && insertError.details?.includes("recipient_code")) {
-        console.log(`[CREATE-RECIPIENT] Recipient code already exists: ${recipientCode}`);
+      const errorMessage = typeof insertError.message === "string" ? insertError.message : JSON.stringify(insertError);
+      const isDuplicateError = insertError.code === "23505" || errorMessage.includes("already exists") || errorMessage.includes("duplicate");
+      
+      if (isDuplicateError) {
+        console.log(`[CREATE-RECIPIENT] Duplicate key detected, checking if belongs to current user`);
         
         // Check if this recipient already exists for the current user
         const { data: existingRecipient, error: fetchError } = await supabase
@@ -222,7 +225,7 @@ Deno.serve(async (req) => {
           .maybeSingle();
         
         if (!fetchError && existingRecipient) {
-          console.log(`[CREATE-RECIPIENT] Recipient already exists for this user`);
+          console.log(`[CREATE-RECIPIENT] Recipient already exists for this user, returning existing`);
           return new Response(
             JSON.stringify({
               success: true,
@@ -234,7 +237,7 @@ Deno.serve(async (req) => {
         }
         
         // If not owned by this user, it's a conflict
-        console.log(`[CREATE-RECIPIENT] Recipient code belongs to another user`);
+        console.log(`[CREATE-RECIPIENT] Duplicate code but belongs to another user`);
         return new Response(
           JSON.stringify({
             success: false,
@@ -244,11 +247,11 @@ Deno.serve(async (req) => {
         );
       }
       
-      console.error(`[CREATE-RECIPIENT] Failed to save recipient:`, insertError.message);
+      console.error(`[CREATE-RECIPIENT] Failed to save recipient:`, errorMessage);
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Failed to save recipient to database",
+          error: "Failed to save recipient to database: " + errorMessage,
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
