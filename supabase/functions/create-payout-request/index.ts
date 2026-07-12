@@ -415,7 +415,6 @@ Deno.serve(async (req) => {
           });
         }
         console.log(`[CREATE-PAYOUT] ✅ Agent wallet updated successfully: ${requester_id}`);
-      }
       } else {
         const { error: updateError } = await supabase
           .from("agent_stores")
