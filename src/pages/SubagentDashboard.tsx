@@ -93,15 +93,15 @@ const DEFAULT_THEME = { primary: "#38bdf8", primary_foreground: "#000000", backg
 
 // Instruction manual sections
 const MANUAL_SECTIONS = [
-  { icon: "📊", title: "Overview", content: `Your dashboard home. See wallet balance, total revenue, pending orders, and store status at a glance.\n\n• Wallet Balance – funds available to withdraw\n• Total Revenue – sum of all completed orders\n• Pending Orders – orders awaiting fulfillment` },
-  { icon: "🛒", title: "Buy Data", content: `Purchase data bundles at your agent's base price to resell in your store.\n\n• Select network (MTN, AirtelTigo, Telecel)\n• Choose package size\n• Enter customer number\n• Confirm purchase` },
-  { icon: "📦", title: "Bulk Orders", content: `Send data to multiple recipients at once using your wallet.\n\nHow to use:\n1. SELECT NETWORK – Choose MTN, Telecel, or AirtelTigo.\n2. RECIPIENTS – Upload a CSV/Excel file OR type manually.\n   • Format: phone number followed by GB size, one per line\n   • Example: 0241234567 2 (sends 2GB to that number)\n3. GLOBAL PACKAGE (Optional) – Set a default GB size for all recipients.\n4. Review the summary showing total recipients, total GB, and total cost.\n5. Click "Pay with Wallet" to process all orders at once.\n\nTips:\n• CSV/Excel files should have phone in Column A, GB sizes in Column B.\n• Results table shows success/failure for each recipient.` },
-  { icon: "💰", title: "Store Prices", content: `Set your selling prices for each data package.\n\n• Cost from Agent = what your agent charges you\n• Your Selling Price = what customers pay you\n• Profit = Your Selling Price - Cost from Agent\n\nUse markup to increase all prices by a percentage.` },
-  { icon: "📦", title: "Orders", content: `View all customer orders.\n\n• Track order status (pending, completed, failed)\n• See customer details and amounts\n• Monitor your sales history` },
-  { icon: "💸", title: "Withdraw", content: `Cash out your wallet balance to your MoMo account.\n\n• Minimum withdrawal: GH₵ 10.00\n• Only one pending withdrawal at a time\n• Processed within 24 hours` },
-  { icon: "🎨", title: "Flyer Generator", content: `Create promotional flyers for your store.\n\n• Customize colors and design\n• Add your store name and contact\n• Download or share to WhatsApp` },
-  { icon: "🎨", title: "Appearance", content: `Customize your store appearance.\n\n• Change primary color\n• Update store banner\n• Modify theme settings` },
-  { icon: "⚙️", title: "Settings", content: `Manage your store information.\n\n• Store Name\n• WhatsApp Number\n• Support Number` },
+  { icon: "i", title: "Overview", content: `Your dashboard home. See wallet balance, total revenue, pending orders, and store status at a glance.\n\n- Wallet Balance: funds available to withdraw\n- Total Revenue: sum of all completed orders\n- Pending Orders: orders awaiting fulfillment` },
+  { icon: "i", title: "Buy Data", content: `Purchase data bundles at your agent's base price to resell in your store.\n\n- Select network (MTN, AirtelTigo, Telecel)\n- Choose package size\n- Enter customer number\n- Confirm purchase` },
+  { icon: "i", title: "Bulk Orders", content: `Send data to multiple recipients at once using your wallet.\n\nHow to use:\n1. SELECT NETWORK - Choose MTN, Telecel, or AirtelTigo.\n2. RECIPIENTS - Upload a CSV/Excel file OR type manually.\n   Format: phone number followed by GB size, one per line\n   Example: 0241234567 2 (sends 2GB to that number)\n3. GLOBAL PACKAGE (Optional) - Set a default GB size for all recipients.\n4. Review the summary showing total recipients, total GB, and total cost.\n5. Click "Pay with Wallet" to process all orders at once.\n\nTips:\n- CSV/Excel files should have phone in Column A, GB sizes in Column B.\n- Results table shows success/failure for each recipient.` },
+  { icon: "i", title: "Store Prices", content: `Set your selling prices for each data package.\n\n- Cost from Agent = what your agent charges you\n- Your Selling Price = what customers pay you\n- Profit = Your Selling Price - Cost from Agent\n\nUse markup to increase all prices by a percentage.` },
+  { icon: "i", title: "Orders", content: `View all customer orders.\n\n- Track order status (pending, completed, failed)\n- See customer details and amounts\n- Monitor your sales history` },
+  { icon: "i", title: "Withdraw", content: `Cash out your wallet balance to your MoMo account.\n\n- Minimum withdrawal: GH 10.00\n- Only one pending withdrawal at a time\n- Processed within 24 hours` },
+  { icon: "i", title: "Flyer Generator", content: `Create promotional flyers for your store.\n\n- Customize colors and design\n- Add your store name and contact\n- Download or share to WhatsApp` },
+  { icon: "i", title: "Appearance", content: `Customize your store appearance.\n\n- Change primary color\n- Update store banner\n- Modify theme settings` },
+  { icon: "i", title: "Settings", content: `Manage your store information.\n\n- Store Name\n- WhatsApp Number\n- Support Number` },
 ];
 
 const SubagentDashboard = () => {
@@ -2509,7 +2509,7 @@ const SubagentDashboard = () => {
                       )}
 
                       <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                        <p className="text-xs text-red-400 font-semibold mb-1">⚠️ IMPORTANT WARNING</p>
+                        <p className="text-xs text-red-400 font-semibold mb-1">IMPORTANT WARNING</p>
                         <p className="text-xs text-red-300">
                           Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming. You are responsible for any funds sent to the wrong account.
                         </p>
@@ -2753,7 +2753,7 @@ const SubagentDashboard = () => {
                             <p className="text-xs text-muted-foreground">Total Data</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                            <p className="text-2xl font-bold text-yellow-500">GH�� {totalCost.toFixed(2)}</p>
+                            <p className="text-2xl font-bold text-yellow-500">GHC {totalCost.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">Total Cost</p>
                           </div>
                           <div className="text-center p-3 bg-secondary/50 rounded-lg">
@@ -2972,7 +2972,7 @@ const SubagentDashboard = () => {
                   )}
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />�������� Markup Explanation (Remember to click save after applying markup)</p>
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one — Markup Explanation (Remember to click save after applying markup)</p>
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
@@ -3450,7 +3450,7 @@ const SubagentDashboard = () => {
                   )}
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br/>🚀 Markup Explanation (Remember to click save after applying markup)</p>
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one — Markup Explanation (Remember to click save after applying markup)</p>
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your prices to sub-subagents for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (your cost price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Sub-Subagent Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
