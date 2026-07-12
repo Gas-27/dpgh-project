@@ -2751,7 +2751,10 @@ const SubagentDashboard = () => {
                   <>
                     {transferRecipients.length > 0 && (
                       <div className="space-y-2 mb-4">
-                        <Label>Select Recipient</Label>
+                        <div className="space-y-1">
+                          <Label>Select Recipient</Label>
+                          <p className="text-xs text-muted-foreground">Tap on the dropdown to select a recipient</p>
+                        </div>
                         <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
                           <SelectTrigger>
                             <SelectValue placeholder="Choose a recipient..." />
@@ -2833,7 +2836,7 @@ const SubagentDashboard = () => {
                       
                       <div className="space-y-1">
                         <Label>Mobile Network</Label>
-                        <Select value={mobileNetwork} onValueChange={setMobileNetwork}>
+                        <Select value={mobileNetwork} onValueChange={setMobileNetwork} disabled={!!editingRecipient}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -2843,6 +2846,7 @@ const SubagentDashboard = () => {
                             <SelectItem value="airteltigo">AirtelTigo</SelectItem>
                           </SelectContent>
                         </Select>
+                        {editingRecipient && <p className="text-xs text-muted-foreground mt-1">Cannot change network when editing</p>}
                       </div>
                       
                       <div className="space-y-1">
@@ -2851,7 +2855,9 @@ const SubagentDashboard = () => {
                           placeholder="024XXXXXXX" 
                           value={mobileNumber}
                           onChange={e => setMobileNumber(e.target.value)}
+                          disabled={!!editingRecipient}
                         />
+                        {editingRecipient && <p className="text-xs text-muted-foreground mt-1">Cannot change number when editing</p>}
                       </div>
 
                       <div className="flex gap-2 pt-2">
