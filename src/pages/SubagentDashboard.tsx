@@ -2515,7 +2515,7 @@ const SubagentDashboard = () => {
                         </p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly ���</p>
+                      <p className="text-xs text-muted-foreground text-center">Minimum: GH₵ 15.00 | Processed Instantly</p>
                     </div>
                   </>
                 )}
