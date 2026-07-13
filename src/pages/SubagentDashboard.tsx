@@ -755,7 +755,7 @@ const SubagentDashboard = () => {
             const profit = (Number(order.selling_price) || 0) - (Number(order.base_price) || 0);
             totalProfit += profit;
           });
-          setSubSubagentTotalProfit(totalProfit);
+          setSubSubagentProfitForSubagent(totalProfit);
         }
         
         // Build admin custom price map (admin's price to agents - NOT for subagents)
