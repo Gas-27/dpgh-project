@@ -278,12 +278,13 @@ const SubagentDashboard = () => {
   const [showAgentNotificationPopup, setShowAgentNotificationPopup] = useState(true);
 
   // Helper function to get available wallet balance
-  // Uses the actual wallet_balance from database, minus any pending withdrawals
+  // Uses the actual wallet_balance from database, minus any in-flight withdrawals
   const getAvailableBalance = () => {
     const dbBalance = subagentStore?.wallet_balance || 0;
-    // Deduct pending withdrawals from available balance
-    const pendingWithdrawals = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
-    return dbBalance - pendingWithdrawals;
+    // Deduct both pending AND processing withdrawals — the edge function deducts
+    // on create (sets status "processing"), so DB balance already reflects this,
+    // but we guard against double-counting by using the DB value directly.
+    return dbBalance;
   };
 
   // Function to exit impersonation
@@ -1393,10 +1394,10 @@ const SubagentDashboard = () => {
       return;
     }
     
-    // Check for pending withdrawal
-    const hasPending = withdrawals.some(w => w.status === "pending");
+    // Block if any withdrawal is already in flight (pending or processing)
+    const hasPending = withdrawals.some(w => w.status === "pending" || w.status === "processing");
     if (hasPending) {
-      toast({ title: "Error", description: "You already have a pending withdrawal. Please wait until it completes.", variant: "destructive" });
+      toast({ title: "Error", description: "You already have a withdrawal in progress. Please wait until it completes.", variant: "destructive" });
       return;
     }
     
@@ -1474,14 +1475,18 @@ const SubagentDashboard = () => {
         throw new Error(data.error || "Withdrawal failed");
       }
 
-      toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent instantly (after ${(feePercentage * 100).toFixed(1)}% fee)` });
+      toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent (after ${(feePercentage * 100).toFixed(1)}% fee). Wallet updated.` });
       setWithdrawAmount("");
       setSelectedRecipient("");
       setCreateNewRecipient(false);
       setRecipientName("");
       setMobileNumber("");
-      // Wait a moment for the database to sync, then refresh
-      setTimeout(() => fetchData(), 1000);
+      // Immediately reflect the deducted balance from the edge function response
+      if (data.balance_after !== undefined) {
+        setSubagentStore(prev => prev ? { ...prev, wallet_balance: data.balance_after } : prev);
+      }
+      // Also re-fetch to get the new payout_request row for the history table
+      setTimeout(() => fetchData(), 1500);
     } catch (error: any) {
       console.error("[v0] Withdrawal error:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -2076,8 +2081,8 @@ const SubagentDashboard = () => {
   const pendingOrders = dateFilteredOrders.filter(o => o.status !== "completed").length;
   // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
   const totalOrders = dateFilter === "all" ? totalOrderCount : dateFilteredOrders.length;
-  const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
-  const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
+  const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending" || w.status === "processing");
+  const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending" || w.status === "processing").reduce((s, w) => s + Number(w.amount), 0);
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
   const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
   // Calculate total topups
