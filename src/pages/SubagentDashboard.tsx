@@ -105,7 +105,7 @@ const MANUAL_SECTIONS = [
 ];
 
 const SubagentDashboard = () => {
-  const { signOut, user, isSubagent, isSubSubagent, isAdmin } = useAuth();
+  const { signOut, user, isSubagent, isSubSubagent, isAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const getImpersonationData = () => {
@@ -1823,6 +1823,16 @@ const SubagentDashboard = () => {
       setBuyLoading(false);
     }
   };
+
+  // Wait for auth to fully resolve before checking roles — roles are empty
+  // during the initial session load and would cause a premature redirect.
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // Only allow pure subagents (not sub-subagents) to access this dashboard
   if (!isSubagent || isSubSubagent) {
