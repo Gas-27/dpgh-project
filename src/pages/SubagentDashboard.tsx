@@ -440,25 +440,33 @@ const SubagentDashboard = () => {
     return () => { supabase.removeChannel(pricesChannel); };
   }, [subagentStore?.agent_store_id]);
 
-  // 24-hour withdrawal cooldown timer
+  // Withdrawal cooldown: drive from the most recent completed payout_request
+  // instead of last_withdrawal_at (column does not exist in subagent_stores).
   useEffect(() => {
-    if (!subagentStore?.last_withdrawal_at) {
+    const lastCompleted = withdrawals
+      .filter(w => w.status === "success" || w.status === "completed")
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+    if (!lastCompleted) {
       setWithdrawalCooldownEndTime(null);
       setCooldownTimeRemaining(null);
       return;
     }
 
-    const lastWithdrawalTime = new Date(subagentStore.last_withdrawal_at).getTime();
+    const lastWithdrawalTime = new Date(lastCompleted.created_at).getTime();
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
     const cooldownEndTime = lastWithdrawalTime + TWENTY_FOUR_HOURS;
-    
+
+    if (Date.now() >= cooldownEndTime) {
+      setWithdrawalCooldownEndTime(null);
+      setCooldownTimeRemaining(null);
+      return;
+    }
+
     setWithdrawalCooldownEndTime(cooldownEndTime);
 
-    // Update countdown every second
     const interval = setInterval(() => {
-      const now = Date.now();
-      const remaining = cooldownEndTime - now;
-
+      const remaining = cooldownEndTime - Date.now();
       if (remaining <= 0) {
         setCooldownTimeRemaining(null);
         setWithdrawalCooldownEndTime(null);
@@ -472,7 +480,7 @@ const SubagentDashboard = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [subagentStore?.last_withdrawal_at]);
+  }, [withdrawals]);
 
   // Auto-refresh DISABLED - Users can manually refresh with browser refresh button
   // Previously this would auto-refresh wallet balance and orders every 1 second
@@ -492,7 +500,7 @@ const SubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-          .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, last_withdrawal_at")
+          .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration")
           .eq("id", storeId)
           .single();
 
@@ -649,7 +657,7 @@ const SubagentDashboard = () => {
         console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-          .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, last_withdrawal_at")
+          .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration")
           .eq("user_id", effectiveUserId);
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
