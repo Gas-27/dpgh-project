@@ -527,7 +527,7 @@ const SubagentDashboard = () => {
         // Run all other queries in parallel for faster loading
         const [
           ordersResult,
-          withdrawalsResult,
+          payoutReqResult,
           packagesResult,
           agentSubagentPricesResult,
           adminCustomPricesResult,
@@ -536,11 +536,10 @@ const SubagentDashboard = () => {
           agentInfoResult,
           subSubagentsResult,
           recipientsResult,
-          payoutReqResult,
           registrationsResult
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
-          supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
@@ -549,7 +548,6 @@ const SubagentDashboard = () => {
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
           supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id || "").eq("status", "active").order("created_at", { ascending: false }),
-          supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("sub_subagent_registrations").select("id, registration_fee_amount").eq("subagent_id", store.id)
         ]);
 
@@ -723,7 +721,7 @@ const SubagentDashboard = () => {
           return order;
         }));
 
-        setOrders(ordersResult.data || []);
+        setOrders(enrichedOrders2);
         const payoutData2 = (payoutReqResult2?.data ?? []).map((p: any) => {
           const recipientDetails = p.transfer_recipients || {};
           return {
@@ -808,103 +806,6 @@ const SubagentDashboard = () => {
         }
       }
 
-      if (!storeId) return;
-
-        // Run all other queries in parallel for faster loading
-        const [
-          ordersResult,
-          withdrawResult,
-          packagesResult,
-          agentSubagentPricesResult,
-          adminCustomPricesResult,
-          subagentPricesResult,
-          topupsResult,
-          agentInfoResult
-        ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
-          supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").order("size_gb"),
-          supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
-          supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
-          supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single()
-        ]);
-
-        // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
-        const enrichedOrders = await Promise.all((ordersResult.data || []).map(async (order: any) => {
-          if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
-            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
-            return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
-          }
-          return order;
-        }));
-        setOrders(enrichedOrders);
-        const payoutData3 = (withdrawResult.data ?? []).map((p: any) => {
-          const recipientDetails = p.recipient_details || {};
-          return {
-            ...p,
-            account_holder_name: p.account_holder_name || recipientDetails.account_holder_name || p.recipient_name || "Unknown",
-            provider_type: p.provider_type || recipientDetails.provider_type,
-            mobile_money_network: p.mobile_money_network || recipientDetails.mobile_money_network,
-            mobile_money_number: p.mobile_money_number || recipientDetails.mobile_money_number,
-            account_number: p.account_number || recipientDetails.account_number,
-            bank_name: p.bank_name || recipientDetails.bank_name,
-            bank_code: p.bank_code || recipientDetails.bank_code,
-          };
-        });
-        setWithdrawals(payoutData3);
-        setPackages(packagesResult.data || []);
-        setTopupHistory(topupsResult.data || []);
-        if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
-      
-      // Build admin custom price map (admin's price to agents - NOT for subagents)
-      const adminPriceMap: Record<string, number> = {};
-      (adminCustomPricesResult.data || []).forEach((p: any) => {
-        if (p.custom_base_price) adminPriceMap[p.package_id] = p.custom_base_price;
-      });
-      
-      // Build agent's subagent base prices map (what agent charges subagent - THIS IS THE CORRECT ONE)
-      const agentSubagentPriceMap: Record<string, number> = {};
-      (agentSubagentPricesResult.data || []).forEach((p: any) => {
-        if (p.base_price !== null && p.base_price !== undefined) {
-          agentSubagentPriceMap[p.package_id] = Number(p.base_price);
-        }
-      });
-      
-      // Final price map: Agent's subagent price is the ONLY correct base price for subagents
-      // Only fall back to admin price if agent hasn't set any prices yet
-      const priceMap: Record<string, number> = {};
-      const hasAgentPrices = Object.keys(agentSubagentPriceMap).length > 0;
-      
-      (packagesResult.data || []).forEach((p: any) => {
-        if (hasAgentPrices && agentSubagentPriceMap[p.id] !== undefined) {
-          // Use agent's price for subagent
-          priceMap[p.id] = agentSubagentPriceMap[p.id];
-        } else if (adminPriceMap[p.id] !== undefined) {
-          // Fallback to admin price only if agent hasn't set prices
-          priceMap[p.id] = adminPriceMap[p.id];
-        } else {
-          // Final fallback to package default
-          priceMap[p.id] = p.price;
-        }
-      });
-      setBasePrices(priceMap);
-      
-      if (subagentPricesResult.data) {
-        const priceMap: Record<string, number> = {};
-        subagentPricesResult.data.forEach((p: any) => {
-          priceMap[p.package_id] = p.sell_price;
-        });
-        setSubagentPrices(priceMap);
-      }
-      
-      // Reset recipient creation form state after successful data fetch
-      setCreateNewRecipient(false);
-      setRecipientName("");
-      setMobileNetwork("mtn");
-      setMobileNumber("");
-      setEditingRecipient(null);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ title: "Error", description: "Failed to load dashboard", variant: "destructive" });

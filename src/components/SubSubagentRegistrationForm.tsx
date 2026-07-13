@@ -230,11 +230,6 @@ export default function SubSubagentRegistrationForm({
       // Sub-subagents are automatically approved when registering under a subagent
       console.log("[v0] Sub-subagent registration - no fees, auto-approving");
 
-      // Generate unique top_reference code using crypto for better uniqueness
-      const randomArray = new Uint8Array(12);
-      crypto.getRandomValues(randomArray);
-      const topReference = `SSA-${Array.from(randomArray).map(b => b.toString(16).padStart(2, '0')).join('')}`;
-
       // Create the store directly without payment
       const { data: storeData, error: storeError } = await supabase
         .from("sub_subagent_stores")
@@ -242,7 +237,6 @@ export default function SubSubagentRegistrationForm({
           subagent_store_id: subagentStoreId,
           user_id: authData.user.id,
           store_name: formData.storeName,
-          top_reference: topReference,
           whatsapp_number: formData.whatsappNumber || null,
           support_number: formData.supportNumber || null,
           whatsapp_group: null,
