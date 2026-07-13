@@ -593,9 +593,6 @@ const SubagentDashboard = () => {
           setSubSubagentProfitForSubagent(totalProfit);
         }
         
-        // Fetch sub-subagent notifications
-        await fetchSubSubagentNotifications();
-        
         // Build admin custom price map (admin's price to agents - NOT for subagents)
         const adminPriceMap: Record<string, number> = {};
         (adminCustomPricesResult.data || []).forEach((p: any) => {
