@@ -314,51 +314,17 @@ const SubagentDashboard = () => {
   // Sync calculated wallet balance to database when data changes
   // Use a ref to track if we've synced to prevent infinite loops
   const hasSyncedRef = useRef(false);
-  const lastSyncedBalanceRef = useRef<number | null>(null);
-  
-  useEffect(() => {
-    const syncWalletBalance = async () => {
-      if (!subagentStore?.id) return;
-      
-      // Calculate wallet: Profit + Topups - COMPLETED Withdrawals - Wallet Purchases
-      // Backend automatically adds AFA registration profit and subagent registration fees
-      const completedOrders = orders.filter(o => (o.status === "completed" || o.status === "paid"));
-      const profit = completedOrders.reduce((sum, order) => {
-        if (order.profit) return sum + Number(order.profit);
-        const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
-        return sum + (Number(order.selling_price || order.amount) - baseCost);
-      }, 0);
-      const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-      // Only subtract COMPLETED withdrawals from the stored balance
-      const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
-      // Subtract purchases made with wallet (from buy data and bulk order sections)
-      const walletPurchases = orders.filter(o => o.payment_method === "wallet" && (o.status === "completed" || o.status === "paid")).reduce((s, o) => s + Number(o.amount || 0), 0);
-      const calculatedBalance = profit + topups - completedWithdrawals - walletPurchases;
-      
-      // Only sync if the balance has changed from last sync
-      if (lastSyncedBalanceRef.current === calculatedBalance) return;
-      
-      // Update the database
-      const { error } = await supabase
-        .from("subagent_stores")
-        .update({ wallet_balance: calculatedBalance })
-        .eq("id", subagentStore.id);
-      
-      if (!error) {
-        lastSyncedBalanceRef.current = calculatedBalance;
-      }
-    };
-    
-    syncWalletBalance();
-  }, [orders.length, topupHistory.length, withdrawals.length, subagentStore?.id]);
 
-  // Real-time wallet balance updates
+  
+  // Real-time sync: subagent_stores row (wallet_balance, last_withdrawal_at, approved, etc.)
+  // The DB is the single source of truth. The frontend NEVER writes wallet_balance —
+  // only the edge functions (create-payout-request, order processing) do.
   useEffect(() => {
     if (!subagentStore?.id) return;
 
-    // Subscribe to wallet balance updates in real-time
-    const walletChannel = supabase
-      .channel(`subagent-wallet-${subagentStore.id}`)
+    // Mirror every UPDATE on this store row directly into local state
+    const storeChannel = supabase
+      .channel(`subagent-store-row-${subagentStore.id}`)
       .on(
         "postgres_changes",
         {
@@ -368,21 +334,16 @@ const SubagentDashboard = () => {
           filter: `id=eq.${subagentStore.id}`,
         },
         (payload: any) => {
-          const newData = payload.new as any;
-          if (newData && newData.wallet_balance !== undefined) {
-            setSubagentStore((prev) =>
-              prev
-                ? { ...prev, wallet_balance: newData.wallet_balance }
-                : prev
-            );
+          if (payload.new) {
+            setSubagentStore((prev) => prev ? { ...prev, ...payload.new } : prev);
           }
         }
       )
       .subscribe();
 
-    // Also subscribe to order changes to update wallet in real-time
+    // New orders or order status changes → re-fetch for accurate stats & wallet
     const ordersChannel = supabase
-      .channel(`subagent-orders-wallet-${subagentStore.id}`)
+      .channel(`subagent-orders-${subagentStore.id}`)
       .on(
         "postgres_changes",
         {
@@ -391,32 +352,26 @@ const SubagentDashboard = () => {
           table: "orders",
           filter: `subagent_store_id=eq.${subagentStore.id}`,
         },
-        () => {
-          // Re-fetch orders to update wallet calculation
-          fetchData();
-        }
+        () => { fetchData(); }
       )
       .subscribe();
 
-    // Subscribe to withdrawal changes
-    const withdrawalsChannel = supabase
-      .channel(`subagent-withdrawals-wallet-${subagentStore.id}`)
+    // payout_requests changes (withdrawal created, status updated) → re-fetch
+    const payoutsChannel = supabase
+      .channel(`subagent-payouts-${subagentStore.id}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "withdrawals",
-          filter: `subagent_store_id=eq.${subagentStore.id}`,
+          table: "payout_requests",
+          filter: `requester_id=eq.${subagentStore.id}`,
         },
-        () => {
-          // Re-fetch data to update wallet
-          fetchData();
-        }
+        () => { fetchData(); }
       )
       .subscribe();
 
-    // Subscribe to new sub-subagent registrations
+    // New sub-subagent registrations → re-fetch to show in list
     const subSubagentChannel = supabase
       .channel(`subagent-sub-subagents-${subagentStore.id}`)
       .on(
@@ -427,21 +382,63 @@ const SubagentDashboard = () => {
           table: "sub_subagent_stores",
           filter: `subagent_store_id=eq.${subagentStore.id}`,
         },
-        () => {
-          console.log("[v0] New sub-subagent registered, refreshing list...");
-          // Re-fetch data to show new sub-subagent
-          fetchData();
-        }
+        () => { fetchData(); }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(walletChannel);
+      supabase.removeChannel(storeChannel);
       supabase.removeChannel(ordersChannel);
-      supabase.removeChannel(withdrawalsChannel);
+      supabase.removeChannel(payoutsChannel);
       supabase.removeChannel(subSubagentChannel);
     };
   }, [subagentStore?.id]);
+
+  // data_packages changes (admin edits prices/activates packages) → update local packages & prices
+  useEffect(() => {
+    const packagesChannel = supabase
+      .channel("subagent-dashboard-packages")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "data_packages" },
+        (payload) => {
+          if (payload.eventType === "UPDATE") {
+            setPackages((prev) =>
+              prev.map((pkg) => pkg.id === payload.new.id ? { ...pkg, ...payload.new } : pkg)
+                .sort((a, b) => a.size_gb - b.size_gb)
+            );
+          } else if (payload.eventType === "INSERT") {
+            setPackages((prev) => [...prev, payload.new as any].sort((a, b) => a.size_gb - b.size_gb));
+          } else if (payload.eventType === "DELETE") {
+            setPackages((prev) => prev.filter((pkg) => pkg.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(packagesChannel); };
+  }, []);
+
+  // subagent_package_prices changes (agent updates prices for this subagent) → re-fetch prices
+  useEffect(() => {
+    if (!subagentStore?.agent_store_id) return;
+
+    const pricesChannel = supabase
+      .channel(`subagent-prices-${subagentStore.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "subagent_package_prices",
+          filter: `agent_store_id=eq.${subagentStore.agent_store_id}`,
+        },
+        () => { fetchData(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(pricesChannel); };
+  }, [subagentStore?.agent_store_id]);
 
   // 24-hour withdrawal cooldown timer
   useEffect(() => {
@@ -882,44 +879,9 @@ const SubagentDashboard = () => {
       });
   }, [subagentStore?.id]);
 
-  // Realtime subscriptions DISABLED - No longer auto-refresh on changes
-  // Previously this would trigger fetchData() on any database updates (orders, prices, etc.)
-  // This was causing constant page refreshes that interfered with user edits and was very annoying
-  // Users can now manually refresh with Cmd+R / Ctrl+R or the browser refresh button
-  useEffect(() => {
-    if (!subagentStore?.id) return;
-    
-    // Realtime subscriptions disabled - users should manually refresh
-    
-    return () => {
-      // Cleanup would go here if subscriptions were active
-    };
-  }, [subagentStore?.id]);
 
-  // ── Real-time order status updates ──
-  useEffect(() => {
-    if (!subagentStore?.id) return;
-    
-    const ordersChannel = supabase
-      .channel(`orders-${subagentStore.id}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "orders", filter: `subagent_store_id=eq.${subagentStore.id}` },
-        (payload) => {
-          const updatedOrder = payload.new as Order;
-          setOrders(prevOrders =>
-            prevOrders.map(order =>
-              order.id === updatedOrder.id
-                ? { ...order, ...updatedOrder }
-                : order
-            )
-          );
-        }
-      )
-      .subscribe();
-    
-    return () => { supabase.removeChannel(ordersChannel); };
-  }, [subagentStore?.id]);
+
+
 
   const createNotification = async () => {
     if (!subagentStore || !newNotificationMsg.trim()) {
