@@ -494,7 +494,7 @@ const SubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration")
+          .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, last_withdrawal_at")
           .eq("id", storeId)
           .single();
 
@@ -547,7 +547,7 @@ const SubagentDashboard = () => {
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
           supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("transfer_recipients").select("*").eq("user_id", userId || "").eq("status", "active").order("created_at", { ascending: false }),
+          supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id || "").eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("sub_subagent_registrations").select("id, registration_fee_amount").eq("subagent_id", store.id)
         ]);
@@ -656,7 +656,7 @@ const SubagentDashboard = () => {
         console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration")
+          .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, last_withdrawal_at")
           .eq("user_id", effectiveUserId);
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
@@ -691,7 +691,7 @@ const SubagentDashboard = () => {
         // Run all other queries in parallel for faster loading
         const [
           ordersResult,
-          withdrawResult,
+          payoutReqResult2,
           packagesResult,
           agentSubagentPricesResult,
           adminCustomPricesResult,
@@ -702,7 +702,7 @@ const SubagentDashboard = () => {
           recipientsResult
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
-          supabase.from("withdrawal_requests").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
@@ -723,17 +723,16 @@ const SubagentDashboard = () => {
         }));
 
         setOrders(ordersResult.data || []);
-        const payoutData2 = (withdrawResult.data ?? []).map((p: any) => {
-          const recipientDetails = p.recipient_details || {};
+        const payoutData2 = (payoutReqResult2?.data ?? []).map((p: any) => {
+          const recipientDetails = p.transfer_recipients || {};
           return {
             ...p,
-            account_holder_name: p.account_holder_name || recipientDetails.account_holder_name || p.recipient_name || "Unknown",
-            provider_type: p.provider_type || recipientDetails.provider_type,
-            mobile_money_network: p.mobile_money_network || recipientDetails.mobile_money_network,
-            mobile_money_number: p.mobile_money_number || recipientDetails.mobile_money_number,
-            account_number: p.account_number || recipientDetails.account_number,
-            bank_name: p.bank_name || recipientDetails.bank_name,
-            bank_code: p.bank_code || recipientDetails.bank_code,
+            account_holder_name: recipientDetails.account_holder_name || p.account_holder_name || "Unknown",
+            provider_type: recipientDetails.provider_type || p.provider_type,
+            mobile_money_network: recipientDetails.mobile_money_network || p.mobile_money_network,
+            mobile_money_number: recipientDetails.mobile_money_number || p.mobile_money_number,
+            account_number: recipientDetails.account_number || p.account_number,
+            bank_name: recipientDetails.bank_name || p.bank_name,
           };
         });
         setWithdrawals(payoutData2);
@@ -1425,14 +1424,16 @@ const SubagentDashboard = () => {
     try {
       setWithdrawLoading(true);
       
-      // Calculate fee-deducted amount (5% fee means user receives 95%)
-      const amountAfterFee = amount * 0.95;
+      // Tiered fee: below GHC 100 = 5%, GHC 100+ = 1.5%
+      const feePercentage = amount < 100 ? 0.05 : 0.015;
+      const amountAfterFee = amount * (1 - feePercentage);
       
       const payload: any = {
         requester_type: "subagent",
         requester_id: subagentStore.id,
         amount: amountAfterFee, // Send fee-deducted amount to edge function
         original_amount: amount, // Track original amount for records
+        fee_percentage: feePercentage * 100, // Store fee percentage for records
         withdrawal_source: "wallet_balance",
       };
 
@@ -1473,7 +1474,7 @@ const SubagentDashboard = () => {
         throw new Error(data.error || "Withdrawal failed");
       }
 
-      toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent instantly (after 5% fee)` });
+      toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent instantly (after ${(feePercentage * 100).toFixed(1)}% fee)` });
       setWithdrawAmount("");
       setSelectedRecipient("");
       setCreateNewRecipient(false);
@@ -2749,15 +2750,15 @@ const SubagentDashboard = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {transferRecipients.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.account_holder_name} • {r.mobile_money_network?.toUpperCase()}
+                      <SelectItem key={r.recipient_code} value={r.recipient_code}>
+                        {r.account_holder_name} • {r.mobile_money_network?.toUpperCase()}: {r.mobile_money_number}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
                 {transferRecipients.map((r) => (
-                  <div key={r.id} className="bg-slate-900/50 border border-slate-700 rounded-lg p-3 flex items-center justify-between">
+                  <div key={r.recipient_code} className="bg-slate-900/50 border border-slate-700 rounded-lg p-3 flex items-center justify-between">
                     <div>
                       <p className="font-medium text-foreground">{r.account_holder_name}</p>
                       <p className="text-xs text-muted-foreground">{r.mobile_money_number} • {r.mobile_money_network?.toUpperCase()}</p>
@@ -2766,19 +2767,16 @@ const SubagentDashboard = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setEditingRecipient(r.id);
-                          setRecipientName(r.account_holder_name);
-                          setMobileNetwork(r.mobile_money_network);
-                          setMobileNumber(r.mobile_money_number);
-                        }}
+                        onClick={() => handleEditRecipient(r)}
+                        title="Edit recipient"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteRecipient(r.id)}
+                        onClick={() => handleDeleteRecipient(r.recipient_code)}
+                        title="Delete recipient"
                       >
                         <Trash2 className="h-4 w-4 text-red-400" />
                       </Button>
@@ -2867,10 +2865,10 @@ const SubagentDashboard = () => {
                     </Button>
                     <Button
                       variant="hero"
-                      onClick={() => editingRecipient ? handleUpdateRecipient() : handleAddRecipient()}
-                      disabled={savingRecipient || !recipientName || !mobileNumber}
+                      onClick={() => editingRecipient ? handleSaveEditedRecipient() : handleAddRecipient()}
+                      disabled={withdrawLoading || !recipientName || !mobileNumber}
                     >
-                      {savingRecipient ? (
+                      {withdrawLoading ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           Saving...
