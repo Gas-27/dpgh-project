@@ -545,9 +545,7 @@ const PaymentDialog = ({
                       it belongs to  <span className="font-bold">{(network || "").toUpperCase()}</span> network.
                     </p>
                     <p className="text-xs mt-1 font-medium">
-                      ⚠️ Network providers rule: You cannot make another
-                      purchase for the same number unless after {LOCK_MINUTES} minutes. This is to prevent the order from being seen as duplicate,
-                      making the network provider deliver the order only once.
+                      ⚠️ Network providers rule: You can't purchase for the same number again until {LOCK_MINUTES} minutes have passed. This helps prevent duplicate orders and ensures your purchase is delivered correctly.
                     </p>
                     <p className="text-xs mt-2 font-medium text-red-600">
                       ⚠️ IMPORTANT: If the {LOCK_MINUTES}-minute timer has ended but you have NOT received your data yet, 
