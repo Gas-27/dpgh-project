@@ -573,7 +573,7 @@ export function SubagentStorefront() {
       // Fetch packages and prices
       // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
       const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text, active").order("size_gb"),
+        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text, active").eq("active", true).order("size_gb"),
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
@@ -791,6 +791,9 @@ export function SubagentStorefront() {
 
   // Helpers
   const filteredPackages = packages.filter((p) => {
+      // Only show active packages
+      if (p.active === false) return false;
+      
       // COMMENTED OUT: mashup packages deactivated
       // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
       if (false && networkFilter === "mtn_mashup") {
