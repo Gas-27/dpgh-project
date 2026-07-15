@@ -66,6 +66,12 @@ const UserDashboard = () => {
   const [showApiWalletTopup, setShowApiWalletTopup] = useState(false);
   const [showNormalWalletTopup, setShowNormalWalletTopup] = useState(false);
 
+  // API Orders state
+  const [apiOrders, setApiOrders] = useState<any[]>([]);
+  const [loadingApiOrders, setLoadingApiOrders] = useState(false);
+  const [apiOrdersSearch, setApiOrdersSearch] = useState("");
+  const [apiOrdersStatusFilter, setApiOrdersStatusFilter] = useState("");
+
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
@@ -204,6 +210,47 @@ const UserDashboard = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Fetch API orders when tab is opened
+  useEffect(() => {
+    if (apiKey) {
+      fetchApiOrders();
+    }
+  }, [apiKey]);
+
+  const fetchApiOrders = async () => {
+    setLoadingApiOrders(true);
+    try {
+      const response = await fetch("/api/get-orders", {
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.orders) {
+          setApiOrders(data.data.orders);
+        }
+      }
+    } catch (error) {
+      console.log("[v0] Error fetching API orders:", error);
+    } finally {
+      setLoadingApiOrders(false);
+    }
+  };
+
+  // Filtered API orders
+  const filteredApiOrders = apiOrders.filter((order) => {
+    const matchSearch = apiOrdersSearch === "" || 
+      order.customer_number?.includes(apiOrdersSearch) ||
+      order.network?.toLowerCase().includes(apiOrdersSearch.toLowerCase());
+    
+    const matchStatus = apiOrdersStatusFilter === "" || 
+      order.order_status === apiOrdersStatusFilter;
+
+    return matchSearch && matchStatus;
+  });
 
   const generateApiKey = async () => {
     if (generatingApiKey) return;
@@ -728,224 +775,99 @@ const UserDashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5 text-blue-400" />
-                  API Orders Documentation
+                  API Orders
                 </CardTitle>
-                <p className="text-sm text-muted-foreground mt-2">Retrieve all orders for your API integration</p>
+                <p className="text-sm text-muted-foreground mt-2">View all orders made through your API integration</p>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Endpoint Section */}
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-base">Endpoint</h3>
-                  <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700/50 font-mono text-sm">
-                    <span className="text-green-400">GET</span> <span className="text-blue-400">/get-orders</span>
+              <CardContent className="space-y-4">
+                {/* Search and Filters */}
+                <div className="flex flex-col gap-4 md:flex-row md:items-end">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium mb-2 block">Search by phone or network</label>
+                    <Input 
+                      placeholder="Search by customer number..." 
+                      value={apiOrdersSearch}
+                      onChange={(e) => setApiOrdersSearch(e.target.value)}
+                      className="bg-muted/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Filter by status</label>
+                    <select 
+                      value={apiOrdersStatusFilter}
+                      onChange={(e) => setApiOrdersStatusFilter(e.target.value)}
+                      className="px-3 py-2 rounded-md border border-input bg-background text-sm"
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="completed">Completed</option>
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="failed">Failed</option>
+                      <option value="delivered">Delivered</option>
+                    </select>
                   </div>
                 </div>
 
-                {/* Query Parameters Section */}
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-base">Query Parameters (Optional)</h3>
+                {/* Orders Table */}
+                {loadingApiOrders ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
+                  </div>
+                ) : apiOrders.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                    <p className="text-muted-foreground">No API orders found</p>
+                  </div>
+                ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm border border-slate-700/50 rounded-lg overflow-hidden">
-                      <thead className="bg-slate-900/50 border-b border-slate-700/50">
-                        <tr>
-                          <th className="px-4 py-2 text-left font-semibold">Parameter</th>
-                          <th className="px-4 py-2 text-left font-semibold">Type</th>
-                          <th className="px-4 py-2 text-left font-semibold">Description</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">limit</td>
-                          <td className="px-4 py-2">integer</td>
-                          <td className="px-4 py-2">Number of orders to return (default: 50)</td>
-                        </tr>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">offset</td>
-                          <td className="px-4 py-2">integer</td>
-                          <td className="px-4 py-2">Number of orders to skip (default: 0)</td>
-                        </tr>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">status</td>
-                          <td className="px-4 py-2">string</td>
-                          <td className="px-4 py-2">Filter by order status (pending, processing, completed, failed, delivered)</td>
-                        </tr>
-                        <tr className="hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">network</td>
-                          <td className="px-4 py-2">string</td>
-                          <td className="px-4 py-2">Filter by network (mtn, telecel, airteltigo, mtn_mashup, mashup)</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-xs">Date & Time</TableHead>
+                          <TableHead className="text-xs">Contact</TableHead>
+                          <TableHead className="text-xs">Network</TableHead>
+                          <TableHead className="text-xs">GB Size</TableHead>
+                          <TableHead className="text-xs">Source</TableHead>
+                          <TableHead className="text-xs">Payment Method</TableHead>
+                          <TableHead className="text-xs">Amount</TableHead>
+                          <TableHead className="text-xs">Order Status</TableHead>
+                          <TableHead className="text-xs">Payment Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredApiOrders.map((order) => (
+                          <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
+                            <TableCell className="text-xs whitespace-nowrap">
+                              {new Date(order.created_at).toLocaleDateString()} {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </TableCell>
+                            <TableCell className="text-xs font-mono">{order.customer_number}</TableCell>
+                            <TableCell className="text-xs">
+                              <span className="px-2 py-1 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
+                            </TableCell>
+                            <TableCell className="text-xs font-semibold text-cyan-400">{order.amount}GB</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">API</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">API Wallet</TableCell>
+                            <TableCell className="text-xs font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                            <TableCell className="text-xs">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                order.order_status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                order.order_status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                order.order_status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
+                                order.order_status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                                'bg-slate-500/20 text-slate-400'
+                              }`}>
+                                {order.order_status?.charAt(0).toUpperCase() + order.order_status?.slice(1)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <span className="px-2 py-1 rounded bg-green-500/20 text-green-400 font-medium">Completed</span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                </div>
-
-                {/* Example Requests Section */}
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-base">Example Requests</h3>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Get all orders (default limit 50):</p>
-                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 font-mono text-xs overflow-x-auto">
-                      <span className="text-muted-foreground">curl -X GET "https://api.yourdomain.com/get-orders" \</span><br/>
-                      <span className="text-muted-foreground">  -H "Authorization: Bearer YOUR_API_KEY"</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Get orders with pagination:</p>
-                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 font-mono text-xs overflow-x-auto">
-                      <span className="text-muted-foreground">curl -X GET "https://api.yourdomain.com/get-orders?limit=10&offset=20" \</span><br/>
-                      <span className="text-muted-foreground">  -H "Authorization: Bearer YOUR_API_KEY"</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Get orders filtered by status:</p>
-                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 font-mono text-xs overflow-x-auto">
-                      <span className="text-muted-foreground">curl -X GET "https://api.yourdomain.com/get-orders?status=completed" \</span><br/>
-                      <span className="text-muted-foreground">  -H "Authorization: Bearer YOUR_API_KEY"</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Get orders filtered by network:</p>
-                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 font-mono text-xs overflow-x-auto">
-                      <span className="text-muted-foreground">curl -X GET "https://api.yourdomain.com/get-orders?network=mtn" \</span><br/>
-                      <span className="text-muted-foreground">  -H "Authorization: Bearer YOUR_API_KEY"</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Combine filters:</p>
-                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 font-mono text-xs overflow-x-auto">
-                      <span className="text-muted-foreground">curl -X GET "https://api.yourdomain.com/get-orders?status=completed&network=mtn&limit=10" \</span><br/>
-                      <span className="text-muted-foreground">  -H "Authorization: Bearer YOUR_API_KEY"</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Response Section */}
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-base">Response (200 OK)</h3>
-                  <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700/50 font-mono text-xs overflow-x-auto">
-                    <pre className="text-slate-300">{`{
-  "success": true,
-  "data": {
-    "orders": [
-      {
-        "id": "30218de5-2991-4c8d-a57d-01e70b43bf8f",
-        "customer_number": "0200511211",
-        "network": "telecel",
-        "amount": 0,
-        "order_status": "completed",
-        "provider_reference": "API_1782860161668_2ek6wg",
-        "created_at": "2026-06-30T22:56:02.022+00:00",
-        "updated_at": "2026-06-30T22:56:02.022+00:00"
-      }
-    ],
-    "pagination": {
-      "limit": 50,
-      "offset": 0,
-      "total": 1,
-      "returned": 1
-    }
-  }
-}`}</pre>
-                  </div>
-                </div>
-
-                {/* Response Fields Section */}
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-base">Response Fields</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm border border-slate-700/50 rounded-lg overflow-hidden">
-                      <thead className="bg-slate-900/50 border-b border-slate-700/50">
-                        <tr>
-                          <th className="px-4 py-2 text-left font-semibold">Field</th>
-                          <th className="px-4 py-2 text-left font-semibold">Type</th>
-                          <th className="px-4 py-2 text-left font-semibold">Description</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">id</td>
-                          <td className="px-4 py-2">UUID</td>
-                          <td className="px-4 py-2">Unique order identifier</td>
-                        </tr>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">customer_number</td>
-                          <td className="px-4 py-2">string</td>
-                          <td className="px-4 py-2">Recipient phone number</td>
-                        </tr>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">network</td>
-                          <td className="px-4 py-2">string</td>
-                          <td className="px-4 py-2">Network type (mtn, telecel, airteltigo, mtn_mashup, mashup)</td>
-                        </tr>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">amount</td>
-                          <td className="px-4 py-2">number</td>
-                          <td className="px-4 py-2">Amount paid</td>
-                        </tr>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">order_status</td>
-                          <td className="px-4 py-2">string</td>
-                          <td className="px-4 py-2">Current status of the order</td>
-                        </tr>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">provider_reference</td>
-                          <td className="px-4 py-2">string</td>
-                          <td className="px-4 py-2">Reference from the external provider</td>
-                        </tr>
-                        <tr className="border-b border-slate-700/50 hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">created_at</td>
-                          <td className="px-4 py-2">string</td>
-                          <td className="px-4 py-2">Order creation timestamp</td>
-                        </tr>
-                        <tr className="hover:bg-slate-900/30 transition-colors">
-                          <td className="px-4 py-2 font-mono text-blue-300">updated_at</td>
-                          <td className="px-4 py-2">string</td>
-                          <td className="px-4 py-2">Last update timestamp</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Error Responses Section */}
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-base">Error Responses</h3>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">401 Unauthorized - Missing API Key:</p>
-                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 font-mono text-xs overflow-x-auto">
-                      <pre className="text-red-300">{`{
-  "error": "API key required. Provide in Authorization header or request body"
-}`}</pre>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">401 Unauthorized - Invalid API Key:</p>
-                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 font-mono text-xs overflow-x-auto">
-                      <pre className="text-red-300">{`{
-  "error": "Invalid or inactive API key"
-}`}</pre>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">500 Internal Server Error:</p>
-                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 font-mono text-xs overflow-x-auto">
-                      <pre className="text-red-300">{`{
-  "error": "Failed to fetch orders"
-}`}</pre>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notes Section */}
-                <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg space-y-2">
-                  <p className="font-semibold text-sm text-blue-300">📝 Notes</p>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>The <span className="font-mono text-blue-300">order_status</span> represents the current state of the order</li>
-                    <li>Always include your API Key in the Authorization header</li>
-                    <li>Pagination defaults to limit 50, max 100 orders per request</li>
-                    <li>Use filters to narrow down results and improve response times</li>
-                  </ul>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
