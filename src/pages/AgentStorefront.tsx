@@ -529,15 +529,12 @@ const AgentStorefront = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
 
   // ─��� Notifications ──
-  const [showGroupTooltip, setShowGroupTooltip] = useState(true);
-  const [whatsappPos, setWhatsappPos] = useState({ x: 0, y: 0 });
-  const [isDraggingWhatsapp, setIsDraggingWhatsapp] = useState(false);
-  const [dragOffsetWhatsapp, setDragOffsetWhatsapp] = useState({ x: 0, y: 0 });
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // ── Report complaint dialog ������
+  // ── Report complaint dialog �������
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
   
@@ -610,39 +607,6 @@ const AgentStorefront = () => {
     }, 4000);
     return () => clearTimeout(timer);
   }, []);
-
-  // ── WhatsApp drag handlers ──
-  const handleWhatsappMouseDown = (e: React.MouseEvent) => {
-    setIsDraggingWhatsapp(true);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setDragOffsetWhatsapp({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-  };
-
-  useEffect(() => {
-    if (!isDraggingWhatsapp) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      setWhatsappPos({
-        x: e.clientX - dragOffsetWhatsapp.x,
-        y: e.clientY - dragOffsetWhatsapp.y
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsDraggingWhatsapp(false);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDraggingWhatsapp, dragOffsetWhatsapp]);
 
   // ── Price refresh ──
   const refreshPrices = useCallback(async () => {
@@ -1747,31 +1711,22 @@ const AgentStorefront = () => {
 
       {/* WhatsApp group FAB - Draggable */}
       {groupLink && (
-        <a
+        <DraggableFAB
+          initialBottom={freeDataEnabled ? 88 : 24}
+          initialRight={24}
+          storageKey="whatsapp-group-agent"
           href={groupLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          onMouseDown={handleWhatsappMouseDown}
-          className={`fixed z-50 flex items-center gap-3 bg-[#25D366] hover:bg-[#20B859] text-white rounded-full shadow-lg transition-all duration-300 cursor-move ${isDraggingWhatsapp ? 'scale-110' : 'hover:scale-105'}`}
-          style={{ 
-            padding: showGroupTooltip ? "0.75rem 1.5rem" : "0.75rem",
-            left: `${whatsappPos.x}px`,
-            top: `${whatsappPos.y}px`,
-            transform: 'translate(-50%, -50%)',
-            right: 'auto',
-            bottom: 'auto'
-          }}
+          title="Join WhatsApp Group"
         >
-          <img
-            src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-            alt="WhatsApp"
-            className="h-6 w-6"
-            style={{ filter: "brightness(0) invert(1)" }}
-          />
-          {showGroupTooltip && (
-            <span className="font-medium text-sm whitespace-nowrap">Join WhatsApp Group</span>
-          )}
-        </a>
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#25D366] hover:bg-[#20B859] text-white shadow-lg transition-all duration-300 hover:scale-110">
+            <img
+              src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
+              alt="WhatsApp"
+              className="h-6 w-6"
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
+          </div>
+        </DraggableFAB>
       )}
 
       {/* Payment dialog */}
