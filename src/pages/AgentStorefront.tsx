@@ -696,7 +696,7 @@ const AgentStorefront = () => {
           const [pkgRes, subagentPriceRes, agentPriceRes] = await Promise.all([
             supabase
           .from("data_packages")
-          .select("id, network, size_gb, price, data_package_id, size_gb_text, active")
+          .select("*")
           .order("size_gb"),
             supabase
               .from("subagent_package_prices")
