@@ -2161,7 +2161,7 @@ const AgentDashboard = () => {
                       <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
                       <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
-                      {wouldUnderflow && !isInactive ? <p className="text-xs text-orange-400">Blocked — pending withdrawal</p> : null}
+                      {wouldUnderflow && !isInactive ? <p className="text-xs text-orange-400">Blocked �� pending withdrawal</p> : null}
                       <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow || isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
                   </Card>
@@ -3123,51 +3123,59 @@ const AgentDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* API Packages Display */}
-            {apiKey && (
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="font-display flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" />
-                    Available Packages for API
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">These are the packages you can purchase through your API integration.</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2 flex-wrap">
-                    {["mtn", "airteltigo", "telecel"].map(net => (
-                      <Button 
-                        key={net} 
-                        variant={networkFilter === net ? "hero" : "outline"} 
-                        size="sm" 
-                        onClick={() => setNetworkFilter(net)}
-                      >
-                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {packages.filter(p => {
-                      if (networkFilter === "airteltigo") {
-                        return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-                      }
-                      return p.network === networkFilter;
-                    }).map((pkg) => {
-                      const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
-                      return (
-                        <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
-                          <CardContent>
-                            <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                            <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
-                            <p className="text-xs text-muted-foreground">API Price</p>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* API Packages Display - shows available packages even without API key */}
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Available Packages for API
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-2">These are the packages you can purchase through your API integration. Generate an API key above to start building.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2 flex-wrap">
+                  {["mtn", "airteltigo", "telecel"].map(net => (
+                    <Button 
+                      key={net} 
+                      variant={networkFilter === net ? "hero" : "outline"} 
+                      size="sm" 
+                      onClick={() => setNetworkFilter(net)}
+                    >
+                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                    </Button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {packages.filter(p => {
+                    if (networkFilter === "airteltigo") {
+                      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+                    }
+                    return p.network === networkFilter;
+                  }).map((pkg) => {
+                    const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
+                    return (
+                      <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
+                        <CardContent>
+                          <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                          <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">API Price</p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  {packages.filter(p => {
+                    if (networkFilter === "airteltigo") {
+                      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+                    }
+                    return p.network === networkFilter;
+                  }).length === 0 && (
+                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                      No packages available for {networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "mtn" ? "MTN" : "Telecel"}.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* API Contact Section */}
             {apiKey && (

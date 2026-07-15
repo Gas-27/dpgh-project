@@ -1310,10 +1310,14 @@ export function SubagentStorefront() {
             </a>
           )}
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 300px), 1fr))` }}>
-            {filteredPackages.length === 0 ? (
+            {loading ? (
+              <div className="col-span-full flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : filteredPackages.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No packages available</p>
+                <p className="text-muted-foreground">No packages available for this network</p>
               </div>
             ) : (
               filteredPackages.map((pkg) => {

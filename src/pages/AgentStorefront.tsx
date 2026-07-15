@@ -537,7 +537,7 @@ const AgentStorefront = () => {
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // ── Report complaint dialog ─��
+  // ── Report complaint dialog ─���
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
   
@@ -1372,15 +1372,25 @@ const AgentStorefront = () => {
               className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
               style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 300px), 1fr))` }}
             >
-              {filteredPackages.map((pkg) => {
-                const price = getPrice(pkg);
-                const isInactive = pkg.active === false;
-                const isOffline = pkg.is_online === false;
-      // COMMENTED OUT: mashup packages deactivated
-      const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
-      // Show Express badge only on specific mtn_mashup packages (matching flyer image)
-      const showExpress = false; // pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
-                return (
+              {loading ? (
+                <div className="col-span-full flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filteredPackages.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground mb-4">No packages available for this network.</p>
+                  <p className="text-sm text-muted-foreground">Check back later or try a different network.</p>
+                </div>
+              ) : (
+                filteredPackages.map((pkg) => {
+                  const price = getPrice(pkg);
+                  const isInactive = pkg.active === false;
+                  const isOffline = pkg.is_online === false;
+        // COMMENTED OUT: mashup packages deactivated
+        const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
+        // Show Express badge only on specific mtn_mashup packages (matching flyer image)
+        const showExpress = false; // pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
+                  return (
                   <Card
                       key={pkg.id}
                       className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 group w-full ${isInactive ? "opacity-50 grayscale" : "hover:shadow-xl"}`}
@@ -1456,13 +1466,9 @@ const AgentStorefront = () => {
                       )}
                     </Card>
                   );
-                })}
-              </div>
-            {filteredPackages.length === 0 && (
-              <p className="text-center text-muted-foreground py-12">
-                No packages available for this network.
-              </p>
-            )}
+                })
+              )}
+            </div>
           </div>
         </>
       ) : activeCategory === "bulk" ? (
