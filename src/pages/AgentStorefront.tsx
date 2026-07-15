@@ -707,11 +707,6 @@ const AgentStorefront = () => {
               .select("package_id, sell_price")
               .eq("agent_store_id", matched.agent_store_id),
           ]);
-          console.log("[v0] AgentStorefront (subagent path) - packages:", pkgRes.data?.length || 0, "error:", pkgRes.error);
-          if (pkgRes.data && pkgRes.data.length > 0) {
-            console.log("[v0] Sample packages:", pkgRes.data.slice(0, 2));
-            console.log("[v0] Unique networks:", [...new Set(pkgRes.data.map((p: any) => p.network))]);
-          }
           setPackages(pkgRes.data ?? []);
 
           // Use subagent prices if available, otherwise fall back to agent prices
@@ -743,11 +738,6 @@ const AgentStorefront = () => {
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
       ]);
-      console.log("[v0] AgentStorefront (agent path) - packages:", pkgRes.data?.length || 0, "error:", pkgRes.error);
-      if (pkgRes.data && pkgRes.data.length > 0) {
-        console.log("[v0] Sample packages:", pkgRes.data.slice(0, 2));
-        console.log("[v0] Unique networks:", [...new Set(pkgRes.data.map((p: any) => p.network))]);
-      }
       setPackages(pkgRes.data ?? []);
       const priceMap: Record<string, number> = {};
       (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
@@ -938,6 +928,12 @@ const AgentStorefront = () => {
     }
     return p.network === networkFilter;
   });
+  if (packages.length > 0 && filteredPackages.length === 0) {
+    console.log("[v0] *** AgentStorefront: packages exist but all filtered out ***");
+    console.log("[v0]    Total packages:", packages.length);
+    console.log("[v0]    Network filter:", networkFilter);
+    console.log("[v0]    Networks in data:", [...new Set(packages.map(p => p.network))]);
+  }
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
