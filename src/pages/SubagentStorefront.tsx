@@ -581,12 +581,19 @@ export function SubagentStorefront() {
       ]);
 
       console.log("[v0] SubagentStorefront fetch results:");
-      console.log("[v0]   packages error:", pkgRes.error, "data count:", pkgRes.data?.length);
-      if (pkgRes.data) console.log("[v0]   sample packages:", pkgRes.data.slice(0, 2));
+      console.log("[v0]   packages error:", pkgRes.error);
+      console.log("[v0]   packages data count:", pkgRes.data?.length);
+      console.log("[v0]   ALL packages:", JSON.stringify(pkgRes.data, null, 2));
+      if (pkgRes.data && pkgRes.data.length > 0) {
+        const mtnPkgs = pkgRes.data.filter((p: any) => p.network === "mtn");
+        console.log("[v0]   packages with network=mtn:", mtnPkgs.length);
+        console.log("[v0]   unique networks:", [...new Set(pkgRes.data.map((p: any) => p.network))]);
+      }
       console.log("[v0]   subagentPrices error:", subagentOwnPriceRes.error, "data:", subagentOwnPriceRes.data);
       console.log("[v0]   agentSellPrices error:", agentSellPriceRes.error, "data:", agentSellPriceRes.data);
 
       setPackages(pkgRes.data || []);
+      console.log("[v0] Packages state will be set to:", pkgRes.data?.length || 0, "packages");
       if (agentInfoRes.data) setAgentInfo(agentInfoRes.data);
 
       // Build price map with fallback: subagent's own prices -> agent's sell prices -> admin's base
@@ -798,7 +805,10 @@ export function SubagentStorefront() {
   // Helpers
   const filteredPackages = packages.filter((p) => {
       // Only show active packages
-      if (p.active === false) return false;
+      if (p.active === false) {
+        console.log("[v0] Filtering out inactive package:", p.id, "network:", p.network);
+        return false;
+      }
       
       // COMMENTED OUT: mashup packages deactivated
       // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
@@ -806,10 +816,15 @@ export function SubagentStorefront() {
         return p.network === "mtn_mashup" || p.network === "mashup";
     }
     if (networkFilter === "airteltigo") {
-      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+      const match = p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+      if (match) console.log("[v0] Including airteltigo package:", p.id, "network:", p.network);
+      return match;
     }
-    return p.network === networkFilter;
+    const match = p.network === networkFilter;
+    if (match) console.log("[v0] Including package:", p.id, "network:", p.network, "filter:", networkFilter);
+    return match;
   });
+  console.log("[v0] Filtered packages: total=", packages.length, "filtered=", filteredPackages.length, "networkFilter=", networkFilter);
   const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 

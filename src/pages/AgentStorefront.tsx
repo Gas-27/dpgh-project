@@ -537,7 +537,7 @@ const AgentStorefront = () => {
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // ── Report complaint dialog ─���
+  // ── Report complaint dialog ������
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
   
@@ -738,6 +738,12 @@ const AgentStorefront = () => {
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
       ]);
+      console.log("[v0] AgentStorefront packages fetched:", pkgRes.data?.length, "packages");
+      if (pkgRes.data) {
+        const mtnPkgs = pkgRes.data.filter((p: any) => p.network === "mtn");
+        console.log("[v0] AgentStorefront MTN packages:", mtnPkgs.length);
+        console.log("[v0] AgentStorefront unique networks:", [...new Set(pkgRes.data.map((p: any) => p.network))]);
+      }
       setPackages(pkgRes.data ?? []);
       const priceMap: Record<string, number> = {};
       (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
