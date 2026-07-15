@@ -580,20 +580,23 @@ export function SubagentStorefront() {
         supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
       ]);
 
-      console.log("[v0] SubagentStorefront fetch results:");
-      console.log("[v0]   packages error:", pkgRes.error);
-      console.log("[v0]   packages data count:", pkgRes.data?.length);
-      console.log("[v0]   ALL packages:", JSON.stringify(pkgRes.data, null, 2));
-      if (pkgRes.data && pkgRes.data.length > 0) {
-        const mtnPkgs = pkgRes.data.filter((p: any) => p.network === "mtn");
-        console.log("[v0]   packages with network=mtn:", mtnPkgs.length);
-        console.log("[v0]   unique networks:", [...new Set(pkgRes.data.map((p: any) => p.network))]);
+      // Check for fetch errors
+      if (pkgRes.error) {
+        console.error("[v0] ***ERROR FETCHING PACKAGES***", pkgRes.error);
+        setPackages([]);
+      } else {
+        console.log("[v0] SubagentStorefront packages fetched successfully:");
+        console.log("[v0]   Total packages:", pkgRes.data?.length || 0);
+        if (pkgRes.data && pkgRes.data.length > 0) {
+          const mtnPkgs = pkgRes.data.filter((p: any) => p.network === "mtn");
+          console.log("[v0]   MTN packages:", mtnPkgs.length);
+          console.log("[v0]   Unique networks:", [...new Set(pkgRes.data.map((p: any) => p.network))]);
+          console.log("[v0]   First 3 packages:", JSON.stringify(pkgRes.data.slice(0, 3)));
+        } else {
+          console.log("[v0]   ***NO PACKAGES RETURNED FROM DATABASE***");
+        }
+        setPackages(pkgRes.data || []);
       }
-      console.log("[v0]   subagentPrices error:", subagentOwnPriceRes.error, "data:", subagentOwnPriceRes.data);
-      console.log("[v0]   agentSellPrices error:", agentSellPriceRes.error, "data:", agentSellPriceRes.data);
-
-      setPackages(pkgRes.data || []);
-      console.log("[v0] Packages state will be set to:", pkgRes.data?.length || 0, "packages");
       if (agentInfoRes.data) setAgentInfo(agentInfoRes.data);
 
       // Build price map with fallback: subagent's own prices -> agent's sell prices -> admin's base
@@ -613,8 +616,10 @@ export function SubagentStorefront() {
       if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
       
       setLoading(false);
+      console.log("[v0] *** FETCH COMPLETE - packages state is now:", packages.length || 0);
     };
 
+    console.log("[v0] *** STARTING FETCH for store:", urlStoreName);
     fetchStore();
   }, [urlStoreName]);
 
