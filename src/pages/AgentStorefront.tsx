@@ -18,7 +18,7 @@ import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
-  Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2,
+  Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2, Users,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
@@ -1022,6 +1022,13 @@ const AgentStorefront = () => {
             <span className="font-display text-lg font-bold">{store.store_name}</span>
           </div>
           <div className="flex items-center gap-2">
+            {groupLink && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={groupLink} target="_blank" rel="noopener noreferrer">
+                  <Users className="h-4 w-4 mr-1" /> Join Group
+                </a>
+              </Button>
+            )}
             <Button variant="outline" size="sm" asChild>
               <a href={`tel:${store.support_number}`}>
                 <Phone className="h-4 w-4 mr-1" /> Call
