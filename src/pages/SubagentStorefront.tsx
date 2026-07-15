@@ -572,15 +572,25 @@ export function SubagentStorefront() {
 
       // Fetch packages and prices
       // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
-      const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text, active").order("size_gb").limit(1000),
-        supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
-        supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
-        supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
-        supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
-      ]);
+      try {
+        const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
+          supabase.from("data_packages").select("*").order("size_gb"),
+          supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
+          supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
+          supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
+          supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
+        ]);
 
-      setPackages(pkgRes.data || []);
+        if (pkgRes.error) {
+          console.error("Error fetching packages:", pkgRes.error);
+          setPackages([]);
+        } else {
+          setPackages(pkgRes.data || []);
+        }
+      } catch (error) {
+        console.error("Error in store fetch:", error);
+        setPackages([]);
+      }
       if (agentInfoRes.data) setAgentInfo(agentInfoRes.data);
 
       // Build price map with fallback: subagent's own prices -> agent's sell prices -> admin's base
