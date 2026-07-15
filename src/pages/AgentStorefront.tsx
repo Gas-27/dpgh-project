@@ -1023,9 +1023,9 @@ const AgentStorefront = () => {
           </div>
           <div className="flex items-center gap-2">
             {groupLink && (
-              <Button variant="outline" size="sm" asChild>
-                <a href={groupLink} target="_blank" rel="noopener noreferrer">
-                  <Users className="h-4 w-4 mr-1" /> Join Group
+              <Button variant="ghost" size="icon" asChild>
+                <a href={groupLink} target="_blank" rel="noopener noreferrer" title="Join WhatsApp Group">
+                  <Users className="h-5 w-5" style={{ color: primaryColor }} />
                 </a>
               </Button>
             )}
