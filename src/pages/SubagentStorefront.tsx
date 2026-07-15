@@ -573,30 +573,14 @@ export function SubagentStorefront() {
       // Fetch packages and prices
       // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
       const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text, active").order("size_gb"),
+        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text, active").order("size_gb").limit(1000),
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
         supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
       ]);
 
-      // Check for fetch errors
-      if (pkgRes.error) {
-        console.error("[v0] ***ERROR FETCHING PACKAGES***", pkgRes.error);
-        setPackages([]);
-      } else {
-        console.log("[v0] SubagentStorefront packages fetched successfully:");
-        console.log("[v0]   Total packages:", pkgRes.data?.length || 0);
-        if (pkgRes.data && pkgRes.data.length > 0) {
-          const mtnPkgs = pkgRes.data.filter((p: any) => p.network === "mtn");
-          console.log("[v0]   MTN packages:", mtnPkgs.length);
-          console.log("[v0]   Unique networks:", [...new Set(pkgRes.data.map((p: any) => p.network))]);
-          console.log("[v0]   First 3 packages:", JSON.stringify(pkgRes.data.slice(0, 3)));
-        } else {
-          console.log("[v0]   ***NO PACKAGES RETURNED FROM DATABASE***");
-        }
-        setPackages(pkgRes.data || []);
-      }
+      setPackages(pkgRes.data || []);
       if (agentInfoRes.data) setAgentInfo(agentInfoRes.data);
 
       // Build price map with fallback: subagent's own prices -> agent's sell prices -> admin's base
@@ -616,10 +600,8 @@ export function SubagentStorefront() {
       if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
       
       setLoading(false);
-      console.log("[v0] *** FETCH COMPLETE - packages state is now:", packages.length || 0);
     };
 
-    console.log("[v0] *** STARTING FETCH for store:", urlStoreName);
     fetchStore();
   }, [urlStoreName]);
 
@@ -810,10 +792,7 @@ export function SubagentStorefront() {
   // Helpers
   const filteredPackages = packages.filter((p) => {
       // Only show active packages
-      if (p.active === false) {
-        console.log("[v0] Filtering out inactive package:", p.id, "network:", p.network);
-        return false;
-      }
+      if (p.active === false) return false;
       
       // COMMENTED OUT: mashup packages deactivated
       // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
@@ -821,15 +800,10 @@ export function SubagentStorefront() {
         return p.network === "mtn_mashup" || p.network === "mashup";
     }
     if (networkFilter === "airteltigo") {
-      const match = p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-      if (match) console.log("[v0] Including airteltigo package:", p.id, "network:", p.network);
-      return match;
+      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
-    const match = p.network === networkFilter;
-    if (match) console.log("[v0] Including package:", p.id, "network:", p.network, "filter:", networkFilter);
-    return match;
+    return p.network === networkFilter;
   });
-  console.log("[v0] Filtered packages: total=", packages.length, "filtered=", filteredPackages.length, "networkFilter=", networkFilter);
   const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
