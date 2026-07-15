@@ -734,7 +734,7 @@ const AgentStorefront = () => {
       setStore(matched);
 
       const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, data_package_id, size_gb_text, active").order("size_gb").limit(1000),
+        supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
       ]);
