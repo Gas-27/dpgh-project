@@ -681,12 +681,10 @@ const AgentStorefront = () => {
 
       // Try to find match in agent stores first
       let matched = findStoreByName(storeName, agentStores);
-      console.log("[v0] AgentStorefront - storeName:", storeName, "matched in agentStores:", !!matched);
 
       // If no agent store match, try subagent stores (works on any domain)
       if (!matched) {
         matched = findStoreByName(storeName, subagentStores);
-        console.log("[v0] AgentStorefront - matched in subagentStores:", !!matched);
 
         if (matched) {
           // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices
@@ -930,12 +928,6 @@ const AgentStorefront = () => {
     }
     return p.network === networkFilter;
   });
-  if (packages.length > 0 && filteredPackages.length === 0) {
-    console.log("[v0] *** AgentStorefront: packages exist but all filtered out ***");
-    console.log("[v0]    Total packages:", packages.length);
-    console.log("[v0]    Network filter:", networkFilter);
-    console.log("[v0]    Networks in data:", [...new Set(packages.map(p => p.network))]);
-  }
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
