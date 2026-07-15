@@ -1117,46 +1117,6 @@ const AgentStorefront = () => {
       )}
 
       {/* Hero */}
-      <section className="relative overflow-hidden py-16 md:py-20">
-        <div
-          className="absolute inset-0"
-          style={{ background: `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}05)` }}
-        />
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full blur-[120px]"
-          style={{ background: `${primaryColor}30` }}
-        />
-        <div className="container relative text-center space-y-6">
-          <div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium"
-            style={{ borderColor: `${primaryColor}50`, background: `${primaryColor}10`, color: primaryColor }}
-          >
-            <Wifi className="h-4 w-4" /> Fast &amp; Reliable Data Delivery
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-            Cheap Data Bundles
-            <br />
-            <span style={{ color: primaryColor }}>Instant Delivery</span>
-          </h1>
-          <p className="text-muted-foreground max-w-lg mx-auto text-lg">
-            Get the best data deals from{" "}
-            <span className="text-foreground font-semibold">{store.store_name}</span>. Select your
-            network and package below.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground pt-2">
-            <span className="flex items-center gap-2">
-              <Shield className="h-4 w-4" style={{ color: primaryColor }} /> Trusted Seller
-            </span>
-            <span className="flex items-center gap-2">
-              <Clock className="h-4 w-4" style={{ color: primaryColor }} /> &lt;60min Delivery
-            </span>
-            <span className="flex items-center gap-2">
-              <Star className="h-4 w-4" style={{ color: primaryColor }} /> 24/7 Support
-            </span>
-          </div>
-        </div>
-      </section>
-
       {/* Category tabs */}
       <div className="container pb-8">
         <div className="flex flex-wrap justify-center gap-3 items-center">
