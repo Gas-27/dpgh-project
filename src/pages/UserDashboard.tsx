@@ -6,9 +6,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -506,16 +506,7 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/5 hover:border-amber-500/50 transition-all">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-muted-foreground">Total Purchased</p>
-              <TrendingUp className="h-5 w-5 text-amber-400" />
-            </div>
-            <p className="font-display text-3xl font-bold text-amber-400">{totalDataPurchased.toFixed(1)}GB</p>
-            <p className="text-xs text-muted-foreground mt-2">Spent: GHC {Number(totalSpent).toFixed(2)}</p>
-          </CardContent>
-        </Card>
+
       </div>
 
       {/* Top-up Reference and Codes Card */}
@@ -953,42 +944,59 @@ const UserDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* API Packages Section */}
+      {/* API Packages Section - Exact replica of AgentDashboard */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="font-display flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
             Available Packages for API
           </CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">These are the packages you can purchase through your API integration</p>
+          <p className="text-sm text-muted-foreground mt-2">These are the packages you can purchase through your API integration. Generate an API key above to start building.</p>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Network Tabs */}
+        <CardContent className="space-y-4">
+          {/* Network Filter Buttons */}
           <div className="flex gap-2 flex-wrap">
-            {["MTN", "AirtleTigo", "Telecel"].map(network => (
-              <Button
-                key={network}
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                onClick={() => {}}
+            {["mtn", "airteltigo", "telecel"].map(net => (
+              <Button 
+                key={net} 
+                variant={networkFilter === net ? "hero" : "outline"} 
+                size="sm" 
+                onClick={() => setNetworkFilter(net)}
               >
-                {network}
+                {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
               </Button>
             ))}
           </div>
 
-          {/* API Packages Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {packages.map(pkg => (
-              <Card key={pkg.id} className="border-purple-500/30 bg-muted/50 hover:border-purple-500/50 transition-all">
-                <CardContent className="pt-4">
-                  <p className="font-display font-bold text-lg">{pkg.size_gb}GB</p>
-                  <p className="text-purple-400 font-semibold text-sm mt-1">GHC {Number(pkg.api_price).toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">API Price</p>
-                </CardContent>
-              </Card>
-            ))}
+          {/* API Packages Grid - Exact styling from AgentDashboard */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {packages.filter(p => {
+              if (networkFilter === "airteltigo") {
+                return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+              }
+              return p.network === networkFilter;
+            }).map((pkg) => {
+              const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
+              return (
+                <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
+                  <CardContent className="pt-4">
+                    <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                    <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">API Price</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {packages.filter(p => {
+              if (networkFilter === "airteltigo") {
+                return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+              }
+              return p.network === networkFilter;
+            }).length === 0 && (
+              <div className="col-span-full text-center py-8 text-muted-foreground">
+                No packages available for {networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "mtn" ? "MTN" : "Telecel"}.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1044,18 +1052,60 @@ const UserDashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            AFA Registration
+            AFA Data Bundle - Premium Packages
           </CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">Register for our AFA bundle and get exclusive benefits</p>
+          <p className="text-sm text-muted-foreground mt-2">Exclusive AFA bundle packages with premium benefits. Register today and unlock special pricing.</p>
         </CardHeader>
-        <CardContent>
-          <div className="bg-gradient-to-br from-primary/20 to-purple-500/20 p-8 rounded-lg border border-primary/30 text-center">
-            <Package className="h-12 w-12 text-primary mx-auto mb-4" />
-            <p className="text-lg font-semibold mb-2">AFA Data Bundle</p>
-            <p className="text-muted-foreground mb-6">Click below to view and purchase our AFA bundle packages</p>
-            <Button onClick={() => window.location.href = "/packages?bundle=afa"} size="lg">
+        <CardContent className="space-y-6">
+          {/* AFA Bundle Description */}
+          <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 p-6 rounded-lg border border-primary/20">
+            <h3 className="font-semibold text-lg mb-2">What is AFA Bundle?</h3>
+            <p className="text-sm text-muted-foreground">
+              The AFA Bundle offers exclusive data packages with special pricing designed specifically for resellers and bulk purchasers. Get more data, better rates, and premium support.
+            </p>
+          </div>
+
+          {/* AFA Packages Grid - Similar to Buy Data */}
+          <div className="space-y-4">
+            <h3 className="font-semibold">Available AFA Packages:</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {packages.filter(p => p.is_afa_bundle).map((pkg) => (
+                <Card key={pkg.id} className="border-primary/30 bg-primary/5 hover:border-primary/50 transition-all">
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p>
+                        <p className="text-xs text-muted-foreground mt-1">{pkg.network.toUpperCase()}</p>
+                      </div>
+                      <Badge className="bg-primary">AFA</Badge>
+                    </div>
+                    <p className="text-2xl font-bold text-primary mb-3">GHC {Number(pkg.user_price || pkg.price).toFixed(2)}</p>
+                    <Button 
+                      onClick={() => setActiveMenu("buy-data")} 
+                      className="w-full bg-primary hover:bg-primary/90"
+                      size="sm"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Purchase
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+              {packages.filter(p => p.is_afa_bundle).length === 0 && (
+                <div className="col-span-full text-center py-8 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No AFA bundles available at the moment. Check back soon!</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Registration CTA */}
+          <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 p-6 rounded-lg border border-purple-500/20 text-center">
+            <p className="text-sm text-muted-foreground mb-3">Ready to get started with AFA Bundle?</p>
+            <Button onClick={() => setActiveMenu("buy-data")} size="lg" className="bg-primary">
               <ShoppingCart className="h-4 w-4 mr-2" />
-              View AFA Packages
+              Register & Purchase Now
             </Button>
           </div>
         </CardContent>
