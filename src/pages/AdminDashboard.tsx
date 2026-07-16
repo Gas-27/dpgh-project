@@ -109,6 +109,9 @@ const AdminDashboard = () => {
   const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [orderSearchTerm, setOrderSearchTerm] = useState("");
+  const [orderLatestFilter, setOrderLatestFilter] = useState<number | null>(null);
+  const [orderDateFrom, setOrderDateFrom] = useState<string>("");
+  const [orderDateTo, setOrderDateTo] = useState<string>("");
   const [withdrawalSearchTerm, setWithdrawalSearchTerm] = useState("");
   const [subagentSearchTerm, setSubagentSearchTerm] = useState("");
   const [topupSearchTerm, setTopupSearchTerm] = useState("");
@@ -1752,9 +1755,44 @@ const AdminDashboard = () => {
   const filteredUsers = userSearchTerm.length > 0 ? profileSearch.results : users;
   
   // Use database filtered results if filters are active, otherwise use search results
-  const filteredOrders = (orderNetworkFilter !== "all" || orderFulfillmentFilter !== "all" || orderPaymentStatusFilter !== "all")
+  let baseOrders = (orderNetworkFilter !== "all" || orderFulfillmentFilter !== "all" || orderPaymentStatusFilter !== "all")
     ? filteredOrdersFromDB
     : (orderSearchTerm.length > 0 ? orderSearch.results : orders);
+
+  // Apply latest orders filter (keep only last N orders per customer)
+  if (orderLatestFilter && orderLatestFilter > 0 && orderSearchTerm.length > 0) {
+    const ordersPerCustomer = new Map<string, typeof baseOrders>();
+    baseOrders.forEach(order => {
+      const customer = order.customer_number || "unknown";
+      if (!ordersPerCustomer.has(customer)) {
+        ordersPerCustomer.set(customer, []);
+      }
+      ordersPerCustomer.get(customer)!.push(order);
+    });
+
+    baseOrders = [];
+    ordersPerCustomer.forEach(customerOrders => {
+      // Sort by date descending and take latest N
+      const sorted = customerOrders
+        .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        .slice(0, orderLatestFilter);
+      baseOrders.push(...sorted);
+    });
+
+    // Re-sort all results by date
+    baseOrders.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+  }
+
+  // Apply date range filter
+  const filteredOrders = baseOrders.filter(order => {
+    if (!orderDateFrom && !orderDateTo) return true;
+    
+    const orderDate = new Date(order.created_at || 0).getTime();
+    const fromDate = orderDateFrom ? new Date(orderDateFrom).getTime() : 0;
+    const toDate = orderDateTo ? new Date(orderDateTo).getTime() + 86400000 : Infinity; // Add 1 day to include the whole day
+
+    return orderDate >= fromDate && orderDate <= toDate;
+  });
   
   const filteredWithdrawals = withdrawals
     .filter((withdrawal) => {
@@ -1905,6 +1943,62 @@ const AdminDashboard = () => {
                   </p>
                 )}
               </div>
+
+              {/* Latest Orders & Date Range Filters */}
+              {orderSearchTerm && (
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-end gap-2">
+                    <div>
+                      <label className="text-xs font-medium block mb-1">Show Only Latest</label>
+                      <select 
+                        value={orderLatestFilter === null ? "" : orderLatestFilter}
+                        onChange={(e) => setOrderLatestFilter(e.target.value === "" ? null : parseInt(e.target.value))}
+                        className="px-2 py-1 rounded-md border border-input bg-background text-xs"
+                      >
+                        <option value="">All Orders</option>
+                        <option value="1">Last 1</option>
+                        <option value="2">Last 2</option>
+                        <option value="3">Last 3</option>
+                        <option value="5">Last 5</option>
+                        <option value="10">Last 10</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-end gap-2">
+                    <div>
+                      <label className="text-xs font-medium block mb-1">From Date</label>
+                      <input 
+                        type="date"
+                        value={orderDateFrom}
+                        onChange={(e) => setOrderDateFrom(e.target.value)}
+                        className="px-2 py-1 rounded-md border border-input bg-background text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium block mb-1">To Date</label>
+                      <input 
+                        type="date"
+                        value={orderDateTo}
+                        onChange={(e) => setOrderDateTo(e.target.value)}
+                        className="px-2 py-1 rounded-md border border-input bg-background text-xs"
+                      />
+                    </div>
+                    {(orderLatestFilter || orderDateFrom || orderDateTo) && (
+                      <button
+                        onClick={() => {
+                          setOrderLatestFilter(null);
+                          setOrderDateFrom("");
+                          setOrderDateTo("");
+                        }}
+                        className="px-2 py-1 text-xs rounded-md border border-input bg-muted hover:bg-muted/80"
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
               
               {/* Order Filters */}
               <div className="flex gap-2 flex-wrap">
@@ -2839,6 +2933,19 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                           <div className="flex-shrink-0 flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => {
+                                localStorage.setItem("admin_impersonate_customer", customer.user_id || customer.id);
+                                localStorage.setItem("admin_impersonate_customer_name", `${customer.first_name} ${customer.last_name}`);
+                                window.location.href = "/user";
+                              }}
+                            >
+                              <LogIn className="h-3 w-3 mr-1" />
+                              Login As
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"

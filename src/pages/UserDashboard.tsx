@@ -454,14 +454,14 @@ const UserDashboard = () => {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid grid-cols-7 w-full">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="api-packages">API Packages</TabsTrigger>
-            <TabsTrigger value="api-key">API Key</TabsTrigger>
-            <TabsTrigger value="api-orders">API Orders</TabsTrigger>
-            <TabsTrigger value="buy-data">Buy Data</TabsTrigger>
-            <TabsTrigger value="top-up">Top Up</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsList className="flex flex-wrap gap-2 w-full h-auto p-2 bg-background border border-border rounded-lg overflow-x-auto">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="api-packages" className="text-xs sm:text-sm">API Packages</TabsTrigger>
+            <TabsTrigger value="api-key" className="text-xs sm:text-sm">API Key</TabsTrigger>
+            <TabsTrigger value="api-orders" className="text-xs sm:text-sm">API Orders</TabsTrigger>
+            <TabsTrigger value="buy-data" className="text-xs sm:text-sm">Buy Data</TabsTrigger>
+            <TabsTrigger value="top-up" className="text-xs sm:text-sm">Top Up</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs sm:text-sm">Settings</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
