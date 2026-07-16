@@ -64,6 +64,8 @@ const UserDashboard = () => {
   const [buyLoading, setBuyLoading] = useState(false);
   const [topupReference, setTopupReference] = useState<string>("");
   const [showApiWalletTopup, setShowApiWalletTopup] = useState(false);
+  const [orderFilter, setOrderFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
+  const [totalOrders, setTotalOrders] = useState(0);
   const [showNormalWalletTopup, setShowNormalWalletTopup] = useState(false);
 
   // API Orders state
@@ -480,7 +482,7 @@ const UserDashboard = () => {
   const renderOverview = () => (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-blue-500/5 hover:border-cyan-500/50 transition-all">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-4">
@@ -497,20 +499,6 @@ const UserDashboard = () => {
                 Add Funds
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-pink-500/5 hover:border-purple-500/50 transition-all">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-muted-foreground">API Wallet</p>
-              <Zap className="h-5 w-5 text-purple-400" />
-            </div>
-            <p className="font-display text-3xl font-bold text-purple-400">GHC {Number(apiWallet).toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-2">For API purchases</p>
-            <Button onClick={handleOpenApiWalletTopup} className="mt-4 w-full" size="sm">
-              Add Funds
-            </Button>
           </CardContent>
         </Card>
 
@@ -576,19 +564,78 @@ const UserDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Recent Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-primary">{orders.length}</p>
-            <p className="text-sm text-muted-foreground mt-2">Total orders placed</p>
-          </CardContent>
-        </Card>
+      {/* Orders Stats and Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Filter Stats & Orders</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Filter Buttons */}
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={orderFilter === "all" ? "default" : "outline"}
+              onClick={() => setOrderFilter("all")}
+              size="sm"
+            >
+              All Time
+            </Button>
+            <Button
+              variant={orderFilter === "today" ? "default" : "outline"}
+              onClick={() => setOrderFilter("today")}
+              size="sm"
+            >
+              Today
+            </Button>
+            <Button
+              variant={orderFilter === "yesterday" ? "default" : "outline"}
+              onClick={() => setOrderFilter("yesterday")}
+              size="sm"
+            >
+              Yesterday
+            </Button>
+            <Button
+              variant={orderFilter === "week" ? "default" : "outline"}
+              onClick={() => setOrderFilter("week")}
+              size="sm"
+            >
+              This Week
+            </Button>
+            <Button
+              variant={orderFilter === "month" ? "default" : "outline"}
+              onClick={() => setOrderFilter("month")}
+              size="sm"
+            >
+              This Month
+            </Button>
+            <Button
+              variant={orderFilter === "custom" ? "default" : "outline"}
+              onClick={() => setOrderFilter("custom")}
+              size="sm"
+            >
+              Custom
+            </Button>
+          </div>
 
-      </div>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="border-muted bg-muted/30">
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground mb-2">Total Orders</p>
+                <p className="text-4xl font-bold text-cyan-400">{orders.length}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-muted bg-muted/30">
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground mb-2">Store Status</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <p className="font-semibold text-green-400">Active</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
@@ -816,6 +863,21 @@ const UserDashboard = () => {
 
   const renderApiKey = () => (
     <div className="space-y-6">
+      {/* API Wallet Card */}
+      <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-pink-500/5 hover:border-purple-500/50 transition-all">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-muted-foreground">API Wallet</p>
+            <Zap className="h-5 w-5 text-purple-400" />
+          </div>
+          <p className="font-display text-3xl font-bold text-purple-400">GHC {Number(apiWallet).toFixed(2)}</p>
+          <p className="text-xs text-muted-foreground mt-2">For API purchases</p>
+          <Button onClick={handleOpenApiWalletTopup} className="mt-4 w-full" size="sm">
+            Add Funds
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>API Key Management</CardTitle>
