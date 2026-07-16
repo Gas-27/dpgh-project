@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -66,6 +66,7 @@ const UserDashboard = () => {
   const [showApiWalletTopup, setShowApiWalletTopup] = useState(false);
   const [orderFilter, setOrderFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [totalOrders, setTotalOrders] = useState(0);
+  const [topupHistory, setTopupHistory] = useState<any[]>([]);
   const [showNormalWalletTopup, setShowNormalWalletTopup] = useState(false);
 
   // API Orders state
@@ -82,9 +83,10 @@ const UserDashboard = () => {
     { id: "overview", label: "Overview", icon: Home },
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "orders", label: "Orders", icon: BarChart3 },
-    { id: "flyer", label: "Flyer Generator", icon: ImageIcon },
+    { id: "rewards", label: "Rewards & Benefits", icon: ImageIcon },
     { id: "api-key", label: "API Key", icon: Zap },
-    { id: "api-packages", label: "API Packages", icon: Package },
+    { id: "api-orders", label: "API Orders", icon: BarChart3 },
+    { id: "afa-registration", label: "AFA Registration", icon: Package },
     { id: "topup", label: "Top Up", icon: Coins },
     { id: "settings", label: "Settings", icon: Settings },
   ];
@@ -464,12 +466,14 @@ const UserDashboard = () => {
         return renderBuyData();
       case "orders":
         return renderOrders();
-      case "flyer":
+      case "rewards":
         return renderFlyerGenerator();
       case "api-key":
         return renderApiKey();
-      case "api-packages":
-        return renderApiPackages();
+      case "api-orders":
+        return renderApiOrders();
+      case "afa-registration":
+        return renderAfaRegistration();
       case "topup":
         return renderTopup();
       case "settings":
@@ -617,11 +621,23 @@ const UserDashboard = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="border-muted bg-muted/30">
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground mb-2">Total Orders</p>
-                <p className="text-4xl font-bold text-cyan-400">{orders.length}</p>
+                <p className="text-3xl font-bold text-cyan-400">{orders.length}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-muted bg-muted/30">
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground mb-2">Total GB Bought</p>
+                <p className="text-3xl font-bold text-amber-400">{totalDataPurchased.toFixed(1)}GB</p>
+              </CardContent>
+            </Card>
+            <Card className="border-muted bg-muted/30">
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground mb-2">Total Spent</p>
+                <p className="text-3xl font-bold text-green-400">GHC {Number(totalSpent).toFixed(2)}</p>
               </CardContent>
             </Card>
             <Card className="border-muted bg-muted/30">
@@ -855,6 +871,21 @@ const UserDashboard = () => {
               <Copy className="h-4 w-4 mr-2" />
               Copy Link
             </Button>
+            <Button variant="outline" className="flex-1" onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: 'Data Plug - Premium Data Packages',
+                  text: 'Get premium data packages at great prices!',
+                  url: 'https://www.dataplug.store/packages',
+                });
+              } else {
+                navigator.clipboard.writeText('https://www.dataplug.store/packages');
+                toast({ title: "Copied!", description: "Share link copied to clipboard" });
+              }
+            }}>
+              <Share2 className="h-4 w-4 mr-2" />
+              Share
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -921,28 +952,111 @@ const UserDashboard = () => {
           )}
         </CardContent>
       </Card>
-    </div>
-  );
 
-  const renderApiPackages = () => (
-    <div className="space-y-6">
+      {/* API Packages Section */}
       <Card>
         <CardHeader>
-          <CardTitle>API Data Packages</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5" />
+            Available Packages for API
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">These are the packages you can purchase through your API integration</p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="space-y-6">
+          {/* Network Tabs */}
+          <div className="flex gap-2 flex-wrap">
+            {["MTN", "AirtleTigo", "Telecel"].map(network => (
+              <Button
+                key={network}
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => {}}
+              >
+                {network}
+              </Button>
+            ))}
+          </div>
+
+          {/* API Packages Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {packages.map(pkg => (
-              <Card key={pkg.id}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{pkg.size_gb}GB</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">API Price</p>
-                  <p className="font-display text-2xl font-bold text-purple-400">GHC {Number(pkg.api_price).toFixed(2)}</p>
+              <Card key={pkg.id} className="border-purple-500/30 bg-muted/50 hover:border-purple-500/50 transition-all">
+                <CardContent className="pt-4">
+                  <p className="font-display font-bold text-lg">{pkg.size_gb}GB</p>
+                  <p className="text-purple-400 font-semibold text-sm mt-1">GHC {Number(pkg.api_price).toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">API Price</p>
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderApiOrders = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            API Orders
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">Track your API purchase history and order details</p>
+        </CardHeader>
+        <CardContent>
+          {apiOrders.length === 0 ? (
+            <div className="text-center py-12">
+              <BarChart3 className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">No API orders yet. Purchase API data packages to see your order history.</p>
+              <Button onClick={() => setActiveMenu("api-key")} className="mt-4">
+                View API Packages
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {apiOrders.map(order => (
+                <div key={order.id} className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold">{order.package_size}GB - {order.network}</p>
+                      <p className="text-sm text-muted-foreground">Order ID: {order.id.substring(0, 8)}</p>
+                    </div>
+                    <p className="font-display font-bold text-purple-400">GHC {Number(order.amount).toFixed(2)}</p>
+                  </div>
+                  <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
+                    <span>Status: <span className="text-green-400">{order.status}</span></span>
+                    <span>Date: {new Date(order.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderAfaRegistration = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            AFA Registration
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">Register for our AFA bundle and get exclusive benefits</p>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-gradient-to-br from-primary/20 to-purple-500/20 p-8 rounded-lg border border-primary/30 text-center">
+            <Package className="h-12 w-12 text-primary mx-auto mb-4" />
+            <p className="text-lg font-semibold mb-2">AFA Data Bundle</p>
+            <p className="text-muted-foreground mb-6">Click below to view and purchase our AFA bundle packages</p>
+            <Button onClick={() => window.location.href = "/packages?bundle=afa"} size="lg">
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              View AFA Packages
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -973,6 +1087,38 @@ const UserDashboard = () => {
               </Button>
               <p className="text-xs text-muted-foreground mt-2">Current: GHC {Number(apiWallet).toFixed(2)}</p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Top-up History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Top-up History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {topupHistory && topupHistory.length > 0 ? (
+              topupHistory.map((topup: any, idx: number) => (
+                <div key={idx} className="border border-border rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-sm">{topup.wallet_type === "normal" ? "Wallet" : "API Wallet"} Top-up</p>
+                      <p className="text-xs text-muted-foreground">ID: {topup.reference?.substring(0, 8) || "N/A"}</p>
+                    </div>
+                    <p className="font-bold text-green-400">+GHC {Number(topup.amount).toFixed(2)}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">{new Date(topup.created_at).toLocaleString()}</p>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground text-sm">No top-up history yet</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1011,7 +1157,7 @@ const UserDashboard = () => {
 
         <div className="flex min-h-[calc(100vh-200px)]">
           {/* Desktop Sidebar */}
-          <div className="hidden lg:flex flex-col w-64 bg-muted/50 border-r border-border px-4 py-6 gap-2">
+          <div className="hidden lg:flex flex-col w-64 bg-muted/50 border-r border-border px-4 py-6 overflow-y-auto">
             <div className="space-y-1">
               {menuItems.map(item => {
                 const Icon = item.icon;
@@ -1068,7 +1214,7 @@ const UserDashboard = () => {
             <SheetContent side="left" className="w-64 p-0">
               <div className="flex flex-col h-full p-6 gap-4">
                 <h2 className="font-display text-lg font-bold">Menu</h2>
-                <div className="space-y-1 flex-1">
+                <div className="space-y-1 flex-1 overflow-y-auto">
                   {menuItems.map(item => {
                     const Icon = item.icon;
                     return (
