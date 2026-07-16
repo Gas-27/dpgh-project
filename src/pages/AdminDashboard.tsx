@@ -1883,20 +1883,27 @@ const AdminDashboard = () => {
                   <Button variant="destructive" size="sm" onClick={retryAllFailed}><RefreshCw className="h-4 w-4 mr-1" /> Retry All Failed</Button>
                 </div>
               )}
-              <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search by phone number..." 
-                  value={orderSearchTerm}
-                  onChange={(e) => {
-                    setOrderSearchTerm(e.target.value);
-                    if (e.target.value.length > 0) {
-                      orderSearch.search(e.target.value);
-                    }
-                  }}
-                  className="pl-10" 
-                />
-                {orderSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+              <div className="flex flex-col gap-2">
+                <div className="relative max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <textarea 
+                    placeholder="Search by phone number (paste multiple separated by commas, newlines, or spaces)..." 
+                    value={orderSearchTerm}
+                    onChange={(e) => {
+                      setOrderSearchTerm(e.target.value);
+                      if (e.target.value.length > 0) {
+                        orderSearch.search(e.target.value);
+                      }
+                    }}
+                    className="pl-10 w-full min-h-20 p-3 rounded-md border border-input bg-background text-sm resize-none" 
+                  />
+                  {orderSearch.isSearching && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />}
+                </div>
+                {orderSearchTerm && (
+                  <p className="text-xs text-muted-foreground">
+                    Found <span className="font-semibold text-foreground">{orderSearch.results.length}</span> order(s) matching your search
+                  </p>
+                )}
               </div>
               
               {/* Order Filters */}
