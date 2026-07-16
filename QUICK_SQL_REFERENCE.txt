@@ -1,0 +1,161 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    DATA PLUG STORE - QUICK SQL REFERENCE                    ║
+║                         Copy & Paste Each Command                           ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+STEP 1: Add Video Column
+────────────────────────
+ALTER TABLE public.stores
+ADD COLUMN IF NOT EXISTS overview_video_url TEXT DEFAULT NULL;
+
+
+STEP 2A: Update Existing Customer Top-Up References
+────────────────────────────────────────────────────
+UPDATE public.customers
+SET topup_reference = 'user' || id
+WHERE topup_reference IS NULL 
+   OR topup_reference = '' 
+   OR topup_reference LIKE 'TOPUP%';
+
+
+STEP 2B: Verify Update Worked
+──────────────────────────────
+SELECT id, phone_number, topup_reference, created_at 
+FROM public.customers 
+ORDER BY created_at DESC 
+LIMIT 10;
+
+
+STEP 3: Create Trigger for New Customers
+──────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.generate_customer_topup_reference()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.topup_reference IS NULL OR NEW.topup_reference = '' THEN
+    NEW.topup_reference := 'user' || NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF NOT EXISTS generate_topup_ref_trigger ON public.customers;
+
+CREATE TRIGGER generate_topup_ref_trigger
+BEFORE INSERT ON public.customers
+FOR EACH ROW
+EXECUTE FUNCTION public.generate_customer_topup_reference();
+
+
+STEP 4A: Add USSD and Access Code Columns
+──────────────────────────────────────────
+ALTER TABLE public.customers
+ADD COLUMN IF NOT EXISTS ussd_code TEXT DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS access_code_zero TEXT DEFAULT NULL;
+
+
+STEP 4B: Set Default Values
+────────────────────────────
+UPDATE public.customers
+SET ussd_code = '*123#',
+    access_code_zero = '0'
+WHERE ussd_code IS NULL;
+
+
+STEP 5: Create Flyer Generator Tables
+──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.flyer_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES public.customers(id) ON DELETE CASCADE,
+  template_name TEXT NOT NULL,
+  template_design JSONB DEFAULT '{}'::jsonb,
+  background_color TEXT DEFAULT '#000000',
+  text_color TEXT DEFAULT '#FFFFFF',
+  accent_color TEXT DEFAULT '#00FFFF',
+  logo_url TEXT,
+  custom_text TEXT,
+  show_prices BOOLEAN DEFAULT TRUE,
+  show_ussd BOOLEAN DEFAULT TRUE,
+  show_qr_code BOOLEAN DEFAULT FALSE,
+  qr_code_url TEXT,
+  share_url TEXT DEFAULT 'https://www.dataplug.store/packages',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  is_default BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS public.flyer_customer_prices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  flyer_template_id UUID NOT NULL REFERENCES public.flyer_templates(id) ON DELETE CASCADE,
+  package_id UUID NOT NULL REFERENCES public.data_packages(id) ON DELETE CASCADE,
+  customer_price DECIMAL(10, 2) NOT NULL,
+  margin_percentage DECIMAL(5, 2) DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_flyer_templates_customer_id 
+  ON public.flyer_templates(customer_id);
+
+CREATE INDEX IF NOT EXISTS idx_flyer_customer_prices_template_id 
+  ON public.flyer_customer_prices(flyer_template_id);
+
+CREATE INDEX IF NOT EXISTS idx_flyer_customer_prices_package_id 
+  ON public.flyer_customer_prices(package_id);
+
+
+FINAL VERIFICATION
+──────────────────
+SELECT 
+  id,
+  phone_number,
+  topup_reference,
+  ussd_code,
+  access_code_zero,
+  created_at
+FROM public.customers
+ORDER BY created_at DESC
+LIMIT 20;
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                              HOW TO USE                                     ║
+║                                                                              ║
+║ 1. Go to Supabase Dashboard → SQL Editor → New Query                       ║
+║ 2. Copy one command above                                                  ║
+║ 3. Paste into SQL Editor                                                   ║
+║ 4. Click RUN                                                               ║
+║ 5. Take screenshot                                                         ║
+║ 6. Repeat for next command                                                 ║
+║                                                                              ║
+║ Order: Step 1 → Step 2A → Step 2B → Step 3 → Step 4A → Step 4B → Step 5    ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+
+USEFUL COMMANDS FOR LATER
+─────────────────────────
+
+Update USSD Code for Everyone:
+UPDATE public.customers SET ussd_code = '*NEW_CODE#';
+
+Update Access Code for Everyone:
+UPDATE public.customers SET access_code_zero = 'NEW_CODE';
+
+Add Video to a Store:
+UPDATE public.stores 
+SET overview_video_url = 'https://www.youtube.com/watch?v=VIDEO_ID'
+WHERE id = 'STORE_ID';
+
+Check All Customers:
+SELECT id, phone_number, topup_reference, ussd_code, access_code_zero 
+FROM public.customers LIMIT 50;
+
+Check Trigger Exists:
+SELECT trigger_name FROM information_schema.triggers 
+WHERE trigger_name = 'generate_topup_ref_trigger';
+
+Delete All Flyerrs (if needed):
+DELETE FROM public.flyer_templates;
+
+────────────────────────────────────────────────────────────────────────────
+Need help? Check DATABASE_SETUP_INSTRUCTIONS.md for detailed explanations
+────────────────────────────────────────────────────────────────────────────
