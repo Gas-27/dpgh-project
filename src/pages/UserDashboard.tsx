@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
+import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +75,10 @@ const UserDashboard = () => {
   const [loadingApiOrders, setLoadingApiOrders] = useState(false);
   const [apiOrdersSearch, setApiOrdersSearch] = useState("");
   const [apiOrdersStatusFilter, setApiOrdersStatusFilter] = useState("");
+
+  // Flyer generation state
+  const [generatingFlyer, setGeneratingFlyer] = useState(false);
+  const [shareText, setShareText] = useState("");
 
   // Menu navigation
   const [activeMenu, setActiveMenu] = useState("overview");
@@ -764,118 +769,304 @@ const UserDashboard = () => {
     </div>
   );
 
+  const generatePng = async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1920;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    // Black background
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Title
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 72px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('DATA PLUG', 540, 120);
+
+    // Subtitle
+    ctx.fillStyle = '#00BFFF';
+    ctx.font = '24px Arial';
+    ctx.fillText('PREMIUM DATA PACKAGES', 540, 180);
+    ctx.fillText('Affordable. Instant. Reliable.', 540, 220);
+
+    let yPos = 280;
+    const lineHeight = 40;
+    const sectionHeight = 520;
+
+    // MTN Section
+    ctx.strokeStyle = '#FFA500';
+    ctx.fillStyle = '#FFA500';
+    ctx.lineWidth = 3;
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('MTN DATA BUNDLES', 60, yPos);
+    yPos += lineHeight + 20;
+
+    const mtnPkgs = packages.filter(p => p.network.toLowerCase() === 'mtn').slice(0, 10);
+    mtnPkgs.forEach((pkg, idx) => {
+      const col = idx % 5;
+      const row = Math.floor(idx / 5);
+      const x = 60 + (col * 190);
+      const y = yPos + (row * 90);
+
+      ctx.fillStyle = 'rgba(255, 165, 0, 0.1)';
+      ctx.fillRect(x, y, 170, 70);
+      ctx.strokeStyle = '#FFA500';
+      ctx.strokeRect(x, y, 170, 70);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText(`${pkg.size_gb}GB`, x + 10, y + 30);
+
+      ctx.fillStyle = '#FFA500';
+      ctx.font = 'bold 28px Arial';
+      ctx.fillText(`GHC ${Number(pkg.price).toFixed(2)}`, x + 10, y + 60);
+    });
+
+    yPos += sectionHeight;
+
+    // Airtel Section
+    ctx.fillStyle = '#9D4EDD';
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('AIRTELTIGO DATA BUNDLES', 60, yPos);
+    yPos += lineHeight + 20;
+
+    const airtelPkgs = packages.filter(p => p.network.toLowerCase() === 'airteltigo').slice(0, 10);
+    airtelPkgs.forEach((pkg, idx) => {
+      const col = idx % 5;
+      const row = Math.floor(idx / 5);
+      const x = 60 + (col * 190);
+      const y = yPos + (row * 90);
+
+      ctx.fillStyle = 'rgba(157, 78, 221, 0.1)';
+      ctx.fillRect(x, y, 170, 70);
+      ctx.strokeStyle = '#9D4EDD';
+      ctx.strokeRect(x, y, 170, 70);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText(`${pkg.size_gb}GB`, x + 10, y + 30);
+
+      ctx.fillStyle = '#9D4EDD';
+      ctx.font = 'bold 28px Arial';
+      ctx.fillText(`GHC ${Number(pkg.price).toFixed(2)}`, x + 10, y + 60);
+    });
+
+    yPos += sectionHeight;
+
+    // Telecel Section
+    ctx.fillStyle = '#FF0000';
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('TELECEL DATA BUNDLES', 60, yPos);
+    yPos += lineHeight + 20;
+
+    const telecelPkgs = packages.filter(p => p.network.toLowerCase() === 'telecel').slice(0, 10);
+    telecelPkgs.forEach((pkg, idx) => {
+      const col = idx % 5;
+      const row = Math.floor(idx / 5);
+      const x = 60 + (col * 190);
+      const y = yPos + (row * 90);
+
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+      ctx.fillRect(x, y, 170, 70);
+      ctx.strokeStyle = '#FF0000';
+      ctx.strokeRect(x, y, 170, 70);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText(`${pkg.size_gb}GB`, x + 10, y + 30);
+
+      ctx.fillStyle = '#FF0000';
+      ctx.font = 'bold 28px Arial';
+      ctx.fillText(`GHC ${Number(pkg.price).toFixed(2)}`, x + 10, y + 60);
+    });
+
+    return canvas.toDataURL('image/png');
+  };
+
+  const shareFlyer = async () => {
+    setGeneratingFlyer(true);
+    try {
+      const defaultShareText = `Get premium data packages at great prices! 📱\n\nContact us:\n📞 Call: 0200511211\n💬 WhatsApp: Chat on WhatsApp\n💻 Visit: dataplug.store\n\nAffordable. Instant. Reliable.`;
+      setShareText(defaultShareText);
+
+      const dataUrl = await generatePng();
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], "data-flyer.png", { type: "image/png" });
+
+      // Try to share the image file
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: 'Data Plug - Premium Data Packages',
+            text: defaultShareText,
+            files: [file],
+          });
+          toast({ title: "Shared!", description: "Flyer and text sent!" });
+          setGeneratingFlyer(false);
+          return;
+        } catch (shareErr: any) {
+          if (shareErr.name !== "AbortError") {
+            console.log("[v0] File share failed, falling back");
+          } else {
+            setGeneratingFlyer(false);
+            return;
+          }
+        }
+      }
+
+      // Fallback: share text and download image
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Data Plug - Premium Data Packages',
+            text: defaultShareText,
+          });
+          const a = document.createElement("a");
+          a.download = "data-flyer.png";
+          a.href = dataUrl;
+          a.click();
+          toast({ title: "Text shared!", description: "Image saved. Attach it in WhatsApp." });
+          setGeneratingFlyer(false);
+          return;
+        } catch (shareErr: any) {
+          if (shareErr.name !== "AbortError") {
+            console.log("[v0] Text share failed, using download");
+          } else {
+            setGeneratingFlyer(false);
+            return;
+          }
+        }
+      }
+
+      // Desktop fallback
+      const a = document.createElement("a");
+      a.download = "data-flyer.png";
+      a.href = dataUrl;
+      a.click();
+      
+      try {
+        await navigator.clipboard.writeText(defaultShareText);
+        toast({ title: "Image downloaded!", description: "Share text copied. Paste in WhatsApp." });
+      } catch {
+        const encodedText = encodeURIComponent(defaultShareText);
+        window.open(`https://wa.me/?text=${encodedText}`, "_blank");
+        toast({ title: "Image downloaded!", description: "WhatsApp opened to share." });
+      }
+    } catch (err: any) {
+      console.error("[v0] Share error:", err);
+      toast({ title: "Error", description: "Could not generate flyer", variant: "destructive" });
+    } finally {
+      setGeneratingFlyer(false);
+    }
+  };
+
   const renderFlyerGenerator = () => (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
-            Promotional Flyer Generator
+            Rewards & Benefits - Promotional Flyer
           </CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">Generate a professional promotional flyer showing your data package prices. The flyer displays your live prices and can be shared on social media.</p>
+          <p className="text-sm text-muted-foreground mt-2">Generate and share a professional promotional flyer with all your data packages. Share directly to WhatsApp or download for social media.</p>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Flyer Preview */}
           <div className="border border-border rounded-lg overflow-hidden bg-black">
             <div className="relative bg-black" style={{ aspectRatio: "1080/1920", maxWidth: "300px", margin: "0 auto" }}>
-              {/* Flyer Template - Simplified version of agent dashboard flyer */}
-              <div className="w-full h-full p-4 flex flex-col justify-between" style={{ fontSize: "12px" }}>
-                {/* Header */}
-                <div>
-                  <h1 className="text-white font-bold text-center mb-4" style={{ fontSize: "24px" }}>DATA PLUG</h1>
-                  <p className="text-cyan-400 text-center text-xs mb-6">Premium Data Packages</p>
+              <div className="w-full h-full p-4 flex flex-col justify-between text-white" style={{ fontSize: "11px" }}>
+                <div className="text-center">
+                  <h1 className="font-bold mb-1" style={{ fontSize: "28px" }}>DATA PLUG</h1>
+                  <p className="text-cyan-400 text-xs mb-3">PREMIUM DATA PACKAGES</p>
+                  <p className="text-xs mb-4">Affordable. Instant. Reliable.</p>
                 </div>
 
-                {/* Network Sections */}
-                <div className="space-y-3 flex-1">
-                  {/* MTN Section */}
-                  <div className="border border-orange-500/50 rounded p-2 bg-orange-500/5">
-                    <p className="text-orange-400 font-bold text-sm mb-2">MTN DATA</p>
-                    <div className="grid grid-cols-2 gap-1 text-xs">
-                      {packages.filter(p => p.network.toLowerCase() === 'mtn').slice(0, 4).map(pkg => (
-                        <div key={pkg.id} className="bg-black/50 p-1 rounded border border-orange-500/30">
-                          <p className="text-white font-semibold">{pkg.size_gb}GB</p>
-                          <p className="text-orange-400">GHC {Number(pkg.user_price || pkg.price).toFixed(2)}</p>
+                <div className="flex-1 space-y-2 text-xs">
+                  <div className="border border-orange-500/50 rounded p-1.5">
+                    <p className="text-orange-400 font-bold text-xs mb-1">MTN</p>
+                    <div className="grid grid-cols-3 gap-0.5">
+                      {packages.filter(p => p.network.toLowerCase() === 'mtn').slice(0, 6).map(pkg => (
+                        <div key={pkg.id} className="bg-black/50 p-0.5 rounded border border-orange-500/30 text-center">
+                          <p className="font-semibold text-xs">{pkg.size_gb}GB</p>
+                          <p className="text-orange-400 text-xs">GHC {Number(pkg.price).toFixed(2)}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Airtel Section */}
-                  <div className="border border-purple-500/50 rounded p-2 bg-purple-500/5">
-                    <p className="text-purple-400 font-bold text-sm mb-2">AIRTELTIGO DATA</p>
-                    <div className="grid grid-cols-2 gap-1 text-xs">
-                      {packages.filter(p => p.network.toLowerCase() === 'airteltigo').slice(0, 4).map(pkg => (
-                        <div key={pkg.id} className="bg-black/50 p-1 rounded border border-purple-500/30">
-                          <p className="text-white font-semibold">{pkg.size_gb}GB</p>
-                          <p className="text-purple-400">GHC {Number(pkg.user_price || pkg.price).toFixed(2)}</p>
+                  <div className="border border-purple-500/50 rounded p-1.5">
+                    <p className="text-purple-400 font-bold text-xs mb-1">AIRTELTIGO</p>
+                    <div className="grid grid-cols-3 gap-0.5">
+                      {packages.filter(p => p.network.toLowerCase() === 'airteltigo').slice(0, 6).map(pkg => (
+                        <div key={pkg.id} className="bg-black/50 p-0.5 rounded border border-purple-500/30 text-center">
+                          <p className="font-semibold text-xs">{pkg.size_gb}GB</p>
+                          <p className="text-purple-400 text-xs">GHC {Number(pkg.price).toFixed(2)}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Telecel Section */}
-                  <div className="border border-red-500/50 rounded p-2 bg-red-500/5">
-                    <p className="text-red-400 font-bold text-sm mb-2">TELECEL DATA</p>
-                    <div className="grid grid-cols-2 gap-1 text-xs">
-                      {packages.filter(p => p.network.toLowerCase() === 'telecel').slice(0, 4).map(pkg => (
-                        <div key={pkg.id} className="bg-black/50 p-1 rounded border border-red-500/30">
-                          <p className="text-white font-semibold">{pkg.size_gb}GB</p>
-                          <p className="text-red-400">GHC {Number(pkg.user_price || pkg.price).toFixed(2)}</p>
+                  <div className="border border-red-500/50 rounded p-1.5">
+                    <p className="text-red-400 font-bold text-xs mb-1">TELECEL</p>
+                    <div className="grid grid-cols-3 gap-0.5">
+                      {packages.filter(p => p.network.toLowerCase() === 'telecel').slice(0, 6).map(pkg => (
+                        <div key={pkg.id} className="bg-black/50 p-0.5 rounded border border-red-500/30 text-center">
+                          <p className="font-semibold text-xs">{pkg.size_gb}GB</p>
+                          <p className="text-red-400 text-xs">GHC {Number(pkg.price).toFixed(2)}</p>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Footer */}
-                <div className="text-center mt-4 pt-4 border-t border-border/50">
-                  <p className="text-cyan-400 font-bold text-xs mb-1">dataplug.store</p>
+                <div className="text-center border-t border-border/50 pt-2">
+                  <p className="text-cyan-400 font-bold text-xs mb-0.5">dataplug.store</p>
                   <p className="text-muted-foreground text-xs">Premium Data Reseller</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Info Text */}
-          <div className="bg-muted/50 p-4 rounded-lg border border-border space-y-2">
-            <p className="text-sm font-semibold">Your Live Prices</p>
-            <p className="text-xs text-muted-foreground">The flyer above displays your current package prices. Prices are automatically locked and cannot be edited on the flyer generator.</p>
-            <p className="text-xs text-muted-foreground">Share your personalized link: <span className="font-mono bg-background px-2 py-1 rounded">https://www.dataplug.store/packages</span></p>
+          {/* Info */}
+          <div className="bg-muted/50 p-4 rounded-lg border border-border">
+            <p className="text-sm font-semibold mb-2">Share Your Flyer</p>
+            <p className="text-xs text-muted-foreground">Click the Share button to send your flyer with promotional text directly to WhatsApp or download it for social media sharing.</p>
           </div>
 
           {/* Action Buttons */}
           <div className="flex gap-2 flex-wrap">
-            <Button className="flex-1" onClick={() => {
-              const link = document.createElement('a');
-              link.href = 'https://www.dataplug.store/packages';
-              link.target = '_blank';
-              link.click();
-            }}>
+            <Button 
+              className="flex-1" 
+              onClick={shareFlyer}
+              disabled={generatingFlyer}
+            >
+              {generatingFlyer ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Share2 className="h-4 w-4 mr-2" />
+              )}
+              Share Flyer
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex-1" 
+              onClick={async () => {
+                const dataUrl = await generatePng();
+                const a = document.createElement("a");
+                a.download = "data-flyer.png";
+                a.href = dataUrl;
+                a.click();
+                toast({ title: "Downloaded!", description: "Flyer saved to your device" });
+              }}
+            >
               <Download className="h-4 w-4 mr-2" />
-              Download Flyer
-            </Button>
-            <Button variant="outline" className="flex-1" onClick={() => {
-              navigator.clipboard.writeText('https://www.dataplug.store/packages');
-              toast({ title: "Copied!", description: "Share link copied to clipboard" });
-            }}>
-              <Copy className="h-4 w-4 mr-2" />
-              Copy Link
-            </Button>
-            <Button variant="outline" className="flex-1" onClick={() => {
-              if (navigator.share) {
-                navigator.share({
-                  title: 'Data Plug - Premium Data Packages',
-                  text: 'Get premium data packages at great prices!',
-                  url: 'https://www.dataplug.store/packages',
-                });
-              } else {
-                navigator.clipboard.writeText('https://www.dataplug.store/packages');
-                toast({ title: "Copied!", description: "Share link copied to clipboard" });
-              }
-            }}>
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
+              Download
             </Button>
           </div>
         </CardContent>
@@ -1047,70 +1238,15 @@ const UserDashboard = () => {
   );
 
   const renderAfaRegistration = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            AFA Data Bundle - Premium Packages
-          </CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">Exclusive AFA bundle packages with premium benefits. Register today and unlock special pricing.</p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* AFA Bundle Description */}
-          <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 p-6 rounded-lg border border-primary/20">
-            <h3 className="font-semibold text-lg mb-2">What is AFA Bundle?</h3>
-            <p className="text-sm text-muted-foreground">
-              The AFA Bundle offers exclusive data packages with special pricing designed specifically for resellers and bulk purchasers. Get more data, better rates, and premium support.
-            </p>
-          </div>
-
-          {/* AFA Packages Grid - Similar to Buy Data */}
-          <div className="space-y-4">
-            <h3 className="font-semibold">Available AFA Packages:</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {packages.filter(p => p.is_afa_bundle).map((pkg) => (
-                <Card key={pkg.id} className="border-primary/30 bg-primary/5 hover:border-primary/50 transition-all">
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb}GB</p>
-                        <p className="text-xs text-muted-foreground mt-1">{pkg.network.toUpperCase()}</p>
-                      </div>
-                      <Badge className="bg-primary">AFA</Badge>
-                    </div>
-                    <p className="text-2xl font-bold text-primary mb-3">GHC {Number(pkg.user_price || pkg.price).toFixed(2)}</p>
-                    <Button 
-                      onClick={() => setActiveMenu("buy-data")} 
-                      className="w-full bg-primary hover:bg-primary/90"
-                      size="sm"
-                    >
-                      <ShoppingCart className="h-4 w-4 mr-2" />
-                      Purchase
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-              {packages.filter(p => p.is_afa_bundle).length === 0 && (
-                <div className="col-span-full text-center py-8 text-muted-foreground">
-                  <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No AFA bundles available at the moment. Check back soon!</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Registration CTA */}
-          <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 p-6 rounded-lg border border-purple-500/20 text-center">
-            <p className="text-sm text-muted-foreground mb-3">Ready to get started with AFA Bundle?</p>
-            <Button onClick={() => setActiveMenu("buy-data")} size="lg" className="bg-primary">
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Register & Purchase Now
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <AFAPackagesDisplay
+      onRegisterClick={(packageId, packageName, price) => {
+        toast({ 
+          title: "Ready to register", 
+          description: `Selected: ${packageName} - GHC ${price.toFixed(2)}` 
+        });
+        setActiveMenu("buy-data");
+      }}
+    />
   );
 
   const renderTopup = () => (
