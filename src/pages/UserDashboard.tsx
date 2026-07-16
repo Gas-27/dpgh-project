@@ -80,6 +80,9 @@ const UserDashboard = () => {
   const [generatingFlyer, setGeneratingFlyer] = useState(false);
   const [shareText, setShareText] = useState("");
 
+  // Agent features dropdown state
+  const [agentFeaturesOpen, setAgentFeaturesOpen] = useState(false);
+
   // Menu navigation
   const [activeMenu, setActiveMenu] = useState("overview");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -1384,23 +1387,42 @@ const UserDashboard = () => {
             {/* Divider */}
             <div className="my-4 border-t border-border" />
 
-            {/* Agent-Only Section */}
+            {/* Agent Features Dropdown */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground px-3 mb-2 uppercase">Agent Features</p>
-              <div className="space-y-1">
-                {agentOnlyItems.map(item => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground opacity-50 cursor-not-allowed"
-                    >
-                      <Lock className="h-4 w-4" />
-                      {item.label}
-                    </div>
-                  );
-                })}
-              </div>
+              <button
+                onClick={() => setAgentFeaturesOpen(!agentFeaturesOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm font-medium"
+              >
+                <span className="flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  Agent Features
+                </span>
+                <svg
+                  className={`h-4 w-4 transition-transform ${agentFeaturesOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </button>
+              {agentFeaturesOpen && (
+                <div className="mt-1 ml-4 space-y-1 border-l border-border pl-3">
+                  {agentOnlyItems.map(item => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground opacity-60"
+                        title="Available in Agent Dashboard"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1440,23 +1462,42 @@ const UserDashboard = () => {
                 {/* Divider */}
                 <div className="border-t border-border" />
 
-                {/* Agent-Only Section */}
+                {/* Agent Features Dropdown */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground px-3 mb-2 uppercase">Agent Features</p>
-                  <div className="space-y-1">
-                    {agentOnlyItems.map(item => {
-                      const Icon = item.icon;
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground opacity-50"
-                        >
-                          <Lock className="h-4 w-4" />
-                          {item.label}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <button
+                    onClick={() => setAgentFeaturesOpen(!agentFeaturesOpen)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm font-medium"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Lock className="h-4 w-4" />
+                      Agent Features
+                    </span>
+                    <svg
+                      className={`h-4 w-4 transition-transform ${agentFeaturesOpen ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </button>
+                  {agentFeaturesOpen && (
+                    <div className="mt-1 ml-4 space-y-1 border-l border-border pl-3">
+                      {agentOnlyItems.map(item => {
+                        const Icon = item.icon;
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground opacity-60"
+                            title="Available in Agent Dashboard"
+                          >
+                            <Icon className="h-4 w-4" />
+                            {item.label}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </SheetContent>
