@@ -413,43 +413,84 @@ const UserDashboard = () => {
         }
 
         setNormalWallet(normalWallet - price);
-      }
 
-      // Create order record
-      const { error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          customer_id: user.id,
-          customer_number: buyPhone.trim(),
-          network: buyPkg.network,
-          size_gb: buyPkg.size_gb,
+        // Create order record for wallet payment
+        const { error: orderError } = await supabase
+          .from("orders")
+          .insert({
+            package_id: buyPkg.id,
+            customer_id: user.id,
+            customer_number: buyPhone.trim(),
+            network: buyPkg.network,
+            size_gb: buyPkg.size_gb,
+            amount: price,
+            status: "pending",
+            fulfillment_status: "processing",
+            payment_method: "wallet",
+            source: "web"
+          });
+
+        if (orderError) {
+          toast({ title: "Error", description: orderError.message, variant: "destructive" });
+          setBuyLoading(false);
+          return;
+        }
+
+        toast({ title: "Order placed!", description: `Data purchase initiated for ${buyPhone}`, variant: "default" });
+        setBuyDialogOpen(false);
+        
+        // Refresh orders
+        const { data: ordersData } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("customer_id", user.id)
+          .order("created_at", { ascending: false });
+        
+        if (ordersData) setOrders(ordersData as Order[]);
+      } else if (buyPaymentMethod === "paystack") {
+        // Paystack payment flow - similar to Packages page
+        const payloadBody = {
           amount: price,
-          status: "pending",
-          fulfillment_status: "processing",
-          payment_method: buyPaymentMethod,
-          source: "web"
+          email: `${buyPhone}@dataplug.store`,
+          phone: buyPhone.trim(),
+          callback_url: `${window.location.origin}/user-dashboard?payment=success`,
+          metadata: {
+            type: "buy_data",
+            phone: buyPhone.trim(),
+            network: buyPkg.network,
+            package_id: buyPkg.id,
+            size_gb: buyPkg.size_gb,
+            customer_id: user.id
+          }
+        };
+
+        console.log("[v0] Buy Data Paystack payload:", payloadBody);
+
+        const res = await supabase.functions.invoke("initialize-payment", {
+          body: payloadBody,
         });
 
-      if (orderError) {
-        toast({ title: "Error", description: orderError.message, variant: "destructive" });
-        setBuyLoading(false);
-        return;
-      }
+        console.log("[v0] Paystack response:", res);
 
-      toast({ title: "Order placed!", description: `Data purchase initiated for ${buyPhone}`, variant: "default" });
-      setBuyDialogOpen(false);
-      
-      // Refresh orders
-      const { data: ordersData } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("customer_id", user.id)
-        .order("created_at", { ascending: false });
-      
-      if (ordersData) setOrders(ordersData as Order[]);
+        if (res.error) throw new Error(res.error.message);
+        if (!res.data?.authorization_url) throw new Error("No authorization URL in response");
+
+        // Store pending payment info
+        sessionStorage.setItem("pending_buy_payment", res.data.reference);
+        sessionStorage.setItem("pending_buy_phone", buyPhone.trim());
+        sessionStorage.setItem("pending_buy_package", JSON.stringify({
+          id: buyPkg.id,
+          network: buyPkg.network,
+          size_gb: buyPkg.size_gb,
+          price: price
+        }));
+
+        // Redirect to Paystack
+        window.location.href = res.data.authorization_url;
+      }
     } catch (err) {
       console.error("[v0] Error processing purchase:", err);
-      toast({ title: "Error", description: "Failed to process purchase", variant: "destructive" });
+      toast({ title: "Error", description: (err as any).message || "Failed to process purchase", variant: "destructive" });
     } finally {
       setBuyLoading(false);
     }
@@ -1598,9 +1639,20 @@ const UserDashboard = () => {
       <WalletTopupDialog
         isOpen={showNormalWalletTopup}
         onClose={() => setShowNormalWalletTopup(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           setShowNormalWalletTopup(false);
           // Refresh wallet balance
+          if (user?.id) {
+            const { data: customerData } = await supabase
+              .from("customers")
+              .select("wallet_balance, api_wallet_balance")
+              .eq("id", user.id)
+              .single();
+            if (customerData) {
+              setNormalWallet(customerData.wallet_balance || 0);
+              setApiWallet(customerData.api_wallet_balance || 0);
+            }
+          }
         }}
         wallet="normal"
       />
@@ -1608,9 +1660,20 @@ const UserDashboard = () => {
       <WalletTopupDialog
         isOpen={showApiWalletTopup}
         onClose={() => setShowApiWalletTopup(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           setShowApiWalletTopup(false);
           // Refresh wallet balance
+          if (user?.id) {
+            const { data: customerData } = await supabase
+              .from("customers")
+              .select("wallet_balance, api_wallet_balance")
+              .eq("id", user.id)
+              .single();
+            if (customerData) {
+              setNormalWallet(customerData.wallet_balance || 0);
+              setApiWallet(customerData.api_wallet_balance || 0);
+            }
+          }
         }}
         wallet="api"
       />
