@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -71,6 +72,20 @@ const UserDashboard = () => {
   const [loadingApiOrders, setLoadingApiOrders] = useState(false);
   const [apiOrdersSearch, setApiOrdersSearch] = useState("");
   const [apiOrdersStatusFilter, setApiOrdersStatusFilter] = useState("");
+
+  // Menu navigation
+  const [activeTab, setActiveTab] = useState("home");
+  const menuItems = [
+    { id: "home", label: "Home", icon: Home },
+    { id: "packages", label: "Buy Packages", icon: ShoppingCart },
+    { id: "orders", label: "Orders", icon: BarChart3 },
+    { id: "api-key", label: "API Key", icon: Zap },
+    { id: "api-packages", label: "API Packages", icon: Package },
+    { id: "top-up", label: "Top Up", icon: Coins },
+    { id: "settings", label: "Settings", icon: Settings },
+  ];
+  
+  const { signOut } = useAuth();
 
   // Redirect if not logged in
   useEffect(() => {
@@ -577,7 +592,7 @@ const UserDashboard = () => {
                 <div className="space-y-4">
                   {/* Network Filter */}
                   <div className="flex gap-2">
-                    {['mtn', 'telecel', 'airteltigo', 'atbigtime', 'atbigshare'].map(network => (
+                    {['mtn', 'telecel', 'airteltigo'].map(network => (
                       <button
                         key={network}
                         onClick={() => setNetworkFilter(network)}
@@ -606,8 +621,7 @@ const UserDashboard = () => {
                         </TableHeader>
                         <TableBody>
                           {packages
-                            .filter(pkg => pkg.network.toLowerCase() === networkFilter.toLowerCase() || 
-                                         (networkFilter === 'airteltigo' && ['airteltigo', 'atbigtime', 'atbigshare'].includes(pkg.network.toLowerCase())))
+                            .filter(pkg => pkg.network.toLowerCase() === networkFilter.toLowerCase())
                             .map((pkg) => {
                               const isOffline = !pkg.active || pkg.is_online === false;
                               return (
