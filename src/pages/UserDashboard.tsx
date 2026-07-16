@@ -493,9 +493,14 @@ const UserDashboard = () => {
             </div>
             <p className="font-display text-3xl font-bold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</p>
             <p className="text-xs text-muted-foreground mt-2">For regular purchases</p>
-            <Button onClick={handleOpenNormalWalletTopup} className="mt-4 w-full" size="sm">
-              Add Funds
-            </Button>
+            <div className="flex gap-2 mt-4">
+              <Button onClick={() => setActiveMenu("buy-data")} className="flex-1" size="sm" variant="default">
+                Buy Data
+              </Button>
+              <Button onClick={handleOpenNormalWalletTopup} className="flex-1" size="sm" variant="outline">
+                Add Funds
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -525,15 +530,61 @@ const UserDashboard = () => {
         </Card>
       </div>
 
-      {/* Top-up Reference Card */}
+      {/* Top-up Reference and Codes Card */}
       <Card className="border-blue-500/30 bg-blue-500/5">
         <CardHeader>
-          <CardTitle className="text-base">Your Top-up Reference</CardTitle>
+          <CardTitle className="text-base">Account Reference Codes</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-sm text-muted-foreground">Use this reference when making top-ups to your account</p>
-          <div className="bg-muted p-4 rounded-lg border border-border">
-            <p className="font-display text-2xl font-bold text-primary">{topupReference || "Loading..."}</p>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="text-xs text-muted-foreground mb-2 block">Top-up Reference</Label>
+            <Select defaultValue={topupReference || ""}>
+              <SelectTrigger className="bg-muted">
+                <SelectValue placeholder="Select reference" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={topupReference || ""}>{topupReference || "Loading..."}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-2">Use this when making top-ups to your account</p>
+          </div>
+
+          {/* USSD Code */}
+          <div className="pt-2 border-t border-border">
+            <Label className="text-xs text-muted-foreground mb-2 block">USSD Code</Label>
+            <div className="bg-background p-3 rounded-lg border border-border flex items-center justify-between">
+              <p className="font-display font-bold text-primary">*123#</p>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  navigator.clipboard.writeText("*123#");
+                  toast({ title: "Copied!", description: "USSD code copied to clipboard" });
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">Dial this to check your balance</p>
+          </div>
+
+          {/* Access Code Zero */}
+          <div className="pt-2 border-t border-border">
+            <Label className="text-xs text-muted-foreground mb-2 block">Access Code</Label>
+            <div className="bg-background p-3 rounded-lg border border-border flex items-center justify-between">
+              <p className="font-display font-bold text-primary">0</p>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  navigator.clipboard.writeText("0");
+                  toast({ title: "Copied!", description: "Access code copied to clipboard" });
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">Use this code for special access</p>
           </div>
         </CardContent>
       </Card>
@@ -549,15 +600,7 @@ const UserDashboard = () => {
             <p className="text-sm text-muted-foreground mt-2">Total orders placed</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Account Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Active</Badge>
-            <p className="text-sm text-muted-foreground mt-2">Your account is in good standing</p>
-          </CardContent>
-        </Card>
+
       </div>
     </div>
   );
