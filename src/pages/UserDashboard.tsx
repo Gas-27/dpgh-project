@@ -468,19 +468,20 @@ const UserDashboard = () => {
           <p className="text-muted-foreground">Manage your data, API key, and settings</p>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="home" className="space-y-6">
           <TabsList className="flex flex-wrap gap-2 w-full h-auto p-2 bg-background border border-border rounded-lg overflow-x-auto">
-            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="home" className="text-xs sm:text-sm">Home</TabsTrigger>
             <TabsTrigger value="api-packages" className="text-xs sm:text-sm">API Packages</TabsTrigger>
             <TabsTrigger value="api-key" className="text-xs sm:text-sm">API Key</TabsTrigger>
             <TabsTrigger value="api-orders" className="text-xs sm:text-sm">API Orders</TabsTrigger>
             <TabsTrigger value="buy-data" className="text-xs sm:text-sm">Buy Data</TabsTrigger>
+            <TabsTrigger value="orders" className="text-xs sm:text-sm">Orders</TabsTrigger>
             <TabsTrigger value="top-up" className="text-xs sm:text-sm">Top Up</TabsTrigger>
             <TabsTrigger value="settings" className="text-xs sm:text-sm">Settings</TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
+          {/* Home Tab - Buy Packages */}
+          <TabsContent value="home" className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Wallet Balance Card */}
@@ -938,6 +939,78 @@ const UserDashboard = () => {
                 );
               })}
             </div>
+          </TabsContent>
+
+          {/* Orders Tab */}
+          <TabsContent value="orders" className="space-y-4 mt-0">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Your Orders
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-2">View all your data purchase orders</p>
+              </CardHeader>
+              <CardContent>
+                {orders.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                    <p className="text-muted-foreground">No orders found</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-xs">Date & Time</TableHead>
+                          <TableHead className="text-xs">Phone</TableHead>
+                          <TableHead className="text-xs">Network</TableHead>
+                          <TableHead className="text-xs">Size</TableHead>
+                          <TableHead className="text-xs">Amount</TableHead>
+                          <TableHead className="text-xs">Order Status</TableHead>
+                          <TableHead className="text-xs">Fulfillment</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {orders.map((order) => (
+                          <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
+                            <TableCell className="text-xs whitespace-nowrap">
+                              {new Date(order.created_at).toLocaleDateString()} {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </TableCell>
+                            <TableCell className="text-xs font-mono">{order.customer_number}</TableCell>
+                            <TableCell className="text-xs">
+                              <span className="px-2 py-1 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
+                            </TableCell>
+                            <TableCell className="text-xs font-semibold text-cyan-400">{order.size_gb}GB</TableCell>
+                            <TableCell className="text-xs font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                            <TableCell className="text-xs">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                order.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                order.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
+                                order.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                                'bg-slate-500/20 text-slate-400'
+                              }`}>
+                                {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                order.fulfillment_status === 'fulfilled' ? 'bg-green-500/20 text-green-400' :
+                                order.fulfillment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-slate-500/20 text-slate-400'
+                              }`}>
+                                {order.fulfillment_status?.charAt(0).toUpperCase() + order.fulfillment_status?.slice(1)}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Top Up Tab */}
