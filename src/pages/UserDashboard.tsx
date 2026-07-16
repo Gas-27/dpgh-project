@@ -9,9 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -74,17 +73,30 @@ const UserDashboard = () => {
   const [apiOrdersStatusFilter, setApiOrdersStatusFilter] = useState("");
 
   // Menu navigation
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeMenu, setActiveMenu] = useState("overview");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const menuItems = [
-    { id: "home", label: "Home", icon: Home },
-    { id: "packages", label: "Buy Packages", icon: ShoppingCart },
+    { id: "overview", label: "Overview", icon: Home },
+    { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "orders", label: "Orders", icon: BarChart3 },
     { id: "api-key", label: "API Key", icon: Zap },
     { id: "api-packages", label: "API Packages", icon: Package },
-    { id: "top-up", label: "Top Up", icon: Coins },
+    { id: "topup", label: "Top Up", icon: Coins },
     { id: "settings", label: "Settings", icon: Settings },
   ];
-  
+
+  // Agent-only features (locked for regular users)
+  const agentOnlyItems = [
+    { id: "bulk-orders", label: "Bulk Orders", icon: ShoppingCart },
+    { id: "store-prices", label: "Store Prices", icon: CreditCard },
+    { id: "subagents", label: "Subagents", icon: Users },
+    { id: "subagent-prices", label: "Subagent Prices", icon: TrendingUp },
+    { id: "appearance", label: "Appearance", icon: Settings },
+    { id: "notifications", label: "Notifications", icon: Bell },
+    { id: "withdraw", label: "Withdraw", icon: Wallet },
+  ];
+
   const { signOut } = useAuth();
 
   // Redirect if not logged in
@@ -116,7 +128,6 @@ const UserDashboard = () => {
           const userOrders = (ordersData as Order[]) || [];
           setOrders(userOrders);
 
-          // Calculate totals
           let totalGB = 0;
           let totalCost = 0;
           
@@ -142,7 +153,7 @@ const UserDashboard = () => {
           setApiWallet(apiUserData.wallet || 0);
         }
 
-        // Fetch user's normal wallet (from user_wallets table)
+        // Fetch user's normal wallet
         const { data: userWalletData } = await supabase
           .from("user_wallets")
           .select("balance, topup_reference")
@@ -153,7 +164,7 @@ const UserDashboard = () => {
           setNormalWallet(userWalletData.balance || 0);
         }
 
-        // Check if user is a customer and fetch topup reference from customers table
+        // Check if user is a customer and fetch topup reference
         const { data: customerData } = await supabase
           .from("customers")
           .select("topup_reference")
@@ -166,7 +177,7 @@ const UserDashboard = () => {
           setTopupReference(userWalletData.topup_reference);
         }
 
-        // Fetch all packages (including inactive/offline ones)
+        // Fetch all packages
         const { data: packagesData } = await supabase
           .from("data_packages")
           .select("*")
@@ -186,7 +197,7 @@ const UserDashboard = () => {
     fetchUserData();
   }, [user?.id, toast]);
 
-  // Subscribe to real-time package changes for instant price updates
+  // Subscribe to real-time package changes
   useEffect(() => {
     const channel = supabase
       .channel('user_dashboard_packages_realtime')
@@ -198,8 +209,6 @@ const UserDashboard = () => {
           table: 'data_packages',
         },
         (payload) => {
-          console.log('[v0] User dashboard received package update:', payload);
-          
           if (payload.eventType === 'UPDATE') {
             setPackages((prev) =>
               prev.map((pkg) =>
@@ -217,16 +226,14 @@ const UserDashboard = () => {
           }
         }
       )
-      .subscribe((status) => {
-        console.log('[v0] User dashboard packages realtime status:', status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
 
-  // Fetch API orders when tab is opened
+  // Fetch API orders when needed
   useEffect(() => {
     if (apiKey) {
       fetchApiOrders();
@@ -255,7 +262,6 @@ const UserDashboard = () => {
     }
   };
 
-  // Filtered API orders
   const filteredApiOrders = apiOrders.filter((order) => {
     const matchSearch = apiOrdersSearch === "" || 
       order.customer_number?.includes(apiOrdersSearch) ||
@@ -277,7 +283,6 @@ const UserDashboard = () => {
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 
-      // Fetch existing API wallet to preserve it
       const { data: existingData } = await supabase
         .from("api_users")
         .select("wallet")
@@ -337,11 +342,8 @@ const UserDashboard = () => {
 
   const detectNetwork = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
-    // MTN: 024, 054, 055
     if (cleaned.startsWith("024") || cleaned.startsWith("054") || cleaned.startsWith("055")) return "mtn";
-    // AirtelTigo: 027, 057
     if (cleaned.startsWith("027") || cleaned.startsWith("057")) return "airteltigo";
-    // Telecel: 020, 026, 056
     if (cleaned.startsWith("020") || cleaned.startsWith("026") || cleaned.startsWith("056")) return "telecel";
     return "unknown";
   };
@@ -391,7 +393,6 @@ const UserDashboard = () => {
           return;
         }
 
-        // Deduct from wallet and create order
         const { error: walletError } = await supabase
           .from("user_wallets")
           .update({ balance: normalWallet - price })
@@ -434,7 +435,7 @@ const UserDashboard = () => {
       const { data: ordersData } = await supabase
         .from("orders")
         .select("*")
-        .eq("customer_number", phoneNumber || "")
+        .eq("customer_id", user.id)
         .order("created_at", { ascending: false });
       
       if (ordersData) setOrders(ordersData as Order[]);
@@ -458,764 +459,578 @@ const UserDashboard = () => {
     return null;
   }
 
+  // Render content based on active menu
+  const renderContent = () => {
+    switch (activeMenu) {
+      case "overview":
+        return renderOverview();
+      case "buy-data":
+        return renderBuyData();
+      case "orders":
+        return renderOrders();
+      case "api-key":
+        return renderApiKey();
+      case "api-packages":
+        return renderApiPackages();
+      case "topup":
+        return renderTopup();
+      case "settings":
+        return renderSettings();
+      default:
+        return null;
+    }
+  };
+
+  const renderOverview = () => (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-blue-500/5 hover:border-cyan-500/50 transition-all">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
+              <Wallet className="h-5 w-5 text-cyan-400" />
+            </div>
+            <p className="font-display text-3xl font-bold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mt-2">For regular purchases</p>
+            <Button onClick={handleOpenNormalWalletTopup} className="mt-4 w-full" size="sm">
+              Add Funds
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-pink-500/5 hover:border-purple-500/50 transition-all">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-muted-foreground">API Wallet</p>
+              <Zap className="h-5 w-5 text-purple-400" />
+            </div>
+            <p className="font-display text-3xl font-bold text-purple-400">GHC {Number(apiWallet).toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mt-2">For API purchases</p>
+            <Button onClick={handleOpenApiWalletTopup} className="mt-4 w-full" size="sm">
+              Add Funds
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/5 hover:border-amber-500/50 transition-all">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-muted-foreground">Total Purchased</p>
+              <TrendingUp className="h-5 w-5 text-amber-400" />
+            </div>
+            <p className="font-display text-3xl font-bold text-amber-400">{totalDataPurchased.toFixed(1)}GB</p>
+            <p className="text-xs text-muted-foreground mt-2">Spent: GHC {Number(totalSpent).toFixed(2)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top-up Reference Card */}
+      <Card className="border-blue-500/30 bg-blue-500/5">
+        <CardHeader>
+          <CardTitle className="text-base">Your Top-up Reference</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-muted-foreground">Use this reference when making top-ups to your account</p>
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <p className="font-display text-2xl font-bold text-primary">{topupReference || "Loading..."}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recent Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-primary">{orders.length}</p>
+            <p className="text-sm text-muted-foreground mt-2">Total orders placed</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Account Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Active</Badge>
+            <p className="text-sm text-muted-foreground mt-2">Your account is in good standing</p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const renderBuyData = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Buy Data Packages</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Network Filter */}
+          <div className="flex gap-2 flex-wrap">
+            {['mtn', 'telecel', 'airteltigo'].map(network => (
+              <Button
+                key={network}
+                variant={networkFilter === network ? "default" : "outline"}
+                onClick={() => setNetworkFilter(network)}
+                className="text-xs sm:text-sm"
+              >
+                {network.toUpperCase()}
+              </Button>
+            ))}
+          </div>
+
+          {/* Packages Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+            {packages
+              .filter(pkg => pkg.network.toLowerCase() === networkFilter.toLowerCase())
+              .map(pkg => (
+                <Card key={pkg.id} className={pkg.active ? "" : "opacity-50"}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{pkg.size_gb}GB</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">{pkg.network.toUpperCase()}</p>
+                      </div>
+                      {!pkg.active && <Badge variant="secondary">Offline</Badge>}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">User Price</p>
+                      <p className="font-display text-2xl font-bold text-cyan-400">GHC {Number(pkg.price).toFixed(2)}</p>
+                    </div>
+                    <Button
+                      onClick={() => openBuyDialog(pkg)}
+                      disabled={!pkg.active}
+                      className="w-full"
+                      size="sm"
+                    >
+                      {pkg.active ? "Buy Now" : "Unavailable"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderOrders = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Orders</CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">View all your data purchase orders</p>
+        </CardHeader>
+        <CardContent>
+          {orders.length === 0 ? (
+            <div className="text-center py-12">
+              <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground">No orders found</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Date & Time</TableHead>
+                    <TableHead className="text-xs">Phone</TableHead>
+                    <TableHead className="text-xs">Network</TableHead>
+                    <TableHead className="text-xs">Size</TableHead>
+                    <TableHead className="text-xs">Amount</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map((order) => (
+                    <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {new Date(order.created_at).toLocaleDateString()} {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono">{order.customer_number}</TableCell>
+                      <TableCell className="text-xs">
+                        <span className="px-2 py-1 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
+                      </TableCell>
+                      <TableCell className="text-xs font-semibold text-cyan-400">{order.size_gb}GB</TableCell>
+                      <TableCell className="text-xs font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-xs">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          order.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                          order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                          order.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
+                          order.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                          'bg-slate-500/20 text-slate-400'
+                        }`}>
+                          {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderApiKey = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>API Key Management</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {apiKey ? (
+            <>
+              <div>
+                <Label className="text-sm">Your API Key</Label>
+                <div className="flex gap-2 mt-2">
+                  <div className="flex-1 bg-muted p-3 rounded-lg border border-border flex items-center gap-2 font-mono text-sm">
+                    {showApiKey ? apiKey : "•".repeat(apiKey.length)}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                  >
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyApiKey}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <Button onClick={generateApiKey} disabled={generatingApiKey} className="w-full">
+                {generatingApiKey ? "Generating..." : "Regenerate Key"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">Generate an API key to use our programmatic API</p>
+              <Button onClick={generateApiKey} disabled={generatingApiKey} className="w-full">
+                {generatingApiKey ? "Generating..." : "Generate API Key"}
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderApiPackages = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>API Data Packages</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {packages.map(pkg => (
+              <Card key={pkg.id}>
+                <CardHeader>
+                  <CardTitle className="text-lg">{pkg.size_gb}GB</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground">API Price</p>
+                  <p className="font-display text-2xl font-bold text-purple-400">GHC {Number(pkg.api_price).toFixed(2)}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderTopup = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Add Funds to Wallet</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-base font-semibold mb-3 block">Regular Wallet</Label>
+              <Button onClick={handleOpenNormalWalletTopup} className="w-full">
+                <Wallet className="h-4 w-4 mr-2" />
+                Top Up Wallet
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">Current: GHC {Number(normalWallet).toFixed(2)}</p>
+            </div>
+            <div>
+              <Label className="text-base font-semibold mb-3 block">API Wallet</Label>
+              <Button onClick={handleOpenApiWalletTopup} className="w-full" variant="outline">
+                <Zap className="h-4 w-4 mr-2" />
+                Top Up API Wallet
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">Current: GHC {Number(apiWallet).toFixed(2)}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Account Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="text-sm">Email</Label>
+            <p className="font-mono text-sm bg-muted p-2 rounded mt-1">{user?.email}</p>
+          </div>
+          <Button onClick={() => signOut()} variant="destructive" className="w-full">
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <div className="container pt-24 pb-12">
-        <div className="mb-8">
+      <div className="pt-24 pb-12">
+        <div className="container mb-8">
           <h1 className="font-display text-4xl font-bold text-foreground mb-2">My Dashboard</h1>
-          <p className="text-muted-foreground">Manage your data, API key, and settings</p>
+          <p className="text-muted-foreground">Manage your account and purchases</p>
         </div>
 
-        <Tabs defaultValue="home" className="space-y-6">
-          <TabsList className="flex flex-wrap gap-2 w-full h-auto p-2 bg-background border border-border rounded-lg overflow-x-auto">
-            <TabsTrigger value="home" className="text-xs sm:text-sm">Home</TabsTrigger>
-            <TabsTrigger value="api-packages" className="text-xs sm:text-sm">API Packages</TabsTrigger>
-            <TabsTrigger value="api-key" className="text-xs sm:text-sm">API Key</TabsTrigger>
-            <TabsTrigger value="api-orders" className="text-xs sm:text-sm">API Orders</TabsTrigger>
-            <TabsTrigger value="buy-data" className="text-xs sm:text-sm">Buy Data</TabsTrigger>
-            <TabsTrigger value="orders" className="text-xs sm:text-sm">Orders</TabsTrigger>
-            <TabsTrigger value="top-up" className="text-xs sm:text-sm">Top Up</TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs sm:text-sm">Settings</TabsTrigger>
-          </TabsList>
-
-          {/* Home Tab - Buy Packages */}
-          <TabsContent value="home" className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Wallet Balance Card */}
-              <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-blue-500/5 hover:border-cyan-500/50 transition-all">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
-                    <Wallet className="h-5 w-5 text-cyan-400" />
-                  </div>
-                  <p className="font-display text-3xl font-bold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground mt-2">For regular purchases</p>
-                </CardContent>
-              </Card>
-
-              {/* API Wallet Card */}
-              <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-pink-500/5 hover:border-purple-500/50 transition-all">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-sm font-medium text-muted-foreground">API Wallet</p>
-                    <Zap className="h-5 w-5 text-purple-400" />
-                  </div>
-                  <p className="font-display text-3xl font-bold text-purple-400">GHC {Number(apiWallet).toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground mt-2">For API purchases</p>
-                </CardContent>
-              </Card>
-
-              {/* Stats Card */}
-              <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-orange-500/5 hover:border-amber-500/50 transition-all">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-sm font-medium text-muted-foreground">Total Purchased</p>
-                    <TrendingUp className="h-5 w-5 text-amber-400" />
-                  </div>
-                  <p className="font-display text-3xl font-bold text-amber-400">{totalDataPurchased.toFixed(1)}GB</p>
-                  <p className="text-xs text-muted-foreground mt-2">Spent: GHC {Number(totalSpent).toFixed(2)}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Top-up Reference Card */}
-            <Card className="border-blue-500/30 bg-blue-500/5">
-              <CardHeader>
-                <CardTitle className="text-base">Your Top-up Reference</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="text-sm text-muted-foreground">Use this reference when making top-ups to your account</p>
-                <div className="bg-muted p-4 rounded-lg border border-border">
-                  <p className="font-display text-2xl font-bold text-primary">{topupReference || "Loading..."}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Available Packages for API */}
-            {apiKey && (
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="font-display flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Available Packages for API
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">These are the packages you can purchase through your API integration.</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2 flex-wrap">
-                    {["mtn", "airteltigo", "telecel"].map(net => (
-                      <Button 
-                        key={net} 
-                        variant={networkFilter === net ? "hero" : "outline"} 
-                        size="sm" 
-                        onClick={() => setNetworkFilter(net)}
-                      >
-                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {packages.filter(p => p.network === networkFilter).map((pkg) => {
-                      const apiPrice = Number(pkg.api_price || pkg.price);
-                      return (
-                        <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
-                          <CardContent>
-                            <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                            <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
-                            <p className="text-xs text-muted-foreground">API Price</p>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* API Packages Tab */}
-          <TabsContent value="api-packages" className="space-y-6">
-            <Card className="border-purple-500/30 bg-purple-500/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-purple-400" />
-                  API Packages & Pricing
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  View all available data packages with their API prices. Packages marked as offline are currently unavailable.
-                </p>
-                
-                <div className="space-y-4">
-                  {/* Network Filter */}
-                  <div className="flex gap-2">
-                    {['mtn', 'telecel', 'airteltigo'].map(network => (
-                      <button
-                        key={network}
-                        onClick={() => setNetworkFilter(network)}
-                        className={`px-3 py-1 rounded text-sm font-medium transition-all ${
-                          networkFilter === network
-                            ? 'bg-purple-500 text-white'
-                            : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
-                        }`}
-                      >
-                        {network.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Packages Table */}
-                  {packages.length > 0 ? (
-                    <div className="border border-border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>Size</TableHead>
-                            <TableHead>User Price</TableHead>
-                            <TableHead>API Price</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {packages
-                            .filter(pkg => pkg.network.toLowerCase() === networkFilter.toLowerCase())
-                            .map((pkg) => {
-                              const isOffline = !pkg.active || pkg.is_online === false;
-                              return (
-                                <TableRow key={pkg.id} className={isOffline ? 'opacity-60 bg-red-500/5' : ''}>
-                                  <TableCell className="font-medium">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
-                                  <TableCell>GHC {Number(pkg.price).toFixed(2)}</TableCell>
-                                  <TableCell className={isOffline ? 'text-muted-foreground line-through' : 'text-purple-400 font-semibold'}>
-                                    GHC {Number(pkg.api_price || pkg.price).toFixed(2)}
-                                  </TableCell>
-                                  <TableCell>
-                                    {isOffline ? (
-                                      <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
-                                        Offline
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="default" className="bg-green-500/20 text-green-400 border-green-500/30">
-                                        Active
-                                      </Badge>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No packages available for this network</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* API Key Tab */}
-          <TabsContent value="api-key" className="space-y-6">
-            <Card className="border-blue-500/30 bg-blue-500/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="h-5 w-5 text-blue-400" />
-                  API Key Management
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-2">Use your API key to programmatically purchase data</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {apiKey ? (
-                  <div className="space-y-4">
-                    <div className="bg-muted p-4 rounded-lg border border-border flex items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="text-xs text-muted-foreground mb-2">Your API Key</p>
-                        <p className="font-mono text-sm break-all">
-                          {showApiKey ? apiKey : apiKey.substring(0, 20) + '...' + apiKey.substring(apiKey.length - 10)}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowApiKey(!showApiKey)}
-                        >
-                          {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={copyApiKey}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      onClick={generateApiKey} 
-                      className="w-full"
-                      disabled={generatingApiKey}
-                    >
-                      {generatingApiKey ? "Generating..." : "Regenerate API Key"}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Key className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <p className="text-muted-foreground mb-4">No API key yet</p>
-                    <Button 
-                      variant="hero" 
-                      onClick={generateApiKey}
-                      disabled={generatingApiKey}
-                    >
-                      {generatingApiKey ? "Generating..." : "Generate API Key"}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* API Key Warning */}
-            <Card className="border-red-500/50 bg-red-500/10">
-              <CardHeader>
-                <CardTitle className="text-base text-red-500">⚠️ Important: API Key Warning</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <p className="text-red-400 font-semibold">
-                  Only generate an API key if you have your own data website and want to connect your source to our platform.
-                </p>
-                <p className="text-muted-foreground">
-                  API keys are for developers and businesses with their own infrastructure. If you simply want to buy data packages, you don't need an API key.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* What is API Section */}
-            <Card className="border-blue-500/30 bg-blue-500/5">
-              <CardHeader>
-                <CardTitle className="text-base">What is the API?</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <p className="text-muted-foreground">
-                  The API allows developers to programmatically purchase data and integrate our service into their applications or websites. If you don't have a technical team or website, you don't need to generate an API key.
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-muted-foreground text-xs">
-                  <li>Build custom applications that buy data automatically</li>
-                  <li>Integrate data purchases into your website</li>
-                  <li>Automate bulk purchases for your business</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* API Wallet Card */}
-            <Card className="border-yellow-500/30 bg-yellow-500/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="h-5 w-5 text-yellow-400" />
-                  API Wallet Balance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-muted p-6 rounded-lg border border-border text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Your Balance</p>
-                  <p className="font-display text-3xl font-bold text-yellow-400">GHC {Number(apiWallet).toFixed(2)}</p>
-                </div>
-                <p className="text-xs text-muted-foreground text-center">Use this wallet exclusively for API-based purchases and automated requests.</p>
-                
-                {/* Top Up API Wallet */}
-                <div className="space-y-2 border-t border-border pt-4">
-                  <p className="text-sm font-semibold">Top Up API Wallet</p>
-                  <Button
-                    variant="hero"
-                    className="w-full"
-                    onClick={handleOpenApiWalletTopup}
-                  >
-                    Add Funds
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* API Orders Tab */}
-          <TabsContent value="api-orders" className="space-y-4 mt-0">
-            <Card className="border-blue-500/30 bg-blue-500/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5 text-blue-400" />
-                  API Orders
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-2">View all orders made through your API integration</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Search and Filters */}
-                <div className="flex flex-col gap-4 md:flex-row md:items-end">
-                  <div className="flex-1">
-                    <label className="text-sm font-medium mb-2 block">Search by phone or network</label>
-                    <Input 
-                      placeholder="Search by customer number..." 
-                      value={apiOrdersSearch}
-                      onChange={(e) => setApiOrdersSearch(e.target.value)}
-                      className="bg-muted/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Filter by status</label>
-                    <select 
-                      value={apiOrdersStatusFilter}
-                      onChange={(e) => setApiOrdersStatusFilter(e.target.value)}
-                      className="px-3 py-2 rounded-md border border-input bg-background text-sm"
-                    >
-                      <option value="">All Statuses</option>
-                      <option value="completed">Completed</option>
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="failed">Failed</option>
-                      <option value="delivered">Delivered</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Orders Table */}
-                {loadingApiOrders ? (
-                  <div className="flex justify-center items-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
-                  </div>
-                ) : apiOrders.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                    <p className="text-muted-foreground">No API orders found</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead className="text-xs">Date & Time</TableHead>
-                          <TableHead className="text-xs">Contact</TableHead>
-                          <TableHead className="text-xs">Network</TableHead>
-                          <TableHead className="text-xs">GB Size</TableHead>
-                          <TableHead className="text-xs">Source</TableHead>
-                          <TableHead className="text-xs">Payment Method</TableHead>
-                          <TableHead className="text-xs">Amount</TableHead>
-                          <TableHead className="text-xs">Order Status</TableHead>
-                          <TableHead className="text-xs">Payment Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredApiOrders.map((order) => (
-                          <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
-                            <TableCell className="text-xs whitespace-nowrap">
-                              {new Date(order.created_at).toLocaleDateString()} {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </TableCell>
-                            <TableCell className="text-xs font-mono">{order.customer_number}</TableCell>
-                            <TableCell className="text-xs">
-                              <span className="px-2 py-1 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
-                            </TableCell>
-                            <TableCell className="text-xs font-semibold text-cyan-400">{order.amount}GB</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">API</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">API Wallet</TableCell>
-                            <TableCell className="text-xs font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
-                            <TableCell className="text-xs">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                order.order_status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                                order.order_status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                                order.order_status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
-                                order.order_status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                                'bg-slate-500/20 text-slate-400'
-                              }`}>
-                                {order.order_status?.charAt(0).toUpperCase() + order.order_status?.slice(1)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              <span className="px-2 py-1 rounded bg-green-500/20 text-green-400 font-medium">Completed</span>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Buy Data Tab */}
-          <TabsContent value="buy-data" className="space-y-4 mt-0">
-            {/* Wallet Balance Card */}
-            <Card className="bg-secondary/30">
-              <CardContent className="p-4 space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5 text-primary" />
-                    <span className="font-medium">Wallet Balance:</span>
-                  </div>
-                  <span className="font-display text-xl font-bold text-primary">GHC {normalWallet.toFixed(2)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Network Filter Buttons */}
-            <div className="flex gap-2 flex-wrap">
-              {["mtn", "airteltigo", "telecel"].map(net => (
-                <Button 
-                  key={net} 
-                  variant={networkFilter === net ? "hero" : "outline"} 
-                  size="sm"
-                  onClick={() => setNetworkFilter(net)}
-                >
-                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
-                </Button>
-              ))}
-            </div>
-
-            {/* Data Packages Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {packages.filter(p => p.network === networkFilter).map((pkg) => {
-                const price = Number(pkg.price || 0);
+        <div className="flex min-h-[calc(100vh-200px)]">
+          {/* Desktop Sidebar */}
+          <div className="hidden lg:flex flex-col w-64 bg-muted/50 border-r border-border px-4 py-6 gap-2">
+            <div className="space-y-1">
+              {menuItems.map(item => {
+                const Icon = item.icon;
                 return (
-                  <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
-                    <CardContent>
-                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                      <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">User Price</p>
-                      <Button 
-                        variant="hero" 
-                        size="sm" 
-                        className="w-full bg-cyan-600 hover:bg-cyan-700 mt-2"
-                        onClick={() => openBuyDialog(pkg)}
-                      >
-                        Buy Now
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveMenu(item.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+                      activeMenu === item.id
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
                 );
               })}
             </div>
-          </TabsContent>
 
-          {/* Orders Tab */}
-          <TabsContent value="orders" className="space-y-4 mt-0">
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5" />
-                  Your Orders
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-2">View all your data purchase orders</p>
-              </CardHeader>
-              <CardContent>
-                {orders.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                    <p className="text-muted-foreground">No orders found</p>
+            {/* Divider */}
+            <div className="my-4 border-t border-border" />
+
+            {/* Agent-Only Section */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground px-3 mb-2 uppercase">Agent Features</p>
+              <div className="space-y-1">
+                {agentOnlyItems.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground opacity-50 cursor-not-allowed"
+                    >
+                      <Lock className="h-4 w-4" />
+                      {item.label}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Menu Button and Sidebar */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild className="lg:hidden fixed bottom-6 right-6 z-50">
+              <Button size="lg" className="rounded-full shadow-lg">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-0">
+              <div className="flex flex-col h-full p-6 gap-4">
+                <h2 className="font-display text-lg font-bold">Menu</h2>
+                <div className="space-y-1 flex-1">
+                  {menuItems.map(item => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveMenu(item.id);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+                          activeMenu === item.id
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-muted text-foreground"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-border" />
+
+                {/* Agent-Only Section */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground px-3 mb-2 uppercase">Agent Features</p>
+                  <div className="space-y-1">
+                    {agentOnlyItems.map(item => {
+                      const Icon = item.icon;
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground opacity-50"
+                        >
+                          <Lock className="h-4 w-4" />
+                          {item.label}
+                        </div>
+                      );
+                    })}
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead className="text-xs">Date & Time</TableHead>
-                          <TableHead className="text-xs">Phone</TableHead>
-                          <TableHead className="text-xs">Network</TableHead>
-                          <TableHead className="text-xs">Size</TableHead>
-                          <TableHead className="text-xs">Amount</TableHead>
-                          <TableHead className="text-xs">Order Status</TableHead>
-                          <TableHead className="text-xs">Fulfillment</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {orders.map((order) => (
-                          <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
-                            <TableCell className="text-xs whitespace-nowrap">
-                              {new Date(order.created_at).toLocaleDateString()} {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </TableCell>
-                            <TableCell className="text-xs font-mono">{order.customer_number}</TableCell>
-                            <TableCell className="text-xs">
-                              <span className="px-2 py-1 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
-                            </TableCell>
-                            <TableCell className="text-xs font-semibold text-cyan-400">{order.size_gb}GB</TableCell>
-                            <TableCell className="text-xs font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
-                            <TableCell className="text-xs">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                order.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                                order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                                order.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
-                                order.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                                'bg-slate-500/20 text-slate-400'
-                              }`}>
-                                {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                order.fulfillment_status === 'fulfilled' ? 'bg-green-500/20 text-green-400' :
-                                order.fulfillment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                                'bg-slate-500/20 text-slate-400'
-                              }`}>
-                                {order.fulfillment_status?.charAt(0).toUpperCase() + order.fulfillment_status?.slice(1)}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Main Content Area */}
+          <div className="flex-1 p-4 lg:p-8 overflow-auto">
+            {renderContent()}
+          </div>
+        </div>
+      </div>
+
+      {/* Buy Package Dialog */}
+      <Dialog open={buyDialogOpen} onOpenChange={setBuyDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Buy {buyPkg?.size_gb}GB Package</DialogTitle>
+          </DialogHeader>
+
+          {buyStep === "phone" ? (
+            <div className="space-y-4">
+              <div>
+                <Label>Phone Number</Label>
+                <Input
+                  placeholder="0201234567"
+                  value={buyPhone}
+                  onChange={(e) => setBuyPhone(e.target.value)}
+                  maxLength="10"
+                  className="mt-1"
+                />
+                {buyPhone && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "") && (
+                  <p className="text-xs text-red-400 mt-1">Phone number doesn't match {buyPkg?.network} network</p>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
 
-          {/* Top Up Tab */}
-          <TabsContent value="top-up" className="space-y-6">
-            {/* Wallet Type Explanation */}
-            <Card className="border-blue-500/30 bg-blue-500/5">
-              <CardHeader>
-                <CardTitle className="text-base">Top Up Your Normal Wallet</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <p className="text-muted-foreground">
-                  Your <strong>Normal Wallet</strong> is used to purchase data packages directly through the Buy Data section. Add funds here to start buying data immediately.
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  <strong>Note:</strong> The API Wallet is for programmatic purchases only and is topped up separately in the API section.
-                </p>
-              </CardContent>
-            </Card>
+              <div>
+                <Label>Payment Method</Label>
+                <Select value={buyPaymentMethod} onValueChange={(value: any) => setBuyPaymentMethod(value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="wallet">
+                      Wallet (Balance: GHC {Number(normalWallet).toFixed(2)})
+                    </SelectItem>
+                    <SelectItem value="paystack">
+                      Paystack
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <Card className="border-orange-500/30 bg-orange-500/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="h-5 w-5 text-orange-400" />
-                  Add Funds to Normal Wallet
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-2">Top up your wallet for buying data packages</p>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Top Up Normal Wallet Section */}
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold">Top Up Normal Wallet (Data Purchases)</p>
-                  <p className="text-xs text-muted-foreground">Balance: <strong>GHC {normalWallet.toFixed(2)}</strong></p>
-                  <Button
-                    variant="hero"
-                    className="w-full"
-                    onClick={handleOpenNormalWalletTopup}
-                  >
-                    Add Funds
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <Button
+                onClick={() => {
+                  if (!buyPhone || !isValidPhoneLength(buyPhone)) {
+                    toast({ title: "Invalid phone", description: "Please enter a valid 10-digit phone number", variant: "destructive" });
+                    return;
+                  }
+                  if (!phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) {
+                    toast({ title: "Network mismatch", description: "Phone number doesn't match the selected network", variant: "destructive" });
+                    return;
+                  }
+                  setBuyStep("confirm");
+                }}
+                className="w-full"
+              >
+                Continue
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <p className="text-sm"><span className="text-muted-foreground">Phone:</span> {buyPhone}</p>
+                <p className="text-sm"><span className="text-muted-foreground">Network:</span> {buyPkg?.network.toUpperCase()}</p>
+                <p className="text-sm"><span className="text-muted-foreground">Package:</span> {buyPkg?.size_gb}GB</p>
+                <p className="text-sm"><span className="text-muted-foreground">Amount:</span> GHC {Number(buyPkg?.price || 0).toFixed(2)}</p>
+                <p className="text-sm"><span className="text-muted-foreground">Payment:</span> {buyPaymentMethod === "wallet" ? "Wallet" : "Paystack"}</p>
+              </div>
 
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Account Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold">Account Information</p>
-                  <div className="bg-muted p-4 rounded-lg border border-border space-y-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Email</p>
-                      <p className="text-sm font-mono">{user?.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">User ID</p>
-                      <p className="text-sm font-mono">{user?.id}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold">Account Actions</p>
-                  <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start">
-                      Download My Data
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* API Wallet Top-up Dialog */}
-        <WalletTopupDialog
-          open={showApiWalletTopup}
-          onOpenChange={setShowApiWalletTopup}
-          currentBalance={apiWallet}
-          walletType="api"
-          apiKey={apiKey || undefined}
-          identityId={user?.id}
-          callbackUrl={`${window.location.origin}/user-dashboard?tab=api`}
-        />
-
-        {/* Normal Wallet Top-up Dialog */}
-        <WalletTopupDialog
-          open={showNormalWalletTopup}
-          onOpenChange={setShowNormalWalletTopup}
-          currentBalance={normalWallet}
-          walletType="normal"
-          identityId={user?.id}
-          callbackUrl={`${window.location.origin}/user-dashboard?tab=top-up`}
-        />
-
-        {/* Buy Dialog */}
-        <Dialog open={buyDialogOpen} onOpenChange={v => !v && setBuyDialogOpen(false)}>
-          <DialogContent className="sm:max-w-md border-border bg-card">
-            <DialogHeader>
-              <DialogTitle className="font-display text-xl">Buy {buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</DialogTitle>
-              <DialogDescription>Purchase data at user price</DialogDescription>
-            </DialogHeader>
-            {buyStep === "phone" ? (
-              <div className="space-y-4 pt-2">
-                <div className="space-y-2">
-                  <Label>Recipient Phone Number (exactly 10 digits)</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      type="tel" 
-                      placeholder="0XX XXX XXXX" 
-                      maxLength={10} 
-                      value={buyPhone} 
-                      onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                      className={`pl-10 ${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                      autoFocus
-                    />
-                  </div>
-                  {buyPhone.length > 0 && buyPhone.length < 10 && (
-                    <p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>
-                  )}
-                </div>
-                <Button 
-                  variant="hero" 
-                  className="w-full" 
-                  onClick={() => {
-                    if (!isValidPhoneLength(buyPhone)) {
-                      toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" });
-                      return;
-                    }
-                    const detected = detectNetwork(buyPhone);
-                    if (buyPkg && !phoneMatchesNetwork(buyPhone, buyPkg.network)) {
-                      toast({ title: "Network mismatch", description: `This phone appears to be ${detected.toUpperCase()}, but you selected ${buyPkg.network.toUpperCase()}`, variant: "destructive" });
-                      return;
-                    }
-                    setBuyStep("confirm");
-                  }}
+              <div className="flex gap-2">
+                <Button onClick={() => setBuyStep("phone")} variant="outline" className="flex-1">
+                  Back
+                </Button>
+                <Button
+                  onClick={handleBuyConfirm}
+                  disabled={buyLoading}
+                  className="flex-1"
                 >
-                  Continue
+                  {buyLoading ? "Processing..." : "Confirm Purchase"}
                 </Button>
               </div>
-            ) : (
-              <div className="space-y-4 pt-2">
-                <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Package</span>
-                    <span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Phone</span>
-                    <span className="font-semibold">{buyPhone}</span>
-                  </div>
-                  <div className="border-t border-border my-1" />
-                  <div className="flex justify-between text-base font-bold">
-                    <span>Price</span>
-                    <span className="text-primary">GHC {Number(buyPkg?.price ?? 0).toFixed(2)}</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Payment Method</Label>
-                  <Select value={buyPaymentMethod} onValueChange={v => setBuyPaymentMethod(v as "paystack" | "wallet")}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="wallet">
-                        <span className="flex items-center gap-2">
-                          <Wallet className="h-4 w-4" />
-                          Wallet (GHC {normalWallet.toFixed(2)})
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="paystack">
-                        <span className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4" />
-                          Paystack (+ charges)
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button>
-                  <Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>
-                    {buyLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Confirm Purchase"
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Wallet Topup Dialogs */}
+      <WalletTopupDialog
+        isOpen={showNormalWalletTopup}
+        onClose={() => setShowNormalWalletTopup(false)}
+        onSuccess={() => {
+          setShowNormalWalletTopup(false);
+          // Refresh wallet balance
+        }}
+        wallet="normal"
+      />
+
+      <WalletTopupDialog
+        isOpen={showApiWalletTopup}
+        onClose={() => setShowApiWalletTopup(false)}
+        onSuccess={() => {
+          setShowApiWalletTopup(false);
+          // Refresh wallet balance
+        }}
+        wallet="api"
+      />
 
       <Footer />
     </div>
