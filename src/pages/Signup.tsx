@@ -52,7 +52,11 @@ const Signup = () => {
       }
       
       toast({ title: "Account created!", description: "Welcome to Data Plug STORE!" });
-      navigate(userType === "agent" ? "/agent-onboarding" : "/packages");
+      if (userType === "agent") {
+        navigate("/agent-onboarding");
+      } else {
+        navigate("/user-dashboard");
+      }
     }
   };
 
