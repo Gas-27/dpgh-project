@@ -154,28 +154,21 @@ const UserDashboard = () => {
           setApiWallet(apiUserData.wallet || 0);
         }
 
-        // Fetch user's normal wallet
-        const { data: userWalletData } = await supabase
-          .from("user_wallets")
-          .select("balance, topup_reference")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (userWalletData) {
-          setNormalWallet(userWalletData.balance || 0);
-        }
-
-        // Check if user is a customer and fetch topup reference
+        // Fetch user's normal wallet from customers table
         const { data: customerData } = await supabase
           .from("customers")
-          .select("topup_reference")
-          .eq("user_id", user.id)
+          .select("*")
+          .eq("id", user.id)
           .maybeSingle();
 
-        if (customerData?.topup_reference) {
-          setTopupReference(customerData.topup_reference);
-        } else if (userWalletData?.topup_reference) {
-          setTopupReference(userWalletData.topup_reference);
+        if (customerData) {
+          setNormalWallet(customerData.wallet_balance || 0);
+          if (customerData.topup_reference) {
+            setTopupReference(customerData.topup_reference);
+          } else {
+            // Generate a default top-up reference if none exists
+            setTopupReference(`user${user.id.substring(0, 8)}`);
+          }
         }
 
         // Fetch all packages
@@ -395,9 +388,9 @@ const UserDashboard = () => {
         }
 
         const { error: walletError } = await supabase
-          .from("user_wallets")
-          .update({ balance: normalWallet - price })
-          .eq("user_id", user.id);
+          .from("customers")
+          .update({ wallet_balance: normalWallet - price })
+          .eq("id", user.id);
 
         if (walletError) {
           toast({ title: "Error", description: walletError.message, variant: "destructive" });
@@ -541,14 +534,20 @@ const UserDashboard = () => {
         <CardContent className="space-y-4">
           <div>
             <Label className="text-xs text-muted-foreground mb-2 block">Top-up Reference</Label>
-            <Select defaultValue={topupReference || ""}>
-              <SelectTrigger className="bg-muted">
-                <SelectValue placeholder="Select reference" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={topupReference || ""}>{topupReference || "Loading..."}</SelectItem>
-              </SelectContent>
-            </Select>
+            {topupReference ? (
+              <Select defaultValue={topupReference}>
+                <SelectTrigger className="bg-muted">
+                  <SelectValue placeholder="Select reference" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={topupReference}>{topupReference}</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="bg-muted p-3 rounded-lg border border-border">
+                <p className="font-mono text-sm text-muted-foreground">Loading reference...</p>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground mt-2">Use this when making top-ups to your account</p>
           </div>
 
