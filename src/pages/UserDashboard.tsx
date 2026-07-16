@@ -352,7 +352,9 @@ const UserDashboard = () => {
   };
 
   const phoneMatchesNetwork = (phone: string, network: string) => {
-    return detectNetwork(phone) === network;
+    const detectedNetwork = detectNetwork(phone);
+    const normalizedNetwork = network.toLowerCase();
+    return detectedNetwork === normalizedNetwork;
   };
 
   const isValidPhoneLength = (phone: string) => phone.length === 10;
@@ -892,8 +894,9 @@ const UserDashboard = () => {
   const shareFlyer = async () => {
     setGeneratingFlyer(true);
     try {
-      const defaultShareText = `Get premium data packages at great prices! 📱\n\nContact us:\n📞 Call: 0200511211\n💬 WhatsApp: Chat on WhatsApp\n💻 Visit: dataplug.store\n\nAffordable. Instant. Reliable.`;
-      setShareText(defaultShareText);
+      const packageLink = "https://www.dataplug.store/packages";
+      const userMessage = shareText || "Get premium data packages at great prices!";
+      const fullShareText = `${userMessage}\n\n${packageLink}`;
 
       const dataUrl = await generatePng();
       const blob = await (await fetch(dataUrl)).blob();
@@ -904,10 +907,10 @@ const UserDashboard = () => {
         try {
           await navigator.share({
             title: 'Data Plug - Premium Data Packages',
-            text: defaultShareText,
+            text: fullShareText,
             files: [file],
           });
-          toast({ title: "Shared!", description: "Flyer and text sent!" });
+          toast({ title: "Shared!", description: "Flyer and link sent!" });
           setGeneratingFlyer(false);
           return;
         } catch (shareErr: any) {
@@ -925,13 +928,13 @@ const UserDashboard = () => {
         try {
           await navigator.share({
             title: 'Data Plug - Premium Data Packages',
-            text: defaultShareText,
+            text: fullShareText,
           });
           const a = document.createElement("a");
           a.download = "data-flyer.png";
           a.href = dataUrl;
           a.click();
-          toast({ title: "Text shared!", description: "Image saved. Attach it in WhatsApp." });
+          toast({ title: "Link shared!", description: "Image saved. Attach it in WhatsApp." });
           setGeneratingFlyer(false);
           return;
         } catch (shareErr: any) {
@@ -951,10 +954,10 @@ const UserDashboard = () => {
       a.click();
       
       try {
-        await navigator.clipboard.writeText(defaultShareText);
-        toast({ title: "Image downloaded!", description: "Share text copied. Paste in WhatsApp." });
+        await navigator.clipboard.writeText(fullShareText);
+        toast({ title: "Image downloaded!", description: "Link copied. Paste in WhatsApp." });
       } catch {
-        const encodedText = encodeURIComponent(defaultShareText);
+        const encodedText = encodeURIComponent(fullShareText);
         window.open(`https://wa.me/?text=${encodedText}`, "_blank");
         toast({ title: "Image downloaded!", description: "WhatsApp opened to share." });
       }
@@ -1033,10 +1036,21 @@ const UserDashboard = () => {
             </div>
           </div>
 
-          {/* Info */}
-          <div className="bg-muted/50 p-4 rounded-lg border border-border">
-            <p className="text-sm font-semibold mb-2">Share Your Flyer</p>
-            <p className="text-xs text-muted-foreground">Click the Share button to send your flyer with promotional text directly to WhatsApp or download it for social media sharing.</p>
+          {/* Share Text Editor */}
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-semibold mb-2 block">Share Message (Optional)</label>
+              <p className="text-xs text-muted-foreground mb-2">Edit your message. The package link will always be included.</p>
+              <textarea
+                value={shareText || "Get premium data packages at great prices!"}
+                onChange={(e) => setShareText(e.target.value)}
+                className="w-full p-3 bg-muted border border-border rounded-lg text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Enter your promotional message..."
+              />
+            </div>
+            <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+              Link will be added: <span className="font-mono text-cyan-400">https://www.dataplug.store/packages</span>
+            </p>
           </div>
 
           {/* Action Buttons */}
