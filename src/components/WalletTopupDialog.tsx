@@ -129,7 +129,7 @@ export default function WalletTopupDialog({
           <div className="bg-muted p-4 rounded-lg border border-border">
             <p className="text-sm text-muted-foreground">Current Balance</p>
             <p className="text-3xl font-display font-bold text-primary">
-              GHC {currentBalance.toFixed(2)}
+              GHC {(currentBalance ?? 0).toFixed(2)}
             </p>
           </div>
 
