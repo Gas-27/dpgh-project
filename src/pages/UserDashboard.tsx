@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -80,6 +80,7 @@ const UserDashboard = () => {
     { id: "overview", label: "Overview", icon: Home },
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "orders", label: "Orders", icon: BarChart3 },
+    { id: "flyer", label: "Flyer Generator", icon: ImageIcon },
     { id: "api-key", label: "API Key", icon: Zap },
     { id: "api-packages", label: "API Packages", icon: Package },
     { id: "topup", label: "Top Up", icon: Coins },
@@ -468,6 +469,8 @@ const UserDashboard = () => {
         return renderBuyData();
       case "orders":
         return renderOrders();
+      case "flyer":
+        return renderFlyerGenerator();
       case "api-key":
         return renderApiKey();
       case "api-packages":
@@ -549,42 +552,27 @@ const UserDashboard = () => {
             <p className="text-xs text-muted-foreground mt-2">Use this when making top-ups to your account</p>
           </div>
 
-          {/* USSD Code */}
+          {/* USSD Code with Call Button */}
           <div className="pt-2 border-t border-border">
-            <Label className="text-xs text-muted-foreground mb-2 block">USSD Code</Label>
+            <Label className="text-xs text-muted-foreground mb-2 block">USSD Code (with Access Code 0)</Label>
             <div className="bg-background p-3 rounded-lg border border-border flex items-center justify-between">
-              <p className="font-display font-bold text-primary">*123#</p>
+              <div>
+                <p className="font-display font-bold text-primary text-lg">*380*455#</p>
+                <p className="text-xs text-muted-foreground mt-1">Access Code: <span className="font-semibold">0</span></p>
+              </div>
               <Button
                 size="sm"
-                variant="ghost"
+                variant="default"
                 onClick={() => {
-                  navigator.clipboard.writeText("*123#");
-                  toast({ title: "Copied!", description: "USSD code copied to clipboard" });
+                  window.location.href = "tel:*380*455%23";
                 }}
+                className="bg-green-600 hover:bg-green-700"
               >
-                <Copy className="h-4 w-4" />
+                <Phone className="h-4 w-4 mr-1" />
+                Call
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Dial this to check your balance</p>
-          </div>
-
-          {/* Access Code Zero */}
-          <div className="pt-2 border-t border-border">
-            <Label className="text-xs text-muted-foreground mb-2 block">Access Code</Label>
-            <div className="bg-background p-3 rounded-lg border border-border flex items-center justify-between">
-              <p className="font-display font-bold text-primary">0</p>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  navigator.clipboard.writeText("0");
-                  toast({ title: "Copied!", description: "Access code copied to clipboard" });
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">Use this code for special access</p>
+            <p className="text-xs text-muted-foreground mt-2">Tap to call and check balance (enter access code 0 when prompted)</p>
           </div>
         </CardContent>
       </Card>
@@ -718,6 +706,110 @@ const UserDashboard = () => {
               </Table>
             </div>
           )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderFlyerGenerator = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5" />
+            Promotional Flyer Generator
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">Generate a professional promotional flyer showing your data package prices. The flyer displays your live prices and can be shared on social media.</p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Flyer Preview */}
+          <div className="border border-border rounded-lg overflow-hidden bg-black">
+            <div className="relative bg-black" style={{ aspectRatio: "1080/1920", maxWidth: "300px", margin: "0 auto" }}>
+              {/* Flyer Template - Simplified version of agent dashboard flyer */}
+              <div className="w-full h-full p-4 flex flex-col justify-between" style={{ fontSize: "12px" }}>
+                {/* Header */}
+                <div>
+                  <h1 className="text-white font-bold text-center mb-4" style={{ fontSize: "24px" }}>DATA PLUG</h1>
+                  <p className="text-cyan-400 text-center text-xs mb-6">Premium Data Packages</p>
+                </div>
+
+                {/* Network Sections */}
+                <div className="space-y-3 flex-1">
+                  {/* MTN Section */}
+                  <div className="border border-orange-500/50 rounded p-2 bg-orange-500/5">
+                    <p className="text-orange-400 font-bold text-sm mb-2">MTN DATA</p>
+                    <div className="grid grid-cols-2 gap-1 text-xs">
+                      {packages.filter(p => p.network.toLowerCase() === 'mtn').slice(0, 4).map(pkg => (
+                        <div key={pkg.id} className="bg-black/50 p-1 rounded border border-orange-500/30">
+                          <p className="text-white font-semibold">{pkg.size_gb}GB</p>
+                          <p className="text-orange-400">GHC {Number(pkg.user_price || pkg.price).toFixed(2)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Airtel Section */}
+                  <div className="border border-purple-500/50 rounded p-2 bg-purple-500/5">
+                    <p className="text-purple-400 font-bold text-sm mb-2">AIRTELTIGO DATA</p>
+                    <div className="grid grid-cols-2 gap-1 text-xs">
+                      {packages.filter(p => p.network.toLowerCase() === 'airteltigo').slice(0, 4).map(pkg => (
+                        <div key={pkg.id} className="bg-black/50 p-1 rounded border border-purple-500/30">
+                          <p className="text-white font-semibold">{pkg.size_gb}GB</p>
+                          <p className="text-purple-400">GHC {Number(pkg.user_price || pkg.price).toFixed(2)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Telecel Section */}
+                  <div className="border border-red-500/50 rounded p-2 bg-red-500/5">
+                    <p className="text-red-400 font-bold text-sm mb-2">TELECEL DATA</p>
+                    <div className="grid grid-cols-2 gap-1 text-xs">
+                      {packages.filter(p => p.network.toLowerCase() === 'telecel').slice(0, 4).map(pkg => (
+                        <div key={pkg.id} className="bg-black/50 p-1 rounded border border-red-500/30">
+                          <p className="text-white font-semibold">{pkg.size_gb}GB</p>
+                          <p className="text-red-400">GHC {Number(pkg.user_price || pkg.price).toFixed(2)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="text-center mt-4 pt-4 border-t border-border/50">
+                  <p className="text-cyan-400 font-bold text-xs mb-1">dataplug.store</p>
+                  <p className="text-muted-foreground text-xs">Premium Data Reseller</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Info Text */}
+          <div className="bg-muted/50 p-4 rounded-lg border border-border space-y-2">
+            <p className="text-sm font-semibold">Your Live Prices</p>
+            <p className="text-xs text-muted-foreground">The flyer above displays your current package prices. Prices are automatically locked and cannot be edited on the flyer generator.</p>
+            <p className="text-xs text-muted-foreground">Share your personalized link: <span className="font-mono bg-background px-2 py-1 rounded">https://www.dataplug.store/packages</span></p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 flex-wrap">
+            <Button className="flex-1" onClick={() => {
+              const link = document.createElement('a');
+              link.href = 'https://www.dataplug.store/packages';
+              link.target = '_blank';
+              link.click();
+            }}>
+              <Download className="h-4 w-4 mr-2" />
+              Download Flyer
+            </Button>
+            <Button variant="outline" className="flex-1" onClick={() => {
+              navigator.clipboard.writeText('https://www.dataplug.store/packages');
+              toast({ title: "Copied!", description: "Share link copied to clipboard" });
+            }}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Link
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
