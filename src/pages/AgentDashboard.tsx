@@ -317,76 +317,7 @@ const AgentDashboard = () => {
   const [withdrawals, setWithdrawals] = useState([]);
   const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
   const [subagentOrdersCount, setSubagentOrdersCount] = useState(0);
-  const [totalOrderCount, setTotalOrderCount] = useState(0);
-  const [subagentProfitForAgent, setSubagentProfitForAgent] = useState(0);
-  const [subagents, setSubagents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [networkFilter, setNetworkFilter] = useState("mtn");
-  const [savingPrices, setSavingPrices] = useState(false);
-  const [editingStore, setEditingStore] = useState(false);
-  const [orderSearch, setOrderSearch] = useState("");
-  const [storeForm, setStoreForm] = useState({
-  store_name: "", whatsapp_number: "", support_number: "",
-  whatsapp_group: "", show_whatsapp_group_icon: true, show_ussd_on_storefront: true,
-  momo_number: "", momo_name: "", momo_network: "",
-  });
-  const [savingStore, setSavingStore] = useState(false);
-  const [profitStats, setProfitStats] = useState<ProfitStats>({ totalRevenue: 0, totalCost: 0, totalProfit: 0, availableForWithdrawal: 0 });
-  const [buyDialogOpen, setBuyDialogOpen] = useState(false);
-  const [showAgentWalletTopup, setShowAgentWalletTopup] = useState(false);
-  const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
-  const [buyPhone, setBuyPhone] = useState("");
-  const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
-  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
-  const [buyLoading, setBuyLoading] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawSource, setWithdrawSource] = useState<"wallet" | "subagent_commission">("wallet");
-  const [withdrawLoading, setWithdrawLoading] = useState(false);
-  const [selectedRecipient, setSelectedRecipient] = useState<string>("");
-  const [createNewRecipient, setCreateNewRecipient] = useState(false);
-  const [editingRecipient, setEditingRecipient] = useState<any>(null);
-  const [recipientName, setRecipientName] = useState("");
-  const [mobileNetwork, setMobileNetwork] = useState("mtn");
-  const [mobileNumber, setMobileNumber] = useState("");
-  const [showTopupDialog, setShowTopupDialog] = useState(false);
-  const [topupAmount, setTopupAmount] = useState("");
-  const [topupLoading, setTopupLoading] = useState(false);
-  const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string; source: string }[]>([]);
-  const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
-  const [savingTheme, setSavingTheme] = useState(false);
-  const [storeHeadline, setStoreHeadline] = useState("");
-  const [savingHeadline, setSavingHeadline] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [newNotificationMsg, setNewNotificationMsg] = useState("");
-  const [newNotificationExpiry, setNewNotificationExpiry] = useState("");
-  const [sendingNotification, setSendingNotification] = useState(false);
-  const [loadingNotifications, setLoadingNotifications] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [afaTabActive, setAfaTabActive] = useState("pricing");
-  const [manualOpen, setManualOpen] = useState(false);
-  const [openManualSection, setOpenManualSection] = useState<number | null>(null);
-  const [markupPercent, setMarkupPercent] = useState("");
-  
-  // Notifications to subagents
-  const [subagentNotificationMsg, setSubagentNotificationMsg] = useState("");
-  const [sendingSubagentNotification, setSendingSubagentNotification] = useState(false);
-  const [subagentNotifications, setSubagentNotifications] = useState<any[]>([]);
-  
-  // Bulk Orders
-  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
-  const [bulkRecipients, setBulkRecipients] = useState("");
-  const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
-  const [bulkProcessing, setBulkProcessing] = useState(false);
-  const [bulkResults, setBulkResults] = useState<{ phone: string; size: number; status: string; error?: string }[]>([]);
-  
-  // API Key
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [wallet, setWallet] = useState<number>(0);
-  const [generatingApiKey, setGeneratingApiKey] = useState(false);
-  const [loadingApiKey, setLoadingApiKey] = useState(true);
-  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
-  const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
+  const [subagentOrders, setSubagentOrdersState] = useState<any[]>([]);
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
 
   // Refund state for subagent orders
@@ -485,16 +416,18 @@ const AgentDashboard = () => {
     
     const subagentIds = (subagentStoreIds || []).map(s => s.id);
     
-    let subagentOrders: any[] = [];
+    let subagentOrdersLocal: any[] = [];
     if (subagentIds.length > 0) {
       const { data: subOrders } = await supabase
         .from("orders")
-        .select("amount, package_id, subagent_store_id, selling_price, base_price, profit")
+        .select("*")
         .in("subagent_store_id", subagentIds)
-        .in("status", ["paid", "completed"])
         .range(0, 99999);
-      subagentOrders = subOrders || [];
+      subagentOrdersLocal = subOrders || [];
     }
+    
+    // Set subagent orders to state for use in refund tab
+    setSubagentOrdersState(subagentOrdersLocal);
     
     let directRevenue = 0, directProfit = 0, subagentRevenue = 0, subagentProfit = 0;
     
@@ -525,7 +458,7 @@ const AgentDashboard = () => {
     const storedSubagentCommission = Number(store?.subagent_commission_balance ?? 0);
     
     // Revenue from subagent orders - use stored values
-    for (const order of subagentOrders) {
+    for (const order of subagentOrdersLocal) {
       // Add revenue from subagent orders using stored selling_price if available
       const orderRevenue = order.selling_price && order.selling_price > 0 
         ? Number(order.selling_price) 
