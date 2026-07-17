@@ -356,9 +356,9 @@ const UserDashboard = () => {
 
   const detectNetwork = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
-    if (cleaned.startsWith("024") || cleaned.startsWith("054") || cleaned.startsWith("055")) return "mtn";
-    if (cleaned.startsWith("027") || cleaned.startsWith("057")) return "airteltigo";
-    if (cleaned.startsWith("020") || cleaned.startsWith("026") || cleaned.startsWith("056")) return "telecel";
+    if (cleaned.startsWith("024") || cleaned.startsWith("054") || cleaned.startsWith("025") || cleaned.startsWith("053") || cleaned.startsWith("059")|| cleaned.startsWith("055")) return "mtn";
+    if (cleaned.startsWith("027") || cleaned.startsWith("026") || cleaned.startsWith("056")|| cleaned.startsWith("057")) return "airteltigo";
+    if (cleaned.startsWith("020") || cleaned.startsWith("050")) return "telecel";
     return "unknown";
   };
 
