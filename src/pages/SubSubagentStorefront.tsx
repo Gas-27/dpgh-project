@@ -769,12 +769,14 @@ export function SubSubagentStorefront() {
   const groupLink = store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
 
   const getStatusIcon = (status: string) => {
+    if (status === "refunded") return <XCircle className="h-4 w-4 text-amber-400" />;
     if (status === "completed" || status === "paid") return <CheckCircle className="h-4 w-4 text-green-400" />;
     if (status === "pending") return <Clock className="h-4 w-4 text-yellow-400" />;
     return <XCircle className="h-4 w-4 text-red-400" />;
   };
 
   const getStatusText = (status: string) => {
+    if (status === "refunded") return "Refunded";
     if (status === "completed" || status === "paid") return "Payment Completed";
     if (status === "pending") return "Pending";
     return status;

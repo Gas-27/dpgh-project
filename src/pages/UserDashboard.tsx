@@ -40,12 +40,15 @@ interface Order {
   fulfillment_status: string;
   order_status?: string;
   payment_method?: string;
+  refunded_amount?: number | null;
   created_at: string;
 }
 
 // Delivery status shown to the user (mirrors the Agent dashboard).
 // Prefer order_status; fall back to fulfillment_status.
 const getDeliveryStatus = (order: Order) => {
+  // A refunded order takes priority regardless of the other status fields.
+  if (order.status === "refunded" || order.fulfillment_status === "refunded") return "refunded";
   const raw = (order.order_status || order.fulfillment_status || "pending").toLowerCase();
   if (raw === "paid") return "processing";
   return raw;
@@ -56,6 +59,7 @@ const deliveryStatusClass = (status: string) =>
   status === "processing" ? "bg-blue-600/20 text-blue-400 border-blue-600/30" :
   status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" :
   status === "failed" ? "bg-red-600/20 text-red-400 border-red-600/30" :
+  status === "refunded" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
   "bg-slate-600/20 text-slate-400 border-slate-600/30";
 
 const UserDashboard = () => {
@@ -890,6 +894,27 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Refunds Card - shows when admin has refunded any of this user's orders */}
+      {(() => {
+        const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
+        if (refundedOrders.length === 0) return null;
+        const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number(o.refunded_amount ?? o.amount) || 0), 0);
+        return (
+          <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">Refunded Orders</p>
+                  <p className="font-display text-3xl font-bold text-amber-400 mt-2">{refundedOrders.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total refunded to wallet: GHC {refundedTotal.toFixed(2)}</p>
+                </div>
+                <Wallet className="h-8 w-8 text-amber-400 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Account Reference and Codes Card */}
       <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">

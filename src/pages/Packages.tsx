@@ -1253,10 +1253,11 @@ const Packages = () => {
   const clearSearch = () => { setSearchQuery(""); setOrders([]); setSearchPerformed(false); };
 
   const getStatusIcon = (s: string) =>
-    s === "completed" || s === "paid" ? <CheckCircle className="h-4 w-4 text-green-400" />
-      : s === "pending" ? <Clock className="h-4 w-4 text-yellow-400" />
-        : <XCircle className="h-4 w-4 text-red-400" />;
-  const getStatusText = (s: string) => s === "completed" || s === "paid" ? "Payment Completed" : s === "pending" ? "Pending" : s;
+    s === "refunded" ? <XCircle className="h-4 w-4 text-amber-400" />
+      : s === "completed" || s === "paid" ? <CheckCircle className="h-4 w-4 text-green-400" />
+        : s === "pending" ? <Clock className="h-4 w-4 text-yellow-400" />
+          : <XCircle className="h-4 w-4 text-red-400" />;
+  const getStatusText = (s: string) => s === "refunded" ? "Refunded" : s === "completed" || s === "paid" ? "Payment Completed" : s === "pending" ? "Pending" : s;
 
   const renderComingSoon = () => (
     <div className="text-center py-16">

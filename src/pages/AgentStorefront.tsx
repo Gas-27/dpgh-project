@@ -901,11 +901,13 @@ const AgentStorefront = () => {
     store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
 
   const getStatusIcon = (status: string) => {
+    if (status === "refunded") return <XCircle className="h-4 w-4 text-amber-400" />;
     if (status === "completed" || status === "paid") return <CheckCircle className="h-4 w-4 text-green-400" />;
     if (status === "pending") return <Clock className="h-4 w-4 text-yellow-400" />;
     return <XCircle className="h-4 w-4 text-red-400" />;
   };
   const getStatusText = (status: string) => {
+    if (status === "refunded") return "Refunded";
     if (status === "completed" || status === "paid") return "Payment Completed";
     if (status === "pending") return "Pending";
     return status;
@@ -1210,17 +1212,19 @@ const AgentStorefront = () => {
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
-                                {getStatusIcon(order.status)}
+                                {getStatusIcon(order.status === "refunded" || order.fulfillment_status === "refunded" ? "refunded" : order.status)}
                                 <Badge
                                   className={
-                                    order.status === "completed" || order.status === "paid"
-                                      ? "bg-green-600/20 text-green-400 border-green-600/30"
-                                      : order.status === "pending"
-                                        ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                        : "bg-red-600/20 text-red-400 border-red-600/30"
+                                    order.status === "refunded" || order.fulfillment_status === "refunded"
+                                      ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                                      : order.status === "completed" || order.status === "paid"
+                                        ? "bg-green-600/20 text-green-400 border-green-600/30"
+                                        : order.status === "pending"
+                                          ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                                          : "bg-red-600/20 text-red-400 border-red-600/30"
                                   }
                                 >
-                                  {getStatusText(order.status)}
+                                  {getStatusText(order.status === "refunded" || order.fulfillment_status === "refunded" ? "refunded" : order.status)}
                                 </Badge>
                               </div>
                             </div>

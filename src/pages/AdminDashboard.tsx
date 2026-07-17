@@ -1541,59 +1541,64 @@ const AdminDashboard = () => {
         const order = orders.find(o => o.id === orderId);
         if (!order) continue;
 
-        const refundAmount = Number(order.amount);
+        // Skip orders that are already refunded
+        if (order.status === "refunded" || order.fulfillment_status === "refunded") {
+          continue;
+        }
+
+        // Base/cost price the buyer actually paid us. For agent/subagent orders the
+        // agent paid us the base price (not the customer-facing amount), so we refund
+        // that. Direct/API user orders are refunded the amount they paid.
+        const basePrice = Number(order.base_price ?? order.agent_price ?? order.amount) || 0;
+        const paidAmount = Number(order.amount) || 0;
+        let refundAmount = paidAmount;
         let targetWalletUpdated = false;
 
         // Determine where to send the refund based on order source
         if (order.subagent_store_id) {
-          // Subagent order: refund to parent agent's wallet
+          // Subagent order: refund the base price to the parent agent's wallet
+          refundAmount = basePrice;
           const subagent = subagents.find(s => s.id === order.subagent_store_id);
-          if (subagent?.agent_store_id) {
-            const agent = agents.find(a => a.id === subagent.agent_store_id);
-            if (agent) {
-              const newBalance = (agent.wallet_balance || 0) + refundAmount;
+          const parentAgentId = subagent?.agent_store_id;
+          if (parentAgentId) {
+            const { data: agentRow } = await supabase
+              .from("agent_stores")
+              .select("wallet_balance")
+              .eq("id", parentAgentId)
+              .maybeSingle();
+            if (agentRow) {
+              const newBalance = (agentRow.wallet_balance || 0) + refundAmount;
               const { error: updateErr } = await supabase
                 .from("agent_stores")
                 .update({ wallet_balance: newBalance })
-                .eq("id", agent.id);
+                .eq("id", parentAgentId);
               if (!updateErr) targetWalletUpdated = true;
             }
           }
         } else if (order.agent_store_id) {
-          // Agent order: refund to agent's wallet
-          const agent = agents.find(a => a.id === order.agent_store_id);
-          if (agent) {
-            const newBalance = (agent.wallet_balance || 0) + refundAmount;
+          // Agent order: refund the base price to the agent's wallet
+          refundAmount = basePrice;
+          const { data: agentRow } = await supabase
+            .from("agent_stores")
+            .select("wallet_balance")
+            .eq("id", order.agent_store_id)
+            .maybeSingle();
+          if (agentRow) {
+            const newBalance = (agentRow.wallet_balance || 0) + refundAmount;
             const { error: updateErr } = await supabase
               .from("agent_stores")
               .update({ wallet_balance: newBalance })
-              .eq("id", agent.id);
-            if (!updateErr) targetWalletUpdated = true;
-          }
-        } else if (order.payment_method === "wallet") {
-          // User wallet order: refund to customer's wallet
-          const { data: customer } = await supabase
-            .from("customers")
-            .select("wallet_balance")
-            .eq("user_id", order.api_user || "")
-            .maybeSingle();
-          
-          if (customer) {
-            const newBalance = (customer.wallet_balance || 0) + refundAmount;
-            const { error: updateErr } = await supabase
-              .from("customers")
-              .update({ wallet_balance: newBalance })
-              .eq("user_id", order.api_user || "");
+              .eq("id", order.agent_store_id);
             if (!updateErr) targetWalletUpdated = true;
           }
         } else if (order.api_user) {
-          // API user order: refund to API user's wallet
+          // API user order: refund to API user's wallet (keyed by identity_id)
+          refundAmount = paidAmount;
           const { data: apiUser } = await supabase
             .from("api_users")
             .select("wallet")
             .eq("identity_id", order.api_user)
             .maybeSingle();
-          
           if (apiUser) {
             const newBalance = (apiUser.wallet || 0) + refundAmount;
             const { error: updateErr } = await supabase
@@ -1602,24 +1607,51 @@ const AdminDashboard = () => {
               .eq("identity_id", order.api_user);
             if (!updateErr) targetWalletUpdated = true;
           }
+        } else if (order.customer_id) {
+          // Direct main-site user order: refund to the customer's wallet
+          refundAmount = paidAmount;
+          const { data: customer } = await supabase
+            .from("customers")
+            .select("wallet_balance")
+            .eq("user_id", order.customer_id)
+            .maybeSingle();
+          if (customer) {
+            const newBalance = (customer.wallet_balance || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("customers")
+              .update({ wallet_balance: newBalance })
+              .eq("user_id", order.customer_id);
+            if (!updateErr) targetWalletUpdated = true;
+          }
         }
 
         if (targetWalletUpdated) {
-          // Mark order as refunded
-          const { error: refundErr } = await supabase
+          // Mark order as refunded. Try to store the refund amount/date; if those
+          // columns don't exist yet, fall back to just the status fields.
+          let refundErr: any = null;
+          const richUpdate = await supabase
             .from("orders")
-            .update({ 
+            .update({
               fulfillment_status: "refunded",
-              status: "refunded"
+              status: "refunded",
+              refunded_amount: refundAmount,
+              refunded_at: new Date().toISOString(),
             })
             .eq("id", orderId);
-          
+          if (richUpdate.error) {
+            const basicUpdate = await supabase
+              .from("orders")
+              .update({ fulfillment_status: "refunded", status: "refunded" })
+              .eq("id", orderId);
+            refundErr = basicUpdate.error;
+          }
+
           if (!refundErr) {
             successCount++;
             setOrders((prev) =>
-              prev.map((o) => 
-                o.id === orderId 
-                  ? { ...o, fulfillment_status: "refunded", status: "refunded" } 
+              prev.map((o) =>
+                o.id === orderId
+                  ? { ...o, fulfillment_status: "refunded", status: "refunded", refunded_amount: refundAmount }
                   : o
               )
             );
@@ -2286,8 +2318,8 @@ const AdminDashboard = () => {
                                   </Badge>
                                 </TableCell>
                                 <TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell>
-                                <TableCell><Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge></TableCell>
-                                <TableCell><Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge></TableCell>
+                                <TableCell>{order.status === "refunded" ? <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Refunded</Badge> : <Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge>}</TableCell>
+                                <TableCell>{order.fulfillment_status === "refunded" ? <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Refunded</Badge> : <Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge>}</TableCell>
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
                                     {order.fulfillment_status !== "completed" && (
