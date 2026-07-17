@@ -1940,22 +1940,31 @@ const UserDashboard = () => {
                     </span>
                     <span className="text-xs font-medium text-yellow-400">1.98% fee added</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setBuyPaymentMethod("wallet")}
-                    aria-pressed={buyPaymentMethod === "wallet"}
-                    className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
-                      buyPaymentMethod === "wallet" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "wallet" ? "border-primary" : "border-muted-foreground"}`}>
-                        {buyPaymentMethod === "wallet" && <span className="h-2 w-2 rounded-full bg-primary" />}
+                  <div className="flex gap-2 items-stretch">
+                    <button
+                      type="button"
+                      onClick={() => setBuyPaymentMethod("wallet")}
+                      aria-pressed={buyPaymentMethod === "wallet"}
+                      className={`flex-1 flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
+                        buyPaymentMethod === "wallet" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "wallet" ? "border-primary" : "border-muted-foreground"}`}>
+                          {buyPaymentMethod === "wallet" && <span className="h-2 w-2 rounded-full bg-primary" />}
+                        </span>
+                        Wallet (GHC {Number(normalWallet).toFixed(2)})
                       </span>
-                      Wallet (GHC {Number(normalWallet).toFixed(2)})
-                    </span>
-                    <span className="text-xs font-medium text-green-400">No fee added</span>
-                  </button>
+                      <span className="text-xs font-medium text-green-400">No fee added</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowNormalWalletTopup(true)}
+                      className="px-3 py-1 text-xs font-semibold rounded-lg border border-cyan-600/30 bg-cyan-600/10 text-cyan-400 hover:bg-cyan-600/20 transition-colors whitespace-nowrap"
+                    >
+                      Add Fund
+                    </button>
+                  </div>
                 </div>
               </div>
 

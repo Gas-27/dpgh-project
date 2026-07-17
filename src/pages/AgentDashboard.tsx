@@ -332,6 +332,7 @@ const AgentDashboard = () => {
   const [savingStore, setSavingStore] = useState(false);
   const [profitStats, setProfitStats] = useState<ProfitStats>({ totalRevenue: 0, totalCost: 0, totalProfit: 0, availableForWithdrawal: 0 });
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
+  const [showAgentWalletTopup, setShowAgentWalletTopup] = useState(false);
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
   const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
@@ -3423,6 +3424,16 @@ const AgentDashboard = () => {
               identityId={store?.id}
               callbackUrl={`${window.location.origin}/agent?tab=api-key`}
             />
+
+            {/* Store Wallet Top Up Dialog (for Buy Data) */}
+            <WalletTopupDialog
+              open={showAgentWalletTopup}
+              onOpenChange={setShowAgentWalletTopup}
+              currentBalance={store?.wallet_balance || 0}
+              walletType="agent"
+              identityId={user?.id}
+              userEmail={user?.email}
+            />
           </TabsContent>
 
           {/* ============================= SUBAGENTS ============================= */}
@@ -3772,7 +3783,16 @@ const AgentDashboard = () => {
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>
               </>
-            <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GHC {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠���� You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><div className="grid grid-cols-1 gap-2"><button type="button" onClick={() => setBuyPaymentMethod("wallet")} aria-pressed={buyPaymentMethod === "wallet"} className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${buyPaymentMethod === "wallet" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}><span className="flex items-center gap-2"><span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "wallet" ? "border-primary" : "border-muted-foreground"}`}>{buyPaymentMethod === "wallet" && <span className="h-2 w-2 rounded-full bg-primary" />}</span><Wallet className="h-4 w-4" />Wallet (GHC {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span><span className="text-xs text-green-400 font-medium">No fee added</span></button><button type="button" onClick={() => setBuyPaymentMethod("paystack")} aria-pressed={buyPaymentMethod === "paystack"} className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${buyPaymentMethod === "paystack" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}><span className="flex items-center gap-2"><span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "paystack" ? "border-primary" : "border-muted-foreground"}`}>{buyPaymentMethod === "paystack" && <span className="h-2 w-2 rounded-full bg-primary" />}</span><CreditCard className="h-4 w-4" />Paystack</span><span className="text-xs text-yellow-400 font-medium">1.98% fee added</span></button></div></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
+            <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GHC {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠���� You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="space-y-2"><Label>Payment Method</Label><div className="grid grid-cols-1 gap-2"><div className="flex gap-2 items-stretch">
+                    <button type="button" onClick={() => setBuyPaymentMethod("wallet")} aria-pressed={buyPaymentMethod === "wallet"} className={`flex-1 flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${buyPaymentMethod === "wallet" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}><span className="flex items-center gap-2"><span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "wallet" ? "border-primary" : "border-muted-foreground"}`}>{buyPaymentMethod === "wallet" && <span className="h-2 w-2 rounded-full bg-primary" />}</span><Wallet className="h-4 w-4" />Wallet (GHC {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span><span className="text-xs text-green-400 font-medium">No fee added</span></button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAgentWalletTopup(true)}
+                      className="px-3 py-1 text-xs font-semibold rounded-lg border border-cyan-600/30 bg-cyan-600/10 text-cyan-400 hover:bg-cyan-600/20 transition-colors whitespace-nowrap"
+                    >
+                      Add Fund
+                    </button>
+                  </div><button type="button" onClick={() => setBuyPaymentMethod("paystack")} aria-pressed={buyPaymentMethod === "paystack"} className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${buyPaymentMethod === "paystack" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}><span className="flex items-center gap-2"><span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "paystack" ? "border-primary" : "border-muted-foreground"}`}>{buyPaymentMethod === "paystack" && <span className="h-2 w-2 rounded-full bg-primary" />}</span><CreditCard className="h-4 w-4" />Paystack</span><span className="text-xs text-yellow-400 font-medium">1.98% fee added</span></button></div></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
           )}
         </DialogContent>
       </Dialog>
