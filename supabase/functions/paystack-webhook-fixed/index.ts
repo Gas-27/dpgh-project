@@ -502,6 +502,73 @@ Deno.serve(async (req) => {
       });
     }
 
+    // =====================================
+    // NORMAL WALLET TOPUP HANDLER
+    // =====================================
+    if (paymentType === "user_wallet_topup") {
+      const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
+
+      console.log(`[USER WALLET TOPUP] Customer: ${customerId}, Amount: GHS ${baseAmount}`);
+
+      if (!customerId) {
+        console.error("[USER WALLET TOPUP] Missing customer_id");
+        return new Response(JSON.stringify({ error: "Missing customer_id" }), {
+          status: 400,
+          headers: corsHeaders
+        });
+      }
+
+      const { data: customer, error: customerError } = await supabaseClient
+        .from("customers")
+        .select("id, wallet_balance, email")
+        .eq("id", customerId)
+        .single();
+
+      if (customerError || !customer) {
+        console.error(`[USER WALLET TOPUP] Customer not found: ${customerId}`);
+        return new Response(JSON.stringify({ error: "Customer not found" }), {
+          status: 404,
+          headers: corsHeaders
+        });
+      }
+
+      const currentBalance = Number(customer.wallet_balance) || 0;
+      const newBalance = currentBalance + baseAmount;
+
+      console.log(`[USER WALLET TOPUP] Updating wallet: ${currentBalance} → ${newBalance}`);
+
+      const { error: updateError } = await supabaseClient
+        .from("customers")
+        .update({
+          wallet_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customerId);
+
+      if (updateError) {
+        console.error(`[USER WALLET TOPUP] Failed to update wallet:`, updateError);
+        return new Response(JSON.stringify({ error: "Failed to update wallet" }), {
+          status: 500,
+          headers: corsHeaders
+        });
+      }
+
+      console.log(`[USER WALLET TOPUP] ✅ Wallet topped up: GHS ${baseAmount}`);
+
+      return new Response(
+        JSON.stringify({
+          message: "Wallet topup processed successfully",
+          customer_id: customerId,
+          email: customer.email,
+          amount_credited: baseAmount,
+          previous_balance: currentBalance,
+          new_balance: newBalance,
+          transaction_reference: reference,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
   } catch (error) {
     console.error("Unexpected error:", error);
     return new Response(JSON.stringify({ error: "Webhook processing failed" }), {
