@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2 } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -82,6 +82,9 @@ const UserDashboard = () => {
 
   // Agent features dropdown state
   const [agentFeaturesOpen, setAgentFeaturesOpen] = useState(false);
+
+  // Orders search state
+  const [orderSearch, setOrderSearch] = useState("");
 
   // Menu navigation
   const [activeMenu, setActiveMenu] = useState("overview");
@@ -559,8 +562,8 @@ const UserDashboard = () => {
               <Button onClick={() => setActiveMenu("buy-data")} className="flex-1" size="sm" variant="default">
                 Buy Data
               </Button>
-              <Button onClick={handleOpenNormalWalletTopup} className="flex-1" size="sm" variant="outline">
-                Add Funds
+              <Button onClick={() => { console.log("[v0] Top Up clicked"); setShowNormalWalletTopup(true); }} className="flex-1" size="sm" variant="outline">
+                Top Up
               </Button>
             </div>
           </CardContent>
@@ -739,65 +742,112 @@ const UserDashboard = () => {
     </div>
   );
 
-  const renderOrders = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Orders</CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">View all your data purchase orders</p>
-        </CardHeader>
-        <CardContent>
-          {orders.length === 0 ? (
-            <div className="text-center py-12">
-              <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">No orders found</p>
+  const renderOrders = () => {
+    // Filter orders based on search
+    const filteredOrders = orders.filter(order => 
+      order.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      order.id?.toLowerCase().includes(orderSearch.toLowerCase())
+    );
+
+    // Calculate stats
+    const totalOrders = orders.length;
+    const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
+    const totalSpent = orders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+
+    return (
+      <div className="space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border-border">
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground text-sm">Total Orders</p>
+              <p className="font-display text-3xl font-bold mt-2 text-foreground">{totalOrders}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border">
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground text-sm">Pending Orders</p>
+              <p className="font-display text-3xl font-bold mt-2 text-primary">{pendingOrders}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border">
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground text-sm">Total Spent</p>
+              <p className="font-display text-3xl font-bold mt-2 text-cyan-400">GHC {totalSpent.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Orders Table with Search */}
+        <Card className="border-border">
+          <CardHeader className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="font-display text-lg">Orders ({filteredOrders.length})</CardTitle>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search by phone or order ID..." 
+                  value={orderSearch} 
+                  onChange={e => setOrderSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="text-xs">Date & Time</TableHead>
-                    <TableHead className="text-xs">Phone</TableHead>
-                    <TableHead className="text-xs">Network</TableHead>
-                    <TableHead className="text-xs">Size</TableHead>
-                    <TableHead className="text-xs">Amount</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {new Date(order.created_at).toLocaleDateString()} {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </TableCell>
-                      <TableCell className="text-xs font-mono">{order.customer_number}</TableCell>
-                      <TableCell className="text-xs">
-                        <span className="px-2 py-1 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
-                      </TableCell>
-                      <TableCell className="text-xs font-semibold text-cyan-400">{order.size_gb}GB</TableCell>
-                      <TableCell className="text-xs font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          order.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                          order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                          order.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
-                          order.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                          'bg-slate-500/20 text-slate-400'
-                        }`}>
-                          {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
-                        </span>
-                      </TableCell>
+          </CardHeader>
+          <CardContent>
+            {filteredOrders.length === 0 ? (
+              <div className="text-center py-12">
+                <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">{orderSearch ? "No orders found matching your search" : "No orders yet"}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-xs">Date & Time</TableHead>
+                      <TableHead className="text-xs">Phone</TableHead>
+                      <TableHead className="text-xs">Network</TableHead>
+                      <TableHead className="text-xs">Size</TableHead>
+                      <TableHead className="text-xs">Amount</TableHead>
+                      <TableHead className="text-xs">Method</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+                  </TableHeader>
+                  <TableBody>
+                    {filteredOrders.map((order) => (
+                      <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
+                        <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
+                        <TableCell className="text-sm font-mono">{order.customer_number}</TableCell>
+                        <TableCell className="text-sm uppercase font-semibold">{order.network}</TableCell>
+                        <TableCell className="text-sm font-display font-bold text-cyan-400">{order.size_gb || 0}GB</TableCell>
+                        <TableCell className="text-sm font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {order.payment_method === "wallet" ? "Wallet" : "Paystack"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`text-xs ${
+                            order.status === 'completed' || order.status === 'paid' ? 'bg-green-600/20 text-green-400 border-green-600/30' :
+                            order.status === 'pending' ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30' :
+                            order.status === 'processing' ? 'bg-blue-600/20 text-blue-400 border-blue-600/30' :
+                            'bg-slate-600/20 text-slate-400 border-slate-600/30'
+                          }`}>
+                            {order.status === 'paid' ? 'Completed' : order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   const generatePng = async () => {
     const canvas = document.createElement('canvas');
@@ -1127,8 +1177,8 @@ const UserDashboard = () => {
           </div>
           <p className="font-display text-3xl font-bold text-purple-400">GHC {Number(apiWallet).toFixed(2)}</p>
           <p className="text-xs text-muted-foreground mt-2">For API purchases</p>
-          <Button onClick={handleOpenApiWalletTopup} className="mt-4 w-full" size="sm">
-            Add Funds
+          <Button onClick={() => { console.log("[v0] Top Up API clicked"); setShowApiWalletTopup(true); }} className="mt-4 w-full" size="sm">
+            Top Up
           </Button>
         </CardContent>
       </Card>
