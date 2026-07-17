@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
+import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DataPackage {
   id: string;
@@ -79,7 +79,7 @@ const UserDashboard = () => {
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
   const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
-  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
+  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("paystack");
   const [buyLoading, setBuyLoading] = useState(false);
   const [topupReference, setTopupReference] = useState<string>("");
   const [showApiWalletTopup, setShowApiWalletTopup] = useState(false);
@@ -442,7 +442,7 @@ const UserDashboard = () => {
     setBuyPkg(pkg);
     setBuyPhone("");
     setBuyStep("phone");
-    setBuyPaymentMethod("wallet");
+    setBuyPaymentMethod("paystack");
     setBuyDialogOpen(true);
   };
 
@@ -529,8 +529,10 @@ const UserDashboard = () => {
         // Paystack payment flow - uses the same verify-payment path as the Packages page.
         // callback "?payment=verifying" triggers <PaymentVerifier /> which calls verify-payment
         // and creates the order. customer_id ties the order to this user's dashboard.
+        // Add the 1.98% Paystack processing fee on top of the package price.
+        const paystackTotal = Math.round((price + (price * 1.98) / 100) * 100) / 100;
         const payloadBody = {
-          amount: price,
+          amount: paystackTotal,
           email: user?.email || `${buyPhone.trim()}@dataplug.store`,
           phone: buyPhone.trim(),
           callback_url: `${window.location.origin}/user-dashboard?payment=verifying`,
@@ -1798,19 +1800,40 @@ const UserDashboard = () => {
 
               <div>
                 <Label>Payment Method</Label>
-                <Select value={buyPaymentMethod} onValueChange={(value: any) => setBuyPaymentMethod(value)}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="wallet">
-                      Wallet (Balance: GHC {Number(normalWallet).toFixed(2)})
-                    </SelectItem>
-                    <SelectItem value="paystack">
+                <div className="mt-1 grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBuyPaymentMethod("paystack")}
+                    aria-pressed={buyPaymentMethod === "paystack"}
+                    className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
+                      buyPaymentMethod === "paystack" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "paystack" ? "border-primary" : "border-muted-foreground"}`}>
+                        {buyPaymentMethod === "paystack" && <span className="h-2 w-2 rounded-full bg-primary" />}
+                      </span>
                       Paystack
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                    </span>
+                    <span className="text-xs font-medium text-yellow-400">1.98% fee added</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBuyPaymentMethod("wallet")}
+                    aria-pressed={buyPaymentMethod === "wallet"}
+                    className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
+                      buyPaymentMethod === "wallet" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "wallet" ? "border-primary" : "border-muted-foreground"}`}>
+                        {buyPaymentMethod === "wallet" && <span className="h-2 w-2 rounded-full bg-primary" />}
+                      </span>
+                      Wallet (GHC {Number(normalWallet).toFixed(2)})
+                    </span>
+                    <span className="text-xs font-medium text-green-400">No fee added</span>
+                  </button>
+                </div>
               </div>
 
               <Button
@@ -1837,7 +1860,13 @@ const UserDashboard = () => {
                 <p className="text-sm"><span className="text-muted-foreground">Network:</span> {buyPkg?.network.toUpperCase()}</p>
                 <p className="text-sm"><span className="text-muted-foreground">Package:</span> {buyPkg?.size_gb}GB</p>
                 <p className="text-sm"><span className="text-muted-foreground">Amount:</span> GHC {Number(buyPkg?.price || 0).toFixed(2)}</p>
-                <p className="text-sm"><span className="text-muted-foreground">Payment:</span> {buyPaymentMethod === "wallet" ? "Wallet" : "Paystack"}</p>
+                {buyPaymentMethod === "paystack" && (
+                  <>
+                    <p className="text-sm"><span className="text-muted-foreground">Paystack Fee (1.98%):</span> GHC {(Number(buyPkg?.price || 0) * 1.98 / 100).toFixed(2)}</p>
+                    <p className="text-sm font-semibold"><span className="text-muted-foreground">Total:</span> GHC {(Number(buyPkg?.price || 0) * 1.0198).toFixed(2)}</p>
+                  </>
+                )}
+                <p className="text-sm"><span className="text-muted-foreground">Payment:</span> {buyPaymentMethod === "wallet" ? "Wallet (No fee)" : "Paystack"}</p>
               </div>
 
               <div className="flex gap-2">
@@ -1879,6 +1908,8 @@ const UserDashboard = () => {
 
       {/* Verifies Paystack data purchases on return and creates the order */}
       <PaymentVerifier />
+
+      <WhatsAppFloatingButton />
 
       <Footer />
     </div>

@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Zap, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -76,16 +75,56 @@ const Signup = () => {
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="userType">Account Type</Label>
-              <Select value={userType} onValueChange={(value) => setUserType(value as "agent" | "customer")}>
-                <SelectTrigger className="bg-background border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="agent">Become an Agent</SelectItem>
-                  <SelectItem value="customer">Customer</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Account Type</Label>
+              <div className="grid grid-cols-1 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setUserType("customer")}
+                  aria-pressed={userType === "customer"}
+                  className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-colors ${
+                    userType === "customer"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
+                      userType === "customer" ? "border-primary" : "border-muted-foreground"
+                    }`}
+                  >
+                    {userType === "customer" && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                  </span>
+                  <span>
+                    <span className="block font-semibold">User</span>
+                    <span className="block text-xs text-muted-foreground">Buy data for yourself at regular prices</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUserType("agent")}
+                  aria-pressed={userType === "agent"}
+                  className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-colors ${
+                    userType === "agent"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
+                      userType === "agent" ? "border-primary" : "border-muted-foreground"
+                    }`}
+                  >
+                    {userType === "agent" && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                  </span>
+                  <span>
+                    <span className="block font-semibold">Agent</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Get your own store with discounted agent prices, set your own prices, and recruit agents &amp; subagents. You&apos;ll complete store setup after signing up.
+                    </span>
+                  </span>
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
