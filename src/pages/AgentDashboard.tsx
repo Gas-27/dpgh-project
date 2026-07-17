@@ -320,6 +320,72 @@ const AgentDashboard = () => {
   const [subagentOrders, setSubagentOrdersState] = useState<any[]>([]);
   const [subagents, setSubagents] = useState<any[]>([]);
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
+  const [totalOrderCount, setTotalOrderCount] = useState(0);
+  const [subagentProfitForAgent, setSubagentProfitForAgent] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [networkFilter, setNetworkFilter] = useState("mtn");
+  const [savingPrices, setSavingPrices] = useState(false);
+  const [editingStore, setEditingStore] = useState(false);
+  const [orderSearch, setOrderSearch] = useState("");
+  const [storeForm, setStoreForm] = useState({
+    store_name: "", whatsapp_number: "", support_number: "",
+    whatsapp_group: "", show_whatsapp_group_icon: true, show_ussd_on_storefront: true,
+    momo_number: "", momo_name: "", momo_network: "",
+  });
+  const [savingStore, setSavingStore] = useState(false);
+  const [profitStats, setProfitStats] = useState<ProfitStats>({ totalRevenue: 0, totalCost: 0, totalProfit: 0, availableForWithdrawal: 0 });
+  const [buyDialogOpen, setBuyDialogOpen] = useState(false);
+  const [showAgentWalletTopup, setShowAgentWalletTopup] = useState(false);
+  const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
+  const [buyPhone, setBuyPhone] = useState("");
+  const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
+  const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
+  const [buyLoading, setBuyLoading] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState<string>("");
+  const [createNewRecipient, setCreateNewRecipient] = useState(false);
+  const [editingRecipient, setEditingRecipient] = useState<any>(null);
+  const [recipientName, setRecipientName] = useState("");
+  const [mobileNetwork, setMobileNetwork] = useState("mtn");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [showTopupDialog, setShowTopupDialog] = useState(false);
+  const [topupAmount, setTopupAmount] = useState("");
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string; source: string }[]>([]);
+  const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
+  const [savingTheme, setSavingTheme] = useState(false);
+  const [storeHeadline, setStoreHeadline] = useState("");
+  const [savingHeadline, setSavingHeadline] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [newNotificationMsg, setNewNotificationMsg] = useState("");
+  const [newNotificationExpiry, setNewNotificationExpiry] = useState("");
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [openManualSection, setOpenManualSection] = useState<number | null>(null);
+  const [markupPercent, setMarkupPercent] = useState("");
+
+  // Notifications to subagents
+  const [subagentNotificationMsg, setSubagentNotificationMsg] = useState("");
+  const [sendingSubagentNotification, setSendingSubagentNotification] = useState(false);
+  const [subagentNotifications, setSubagentNotifications] = useState<any[]>([]);
+
+  // Bulk Orders
+  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
+  const [bulkRecipients, setBulkRecipients] = useState("");
+  const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [bulkResults, setBulkResults] = useState<{ phone: string; size: number; status: string; error?: string }[]>([]);
+
+  // API Key
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<number>(0);
+  const [generatingApiKey, setGeneratingApiKey] = useState(false);
+  const [loadingApiKey, setLoadingApiKey] = useState(true);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
 
   // Refund state for subagent orders
   const [selectedSubagentOrderIds, setSelectedSubagentOrderIds] = useState<Set<string>>(new Set());
@@ -1930,7 +1996,7 @@ const AgentDashboard = () => {
                   
                   if (!updateErr) {
                     successCount++;
-                    setSubagentOrders((prev) =>
+                    setSubagentOrdersState((prev) =>
                       prev.map((o) => 
                         o.id === orderId 
                           ? { ...o, wallet_refunded: true } 
