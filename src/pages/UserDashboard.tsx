@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -87,6 +87,7 @@ const UserDashboard = () => {
   const [totalOrders, setTotalOrders] = useState(0);
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
   const [showNormalWalletTopup, setShowNormalWalletTopup] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // API Orders state
   const [apiOrders, setApiOrders] = useState<any[]>([]);
@@ -276,7 +277,61 @@ const UserDashboard = () => {
     };
 
     fetchUserData();
-  }, [user?.id, toast]);
+  }, [user?.id, toast, refreshKey]);
+
+  // After returning from Paystack (Buy Data), claim the newly created order for this user.
+  // The verify-payment function creates the order (async), so we poll by paystack_reference
+  // and set customer_id = user.id. This makes Paystack purchases appear in Overview/Orders
+  // even before the edge function's own customer_id linking is deployed.
+  // Safe because the orders table has RLS disabled.
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const paymentState = params.get("payment");
+    const reference =
+      params.get("reference") ||
+      params.get("trxref") ||
+      sessionStorage.getItem("pending_buy_payment");
+
+    if (paymentState !== "verifying" || !reference) return;
+
+    let cancelled = false;
+    let attempts = 0;
+
+    const claimOrder = async () => {
+      while (!cancelled && attempts < 12) {
+        attempts++;
+        const { data: existing } = await supabase
+          .from("orders")
+          .select("id, customer_id")
+          .eq("paystack_reference", reference)
+          .maybeSingle();
+
+        if (existing) {
+          if (!existing.customer_id) {
+            await supabase
+              .from("orders")
+              .update({ customer_id: user.id })
+              .eq("id", existing.id);
+          }
+          sessionStorage.removeItem("pending_buy_payment");
+          sessionStorage.removeItem("pending_buy_phone");
+          sessionStorage.removeItem("pending_buy_package");
+          if (!cancelled) setRefreshKey((k) => k + 1);
+          return;
+        }
+
+        // Order not created yet - wait and retry
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+    };
+
+    claimOrder();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   // Subscribe to real-time package changes
   useEffect(() => {
@@ -1478,42 +1533,90 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Agent Benefits */}
+        {/* Quick Highlights */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Agent Benefits</CardTitle>
+            <CardTitle className="text-lg">Why Agents Love Our Platform</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
-              <div>
-                <p className="font-semibold text-sm">Custom Pricing</p>
-                <p className="text-xs text-muted-foreground">Set your own prices and margins, and set prices for your agents too</p>
-              </div>
+          <CardContent className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="font-display font-bold text-2xl text-primary">10+</p>
+              <p className="text-xs text-muted-foreground mt-1">Revenue streams and earning opportunities</p>
             </div>
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
-              <div>
-                <p className="font-semibold text-sm">Agents &amp; Subagents</p>
-                <p className="text-xs text-muted-foreground">You can have agents who can also have their own subagents under them</p>
-              </div>
+            <div>
+              <p className="font-display font-bold text-2xl text-cyan-400">Unlimited</p>
+              <p className="text-xs text-muted-foreground mt-1">Commission levels - build your own empire</p>
             </div>
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
-              <div>
-                <p className="font-semibold text-sm">One-Time Setup</p>
-                <p className="text-xs text-muted-foreground">After registration there is no money involved again</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
-              <div>
-                <p className="font-semibold text-sm">Earnings Dashboard</p>
-                <p className="text-xs text-muted-foreground">Track commissions and withdrawals</p>
-              </div>
+            <div>
+              <p className="font-display font-bold text-2xl text-green-400">24/7</p>
+              <p className="text-xs text-muted-foreground mt-1">Instant withdrawals, anytime you want</p>
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Exclusive Agent Benefits */}
+      <div>
+        <h3 className="text-lg font-bold mb-4 text-foreground">Exclusive Agent Benefits</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {[
+            { icon: Smartphone, title: "Personal USSD", description: "Get your own USSD code to sell data bundles directly to customers", color: "from-blue-600 to-blue-700" },
+            { icon: Store, title: "Shop USSD", description: "Create your shop and share a unique USSD code with your customers", color: "from-cyan-600 to-cyan-700" },
+            { icon: Globe, title: "Custom Store Link", description: "Get your personalized storefront URL with your shop name - build your brand", color: "from-purple-600 to-purple-700" },
+            { icon: Palette, title: "Free Flyer Generator", description: "Create beautiful, customizable flyers to promote your business on social media", color: "from-pink-600 to-pink-700" },
+            { icon: Users, title: "Build Subagents", description: "Recruit subagents who get their own USSD codes and earning power", color: "from-green-600 to-green-700" },
+            { icon: BarChart3, title: "Multi-Level Earnings", description: "Your subagents can recruit agents - earn commissions at every level", color: "from-orange-600 to-orange-700" },
+            { icon: Settings, title: "AFA Management", description: "Set your own AFA bundle prices and manage registrations from your dashboard", color: "from-red-600 to-red-700" },
+            { icon: Zap, title: "API Access", description: "Access our API with heavily discounted pricing for bulk operations", color: "from-yellow-600 to-yellow-700" },
+            { icon: Wallet, title: "Instant Withdrawals", description: "Withdraw your earnings instantly, anytime - no delays or hidden fees", color: "from-emerald-600 to-emerald-700" },
+            { icon: Share2, title: "Marketing Tools", description: "Access templates, promotional content, and ready-made marketing materials", color: "from-indigo-600 to-indigo-700" },
+          ].map((benefit, index) => {
+            const IconComponent = benefit.icon;
+            return (
+              <Card key={index} className="hover:border-primary/50 transition-all">
+                <CardContent className="p-4">
+                  <div className="flex gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${benefit.color} text-white flex-shrink-0`}>
+                      <IconComponent className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-sm mb-1">{benefit.title}</h4>
+                      <p className="text-xs text-muted-foreground leading-tight">{benefit.description}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Your Path to Success */}
+      <div>
+        <h3 className="text-lg font-bold mb-4 text-foreground">Your Path to Success</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="bg-primary text-primary-foreground rounded-full w-10 h-10 flex items-center justify-center font-bold mx-auto mb-3">1</div>
+              <p className="font-semibold text-sm mb-2">Sign Up</p>
+              <p className="text-xs text-muted-foreground">Set up your store details &amp; get your personal USSD</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="bg-cyan-600 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold mx-auto mb-3">2</div>
+              <p className="font-semibold text-sm mb-2">Setup Shop</p>
+              <p className="text-xs text-muted-foreground">Create storefront &amp; start selling</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="bg-purple-600 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold mx-auto mb-3">3</div>
+              <p className="font-semibold text-sm mb-2">Build Network &amp; Earn</p>
+              <p className="text-xs text-muted-foreground">Recruit agents &amp; enjoy multi-level earnings</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Upgrade Button */}
