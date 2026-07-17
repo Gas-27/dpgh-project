@@ -46,34 +46,64 @@ Deno.serve(async (req) => {
 
     // For normal wallet - get customer
     if (walletType === "normal" && identity_id) {
-      const { data: customer, error } = await supabase
+      // First try to get existing customer
+      const { data: customer, error: customerError } = await supabase
         .from("customers")
         .select("id, email")
         .eq("id", identity_id)
-        .single();
+        .maybeSingle();
 
-      if (error || !customer) {
-        return new Response(
-          JSON.stringify({ error: "Customer not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (customer) {
+        userEmail = customer.email;
+        userId = customer.id;
+      } else {
+        // Customer doesn't exist, get from auth.users
+        const { data: authUser, error: authError } = await supabase
+          .from("auth.users")
+          .select("id, email")
+          .eq("id", identity_id)
+          .single();
+
+        if (authError || !authUser) {
+          return new Response(
+            JSON.stringify({ error: "User not found in authentication" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        userEmail = authUser.email || `customer-${identity_id}@dataplug.store`;
+        userId = identity_id;
+
+        // Create customer record if it doesn't exist
+        const { error: createError } = await supabase
+          .from("customers")
+          .insert({
+            id: identity_id,
+            email: userEmail,
+            wallet_balance: 0,
+            customer_type: "customer",
+          })
+          .select("id")
+          .single();
+
+        // Don't fail if customer creation fails, just proceed with topup
+        if (createError) {
+          console.error("[INITIALIZE-WALLET-TOPUP] Failed to create customer:", createError);
+        }
       }
-
-      userEmail = customer.email;
-      userId = customer.id;
     } 
     // For API wallet - get api user
     else if (walletType === "api" && api_key) {
-      const { data: apiUser, error } = await supabase
+      const { data: apiUser, error: apiError } = await supabase
         .from("api_users")
-        .select("id, identity_id")
+        .select("id, identity_id, wallet")
         .eq("api_key", api_key)
         .eq("active", true)
-        .single();
+        .maybeSingle();
 
-      if (error || !apiUser) {
+      if (apiError || !apiUser) {
         return new Response(
-          JSON.stringify({ error: "API key invalid" }),
+          JSON.stringify({ error: "API key invalid or inactive" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
