@@ -91,10 +91,12 @@ Deno.serve(async (req) => {
 
     const { reference, metadata, amount } = payload.data;
     const paymentType = metadata?.type;
+    const customerId = metadata?.customer_id;
 
     console.log(`Processing payment: ${reference}`);
     console.log(`Amount paid (including fee): GHS ${Number(amount) / 100}`);
     console.log(`Payment type: ${paymentType || "package_purchase"}`);
+    console.log(`Customer ID: ${customerId || "not provided"}`);
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -267,6 +269,7 @@ Deno.serve(async (req) => {
       const { data: order, error: orderError } = await supabaseClient
         .from("orders")
         .insert({
+          customer_id: customerId,
           customer_number: phone,
           package_id: packageId,
           network,
@@ -363,6 +366,7 @@ Deno.serve(async (req) => {
       const { data: order, error: orderError } = await supabaseClient
         .from("orders")
         .insert({
+          customer_id: customerId,
           customer_number: phone,
           package_id: packageId,
           network,
@@ -445,6 +449,7 @@ Deno.serve(async (req) => {
       const { data: order, error: orderError } = await supabaseClient
         .from("orders")
         .insert({
+          customer_id: customerId,
           customer_number: phone,
           package_id: packageId,
           network,
