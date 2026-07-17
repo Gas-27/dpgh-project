@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -122,6 +122,16 @@ const UserDashboard = () => {
 
   // Orders search state
   const [orderSearch, setOrderSearch] = useState("");
+
+  // Overview date filtering and stats
+  const [overviewDateFilter, setOverviewDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
+  const [customDateStart, setCustomDateStart] = useState<string>("");
+  const [customDateEnd, setCustomDateEnd] = useState<string>("");
+
+  // Agent upgrade confirmation modal
+  const [showUpgradeConfirmation, setShowUpgradeConfirmation] = useState(false);
+  const [registrationFee, setRegistrationFee] = useState<number>(0);
+  const [registrationFeeLoading, setRegistrationFeeLoading] = useState(false);
 
   // Menu navigation
   const [activeMenu, setActiveMenu] = useState("overview");
@@ -427,6 +437,79 @@ const UserDashboard = () => {
     return matchSearch && matchStatus;
   });
 
+  // Fetch agent registration fee
+  const fetchRegistrationFee = async () => {
+    setRegistrationFeeLoading(true);
+    try {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("agent_registration_fee")
+        .maybeSingle();
+      if (data?.agent_registration_fee) {
+        setRegistrationFee(Number(data.agent_registration_fee));
+      }
+    } catch (error) {
+      console.log("[v0] Error fetching registration fee:", error);
+    } finally {
+      setRegistrationFeeLoading(false);
+    }
+  };
+
+  // Get filtered orders and stats for the overview based on date filter
+  const getFilteredOverviewStats = () => {
+    const now = new Date();
+    let startDate: Date;
+
+    switch (overviewDateFilter) {
+      case "today":
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case "yesterday":
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        return {
+          filteredOrders: orders.filter(o => {
+            const oDate = new Date(o.created_at);
+            return oDate >= startDate && oDate < endDate;
+          }),
+          totalSpent: orders.filter(o => {
+            const oDate = new Date(o.created_at);
+            return oDate >= startDate && oDate < endDate;
+          }).reduce((sum, o) => sum + (Number(o.amount) || 0), 0)
+        };
+      case "week":
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - now.getDay());
+        break;
+      case "month":
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case "custom":
+        if (!customDateStart || !customDateEnd) return { filteredOrders: orders, totalSpent: orders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0) };
+        startDate = new Date(customDateStart);
+        const customEnd = new Date(customDateEnd);
+        return {
+          filteredOrders: orders.filter(o => {
+            const oDate = new Date(o.created_at);
+            return oDate >= startDate && oDate <= customEnd;
+          }),
+          totalSpent: orders.filter(o => {
+            const oDate = new Date(o.created_at);
+            return oDate >= startDate && oDate <= customEnd;
+          }).reduce((sum, o) => sum + (Number(o.amount) || 0), 0)
+        };
+      default: // all
+        return { filteredOrders: orders, totalSpent: orders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0) };
+    }
+
+    return {
+      filteredOrders: orders.filter(o => new Date(o.created_at) >= startDate),
+      totalSpent: orders.filter(o => new Date(o.created_at) >= startDate).reduce((sum, o) => sum + (Number(o.amount) || 0), 0)
+    };
+  };
+
+  const { filteredOrders: overviewFilteredOrders, totalSpent: overviewTotalSpent } = getFilteredOverviewStats();
+
   const generateApiKey = async () => {
     if (generatingApiKey) return;
     setGeneratingApiKey(true);
@@ -694,11 +777,66 @@ const UserDashboard = () => {
   };
 
   const renderOverview = () => {
-    // Get recent orders for display
-    const recentOrders = orders.slice(0, 10);
-    
     return (
     <div className="space-y-6">
+      {/* Date Filter Buttons */}
+      <div>
+        <p className="text-sm font-semibold text-muted-foreground mb-3">Filter Stats & Orders:</p>
+        <div className="flex flex-wrap gap-2">
+          {["all", "today", "yesterday", "week", "month", "custom"].map((filter) => (
+            <button
+              key={filter}
+              onClick={() => {
+                setOverviewDateFilter(filter as any);
+                if (filter !== "custom") {
+                  setCustomDateStart("");
+                  setCustomDateEnd("");
+                }
+              }}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                overviewDateFilter === filter
+                  ? "bg-cyan-500 text-white"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {filter === "all" ? "All Time" : filter === "today" ? "Today" : filter === "yesterday" ? "Yesterday" : filter === "week" ? "This Week" : filter === "month" ? "This Month" : "Custom"}
+            </button>
+          ))}
+        </div>
+        {overviewDateFilter === "custom" && (
+          <div className="flex gap-2 mt-3">
+            <input
+              type="date"
+              value={customDateStart}
+              onChange={e => setCustomDateStart(e.target.value)}
+              className="px-3 py-2 rounded border border-border bg-background text-foreground text-sm"
+            />
+            <input
+              type="date"
+              value={customDateEnd}
+              onChange={e => setCustomDateEnd(e.target.value)}
+              className="px-3 py-2 rounded border border-border bg-background text-foreground text-sm"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Become an Agent CTA Card */}
+      <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+        <CardContent className="p-6 flex items-center justify-between">
+          <div>
+            <p className="font-semibold text-foreground">Ready to grow your earnings?</p>
+            <p className="text-sm text-muted-foreground mt-1">Become an agent and unlock exclusive benefits</p>
+          </div>
+          <button
+            onClick={() => setActiveMenu("become-agent")}
+            className="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium whitespace-nowrap transition-all"
+          >
+            Become an Agent
+          </button>
+        </CardContent>
+      </Card>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-blue-500/5 hover:border-cyan-500/50 transition-all">
@@ -725,8 +863,8 @@ const UserDashboard = () => {
       <div className="grid grid-cols-1 gap-4">
         <Card className="border-border">
           <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground text-sm">Total Orders</p>
-            <p className="font-display text-3xl font-bold mt-2 text-foreground">{orders.length}</p>
+            <p className="text-muted-foreground text-sm">{overviewDateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p>
+            <p className="font-display text-3xl font-bold mt-2 text-foreground">{overviewFilteredOrders.length}</p>
           </CardContent>
         </Card>
       </div>
@@ -737,9 +875,9 @@ const UserDashboard = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Total Amount Spent</p>
-                <p className="font-display text-3xl font-bold text-green-400 mt-2">GHC {totalSpent.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground mt-1">All-time spending</p>
+                <p className="text-sm text-muted-foreground">{overviewDateFilter !== "all" ? "Amount Spent (Filtered)" : "Total Amount Spent"}</p>
+                <p className="font-display text-3xl font-bold text-green-400 mt-2">GHC {overviewTotalSpent.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-1">{overviewDateFilter === "all" ? "All-time spending" : `Spending (${overviewDateFilter})`}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-400 opacity-50" />
             </div>
@@ -915,10 +1053,16 @@ const UserDashboard = () => {
 
   const renderOrders = () => {
     // Filter orders based on search
-    const filteredOrders = orders.filter(order => 
-      order.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) ||
-      order.id?.toLowerCase().includes(orderSearch.toLowerCase())
-    );
+    const filteredOrders = orders.filter(order => {
+      if (!orderSearch) return true;
+      const search = orderSearch.toLowerCase();
+      return (
+        (order.customer_number && String(order.customer_number).toLowerCase().includes(search)) ||
+        (order.id && String(order.id).toLowerCase().includes(search)) ||
+        (order.network && String(order.network).toLowerCase().includes(search)) ||
+        (order.paystack_reference && String(order.paystack_reference).toLowerCase().includes(search))
+      );
+    });
 
     // Calculate stats
     const totalOrders = orders.length;
@@ -1565,11 +1709,13 @@ const UserDashboard = () => {
         <h3 className="text-lg font-bold mb-4 text-foreground">Exclusive Agent Benefits</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
-            { icon: Smartphone, title: "Personal USSD", description: "Get your own USSD code to sell data bundles directly to customers", color: "from-blue-600 to-blue-700" },
-            { icon: Store, title: "Shop USSD", description: "Create your shop and share a unique USSD code with your customers", color: "from-cyan-600 to-cyan-700" },
+            { icon: Smartphone, title: "Free Personal USSD", description: "Get your own USSD code to sell data bundles directly to customers - free of charge", color: "from-blue-600 to-blue-700" },
+            { icon: Store, title: "Free Shop USSD", description: "Create your shop with a unique USSD code - your subagents also get free USSD codes", color: "from-cyan-600 to-cyan-700" },
+            { icon: Crown, title: "Boss Mode - You're in Charge", description: "Build your own hierarchy - subagents who recruit sub-subagents, all under your control", color: "from-yellow-600 to-yellow-700" },
             { icon: Globe, title: "Custom Store Link", description: "Get your personalized storefront URL with your shop name - build your brand", color: "from-purple-600 to-purple-700" },
             { icon: Palette, title: "Free Flyer Generator", description: "Create beautiful, customizable flyers to promote your business on social media", color: "from-pink-600 to-pink-700" },
-            { icon: Users, title: "Build Subagents", description: "Recruit subagents who get their own USSD codes and earning power", color: "from-green-600 to-green-700" },
+            { icon: Send, title: "Notification System", description: "Send notifications to all your subagents instantly and update your storefront for customers to see every visit", color: "from-teal-600 to-teal-700" },
+            { icon: Users, title: "Build Subagents", description: "Recruit subagents who get their own USSD codes, stores, and earning power", color: "from-green-600 to-green-700" },
             { icon: BarChart3, title: "Multi-Level Earnings", description: "Your subagents can recruit agents - earn commissions at every level", color: "from-orange-600 to-orange-700" },
             { icon: Settings, title: "AFA Management", description: "Set your own AFA bundle prices and manage registrations from your dashboard", color: "from-red-600 to-red-700" },
             { icon: Zap, title: "API Access", description: "Access our API with heavily discounted pricing for bulk operations", color: "from-yellow-600 to-yellow-700" },
@@ -1629,9 +1775,13 @@ const UserDashboard = () => {
         <CardContent className="pt-6">
           <Button
             className="w-full h-12 text-lg font-semibold"
-            onClick={() => navigate("/agent-onboarding")}
+            onClick={() => {
+              fetchRegistrationFee();
+              setShowUpgradeConfirmation(true);
+            }}
+            disabled={registrationFeeLoading}
           >
-            Upgrade to Agent Now
+            {registrationFeeLoading ? "Loading..." : "Upgrade to Agent Now"}
           </Button>
           <p className="text-xs text-muted-foreground text-center mt-3">You&apos;ll set up your store details next, using your current account email.</p>
         </CardContent>
@@ -2044,6 +2194,74 @@ const UserDashboard = () => {
       <WhatsAppFloatingButton />
 
       <Footer />
+      {/* Agent Upgrade Confirmation Modal */}
+      {showUpgradeConfirmation && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-2xl">Ready to Become an Agent?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 space-y-3">
+                <div className="flex gap-2 items-start">
+                  <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm space-y-2">
+                    <p className="font-semibold text-foreground">Important Information:</p>
+                    <ul className="space-y-2 text-muted-foreground list-disc list-inside">
+                      <li>You will be charged <span className="font-semibold text-foreground">GHC {registrationFee.toFixed(2)}</span> for agent registration</li>
+                      <li>This amount will be deducted from your wallet balance (Current: <span className="font-semibold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</span>)</li>
+                      <li>After confirming, you cannot go back - your account will be upgraded to Agent immediately</li>
+                      <li>You will proceed to payment to activate your agent account</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="agree-terms"
+                    className="rounded border-border"
+                  />
+                  <span className="text-sm text-muted-foreground">I understand and agree to the agent registration terms</span>
+                </label>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowUpgradeConfirmation(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    const checkbox = document.getElementById("agree-terms") as HTMLInputElement;
+                    if (!checkbox?.checked) {
+                      toast({ title: "Please agree to continue", variant: "destructive" });
+                      return;
+                    }
+                    setShowUpgradeConfirmation(false);
+                    navigate("/agent-onboarding");
+                  }}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  disabled={normalWallet < registrationFee}
+                >
+                  {normalWallet < registrationFee ? "Insufficient Balance" : "I Understand - Proceed"}
+                </Button>
+              </div>
+
+              {normalWallet < registrationFee && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                  <p className="text-sm text-red-400">You need GHC {(registrationFee - normalWallet).toFixed(2)} more to proceed</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
