@@ -175,13 +175,16 @@ const UserDashboard = () => {
         }
 
         // Fetch user's normal wallet from customers table
+        // customers.user_id is the auth user id; customers.id is the PK
         const { data: customerData } = await supabase
           .from("customers")
           .select("*")
-          .eq("id", user.id)
+          .eq("user_id", user.id)
           .maybeSingle();
 
+        let customerPkId: string | null = null;
         if (customerData) {
+          customerPkId = customerData.id;
           setNormalWallet(customerData.wallet_balance || 0);
           if (customerData.topup_reference) {
             setTopupReference(customerData.topup_reference);
@@ -201,14 +204,16 @@ const UserDashboard = () => {
           setPackages(packagesData);
         }
 
-        // Fetch topup history for normal wallet
-        const { data: normalTopupHistory } = await supabase
-          .from("user_wallet_topups")
-          .select("id, customer_id, amount, paystack_reference, status, created_at")
-          .eq("customer_id", user.id)
-          .eq("status", "completed")
-          .order("created_at", { ascending: false })
-          .limit(10);
+        // Fetch topup history for normal wallet (customer_id is the customers PK)
+        const { data: normalTopupHistory } = customerPkId
+          ? await supabase
+              .from("user_wallet_topups")
+              .select("id, customer_id, amount, paystack_reference, status, created_at")
+              .eq("customer_id", customerPkId)
+              .eq("status", "completed")
+              .order("created_at", { ascending: false })
+              .limit(10)
+          : { data: null };
 
         if (normalTopupHistory) {
           const normalTopups = normalTopupHistory.map((t: any) => ({
@@ -431,7 +436,7 @@ const UserDashboard = () => {
         const { error: walletError } = await supabase
           .from("customers")
           .update({ wallet_balance: normalWallet - price })
-          .eq("id", user.id);
+          .eq("user_id", user.id);
 
         if (walletError) {
           toast({ title: "Error", description: walletError.message, variant: "destructive" });
