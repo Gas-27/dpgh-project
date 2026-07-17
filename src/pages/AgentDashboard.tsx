@@ -318,6 +318,7 @@ const AgentDashboard = () => {
   const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
   const [subagentOrdersCount, setSubagentOrdersCount] = useState(0);
   const [subagentOrders, setSubagentOrdersState] = useState<any[]>([]);
+  const [subagents, setSubagents] = useState<any[]>([]);
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
 
   // Refund state for subagent orders
