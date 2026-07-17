@@ -343,6 +343,7 @@ const UserDashboard = () => {
   };
 
   const handleOpenNormalWalletTopup = () => {
+    console.log("[v0] Opening normal wallet topup dialog");
     setShowNormalWalletTopup(true);
   };
 
@@ -534,7 +535,11 @@ const UserDashboard = () => {
     }
   };
 
-  const renderOverview = () => (
+  const renderOverview = () => {
+    // Get recent orders for display
+    const recentOrders = orders.slice(0, 10);
+    
+    return (
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -610,92 +615,67 @@ const UserDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Orders Stats and Filters */}
-      <Card>
+      {/* Recent Orders */}
+      <Card className="border-border">
         <CardHeader>
-          <CardTitle className="text-base">Filter Stats & Orders</CardTitle>
+          <CardTitle className="text-lg">Recent Orders ({orders.length})</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">Your latest data purchases</p>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Filter Buttons */}
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={orderFilter === "all" ? "default" : "outline"}
-              onClick={() => setOrderFilter("all")}
-              size="sm"
-            >
-              All Time
-            </Button>
-            <Button
-              variant={orderFilter === "today" ? "default" : "outline"}
-              onClick={() => setOrderFilter("today")}
-              size="sm"
-            >
-              Today
-            </Button>
-            <Button
-              variant={orderFilter === "yesterday" ? "default" : "outline"}
-              onClick={() => setOrderFilter("yesterday")}
-              size="sm"
-            >
-              Yesterday
-            </Button>
-            <Button
-              variant={orderFilter === "week" ? "default" : "outline"}
-              onClick={() => setOrderFilter("week")}
-              size="sm"
-            >
-              This Week
-            </Button>
-            <Button
-              variant={orderFilter === "month" ? "default" : "outline"}
-              onClick={() => setOrderFilter("month")}
-              size="sm"
-            >
-              This Month
-            </Button>
-            <Button
-              variant={orderFilter === "custom" ? "default" : "outline"}
-              onClick={() => setOrderFilter("custom")}
-              size="sm"
-            >
-              Custom
-            </Button>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-muted bg-muted/30">
-              <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground mb-2">Total Orders</p>
-                <p className="text-3xl font-bold text-cyan-400">{orders.length}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-muted bg-muted/30">
-              <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground mb-2">Total GB Bought</p>
-                <p className="text-3xl font-bold text-amber-400">{totalDataPurchased.toFixed(1)}GB</p>
-              </CardContent>
-            </Card>
-            <Card className="border-muted bg-muted/30">
-              <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground mb-2">Total Spent</p>
-                <p className="text-3xl font-bold text-green-400">GHC {Number(totalSpent).toFixed(2)}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-muted bg-muted/30">
-              <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground mb-2">Store Status</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <p className="font-semibold text-green-400">Active</p>
+        <CardContent>
+          {recentOrders.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No orders yet. Start by purchasing a data package.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date & Time</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Network</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Payment</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentOrders.map(order => (
+                    <TableRow key={order.id}>
+                      <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
+                      <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                      <TableCell className="uppercase text-sm font-semibold">{order.network}</TableCell>
+                      <TableCell className="font-display font-bold">{order.size_gb || 0}GB</TableCell>
+                      <TableCell>GHC {Number(order.amount).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {order.payment_method === "wallet" ? "Wallet" : "Paystack"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}
+                        >
+                          {order.status === "paid" ? "Completed" : order.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {orders.length > 10 && (
+                <div className="flex justify-center mt-4">
+                  <Button onClick={() => setActiveMenu("orders")} variant="outline">
+                    View All Orders
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
+  };
 
   const renderBuyData = () => (
     <div className="space-y-6">
