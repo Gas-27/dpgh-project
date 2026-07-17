@@ -1896,7 +1896,7 @@ const UserDashboard = () => {
         onOpenChange={setShowApiWalletTopup}
         currentBalance={apiWallet}
         walletType="api"
-        identityId={user?.id}
+        apiKey={userApiKey}
         callbackUrl={`${window.location.origin}/user-dashboard?wallet=success`}
       />
 

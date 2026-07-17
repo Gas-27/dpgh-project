@@ -65,16 +65,20 @@ Deno.serve(async (req) => {
 
     if (walletType === "normal" && identity_id) {
       // Get customer by ID
+      console.log(`[INITIALIZE-WALLET-TOPUP] Looking for customer with ID: ${identity_id}`);
+      
       const { data, error } = await supabase
         .from("customers")
         .select("id, email")
         .eq("id", identity_id)
         .single();
 
+      console.log(`[INITIALIZE-WALLET-TOPUP] Customer query result - Data:`, data, "Error:", error);
+
       if (error || !data) {
-        console.error(`[INITIALIZE-WALLET-TOPUP] Customer not found:`, error);
+        console.error(`[INITIALIZE-WALLET-TOPUP] Customer not found. Error details:`, error?.message, error?.details, error?.hint);
         return new Response(
-          JSON.stringify({ error: "Customer not found" }),
+          JSON.stringify({ error: `Customer not found (ID: ${identity_id})` }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
