@@ -126,6 +126,7 @@ const UserDashboard = () => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
+        console.log("[v0] Fetching orders for user:", user.id);
         
         // Fetch orders for this user
         const { data: ordersData, error: ordersError } = await supabase
@@ -135,10 +136,13 @@ const UserDashboard = () => {
           .order("created_at", { ascending: false })
           .range(0, 99999999);
 
+        console.log("[v0] Orders fetch result - Error:", ordersError, "Data:", ordersData);
+
         if (ordersError) {
           console.error("[v0] Error fetching orders:", ordersError);
         } else {
           const userOrders = (ordersData as Order[]) || [];
+          console.log("[v0] User orders loaded:", userOrders.length, "orders");
           setOrders(userOrders);
 
           let totalGB = 0;
