@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -785,6 +785,44 @@ const UserDashboard = () => {
   const renderOverview = () => {
     return (
     <div className="space-y-6">
+      {/* Become an Agent CTA Card */}
+      <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+        <CardContent className="p-6 flex items-center justify-between">
+          <div>
+            <p className="font-semibold text-foreground">Ready to grow your earnings?</p>
+            <p className="text-sm text-muted-foreground mt-1">Become an agent and unlock exclusive benefits</p>
+          </div>
+          <button
+            onClick={() => setActiveMenu("become-agent")}
+            className="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium whitespace-nowrap transition-all"
+          >
+            Become an Agent
+          </button>
+        </CardContent>
+      </Card>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-blue-500/5 hover:border-cyan-500/50 transition-all">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
+              <Wallet className="h-5 w-5 text-cyan-400" />
+            </div>
+            <p className="font-display text-3xl font-bold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mt-2">For regular purchases</p>
+            <div className="flex gap-2 mt-4">
+              <Button onClick={() => setActiveMenu("buy-data")} className="flex-1" size="sm" variant="default">
+                Buy Data
+              </Button>
+              <Button onClick={() => setShowNormalWalletTopup(true)} className="flex-1" size="sm" variant="outline">
+                Top Up
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Date Filter Buttons */}
       <div>
         <p className="text-sm font-semibold text-muted-foreground mb-3">Filter Stats & Orders:</p>
@@ -825,44 +863,6 @@ const UserDashboard = () => {
             />
           </div>
         )}
-      </div>
-
-      {/* Become an Agent CTA Card */}
-      <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
-        <CardContent className="p-6 flex items-center justify-between">
-          <div>
-            <p className="font-semibold text-foreground">Ready to grow your earnings?</p>
-            <p className="text-sm text-muted-foreground mt-1">Become an agent and unlock exclusive benefits</p>
-          </div>
-          <button
-            onClick={() => setActiveMenu("become-agent")}
-            className="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium whitespace-nowrap transition-all"
-          >
-            Become an Agent
-          </button>
-        </CardContent>
-      </Card>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-blue-500/5 hover:border-cyan-500/50 transition-all">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
-              <Wallet className="h-5 w-5 text-cyan-400" />
-            </div>
-            <p className="font-display text-3xl font-bold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-2">For regular purchases</p>
-            <div className="flex gap-2 mt-4">
-              <Button onClick={() => setActiveMenu("buy-data")} className="flex-1" size="sm" variant="default">
-                Buy Data
-              </Button>
-              <Button onClick={() => { console.log("[v0] Top Up clicked"); setShowNormalWalletTopup(true); }} className="flex-1" size="sm" variant="outline">
-                Top Up
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Stats Cards Row - Like Agent Dashboard */}
@@ -917,6 +917,35 @@ const UserDashboard = () => {
             >
               <Phone className="h-4 w-4 mr-2" /> Call
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Agent Features Menu Card */}
+      <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-indigo-500/10">
+        <CardHeader>
+          <CardTitle>Agent Features</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { icon: Tag, label: "Prices", onClick: () => setActiveMenu("become-agent") },
+              { icon: Package, label: "AFA Bundles", onClick: () => setActiveMenu("afa-registration") },
+              { icon: ImageIcon, label: "Flyer Generator", onClick: () => setActiveMenu("rewards") },
+              { icon: Bell, label: "Notifications", onClick: () => {} },
+              { icon: AlertCircle, label: "Complaints", onClick: () => {} },
+              { icon: Smartphone, label: "USSD", onClick: () => {} },
+              { icon: Settings, label: "Settings", onClick: () => setActiveMenu("settings") },
+            ].map((feature, idx) => (
+              <button
+                key={idx}
+                onClick={feature.onClick}
+                className="p-4 rounded-lg border border-muted-foreground/20 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all flex flex-col items-center gap-2 text-center group"
+              >
+                <feature.icon className="h-5 w-5 text-purple-400 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">{feature.label}</span>
+              </button>
+            ))}
           </div>
         </CardContent>
       </Card>
