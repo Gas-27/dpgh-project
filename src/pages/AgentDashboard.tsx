@@ -1962,29 +1962,36 @@ const AgentDashboard = () => {
               const order = subagentOrders.find(o => o.id === orderId);
               if (!order) continue;
 
-              const refundAmount = Number(order.amount);
+              // Only allow refunding orders that have already been refunded by admin
+              if (order.fulfillment_status !== "refunded" && order.status !== "refunded") {
+                errorCount++;
+                continue;
+              }
+
+              // Use agent_price (base price given to subagent) for refund, not customer-paid amount
+              const refundAmount = Number(order.agent_price || order.amount);
               
-              // Refund to agent's wallet (since agent is refunding subagent orders)
-              if (store) {
-                const newBalance = (store.wallet_balance || 0) + refundAmount;
-                const { error: updateErr } = await supabase
-                  .from("agent_stores")
-                  .update({ wallet_balance: newBalance })
-                  .eq("id", store.id);
+              // Find the subagent who placed this order and refund to their wallet
+              if (order.subagent_store_id) {
+                const { data: subagent } = await supabase
+                  .from("subagent_stores")
+                  .select("wallet_balance")
+                  .eq("id", order.subagent_store_id)
+                  .maybeSingle();
+                
+                if (subagent) {
+                  const newBalance = (subagent.wallet_balance || 0) + refundAmount;
+                  const { error: updateErr } = await supabase
+                    .from("subagent_stores")
+                    .update({ wallet_balance: newBalance })
+                    .eq("id", order.subagent_store_id);
                   
-                if (!updateErr) {
-                  // Mark order as refunded
-                  const { error: refundErr } = await supabase
-                    .from("orders")
-                    .update({ fulfillment_status: "refunded", status: "refunded" })
-                    .eq("id", orderId);
-                  
-                  if (!refundErr) {
+                  if (!updateErr) {
                     successCount++;
                     setSubagentOrders((prev) =>
                       prev.map((o) => 
                         o.id === orderId 
-                          ? { ...o, fulfillment_status: "refunded", status: "refunded" } 
+                          ? { ...o, wallet_refunded: true } 
                           : o
                       )
                     );
@@ -2300,49 +2307,51 @@ const AgentDashboard = () => {
 
           {/* ============================= REFUNDS ============================= */}
           <TabsContent value="refunds" className="space-y-6 mt-0">
+            <Card className="border-blue-500/30 bg-blue-500/5">
+              <CardContent className="p-4">
+                <p className="text-sm text-blue-400">
+                  <strong>Note:</strong> You can only refund subagent orders that the admin has already refunded to you. The refund will be sent to the subagent&apos;s wallet at the base price you gave them.
+                </p>
+              </CardContent>
+            </Card>
+
             <Card className="border-amber-500/30 bg-amber-500/5">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Subagent Orders Refunded</p>
+                    <p className="text-sm text-muted-foreground">Admin-Refunded Orders Available</p>
                     <p className="font-display text-3xl font-bold text-amber-400 mt-2">{subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded").length}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Total refund value: GHC {subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded").reduce((sum, o) => sum + (Number(o.amount) || 0), 0).toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Total base price value: GHC {subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded").reduce((sum, o) => sum + (Number(o.agent_price || o.amount) || 0), 0).toFixed(2)}</p>
                   </div>
                   <Wallet className="h-8 w-8 text-amber-400 opacity-50" />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Refund Filter Buttons */}
+            {/* Refund Filter Buttons - Only show refunded orders */}
             <div>
-              <p className="text-sm font-semibold text-muted-foreground mb-3">Filter Subagent Refunds:</p>
+              <p className="text-sm font-semibold text-muted-foreground mb-3">Filter Orders:</p>
               <div className="flex flex-wrap gap-2">
-                {(["all", "processing", "delivered", "refunded"] as const).map((filter) => (
+                {(["all", "refunded"] as const).map((filter) => (
                   <button
                     key={filter}
-                    onClick={() => setRefundFilterAgent(filter)}
+                    onClick={() => setRefundFilterAgent(filter as any)}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                       refundFilterAgent === filter
                         ? "bg-amber-500 text-white"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
-                    {filter === "all" ? "All" : filter === "processing" ? "Processing" : filter === "delivered" ? "Delivered" : "Refunded"}
+                    {filter === "all" ? "All Refundable" : "Refunded by Admin"}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Subagent Orders Table with Multi-Select */}
+            {/* Subagent Orders Table with Multi-Select - Only show refunded orders */}
             {(() => {
-              let filteredOrders = subagentOrders;
-              if (refundFilterAgent === "processing") {
-                filteredOrders = subagentOrders.filter(o => o.fulfillment_status !== "completed" && o.fulfillment_status !== "refunded");
-              } else if (refundFilterAgent === "delivered") {
-                filteredOrders = subagentOrders.filter(o => o.fulfillment_status === "completed");
-              } else if (refundFilterAgent === "refunded") {
-                filteredOrders = subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded");
-              }
+              // Only show orders that have been refunded by admin (can be refunded to subagent)
+              let filteredOrders = subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded");
 
               return (
                 <>
@@ -2375,7 +2384,8 @@ const AgentDashboard = () => {
                             <TableHead>Phone</TableHead>
                             <TableHead>Network</TableHead>
                             <TableHead>Size</TableHead>
-                            <TableHead>Amount</TableHead>
+                            <TableHead>Customer Paid</TableHead>
+                            <TableHead>Base Price (Refund)</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -2387,10 +2397,11 @@ const AgentDashboard = () => {
                               <TableCell className="font-medium">{order.customer_number}</TableCell>
                               <TableCell className="uppercase text-sm">{order.network}</TableCell>
                               <TableCell>{order.size_gb}GB</TableCell>
-                              <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                              <TableCell className="font-semibold text-amber-400">GHC {Number(order.agent_price || order.amount || 0).toFixed(2)}</TableCell>
                               <TableCell>
-                                <Badge className={order.fulfillment_status === "refunded" || order.status === "refunded" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : "bg-blue-500/20 text-blue-400 border-blue-500/30"}>
-                                  {order.fulfillment_status === "refunded" || order.status === "refunded" ? "Refunded" : order.fulfillment_status}
+                                <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                                  Refunded by Admin
                                 </Badge>
                               </TableCell>
                             </TableRow>
