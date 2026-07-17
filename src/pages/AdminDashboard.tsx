@@ -1536,6 +1536,31 @@ const AdminDashboard = () => {
     let successCount = 0;
     let errorCount = 0;
 
+    // Resolve the authoritative base price the admin gave the agent for this package.
+    // Storefront orders only store the customer-facing "amount", so we must look up the
+    // real admin base price: a per-agent custom base price first, then the global package
+    // agent_price, then finally whatever price fields the order happens to carry.
+    const resolveAgentBasePrice = async (order: any, agentStoreId: string | null | undefined) => {
+      if (order.package_id && agentStoreId) {
+        const { data: custom } = await supabase
+          .from("agent_custom_base_prices")
+          .select("custom_base_price")
+          .eq("agent_store_id", agentStoreId)
+          .eq("package_id", order.package_id)
+          .maybeSingle();
+        if (custom?.custom_base_price != null) return Number(custom.custom_base_price);
+      }
+      if (order.package_id) {
+        const { data: pkg } = await supabase
+          .from("data_packages")
+          .select("agent_price")
+          .eq("id", order.package_id)
+          .maybeSingle();
+        if (pkg?.agent_price != null) return Number(pkg.agent_price);
+      }
+      return Number(order.base_price ?? order.agent_price ?? order.amount) || 0;
+    };
+
     for (const orderId of selectedOrderIds) {
       try {
         const order = orders.find(o => o.id === orderId);
@@ -1546,20 +1571,17 @@ const AdminDashboard = () => {
           continue;
         }
 
-        // Base/cost price the buyer actually paid us. For agent/subagent orders the
-        // agent paid us the base price (not the customer-facing amount), so we refund
-        // that. Direct/API user orders are refunded the amount they paid.
-        const basePrice = Number(order.base_price ?? order.agent_price ?? order.amount) || 0;
+        // The amount the customer paid (used only for direct/API user refunds).
         const paidAmount = Number(order.amount) || 0;
         let refundAmount = paidAmount;
         let targetWalletUpdated = false;
 
         // Determine where to send the refund based on order source
         if (order.subagent_store_id) {
-          // Subagent order: refund the base price to the parent agent's wallet
-          refundAmount = basePrice;
+          // Subagent order: refund the admin base price to the subagent's parent agent wallet
           const subagent = subagents.find(s => s.id === order.subagent_store_id);
           const parentAgentId = subagent?.agent_store_id;
+          refundAmount = await resolveAgentBasePrice(order, parentAgentId);
           if (parentAgentId) {
             const { data: agentRow } = await supabase
               .from("agent_stores")
@@ -1576,8 +1598,8 @@ const AdminDashboard = () => {
             }
           }
         } else if (order.agent_store_id) {
-          // Agent order: refund the base price to the agent's wallet
-          refundAmount = basePrice;
+          // Agent order: refund the admin base price to the agent's wallet
+          refundAmount = await resolveAgentBasePrice(order, order.agent_store_id);
           const { data: agentRow } = await supabase
             .from("agent_stores")
             .select("wallet_balance")
@@ -1608,11 +1630,11 @@ const AdminDashboard = () => {
             if (!updateErr) targetWalletUpdated = true;
           }
         } else if (order.customer_id) {
-          // Direct main-site user order: refund to the customer's wallet
+          // Direct main-site user order: refund the amount the user paid to their wallet.
           refundAmount = paidAmount;
           const { data: customer } = await supabase
             .from("customers")
-            .select("wallet_balance")
+            .select("id, wallet_balance")
             .eq("user_id", order.customer_id)
             .maybeSingle();
           if (customer) {
@@ -1622,6 +1644,13 @@ const AdminDashboard = () => {
               .update({ wallet_balance: newBalance })
               .eq("user_id", order.customer_id);
             if (!updateErr) targetWalletUpdated = true;
+          } else {
+            // No wallet row yet (e.g. a Paystack buyer who never topped up a wallet).
+            // Create one seeded with the refund so the credit is not lost.
+            const { error: insertErr } = await supabase
+              .from("customers")
+              .insert({ user_id: order.customer_id, wallet_balance: refundAmount });
+            if (!insertErr) targetWalletUpdated = true;
           }
         }
 
