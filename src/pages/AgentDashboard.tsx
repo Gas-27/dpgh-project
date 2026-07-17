@@ -351,6 +351,10 @@ const AgentDashboard = () => {
   const [withdrawalCooldownEndTime, setWithdrawalCooldownEndTime] = useState<number | null>(null);
   const [cooldownTimeRemaining, setCooldownTimeRemaining] = useState<string | null>(null);
 
+  // Tabs and menu state
+  const [activeTab, setActiveTab] = useState("overview");
+  const [afaTabActive, setAfaTabActive] = useState("overview");
+
   // API Orders state
   const [apiOrders, setApiOrders] = useState<any[]>([]);
   const [loadingApiOrders, setLoadingApiOrders] = useState(false);
