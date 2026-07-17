@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // For normal wallet - get customer
     if (walletType === "normal" && identity_id) {
       // First try to get existing customer
-      const { data: customer, error: customerError } = await supabase
+      const { data: customer } = await supabase
         .from("customers")
         .select("id, email")
         .eq("id", identity_id)
@@ -56,25 +56,16 @@ Deno.serve(async (req) => {
       if (customer) {
         userEmail = customer.email;
         userId = customer.id;
+        console.log("[INITIALIZE-WALLET-TOPUP] Found existing customer");
       } else {
-        // Customer doesn't exist, get from auth.users
-        const { data: authUser, error: authError } = await supabase
-          .from("auth.users")
-          .select("id, email")
-          .eq("id", identity_id)
-          .single();
-
-        if (authError || !authUser) {
-          return new Response(
-            JSON.stringify({ error: "User not found in authentication" }),
-            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        userEmail = authUser.email || `customer-${identity_id}@dataplug.store`;
+        // Customer doesn't exist - create one with generated email
+        // User is authenticated (we have identity_id), so just use it
+        userEmail = `user-${identity_id}@dataplug.store`;
         userId = identity_id;
 
-        // Create customer record if it doesn't exist
+        console.log("[INITIALIZE-WALLET-TOPUP] Creating new customer record");
+
+        // Auto-create customer record
         const { error: createError } = await supabase
           .from("customers")
           .insert({
@@ -83,12 +74,11 @@ Deno.serve(async (req) => {
             wallet_balance: 0,
             customer_type: "customer",
           })
-          .select("id")
-          .single();
+          .maybeSingle();
 
-        // Don't fail if customer creation fails, just proceed with topup
         if (createError) {
           console.error("[INITIALIZE-WALLET-TOPUP] Failed to create customer:", createError);
+          // Don't fail - customer may already exist due to race condition
         }
       }
     } 
