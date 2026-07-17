@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface WalletTopupRequest {
   api_key?: string;
   identity_id?: string;
+  email?: string;
   amount: number;
   callback_url: string;
   walletType?: "api" | "normal";

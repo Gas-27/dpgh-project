@@ -21,6 +21,7 @@ interface WalletTopupDialogProps {
   // Either api_key OR identity_id must be provided
   apiKey?: string;
   identityId?: string;
+  userEmail?: string;
   callbackUrl: string;
 }
 
@@ -33,6 +34,7 @@ export default function WalletTopupDialog({
   walletType,
   apiKey,
   identityId,
+  userEmail,
   callbackUrl,
 }: WalletTopupDialogProps) {
   const { toast } = useToast();
@@ -65,6 +67,7 @@ export default function WalletTopupDialog({
       const response = await initializeWalletTopup({
         ...(apiKey && { api_key: apiKey }),
         ...(identityId && { identity_id: identityId }),
+        ...(userEmail && { email: userEmail }),
         amount: topupAmount,
         callback_url: callbackUrl,
         walletType: walletType,

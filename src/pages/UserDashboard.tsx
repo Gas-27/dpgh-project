@@ -1883,13 +1883,14 @@ const UserDashboard = () => {
 
       {/* Wallet Topup Dialogs */}
       <WalletTopupDialog
-        open={showNormalWalletTopup}
-        onOpenChange={setShowNormalWalletTopup}
-        currentBalance={normalWallet}
-        walletType="normal"
-        identityId={user?.id}
-        callbackUrl={`${window.location.origin}/user-dashboard?wallet=success`}
-      />
+  open={showNormalWalletTopup}
+  onOpenChange={setShowNormalWalletTopup}
+  currentBalance={normalWallet}
+  walletType="normal"
+  identityId={user?.id}
+  userEmail={user?.email}
+  callbackUrl={`${window.location.origin}/user-dashboard?wallet=success`}
+  />
 
       <WalletTopupDialog
         open={showApiWalletTopup}

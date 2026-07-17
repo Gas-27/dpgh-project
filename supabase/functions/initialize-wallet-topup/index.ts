@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     // ============================================
     // STEP 1: Parse Request
     // ============================================
-    const { api_key, identity_id, amount, callback_url, walletType = "api" } = await req.json();
+    const { api_key, identity_id, email, amount, callback_url, walletType = "api" } = await req.json();
 
     if (!api_key && !identity_id) {
       return new Response(
@@ -67,26 +67,41 @@ Deno.serve(async (req) => {
         .eq("user_id", identity_id)
         .maybeSingle();
 
-      if (customer) {
-        userEmail = customer.email || `user-${identity_id}@dataplug.store`;
-        userId = customer.id;
-        console.log(`[INITIALIZE-WALLET-TOPUP] Found existing customer: ${userId}`);
-      } else {
-        // Create a customer row linked via user_id
-        userEmail = `user-${identity_id}@dataplug.store`;
-        console.log(`[INITIALIZE-WALLET-TOPUP] Creating new customer for user_id: ${identity_id}`);
+  // Prefer the real email passed from the frontend
+  const realEmail = email || `user-${identity_id}@dataplug.store`;
 
-        const { data: newCustomer, error: createError } = await supabase
-          .from("customers")
-          .insert({
-            user_id: identity_id,
-            email: userEmail,
-            wallet_balance: 0,
-            customer_type: "customer",
-            status: "active",
-          })
-          .select("id")
-          .maybeSingle();
+  if (customer) {
+  userId = customer.id;
+  userEmail = realEmail;
+  console.log(`[INITIALIZE-WALLET-TOPUP] Found existing customer: ${userId}`);
+
+  // If the stored email is missing or a generated placeholder, fix it with the real email
+  const storedEmail = customer.email || "";
+  if (email && (storedEmail === "" || storedEmail.startsWith("user-"))) {
+  await supabase
+  .from("customers")
+  .update({ email: realEmail, updated_at: new Date().toISOString() })
+  .eq("id", customer.id);
+  console.log(`[INITIALIZE-WALLET-TOPUP] Updated customer email to: ${realEmail}`);
+  } else {
+  userEmail = storedEmail || realEmail;
+  }
+  } else {
+  // Create a customer row linked via user_id, using the real email
+  userEmail = realEmail;
+  console.log(`[INITIALIZE-WALLET-TOPUP] Creating new customer for user_id: ${identity_id}`);
+  
+  const { data: newCustomer, error: createError } = await supabase
+  .from("customers")
+  .insert({
+  user_id: identity_id,
+  email: userEmail,
+  wallet_balance: 0,
+  customer_type: "customer",
+  status: "active",
+  })
+  .select("id")
+  .maybeSingle();
 
         if (createError || !newCustomer) {
           console.error(`[INITIALIZE-WALLET-TOPUP] Failed to create customer:`, createError);
