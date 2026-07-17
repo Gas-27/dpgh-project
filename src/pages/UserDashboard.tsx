@@ -164,14 +164,18 @@ const UserDashboard = () => {
         // Fetch user's API key and both wallet types
         const { data: apiUserData } = await supabase
           .from("api_users")
-          .select("api_key, wallet")
+          .select("id, api_key, wallet")
           .eq("identity_id", user.id)
           .eq("is_user", true)
           .maybeSingle();
 
-        if (apiUserData?.api_key) {
-          setApiKey(apiUserData.api_key);
-          setApiWallet(apiUserData.wallet || 0);
+        let apiUserId: string | null = null;
+        if (apiUserData) {
+          apiUserId = apiUserData.id;
+          if (apiUserData.api_key) {
+            setApiKey(apiUserData.api_key);
+            setApiWallet(apiUserData.wallet || 0);
+          }
         }
 
         // Fetch user's normal wallet from customers table
@@ -204,7 +208,8 @@ const UserDashboard = () => {
           setPackages(packagesData);
         }
 
-        // Fetch topup history for normal wallet (customer_id is the customers PK)
+        // Fetch topup history for BOTH wallets
+        // Normal wallet (customer_id is the customers PK)
         const { data: normalTopupHistory } = customerPkId
           ? await supabase
               .from("user_wallet_topups")
@@ -212,17 +217,38 @@ const UserDashboard = () => {
               .eq("customer_id", customerPkId)
               .eq("status", "completed")
               .order("created_at", { ascending: false })
-              .limit(10)
+              .limit(20)
           : { data: null };
 
-        if (normalTopupHistory) {
-          const normalTopups = normalTopupHistory.map((t: any) => ({
-            ...t,
-            wallet_type: "normal",
-            reference: t.paystack_reference,
-          }));
-          setTopupHistory(normalTopups);
-        }
+        // API wallet (api_user_id is the api_users PK)
+        const { data: apiTopupHistory } = apiUserId
+          ? await supabase
+              .from("api_wallet_topups")
+              .select("id, api_user_id, amount, paystack_reference, status, created_at")
+              .eq("api_user_id", apiUserId)
+              .eq("status", "completed")
+              .order("created_at", { ascending: false })
+              .limit(20)
+          : { data: null };
+
+        const normalTopups = (normalTopupHistory || []).map((t: any) => ({
+          ...t,
+          wallet_type: "normal",
+          reference: t.paystack_reference,
+        }));
+
+        const apiTopups = (apiTopupHistory || []).map((t: any) => ({
+          ...t,
+          wallet_type: "api",
+          reference: t.paystack_reference,
+        }));
+
+        // Merge and sort both histories by date (newest first)
+        const combinedTopups = [...normalTopups, ...apiTopups].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
+        setTopupHistory(combinedTopups);
       } catch (err) {
         console.error("[v0] Error loading user data:", err);
         toast({ title: "Error", description: "Failed to load your data", variant: "destructive" });
@@ -597,7 +623,7 @@ const UserDashboard = () => {
       </div>
 
       {/* Stats Cards Row - Like Agent Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-border">
           <CardContent className="p-6 text-center">
             <p className="text-muted-foreground text-sm">Total Orders</p>
@@ -610,16 +636,10 @@ const UserDashboard = () => {
             <p className="font-display text-3xl font-bold mt-2 text-primary">{orders.filter(o => o.status === 'pending' || o.status === 'processing').length}</p>
           </CardContent>
         </Card>
-        <Card className="border-border">
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground text-sm">Total Data Purchased</p>
-            <p className="font-display text-3xl font-bold mt-2 text-cyan-400">{totalDataPurchased}GB</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Large Info Cards - Like Agent Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card className="border-green-500/30 bg-green-500/5">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -629,18 +649,6 @@ const UserDashboard = () => {
                 <p className="text-xs text-muted-foreground mt-1">All-time spending</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-400 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Account Status</p>
-                <Badge className="mt-2 bg-green-600/20 text-green-400 border-green-600/30">Active</Badge>
-                <p className="text-xs text-muted-foreground mt-3">Your account is ready to use</p>
-              </div>
-              <Users className="h-8 w-8 text-primary opacity-50" />
             </div>
           </CardContent>
         </Card>
