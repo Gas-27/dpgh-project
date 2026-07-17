@@ -472,7 +472,9 @@ const UserDashboard = () => {
 
         setNormalWallet(normalWallet - price);
 
-        // Create order record for wallet payment
+        // Create order record for wallet payment.
+        // Wallet money is already deducted above, so the order is PAID.
+        // fulfillment_status "pending" lets the auto-retry/fulfill flow process it.
         const { error: orderError } = await supabase
           .from("orders")
           .insert({
@@ -482,8 +484,8 @@ const UserDashboard = () => {
             network: buyPkg.network,
             size_gb: buyPkg.size_gb,
             amount: price,
-            status: "pending",
-            fulfillment_status: "processing",
+            status: "paid",
+            fulfillment_status: "pending",
             payment_method: "wallet",
             source: "web"
           });
