@@ -355,7 +355,7 @@ const AgentDashboard = () => {
 
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
-  const effectiveBalance = Math.max(0, profitStats.availableForWithdrawal - pendingWithdrawalAmount);
+  const effectiveBalance = Math.max(0, (store?.wallet_balance ?? 0) - pendingWithdrawalAmount);
   
   // Calculate balance based on selected withdrawal source
   const getWithdrawalBalance = () => {
