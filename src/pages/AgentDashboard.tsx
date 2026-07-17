@@ -1787,7 +1787,79 @@ const AgentDashboard = () => {
     }
   };
   
-  // ──��� GUARDS ───────────��─────────────────────────��──────────────────����──────
+  // Process refunds for subagent orders (defined before guards to keep hook order stable)
+  const processSubagentRefunds = async () => {
+    if (selectedSubagentOrderIds.size === 0) {
+      toast({ title: "Error", description: "No orders selected", variant: "destructive" });
+      return;
+    }
+
+    setRefundingSubagentOrders(selectedSubagentOrderIds);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const orderId of selectedSubagentOrderIds) {
+      try {
+        const order = subagentOrders.find(o => o.id === orderId);
+        if (!order) continue;
+
+        // Only allow refunding orders that have already been refunded by admin
+        if (order.fulfillment_status !== "refunded" && order.status !== "refunded") {
+          errorCount++;
+          continue;
+        }
+
+        // Use agent_price (base price given to subagent) for refund, not customer-paid amount
+        const refundAmount = Number(order.agent_price || order.amount);
+
+        // Find the subagent who placed this order and refund to their wallet
+        if (order.subagent_store_id) {
+          const { data: subagent } = await supabase
+            .from("subagent_stores")
+            .select("wallet_balance")
+            .eq("id", order.subagent_store_id)
+            .maybeSingle();
+
+          if (subagent) {
+            const newBalance = (subagent.wallet_balance || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("subagent_stores")
+              .update({ wallet_balance: newBalance })
+              .eq("id", order.subagent_store_id);
+
+            if (!updateErr) {
+              successCount++;
+              setSubagentOrdersState((prev) =>
+                prev.map((o) =>
+                  o.id === orderId
+                    ? { ...o, wallet_refunded: true }
+                    : o
+                )
+              );
+            } else {
+              errorCount++;
+            }
+          } else {
+            errorCount++;
+          }
+        }
+      } catch (error) {
+        console.error("[v0] Refund error:", error);
+        errorCount++;
+      }
+    }
+
+    setRefundingSubagentOrders(new Set());
+    setSelectedSubagentOrderIds(new Set());
+
+    toast({
+      title: "Refund Complete",
+      description: `${successCount} refunded, ${errorCount} failed`,
+      variant: errorCount > 0 ? "destructive" : "default"
+    });
+  };
+
+  // ─── GUARDS ─────────────────────────────────────────────────────────────────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
@@ -1952,84 +2024,6 @@ const AgentDashboard = () => {
           </div>
         </div>
       )}
-
-      {/* Process refunds for subagent orders */}
-      {useMemo(() => {
-        const processRefunds = async () => {
-          if (selectedSubagentOrderIds.size === 0) {
-            toast({ title: "Error", description: "No orders selected", variant: "destructive" });
-            return;
-          }
-
-          setRefundingSubagentOrders(selectedSubagentOrderIds);
-          let successCount = 0;
-          let errorCount = 0;
-
-          for (const orderId of selectedSubagentOrderIds) {
-            try {
-              const order = subagentOrders.find(o => o.id === orderId);
-              if (!order) continue;
-
-              // Only allow refunding orders that have already been refunded by admin
-              if (order.fulfillment_status !== "refunded" && order.status !== "refunded") {
-                errorCount++;
-                continue;
-              }
-
-              // Use agent_price (base price given to subagent) for refund, not customer-paid amount
-              const refundAmount = Number(order.agent_price || order.amount);
-              
-              // Find the subagent who placed this order and refund to their wallet
-              if (order.subagent_store_id) {
-                const { data: subagent } = await supabase
-                  .from("subagent_stores")
-                  .select("wallet_balance")
-                  .eq("id", order.subagent_store_id)
-                  .maybeSingle();
-                
-                if (subagent) {
-                  const newBalance = (subagent.wallet_balance || 0) + refundAmount;
-                  const { error: updateErr } = await supabase
-                    .from("subagent_stores")
-                    .update({ wallet_balance: newBalance })
-                    .eq("id", order.subagent_store_id);
-                  
-                  if (!updateErr) {
-                    successCount++;
-                    setSubagentOrdersState((prev) =>
-                      prev.map((o) => 
-                        o.id === orderId 
-                          ? { ...o, wallet_refunded: true } 
-                          : o
-                      )
-                    );
-                  } else {
-                    errorCount++;
-                  }
-                } else {
-                  errorCount++;
-                }
-              }
-            } catch (error) {
-              console.error("[v0] Refund error:", error);
-              errorCount++;
-            }
-          }
-
-          setRefundingSubagentOrders(new Set());
-          setSelectedSubagentOrderIds(new Set());
-
-          toast({
-            title: "Refund Complete",
-            description: `${successCount} refunded, ${errorCount} failed`,
-            variant: errorCount > 0 ? "destructive" : "default"
-          });
-        };
-        
-        // Make function available globally for the button click
-        (window as any).agentProcessRefunds = processRefunds;
-        return null;
-      }, [selectedSubagentOrderIds, store, subagentOrders, toast])}
 
       <NotificationPopup />
 
@@ -2367,7 +2361,7 @@ const AgentDashboard = () => {
                     <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between">
                       <p className="text-sm font-medium text-amber-400">{selectedSubagentOrderIds.size} order{selectedSubagentOrderIds.size !== 1 ? "s" : ""} selected</p>
                       <button
-                        onClick={() => (window as any).agentProcessRefunds?.()}
+                        onClick={() => processSubagentRefunds()}
                         disabled={refundingSubagentOrders.size > 0}
                         className="px-4 py-2 rounded bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium transition-all"
                       >
