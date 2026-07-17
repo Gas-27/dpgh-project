@@ -99,6 +99,7 @@ const UserDashboard = () => {
     { id: "api-orders", label: "API Orders", icon: BarChart3 },
     { id: "afa-registration", label: "AFA Registration", icon: Package },
     { id: "topup", label: "Top Up", icon: Coins },
+    { id: "become-agent", label: "Become an Agent", icon: Users },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -535,6 +536,8 @@ const UserDashboard = () => {
         return renderAfaRegistration();
       case "topup":
         return renderTopup();
+      case "become-agent":
+        return renderBecomeAgent();
       case "settings":
         return renderSettings();
       default:
@@ -1384,6 +1387,154 @@ const UserDashboard = () => {
     />
   );
 
+  const renderBecomeAgent = () => (
+    <div className="space-y-6">
+      <Card className="border-primary/50 bg-gradient-to-r from-primary/10 to-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl">
+            <Users className="h-6 w-6" />
+            Become an Agent
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">Upgrade your account to unlock agent features and start earning commissions!</p>
+        </CardHeader>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Current Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Current Account Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Account Type</p>
+              <p className="text-2xl font-display font-bold text-foreground mt-1">Regular User</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Email</p>
+              <p className="font-mono text-sm mt-1">{user?.email}</p>
+            </div>
+            <div className="pt-4 border-t border-border">
+              <Badge className="bg-green-600/20 text-green-400 border-green-600/30">Eligible for Agent Status</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Agent Benefits */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Agent Benefits</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
+              <div>
+                <p className="font-semibold text-sm">Bulk Orders</p>
+                <p className="text-xs text-muted-foreground">Purchase large quantities at discounted rates</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
+              <div>
+                <p className="font-semibold text-sm">Custom Pricing</p>
+                <p className="text-xs text-muted-foreground">Set your own prices and margins</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
+              <div>
+                <p className="font-semibold text-sm">Subagents</p>
+                <p className="text-xs text-muted-foreground">Recruit and manage subagents</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
+              <div>
+                <p className="font-semibold text-sm">Earnings Dashboard</p>
+                <p className="text-xs text-muted-foreground">Track commissions and withdrawals</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Upgrade Requirements */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Upgrade Requirements</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 border border-green-600/30 bg-green-600/5 rounded-lg">
+              <p className="text-sm text-muted-foreground">Minimum Orders</p>
+              <p className="text-2xl font-display font-bold text-green-400 mt-2">5+</p>
+              <p className="text-xs text-muted-foreground mt-1">Completed orders required</p>
+            </div>
+            <div className="p-4 border border-green-600/30 bg-green-600/5 rounded-lg">
+              <p className="text-sm text-muted-foreground">Account Age</p>
+              <p className="text-2xl font-display font-bold text-green-400 mt-2">7+ days</p>
+              <p className="text-xs text-muted-foreground mt-1">Days since registration</p>
+            </div>
+            <div className="p-4 border border-green-600/30 bg-green-600/5 rounded-lg">
+              <p className="text-sm text-muted-foreground">Verification</p>
+              <p className="text-2xl font-display font-bold text-green-400 mt-2">Email</p>
+              <p className="text-xs text-muted-foreground mt-1">Email must be verified</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Upgrade Button */}
+      <Card className="border-primary/50">
+        <CardContent className="pt-6">
+          <Button 
+            className="w-full h-12 text-lg font-semibold"
+            onClick={async () => {
+              try {
+                // Create agent account with same email
+                const response = await supabase.functions.invoke("create-agent-account", {
+                  body: {
+                    email: user?.email,
+                    user_id: user?.id,
+                  }
+                });
+
+                if (response.error) {
+                  toast({
+                    title: "Error",
+                    description: response.error.message || "Failed to upgrade to agent",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
+                toast({
+                  title: "Success!",
+                  description: "You are now an Agent! Refresh to see new features.",
+                });
+
+                // Redirect to agent dashboard after 2 seconds
+                setTimeout(() => {
+                  window.location.href = "/agent";
+                }, 2000);
+              } catch (err) {
+                console.error("[v0] Error upgrading to agent:", err);
+                toast({
+                  title: "Error",
+                  description: "Failed to process upgrade. Please try again.",
+                  variant: "destructive"
+                });
+              }
+            }}
+          >
+            Upgrade to Agent Now
+          </Button>
+          <p className="text-xs text-muted-foreground text-center mt-3">Same email will be used for your agent account</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const renderTopup = () => (
     <div className="space-y-6">
       <Card>
@@ -1714,45 +1865,21 @@ const UserDashboard = () => {
 
       {/* Wallet Topup Dialogs */}
       <WalletTopupDialog
-        isOpen={showNormalWalletTopup}
-        onClose={() => setShowNormalWalletTopup(false)}
-        onSuccess={async () => {
-          setShowNormalWalletTopup(false);
-          // Refresh wallet balance
-          if (user?.id) {
-            const { data: customerData } = await supabase
-              .from("customers")
-              .select("wallet_balance, api_wallet_balance")
-              .eq("id", user.id)
-              .single();
-            if (customerData) {
-              setNormalWallet(customerData.wallet_balance || 0);
-              setApiWallet(customerData.api_wallet_balance || 0);
-            }
-          }
-        }}
-        wallet="normal"
+        open={showNormalWalletTopup}
+        onOpenChange={setShowNormalWalletTopup}
+        currentBalance={normalWallet}
+        walletType="normal"
+        identityId={user?.id}
+        callbackUrl={`${window.location.origin}/user-dashboard?wallet=success`}
       />
 
       <WalletTopupDialog
-        isOpen={showApiWalletTopup}
-        onClose={() => setShowApiWalletTopup(false)}
-        onSuccess={async () => {
-          setShowApiWalletTopup(false);
-          // Refresh wallet balance
-          if (user?.id) {
-            const { data: customerData } = await supabase
-              .from("customers")
-              .select("wallet_balance, api_wallet_balance")
-              .eq("id", user.id)
-              .single();
-            if (customerData) {
-              setNormalWallet(customerData.wallet_balance || 0);
-              setApiWallet(customerData.api_wallet_balance || 0);
-            }
-          }
-        }}
-        wallet="api"
+        open={showApiWalletTopup}
+        onOpenChange={setShowApiWalletTopup}
+        currentBalance={apiWallet}
+        walletType="api"
+        identityId={user?.id}
+        callbackUrl={`${window.location.origin}/user-dashboard?wallet=success`}
       />
 
       <Footer />
