@@ -12,29 +12,52 @@ import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import NotificationPrompt from "@/components/NotificationPrompt";
 import ChatBot from "@/components/ChatBot";
 
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const Index = lazy(() => import("./pages/Index"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Login = lazy(() => import("./pages/Login"));
-const AdminLogin = lazy(() => import("./pages/AdminLogin"));
-const Signup = lazy(() => import("./pages/Signup"));
-const Packages = lazy(() => import("./pages/Packages"));
-const AgentOnboarding = lazy(() => import("./pages/AgentOnboarding"));
-const PendingApproval = lazy(() => import("./pages/PendingApproval"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const AgentDashboard = lazy(() => import("./pages/AgentDashboard"));
-const AgentStorefront = lazy(() => import("./pages/AgentStorefront"));
-const AgentRegistrationCallback = lazy(() => import("./pages/AgentRegistrationCallback"));
-const SubagentDashboard = lazy(() => import("./pages/SubagentDashboard"));
-const SubagentLogin = lazy(() => import("./pages/SubagentLogin"));
-const SubSubagentLogin = lazy(() => import("./pages/SubSubagentLogin"));
-const SubagentStorefront = lazy(() => import("./pages/SubagentStorefront"));
-const SubSubagentStorefront = lazy(() => import("./pages/SubSubagentStorefront"));
-const SubagentRegistration = lazy(() => import("./pages/SubagentRegistration"));
-const SubagentApprovalPayment = lazy(() => import("./pages/SubagentApprovalPayment"));
-const VerifySubagentPayment = lazy(() => import("./pages/VerifySubagentPayment"));
-const SubSubagentDashboard = lazy(() => import("./pages/SubSubagentDashboard"));
-const UserDashboard = lazy(() => import("./pages/UserDashboard"));
+// Wraps React.lazy so that a stale-deploy chunk failure (old bundle requesting
+// chunk filenames that no longer exist -> server returns index.html with a
+// text/html MIME type -> "Failed to fetch dynamically imported module") triggers
+// a single automatic page reload instead of showing a blank screen. This removes
+// the need for the user to manually refresh after a new deployment.
+const lazyWithReload = (importer: () => Promise<{ default: React.ComponentType<any> }>) =>
+  lazy(async () => {
+    try {
+      return await importer();
+    } catch (error) {
+      const key = "chunk_reload_at";
+      const last = Number(sessionStorage.getItem(key) || 0);
+      // Only reload once per 10s window to avoid infinite reload loops
+      if (Date.now() - last > 10000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+        // Return a never-resolving placeholder while the reload happens
+        return await new Promise<{ default: React.ComponentType<any> }>(() => {});
+      }
+      throw error;
+    }
+  });
+
+const ResetPassword = lazyWithReload(() => import("./pages/ResetPassword"));
+const Index = lazyWithReload(() => import("./pages/Index"));
+const NotFound = lazyWithReload(() => import("./pages/NotFound"));
+const Login = lazyWithReload(() => import("./pages/Login"));
+const AdminLogin = lazyWithReload(() => import("./pages/AdminLogin"));
+const Signup = lazyWithReload(() => import("./pages/Signup"));
+const Packages = lazyWithReload(() => import("./pages/Packages"));
+const AgentOnboarding = lazyWithReload(() => import("./pages/AgentOnboarding"));
+const PendingApproval = lazyWithReload(() => import("./pages/PendingApproval"));
+const AdminDashboard = lazyWithReload(() => import("./pages/AdminDashboard"));
+const AgentDashboard = lazyWithReload(() => import("./pages/AgentDashboard"));
+const AgentStorefront = lazyWithReload(() => import("./pages/AgentStorefront"));
+const AgentRegistrationCallback = lazyWithReload(() => import("./pages/AgentRegistrationCallback"));
+const SubagentDashboard = lazyWithReload(() => import("./pages/SubagentDashboard"));
+const SubagentLogin = lazyWithReload(() => import("./pages/SubagentLogin"));
+const SubSubagentLogin = lazyWithReload(() => import("./pages/SubSubagentLogin"));
+const SubagentStorefront = lazyWithReload(() => import("./pages/SubagentStorefront"));
+const SubSubagentStorefront = lazyWithReload(() => import("./pages/SubSubagentStorefront"));
+const SubagentRegistration = lazyWithReload(() => import("./pages/SubagentRegistration"));
+const SubagentApprovalPayment = lazyWithReload(() => import("./pages/SubagentApprovalPayment"));
+const VerifySubagentPayment = lazyWithReload(() => import("./pages/VerifySubagentPayment"));
+const SubSubagentDashboard = lazyWithReload(() => import("./pages/SubSubagentDashboard"));
+const UserDashboard = lazyWithReload(() => import("./pages/UserDashboard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

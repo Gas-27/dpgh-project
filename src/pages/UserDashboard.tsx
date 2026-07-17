@@ -62,6 +62,24 @@ const UserDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Admin impersonation: when an admin clicks "Login As" on a customer, the
+  // customer's auth user id is stored in localStorage. Use it as the effective
+  // user id so all reads/writes target the customer's account, not the admin's.
+  const [impersonatedCustomerId] = useState<string | null>(
+    () => (typeof window !== "undefined" ? localStorage.getItem("admin_impersonate_customer") : null)
+  );
+  const [impersonatedCustomerName] = useState<string | null>(
+    () => (typeof window !== "undefined" ? localStorage.getItem("admin_impersonate_customer_name") : null)
+  );
+  const isImpersonating = !!impersonatedCustomerId;
+  const effectiveUserId = impersonatedCustomerId || user?.id;
+
+  const exitImpersonation = () => {
+    localStorage.removeItem("admin_impersonate_customer");
+    localStorage.removeItem("admin_impersonate_customer_name");
+    window.location.href = "/admin-only";
+  };
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,18 +162,18 @@ const UserDashboard = () => {
 
   // Fetch user orders and API key
   useEffect(() => {
-    if (!user?.id) return;
+    if (!effectiveUserId) return;
 
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        console.log("[v0] Fetching orders for user:", user.id);
+        console.log("[v0] Fetching orders for user:", effectiveUserId);
         
         // Fetch orders for this user
         const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
           .select("*")
-          .eq("customer_id", user.id)
+          .eq("customer_id", effectiveUserId)
           .order("created_at", { ascending: false })
           .range(0, 99999999);
 
@@ -184,7 +202,7 @@ const UserDashboard = () => {
         const { data: apiUserData } = await supabase
           .from("api_users")
           .select("id, api_key, wallet")
-          .eq("identity_id", user.id)
+          .eq("identity_id", effectiveUserId)
           .eq("is_user", true)
           .maybeSingle();
 
@@ -202,7 +220,7 @@ const UserDashboard = () => {
         const { data: customerData } = await supabase
           .from("customers")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", effectiveUserId)
           .maybeSingle();
 
         let customerPkId: string | null = null;
@@ -213,7 +231,7 @@ const UserDashboard = () => {
             setTopupReference(customerData.topup_reference);
           } else {
             // Generate a default top-up reference if none exists
-            setTopupReference(`user${user.id.substring(0, 8)}`);
+            setTopupReference(`user${effectiveUserId.substring(0, 8)}`);
           }
         }
 
@@ -277,7 +295,7 @@ const UserDashboard = () => {
     };
 
     fetchUserData();
-  }, [user?.id, toast, refreshKey]);
+  }, [effectiveUserId, toast, refreshKey]);
 
   // After returning from Paystack (Buy Data), claim the newly created order for this user.
   // The verify-payment function creates the order (async), so we poll by paystack_reference
@@ -422,13 +440,13 @@ const UserDashboard = () => {
       const { data: existingData } = await supabase
         .from("api_users")
         .select("wallet")
-        .eq("identity_id", user?.id)
+        .eq("identity_id", effectiveUserId)
         .maybeSingle();
 
       const existingApiWallet = existingData?.wallet || 0;
 
       const upsertData: any = {
-        identity_id: user?.id,
+        identity_id: effectiveUserId,
         api_key: newApiKey,
         is_agent: false,
         is_user: true,
@@ -502,7 +520,7 @@ const UserDashboard = () => {
   };
 
   const handleBuyConfirm = async () => {
-    if (!buyPkg || !user?.id) return;
+    if (!buyPkg || !effectiveUserId) return;
     setBuyLoading(true);
     try {
       const price = Number(buyPkg.price);
@@ -513,7 +531,7 @@ const UserDashboard = () => {
         .from("orders")
         .select("created_at")
         .eq("customer_number", buyPhone.trim())
-        .eq("customer_id", user.id)
+        .eq("customer_id", effectiveUserId)
         .gte("created_at", cutoff)
         .order("created_at", { ascending: false })
         .limit(1);
@@ -535,7 +553,7 @@ const UserDashboard = () => {
         const { error: walletError } = await supabase
           .from("customers")
           .update({ wallet_balance: normalWallet - price })
-          .eq("user_id", user.id);
+          .eq("user_id", effectiveUserId);
 
         if (walletError) {
           toast({ title: "Error", description: walletError.message, variant: "destructive" });
@@ -552,7 +570,7 @@ const UserDashboard = () => {
           .from("orders")
           .insert({
             package_id: buyPkg.id,
-            customer_id: user.id,
+            customer_id: effectiveUserId,
             customer_number: buyPhone.trim(),
             network: buyPkg.network,
             size_gb: buyPkg.size_gb,
@@ -576,7 +594,7 @@ const UserDashboard = () => {
         const { data: ordersData } = await supabase
           .from("orders")
           .select("*")
-          .eq("customer_id", user.id)
+          .eq("customer_id", effectiveUserId)
           .order("created_at", { ascending: false });
         
         if (ordersData) setOrders(ordersData as Order[]);
@@ -597,7 +615,7 @@ const UserDashboard = () => {
             package_id: buyPkg.id,
             package_name: `${buyPkg.size_gb}GB`,
             size_gb: buyPkg.size_gb,
-            customer_id: user.id,
+            customer_id: effectiveUserId,
             agent_store_id: null,
             subagent_store_id: null,
           }
@@ -704,17 +722,11 @@ const UserDashboard = () => {
       </div>
 
       {/* Stats Cards Row - Like Agent Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card className="border-border">
           <CardContent className="p-6 text-center">
             <p className="text-muted-foreground text-sm">Total Orders</p>
             <p className="font-display text-3xl font-bold mt-2 text-foreground">{orders.length}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground text-sm">Pending Orders</p>
-            <p className="font-display text-3xl font-bold mt-2 text-primary">{orders.filter(o => o.status === 'pending' || o.status === 'processing').length}</p>
           </CardContent>
         </Card>
       </div>
@@ -910,23 +922,16 @@ const UserDashboard = () => {
 
     // Calculate stats
     const totalOrders = orders.length;
-    const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
     const totalSpent = orders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
 
     return (
       <div className="space-y-6">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="border-border">
             <CardContent className="p-6 text-center">
               <p className="text-muted-foreground text-sm">Total Orders</p>
               <p className="font-display text-3xl font-bold mt-2 text-foreground">{totalOrders}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border">
-            <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground text-sm">Pending Orders</p>
-              <p className="font-display text-3xl font-bold mt-2 text-primary">{pendingOrders}</p>
             </CardContent>
           </Card>
           <Card className="border-border">
@@ -1719,8 +1724,23 @@ const UserDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
-      <div className="pt-24 pb-12">
+
+      {isImpersonating && (
+        <div className="fixed top-16 left-0 right-0 z-50 bg-yellow-500 text-black px-4 py-2 flex items-center justify-between text-sm font-medium">
+          <span>
+            Admin view: You are viewing{" "}
+            <strong>{impersonatedCustomerName || "this customer"}</strong>&apos;s account.
+          </span>
+          <button
+            onClick={exitImpersonation}
+            className="rounded bg-black/80 text-white px-3 py-1 text-xs font-semibold hover:bg-black"
+          >
+            Exit &amp; Return to Admin
+          </button>
+        </div>
+      )}
+
+      <div className={`pb-12 ${isImpersonating ? "pt-32" : "pt-24"}`}>
         <div className="container mb-8">
           <h1 className="font-display text-4xl font-bold text-foreground mb-2">My Dashboard</h1>
           <p className="text-muted-foreground">Manage your account and purchases</p>
@@ -1995,7 +2015,7 @@ const UserDashboard = () => {
   onOpenChange={setShowNormalWalletTopup}
   currentBalance={normalWallet}
   walletType="normal"
-  identityId={user?.id}
+  identityId={effectiveUserId}
   userEmail={user?.email}
   callbackUrl={`${window.location.origin}/user-dashboard?wallet=success`}
   />

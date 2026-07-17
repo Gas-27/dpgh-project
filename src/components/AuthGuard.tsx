@@ -24,7 +24,8 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
     
     // Check localStorage
     return !!localStorage.getItem("admin_impersonate_subagent") || 
-           !!localStorage.getItem("admin_impersonate_agent");
+           !!localStorage.getItem("admin_impersonate_agent") ||
+           !!localStorage.getItem("admin_impersonate_customer");
   };
   
   const isImpersonating = checkImpersonation();
