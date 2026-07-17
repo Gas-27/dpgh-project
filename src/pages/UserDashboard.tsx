@@ -568,101 +568,144 @@ const UserDashboard = () => {
             </div>
           </CardContent>
         </Card>
-
-
       </div>
 
-      {/* Top-up Reference and Codes Card */}
-      <Card className="border-blue-500/30 bg-blue-500/5">
-        <CardHeader>
-          <CardTitle className="text-base">Account Reference Codes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label className="text-xs text-muted-foreground mb-2 block">Top-up Reference</Label>
-            {topupReference ? (
-              <Select defaultValue={topupReference}>
-                <SelectTrigger className="bg-muted">
-                  <SelectValue placeholder="Select reference" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={topupReference}>{topupReference}</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="bg-muted p-3 rounded-lg border border-border">
-                <p className="font-mono text-sm text-muted-foreground">Loading reference...</p>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-2">Use this when making top-ups to your account</p>
-          </div>
+      {/* Stats Cards Row - Like Agent Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-border">
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground text-sm">Total Orders</p>
+            <p className="font-display text-3xl font-bold mt-2 text-foreground">{orders.length}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border">
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground text-sm">Pending Orders</p>
+            <p className="font-display text-3xl font-bold mt-2 text-primary">{orders.filter(o => o.status === 'pending' || o.status === 'processing').length}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border">
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground text-sm">Total Data Purchased</p>
+            <p className="font-display text-3xl font-bold mt-2 text-cyan-400">{totalDataPurchased}GB</p>
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* USSD Code with Call Button */}
-          <div className="pt-2 border-t border-border">
-            <Label className="text-xs text-muted-foreground mb-2 block">USSD Code (with Access Code 0)</Label>
-            <div className="bg-background p-3 rounded-lg border border-border flex items-center justify-between">
-              <div>
-                <p className="font-display font-bold text-primary text-lg">*380*455#</p>
-                <p className="text-xs text-muted-foreground mt-1">Access Code: <span className="font-semibold">0</span></p>
+      {/* Large Info Cards - Like Agent Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="border-green-500/30 bg-green-500/5">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Total Amount Spent</p>
+                <p className="font-display text-3xl font-bold text-green-400 mt-2">GHC {totalSpent.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-1">All-time spending</p>
               </div>
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => {
-                  window.location.href = "tel:*380*455%23";
-                }}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <Phone className="h-4 w-4 mr-1" />
-                Call
-              </Button>
+              <TrendingUp className="h-8 w-8 text-green-400 opacity-50" />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Tap to call and check balance (enter access code 0 when prompted)</p>
+          </CardContent>
+        </Card>
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Account Status</p>
+                <Badge className="mt-2 bg-green-600/20 text-green-400 border-green-600/30">Active</Badge>
+                <p className="text-xs text-muted-foreground mt-3">Your account is ready to use</p>
+              </div>
+              <Users className="h-8 w-8 text-primary opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Account Reference and Codes Card */}
+      <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="text-center md:text-left">
+              <p className="text-sm text-muted-foreground mb-1">Check your balance via USSD</p>
+              <div className="flex items-center justify-center md:justify-start gap-3">
+                <div className="p-3 bg-primary/20 rounded-lg">
+                  <p className="text-2xl font-bold font-mono text-primary">*380*455#</p>
+                </div>
+                <div className="text-left">
+                  <p className="text-xs text-muted-foreground">Access Code</p>
+                  <p className="text-3xl font-bold font-mono text-foreground">0</p>
+                </div>
+              </div>
+            </div>
+            <Button 
+              variant="default"
+              size="sm"
+              onClick={() => {
+                window.location.href = "tel:*380*455%23";
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Phone className="h-4 w-4 mr-2" /> Call
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Recent Orders */}
+      {/* Orders Table with Search - Like Agent Dashboard */}
       <Card className="border-border">
-        <CardHeader>
-          <CardTitle className="text-lg">Recent Orders ({orders.length})</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">Your latest data purchases</p>
+        <CardHeader className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="font-display text-lg">Orders ({orders.length})</CardTitle>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search by phone or order ID..." 
+                value={orderSearch} 
+                onChange={e => setOrderSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {recentOrders.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No orders yet. Start by purchasing a data package.</p>
+          {orders.length === 0 ? (
+            <div className="text-center py-12">
+              <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground">No orders yet. Start by purchasing a data package.</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Date & Time</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Network</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Status</TableHead>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Date & Time</TableHead>
+                    <TableHead className="text-xs">Phone</TableHead>
+                    <TableHead className="text-xs">Network</TableHead>
+                    <TableHead className="text-xs">Size</TableHead>
+                    <TableHead className="text-xs">Amount</TableHead>
+                    <TableHead className="text-xs">Method</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentOrders.map(order => (
-                    <TableRow key={order.id}>
+                  {orders.map(order => (
+                    <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
-                      <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
-                      <TableCell className="uppercase text-sm font-semibold">{order.network}</TableCell>
-                      <TableCell className="font-display font-bold">{order.size_gb || 0}GB</TableCell>
-                      <TableCell>GHC {Number(order.amount).toFixed(2)}</TableCell>
+                      <TableCell className="text-sm font-mono">{order.customer_number}</TableCell>
+                      <TableCell className="text-sm uppercase font-semibold">{order.network}</TableCell>
+                      <TableCell className="text-sm font-display font-bold text-cyan-400">{order.size_gb || 0}GB</TableCell>
+                      <TableCell className="text-sm font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
                           {order.payment_method === "wallet" ? "Wallet" : "Paystack"}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge 
-                          className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}
-                        >
-                          {order.status === "paid" ? "Completed" : order.status}
+                        <Badge className={`text-xs ${
+                          order.status === 'completed' || order.status === 'paid' ? 'bg-green-600/20 text-green-400 border-green-600/30' :
+                          order.status === 'pending' ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30' :
+                          'bg-slate-600/20 text-slate-400 border-slate-600/30'
+                        }`}>
+                          {order.status === 'paid' ? 'Completed' : order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -670,9 +713,9 @@ const UserDashboard = () => {
                 </TableBody>
               </Table>
               {orders.length > 10 && (
-                <div className="flex justify-center mt-4">
-                  <Button onClick={() => setActiveMenu("orders")} variant="outline">
-                    View All Orders
+                <div className="flex justify-center mt-6">
+                  <Button onClick={() => setActiveMenu("orders")} className="w-full sm:w-auto">
+                    View All Orders ({orders.length - 10} more)
                   </Button>
                 </div>
               )}
