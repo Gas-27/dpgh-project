@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
+import PaymentVerifier from "@/components/PaymentVerifier";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,8 +38,25 @@ interface Order {
   amount: number;
   status: string;
   fulfillment_status: string;
+  order_status?: string;
+  payment_method?: string;
   created_at: string;
 }
+
+// Delivery status shown to the user (mirrors the Agent dashboard).
+// Prefer order_status; fall back to fulfillment_status.
+const getDeliveryStatus = (order: Order) => {
+  const raw = (order.order_status || order.fulfillment_status || "pending").toLowerCase();
+  if (raw === "paid") return "processing";
+  return raw;
+};
+
+const deliveryStatusClass = (status: string) =>
+  status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" :
+  status === "processing" ? "bg-blue-600/20 text-blue-400 border-blue-600/30" :
+  status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" :
+  status === "failed" ? "bg-red-600/20 text-red-400 border-red-600/30" :
+  "bg-slate-600/20 text-slate-400 border-slate-600/30";
 
 const UserDashboard = () => {
   const { user, loading: authLoading } = useAuth();
@@ -508,19 +526,23 @@ const UserDashboard = () => {
         
         if (ordersData) setOrders(ordersData as Order[]);
       } else if (buyPaymentMethod === "paystack") {
-        // Paystack payment flow - similar to Packages page
+        // Paystack payment flow - uses the same verify-payment path as the Packages page.
+        // callback "?payment=verifying" triggers <PaymentVerifier /> which calls verify-payment
+        // and creates the order. customer_id ties the order to this user's dashboard.
         const payloadBody = {
           amount: price,
-          email: `${buyPhone}@dataplug.store`,
+          email: user?.email || `${buyPhone.trim()}@dataplug.store`,
           phone: buyPhone.trim(),
-          callback_url: `${window.location.origin}/user-dashboard?payment=success`,
+          callback_url: `${window.location.origin}/user-dashboard?payment=verifying`,
           metadata: {
-            type: "buy_data",
             phone: buyPhone.trim(),
             network: buyPkg.network,
             package_id: buyPkg.id,
+            package_name: `${buyPkg.size_gb}GB`,
             size_gb: buyPkg.size_gb,
-            customer_id: user.id
+            customer_id: user.id,
+            agent_store_id: null,
+            subagent_store_id: null,
           }
         };
 
@@ -736,13 +758,14 @@ const UserDashboard = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={`text-xs ${
-                          order.status === 'completed' || order.status === 'paid' ? 'bg-green-600/20 text-green-400 border-green-600/30' :
-                          order.status === 'pending' ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30' :
-                          'bg-slate-600/20 text-slate-400 border-slate-600/30'
-                        }`}>
-                          {order.status === 'paid' ? 'Completed' : order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
-                        </Badge>
+                        {(() => {
+                          const s = getDeliveryStatus(order);
+                          return (
+                            <Badge className={`text-xs ${deliveryStatusClass(s)}`}>
+                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -907,14 +930,14 @@ const UserDashboard = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge className={`text-xs ${
-                            order.status === 'completed' || order.status === 'paid' ? 'bg-green-600/20 text-green-400 border-green-600/30' :
-                            order.status === 'pending' ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30' :
-                            order.status === 'processing' ? 'bg-blue-600/20 text-blue-400 border-blue-600/30' :
-                            'bg-slate-600/20 text-slate-400 border-slate-600/30'
-                          }`}>
-                            {order.status === 'paid' ? 'Completed' : order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
-                          </Badge>
+                          {(() => {
+                            const s = getDeliveryStatus(order);
+                            return (
+                              <Badge className={`text-xs ${deliveryStatusClass(s)}`}>
+                                {s.charAt(0).toUpperCase() + s.slice(1)}
+                              </Badge>
+                            );
+                          })()}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1462,22 +1485,22 @@ const UserDashboard = () => {
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
               <div>
-                <p className="font-semibold text-sm">Bulk Orders</p>
-                <p className="text-xs text-muted-foreground">Purchase large quantities at discounted rates</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
-              <div>
                 <p className="font-semibold text-sm">Custom Pricing</p>
-                <p className="text-xs text-muted-foreground">Set your own prices and margins</p>
+                <p className="text-xs text-muted-foreground">Set your own prices and margins, and set prices for your agents too</p>
               </div>
             </div>
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
               <div>
-                <p className="font-semibold text-sm">Subagents</p>
-                <p className="text-xs text-muted-foreground">Recruit and manage subagents</p>
+                <p className="font-semibold text-sm">Agents &amp; Subagents</p>
+                <p className="text-xs text-muted-foreground">You can have agents who can also have their own subagents under them</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">✓</div>
+              <div>
+                <p className="font-semibold text-sm">One-Time Setup</p>
+                <p className="text-xs text-muted-foreground">After registration there is no money involved again</p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -1491,78 +1514,16 @@ const UserDashboard = () => {
         </Card>
       </div>
 
-      {/* Upgrade Requirements */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Upgrade Requirements</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 border border-green-600/30 bg-green-600/5 rounded-lg">
-              <p className="text-sm text-muted-foreground">Minimum Orders</p>
-              <p className="text-2xl font-display font-bold text-green-400 mt-2">5+</p>
-              <p className="text-xs text-muted-foreground mt-1">Completed orders required</p>
-            </div>
-            <div className="p-4 border border-green-600/30 bg-green-600/5 rounded-lg">
-              <p className="text-sm text-muted-foreground">Account Age</p>
-              <p className="text-2xl font-display font-bold text-green-400 mt-2">7+ days</p>
-              <p className="text-xs text-muted-foreground mt-1">Days since registration</p>
-            </div>
-            <div className="p-4 border border-green-600/30 bg-green-600/5 rounded-lg">
-              <p className="text-sm text-muted-foreground">Verification</p>
-              <p className="text-2xl font-display font-bold text-green-400 mt-2">Email</p>
-              <p className="text-xs text-muted-foreground mt-1">Email must be verified</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Upgrade Button */}
       <Card className="border-primary/50">
         <CardContent className="pt-6">
-          <Button 
+          <Button
             className="w-full h-12 text-lg font-semibold"
-            onClick={async () => {
-              try {
-                // Create agent account with same email
-                const response = await supabase.functions.invoke("create-agent-account", {
-                  body: {
-                    email: user?.email,
-                    user_id: user?.id,
-                  }
-                });
-
-                if (response.error) {
-                  toast({
-                    title: "Error",
-                    description: response.error.message || "Failed to upgrade to agent",
-                    variant: "destructive"
-                  });
-                  return;
-                }
-
-                toast({
-                  title: "Success!",
-                  description: "You are now an Agent! Refresh to see new features.",
-                });
-
-                // Redirect to agent dashboard after 2 seconds
-                setTimeout(() => {
-                  window.location.href = "/agent";
-                }, 2000);
-              } catch (err) {
-                console.error("[v0] Error upgrading to agent:", err);
-                toast({
-                  title: "Error",
-                  description: "Failed to process upgrade. Please try again.",
-                  variant: "destructive"
-                });
-              }
-            }}
+            onClick={() => navigate("/agent-onboarding")}
           >
             Upgrade to Agent Now
           </Button>
-          <p className="text-xs text-muted-foreground text-center mt-3">Same email will be used for your agent account</p>
+          <p className="text-xs text-muted-foreground text-center mt-3">You&apos;ll set up your store details next, using your current account email.</p>
         </CardContent>
       </Card>
     </div>
@@ -1915,6 +1876,9 @@ const UserDashboard = () => {
         apiKey={apiKey}
         callbackUrl={`${window.location.origin}/user-dashboard?wallet=success`}
       />
+
+      {/* Verifies Paystack data purchases on return and creates the order */}
+      <PaymentVerifier />
 
       <Footer />
     </div>

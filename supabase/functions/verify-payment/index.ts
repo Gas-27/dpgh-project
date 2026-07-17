@@ -806,6 +806,9 @@ Deno.serve(async (req) => {
 
     const orderInsert: Record<string, unknown> = {
       customer_number: phone,
+      // Link the order to the logged-in user (sent from the User Dashboard buy flow)
+      // so it shows up in their Overview and Orders. Null for anonymous/storefront buys.
+      customer_id: metadata?.customer_id || null,
       package_id: packageId,
       network,
       size_gb: sizeGb,
