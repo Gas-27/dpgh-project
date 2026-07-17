@@ -46,40 +46,44 @@ Deno.serve(async (req) => {
 
     // For normal wallet - get customer
     if (walletType === "normal" && identity_id) {
-      // First try to get existing customer
+      // Look up customer by user_id (the auth user id), NOT by id (the customer PK)
       const { data: customer } = await supabase
         .from("customers")
         .select("id, email")
-        .eq("id", identity_id)
+        .eq("user_id", identity_id)
         .maybeSingle();
 
       if (customer) {
-        userEmail = customer.email;
+        userEmail = customer.email || `user-${identity_id}@dataplug.store`;
         userId = customer.id;
-        console.log("[INITIALIZE-WALLET-TOPUP] Found existing customer");
+        console.log("[INITIALIZE-WALLET-TOPUP] Found existing customer:", customer.id);
       } else {
-        // Customer doesn't exist - create one with generated email
-        // User is authenticated (we have identity_id), so just use it
+        // No customer row for this auth user yet - create one linked via user_id
         userEmail = `user-${identity_id}@dataplug.store`;
-        userId = identity_id;
 
-        console.log("[INITIALIZE-WALLET-TOPUP] Creating new customer record");
+        console.log("[INITIALIZE-WALLET-TOPUP] Creating new customer for user_id:", identity_id);
 
-        // Auto-create customer record
-        const { error: createError } = await supabase
+        const { data: newCustomer, error: createError } = await supabase
           .from("customers")
           .insert({
-            id: identity_id,
+            user_id: identity_id,
             email: userEmail,
             wallet_balance: 0,
             customer_type: "customer",
+            status: "active",
           })
+          .select("id")
           .maybeSingle();
 
-        if (createError) {
+        if (createError || !newCustomer) {
           console.error("[INITIALIZE-WALLET-TOPUP] Failed to create customer:", createError);
-          // Don't fail - customer may already exist due to race condition
+          return new Response(
+            JSON.stringify({ error: "Could not create customer record" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
+
+        userId = newCustomer.id;
       }
     } 
     // For API wallet - get api user
