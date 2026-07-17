@@ -1133,7 +1133,7 @@ const AdminDashboard = () => {
   );
   */
 
-  // Auto-retry pending orders - 60 second interval (less aggressive)
+  // Auto-retry pending orders - 3 second interval
   useEffect(() => {
     const autoRetryPendingOrders = async () => {
       try {
@@ -1157,7 +1157,7 @@ const AdminDashboard = () => {
         console.error("[v0] Auto-retry error:", error);
       }
     };
-    const interval = setInterval(autoRetryPendingOrders, 60000); // 60 seconds (was 30)
+    const interval = setInterval(autoRetryPendingOrders, 3000); // 3 seconds
     return () => clearInterval(interval);
   }, [retryingOrders]);
 
