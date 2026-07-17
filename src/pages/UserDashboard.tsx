@@ -128,6 +128,9 @@ const UserDashboard = () => {
   const [customDateStart, setCustomDateStart] = useState<string>("");
   const [customDateEnd, setCustomDateEnd] = useState<string>("");
 
+  // Refund stats and filtering
+  const [refundFilter, setRefundFilter] = useState<"all" | "processing" | "delivered" | "refunded">("all");
+
   // Agent upgrade confirmation modal
   const [showUpgradeConfirmation, setShowUpgradeConfirmation] = useState(false);
   const [registrationFee, setRegistrationFee] = useState<number>(0);
@@ -141,6 +144,7 @@ const UserDashboard = () => {
     { id: "overview", label: "Overview", icon: Home },
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "orders", label: "Orders", icon: BarChart3 },
+    { id: "refunds", label: "Refunds", icon: Wallet },
     { id: "rewards", label: "Rewards & Benefits", icon: ImageIcon },
     { id: "api-key", label: "API Key", icon: Zap },
     { id: "api-orders", label: "API Orders", icon: BarChart3 },
@@ -757,6 +761,8 @@ const UserDashboard = () => {
         return renderBuyData();
       case "orders":
         return renderOrders();
+      case "refunds":
+        return renderRefunds();
       case "rewards":
         return renderFlyerGenerator();
       case "api-key":
@@ -1648,6 +1654,98 @@ const UserDashboard = () => {
       }}
     />
   );
+
+  const renderRefunds = () => {
+    // Filter refunded orders
+    const refundedOrders = orders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded");
+    
+    let filteredRefunds = refundedOrders;
+    if (refundFilter === "processing") {
+      filteredRefunds = refundedOrders.filter(o => o.fulfillment_status === "processing");
+    } else if (refundFilter === "delivered") {
+      filteredRefunds = refundedOrders.filter(o => o.fulfillment_status === "completed");
+    } else if (refundFilter === "refunded") {
+      filteredRefunds = refundedOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded");
+    }
+
+    const totalRefundAmount = filteredRefunds.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+
+    return (
+      <div className="space-y-6">
+        {/* Refund Stats Card */}
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Total Refunded Orders</p>
+                <p className="font-display text-3xl font-bold text-amber-400 mt-2">{refundedOrders.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Total refund value: GHC {totalRefundAmount.toFixed(2)}</p>
+              </div>
+              <Wallet className="h-8 w-8 text-amber-400 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Refund Filter Buttons */}
+        <div>
+          <p className="text-sm font-semibold text-muted-foreground mb-3">Filter Refunds:</p>
+          <div className="flex flex-wrap gap-2">
+            {["all", "processing", "delivered", "refunded"].map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setRefundFilter(filter as any)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  refundFilter === filter
+                    ? "bg-amber-500 text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {filter === "all" ? "All Refunds" : filter === "processing" ? "Processing" : filter === "delivered" ? "Delivered" : "Refunded"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Refunded Orders Table */}
+        {filteredRefunds.length === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <p className="text-muted-foreground">No refunded orders</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Network</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Refund Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRefunds.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="text-sm text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell className="font-medium">{order.customer_number}</TableCell>
+                    <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                    <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                        {order.fulfillment_status === "refunded" || order.status === "refunded" ? "Refunded" : "Processing"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
+      </div>
+    );
+  };
 
   const renderBecomeAgent = () => (
     <div className="space-y-6">

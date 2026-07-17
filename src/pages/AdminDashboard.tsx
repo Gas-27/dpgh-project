@@ -124,6 +124,11 @@ const AdminDashboard = () => {
   const [agentApprovalFilter, setAgentApprovalFilter] = useState<string>("all");
   const [subagentStatusFilter, setSubagentStatusFilter] = useState<string>("all");
 
+  // Multi-select and refund state for orders
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
+  const [refundAction, setRefundAction] = useState<"" | "refund">("") ;
+
   // Pagination state
   const [agentPage, setAgentPage] = useState(1);
   const [subagentPage, setSubagentPage] = useState(1);
@@ -1520,6 +1525,127 @@ const AdminDashboard = () => {
     toast({ title: "Success", description: `Order ${action}` });
   };
 
+  // Process refunds for selected orders
+  const processRefunds = async () => {
+    if (selectedOrderIds.size === 0) {
+      toast({ title: "Error", description: "No orders selected", variant: "destructive" });
+      return;
+    }
+
+    setRefundingOrders(selectedOrderIds);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const orderId of selectedOrderIds) {
+      try {
+        const order = orders.find(o => o.id === orderId);
+        if (!order) continue;
+
+        const refundAmount = Number(order.amount);
+        let targetWalletUpdated = false;
+
+        // Determine where to send the refund based on order source
+        if (order.subagent_store_id) {
+          // Subagent order: refund to parent agent's wallet
+          const subagent = subagents.find(s => s.id === order.subagent_store_id);
+          if (subagent?.agent_store_id) {
+            const agent = agents.find(a => a.id === subagent.agent_store_id);
+            if (agent) {
+              const newBalance = (agent.wallet_balance || 0) + refundAmount;
+              const { error: updateErr } = await supabase
+                .from("agent_stores")
+                .update({ wallet_balance: newBalance })
+                .eq("id", agent.id);
+              if (!updateErr) targetWalletUpdated = true;
+            }
+          }
+        } else if (order.agent_store_id) {
+          // Agent order: refund to agent's wallet
+          const agent = agents.find(a => a.id === order.agent_store_id);
+          if (agent) {
+            const newBalance = (agent.wallet_balance || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("agent_stores")
+              .update({ wallet_balance: newBalance })
+              .eq("id", agent.id);
+            if (!updateErr) targetWalletUpdated = true;
+          }
+        } else if (order.payment_method === "wallet") {
+          // User wallet order: refund to customer's wallet
+          const { data: customer } = await supabase
+            .from("customers")
+            .select("wallet_balance")
+            .eq("user_id", order.api_user || "")
+            .maybeSingle();
+          
+          if (customer) {
+            const newBalance = (customer.wallet_balance || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("customers")
+              .update({ wallet_balance: newBalance })
+              .eq("user_id", order.api_user || "");
+            if (!updateErr) targetWalletUpdated = true;
+          }
+        } else if (order.api_user) {
+          // API user order: refund to API user's wallet
+          const { data: apiUser } = await supabase
+            .from("api_users")
+            .select("wallet")
+            .eq("identity_id", order.api_user)
+            .maybeSingle();
+          
+          if (apiUser) {
+            const newBalance = (apiUser.wallet || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("api_users")
+              .update({ wallet: newBalance })
+              .eq("identity_id", order.api_user);
+            if (!updateErr) targetWalletUpdated = true;
+          }
+        }
+
+        if (targetWalletUpdated) {
+          // Mark order as refunded
+          const { error: refundErr } = await supabase
+            .from("orders")
+            .update({ 
+              fulfillment_status: "refunded",
+              status: "refunded"
+            })
+            .eq("id", orderId);
+          
+          if (!refundErr) {
+            successCount++;
+            setOrders((prev) =>
+              prev.map((o) => 
+                o.id === orderId 
+                  ? { ...o, fulfillment_status: "refunded", status: "refunded" } 
+                  : o
+              )
+            );
+          } else {
+            errorCount++;
+          }
+        } else {
+          errorCount++;
+        }
+      } catch (error) {
+        console.error("[v0] Refund error:", error);
+        errorCount++;
+      }
+    }
+
+    setRefundingOrders(new Set());
+    setSelectedOrderIds(new Set());
+    setRefundAction("");
+
+    toast({
+      title: "Refund Complete",
+      description: `${successCount} refunded, ${errorCount} failed`,
+      variant: errorCount > 0 ? "destructive" : "default"
+    });
+  };
+
   // ======================== Wallet topup ========================
   const searchTopupRef = async () => {
     if (!topupSearch.trim()) {
@@ -2078,10 +2204,29 @@ const AdminDashboard = () => {
                       Showing {filteredOrders.length === 0 ? 0 : (orderPage - 1) * PAGE_SIZE + 1} - {Math.min(orderPage * PAGE_SIZE, filteredOrders.length)} of {totalCounts.orders} orders
                     </p>
                     <Card className="border-border">
+                      {selectedOrderIds.size > 0 && (
+                        <div className="p-3 bg-cyan-500/10 border-b border-cyan-500/30 flex items-center justify-between">
+                          <p className="text-sm font-medium text-cyan-400">{selectedOrderIds.size} order{selectedOrderIds.size !== 1 ? "s" : ""} selected</p>
+                          <select
+                            value={refundAction}
+                            onChange={(e) => {
+                              setRefundAction(e.target.value as "refund" | "");
+                              if (e.target.value === "refund") {
+                                processRefunds();
+                              }
+                            }}
+                            disabled={refundingOrders.size > 0}
+                            className="px-3 py-1 rounded border border-cyan-500/30 bg-background text-foreground text-sm"
+                          >
+                            <option value="">Select Action...</option>
+                            <option value="refund">Refund Selected Orders</option>
+                          </select>
+                        </div>
+                      )}
                       <Table>
-                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Source</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedOrderIds.size === paginated.length && paginated.length > 0} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set(paginated.map(o => o.id))); } else { setSelectedOrderIds(new Set()); } }} className="rounded border-border" /></TableHead><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Source</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                          {paginated.length === 0 ? <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
+                          {paginated.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
                             paginated.map((order) => {
                               // Determine source
                               const agentStore = order.agent_store_id ? agents.find(a => a.id === order.agent_store_id) : null;
@@ -2106,7 +2251,8 @@ const AdminDashboard = () => {
                               }
                               
                               return (
-                              <TableRow key={order.id}>
+                              <TableRow key={order.id} className={selectedOrderIds.has(order.id) ? "bg-cyan-500/10" : ""}>
+                                <TableCell style={{ width: "40px" }} className="text-center"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set([...selectedOrderIds, order.id])); } else { const newSet = new Set(selectedOrderIds); newSet.delete(order.id); setSelectedOrderIds(newSet); } }} className="rounded border-border" /></TableCell>
                                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate, Link } from "react-router-dom";
@@ -96,6 +96,7 @@ const menuItems = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
   { id: "bulk", label: "Bulk Orders", icon: Layers },
+  { id: "refunds", label: "Refunds", icon: Wallet },
   { id: "store", label: "Store Prices", icon: Store },
   { id: "subagents", label: "Subagents", icon: Users },
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
@@ -387,6 +388,11 @@ const AgentDashboard = () => {
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
+
+  // Refund state for subagent orders
+  const [selectedSubagentOrderIds, setSelectedSubagentOrderIds] = useState<Set<string>>(new Set());
+  const [refundingSubagentOrders, setRefundingSubagentOrders] = useState<Set<string>>(new Set());
+  const [refundFilterAgent, setRefundFilterAgent] = useState<"all" | "processing" | "delivered" | "refunded">("all");
   const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -1938,6 +1944,78 @@ const AgentDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Process refunds for subagent orders */}
+      {useMemo(() => {
+        const processRefunds = async () => {
+          if (selectedSubagentOrderIds.size === 0) {
+            toast({ title: "Error", description: "No orders selected", variant: "destructive" });
+            return;
+          }
+
+          setRefundingSubagentOrders(selectedSubagentOrderIds);
+          let successCount = 0;
+          let errorCount = 0;
+
+          for (const orderId of selectedSubagentOrderIds) {
+            try {
+              const order = subagentOrders.find(o => o.id === orderId);
+              if (!order) continue;
+
+              const refundAmount = Number(order.amount);
+              
+              // Refund to agent's wallet (since agent is refunding subagent orders)
+              if (store) {
+                const newBalance = (store.wallet_balance || 0) + refundAmount;
+                const { error: updateErr } = await supabase
+                  .from("agent_stores")
+                  .update({ wallet_balance: newBalance })
+                  .eq("id", store.id);
+                  
+                if (!updateErr) {
+                  // Mark order as refunded
+                  const { error: refundErr } = await supabase
+                    .from("orders")
+                    .update({ fulfillment_status: "refunded", status: "refunded" })
+                    .eq("id", orderId);
+                  
+                  if (!refundErr) {
+                    successCount++;
+                    setSubagentOrders((prev) =>
+                      prev.map((o) => 
+                        o.id === orderId 
+                          ? { ...o, fulfillment_status: "refunded", status: "refunded" } 
+                          : o
+                      )
+                    );
+                  } else {
+                    errorCount++;
+                  }
+                } else {
+                  errorCount++;
+                }
+              }
+            } catch (error) {
+              console.error("[v0] Refund error:", error);
+              errorCount++;
+            }
+          }
+
+          setRefundingSubagentOrders(new Set());
+          setSelectedSubagentOrderIds(new Set());
+
+          toast({
+            title: "Refund Complete",
+            description: `${successCount} refunded, ${errorCount} failed`,
+            variant: errorCount > 0 ? "destructive" : "default"
+          });
+        };
+        
+        // Make function available globally for the button click
+        (window as any).agentProcessRefunds = processRefunds;
+        return null;
+      }, [selectedSubagentOrderIds, store, subagentOrders, toast])}
+
       <NotificationPopup />
 
       {/* NAV */}
@@ -2218,6 +2296,112 @@ const AgentDashboard = () => {
                 );
               })}
             </div>
+          </TabsContent>
+
+          {/* ============================= REFUNDS ============================= */}
+          <TabsContent value="refunds" className="space-y-6 mt-0">
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">Subagent Orders Refunded</p>
+                    <p className="font-display text-3xl font-bold text-amber-400 mt-2">{subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded").length}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Total refund value: GHC {subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded").reduce((sum, o) => sum + (Number(o.amount) || 0), 0).toFixed(2)}</p>
+                  </div>
+                  <Wallet className="h-8 w-8 text-amber-400 opacity-50" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Refund Filter Buttons */}
+            <div>
+              <p className="text-sm font-semibold text-muted-foreground mb-3">Filter Subagent Refunds:</p>
+              <div className="flex flex-wrap gap-2">
+                {(["all", "processing", "delivered", "refunded"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setRefundFilterAgent(filter)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      refundFilterAgent === filter
+                        ? "bg-amber-500 text-white"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {filter === "all" ? "All" : filter === "processing" ? "Processing" : filter === "delivered" ? "Delivered" : "Refunded"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Subagent Orders Table with Multi-Select */}
+            {(() => {
+              let filteredOrders = subagentOrders;
+              if (refundFilterAgent === "processing") {
+                filteredOrders = subagentOrders.filter(o => o.fulfillment_status !== "completed" && o.fulfillment_status !== "refunded");
+              } else if (refundFilterAgent === "delivered") {
+                filteredOrders = subagentOrders.filter(o => o.fulfillment_status === "completed");
+              } else if (refundFilterAgent === "refunded") {
+                filteredOrders = subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded");
+              }
+
+              return (
+                <>
+                  {selectedSubagentOrderIds.size > 0 && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between">
+                      <p className="text-sm font-medium text-amber-400">{selectedSubagentOrderIds.size} order{selectedSubagentOrderIds.size !== 1 ? "s" : ""} selected</p>
+                      <button
+                        onClick={() => (window as any).agentProcessRefunds?.()}
+                        disabled={refundingSubagentOrders.size > 0}
+                        className="px-4 py-2 rounded bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium transition-all"
+                      >
+                        {refundingSubagentOrders.size > 0 ? "Processing..." : "Refund Selected"}
+                      </button>
+                    </div>
+                  )}
+
+                  {filteredOrders.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-12 text-center">
+                        <p className="text-muted-foreground">No subagent orders found</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedSubagentOrderIds.size === filteredOrders.length && filteredOrders.length > 0} onChange={(e) => { if (e.target.checked) { setSelectedSubagentOrderIds(new Set(filteredOrders.map(o => o.id))); } else { setSelectedSubagentOrderIds(new Set()); } }} className="rounded border-border" /></TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Network</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredOrders.map((order) => (
+                            <TableRow key={order.id} className={selectedSubagentOrderIds.has(order.id) ? "bg-amber-500/10" : ""}>
+                              <TableCell style={{ width: "40px" }} className="text-center"><input type="checkbox" checked={selectedSubagentOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedSubagentOrderIds(new Set([...selectedSubagentOrderIds, order.id])); } else { const newSet = new Set(selectedSubagentOrderIds); newSet.delete(order.id); setSelectedSubagentOrderIds(newSet); } }} className="rounded border-border" /></TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}</TableCell>
+                              <TableCell className="font-medium">{order.customer_number}</TableCell>
+                              <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                              <TableCell>{order.size_gb}GB</TableCell>
+                              <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                              <TableCell>
+                                <Badge className={order.fulfillment_status === "refunded" || order.status === "refunded" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : "bg-blue-500/20 text-blue-400 border-blue-500/30"}>
+                                  {order.fulfillment_status === "refunded" || order.status === "refunded" ? "Refunded" : order.fulfillment_status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Card>
+                  )}
+                </>
+              );
+            })()}
           </TabsContent>
 
           {/* ============================= STORE PRICES ============================= */}
