@@ -325,6 +325,10 @@ const AgentDashboard = () => {
   const [refundingSubagentOrders, setRefundingSubagentOrders] = useState<Set<string>>(new Set());
   const [refundFilterAgent, setRefundFilterAgent] = useState<"all" | "processing" | "delivered" | "refunded">("all");
   const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
+
+  // Withdrawal source selection
+  const [withdrawSource, setWithdrawSource] = useState<"wallet" | "subagent_commission">("wallet");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Pagination and date filtering
