@@ -10,6 +10,7 @@ export interface WalletTopupRequest {
   identity_id?: string;
   amount: number;
   callback_url: string;
+  walletType?: "api" | "normal";
 }
 
 export interface WalletTopupResponse {

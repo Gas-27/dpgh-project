@@ -67,6 +67,7 @@ export default function WalletTopupDialog({
         ...(identityId && { identity_id: identityId }),
         amount: topupAmount,
         callback_url: callbackUrl,
+        walletType: walletType,
       });
 
       if (!response.success || !response.data?.authorization_url) {

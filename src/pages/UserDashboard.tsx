@@ -200,6 +200,24 @@ const UserDashboard = () => {
         if (packagesData) {
           setPackages(packagesData);
         }
+
+        // Fetch topup history for normal wallet
+        const { data: normalTopupHistory } = await supabase
+          .from("user_wallet_topups")
+          .select("id, customer_id, amount, paystack_reference, status, created_at")
+          .eq("customer_id", user.id)
+          .eq("status", "completed")
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        if (normalTopupHistory) {
+          const normalTopups = normalTopupHistory.map((t: any) => ({
+            ...t,
+            wallet_type: "normal",
+            reference: t.paystack_reference,
+          }));
+          setTopupHistory(normalTopups);
+        }
       } catch (err) {
         console.error("[v0] Error loading user data:", err);
         toast({ title: "Error", description: "Failed to load your data", variant: "destructive" });
