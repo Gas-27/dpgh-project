@@ -3367,8 +3367,6 @@ const AgentDashboard = () => {
                     { code: "mtn", name: "MTN Ghana" },
                     { code: "telecel", name: "Telecel Ghana" },
                     { code: "airteltigo", name: "AirtelTigo Ghana" },
-                    { code: "mashup", name: "Mashup (Data + Minutes)" },
-                    { code: "mtn_mashup", name: "MTN Mashup (Data + Minutes)" },
                   ].map(network => (
                     <div key={network.code} className="p-3 bg-muted rounded-lg border border-border">
                       <p className="font-mono text-sm font-semibold text-cyan-400">{network.code}</p>
@@ -3418,7 +3416,7 @@ const AgentDashboard = () => {
                   <div>
                     <p className="text-sm font-semibold mb-2">Request Body:</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">network</span> (required) - mtn, telecel, airteltigo, mtn_mashup, mashup</li>
+                      <li>• <span className="font-mono">network</span> (required) - mtn, telecel, airteltigo</li>
                       <li>• <span className="font-mono">size_gb</span> (required) - Package size in GB</li>
                       <li>• <span className="font-mono">phone</span> (required) - Recipient phone number (024XXXXXXX)</li>
                     </ul>
@@ -3474,7 +3472,7 @@ const AgentDashboard = () => {
                       <li>• <span className="font-mono">limit</span> (integer) - Orders to return (default: 50)</li>
                       <li>• <span className="font-mono">offset</span> (integer) - Orders to skip (default: 0)</li>
                       <li>• <span className="font-mono">status</span> - Filter by status (pending, processing, completed, failed, delivered)</li>
-                      <li>• <span className="font-mono">network</span> - Filter by network (mtn, telecel, airteltigo, mtn_mashup, mashup)</li>
+                      <li>• <span className="font-mono">network</span> - Filter by network (mtn, telecel, airteltigo)</li>
                     </ul>
                   </div>
                   <div className="bg-muted p-3 rounded-lg border border-border">
