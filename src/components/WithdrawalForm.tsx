@@ -64,6 +64,7 @@ export default function WithdrawalForm({
         } else {
           throw new Error("Invalid user role");
         }
+        console.log("[v0] Loaded balance for", userRole, ":", balanceData);
         setBalance(balanceData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load data");
@@ -93,6 +94,8 @@ export default function WithdrawalForm({
       const availableBalance = withdrawalSource === "wallet_balance"
         ? balance?.wallet_balance || 0
         : balance?.subagent_commission_balance || 0;
+
+      console.log("[v0] Withdrawal submit - Source:", withdrawalSource, "Available:", availableBalance, "Requesting:", amountNum, "Balance object:", balance);
 
       if (amountNum > availableBalance) {
         throw new Error(`Insufficient balance. Available: GHS ${availableBalance.toFixed(2)}`);
@@ -179,7 +182,10 @@ export default function WithdrawalForm({
           {userRole === "agent" && (
             <div className="space-y-2">
               <Label htmlFor="source">Withdraw From</Label>
-              <Select value={withdrawalSource} onValueChange={setWithdrawalSource} disabled={submitting}>
+              <Select value={withdrawalSource} onValueChange={(value) => {
+                console.log("[v0] Withdrawal source changed to:", value);
+                setWithdrawalSource(value);
+              }} disabled={submitting}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
