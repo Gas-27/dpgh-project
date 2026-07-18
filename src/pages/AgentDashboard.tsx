@@ -3414,22 +3414,44 @@ const AgentDashboard = () => {
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-2">Purchase a data package using your wallet balance.</p>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
                   <div>
-                    <p className="text-sm font-semibold mb-2">Required Parameters:</p>
+                    <p className="text-sm font-semibold mb-2">Request Body:</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">network</span> - Network to purchase for (mtn, telecel, airteltigo)</li>
-                      <li>• <span className="font-mono">size_gb</span> - Package size in GB</li>
-                      <li>• <span className="font-mono">phone</span> - Recipient phone number (024XXXXXXX)</li>
+                      <li>• <span className="font-mono">network</span> (required) - mtn, telecel, airteltigo, mtn_mashup, mashup</li>
+                      <li>• <span className="font-mono">size_gb</span> (required) - Package size in GB</li>
+                      <li>• <span className="font-mono">phone</span> (required) - Recipient phone number (024XXXXXXX)</li>
                     </ul>
                   </div>
                   <div className="bg-muted p-3 rounded-lg border border-border">
-                    <p className="text-xs text-muted-foreground mb-2">Example Request Body:</p>
-                    <pre className="font-mono text-xs overflow-x-auto">
+                    <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
+                    <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
+{`curl -X POST "https://api.dataplug.store/functions/v1/purchase" \\
+  -H "Authorization: Bearer pk_live_xxx" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "network": "mtn",
+    "size_gb": 2,
+    "phone": "024XXXXXXX"
+  }'`}
+                    </pre>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Success Response (200):</p>
+                    <pre className="font-mono text-xs overflow-x-auto bg-muted p-3 rounded-lg border border-border whitespace-pre-wrap break-words">
 {`{
-  "network": "mtn",
-  "size_gb": 2,
-  "phone": "024XXXXXXX"
+  "success": true,
+  "message": "Purchase successful",
+  "data": {
+    "order_id": "550e8400-e29b-41d4",
+    "provider_reference": "REF_12345",
+    "network": "mtn",
+    "size_gb": 2,
+    "phone": "024XXXXXXX",
+    "amount": 7.59,
+    "wallet_balance": 92.41,
+    "status": "completed"
+  }
 }`}
                     </pre>
                   </div>
@@ -3445,15 +3467,58 @@ const AgentDashboard = () => {
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-2">Retrieve all orders for the authenticated API user.</p>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">limit</span> - Number of orders to return (default: 50)</li>
-                      <li>• <span className="font-mono">offset</span> - Number of orders to skip (default: 0)</li>
-                      <li>• <span className="font-mono">status</span> - Filter by status (pending, completed, failed)</li>
-                      <li>• <span className="font-mono">network</span> - Filter by network</li>
+                      <li>• <span className="font-mono">limit</span> (integer) - Orders to return (default: 50)</li>
+                      <li>• <span className="font-mono">offset</span> (integer) - Orders to skip (default: 0)</li>
+                      <li>• <span className="font-mono">status</span> - Filter by status (pending, processing, completed, failed, delivered)</li>
+                      <li>• <span className="font-mono">network</span> - Filter by network (mtn, telecel, airteltigo, mtn_mashup, mashup)</li>
                     </ul>
+                  </div>
+                  <div className="bg-muted p-3 rounded-lg border border-border">
+                    <p className="text-xs text-muted-foreground mb-2">Example Requests:</p>
+                    <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
+{`# Get all orders (default limit 50)
+curl -X GET "https://api.dataplug.store/functions/v1/get-orders" \\
+  -H "Authorization: Bearer pk_live_xxx"
+
+# Get orders filtered by status
+curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed" \\
+  -H "Authorization: Bearer pk_live_xxx"
+
+# Get orders with pagination and filters
+curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed&network=mtn&limit=10" \\
+  -H "Authorization: Bearer pk_live_xxx"`}
+                    </pre>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Success Response (200):</p>
+                    <pre className="font-mono text-xs overflow-x-auto bg-muted p-3 rounded-lg border border-border whitespace-pre-wrap break-words">
+{`{
+  "success": true,
+  "data": {
+    "orders": [
+      {
+        "id": "30218de5-2991-4c8d",
+        "customer_number": "0200511211",
+        "network": "telecel",
+        "amount": 36.20,
+        "order_status": "completed",
+        "provider_reference": "API_1782860161668",
+        "created_at": "2026-06-30T22:56:02.022+00:00"
+      }
+    ],
+    "pagination": {
+      "limit": 50,
+      "offset": 0,
+      "total": 1,
+      "returned": 1
+    }
+  }
+}`}
+                    </pre>
                   </div>
                 </CardContent>
               </Card>
@@ -3467,16 +3532,103 @@ const AgentDashboard = () => {
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-2">Get the current status of a specific order.</p>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm font-semibold mb-2">Required Parameters:</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">reference</span> - Order ID or provider reference</li>
+                      <li>• <span className="font-mono">reference</span> (string) - Order ID (UUID) or provider_reference</li>
                     </ul>
                   </div>
                   <div className="bg-muted p-3 rounded-lg border border-border">
-                    <p className="text-xs text-muted-foreground mb-2">Example:</p>
-                    <p className="font-mono text-xs">GET /track-order?reference=API_1234567890_abc123</p>
+                    <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
+                    <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
+{`curl -X GET "https://api.dataplug.store/functions/v1/track-order?reference=API_1782860161668" \\
+  -H "Authorization: Bearer pk_live_xxx"`}
+                    </pre>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Success Response (200):</p>
+                    <pre className="font-mono text-xs overflow-x-auto bg-muted p-3 rounded-lg border border-border whitespace-pre-wrap break-words">
+{`{
+  "success": true,
+  "data": {
+    "order_id": "550e8400-e29b-41d4",
+    "reference": "REF_12345",
+    "phone": "024XXXXXXX",
+    "network": "mtn",
+    "size_gb": 2,
+    "amount": 7.59,
+    "paystack_status": "completed",
+    "fulfillment_status": "completed",
+    "created_at": "2026-07-08T10:00:00.000Z",
+    "updated_at": "2026-07-08T10:05:00.000Z"
+  }
+}`}
+                    </pre>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* POST /afa-api-registration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-mono">POST</span>
+                    <span>/afa-api-registration</span>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">Register for AFA services. Cost: GHC 9.50</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Request Body:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• <span className="font-mono">fullName</span> (required) - Full name</li>
+                      <li>• <span className="font-mono">phoneNumber</span> (required) - Phone number</li>
+                      <li>• <span className="font-mono">idNumber</span> (required) - ID number</li>
+                      <li>• <span className="font-mono">dateOfBirth</span> (required) - Date of birth (YYYY-MM-DD)</li>
+                      <li>• <span className="font-mono">town</span> (required) - Town/City</li>
+                      <li>• <span className="font-mono">occupation</span> (required) - Occupation</li>
+                      <li>• <span className="font-mono">region</span> (required) - Region</li>
+                      <li>• <span className="font-mono">cropProduce</span> (required) - Crop produce</li>
+                      <li>• <span className="font-mono">callbackUrl</span> (optional) - Webhook URL for status updates</li>
+                    </ul>
+                  </div>
+                  <div className="bg-muted p-3 rounded-lg border border-border">
+                    <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
+                    <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
+{`curl -X POST "https://api.dataplug.store/functions/v1/afa-api-registration" \\
+  -H "Authorization: Bearer pk_live_xxx" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "fullName": "John Doe",
+    "phoneNumber": "0241234567",
+    "idNumber": "GHA-123456789-0",
+    "dateOfBirth": "1990-01-15",
+    "town": "Accra",
+    "occupation": "Teacher",
+    "region": "Greater Accra",
+    "cropProduce": "Maize",
+    "callbackUrl": "https://your-domain.com/webhook/afa"
+  }'`}
+                    </pre>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Success Response (200):</p>
+                    <pre className="font-mono text-xs overflow-x-auto bg-muted p-3 rounded-lg border border-border whitespace-pre-wrap break-words">
+{`{
+  "success": true,
+  "message": "AFA registration successful",
+  "data": {
+    "registration_id": "uuid",
+    "fullName": "John Doe",
+    "phoneNumber": "0241234567",
+    "idNumber": "GHA-123456789-0",
+    "status": "completed",
+    "amount_paid": 9.50,
+    "wallet_balance": 90.50
+  }
+}`}
+                    </pre>
                   </div>
                 </CardContent>
               </Card>
@@ -3756,36 +3908,46 @@ const AgentDashboard = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2 flex-wrap">
-                  {["mtn", "airteltigo", "telecel"].map(net => (
+                  {["mtn", "airteltigo", "telecel", "afa"].map(net => (
                     <Button 
                       key={net} 
                       variant={networkFilter === net ? "hero" : "outline"} 
                       size="sm" 
                       onClick={() => setNetworkFilter(net)}
                     >
-                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : net === "afa" ? "AFA Registration" : ""}
                     </Button>
                   ))}
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {packages.filter(p => {
-                    if (networkFilter === "airteltigo") {
-                      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-                    }
-                    return p.network === networkFilter;
-                  }).map((pkg) => {
-                    const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
-                    return (
-                      <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
-                        <CardContent>
-                          <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                          <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
-                          <p className="text-xs text-muted-foreground">API Price</p>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  {packages.filter(p => {
+                  {networkFilter === "afa" ? (
+                    <Card className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
+                      <CardContent>
+                        <p className="font-display text-lg font-bold text-foreground">AFA Registration</p>
+                        <p className="text-lg font-bold text-cyan-400">GHC 9.50</p>
+                        <p className="text-xs text-muted-foreground">API Price</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    packages.filter(p => {
+                      if (networkFilter === "airteltigo") {
+                        return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+                      }
+                      return p.network === networkFilter;
+                    }).map((pkg) => {
+                      const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
+                      return (
+                        <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
+                          <CardContent>
+                            <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                            <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">API Price</p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                  {networkFilter !== "afa" && packages.filter(p => {
                     if (networkFilter === "airteltigo") {
                       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
                     }
