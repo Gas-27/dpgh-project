@@ -98,23 +98,25 @@ Deno.serve(async (req) => {
     let requesterData: any = null;
 
     if (requester_type === "agent") {
+      // requester_id is the auth user UUID (session.user.id) — look up by user_id.
+      // This works whether the agent is logged in directly or an admin is acting
+      // on their behalf (admin passes the agent's user_id as requester_id).
       const { data, error } = await supabase
         .from("agent_stores")
-        .select("id, user_id, wallet_balance, subagent_commission_balance")
-        .eq("id", requester_id)
+        .select("id, user_id, wallet_balance, subagent_commission_balance, last_withdrawal_at")
+        .eq("user_id", requester_id)
         .maybeSingle();
 
       if (error || !data) {
-        console.error(`[CREATE-PAYOUT] Agent store not found: ${requester_id}`, error?.message);
+        console.error(`[CREATE-PAYOUT] Agent store not found for user_id: ${requester_id}`, error?.message);
         return new Response(JSON.stringify({ success: false, error: "Agent store not found" }), {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Authorization: owner or admin only
+      // Authorization: the caller must be the store owner OR an admin
       if (data.user_id !== user.id && !isAdmin) {
-        console.error(`[CREATE-PAYOUT] Forbidden: user ${user.id} is not owner of store ${requester_id} and not admin`);
         return new Response(JSON.stringify({ success: false, error: "Not authorized for this store" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -123,10 +125,13 @@ Deno.serve(async (req) => {
 
       requesterData = data;
 
-      if (withdrawal_source === "wallet_balance") {
+      // Accept both short form ("wallet"/"subagent_commission") and full form
+      if (withdrawal_source === "wallet_balance" || withdrawal_source === "wallet") {
         currentBalance = Number(data.wallet_balance);
-      } else if (withdrawal_source === "subagent_commission_balance") {
+        withdrawal_source = "wallet_balance";
+      } else if (withdrawal_source === "subagent_commission_balance" || withdrawal_source === "subagent_commission") {
         currentBalance = Number(data.subagent_commission_balance);
+        withdrawal_source = "subagent_commission_balance";
       } else {
         return new Response(JSON.stringify({ success: false, error: "Invalid withdrawal_source for agent" }), {
           status: 400,

@@ -1549,16 +1549,11 @@ const AgentDashboard = () => {
       // session user (token). During admin impersonation the displayed `store`
       // belongs to another agent, so we must resolve and use the store owned by
       // the actual logged-in user to keep the request valid and self-consistent.
-      // Resolve the correct agent store id for the authenticated user.
-      // When an admin is impersonating, store.id belongs to the impersonated agent.
-      // When a real agent logs in, store.id is their own store.
-      // In both cases store.id is what we want for the payout request.
-      // However we still need the JWT of the logged-in user — if admin is
-      // impersonating, the JWT belongs to the admin who is marked isAdmin=true
-      // in user_roles, so the backend will allow it. For a real agent the JWT
-      // matches store.user_id directly.
-      console.log("[v0] Withdrawal - store.id:", store.id, "store.user_id:", store.user_id, "session.user.id:", session.user.id, "isImpersonating:", isImpersonating);
-      payload.requester_id = store.id;
+      // Always pass the store's user_id as requester_id.
+      // The backend looks up the agent_stores row by user_id, so this works
+      // for both a normal agent login and an admin acting on their behalf.
+      // store.user_id is set when the store row is fetched from Supabase.
+      payload.requester_id = store.user_id ?? session.user.id;
 
       const response = await fetch(
         "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
