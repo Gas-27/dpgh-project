@@ -111,6 +111,7 @@ export default function WithdrawalForm({
         recipient_id: selectedRecipient,
       };
 
+      console.log("[v0] About to send payout request with payload:", payload);
       const result = await createPayoutRequest(token, payload);
 
       if (!result.success) {
@@ -218,7 +219,7 @@ export default function WithdrawalForm({
               <span className="absolute left-3 top-3 text-slate-500">₵</span>
             </div>
             <p className="text-xs text-slate-500">
-              Available: GHS {availableBalance.toFixed(2)}
+              Available: GHS {availableBalance.toFixed(2)} (from {withdrawalSource === "wallet_balance" ? "Wallet" : "Commission"})
             </p>
           </div>
 
