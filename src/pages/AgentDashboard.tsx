@@ -107,6 +107,7 @@ const menuItems = [
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
   { id: "topup", label: "Top Up", icon: Coins },
   { id: "api-key", label: "API Key", icon: Zap },
+  { id: "api-docs", label: "API Docs", icon: BookOpen },
   { id: "api-orders", label: "API Orders", icon: ShoppingCart },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "notifications", label: "Notifications", icon: Bell },
@@ -3314,6 +3315,243 @@ const AgentDashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-border"><CardHeader><CardTitle className="font-display">Customise Your Storefront</CardTitle></CardHeader><CardContent className="space-y-5"><div className="space-y-2"><Label>Store Headline</Label><Textarea value={storeHeadline} onChange={e => setStoreHeadline(e.target.value)} rows={2} placeholder="Get the best data deals from ..." /><Button variant="outline" size="sm" onClick={saveStoreHeadline} disabled={savingHeadline}>{savingHeadline ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Save Headline</Button></div><div className="border-t border-border pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">{[{ label: "Primary Colour", key: "primary" }, { label: "Text on Primary", key: "primary_foreground" }, { label: "Page Background", key: "background" }, { label: "Card Background", key: "card_background" }].map(({ label, key }) => (<div key={key} className="space-y-1"><Label className="text-sm">{label}</Label><div className="flex gap-2 items-center"><Input type="color" value={(themeColors as any)[key]} onChange={e => setThemeColors({ ...themeColors, [key]: e.target.value })} className="w-12 h-9 p-1 cursor-pointer" /><Input type="text" value={(themeColors as any)[key]} onChange={e => setThemeColors({ ...themeColors, [key]: e.target.value })} className="flex-1 font-mono text-sm" /></div></div>))}</div><div className="border-t border-border pt-4"><Label className="mb-2 block font-semibold flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-primary" /> Grid Layout</Label><div className="flex items-center gap-2 max-w-xs"><span className="text-sm font-semibold">1 column per row (Fixed)</span></div><p className="text-xs text-muted-foreground mt-2">Display is locked to single column for optimal mobile experience.</p></div><div className="flex gap-3 pt-2"><Button variant="hero" onClick={saveThemeColors} disabled={savingTheme} className="flex-1">{savingTheme ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Save Theme</Button><Button variant="outline" onClick={resetToDefault} className="flex-1"><RotateCcw className="h-4 w-4 mr-1" />Reset</Button></div></CardContent></Card>
               <Card className="border-border"><CardHeader><CardTitle className="font-display text-base">Live Preview</CardTitle><p className="text-xs text-muted-foreground">This is exactly how your public store will look.</p></CardHeader><CardContent><div className="rounded-xl overflow-hidden border border-border" style={{ backgroundColor: themeColors.background, minHeight: 320 }}><div className="p-4" style={{ backgroundColor: themeColors.background }}><div className="text-center mb-3"><p className="font-bold text-sm" style={{ color: themeColors.primary }}>{store?.store_name || "Your Store Name"}</p><p className="text-xs mt-1" style={{ color: `${themeColors.primary}99` }}>{storeHeadline || "Your store headline"}</p></div><div className="grid gap-2 mt-3" style={{ gridTemplateColumns: `repeat(1, minmax(0, 1fr))` }}>{Array.from({ length: 2 }).map((_, i) => (<div key={i} className="rounded-lg p-2 text-center text-xs" style={{ backgroundColor: themeColors.card_background, border: `1px solid ${themeColors.primary}30` }}><div className="font-bold text-white text-sm">{[1, 2, 3, 4, 5, 6, 8, 10][i] || i + 1}GB</div><div className="text-xs mt-1" style={{ color: `${themeColors.primary}cc` }}>MTN</div><div className="text-xs" style={{ color: "#ccc" }}>GHC {(4 + i * 3).toFixed(2)}</div><div className="mt-1 rounded text-xs py-0.5 font-bold" style={{ backgroundColor: themeColors.primary, color: themeColors.primary_foreground }}>Buy</div></div>))}</div></div></div><p className="text-xs text-muted-foreground mt-2 text-center">1 column per row • Changes apply live after saving</p></CardContent></Card>
+            </div>
+          </TabsContent>
+
+          {/* ============================= API DOCS ============================= */}
+          <TabsContent value="api-docs" className="mt-0 space-y-6">
+            {/* Header Card */}
+            <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <BookOpen className="h-8 w-8 text-blue-400 flex-shrink-0" />
+                  <div>
+                    <h2 className="font-display text-2xl font-bold">API Documentation</h2>
+                    <p className="text-sm text-muted-foreground mt-2">Integrate DataPlug's API into your application for seamless data purchases and order management.</p>
+                    <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                      <p className="text-sm font-mono text-foreground">Base URL: https://api.dataplug.store/functions/v1</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Authentication */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5 text-cyan-400" />
+                  Authentication
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">All API requests require your API key in the Authorization header:</p>
+                <div className="bg-muted p-4 rounded-lg border border-border font-mono text-sm space-y-2">
+                  <div>Authorization: Bearer pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
+                </div>
+                <p className="text-xs text-muted-foreground">Your API key can be found in the <span className="font-semibold">API Key</span> tab above.</p>
+              </CardContent>
+            </Card>
+
+            {/* Supported Networks */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-green-400" />
+                  Supported Networks
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { code: "mtn", name: "MTN Ghana" },
+                    { code: "telecel", name: "Telecel Ghana" },
+                    { code: "airteltigo", name: "AirtelTigo Ghana" },
+                    { code: "mashup", name: "Mashup (Data + Minutes)" },
+                    { code: "mtn_mashup", name: "MTN Mashup (Data + Minutes)" },
+                  ].map(network => (
+                    <div key={network.code} className="p-3 bg-muted rounded-lg border border-border">
+                      <p className="font-mono text-sm font-semibold text-cyan-400">{network.code}</p>
+                      <p className="text-sm text-muted-foreground">{network.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Main Endpoints */}
+            <div className="space-y-4">
+              {/* GET /get-packages */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
+                    <span>/get-packages</span>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">Retrieve all available data packages with pricing.</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• <span className="font-mono">network</span> - Filter by single network</li>
+                      <li>• <span className="font-mono">networks[]</span> - Filter by multiple networks</li>
+                    </ul>
+                  </div>
+                  <div className="bg-muted p-3 rounded-lg border border-border">
+                    <p className="text-xs text-muted-foreground mb-2">Example:</p>
+                    <p className="font-mono text-xs">GET /get-packages?network=mtn</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* POST /purchase */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-mono">POST</span>
+                    <span>/purchase</span>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">Purchase a data package using your wallet balance.</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Required Parameters:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• <span className="font-mono">network</span> - Network to purchase for (mtn, telecel, airteltigo)</li>
+                      <li>• <span className="font-mono">size_gb</span> - Package size in GB</li>
+                      <li>• <span className="font-mono">phone</span> - Recipient phone number (024XXXXXXX)</li>
+                    </ul>
+                  </div>
+                  <div className="bg-muted p-3 rounded-lg border border-border">
+                    <p className="text-xs text-muted-foreground mb-2">Example Request Body:</p>
+                    <pre className="font-mono text-xs overflow-x-auto">
+{`{
+  "network": "mtn",
+  "size_gb": 2,
+  "phone": "024XXXXXXX"
+}`}
+                    </pre>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* GET /get-orders */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
+                    <span>/get-orders</span>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">Retrieve all orders for the authenticated API user.</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• <span className="font-mono">limit</span> - Number of orders to return (default: 50)</li>
+                      <li>• <span className="font-mono">offset</span> - Number of orders to skip (default: 0)</li>
+                      <li>• <span className="font-mono">status</span> - Filter by status (pending, completed, failed)</li>
+                      <li>• <span className="font-mono">network</span> - Filter by network</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* GET /track-order */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
+                    <span>/track-order</span>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">Get the current status of a specific order.</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold mb-2">Required Parameters:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• <span className="font-mono">reference</span> - Order ID or provider reference</li>
+                    </ul>
+                  </div>
+                  <div className="bg-muted p-3 rounded-lg border border-border">
+                    <p className="text-xs text-muted-foreground mb-2">Example:</p>
+                    <p className="font-mono text-xs">GET /track-order?reference=API_1234567890_abc123</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Order Status Values */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-purple-400" />
+                    Order Status Values
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {[
+                      { status: "pending", desc: "Order created, awaiting processing" },
+                      { status: "processing", desc: "Order is being processed" },
+                      { status: "completed", desc: "Order completed successfully" },
+                      { status: "failed", desc: "Order failed" },
+                      { status: "delivered", desc: "Data delivered to recipient" },
+                    ].map(item => (
+                      <div key={item.status} className="flex gap-3 items-start p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                        <span className="font-mono text-xs bg-muted px-2 py-1 rounded text-cyan-400 whitespace-nowrap">{item.status}</span>
+                        <span className="text-sm text-muted-foreground">{item.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Error Codes */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-red-400" />
+                    Error Codes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {[
+                      { code: "400", desc: "Bad Request - Invalid parameters" },
+                      { code: "401", desc: "Unauthorized - Invalid or missing API key" },
+                      { code: "402", desc: "Payment Required - Insufficient wallet balance" },
+                      { code: "403", desc: "Forbidden - API key is inactive" },
+                      { code: "404", desc: "Not Found - Package or order not found" },
+                      { code: "500", desc: "Internal Server Error" },
+                    ].map(err => (
+                      <div key={err.code} className="flex gap-3 items-start p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                        <span className="font-mono text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded whitespace-nowrap">{err.code}</span>
+                        <span className="text-sm text-muted-foreground">{err.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Additional Notes */}
+              <Card className="border-yellow-500/30 bg-yellow-500/5">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-yellow-400" />
+                    Important Notes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="text-sm text-muted-foreground space-y-2 ml-4">
+                    <li>• Prices are automatically determined from the package database</li>
+                    <li>• Wallet balance is deducted immediately upon successful purchase</li>
+                    <li>• Provider reference is saved for order tracking</li>
+                    <li>• Keep your API key secure and never share it publicly</li>
+                    <li>• API calls are rate-limited to ensure fair usage</li>
+                  </ul>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 

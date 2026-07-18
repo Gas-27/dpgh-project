@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -152,6 +152,7 @@ const UserDashboard = () => {
     { id: "refunds", label: "Refunds", icon: Wallet },
     { id: "rewards", label: "Rewards & Benefits", icon: ImageIcon },
     { id: "api-key", label: "API Key", icon: Zap },
+    { id: "api-docs", label: "API Docs", icon: BookOpen },
     { id: "api-orders", label: "API Orders", icon: BarChart3 },
     { id: "afa-registration", label: "AFA Registration", icon: Package },
     { id: "topup", label: "Top Up", icon: Coins },
@@ -772,6 +773,8 @@ const UserDashboard = () => {
         return renderFlyerGenerator();
       case "api-key":
         return renderApiKey();
+      case "api-docs":
+        return renderApiDocs();
       case "api-orders":
         return renderApiOrders();
       case "afa-registration":
@@ -1610,6 +1613,244 @@ const UserDashboard = () => {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+
+  const renderApiDocs = () => (
+    <div className="space-y-6">
+      {/* Header Card */}
+      <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <BookOpen className="h-8 w-8 text-blue-400 flex-shrink-0" />
+            <div>
+              <h2 className="font-display text-2xl font-bold">API Documentation</h2>
+              <p className="text-sm text-muted-foreground mt-2">Integrate DataPlug's API into your application for seamless data purchases and order management.</p>
+              <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                <p className="text-sm font-mono text-foreground">Base URL: https://api.dataplug.store/functions/v1</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Authentication */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5 text-cyan-400" />
+            Authentication
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">All API requests require your API key in the Authorization header:</p>
+          <div className="bg-muted p-4 rounded-lg border border-border font-mono text-sm space-y-2">
+            <div>Authorization: Bearer pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
+          </div>
+          <p className="text-xs text-muted-foreground">Your API key can be found in the <span className="font-semibold">API Key</span> tab above.</p>
+        </CardContent>
+      </Card>
+
+      {/* Supported Networks */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-green-400" />
+            Supported Networks
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[
+              { code: "mtn", name: "MTN Ghana" },
+              { code: "telecel", name: "Telecel Ghana" },
+              { code: "airteltigo", name: "AirtelTigo Ghana" },
+              { code: "mashup", name: "Mashup (Data + Minutes)" },
+              { code: "mtn_mashup", name: "MTN Mashup (Data + Minutes)" },
+            ].map(network => (
+              <div key={network.code} className="p-3 bg-muted rounded-lg border border-border">
+                <p className="font-mono text-sm font-semibold text-cyan-400">{network.code}</p>
+                <p className="text-sm text-muted-foreground">{network.name}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Endpoints */}
+      <div className="space-y-4">
+        {/* GET /get-packages */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
+              <span>/get-packages</span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">Retrieve all available data packages with pricing.</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
+              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                <li>• <span className="font-mono">network</span> - Filter by single network</li>
+                <li>• <span className="font-mono">networks[]</span> - Filter by multiple networks</li>
+              </ul>
+            </div>
+            <div className="bg-muted p-3 rounded-lg border border-border">
+              <p className="text-xs text-muted-foreground mb-2">Example:</p>
+              <p className="font-mono text-xs">GET /get-packages?network=mtn</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* POST /purchase */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-mono">POST</span>
+              <span>/purchase</span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">Purchase a data package using your wallet balance.</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold mb-2">Required Parameters:</p>
+              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                <li>• <span className="font-mono">network</span> - Network to purchase for (mtn, telecel, airteltigo)</li>
+                <li>• <span className="font-mono">size_gb</span> - Package size in GB</li>
+                <li>• <span className="font-mono">phone</span> - Recipient phone number (024XXXXXXX)</li>
+              </ul>
+            </div>
+            <div className="bg-muted p-3 rounded-lg border border-border">
+              <p className="text-xs text-muted-foreground mb-2">Example Request Body:</p>
+              <pre className="font-mono text-xs overflow-x-auto">
+{`{
+  "network": "mtn",
+  "size_gb": 2,
+  "phone": "024XXXXXXX"
+}`}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* GET /get-orders */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
+              <span>/get-orders</span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">Retrieve all orders for the authenticated API user.</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
+              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                <li>• <span className="font-mono">limit</span> - Number of orders to return (default: 50)</li>
+                <li>• <span className="font-mono">offset</span> - Number of orders to skip (default: 0)</li>
+                <li>• <span className="font-mono">status</span> - Filter by status (pending, completed, failed)</li>
+                <li>• <span className="font-mono">network</span> - Filter by network</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* GET /track-order */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
+              <span>/track-order</span>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">Get the current status of a specific order.</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold mb-2">Required Parameters:</p>
+              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                <li>• <span className="font-mono">reference</span> - Order ID or provider reference</li>
+              </ul>
+            </div>
+            <div className="bg-muted p-3 rounded-lg border border-border">
+              <p className="text-xs text-muted-foreground mb-2">Example:</p>
+              <p className="font-mono text-xs">GET /track-order?reference=API_1234567890_abc123</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Order Status Values */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-purple-400" />
+              Order Status Values
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[
+                { status: "pending", desc: "Order created, awaiting processing" },
+                { status: "processing", desc: "Order is being processed" },
+                { status: "completed", desc: "Order completed successfully" },
+                { status: "failed", desc: "Order failed" },
+                { status: "delivered", desc: "Data delivered to recipient" },
+              ].map(item => (
+                <div key={item.status} className="flex gap-3 items-start p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  <span className="font-mono text-xs bg-muted px-2 py-1 rounded text-cyan-400 whitespace-nowrap">{item.status}</span>
+                  <span className="text-sm text-muted-foreground">{item.desc}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Error Codes */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              Error Codes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[
+                { code: "400", desc: "Bad Request - Invalid parameters" },
+                { code: "401", desc: "Unauthorized - Invalid or missing API key" },
+                { code: "402", desc: "Payment Required - Insufficient wallet balance" },
+                { code: "403", desc: "Forbidden - API key is inactive" },
+                { code: "404", desc: "Not Found - Package or order not found" },
+                { code: "500", desc: "Internal Server Error" },
+              ].map(err => (
+                <div key={err.code} className="flex gap-3 items-start p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  <span className="font-mono text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded whitespace-nowrap">{err.code}</span>
+                  <span className="text-sm text-muted-foreground">{err.desc}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Additional Notes */}
+        <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-400" />
+              Important Notes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="text-sm text-muted-foreground space-y-2 ml-4">
+              <li>• Prices are automatically determined from the package database</li>
+              <li>• Wallet balance is deducted immediately upon successful purchase</li>
+              <li>• Provider reference is saved for order tracking</li>
+              <li>• Keep your API key secure and never share it publicly</li>
+              <li>• API calls are rate-limited to ensure fair usage</li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 
