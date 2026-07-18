@@ -1545,10 +1545,18 @@ const AgentDashboard = () => {
         throw new Error("Authentication failed. Please log in again.");
       }
 
-      // The payout edge function authorizes the store against the authenticated
-      // session user (token). During admin impersonation the displayed `store`
-      // Use store.id directly - the backend validates via the JWT token.
-      payload.requester_id = store.id;
+      // Always do a fresh lookup to get the definitive agent_stores.id (PK)
+      // for the authenticated user — the edge function queries by this PK.
+      const effectiveUid = impersonatedUserId || session.user.id;
+      const { data: freshStore, error: freshStoreErr } = await supabase
+        .from("agent_stores")
+        .select("id")
+        .eq("user_id", effectiveUid)
+        .single();
+      if (freshStoreErr || !freshStore?.id) {
+        throw new Error("Could not resolve your agent store. Please refresh and try again.");
+      }
+      payload.requester_id = freshStore.id;
 
       const response = await fetch(
         "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
