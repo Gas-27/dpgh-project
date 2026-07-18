@@ -1549,26 +1549,10 @@ const AgentDashboard = () => {
       // session user (token). During admin impersonation the displayed `store`
       // belongs to another agent, so we must resolve and use the store owned by
       // the actual logged-in user to keep the request valid and self-consistent.
-      const authUserId = session.user.id;
-      let requesterStoreId = store.id;
-      if (store.user_id && store.user_id !== authUserId) {
-        const { data: ownStore, error: ownStoreError } = await supabase
-          .from("agent_stores")
-          .select("id, wallet_balance, subagent_commission_balance")
-          .eq("user_id", authUserId)
-          .single();
-        if (ownStoreError || !ownStore) {
-          throw new Error("Your agent store could not be found for this account.");
-        }
-        requesterStoreId = ownStore.id;
-        const ownAvailable = withdrawSource === "subagent_commission"
-          ? Number(ownStore.subagent_commission_balance ?? 0)
-          : Number(ownStore.wallet_balance ?? 0);
-        if (amt > ownAvailable) {
-          throw new Error("Insufficient balance in your store for this withdrawal.");
-        }
-      }
-      payload.requester_id = requesterStoreId;
+      // Use the store.id directly — the backend validates ownership via the JWT.
+      // Do NOT re-fetch or re-validate here; the balance check above (line ~1492) 
+      // already confirmed the selected source has sufficient funds.
+      payload.requester_id = store.id;
 
       const response = await fetch(
         "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",

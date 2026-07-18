@@ -49,17 +49,13 @@ export async function getAgentBalance(agentStoreId: string): Promise<Balance> {
     .single();
 
   if (error || !data) {
-    console.error("[v0] Failed to fetch agent balance:", error?.message);
     throw new Error("Failed to fetch agent balance");
   }
 
-  const balance = {
+  return {
     wallet_balance: Number(data.wallet_balance) || 0,
     subagent_commission_balance: Number(data.subagent_commission_balance) || 0,
   };
-  
-  console.log("[v0] Agent balance fetched:", balance);
-  return balance;
 }
 
 // Get subagent balance
