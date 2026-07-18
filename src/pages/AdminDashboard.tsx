@@ -1565,11 +1565,22 @@ const AdminDashboard = () => {
 
     for (const orderId of selectedOrderIds) {
       try {
-        const order = orders.find(o => o.id === orderId);
+        // Try to find order in local array first, then fetch from Supabase if not found
+        let order = orders.find(o => o.id === orderId);
         if (!order) {
-          console.log("[v0] Order not found in orders array:", orderId);
-          errorCount++;
-          continue;
+          console.log("[v0] Order not in local array, fetching from Supabase:", orderId);
+          const { data: fetchedOrder, error: fetchErr } = await supabase
+            .from("orders")
+            .select(`*`)
+            .eq("id", orderId)
+            .maybeSingle();
+          if (fetchErr || !fetchedOrder) {
+            console.log("[v0] Failed to fetch order from Supabase:", orderId, fetchErr);
+            errorCount++;
+            continue;
+          }
+          order = fetchedOrder;
+          console.log("[v0] Order fetched from Supabase:", orderId);
         }
 
         // Skip orders that are already refunded
@@ -1590,140 +1601,84 @@ const AdminDashboard = () => {
           amount: order.amount
         });
 
-        // Determine where to send the refund based on order source
-        if (order.subagent_store_id) {
-          // Subagent order: refund the admin base price to the subagent's parent agent wallet
-          const subagent = subagents.find(s => s.id === order.subagent_store_id);
-          const parentAgentId = subagent?.agent_store_id;
-          refundAmount = await resolveAgentBasePrice(order, parentAgentId);
-          if (parentAgentId) {
-            const { data: agentRow } = await supabase
-              .from("agent_stores")
-              .select("wallet_balance")
-              .eq("id", parentAgentId)
-              .maybeSingle();
-            if (agentRow) {
-              const newBalance = (agentRow.wallet_balance || 0) + refundAmount;
-              const { error: updateErr } = await supabase
-                .from("agent_stores")
-                .update({ wallet_balance: newBalance })
-                .eq("id", parentAgentId);
-              if (!updateErr) targetWalletUpdated = true;
-            }
+        // Simplified refund logic:
+        // 1. If customer_id exists → refund to customer wallet (regardless of payment method)
+        // 2. If agent_store_id exists → refund to agent wallet (regardless of hierarchy)
+        // Use base price (order.amount) as refund amount
+        
+        if (order.customer_id) {
+          // Customer order: refund to customer wallet (Paystack or wallet purchase)
+          console.log("[v0] Refunding to customer", order.customer_id, "amount:", paidAmount);
+          refundAmount = paidAmount;
+          
+          // Try to find or create customer wallet row
+          const { data: customer, error: fetchErr } = await supabase
+            .from("customers")
+            .select("id, wallet_balance")
+            .eq("user_id", order.customer_id)
+            .maybeSingle();
+          
+          if (customer) {
+            // Update existing wallet
+            const newBalance = (customer.wallet_balance || 0) + refundAmount;
+            console.log("[v0] Updating customer wallet:", { old: customer.wallet_balance, new: newBalance, refund: refundAmount });
+            const { error: updateErr } = await supabase
+              .from("customers")
+              .update({ wallet_balance: newBalance })
+              .eq("id", customer.id);
+            if (!updateErr) targetWalletUpdated = true;
+            else console.log("[v0] Customer wallet update failed:", updateErr);
+          } else if (!fetchErr) {
+            // Create new wallet row if it doesn't exist
+            console.log("[v0] Creating customer wallet for:", order.customer_id, "balance:", refundAmount);
+            const { error: insertErr } = await supabase
+              .from("customers")
+              .insert({ user_id: order.customer_id, wallet_balance: refundAmount });
+            if (!insertErr) targetWalletUpdated = true;
+            else console.log("[v0] Customer wallet insert failed:", insertErr);
           }
         } else if (order.agent_store_id) {
-          // Agent order: refund the admin base price to the agent's wallet
-          console.log("[v0] Refunding to agent", order.agent_store_id);
-          refundAmount = await resolveAgentBasePrice(order, order.agent_store_id);
-          console.log("[v0] Resolved refund amount for agent:", refundAmount);
+          // Agent order: refund to agent wallet (direct agent, subagent, or subsubagent all go to agent)
+          console.log("[v0] Refunding to agent", order.agent_store_id, "amount:", paidAmount);
+          refundAmount = paidAmount;
           
-          // Try to fetch agent with proper admin access
-          let agentRow = null;
-          let fetchErr = null;
-          try {
-            const result = await supabase
+          const { data: agent, error: fetchErr } = await supabase
+            .from("agent_stores")
+            .select("id, wallet_balance")
+            .eq("id", order.agent_store_id)
+            .maybeSingle();
+          
+          if (agent) {
+            const newBalance = (agent.wallet_balance || 0) + refundAmount;
+            console.log("[v0] Updating agent wallet:", { old: agent.wallet_balance, new: newBalance, refund: refundAmount });
+            const { error: updateErr } = await supabase
               .from("agent_stores")
-              .select("id, wallet_balance")
-              .eq("id", order.agent_store_id)
-              .maybeSingle();
-            agentRow = result.data;
-            fetchErr = result.error;
-          } catch (e) {
-            console.log("[v0] Exception fetching agent:", e);
-            fetchErr = e as any;
-          }
-          
-          console.log("[v0] Agent row fetch - error:", fetchErr, "data:", agentRow);
-          if (agentRow) {
-            const newBalance = (agentRow.wallet_balance || 0) + refundAmount;
-            console.log("[v0] Updating agent wallet from", agentRow.wallet_balance, "to", newBalance);
-            try {
-              const updateResult = await supabase
-                .from("agent_stores")
-                .update({ wallet_balance: newBalance })
-                .eq("id", order.agent_store_id);
-              console.log("[v0] Agent wallet update - error:", updateResult.error, "data:", updateResult.data);
-              if (!updateResult.error) targetWalletUpdated = true;
-            } catch (e) {
-              console.log("[v0] Exception updating agent wallet:", e);
-            }
+              .update({ wallet_balance: newBalance })
+              .eq("id", agent.id);
+            if (!updateErr) targetWalletUpdated = true;
+            else console.log("[v0] Agent wallet update failed:", updateErr);
           } else {
-            console.log("[v0] Agent row not found for agent_store_id:", order.agent_store_id);
+            console.log("[v0] Agent not found:", order.agent_store_id, fetchErr);
           }
         } else if (order.api_user) {
-          // API user order: refund to API user's wallet (keyed by identity_id)
+          // API user order: refund to API user wallet
+          console.log("[v0] Refunding to API user", order.api_user, "amount:", paidAmount);
           refundAmount = paidAmount;
-          const { data: apiUser } = await supabase
+          
+          const { data: apiUser, error: fetchErr } = await supabase
             .from("api_users")
-            .select("wallet")
-            .eq("identity_id", order.api_user)
+            .select("id, wallet_balance")
+            .eq("id", order.api_user)
             .maybeSingle();
+          
           if (apiUser) {
-            const newBalance = (apiUser.wallet || 0) + refundAmount;
+            const newBalance = (apiUser.wallet_balance || 0) + refundAmount;
             const { error: updateErr } = await supabase
               .from("api_users")
-              .update({ wallet: newBalance })
-              .eq("identity_id", order.api_user);
+              .update({ wallet_balance: newBalance })
+              .eq("id", apiUser.id);
             if (!updateErr) targetWalletUpdated = true;
-          }
-        } else if (order.customer_id) {
-          // Direct main-site user order: refund the amount the user paid to their wallet.
-          console.log("[v0] Refunding to user", order.customer_id, "amount:", paidAmount);
-          refundAmount = paidAmount;
-          
-          let customer = null;
-          let fetchErr = null;
-          try {
-            const result = await supabase
-              .from("customers")
-              .select("id, wallet_balance")
-              .eq("user_id", order.customer_id)
-              .maybeSingle();
-            customer = result.data;
-            fetchErr = result.error;
-          } catch (e) {
-            console.log("[v0] Exception fetching customer:", e);
-            fetchErr = e as any;
-          }
-          
-          console.log("[v0] Customer row fetch - error:", fetchErr, "data:", customer);
-          if (customer) {
-            const newBalance = (customer.wallet_balance || 0) + refundAmount;
-            console.log("[v0] Updating user wallet from", customer.wallet_balance, "to", newBalance);
-            try {
-              const updateResult = await supabase
-                .from("customers")
-                .update({ wallet_balance: newBalance })
-                .eq("user_id", order.customer_id);
-              console.log("[v0] User wallet update - error:", updateResult.error, "data:", updateResult.data);
-              if (!updateResult.error) {
-                targetWalletUpdated = true;
-              } else {
-                console.log("[v0] Update by user_id failed, trying by id instead");
-                // Try updating by id instead of user_id
-                const updateById = await supabase
-                  .from("customers")
-                  .update({ wallet_balance: newBalance })
-                  .eq("id", customer.id);
-                console.log("[v0] Update by id - error:", updateById.error);
-                if (!updateById.error) targetWalletUpdated = true;
-              }
-            } catch (e) {
-              console.log("[v0] Exception updating user wallet:", e);
-            }
-          } else {
-            // No wallet row yet (e.g. a Paystack buyer who never topped up a wallet).
-            // Create one seeded with the refund so the credit is not lost.
-            console.log("[v0] Creating new customer wallet for user", order.customer_id, "with balance:", refundAmount);
-            try {
-              const insertResult = await supabase
-                .from("customers")
-                .insert({ user_id: order.customer_id, wallet_balance: refundAmount });
-              console.log("[v0] Customer wallet insert - error:", insertResult.error, "data:", insertResult.data);
-              if (!insertResult.error) targetWalletUpdated = true;
-            } catch (e) {
-              console.log("[v0] Exception inserting customer wallet:", e);
-            }
+            else console.log("[v0] API user wallet update failed:", updateErr);
           }
         }
 
