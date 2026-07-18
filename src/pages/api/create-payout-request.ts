@@ -78,13 +78,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       storeId = store.id;
 
       // Normalise withdrawal_source (accept both short and long forms).
+      console.log("[API] Agent withdrawal - received rawSource:", rawSource);
       if (rawSource === "wallet_balance" || rawSource === "wallet") {
         withdrawal_source = "wallet_balance";
         currentBalance = Number(store.wallet_balance ?? 0);
+        console.log("[API] Normalized to wallet_balance");
       } else if (rawSource === "subagent_commission_balance" || rawSource === "subagent_commission") {
         withdrawal_source = "subagent_commission_balance";
         currentBalance = Number(store.subagent_commission_balance ?? 0);
+        console.log("[API] Normalized to subagent_commission_balance");
       } else {
+        console.log("[API] Invalid withdrawal_source:", rawSource);
         return res.status(400).json({ success: false, error: "Invalid withdrawal_source for agent" });
       }
 
@@ -235,7 +239,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .single();
 
     if (payoutErr || !payoutRow) {
-      return res.status(500).json({ success: false, error: "Failed to create payout request" });
+      console.error("[v0] Payout insert error:", payoutErr?.message, "Payload:", { requester_type, requester_id: storeId, amount, withdrawal_source });
+      return res.status(500).json({ success: false, error: payoutErr?.message || "Failed to create payout request" });
     }
     const payoutId = payoutRow.id;
 
