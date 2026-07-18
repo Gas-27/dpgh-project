@@ -2132,27 +2132,6 @@ const AgentDashboard = () => {
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {filteredProfitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
             </div>
-
-            {/* Refunds Card - orders the admin has refunded back to this agent */}
-            {(() => {
-              const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
-              if (refundedOrders.length === 0) return null;
-              const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number((o as any).refunded_amount ?? (o as any).base_price ?? o.amount) || 0), 0);
-              return (
-                <Card className="border-amber-500/30 bg-amber-500/5">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">Refunds Received from Admin</p>
-                        <p className="font-display text-2xl font-bold text-amber-400 mt-1">{refundedOrders.length}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Total refunded to your wallet: GHC {refundedTotal.toFixed(2)}</p>
-                      </div>
-                      <Wallet className="h-8 w-8 text-amber-400 opacity-50" />
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div className="flex-1"><p className="text-sm text-muted-foreground">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GHC {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p><details className="mt-2 cursor-pointer group"><summary className="text-xs text-green-300 font-semibold hover:text-green-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-green-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-green-500/10 border border-green-500/30 rounded text-xs space-y-1"><div className="text-muted-foreground text-xs leading-relaxed"><p><strong>Total Profit</strong></p><p className="mt-1">This is a display of your profit from store sales and PROFIT FROM subagent. This money is already part of your wallet balance and you can spend or withdraw it anytime.</p></div></div></details></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
               <Card className="border-yellow-500/30 bg-yellow-500/5">
@@ -2219,6 +2198,31 @@ const AgentDashboard = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* Agent Features Section */}
+            <div className="space-y-4">
+              <h3 className="font-display text-xl font-bold">Agent Features</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {(() => {
+                  const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
+                  if (refundedOrders.length === 0) return null;
+                  const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number((o as any).refunded_amount ?? (o as any).base_price ?? o.amount) || 0), 0);
+                  return (
+                    <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-colors">
+                      <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
+                        <Wallet className="h-8 w-8 text-amber-400" />
+                        <div>
+                          <p className="font-semibold text-amber-400">{refundedOrders.length}</p>
+                          <p className="text-xs text-muted-foreground">Refunds Received</p>
+                          <p className="text-xs text-muted-foreground mt-2">GHC {refundedTotal.toFixed(2)}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
+              </div>
+            </div>
+
             <Card className="border-border">
               <CardHeader className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

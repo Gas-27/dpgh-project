@@ -896,27 +896,6 @@ const UserDashboard = () => {
         </Card>
       </div>
 
-      {/* Refunds Card - shows when admin has refunded any of this user's orders */}
-      {(() => {
-        const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
-        if (refundedOrders.length === 0) return null;
-        const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number(o.refunded_amount ?? o.amount) || 0), 0);
-        return (
-          <Card className="border-amber-500/30 bg-amber-500/5">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Refunded Orders</p>
-                  <p className="font-display text-3xl font-bold text-amber-400 mt-2">{refundedOrders.length}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Total refunded to wallet: GHC {refundedTotal.toFixed(2)}</p>
-                </div>
-                <Wallet className="h-8 w-8 text-amber-400 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
-
       {/* Account Reference and Codes Card */}
       <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">
         <CardContent className="p-6">
@@ -972,6 +951,21 @@ const UserDashboard = () => {
                 <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">{feature.label}</span>
               </button>
             ))}
+            {(() => {
+              const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
+              if (refundedOrders.length === 0) return null;
+              const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number(o.refunded_amount ?? o.amount) || 0), 0);
+              return (
+                <div className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 flex flex-col items-center gap-2 text-center">
+                  <Wallet className="h-5 w-5 text-amber-400" />
+                  <div>
+                    <p className="text-xs font-medium text-amber-400">{refundedOrders.length}</p>
+                    <p className="text-xs text-muted-foreground">Refunds</p>
+                    <p className="text-xs text-muted-foreground mt-1">GHC {refundedTotal.toFixed(2)}</p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </CardContent>
       </Card>
@@ -2363,16 +2357,18 @@ const UserDashboard = () => {
               <CardTitle className="text-2xl">Ready to Become an Agent?</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 space-y-3">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 space-y-3">
                 <div className="flex gap-2 items-start">
-                  <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                   <div className="text-sm space-y-2">
                     <p className="font-semibold text-foreground">Important Information:</p>
                     <ul className="space-y-2 text-muted-foreground list-disc list-inside">
-                      <li>You will be charged <span className="font-semibold text-foreground">GHC {registrationFee.toFixed(2)}</span> for agent registration</li>
-                      <li>This amount will be deducted from your wallet balance (Current: <span className="font-semibold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</span>)</li>
-                      <li>After confirming, you cannot go back - your account will be upgraded to Agent immediately</li>
-                      <li>You will proceed to payment to activate your agent account</li>
+                      <li>Your current User account will be <span className="font-semibold text-red-400">permanently closed</span> when you upgrade to Agent</li>
+                      <li><span className="font-semibold text-red-400">Any money remaining in your wallet will be lost</span> when this account is closed</li>
+                      <li>Please <span className="font-semibold text-foreground">withdraw or spend all your wallet balance</span> before proceeding</li>
+                      <li>Current wallet balance: <span className="font-semibold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</span></li>
+                      <li>After upgrading, you cannot go back to a User account - you will become an Agent</li>
+                      <li>You will complete agent setup and proceed to payment to activate your agent account</li>
                     </ul>
                   </div>
                 </div>
@@ -2385,7 +2381,7 @@ const UserDashboard = () => {
                     id="agree-terms"
                     className="rounded border-border"
                   />
-                  <span className="text-sm text-muted-foreground">I understand and agree to the agent registration terms</span>
+                  <span className="text-sm text-muted-foreground">I understand that my account will be closed and I have cleared my wallet</span>
                 </label>
               </div>
 
@@ -2401,24 +2397,17 @@ const UserDashboard = () => {
                   onClick={() => {
                     const checkbox = document.getElementById("agree-terms") as HTMLInputElement;
                     if (!checkbox?.checked) {
-                      toast({ title: "Please agree to continue", variant: "destructive" });
+                      toast({ title: "Please confirm you understand the terms", variant: "destructive" });
                       return;
                     }
                     setShowUpgradeConfirmation(false);
                     navigate("/agent-onboarding");
                   }}
                   className="flex-1 bg-purple-600 hover:bg-purple-700"
-                  disabled={normalWallet < registrationFee}
                 >
-                  {normalWallet < registrationFee ? "Insufficient Balance" : "I Understand - Proceed"}
+                  I Understand - Proceed
                 </Button>
               </div>
-
-              {normalWallet < registrationFee && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                  <p className="text-sm text-red-400">You need GHC {(registrationFee - normalWallet).toFixed(2)} more to proceed</p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>

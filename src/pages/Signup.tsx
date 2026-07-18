@@ -11,21 +11,30 @@ import { useToast } from "@/hooks/use-toast";
 const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [userType, setUserType] = useState<"agent" | "customer">("agent");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      toast({ title: "Passwords don't match", description: "Please enter matching passwords", variant: "destructive" });
+      return;
+    }
+    
     setLoading(true);
+    // All new signups are created as "customer" (user) by default
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, role: userType },
+        data: { full_name: fullName, role: "customer" },
       },
     });
     setLoading(false);
@@ -51,11 +60,7 @@ const Signup = () => {
       }
       
       toast({ title: "Account created!", description: "Welcome to Data Plug STORE!" });
-      if (userType === "agent") {
-        navigate("/agent-onboarding");
-      } else {
-        navigate("/user-dashboard");
-      }
+      navigate("/user-dashboard");
     }
   };
 
@@ -74,58 +79,6 @@ const Signup = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Account Type</Label>
-              <div className="grid grid-cols-1 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setUserType("customer")}
-                  aria-pressed={userType === "customer"}
-                  className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-colors ${
-                    userType === "customer"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <span
-                    className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
-                      userType === "customer" ? "border-primary" : "border-muted-foreground"
-                    }`}
-                  >
-                    {userType === "customer" && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
-                  </span>
-                  <span>
-                    <span className="block font-semibold">User</span>
-                    <span className="block text-xs text-muted-foreground">Buy data for yourself at regular prices</span>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setUserType("agent")}
-                  aria-pressed={userType === "agent"}
-                  className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-colors ${
-                    userType === "agent"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <span
-                    className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
-                      userType === "agent" ? "border-primary" : "border-muted-foreground"
-                    }`}
-                  >
-                    {userType === "agent" && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
-                  </span>
-                  <span>
-                    <span className="block font-semibold">Agent</span>
-                    <span className="block text-xs text-muted-foreground">
-                      Get your own store with discounted agent prices, set your own prices, and recruit agents &amp; subagents. You&apos;ll complete store setup after signing up.
-                    </span>
-                  </span>
-                </button>
-              </div>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
               <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" required />
@@ -154,6 +107,29 @@ const Signup = () => {
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
