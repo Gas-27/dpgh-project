@@ -24,12 +24,6 @@ Deno.serve(async (req) => {
 
     let withdrawal_source = initialWithdrawalSource;
 
-    console.log(`[CREATE-PAYOUT] ===== RECEIVED REQUEST =====`);
-    console.log(`[CREATE-PAYOUT] RequesterType: ${requester_type}, RequesterId: ${requester_id}`);
-    console.log(`[CREATE-PAYOUT] Amount: ${amount}`);
-    console.log(`[CREATE-PAYOUT] Received withdrawal_source: "${withdrawal_source}"`);
-    console.log(`[CREATE-PAYOUT] Full request body:`, { requester_type, requester_id, withdrawal_source: initialWithdrawalSource, amount, recipient_id });
-
     if (!requester_type || !requester_id || !amount) {
       return new Response(JSON.stringify({
         success: false,
@@ -129,16 +123,11 @@ Deno.serve(async (req) => {
 
       requesterData = data;
 
-      console.log(`[CREATE-PAYOUT] Agent ${requester_id} - withdrawal_source: "${withdrawal_source}", wallet_balance: ${data.wallet_balance}, subagent_commission_balance: ${data.subagent_commission_balance}`);
-
       if (withdrawal_source === "wallet_balance") {
         currentBalance = Number(data.wallet_balance);
-        console.log(`[CREATE-PAYOUT] Using wallet_balance: ${currentBalance}`);
       } else if (withdrawal_source === "subagent_commission_balance") {
         currentBalance = Number(data.subagent_commission_balance);
-        console.log(`[CREATE-PAYOUT] Using subagent_commission_balance: ${currentBalance}`);
       } else {
-        console.log(`[CREATE-PAYOUT] Invalid withdrawal_source: "${withdrawal_source}"`);
         return new Response(JSON.stringify({ success: false, error: "Invalid withdrawal_source for agent" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -178,15 +167,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`[CREATE-PAYOUT] Balance check: currentBalance=${currentBalance}, requested amount=${amount}`);
     if (currentBalance < amount) {
-      console.log(`[CREATE-PAYOUT] FAILED - Insufficient balance: ${currentBalance} < ${amount}`);
       return new Response(JSON.stringify({
         success: false,
         error: `Insufficient balance. Available: GHS ${currentBalance}`,
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    console.log(`[CREATE-PAYOUT] PASSED - Sufficient balance check`);
 
     // =============================================
     // CHECK 24-HOUR WITHDRAWAL COOLDOWN

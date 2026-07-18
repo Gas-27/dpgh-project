@@ -2325,7 +2325,7 @@ const AdminDashboard = () => {
                         </div>
                       )}
                       <Table>
-                        <TableHeader><TableRow><TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedOrderIds.size === paginated.length && paginated.length > 0} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set(paginated.map(o => o.id))); } else { setSelectedOrderIds(new Set()); } }} className="rounded border-border" /></TableHead><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Source</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedOrderIds.size === paginated.length && paginated.length > 0} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set(paginated.map(o => o.id))); } else { setSelectedOrderIds(new Set()); } }} className="rounded border-border" /></TableHead><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Refund</TableHead><TableHead>Source</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
                           {paginated.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
                             paginated.map((order) => {
@@ -2359,6 +2359,13 @@ const AdminDashboard = () => {
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
                                 <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                                <TableCell>
+                                  {order.refunded_amount ? (
+                                    <span className="text-green-600 font-semibold">GHC {Number(order.refunded_amount).toFixed(2)}</span>
+                                  ) : (
+                                    <span className="text-slate-400">—</span>
+                                  )}
+                                </TableCell>
                                 <TableCell>
                                   <Badge 
                                     variant="outline" 

@@ -64,7 +64,6 @@ export default function WithdrawalForm({
         } else {
           throw new Error("Invalid user role");
         }
-        console.log("[v0] Loaded balance for", userRole, ":", balanceData);
         setBalance(balanceData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load data");
@@ -82,10 +81,6 @@ export default function WithdrawalForm({
     setSuccess(null);
 
     try {
-      console.log("[v0] ===== WITHDRAWAL SUBMIT START =====");
-      console.log("[v0] Current withdrawalSource state:", withdrawalSource);
-      console.log("[v0] Current balance object:", balance);
-      
       if (!selectedRecipient) {
         throw new Error("Please select a recipient");
       }
@@ -98,12 +93,6 @@ export default function WithdrawalForm({
       const availableBalance = withdrawalSource === "wallet_balance"
         ? balance?.wallet_balance || 0
         : balance?.subagent_commission_balance || 0;
-
-      console.log("[v0] Withdrawal logic - Source:", withdrawalSource);
-      console.log("[v0] Wallet balance:", balance?.wallet_balance);
-      console.log("[v0] Commission balance:", balance?.subagent_commission_balance);
-      console.log("[v0] Selected source available:", availableBalance);
-      console.log("[v0] Requesting amount:", amountNum);
 
       if (amountNum > availableBalance) {
         throw new Error(`Insufficient balance. Available: GHS ${availableBalance.toFixed(2)}`);
@@ -119,8 +108,6 @@ export default function WithdrawalForm({
         recipient_id: selectedRecipient,
       };
 
-      console.log("[v0] FINAL PAYLOAD BEING SENT:", JSON.stringify(payload, null, 2));
-      console.log("[v0] ===== SENDING TO BACKEND =====")
       const result = await createPayoutRequest(token, payload);
 
       if (!result.success) {
@@ -173,11 +160,61 @@ export default function WithdrawalForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Balance Selection for Agents */}
+          {userRole === "agent" && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Select Withdrawal Source</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setWithdrawalSource("wallet_balance")}
+                  disabled={submitting}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    withdrawalSource === "wallet_balance"
+                      ? "border-cyan-500 bg-cyan-50"
+                      : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                  } disabled:opacity-50`}
+                >
+                  <p className="text-xs text-slate-600 mb-1">My Wallet</p>
+                  <p className="text-lg font-bold text-cyan-600">
+                    GHS {(balance?.wallet_balance || 0).toFixed(2)}
+                  </p>
+                  {withdrawalSource === "wallet_balance" && (
+                    <p className="text-xs text-cyan-600 mt-1">✓ Selected</p>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setWithdrawalSource("subagent_commission_balance")}
+                  disabled={submitting}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    withdrawalSource === "subagent_commission_balance"
+                      ? "border-cyan-500 bg-cyan-50"
+                      : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                  } disabled:opacity-50`}
+                >
+                  <p className="text-xs text-slate-600 mb-1">Profit from Subagents</p>
+                  <p className="text-lg font-bold text-cyan-600">
+                    GHS {(balance?.subagent_commission_balance || 0).toFixed(2)}
+                  </p>
+                  {withdrawalSource === "subagent_commission_balance" && (
+                    <p className="text-xs text-cyan-600 mt-1">✓ Selected</p>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Recipient Selection */}
           <div className="space-y-2">
-            <Label htmlFor="recipient">Transfer Recipient</Label>
+            <Label htmlFor="recipient">Select Recipient</Label>
+            <p className="text-xs text-slate-600">
+              Tap the dropdown below and select which account to withdraw to
+            </p>
             <Select value={selectedRecipient} onValueChange={setSelectedRecipient} disabled={submitting}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Choose a recipient..." />
               </SelectTrigger>
               <SelectContent>
                 {recipients.map((recipient) => (
@@ -189,28 +226,7 @@ export default function WithdrawalForm({
             </Select>
           </div>
 
-          {userRole === "agent" && (
-            <div className="space-y-2">
-              <Label htmlFor="source">Withdraw From</Label>
-              <Select value={withdrawalSource} onValueChange={(value) => {
-                console.log("[v0] Withdrawal source changed to:", value);
-                setWithdrawalSource(value);
-              }} disabled={submitting}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="wallet_balance">
-                    Wallet Balance (GHS {(balance?.wallet_balance || 0).toFixed(2)})
-                  </SelectItem>
-                  <SelectItem value="subagent_commission_balance">
-                    Commission Balance (GHS {(balance?.subagent_commission_balance || 0).toFixed(2)})
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
+          {/* Amount Input */}
           <div className="space-y-2">
             <Label htmlFor="amount">Amount (GHS)</Label>
             <div className="relative">
@@ -227,8 +243,8 @@ export default function WithdrawalForm({
               />
               <span className="absolute left-3 top-3 text-slate-500">₵</span>
             </div>
-            <p className="text-xs text-slate-500">
-              Available: GHS {availableBalance.toFixed(2)} (from {withdrawalSource === "wallet_balance" ? "Wallet" : "Commission"})
+            <p className="text-xs text-slate-600">
+              Available: <span className="font-semibold text-slate-700">GHS {availableBalance.toFixed(2)}</span>
             </p>
           </div>
 
