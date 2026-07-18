@@ -52,7 +52,9 @@ interface Order {
   id: string; customer_number: string; network: string; size_gb: number; amount: number;
   status: string; fulfillment_status: string; api_response: string | null;
   paystack_reference: string | null; created_at: string | null; agent_store_id: string | null;
-  payment_method: string; subagent_store_id?: string | null;
+  payment_method: string; subagent_store_id?: string | null; customer_id?: string | null;
+  api_user?: string | null; package_id?: string | null; base_price?: number | null;
+  agent_price?: number | null; refunded_amount?: number | null;
 }
   interface WithdrawalRequest {
     id: string; agent_store_id: string | null; subagent_store_id?: string | null; amount: number; status: string;
@@ -506,7 +508,7 @@ const AdminDashboard = () => {
         setTopupHistory(data ?? []);
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
-        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, base_price, agent_price, refunded_amount", { column: "created_at", ascending: false }, 1000);
         setOrders(data ?? []);
       } else if (tabValue === "agents") {
         const data = await fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 1000);

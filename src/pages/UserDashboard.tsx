@@ -87,6 +87,7 @@ const UserDashboard = () => {
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showRefundedOnly, setShowRefundedOnly] = useState(false);
   const [totalDataPurchased, setTotalDataPurchased] = useState(0);
   const [totalSpent, setTotalSpent] = useState(0);
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -990,6 +991,10 @@ const UserDashboard = () => {
               />
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="userRefundedFilter" checked={showRefundedOnly} onChange={e => setShowRefundedOnly(e.target.checked)} className="rounded border-input" />
+            <label htmlFor="userRefundedFilter" className="text-sm cursor-pointer text-muted-foreground hover:text-foreground">Show refunded orders only</label>
+          </div>
         </CardHeader>
         <CardContent>
           {orders.length === 0 ? (
@@ -1012,7 +1017,11 @@ const UserDashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.map(order => (
+                  {orders.filter(o => {
+                    const matchesSearch = o.customer_number?.includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase());
+                    const matchesRefundFilter = showRefundedOnly ? (o.status === "refunded" || o.fulfillment_status === "refunded") : true;
+                    return matchesSearch && matchesRefundFilter;
+                  }).map(order => (
                     <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
                       <TableCell className="text-sm font-mono">{order.customer_number}</TableCell>

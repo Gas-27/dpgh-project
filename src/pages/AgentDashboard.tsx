@@ -366,6 +366,7 @@ const AgentDashboard = () => {
   const [manualOpen, setManualOpen] = useState(false);
   const [openManualSection, setOpenManualSection] = useState<number | null>(null);
   const [markupPercent, setMarkupPercent] = useState("");
+  const [showRefundedOnly, setShowRefundedOnly] = useState(false);
 
   // Notifications to subagents
   const [subagentNotificationMsg, setSubagentNotificationMsg] = useState("");
@@ -1920,7 +1921,11 @@ const AgentDashboard = () => {
   // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
   const totalOrders = dateFilter === "all" ? totalOrderCount : dateFilteredOrders.length;
   const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
-  const filteredOrders = getDateFilteredOrders(orders).filter(o => o.customer_number.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase()));
+  const filteredOrders = getDateFilteredOrders(orders).filter(o => {
+    const matchesSearch = o.customer_number.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase());
+    const matchesRefundFilter = showRefundedOnly ? (o.status === "refunded" || o.fulfillment_status === "refunded") : true;
+    return matchesSearch && matchesRefundFilter;
+  });
   
   // Calculate filtered profit stats based on date filter (no useMemo to avoid hook issues)
   const filteredProfitStats = (() => {
@@ -2219,6 +2224,10 @@ const AgentDashboard = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <CardTitle className="font-display text-lg">Orders ({filteredOrders.length})</CardTitle>
                   <div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by number or order ID..." value={orderSearch} onChange={e => { setOrderSearch(e.target.value); setCurrentPage(1); }} className="pl-9" /></div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="refundedFilter" checked={showRefundedOnly} onChange={e => { setShowRefundedOnly(e.target.checked); setCurrentPage(1); }} className="rounded border-input" />
+                  <label htmlFor="refundedFilter" className="text-sm cursor-pointer text-muted-foreground hover:text-foreground">Show refunded orders only</label>
                 </div>
               </CardHeader>
               <CardContent>
