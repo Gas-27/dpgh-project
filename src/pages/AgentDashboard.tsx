@@ -1556,7 +1556,7 @@ const AgentDashboard = () => {
       payload.requester_id = store.user_id ?? session.user.id;
 
       const response = await fetch(
-        "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
+        "/api/create-payout-request",
         {
           method: "POST",
           headers: { 
