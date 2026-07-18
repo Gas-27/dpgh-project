@@ -259,7 +259,7 @@ const PendingApproval = () => {
           </p>
 
           <Button variant="outline" asChild className="w-full">
-            <Link to="/">Back to Home</Link>
+            <Link to="/user-dashboard">Back to User Account</Link>
           </Button>
         </CardContent>
       </Card>

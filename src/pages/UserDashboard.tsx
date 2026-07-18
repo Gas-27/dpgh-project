@@ -926,50 +926,6 @@ const UserDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Agent Features Menu Card */}
-      <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-indigo-500/10">
-        <CardHeader>
-          <CardTitle>Agent Features</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { icon: Tag, label: "Prices", onClick: () => setActiveMenu("become-agent") },
-              { icon: Package, label: "AFA Bundles", onClick: () => setActiveMenu("afa-registration") },
-              { icon: ImageIcon, label: "Flyer Generator", onClick: () => setActiveMenu("rewards") },
-              { icon: Bell, label: "Notifications", onClick: () => {} },
-              { icon: AlertCircle, label: "Complaints", onClick: () => {} },
-              { icon: Smartphone, label: "USSD", onClick: () => {} },
-              { icon: Settings, label: "Settings", onClick: () => setActiveMenu("settings") },
-            ].map((feature, idx) => (
-              <button
-                key={idx}
-                onClick={feature.onClick}
-                className="p-4 rounded-lg border border-muted-foreground/20 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all flex flex-col items-center gap-2 text-center group"
-              >
-                <feature.icon className="h-5 w-5 text-purple-400 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">{feature.label}</span>
-              </button>
-            ))}
-            {(() => {
-              const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
-              if (refundedOrders.length === 0) return null;
-              const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number(o.refunded_amount ?? o.amount) || 0), 0);
-              return (
-                <div className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 flex flex-col items-center gap-2 text-center">
-                  <Wallet className="h-5 w-5 text-amber-400" />
-                  <div>
-                    <p className="text-xs font-medium text-amber-400">{refundedOrders.length}</p>
-                    <p className="text-xs text-muted-foreground">Refunds</p>
-                    <p className="text-xs text-muted-foreground mt-1">GHC {refundedTotal.toFixed(2)}</p>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Orders Table with Search - Like Agent Dashboard */}
       <Card className="border-border">
         <CardHeader className="flex flex-col gap-3">
@@ -1930,9 +1886,22 @@ const UserDashboard = () => {
         <CardContent className="pt-6">
           <Button
             className="w-full h-12 text-lg font-semibold"
-            onClick={() => {
-              fetchRegistrationFee();
-              setShowUpgradeConfirmation(true);
+            onClick={async () => {
+              // Check if user already has a pending agent account
+              const { data: existingAgent } = await supabase
+                .from("agent_stores")
+                .select("id, approved")
+                .eq("user_id", userId)
+                .maybeSingle();
+              
+              if (existingAgent && !existingAgent.approved) {
+                // User has pending agent account, redirect to pending approval page
+                navigate("/pending-approval");
+              } else {
+                // User doesn't have pending account, show upgrade confirmation
+                fetchRegistrationFee();
+                setShowUpgradeConfirmation(true);
+              }
             }}
             disabled={registrationFeeLoading}
           >
