@@ -290,12 +290,13 @@ const AdminDashboard = () => {
       // Use range instead of limit to avoid Supabase's 1000-row limit
       const { data, error } = await query.range(0, limit - 1);
       if (error) {
-        console.error(`Error fetching ${table}:`, error);
+        console.error(`[v0] Error fetching ${table}:`, error?.message || error);
         return [];
       }
+      console.log(`[v0] Fetched ${table}: ${data?.length || 0} records`);
       return data || [];
     } catch (err) {
-      console.error(`Exception fetching ${table}:`, err);
+      console.error(`[v0] Exception fetching ${table}:`, err);
       return [];
     }
   };
@@ -508,7 +509,8 @@ const AdminDashboard = () => {
         setTopupHistory(data ?? []);
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
-        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, base_price, agent_price, refunded_amount", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount", { column: "created_at", ascending: false }, 1000);
+        console.log("[v0] Fetched orders:", data?.length || 0);
         setOrders(data ?? []);
       } else if (tabValue === "agents") {
         const data = await fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 1000);
