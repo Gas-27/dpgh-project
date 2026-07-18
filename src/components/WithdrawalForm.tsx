@@ -82,6 +82,10 @@ export default function WithdrawalForm({
     setSuccess(null);
 
     try {
+      console.log("[v0] ===== WITHDRAWAL SUBMIT START =====");
+      console.log("[v0] Current withdrawalSource state:", withdrawalSource);
+      console.log("[v0] Current balance object:", balance);
+      
       if (!selectedRecipient) {
         throw new Error("Please select a recipient");
       }
@@ -95,7 +99,11 @@ export default function WithdrawalForm({
         ? balance?.wallet_balance || 0
         : balance?.subagent_commission_balance || 0;
 
-      console.log("[v0] Withdrawal submit - Source:", withdrawalSource, "Available:", availableBalance, "Requesting:", amountNum, "Balance object:", balance);
+      console.log("[v0] Withdrawal logic - Source:", withdrawalSource);
+      console.log("[v0] Wallet balance:", balance?.wallet_balance);
+      console.log("[v0] Commission balance:", balance?.subagent_commission_balance);
+      console.log("[v0] Selected source available:", availableBalance);
+      console.log("[v0] Requesting amount:", amountNum);
 
       if (amountNum > availableBalance) {
         throw new Error(`Insufficient balance. Available: GHS ${availableBalance.toFixed(2)}`);
@@ -111,7 +119,8 @@ export default function WithdrawalForm({
         recipient_id: selectedRecipient,
       };
 
-      console.log("[v0] About to send payout request with payload:", payload);
+      console.log("[v0] FINAL PAYLOAD BEING SENT:", JSON.stringify(payload, null, 2));
+      console.log("[v0] ===== SENDING TO BACKEND =====")
       const result = await createPayoutRequest(token, payload);
 
       if (!result.success) {

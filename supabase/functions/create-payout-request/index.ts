@@ -24,7 +24,11 @@ Deno.serve(async (req) => {
 
     let withdrawal_source = initialWithdrawalSource;
 
-    console.log(`[CREATE-PAYOUT] Request: ${requester_type} ${requester_id}, amount: ${amount}, withdrawal_source: "${withdrawal_source}"`);
+    console.log(`[CREATE-PAYOUT] ===== RECEIVED REQUEST =====`);
+    console.log(`[CREATE-PAYOUT] RequesterType: ${requester_type}, RequesterId: ${requester_id}`);
+    console.log(`[CREATE-PAYOUT] Amount: ${amount}`);
+    console.log(`[CREATE-PAYOUT] Received withdrawal_source: "${withdrawal_source}"`);
+    console.log(`[CREATE-PAYOUT] Full request body:`, { requester_type, requester_id, withdrawal_source: initialWithdrawalSource, amount, recipient_id });
 
     if (!requester_type || !requester_id || !amount) {
       return new Response(JSON.stringify({
