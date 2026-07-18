@@ -1547,16 +1547,11 @@ const AgentDashboard = () => {
 
       // The payout edge function authorizes the store against the authenticated
       // session user (token). During admin impersonation the displayed `store`
-      // belongs to another agent, so we must resolve and use the store owned by
-      // the actual logged-in user to keep the request valid and self-consistent.
-      // Always pass the store's user_id as requester_id.
-      // The backend looks up the agent_stores row by user_id, so this works
-      // for both a normal agent login and an admin acting on their behalf.
-      // store.user_id is set when the store row is fetched from Supabase.
-      payload.requester_id = store.user_id ?? session.user.id;
+      // Use store.id directly - the backend validates via the JWT token.
+      payload.requester_id = store.id;
 
       const response = await fetch(
-        "/api/create-payout-request",
+        "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
         {
           method: "POST",
           headers: { 
