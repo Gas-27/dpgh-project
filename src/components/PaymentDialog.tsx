@@ -348,6 +348,7 @@ const PaymentDialog = ({
         package_name: displayPackageName,
         agent_store_id: actualStoreId || null,
         subagent_store_id: subagentStoreId || null,
+        ...(user && !actualStoreId && { customer_id: user.id }),
         ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
         ...(datahubnetId && { data_package_id: datahubnetId }),
       };

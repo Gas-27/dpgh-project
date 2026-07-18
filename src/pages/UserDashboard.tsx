@@ -1887,18 +1887,31 @@ const UserDashboard = () => {
           <Button
             className="w-full h-12 text-lg font-semibold"
             onClick={async () => {
-              // Check if user already has a pending agent account
-              const { data: existingAgent } = await supabase
-                .from("agent_stores")
-                .select("id, approved")
-                .eq("user_id", userId)
-                .maybeSingle();
-              
-              if (existingAgent && !existingAgent.approved) {
-                // User has pending agent account, redirect to pending approval page
-                navigate("/pending-approval");
-              } else {
-                // User doesn't have pending account, show upgrade confirmation
+              try {
+                // Check if user already has a pending agent account
+                const { data: existingAgent, error } = await supabase
+                  .from("agent_stores")
+                  .select("id, approved")
+                  .eq("user_id", effectiveUserId)
+                  .maybeSingle();
+                
+                if (error) {
+                  console.log("[v0] Error checking agent account:", error);
+                  fetchRegistrationFee();
+                  setShowUpgradeConfirmation(true);
+                  return;
+                }
+                
+                if (existingAgent && !existingAgent.approved) {
+                  // User has pending agent account, redirect to pending approval page
+                  navigate("/pending-approval");
+                } else {
+                  // User doesn't have pending account, show upgrade confirmation
+                  fetchRegistrationFee();
+                  setShowUpgradeConfirmation(true);
+                }
+              } catch (err) {
+                console.log("[v0] Exception checking agent account:", err);
                 fetchRegistrationFee();
                 setShowUpgradeConfirmation(true);
               }
