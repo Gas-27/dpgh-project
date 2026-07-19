@@ -419,6 +419,8 @@ const AgentDashboard = () => {
   const [shareText, setShareText] = useState("");
   const [withdrawalCooldownEndTime, setWithdrawalCooldownEndTime] = useState<number | null>(null);
   const [cooldownTimeRemaining, setCooldownTimeRemaining] = useState<string | null>(null);
+  // Ref so tick() inside the interval can always read the latest end time
+  const cooldownEndTimeRef = React.useRef<number | null>(null);
 
   // Tabs and menu state
   const [activeTab, setActiveTab] = useState("overview");
@@ -848,36 +850,73 @@ const AgentDashboard = () => {
 
   useEffect(() => { if (user || isImpersonating) fetchAllData(); }, [user, isImpersonating, impersonatedUserId]);
 
-  // 24-hour withdrawal cooldown timer
+  // 24-hour withdrawal cooldown timer.
+  // Stored in localStorage so it survives fetchAllData() setStore() overwrites
+  // and page refreshes. Key is per-agent using their user id.
+  const getCooldownKey = () => `withdrawal_cooldown_${impersonatedUserId || user?.id}`;
+
+  // On mount (and when the user/store loads), restore any existing cooldown from
+  // localStorage. Also seed from store.last_withdrawal_at as a fallback for
+  // agents who withdrew before this localStorage approach was introduced.
   useEffect(() => {
-    if (!store?.last_withdrawal_at) {
-      setWithdrawalCooldownEndTime(null);
+    if (!user?.id && !impersonatedUserId) return;
+    const key = getCooldownKey();
+    const stored = localStorage.getItem(key);
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+    let endTime: number | null = null;
+
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!isNaN(parsed) && parsed > Date.now()) {
+        endTime = parsed;
+      } else {
+        // Expired — clean up
+        localStorage.removeItem(key);
+      }
+    }
+
+    // Fallback: if DB has last_withdrawal_at and no localStorage entry yet, seed it
+    if (!endTime && store?.last_withdrawal_at) {
+      const candidate = new Date(store.last_withdrawal_at).getTime() + TWENTY_FOUR_HOURS;
+      if (candidate > Date.now()) {
+        endTime = candidate;
+        localStorage.setItem(key, String(endTime));
+      }
+    }
+
+    cooldownEndTimeRef.current = endTime;
+    setWithdrawalCooldownEndTime(endTime);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, impersonatedUserId, store?.last_withdrawal_at]);
+
+  // Separate effect: run the countdown interval whenever withdrawalCooldownEndTime changes
+  useEffect(() => {
+    const endTime = withdrawalCooldownEndTime;
+    if (!endTime) {
       setCooldownTimeRemaining(null);
       return;
     }
 
-    const lastWithdrawalTime = new Date(store.last_withdrawal_at).getTime();
-    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
-    const cooldownEndTime = lastWithdrawalTime + TWENTY_FOUR_HOURS;
-
-    // Helper to format and set the remaining time string
     const tick = () => {
       const now = Date.now();
-      const remaining = cooldownEndTime - now;
+      const remaining = endTime - now;
       if (remaining <= 0) {
         setCooldownTimeRemaining(null);
         setWithdrawalCooldownEndTime(null);
-        return false; // signal: stop interval
+        cooldownEndTimeRef.current = null;
+        const key = getCooldownKey();
+        localStorage.removeItem(key);
+        return false;
       }
       const hours = Math.floor(remaining / (60 * 60 * 1000));
       const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
       const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
       setCooldownTimeRemaining(`${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`);
-      setWithdrawalCooldownEndTime(cooldownEndTime);
-      return true; // signal: keep going
+      return true;
     };
 
-    // Set value immediately so it shows on mount without waiting 1 second
+    // Fire immediately so UI shows right away
     const alive = tick();
     if (!alive) return;
 
@@ -887,7 +926,8 @@ const AgentDashboard = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [store?.last_withdrawal_at]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [withdrawalCooldownEndTime]);
 
   // Subscribe to real-time changes in agent_stores for bundle price and other updates
   useEffect(() => {
@@ -1593,10 +1633,15 @@ const AgentDashboard = () => {
       setCreateNewRecipient(false);
       setRecipientName("");
       setMobileNumber("");
-      // Immediately update store state with current time as last_withdrawal_at
-      // so the 24h cooldown countdown starts right away without waiting for DB sync.
-      setStore((prev: any) => prev ? { ...prev, last_withdrawal_at: new Date().toISOString() } : prev);
-      // Also refresh from DB after a short delay to sync all balances
+      // Save the cooldown end time (now + 24h) to localStorage so it persists
+      // across fetchAllData() setStore() calls and page refreshes.
+      const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+      const newCooldownEnd = Date.now() + TWENTY_FOUR_HOURS;
+      const cooldownKey = `withdrawal_cooldown_${impersonatedUserId || session.user.id}`;
+      localStorage.setItem(cooldownKey, String(newCooldownEnd));
+      cooldownEndTimeRef.current = newCooldownEnd;
+      setWithdrawalCooldownEndTime(newCooldownEnd);
+      // Refresh from DB after a short delay to sync balances (will NOT affect cooldown)
       setTimeout(() => fetchAllData(), 2000);
     } catch (error: any) {
       console.error("[v0] Withdrawal error:", error);
