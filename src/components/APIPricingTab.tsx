@@ -21,10 +21,12 @@ interface APIUser {
   id: string;
   name?: string;
   email?: string;
+  store_name?: string;
   api_key: string;
   wallet_balance: number;
   active: boolean;
   custom_price: boolean;
+  topup_reference?: string;
 }
 
 interface CustomPrice {
@@ -59,8 +61,8 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     try {
       const { data, error } = await supabase
         .from("api_users")
-        .select("id, name, email, api_key, wallet_balance, active, custom_price")
-        .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,api_key.ilike.%${searchTerm}%`)
+        .select("id, name, email, store_name, api_key, wallet_balance, active, custom_price, topup_reference")
+        .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,api_key.ilike.%${searchTerm}%,store_name.ilike.%${searchTerm}%,topup_reference.ilike.%${searchTerm}%`)
         .limit(20);
       if (error) throw error;
       setApiUsers(data || []);
@@ -165,7 +167,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search API user by name, email or API key..."
+                placeholder="Search by name, email, API key, store name or top-up reference..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => {
@@ -192,9 +194,12 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
                     className="flex items-start gap-3 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 text-left transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{user.name || "Unnamed"}</div>
+                      <div className="font-medium text-sm truncate">{user.name || user.store_name || "Unnamed"}</div>
                       <div className="text-xs text-muted-foreground truncate">{user.email}</div>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {user.topup_reference && (
+                          <Badge variant="outline" className="text-xs font-mono text-cyan-400 border-cyan-500/40">{user.topup_reference}</Badge>
+                        )}
                         <Badge variant="outline" className="text-xs font-mono">{user.api_key.slice(0, 16)}...</Badge>
                         {user.custom_price && <Badge className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">Custom Prices</Badge>}
                         <Badge variant={user.active ? "default" : "secondary"} className="text-xs">{user.active ? "Active" : "Inactive"}</Badge>
@@ -212,8 +217,14 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
               {/* Selected user header */}
               <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <div>
-                  <div className="font-semibold">{selectedUser.name || "Unnamed"}</div>
+                  <div className="font-semibold">{selectedUser.name || selectedUser.store_name || "Unnamed"}</div>
                   <div className="text-xs text-muted-foreground">{selectedUser.email} &bull; Balance: GHC {selectedUser.wallet_balance?.toFixed(2)}</div>
+                  {selectedUser.topup_reference && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-xs text-muted-foreground">Top-up Ref:</span>
+                      <span className="font-mono font-bold text-cyan-400 text-xs">{selectedUser.topup_reference}</span>
+                    </div>
+                  )}
                 </div>
                 <Button variant="outline" size="sm" onClick={() => { setSelectedUser(null); setApiUsers([]); setSearchTerm(""); }}>
                   Change User
