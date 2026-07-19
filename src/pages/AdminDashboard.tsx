@@ -2325,9 +2325,9 @@ const AdminDashboard = () => {
                         </div>
                       )}
                       <Table>
-                        <TableHeader><TableRow><TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedOrderIds.size === paginated.length && paginated.length > 0} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set(paginated.map(o => o.id))); } else { setSelectedOrderIds(new Set()); } }} className="rounded border-border" /></TableHead><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Refund</TableHead><TableHead>Source</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedOrderIds.size === paginated.length && paginated.length > 0} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set(paginated.map(o => o.id))); } else { setSelectedOrderIds(new Set()); } }} className="rounded border-border" /></TableHead><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Refund</TableHead><TableHead>Source</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Order Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                          {paginated.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
+                          {paginated.length === 0 ? <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
                             paginated.map((order) => {
                               // Determine source
                               const agentStore = order.agent_store_id ? agents.find(a => a.id === order.agent_store_id) : null;
@@ -2395,20 +2395,34 @@ const AdminDashboard = () => {
                                 </TableCell>
                                 <TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell>
                                 <TableCell>{order.status === "refunded" ? <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Refunded</Badge> : <Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge>}</TableCell>
-                                <TableCell>{order.fulfillment_status === "refunded" ? <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Refunded</Badge> : <Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge>}</TableCell>
+                                <TableCell>{order.fulfillment_status === "refunded" ? <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Refunded</Badge> : order.fulfillment_status === "delivered" ? <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Delivered</Badge> : <Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge>}</TableCell>
+                                <TableCell>
+                                  {(() => {
+                                    const os = order.fulfillment_status;
+                                    const cls =
+                                      os === "delivered" ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                                      os === "pending"   ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
+                                      os === "processing"? "bg-blue-500/20 text-blue-400 border-blue-500/30" :
+                                      os === "waiting"   ? "bg-purple-500/20 text-purple-400 border-purple-500/30" :
+                                      os === "refunded"  ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
+                                      os === "failed"    ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                                                           "bg-slate-500/20 text-slate-400 border-slate-500/30";
+                                    return <Badge className={`capitalize ${cls}`}>{os || "—"}</Badge>;
+                                  })()}
+                                </TableCell>
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
-                                    {order.fulfillment_status !== "completed" && (
+                                    {order.fulfillment_status !== "completed" && order.fulfillment_status !== "delivered" && (
                                       <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
                                         {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
                                       </Button>
                                     )}
                                     <Button 
-                                      variant={order.fulfillment_status === "completed" ? "default" : "secondary"} 
+                                      variant={order.fulfillment_status === "completed" || order.fulfillment_status === "delivered" ? "default" : "secondary"} 
                                       size="sm" 
                                       onClick={() => toggleOrderFulfillment(order.id, order.fulfillment_status)}
                                     >
-                                      {order.fulfillment_status === "completed" ? "Unfulfill" : "Fulfill"}
+                                      {order.fulfillment_status === "completed" || order.fulfillment_status === "delivered" ? "Unfulfill" : "Fulfill"}
                                     </Button>
                                   </div>
                                 </TableCell>
