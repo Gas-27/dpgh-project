@@ -1640,9 +1640,10 @@ const AdminDashboard = () => {
             else console.log("[v0] Customer wallet insert failed:", insertErr);
           }
         } else if (order.agent_store_id) {
-          // Agent order: refund to agent wallet (direct agent, subagent, or subsubagent all go to agent)
-          console.log("[v0] Refunding to agent", order.agent_store_id, "amount:", paidAmount);
-          refundAmount = paidAmount;
+          // Agent order: refund to agent wallet using the base price admin charged the agent,
+          // NOT the full selling price the agent charged their customer.
+          refundAmount = await resolveAgentBasePrice(order, order.agent_store_id);
+          console.log("[v0] Refunding to agent", order.agent_store_id, "base price refund:", refundAmount, "(full selling price was:", paidAmount, ")");
           
           const { data: agent, error: fetchErr } = await supabase
             .from("agent_stores")
@@ -1663,9 +1664,9 @@ const AdminDashboard = () => {
             console.log("[v0] Agent not found:", order.agent_store_id, fetchErr);
           }
         } else if (order.api_user) {
-          // API user order: refund to API user wallet
-          console.log("[v0] Refunding to API user", order.api_user, "amount:", paidAmount);
-          refundAmount = paidAmount;
+          // API user order: refund at base price admin charged the API user
+          refundAmount = await resolveAgentBasePrice(order, null);
+          console.log("[v0] Refunding to API user", order.api_user, "base price refund:", refundAmount, "(full selling price was:", paidAmount, ")");
           
           const { data: apiUser, error: fetchErr } = await supabase
             .from("api_users")
