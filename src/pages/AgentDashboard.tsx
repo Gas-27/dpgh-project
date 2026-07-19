@@ -859,24 +859,31 @@ const AgentDashboard = () => {
     const lastWithdrawalTime = new Date(store.last_withdrawal_at).getTime();
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
     const cooldownEndTime = lastWithdrawalTime + TWENTY_FOUR_HOURS;
-    
-    setWithdrawalCooldownEndTime(cooldownEndTime);
 
-    // Update countdown every second
-    const interval = setInterval(() => {
+    // Helper to format and set the remaining time string
+    const tick = () => {
       const now = Date.now();
       const remaining = cooldownEndTime - now;
-
       if (remaining <= 0) {
         setCooldownTimeRemaining(null);
         setWithdrawalCooldownEndTime(null);
-        clearInterval(interval);
-      } else {
-        const hours = Math.floor(remaining / (60 * 60 * 1000));
-        const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
-        const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
-        setCooldownTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+        return false; // signal: stop interval
       }
+      const hours = Math.floor(remaining / (60 * 60 * 1000));
+      const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+      const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
+      setCooldownTimeRemaining(`${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`);
+      setWithdrawalCooldownEndTime(cooldownEndTime);
+      return true; // signal: keep going
+    };
+
+    // Set value immediately so it shows on mount without waiting 1 second
+    const alive = tick();
+    if (!alive) return;
+
+    const interval = setInterval(() => {
+      const keep = tick();
+      if (!keep) clearInterval(interval);
     }, 1000);
 
     return () => clearInterval(interval);
@@ -3037,15 +3044,6 @@ const AgentDashboard = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => handleEditRecipient(r)}
-                                  title="Edit recipient"
-                                >
-                                  <Edit2 className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
                                   className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
                                   onClick={() => handleDeleteRecipient(r.recipient_code)}
                                   title="Delete recipient"
@@ -3086,7 +3084,7 @@ const AgentDashboard = () => {
                     </Button>
                     
                     <div className="space-y-3 border border-border rounded-lg p-4">
-                      <h3 className="font-medium">{editingRecipient ? "Edit Recipient" : "Create New Recipient"}</h3>
+                      <h3 className="font-medium">Create New Recipient</h3>
                       <div className="space-y-1">
                         <Label>Full Name</Label>
                         <Input 
@@ -3138,18 +3136,7 @@ const AgentDashboard = () => {
                         >
                           Cancel
                         </Button>
-                        {editingRecipient ? (
-                          <Button 
-                            variant="hero"
-                            className="flex-1 bg-amber-600 hover:bg-amber-700"
-                            disabled={!recipientName.trim() || !mobileNumber.trim()}
-                            onClick={() => handleSaveEditedRecipient()}
-                          >
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Changes
-                          </Button>
-                        ) : (
-                          <Button 
+                        <Button 
                             variant="hero"
                             className="flex-1 bg-green-600 hover:bg-green-700"
                             disabled={!recipientName.trim() || !mobileNumber.trim()}
@@ -3158,7 +3145,6 @@ const AgentDashboard = () => {
                             <Save className="h-4 w-4 mr-2" />
                             Save Recipient
                           </Button>
-                        )}
                       </div>
                     </div>
                   </>
