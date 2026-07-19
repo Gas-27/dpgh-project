@@ -238,8 +238,8 @@ const SubSubagentOrderTrackingCard = ({
     extraNote = "Please contact support for assistance.";
   } else if (orderStatus === "pending") {
     currentStep = 1;
-    statusMessage = "Order received and awaiting processing.";
-    extraNote = "Your order will be processed shortly.";
+    statusMessage = "Order is placed and sent to the portal and now waiting for the portal to pick it up for processing.";
+    extraNote = "Your order has been received and is in the queue. It will be picked up by the portal for processing shortly.";
   } else {
     // any other status defaults to processing step
     currentStep = 3;

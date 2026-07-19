@@ -215,8 +215,8 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     note = "Please contact support for assistance.";
   } else if (orderStatus === "pending") {
     step = 1;
-    msg = "Order received and awaiting processing.";
-    note = "Your order will be processed shortly.";
+    msg = "Order is placed and sent to the portal and now waiting for the portal to pick it up for processing.";
+    note = "Your order has been received and is in the queue. It will be picked up by the portal for processing shortly.";
   } else {
     // any other status defaults to processing step
     step = 3;
@@ -1258,7 +1258,7 @@ const Packages = () => {
       : s === "completed" || s === "paid" ? <CheckCircle className="h-4 w-4 text-green-400" />
         : s === "pending" ? <Clock className="h-4 w-4 text-yellow-400" />
           : <XCircle className="h-4 w-4 text-red-400" />;
-  const getStatusText = (s: string) => s === "refunded" ? "Refunded" : s === "completed" || s === "paid" ? "Payment Completed" : s === "pending" ? "Pending" : s;
+  const getStatusText = (s: string) => s === "refunded" ? "Refunded" : s === "completed" || s === "paid" ? "Payment Completed" : s === "pending" ? "Waiting for portal" : s;
 
   const renderComingSoon = () => (
     <div className="text-center py-16">
