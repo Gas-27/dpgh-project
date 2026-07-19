@@ -1580,14 +1580,17 @@ const AgentDashboard = () => {
         throw new Error(data.error || "Withdrawal failed");
       }
 
-      toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent instantly (after 5% fee)` });
+      toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent successfully (after fee)` });
       setWithdrawAmount("");
       setSelectedRecipient("");
       setCreateNewRecipient(false);
       setRecipientName("");
       setMobileNumber("");
-      // Wait a moment for the database to sync, then refresh
-      setTimeout(() => fetchAllData(), 1000);
+      // Immediately update store state with current time as last_withdrawal_at
+      // so the 24h cooldown countdown starts right away without waiting for DB sync.
+      setStore((prev: any) => prev ? { ...prev, last_withdrawal_at: new Date().toISOString() } : prev);
+      // Also refresh from DB after a short delay to sync all balances
+      setTimeout(() => fetchAllData(), 2000);
     } catch (error: any) {
       console.error("[v0] Withdrawal error:", error);
       toast({ title: "Withdrawal failed", description: error.message, variant: "destructive" });
@@ -2468,7 +2471,7 @@ const AgentDashboard = () => {
               {Object.keys(editedPrices).length > 0 && <Button variant="hero" size="sm" onClick={savePrices} disabled={savingPrices}><Save className="h-4 w-4 mr-1" />{savingPrices ? "Saving..." : "Save Prices"}</Button>}
             </div>
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-              <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>���� Markup Explanation(Remember to click save after applying markup</p>
+              <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>������ Markup Explanation(Remember to click save after applying markup</p>
               <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network base on the percentage you want all the prices to be increase by  .Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
             </div>
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
@@ -3164,6 +3167,18 @@ const AgentDashboard = () => {
                 {!createNewRecipient && (transferRecipients.length > 0 || selectedRecipient) && (
                   <>
                     <div className="space-y-3">
+                      {/* 24-hour cooldown banner — shown prominently above the form */}
+                      {cooldownTimeRemaining && (
+                        <div className="bg-amber-500/15 border border-amber-500/50 rounded-lg p-4 flex items-center gap-3">
+                          <Clock className="h-6 w-6 text-amber-400 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-semibold text-amber-400 text-sm">Withdrawal Cooldown Active</p>
+                            <p className="text-amber-300 text-xs mt-0.5">Next withdrawal available in:</p>
+                            <p className="text-amber-200 font-mono font-bold text-lg tracking-wider mt-1">{cooldownTimeRemaining}</p>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex gap-2 items-end">
                         <div className="flex-1 space-y-1">
                           <Label>Amount (GHC)</Label>
@@ -3173,28 +3188,19 @@ const AgentDashboard = () => {
                             value={withdrawAmount}
                             onChange={(e) => setWithdrawAmount(e.target.value)}
                             className="text-lg"
+                            disabled={!!cooldownTimeRemaining}
                           />
                         </div>
                         <Button 
                           variant="hero" 
-                          className="self-end bg-cyan-600 hover:bg-cyan-700"
+                          className="self-end bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           disabled={withdrawLoading || !!cooldownTimeRemaining}
                           onClick={() => handleWithdraw()}
                         >
                           {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDownToLine className="h-4 w-4 mr-2" />}
-                          {cooldownTimeRemaining ? `Cooldown: ${cooldownTimeRemaining}` : "Transfer"}
+                          {cooldownTimeRemaining ? "Locked" : "Transfer"}
                         </Button>
                       </div>
-
-                      {cooldownTimeRemaining && (
-                        <div className="bg-amber-500/10 border border-amber-500/30 rounded p-3 flex items-start gap-2">
-                          <Clock className="h-5 w-5 text-amber-400 mt-0.5 flex-shrink-0" />
-                          <div className="text-sm">
-                            <p className="font-semibold text-amber-400">Withdrawal Cooldown Active</p>
-                            <p className="text-amber-300 text-xs mt-1">You can make your next withdrawal in <strong>{cooldownTimeRemaining}</strong></p>
-                          </div>
-                        </div>
-                      )}
 
                       {/* Fee Breakdown */}
                       {withdrawAmount && Number(withdrawAmount) > 0 && (
