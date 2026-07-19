@@ -1546,16 +1546,31 @@ const AgentDashboard = () => {
       }
 
       // Always do a fresh lookup to get the definitive agent_stores.id (PK)
-      // for the authenticated user — the edge function queries by this PK.
+      // and last_withdrawal_at — the deployed edge function queries by PK.
       const effectiveUid = impersonatedUserId || session.user.id;
       const { data: freshStore, error: freshStoreErr } = await supabase
         .from("agent_stores")
-        .select("id")
+        .select("id, last_withdrawal_at")
         .eq("user_id", effectiveUid)
         .single();
       if (freshStoreErr || !freshStore?.id) {
         throw new Error("Could not resolve your agent store. Please refresh and try again.");
       }
+
+      // Enforce 24-hour withdrawal cooldown (the deployed edge function does not
+      // check this, so we enforce it here on the frontend for all agents).
+      if (freshStore.last_withdrawal_at) {
+        const lastTime = new Date(freshStore.last_withdrawal_at).getTime();
+        const elapsed = Date.now() - lastTime;
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+        if (elapsed < TWENTY_FOUR_HOURS) {
+          const remaining = TWENTY_FOUR_HOURS - elapsed;
+          const h = Math.floor(remaining / (60 * 60 * 1000));
+          const m = Math.ceil((remaining % (60 * 60 * 1000)) / (60 * 1000));
+          throw new Error(`Withdrawal cooldown active. You can withdraw again in ${h}h ${m}m.`);
+        }
+      }
+
       payload.requester_id = freshStore.id;
 
       const response = await fetch(
