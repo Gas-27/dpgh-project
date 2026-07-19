@@ -268,17 +268,23 @@ Deno.serve(async (req) => {
 
     console.log(`API response for order ${order_id}: ${apiRes.status} - ${rawResponse.slice(0, 500)}`);
 
-    // ✅ Success condition: HTTP 201 Created + status: "success"
-    if (apiRes.status === 201 && parsedResponse?.status === "success") {
-      const orderData = parsedResponse.data;
-      const providerRef = orderData?.reference || null;
+    // ✅ Success condition: HTTP 2xx AND (status === "success" OR success === true)
+    const isSuccess =
+      apiRes.status >= 200 &&
+      apiRes.status < 300 &&
+      (parsedResponse?.status === "success" || parsedResponse?.success === true);
 
-      // Get the full order details to calculate profit
-      const { data: fullOrder } = await supabase
-        .from("orders")
-        .select("*, package_id, agent_store_id, subagent_store_id, selling_price, base_price, profit, amount")
-        .eq("id", order_id)
-        .single();
+    if (isSuccess) {
+      const orderData = parsedResponse?.data || parsedResponse;
+      // Extract reference from multiple possible locations
+      const providerRef =
+        orderData?.reference ||
+        orderData?.order_reference ||
+        parsedResponse?.reference ||
+        parsedResponse?.order_reference ||
+        null;
+
+      console.log(`[fulfill] Success for order ${order_id}. provider_reference=${providerRef}`);
 
       // No profit crediting here - all profit crediting done in verify-payment
       // fulfill-order only handles order fulfillment via API
@@ -288,6 +294,7 @@ Deno.serve(async (req) => {
         .update({
           fulfillment_status: "completed",
           status: "completed",
+          order_status: "processing",
           api_response: rawResponse,
           provider_reference: providerRef,
         })
