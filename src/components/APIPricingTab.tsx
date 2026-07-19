@@ -1,0 +1,279 @@
+import { useState, useEffect, useCallback } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Loader2, Search, Save, User, Package, CheckCircle } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+
+interface DataPackage {
+  id: string;
+  network: string;
+  size_gb: number;
+  price: number;
+  agent_price: number;
+  api_price: number;
+  active: boolean;
+}
+
+interface APIUser {
+  id: string;
+  name?: string;
+  email?: string;
+  api_key: string;
+  wallet_balance: number;
+  active: boolean;
+  custom_price: boolean;
+}
+
+interface CustomPrice {
+  package_id: string;
+  custom_price: number;
+}
+
+interface APIPricingTabProps {
+  supabase: any;
+  packages: DataPackage[];
+}
+
+export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [apiUsers, setApiUsers] = useState<APIUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<APIUser | null>(null);
+  const [existingPrices, setExistingPrices] = useState<Record<string, number>>({});
+  const [customPrices, setCustomPrices] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [loadingPrices, setLoadingPrices] = useState(false);
+
+  const activePackages = packages.filter((p) => p.active);
+
+  const searchUsers = useCallback(async () => {
+    if (!searchTerm.trim()) return;
+    setSearching(true);
+    setSelectedUser(null);
+    setExistingPrices({});
+    setCustomPrices({});
+    try {
+      const { data, error } = await supabase
+        .from("api_users")
+        .select("id, name, email, api_key, wallet_balance, active, custom_price")
+        .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,api_key.ilike.%${searchTerm}%`)
+        .limit(20);
+      if (error) throw error;
+      setApiUsers(data || []);
+      if (!data || data.length === 0) {
+        toast({ title: "No API users found", description: "Try searching by name, email or API key." });
+      }
+    } catch (err: any) {
+      toast({ title: "Search failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSearching(false);
+    }
+  }, [searchTerm, supabase]);
+
+  const selectUser = useCallback(async (user: APIUser) => {
+    setSelectedUser(user);
+    setLoadingPrices(true);
+    setCustomPrices({});
+    try {
+      const { data, error } = await supabase
+        .from("api_user_package_prices")
+        .select("package_id, custom_price")
+        .eq("api_user_id", user.id);
+      if (error) throw error;
+      const priceMap: Record<string, number> = {};
+      (data || []).forEach((row: CustomPrice) => {
+        priceMap[row.package_id] = row.custom_price;
+      });
+      setExistingPrices(priceMap);
+      // Pre-fill inputs with existing custom prices
+      const inputMap: Record<string, string> = {};
+      (data || []).forEach((row: CustomPrice) => {
+        inputMap[row.package_id] = String(row.custom_price);
+      });
+      setCustomPrices(inputMap);
+    } catch (err: any) {
+      toast({ title: "Failed to load existing prices", description: err.message, variant: "destructive" });
+    } finally {
+      setLoadingPrices(false);
+    }
+  }, [supabase]);
+
+  const saveCustomPrices = async () => {
+    if (!selectedUser) return;
+    const entries = Object.entries(customPrices).filter(([, v]) => v !== "" && !isNaN(Number(v)));
+    if (entries.length === 0) {
+      toast({ title: "No prices to save", description: "Enter at least one custom price." });
+      return;
+    }
+    setSaving(true);
+    try {
+      // Call the admin-set-custom-prices edge function
+      const supabaseUrl = (supabase as any).supabaseUrl || import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = (supabase as any).supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/admin-set-custom-prices`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          api_key: selectedUser.api_key,
+          custom_prices: entries.map(([package_id, custom_price]) => ({
+            package_id,
+            custom_price: Number(custom_price),
+          })),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to save");
+      toast({ title: "Custom prices saved", description: `${json.custom_prices_set} package price(s) updated for ${selectedUser.name || selectedUser.email}.` });
+      // Refresh existing prices
+      await selectUser(selectedUser);
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const groupedPackages = activePackages.reduce((acc, pkg) => {
+    const key = pkg.network.toUpperCase();
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(pkg);
+    return acc;
+  }, {} as Record<string, DataPackage[]>);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Set Custom API Package Prices
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Search for an API user and set custom prices per package. These override the default API price for that user only.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Search */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search API user by name, email or API key..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) searchUsers();
+                }}
+                className="pl-10"
+              />
+            </div>
+            <Button onClick={searchUsers} disabled={searching || !searchTerm.trim()}>
+              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              Search
+            </Button>
+          </div>
+
+          {/* User results */}
+          {apiUsers.length > 0 && !selectedUser && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Select a user to set prices</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {apiUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => selectUser(user)}
+                    className="flex items-start gap-3 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 text-left transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{user.name || "Unnamed"}</div>
+                      <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs font-mono">{user.api_key.slice(0, 16)}...</Badge>
+                        {user.custom_price && <Badge className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">Custom Prices</Badge>}
+                        <Badge variant={user.active ? "default" : "secondary"} className="text-xs">{user.active ? "Active" : "Inactive"}</Badge>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Selected user + price editor */}
+          {selectedUser && (
+            <div className="space-y-4">
+              {/* Selected user header */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <div>
+                  <div className="font-semibold">{selectedUser.name || "Unnamed"}</div>
+                  <div className="text-xs text-muted-foreground">{selectedUser.email} &bull; Balance: GHC {selectedUser.wallet_balance?.toFixed(2)}</div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => { setSelectedUser(null); setApiUsers([]); setSearchTerm(""); }}>
+                  Change User
+                </Button>
+              </div>
+
+              {loadingPrices ? (
+                <div className="flex items-center gap-2 text-muted-foreground py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading existing prices...
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(groupedPackages).map(([network, pkgs]) => (
+                    <div key={network} className="space-y-2">
+                      <Label className="text-sm font-semibold text-primary">{network}</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {pkgs.sort((a, b) => a.size_gb - b.size_gb).map((pkg) => {
+                          const hasCustom = existingPrices[pkg.id] !== undefined;
+                          const inputVal = customPrices[pkg.id] ?? "";
+                          return (
+                            <div key={pkg.id} className={`border rounded-lg p-3 space-y-2 ${hasCustom ? "border-blue-500/30 bg-blue-500/5" : "border-border"}`}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="font-medium text-sm">{pkg.size_gb}GB</span>
+                                </div>
+                                {hasCustom && <CheckCircle className="h-3.5 w-3.5 text-blue-400" />}
+                              </div>
+                              <div className="text-xs text-muted-foreground space-y-0.5">
+                                <div>Default API price: <span className="font-medium text-foreground">GHC {pkg.api_price?.toFixed(2)}</span></div>
+                                {hasCustom && <div>Current custom: <span className="font-medium text-blue-400">GHC {existingPrices[pkg.id]?.toFixed(2)}</span></div>}
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Custom Price (GHC)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  placeholder={`Default: ${pkg.api_price?.toFixed(2)}`}
+                                  value={inputVal}
+                                  onChange={(e) => setCustomPrices((prev) => ({ ...prev, [pkg.id]: e.target.value }))}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+
+                  <Button onClick={saveCustomPrices} disabled={saving} className="w-full sm:w-auto">
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save Custom Prices for {selectedUser.name || selectedUser.email}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

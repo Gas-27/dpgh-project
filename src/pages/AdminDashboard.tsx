@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { APIPricingTab } from "@/components/APIPricingTab";
 import { useAuth } from "@/hooks/useAuth";
 import { useOptimizedRealtime } from "@/hooks/useOptimizedRealtime";
 import { useDatabaseSearch } from "@/hooks/useDatabaseSearch";
@@ -509,7 +510,7 @@ const AdminDashboard = () => {
         setTopupHistory(data ?? []);
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
-        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount", { column: "created_at", ascending: false }, 1000);
         console.log("[v0] Fetched orders:", data?.length || 0);
         setOrders(data ?? []);
       } else if (tabValue === "agents") {
@@ -1449,7 +1450,7 @@ const AdminDashboard = () => {
         filtered = filtered.filter(o => o.network && o.network.toLowerCase().includes(network.toLowerCase()));
       }
       if (fulfillment !== "all") {
-        filtered = filtered.filter(o => o.fulfillment_status === fulfillment);
+        filtered = filtered.filter(o => (o.order_status || "").toLowerCase() === fulfillment.toLowerCase());
       }
       if (paymentStatus !== "all") {
         filtered = filtered.filter(o => o.status === paymentStatus);
@@ -2099,6 +2100,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="afa_bundles" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> AFA Bundles</TabsTrigger>
             <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>
             <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
+          <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
 
           {/* PRICES TAB */}
@@ -2399,7 +2401,7 @@ const AdminDashboard = () => {
                                 <TableCell>{order.fulfillment_status === "refunded" ? <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Refunded</Badge> : order.fulfillment_status === "delivered" ? <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Delivered</Badge> : <Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge>}</TableCell>
                                 <TableCell>
                                   {(() => {
-                                    const os = order.fulfillment_status;
+                                    const os = (order.order_status || "").toLowerCase().trim();
                                     const cls =
                                       os === "delivered" ? "bg-green-500/20 text-green-400 border-green-500/30" :
                                       os === "pending"   ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
@@ -3886,6 +3888,13 @@ const AdminDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+            )}
+
+            {/* API Pricing Tab */}
+            {(isMainAdmin || allowedSections.includes("api_pricing")) && (
+            <TabsContent value="api_pricing" className="space-y-6">
+              <APIPricingTab supabase={supabase} packages={packages} />
             </TabsContent>
             )}
         </Tabs>
