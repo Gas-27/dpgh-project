@@ -198,9 +198,13 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
       : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
         : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
   } else if (orderStatus === "waiting") {
+    step = 2;
+    msg = "Your number is being added to our beneficiary list.";
+    note = "MTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.";
+  } else if (orderStatus === "processing") {
     step = 3;
-    msg = "Your order is waiting for network delivery. Please hold on.";
-    note = "The status will update automatically once delivered.";
+    msg = `Order sent to ${formatNetworkName(order.network)} for delivery.`;
+    note = "Your order is being processed by the network. The status will update automatically once delivered.";
   } else if (orderStatus === "refunded") {
     step = 1;
     msg = "This order has been refunded.";
@@ -214,8 +218,8 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     msg = "Order received and awaiting processing.";
     note = "Your order will be processed shortly.";
   } else {
-    // processing or any other status
-    step = 2;
+    // any other status defaults to processing step
+    step = 3;
     msg = `Order sent to ${formatNetworkName(order.network)} for delivery.`;
     note = "Waiting for the network to deliver your data.";
   }
@@ -224,7 +228,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     const orderDate = new Date(order.created_at).toLocaleString();
     const networkName = formatNetworkName(order.network);
     const amountFormatted = `GHC ${Number(order.amount).toFixed(2)}`;
-    const orderStatus = `${order.status} / ${order.fulfillment_status}`;
+    const orderStatusStr = `${order.status} / ${order.fulfillment_status}`;
 
     return `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.
 
@@ -234,7 +238,7 @@ Order Details:
 - Data: ${(order as any).size_gb_text || order.size_gb + "GB"}
 - Amount: ${amountFormatted}
 - Customer Number: ${order.customer_number}
-- Order Status: ${orderStatus}
+- Order Status: ${orderStatusStr}
 - Order ID: ${order.id}
 
 Please investigate and assist. Thank you.`;
@@ -244,8 +248,8 @@ Please investigate and assist. Thank you.`;
   const waLink = `https://wa.me/233200511211?text=${encodeURIComponent(reportMessage)}`;
   const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${encodeURIComponent("Order Support - Delivered but not received")}&body=${encodeURIComponent(reportMessage)}`;
 
-  // All networks now use 4 steps: Order Placed → Sent to Network → Network Validation → Delivered
-  const labels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
+  // All networks now use 4 steps: Order Placed → Number Verifying → Processing → Delivered
+  const labels = ["Order Placed", "Number Verifying", "Processing", "Delivered"];
 
   if (step === 4) return (
     <div className="space-y-4">
@@ -767,7 +771,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     } catch {
       setWonGbForBanner(gb);
       setShowWinBanner(true);
-      toast({ title: "⚠️ Prize registered", description: `${gb}GB will be processed shortly.` });
+      toast({ title: "���️ Prize registered", description: `${gb}GB will be processed shortly.` });
     } finally {
       setClaimLoading(false);
       setSuccessGb(0);

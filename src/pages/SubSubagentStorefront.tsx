@@ -221,9 +221,13 @@ const SubSubagentOrderTrackingCard = ({
     else
       extraNote = "Please check your messages for delivery confirmation.";
   } else if (orderStatus === "waiting") {
+    currentStep = 2;
+    statusMessage = "Your number is being added to our beneficiary list.";
+    extraNote = "MTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.";
+  } else if (orderStatus === "processing") {
     currentStep = 3;
-    statusMessage = "Your order is waiting for network delivery. Please hold on.";
-    extraNote = "The status will update automatically once delivered.";
+    statusMessage = `Order sent to ${order.network?.toUpperCase()} for delivery.`;
+    extraNote = "Your order is being processed by the network. The status will update automatically once delivered.";
   } else if (orderStatus === "refunded") {
     currentStep = 1;
     statusMessage = "This order has been refunded.";
@@ -237,8 +241,8 @@ const SubSubagentOrderTrackingCard = ({
     statusMessage = "Order received and awaiting processing.";
     extraNote = "Your order will be processed shortly.";
   } else {
-    // processing or any other status
-    currentStep = 2;
+    // any other status defaults to processing step
+    currentStep = 3;
     statusMessage = `Order sent to ${order.network?.toUpperCase()} for delivery.`;
     extraNote = "Waiting for the network to deliver your data.";
   }
@@ -257,7 +261,7 @@ const SubSubagentOrderTrackingCard = ({
   // Report button: show only when order status is "delivered"
   const showReportButton = orderStatus === "delivered";
 
-  const stepLabels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
+  const stepLabels = ["Order Placed", "Number Verifying", "Processing", "Delivered"];
   const theme = store.theme_config || defaultTheme;
   const primaryColor = theme.primary || defaultTheme.primary;
 
