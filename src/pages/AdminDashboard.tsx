@@ -2407,7 +2407,8 @@ const AdminDashboard = () => {
                                       os === "refunded"  ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
                                       os === "failed"    ? "bg-red-500/20 text-red-400 border-red-500/30" :
                                                            "bg-slate-500/20 text-slate-400 border-slate-500/30";
-                                    return <Badge className={`capitalize ${cls}`}>{os || "—"}</Badge>;
+                                    const osLabel = os === "pending" ? "Waiting for Portal" : os === "processing" ? "Processing" : os === "waiting" ? "Waiting" : os === "delivered" ? "Delivered" : os === "failed" ? "Failed" : os === "refunded" ? "Refunded" : (os || "—");
+                                    return <Badge className={cls}>{osLabel}</Badge>;
                                   })()}
                                 </TableCell>
                                 <TableCell>

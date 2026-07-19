@@ -54,10 +54,24 @@ const getDeliveryStatus = (order: Order) => {
   return raw;
 };
 
+const getOrderStatusLabel = (status: string): string => {
+  switch ((status || "").toLowerCase().trim()) {
+    case "pending":    return "Waiting for Portal";
+    case "processing": return "Processing";
+    case "waiting":    return "Waiting";
+    case "delivered":  return "Delivered";
+    case "failed":     return "Failed";
+    case "refunded":   return "Refunded";
+    case "completed":  return "Delivered";
+    default:           return status || "Pending";
+  }
+};
+
 const deliveryStatusClass = (status: string) =>
-  status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" :
+  status === "completed" || status === "delivered" ? "bg-green-600/20 text-green-400 border-green-600/30" :
   status === "processing" ? "bg-blue-600/20 text-blue-400 border-blue-600/30" :
   status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" :
+  status === "waiting" ? "bg-purple-600/20 text-purple-400 border-purple-600/30" :
   status === "failed" ? "bg-red-600/20 text-red-400 border-red-600/30" :
   status === "refunded" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
   "bg-slate-600/20 text-slate-400 border-slate-600/30";
@@ -2100,7 +2114,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                               GHC {Number(order.selling_price || order.amount || 0).toFixed(2)}
                             </td>
                             <td className="px-3 py-2 text-xs">
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${fsColor}`}>{fs}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${fsColor}`}>{getOrderStatusLabel(fs)}</span>
                             </td>
                           </tr>
                         );

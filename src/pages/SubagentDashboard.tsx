@@ -31,24 +31,21 @@ import SubSubagentsList from "@/components/SubSubagentsList";
 import { DOMAINS } from "@/config/domains";
 
 // Helper function to get current order stage
+function getOrderStatusLabel(status: string): string {
+  switch ((status || "").toLowerCase().trim()) {
+    case "pending":    return "Waiting for Portal";
+    case "processing": return "Processing";
+    case "waiting":    return "Waiting";
+    case "delivered":  return "Delivered";
+    case "failed":     return "Failed";
+    case "refunded":   return "Refunded";
+    default:           return status || "Pending";
+  }
+}
+
 function getOrderStage(order: any): string {
-  const elapsed = (Date.now() - new Date(order.created_at).getTime()) / 1000;
-  const elapsedMinutes = elapsed / 60;
   const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  
-  // Step 4 ONLY when order_status is "delivered"
-  if (orderStatus === "delivered") {
-    return "Order Delivered";
-  }
-  
-  // Steps 1-3 are time-based for all networks
-  if (elapsedMinutes >= 15) {
-    return "Network Validation";
-  } else if (elapsedMinutes >= 9) {
-    return "Sent to Network";
-  } else {
-    return "Order Placed";
-  }
+  return getOrderStatusLabel(orderStatus);
 }
 
 interface SubagentStore {
