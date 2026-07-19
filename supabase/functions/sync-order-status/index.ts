@@ -56,8 +56,19 @@ Deno.serve(async (req: Request) => {
     }
 
     // Only sync orders from the last 7 days that have a provider_reference
-    // and are NOT in a terminal status
+    // and are NOT in a terminal status.
+    // Process in batches of 50 per invocation — cron runs every minute
+    // so all orders get covered in rotation without timing out.
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Accept optional offset from request body so caller can page through batches
+    let batchOffset = 0;
+    try {
+      const body = await req.clone().json().catch(() => ({}));
+      if (typeof body.offset === "number") batchOffset = body.offset;
+    } catch { /* ignore */ }
+
+    const BATCH_SIZE = 50;
 
     const { data: orders, error: fetchError } = await supabase
       .from("orders")
@@ -65,7 +76,8 @@ Deno.serve(async (req: Request) => {
       .gte("created_at", sevenDaysAgo)
       .not("provider_reference", "is", null)
       .not("order_status", "in", '("delivered","refunded","failed")')
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: true }) // oldest first so newest don't starve
+      .range(batchOffset, batchOffset + BATCH_SIZE - 1);
 
     if (fetchError) {
       console.error("[sync] DB fetch error:", fetchError.message);
@@ -75,7 +87,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`[sync] Orders to check: ${orders?.length ?? 0}`);
+    console.log(`[sync] Batch offset=${batchOffset}, orders in batch: ${orders?.length ?? 0}`);
 
     if (!orders || orders.length === 0) {
       return new Response(
@@ -172,17 +184,26 @@ Deno.serve(async (req: Request) => {
     }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    const processedCount = results.length + skipped;
+    // If we got a full batch there may be more — provide next_offset
+    const hasMore = orders.length === BATCH_SIZE;
+    const nextOffset = hasMore ? batchOffset + BATCH_SIZE : 0; // 0 means start over
+
     console.log(
-      `[sync] Done in ${elapsed}s. Checked: ${orders.length}, Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`
+      `[sync] Done in ${elapsed}s. Batch offset=${batchOffset}, Checked: ${processedCount}, Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}, HasMore: ${hasMore}`
     );
 
     return new Response(
       JSON.stringify({
         success: true,
-        checked: orders.length,
+        batch_offset: batchOffset,
+        batch_size: BATCH_SIZE,
+        checked: processedCount,
         updated,
         skipped,
         errors,
+        has_more: hasMore,
+        next_offset: nextOffset,
         elapsed_seconds: Number(elapsed),
         results,
       }),
