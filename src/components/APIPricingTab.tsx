@@ -19,8 +19,8 @@ interface DataPackage {
 
 interface APIUser {
   id: string;
-  name?: string;
   email?: string;
+  user_email?: string;
   store_name?: string;
   api_key: string;
   wallet_balance: number;
@@ -61,8 +61,8 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     try {
       const { data, error } = await supabase
         .from("api_users")
-        .select("id, name, email, store_name, api_key, wallet_balance, active, custom_price, topup_reference")
-        .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,api_key.ilike.%${searchTerm}%,store_name.ilike.%${searchTerm}%,topup_reference.ilike.%${searchTerm}%`)
+        .select("id, user_email, email, store_name, api_key, wallet_balance, active, custom_price, topup_reference")
+        .or(`user_email.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,api_key.ilike.%${searchTerm}%,store_name.ilike.%${searchTerm}%,topup_reference.ilike.%${searchTerm}%`)
         .limit(20);
       if (error) throw error;
       setApiUsers(data || []);
@@ -132,7 +132,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to save");
-      toast({ title: "Custom prices saved", description: `${json.custom_prices_set} package price(s) updated for ${selectedUser.name || selectedUser.email}.` });
+      toast({ title: "Custom prices saved", description: `${json.custom_prices_set} package price(s) updated for ${selectedUser.store_name || selectedUser.user_email || selectedUser.email}.` });
       // Refresh existing prices
       await selectUser(selectedUser);
     } catch (err: any) {
@@ -194,8 +194,8 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
                     className="flex items-start gap-3 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 text-left transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{user.name || user.store_name || "Unnamed"}</div>
-                      <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+                      <div className="font-medium text-sm truncate">{user.store_name || user.user_email || user.email || "Unnamed"}</div>
+                      <div className="text-xs text-muted-foreground truncate">{user.user_email || user.email}</div>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         {user.topup_reference && (
                           <Badge variant="outline" className="text-xs font-mono text-cyan-400 border-cyan-500/40">{user.topup_reference}</Badge>
@@ -217,8 +217,8 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
               {/* Selected user header */}
               <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <div>
-                  <div className="font-semibold">{selectedUser.name || selectedUser.store_name || "Unnamed"}</div>
-                  <div className="text-xs text-muted-foreground">{selectedUser.email} &bull; Balance: GHC {selectedUser.wallet_balance?.toFixed(2)}</div>
+                  <div className="font-semibold">{selectedUser.store_name || selectedUser.user_email || selectedUser.email || "Unnamed"}</div>
+                  <div className="text-xs text-muted-foreground">{selectedUser.user_email || selectedUser.email} &bull; Balance: GHC {selectedUser.wallet_balance?.toFixed(2)}</div>
                   {selectedUser.topup_reference && (
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-xs text-muted-foreground">Top-up Ref:</span>
@@ -278,7 +278,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
 
                   <Button onClick={saveCustomPrices} disabled={saving} className="w-full sm:w-auto">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                    Save Custom Prices for {selectedUser.name || selectedUser.email}
+                    Save Custom Prices for {selectedUser.store_name || selectedUser.user_email || selectedUser.email}
                   </Button>
                 </div>
               )}
