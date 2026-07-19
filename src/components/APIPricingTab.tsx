@@ -59,15 +59,46 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     setExistingPrices({});
     setCustomPrices({});
     try {
+      const term = searchTerm.trim();
+      const cols = "id, user_email, email, store_name, api_key, wallet_balance, active, custom_price, topup_reference";
+
+      // First: exact match on topup_reference (handles plain numbers like "1576" and suffixed like "4277us")
+      const { data: refData, error: refError } = await supabase
+        .from("api_users")
+        .select(cols)
+        .eq("topup_reference", term)
+        .limit(20);
+      if (refError) throw refError;
+
+      if (refData && refData.length > 0) {
+        setApiUsers(refData);
+        return;
+      }
+
+      // Second: partial match on topup_reference for prefix searches (e.g. typing "157" to find "1576")
+      const { data: refPartialData, error: refPartialError } = await supabase
+        .from("api_users")
+        .select(cols)
+        .ilike("topup_reference", `${term}%`)
+        .limit(20);
+      if (refPartialError) throw refPartialError;
+
+      if (refPartialData && refPartialData.length > 0) {
+        setApiUsers(refPartialData);
+        return;
+      }
+
+      // Third: fall back to searching by email, store_name, api_key
       const { data, error } = await supabase
         .from("api_users")
-        .select("id, user_email, email, store_name, api_key, wallet_balance, active, custom_price, topup_reference")
-        .or(`user_email.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,api_key.ilike.%${searchTerm}%,store_name.ilike.%${searchTerm}%,topup_reference.ilike.%${searchTerm}%`)
+        .select(cols)
+        .or(`user_email.ilike.%${term}%,email.ilike.%${term}%,api_key.ilike.%${term}%,store_name.ilike.%${term}%`)
         .limit(20);
       if (error) throw error;
+
       setApiUsers(data || []);
       if (!data || data.length === 0) {
-        toast({ title: "No API users found", description: "Try searching by name, email or API key." });
+        toast({ title: "No API users found", description: "Try searching by top-up reference, email, store name or API key." });
       }
     } catch (err: any) {
       toast({ title: "Search failed", description: err.message, variant: "destructive" });
