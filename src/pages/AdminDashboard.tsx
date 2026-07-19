@@ -3158,9 +3158,11 @@ const AdminDashboard = () => {
                   </p>
                   {customers
                     .filter(c => 
-                      !customerSearchTerm || 
-                      `${c.first_name} ${c.last_name}`.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-                      c.email?.toLowerCase().includes(customerSearchTerm.toLowerCase())
+              !customerSearchTerm ||
+              `${c.first_name} ${c.last_name}`.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+              c.email?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+              c.topup_reference?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+              c.phone_number?.includes(customerSearchTerm)
                     )
                     .map((customer) => (
                     <Card key={customer.id} className="border-border bg-card/50">

@@ -261,12 +261,8 @@ const UserDashboard = () => {
         if (customerData) {
           customerPkId = customerData.id;
           setNormalWallet(customerData.wallet_balance || 0);
-          if (customerData.topup_reference) {
-            setTopupReference(customerData.topup_reference);
-          } else {
-            // Generate a default top-up reference if none exists
-            setTopupReference(`user${effectiveUserId.substring(0, 8)}`);
-          }
+          // Always use the DB value — the SQL trigger assigns it on row creation
+          setTopupReference(customerData.topup_reference || "");
         }
 
         // Fetch all packages
@@ -833,6 +829,12 @@ const UserDashboard = () => {
             </div>
             <p className="font-display text-3xl font-bold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</p>
             <p className="text-xs text-muted-foreground mt-2">For regular purchases</p>
+            {topupReference && (
+              <div className="mt-3 flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 rounded-md px-3 py-2">
+                <span className="text-xs text-muted-foreground shrink-0">Top-up Reference:</span>
+                <span className="font-mono font-bold text-cyan-400 text-sm tracking-wider">{topupReference}</span>
+              </div>
+            )}
             <div className="flex gap-2 mt-4">
               <Button onClick={() => setActiveMenu("buy-data")} className="flex-1" size="sm" variant="default">
                 Buy Data
