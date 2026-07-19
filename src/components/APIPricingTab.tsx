@@ -11,10 +11,10 @@ interface DataPackage {
   id: string;
   network: string;
   size_gb: number;
-  price: number;
-  agent_price: number;
-  api_price: number;
-  active: boolean;
+  price?: number;
+  agent_price?: number;
+  api_price?: number;
+  active?: boolean;
 }
 
 interface APIUser {
@@ -47,7 +47,8 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
   const [saving, setSaving] = useState(false);
   const [loadingPrices, setLoadingPrices] = useState(false);
 
-  const activePackages = packages.filter((p) => p.active);
+  // active field may be undefined if not in DB — default to showing all packages
+  const activePackages = packages.filter((p) => p.active !== false);
 
   const searchUsers = useCallback(async () => {
     if (!searchTerm.trim()) return;

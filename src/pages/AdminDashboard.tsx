@@ -3892,11 +3892,9 @@ const AdminDashboard = () => {
             )}
 
             {/* API Pricing Tab */}
-            {(isMainAdmin || allowedSections.includes("api_pricing")) && (
             <TabsContent value="api_pricing" className="space-y-6">
               <APIPricingTab supabase={supabase} packages={packages} />
             </TabsContent>
-            )}
         </Tabs>
       </div>
 
