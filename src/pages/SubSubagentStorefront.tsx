@@ -168,13 +168,7 @@ const SubSubagentOrderTrackingCard = ({
   store: SubagentStore;
   onReportClick: (order: Order) => void;
 }): JSX.Element => {
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   // ── WhatsApp text auto-hide after 4 seconds ──
   useEffect(() => {
@@ -209,19 +203,13 @@ const SubSubagentOrderTrackingCard = ({
     return () => clearInterval(interval);
   }, [order.id]);
 
-  const elapsedMs = currentTime.getTime() - new Date(order.created_at).getTime();
-  const elapsedMinutes = elapsedMs / 60_000;
-
-  // Step logic - Delivery (step 4) only after 200 minutes
+  // ── Status-based step logic (no time dependency) ──
+  const orderStatus = order.order_status?.toLowerCase().trim() || "";
   let currentStep = 1;
   let statusMessage = "";
   let extraNote: string | null = null;
 
-  // ── Time-based Steps 1-3, Status-based Step 4 ──
-  const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  
   if (orderStatus === "delivered") {
-    // Step 4 ONLY when order_status is "delivered"
     currentStep = 4;
     statusMessage = "Your data bundle has been delivered successfully.";
     if (order.network === "mtn")
@@ -232,28 +220,27 @@ const SubSubagentOrderTrackingCard = ({
       extraNote = "Please check your Telecel messages for delivery confirmation.";
     else
       extraNote = "Please check your messages for delivery confirmation.";
+  } else if (orderStatus === "waiting") {
+    currentStep = 3;
+    statusMessage = "Your order is waiting for network delivery. Please hold on.";
+    extraNote = "The status will update automatically once delivered.";
+  } else if (orderStatus === "refunded") {
+    currentStep = 1;
+    statusMessage = "This order has been refunded.";
+    extraNote = "Please contact support if you have any questions.";
+  } else if (orderStatus === "failed") {
+    currentStep = 1;
+    statusMessage = "This order could not be fulfilled.";
+    extraNote = "Please contact support for assistance.";
+  } else if (orderStatus === "pending") {
+    currentStep = 1;
+    statusMessage = "Order received and awaiting processing.";
+    extraNote = "Your order will be processed shortly.";
   } else {
-    // Steps 1-3 are time-based
-    if (elapsedMinutes >= 15) {
-      currentStep = 3;
-      if (order.network === "mtn")
-        statusMessage = "Your order can be delivered any moment from now. Please wait for delivery confirmation.";
-      else if (order.network === "airteltigo")
-        statusMessage = "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
-      else if (order.network === "telecel")
-        statusMessage = "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
-      else
-        statusMessage = "Your order is being processed. Please wait for delivery.";
-      extraNote = "The order will only move to delivered once the order status has been updated to 'delivered'.";
-    } else if (elapsedMinutes >= 9) {
-      currentStep = 2;
-      statusMessage = `Order sent to ${order.network?.toUpperCase()} for validation`;
-      extraNote = "Now waiting for validation from the network to deliver your data.";
-    } else {
-      currentStep = 1;
-      statusMessage = "Order being processed...";
-      extraNote = "Initializing your order...";
-    }
+    // processing or any other status
+    currentStep = 2;
+    statusMessage = `Order sent to ${order.network?.toUpperCase()} for delivery.`;
+    extraNote = "Waiting for the network to deliver your data.";
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
@@ -265,8 +252,8 @@ const SubSubagentOrderTrackingCard = ({
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
-  // Support button: show after 2 hours if still not delivered
-  const showSupportButton = currentStep !== 4 && elapsedMinutes >= 120;
+  // Support button: show whenever order is not yet delivered
+  const showSupportButton = currentStep !== 4;
   // Report button: show only when order status is "delivered"
   const showReportButton = orderStatus === "delivered";
 
@@ -394,11 +381,7 @@ const SubSubagentOrderTrackingCard = ({
             {extraNote}
           </p>
         )}
-        {currentStep === 1 && elapsedMinutes < 8 && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Estimated time remaining: {Math.max(0, Math.ceil(8 - elapsedMinutes))} minute(s)
-          </p>
-        )}
+
       </div>
 
       {showSupportButton && (

@@ -160,10 +160,7 @@ const sounds = {
 
 // ────────────────────────────────────────────── Order Tracking Card (UPDATED: delivered at 300 minutes) ──
 const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toast: any; onReportClick: (order: Order) => void }) => {
-  const [now, setNow] = useState(new Date());
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
-  
-  useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
 
   // Fetch complaint status for this order
   useEffect(() => {
@@ -190,37 +187,37 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     return () => clearInterval(interval);
   }, [order.id]);
 
-  const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 1000; // in seconds
+  // ── Status-based step logic (no time dependency) ──
+  const orderStatus = order.order_status?.toLowerCase().trim() || "";
   let step = 1, msg = "", note: string | null = null;
 
-  // ── Time-based Steps 1-3, Status-based Step 4 (ALL NETWORKS) ──
-  const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  const elapsedMinutes = elapsed / 60;
-  
   if (orderStatus === "delivered") {
-    // Step 4 ONLY when order_status is "delivered"
     step = 4;
     msg = "Your data bundle has been delivered successfully.";
     note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
       : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
         : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
+  } else if (orderStatus === "waiting") {
+    step = 3;
+    msg = "Your order is waiting for network delivery. Please hold on.";
+    note = "The status will update automatically once delivered.";
+  } else if (orderStatus === "refunded") {
+    step = 1;
+    msg = "This order has been refunded.";
+    note = "Please contact support if you have any questions.";
+  } else if (orderStatus === "failed") {
+    step = 1;
+    msg = "This order could not be fulfilled.";
+    note = "Please contact support for assistance.";
+  } else if (orderStatus === "pending") {
+    step = 1;
+    msg = "Order received and awaiting processing.";
+    note = "Your order will be processed shortly.";
   } else {
-    // Steps 1-3 are time-based
-    if (elapsedMinutes >= 15) {
-      step = 3;
-      msg = order.network === "mtn" ? "Your order can be delivered any moment. Please wait for delivery confirmation."
-        : order.network === "airteltigo" ? "Your order can be delivered any moment. Please wait for delivery confirmation."
-          : order.network === "telecel" ? "Your order can be delivered any moment. Please wait for delivery confirmation." 
-            : "Your order can be delivered any moment. Please wait for delivery confirmation.";
-      note = "The order will only move to delivered once the order status has been updated to 'delivered'.";
-    } else if (elapsedMinutes >= 9) {
-      step = 2;
-      msg = `Order sent to ${formatNetworkName(order.network)} for validation.`;
-      note = "Delay from here is from the network.";
-    } else {
-      step = 1;
-      msg = "Order being processed…";
-    }
+    // processing or any other status
+    step = 2;
+    msg = `Order sent to ${formatNetworkName(order.network)} for delivery.`;
+    note = "Waiting for the network to deliver your data.";
   }
 
   const getDetailedReportMessage = (): string => {
@@ -330,7 +327,7 @@ Please investigate and assist. Thank you.`;
       <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
         <p className="text-sm font-medium">{msg}</p>
         {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-primary/20">{note}</p>}
-        {step === 1 && elapsed < 8 && <p className="text-xs text-muted-foreground mt-1">Estimated time remaining: {Math.max(0, Math.ceil(8 - elapsed))} min(s)</p>}
+
       </div>
     </div>
   );
