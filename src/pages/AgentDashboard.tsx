@@ -420,7 +420,7 @@ const AgentDashboard = () => {
   const [withdrawalCooldownEndTime, setWithdrawalCooldownEndTime] = useState<number | null>(null);
   const [cooldownTimeRemaining, setCooldownTimeRemaining] = useState<string | null>(null);
   // Ref so tick() inside the interval can always read the latest end time
-  const cooldownEndTimeRef = React.useRef<number | null>(null);
+  const cooldownEndTimeRef = useRef<number | null>(null);
 
   // Tabs and menu state
   const [activeTab, setActiveTab] = useState("overview");
