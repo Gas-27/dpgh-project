@@ -2025,31 +2025,90 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           <p className="text-sm text-muted-foreground mt-2">Track your API purchase history and order details</p>
         </CardHeader>
         <CardContent>
-          {apiOrders.length === 0 ? (
+          {loadingApiOrders ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : apiOrders.length === 0 ? (
             <div className="text-center py-12">
               <BarChart3 className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-              <p className="text-muted-foreground">No API orders yet. Purchase API data packages to see your order history.</p>
-              <Button onClick={() => setActiveMenu("api-key")} className="mt-4">
-                View API Packages
-              </Button>
+              <p className="text-muted-foreground">No API orders yet.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {apiOrders.map(order => (
-                <div key={order.id} className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold">{order.package_size}GB - {order.network}</p>
-                      <p className="text-sm text-muted-foreground">Order ID: {order.id.substring(0, 8)}</p>
-                    </div>
-                    <p className="font-display font-bold text-purple-400">GHC {Number(order.amount).toFixed(2)}</p>
-                  </div>
-                  <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
-                    <span>Status: <span className="text-green-400">{order.status}</span></span>
-                    <span>Date: {new Date(order.created_at).toLocaleDateString()}</span>
-                  </div>
+            <div className="space-y-3">
+              {/* Search + filter */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <input
+                  type="text"
+                  placeholder="Search by phone or network..."
+                  value={apiOrdersSearch}
+                  onChange={e => setApiOrdersSearch(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-md border border-input bg-background text-sm"
+                />
+                <select
+                  value={apiOrdersStatusFilter}
+                  onChange={e => setApiOrdersStatusFilter(e.target.value)}
+                  className="px-3 py-2 rounded-md border border-input bg-background text-sm"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                  <option value="processing">Processing</option>
+                  <option value="failed">Failed</option>
+                  <option value="refunded">Refunded</option>
+                </select>
+              </div>
+              {filteredApiOrders.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8 text-sm">No orders match your search.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50 text-left">
+                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Date</th>
+                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Contact</th>
+                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Network</th>
+                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Data</th>
+                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Amount</th>
+                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Order Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredApiOrders.map(order => {
+                        const fs = order.fulfillment_status || order.status || 'pending';
+                        const fsColor =
+                          fs === 'completed' || fs === 'delivered' ? 'bg-green-500/20 text-green-400' :
+                          fs === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                          fs === 'processing' ? 'bg-blue-500/20 text-blue-400' :
+                          fs === 'failed' ? 'bg-red-500/20 text-red-400' :
+                          fs === 'refunded' ? 'bg-amber-500/20 text-amber-400' :
+                          'bg-slate-500/20 text-slate-400';
+                        return (
+                          <tr key={order.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                            <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
+                              {new Date(order.created_at).toLocaleDateString()}{' '}
+                              {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="px-3 py-2 text-xs font-mono">{order.customer_number}</td>
+                            <td className="px-3 py-2 text-xs">
+                              <span className="px-2 py-0.5 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
+                            </td>
+                            <td className="px-3 py-2 text-xs font-semibold text-cyan-400">
+                              {order.size_gb_text || `${order.size_gb}GB`}
+                            </td>
+                            <td className="px-3 py-2 text-xs font-semibold">
+                              GHC {Number(order.selling_price || order.amount || 0).toFixed(2)}
+                            </td>
+                            <td className="px-3 py-2 text-xs">
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${fsColor}`}>{fs}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </CardContent>

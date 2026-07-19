@@ -3069,6 +3069,7 @@ const AgentDashboard = () => {
                     {transferRecipients.length > 0 && (
                       <div className="space-y-2">
                         <Label>Select Recipient</Label>
+                        <p className="text-xs text-muted-foreground -mt-1">Tap on the dropdown to select a recipient</p>
                         <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
                           <SelectTrigger>
                             <SelectValue placeholder="Choose a recipient..." />
@@ -3791,16 +3792,23 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                           <TableHead className="text-xs">Date & Time</TableHead>
                           <TableHead className="text-xs">Contact</TableHead>
                           <TableHead className="text-xs">Network</TableHead>
-                          <TableHead className="text-xs">GB Size</TableHead>
-                          <TableHead className="text-xs">Source</TableHead>
-                          <TableHead className="text-xs">Payment Method</TableHead>
+                          <TableHead className="text-xs">Data Size</TableHead>
+                          <TableHead className="text-xs">Payment</TableHead>
                           <TableHead className="text-xs">Amount</TableHead>
                           <TableHead className="text-xs">Order Status</TableHead>
-                          <TableHead className="text-xs">Payment Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredApiOrders.map((order) => (
+                        {filteredApiOrders.map((order) => {
+                          const fs = order.fulfillment_status || order.status || 'pending';
+                          const fsColor =
+                            fs === 'completed' || fs === 'delivered' ? 'bg-green-500/20 text-green-400' :
+                            fs === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                            fs === 'processing' ? 'bg-blue-500/20 text-blue-400' :
+                            fs === 'failed' ? 'bg-red-500/20 text-red-400' :
+                            fs === 'refunded' ? 'bg-amber-500/20 text-amber-400' :
+                            'bg-slate-500/20 text-slate-400';
+                          return (
                           <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                             <TableCell className="text-xs whitespace-nowrap">
                               {new Date(order.created_at).toLocaleDateString()} {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -3809,26 +3817,17 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                             <TableCell className="text-xs">
                               <span className="px-2 py-1 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
                             </TableCell>
-                            <TableCell className="text-xs font-semibold text-cyan-400">{order.amount}GB</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">API</TableCell>
+                            <TableCell className="text-xs font-semibold text-cyan-400">{order.size_gb_text || `${order.size_gb}GB`}</TableCell>
                             <TableCell className="text-xs text-muted-foreground">API Wallet</TableCell>
-                            <TableCell className="text-xs font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                            <TableCell className="text-xs font-semibold">GHC {Number(order.selling_price || order.amount || 0).toFixed(2)}</TableCell>
                             <TableCell className="text-xs">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                order.order_status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                                order.order_status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                                order.order_status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
-                                order.order_status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                                'bg-slate-500/20 text-slate-400'
-                              }`}>
-                                {order.order_status?.charAt(0).toUpperCase() + order.order_status?.slice(1)}
+                              <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${fsColor}`}>
+                                {fs}
                               </span>
                             </TableCell>
-                            <TableCell className="text-xs">
-                              <span className="px-2 py-1 rounded bg-green-500/20 text-green-400 font-medium">Completed</span>
-                            </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
