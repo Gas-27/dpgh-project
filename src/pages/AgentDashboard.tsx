@@ -1545,22 +1545,9 @@ const AgentDashboard = () => {
         throw new Error("Authentication failed. Please log in again.");
       }
 
-      // Always do a fresh lookup to get the definitive agent_stores.id (PK)
-      // and last_withdrawal_at — the deployed edge function queries by PK.
-      const effectiveUid = impersonatedUserId || session.user.id;
-      const { data: freshStore, error: freshStoreErr } = await supabase
-        .from("agent_stores")
-        .select("id, last_withdrawal_at")
-        .eq("user_id", effectiveUid)
-        .single();
-      if (freshStoreErr || !freshStore?.id) {
-        throw new Error("Could not resolve your agent store. Please refresh and try again.");
-      }
-
-      // Enforce 24-hour withdrawal cooldown (the deployed edge function does not
-      // check this, so we enforce it here on the frontend for all agents).
-      if (freshStore.last_withdrawal_at) {
-        const lastTime = new Date(freshStore.last_withdrawal_at).getTime();
+      // Enforce 24-hour withdrawal cooldown using already-loaded store state.
+      if (store.last_withdrawal_at) {
+        const lastTime = new Date(store.last_withdrawal_at).getTime();
         const elapsed = Date.now() - lastTime;
         const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
         if (elapsed < TWENTY_FOUR_HOURS) {
@@ -1571,7 +1558,9 @@ const AgentDashboard = () => {
         }
       }
 
-      payload.requester_id = freshStore.id;
+      // store is loaded with select("*") so store.id is the agent_stores PK —
+      // exactly what the deployed edge function expects.
+      payload.requester_id = store.id;
 
       const response = await fetch(
         "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
