@@ -19,6 +19,7 @@ interface DataPackage {
 
 interface APIUser {
   id: string;
+  full_name?: string;
   email?: string;
   user_email?: string;
   store_name?: string;
@@ -60,19 +61,21 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     setCustomPrices({});
     try {
       const term = searchTerm.trim();
-      const cols = "id, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference";
+      const cols = "id, full_name, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference";
 
-      // Search by topup_reference using ilike so numeric strings and suffixed ones both match
+      // Search across all text columns: topup_reference, full_name, email, user_email, store_name, api_key
       const { data, error } = await supabase
         .from("api_users")
         .select(cols)
-        .ilike("topup_reference", `%${term}%`)
+        .or(
+          `topup_reference.ilike.%${term}%,full_name.ilike.%${term}%,email.ilike.%${term}%,user_email.ilike.%${term}%,store_name.ilike.%${term}%,api_key.ilike.%${term}%`
+        )
         .limit(20);
       if (error) throw error;
 
       setApiUsers(data || []);
       if (!data || data.length === 0) {
-        toast({ title: "No API user found", description: `No API user has top-up reference matching "${term}".`, variant: "destructive" });
+        toast({ title: "No API user found", description: `No results for "${term}". Try top-up reference, name, email, store name or API key.`, variant: "destructive" });
       }
     } catch (err: any) {
       toast({ title: "Search failed", description: err.message, variant: "destructive" });
@@ -163,7 +166,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
             Set Custom API Package Prices
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Search for an API user by their top-up reference and set custom prices per package. These override the default API price for that user only.
+            Search for an API user by top-up reference, full name, email, store name or API key and set custom prices per package. These override the default API price for that user only.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -172,7 +175,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Enter top-up reference (e.g. 1576 or 4277us)..."
+                placeholder="Search by top-up reference, name, email, store name or API key..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => {
@@ -199,8 +202,8 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
                     className="flex items-start gap-3 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 text-left transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{user.store_name || user.user_email || user.email || "Unnamed"}</div>
-                      <div className="text-xs text-muted-foreground truncate">{user.user_email || user.email}</div>
+                      <div className="font-medium text-sm truncate">{user.store_name || user.full_name || user.user_email || user.email || "Unnamed"}</div>
+                      <div className="text-xs text-muted-foreground truncate">{user.full_name ? `${user.full_name} — ` : ""}{user.user_email || user.email}</div>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         {user.topup_reference && (
                           <Badge variant="outline" className="text-xs font-mono text-cyan-400 border-cyan-500/40">{user.topup_reference}</Badge>
@@ -222,8 +225,8 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
               {/* Selected user header */}
               <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <div>
-                  <div className="font-semibold">{selectedUser.store_name || selectedUser.user_email || selectedUser.email || "Unnamed"}</div>
-                  <div className="text-xs text-muted-foreground">{selectedUser.user_email || selectedUser.email} &bull; Balance: GHC {Number(selectedUser.wallet || 0).toFixed(2)}</div>
+                  <div className="font-semibold">{selectedUser.store_name || selectedUser.full_name || selectedUser.user_email || selectedUser.email || "Unnamed"}</div>
+                  <div className="text-xs text-muted-foreground">{selectedUser.full_name ? `${selectedUser.full_name} — ` : ""}{selectedUser.user_email || selectedUser.email} &bull; Balance: GHC {Number(selectedUser.wallet || 0).toFixed(2)}</div>
                   {selectedUser.topup_reference && (
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-xs text-muted-foreground">Top-up Ref:</span>
