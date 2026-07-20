@@ -1719,15 +1719,27 @@ const AdminDashboard = () => {
 
   // ======================== API User Wallet topup ========================
   const searchApiTopupRef = async () => {
-    if (!apiTopupSearch.trim()) { setApiTopupUser(null); return; }
+    const raw = apiTopupSearch.trim();
+    if (!raw) { setApiTopupUser(null); return; }
     try {
+      // Build variants: exact, with "us" suffix, and without "us" suffix
+      const variants = [raw];
+      if (!raw.toLowerCase().endsWith("us")) variants.push(`${raw}us`);
+      else if (raw.length > 2) variants.push(raw.slice(0, -2));
+
+      // Try exact match first across all variants, then fall back to ilike
       const { data, error } = await supabase
         .from("api_users")
         .select("id, store_name, user_email, email, wallet, topup_reference")
-        .eq("topup_reference", apiTopupSearch.trim())
+        .or(variants.map(v => `topup_reference.eq.${v}`).join(","))
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
-      if (!data) { toast({ title: "Not found", description: "No API user found with that top-up reference.", variant: "destructive" }); setApiTopupUser(null); return; }
+      if (!data) {
+        toast({ title: "Not found", description: "No API user found with that top-up reference.", variant: "destructive" });
+        setApiTopupUser(null);
+        return;
+      }
       setApiTopupUser(data);
     } catch (err: any) {
       toast({ title: "Search failed", description: err.message, variant: "destructive" });

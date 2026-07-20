@@ -91,19 +91,14 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
         filters.push(`identity_id.eq.${term}`);
       }
 
-      // Use server-side API route to bypass RLS
-      const res = await fetch("/api/search-api-users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ searchTerm: term }),
-      });
+      const { data, error } = await supabase
+        .from("api_users")
+        .select("id, full_name, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference, identity_id")
+        .or(filters.join(","))
+        .limit(20);
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Search failed");
-      }
+      if (error) throw error;
 
-      const { data } = await res.json();
       setApiUsers((data as APIUser[]) || []);
       if (!data || data.length === 0) {
         toast({ title: "No API user found", description: `No results for "${term}". Try topup reference, name, email, store name, API key or user ID.`, variant: "destructive" });
