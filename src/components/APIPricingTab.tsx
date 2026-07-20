@@ -23,7 +23,7 @@ interface APIUser {
   user_email?: string;
   store_name?: string;
   api_key: string;
-  wallet_balance: number;
+  wallet: number;
   active: boolean;
   custom_price: boolean;
   topup_reference?: string;
@@ -60,7 +60,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     setCustomPrices({});
     try {
       const term = searchTerm.trim();
-      const cols = "id, user_email, email, store_name, api_key, wallet_balance, active, custom_price, topup_reference";
+      const cols = "id, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference";
 
       // First: exact match on topup_reference (handles plain numbers like "1576" and suffixed like "4277us")
       const { data: refData, error: refError } = await supabase
@@ -249,7 +249,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
               <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <div>
                   <div className="font-semibold">{selectedUser.store_name || selectedUser.user_email || selectedUser.email || "Unnamed"}</div>
-                  <div className="text-xs text-muted-foreground">{selectedUser.user_email || selectedUser.email} &bull; Balance: GHC {selectedUser.wallet_balance?.toFixed(2)}</div>
+                  <div className="text-xs text-muted-foreground">{selectedUser.user_email || selectedUser.email} &bull; Balance: GHC {Number(selectedUser.wallet || 0).toFixed(2)}</div>
                   {selectedUser.topup_reference && (
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-xs text-muted-foreground">Top-up Ref:</span>
