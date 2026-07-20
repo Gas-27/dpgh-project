@@ -563,7 +563,7 @@ const AdminDashboard = () => {
   };
   const refreshData = async () => {
     try {
-      // Load packages and app settings only — withdrawals load lazily via handleTabChange
+      // Load packages and app settings only — withdrawals/agents/etc load lazily via handleTabChange
       const [pkgResult, appSettingsResult] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
         supabase
@@ -572,49 +572,12 @@ const AdminDashboard = () => {
           .eq("id", 1)
           .single(),
       ]);
-      
+
       setPackages(pkgResult.data ?? []);
-      
+
       const appSettings = appSettingsResult.data;
-      
       if (appSettings?.agent_registration_fee) {
         setAgentRegistrationFee(appSettings.agent_registration_fee);
-
-      // Subscribe to real-time package changes
-      const channel = supabase
-        .channel('admin_packages_realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'data_packages',
-          },
-          (payload) => {
-  
-            
-            if (payload.eventType === 'UPDATE') {
-              setPackages((prev) =>
-                prev.map((pkg) =>
-                  pkg.id === payload.new.id
-                    ? { ...pkg, ...payload.new }
-                    : pkg
-                ).sort((a, b) => a.size_gb - b.size_gb)
-              );
-            } else if (payload.eventType === 'INSERT') {
-              setPackages((prev) => 
-                [...prev, payload.new as any].sort((a, b) => a.size_gb - b.size_gb)
-              );
-            } else if (payload.eventType === 'DELETE') {
-              setPackages((prev) => prev.filter((pkg) => pkg.id !== payload.old.id));
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
       }
       if (appSettings) {
         setFreeDataConfig({
@@ -624,11 +587,8 @@ const AdminDashboard = () => {
           telecel_enabled: appSettings.free_data_telecel_enabled ?? false,
         });
       }
-      
-      setDataLoading(false);
     } catch (error) {
       console.error("[v0] Error in refreshData:", error);
-      setDataLoading(false);
     }
   };
   
@@ -1074,7 +1034,24 @@ const AdminDashboard = () => {
       fetchCurrentUserPermissions(currentUser.id);
     }
   }, []);
-  
+
+  // Subscribe to real-time package changes — set up once on mount only
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin_packages_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'data_packages' }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          setPackages(prev => prev.map(pkg => pkg.id === payload.new.id ? { ...pkg, ...payload.new } : pkg).sort((a, b) => a.size_gb - b.size_gb));
+        } else if (payload.eventType === 'INSERT') {
+          setPackages(prev => [...prev, payload.new as DataPackage].sort((a, b) => a.size_gb - b.size_gb));
+        } else if (payload.eventType === 'DELETE') {
+          setPackages(prev => prev.filter(pkg => pkg.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   // Lightweight background refresh - only fetch counts every 10 seconds
   useEffect(() => {
     const refreshCountsOnly = async () => {
