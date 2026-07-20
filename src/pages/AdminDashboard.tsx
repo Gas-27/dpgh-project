@@ -407,15 +407,11 @@ const AdminDashboard = () => {
         .filter(w => w.sub_subagent_store_id && !w.subagent_store.store_name)
         .map(w => w.sub_subagent_store_id);
 
-      console.log("[v0] Subsubagent withdrawals with missing data:", missingStoreIds.length, missingStoreIds);
-
       if (missingStoreIds.length > 0) {
-        const { data: storeData, error: storeError } = await supabase
+        const { data: storeData } = await supabase
           .from("sub_subagent_stores")
           .select("id, store_name, momo_name, momo_number, momo_network, wallet_balance")
           .in("id", missingStoreIds);
-
-        console.log("[v0] Fetched subsubagent stores:", storeData?.length, "error:", storeError);
 
         if (storeData && storeData.length > 0) {
           const storeMap = Object.fromEntries(storeData.map(s => [s.id, s]));
@@ -423,7 +419,6 @@ const AdminDashboard = () => {
             if (w.sub_subagent_store_id && !w.subagent_store.store_name) {
               const store = storeMap[w.sub_subagent_store_id];
               if (store) {
-                console.log("[v0] Updating subsubagent withdrawal", w.id, "with store", store.store_name);
                 w.subagent_store = {
                   id: store.id,
                   store_name: store.store_name,
@@ -567,12 +562,10 @@ const AdminDashboard = () => {
     }
   };
   const refreshData = async () => {
-    console.log("[v0] Initial load - packages, withdrawals, app settings, AFA settings, and sub-subagents");
     try {
-      // Load packages, withdrawals, settings, and sub-subagents on initial load
-      const [pkgResult, withdrawalsData, appSettingsResult] = await Promise.all([
+      // Load packages and app settings only — withdrawals load lazily via handleTabChange
+      const [pkgResult, appSettingsResult] = await Promise.all([
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
-        fetchWithdrawalsWithStores(10000),
         supabase
           .from("app_settings")
           .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
@@ -581,7 +574,6 @@ const AdminDashboard = () => {
       ]);
       
       setPackages(pkgResult.data ?? []);
-      setWithdrawals(withdrawalsData ?? []);
       
       const appSettings = appSettingsResult.data;
       
@@ -599,7 +591,7 @@ const AdminDashboard = () => {
             table: 'data_packages',
           },
           (payload) => {
-            console.log('[v0] Admin dashboard received package update:', payload);
+  
             
             if (payload.eventType === 'UPDATE') {
               setPackages((prev) =>
@@ -618,9 +610,7 @@ const AdminDashboard = () => {
             }
           }
         )
-        .subscribe((status) => {
-          console.log('[v0] Admin packages realtime status:', status);
-        });
+        .subscribe();
 
       return () => {
         supabase.removeChannel(channel);
