@@ -62,23 +62,29 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     try {
       const term = searchTerm.trim();
 
-      // Build a broad OR filter across all text columns.
-      // Also do an exact id match in case the admin pastes the UUID directly.
+      // Check if term looks like a UUID (36 chars with hyphens, or no hyphens)
+      const isLikelyUUID = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(term);
+
+      // Build OR filter across text columns + optional UUID exact match
+      const filters = [
+        `topup_reference.ilike.%${term}%`,
+        `full_name.ilike.%${term}%`,
+        `email.ilike.%${term}%`,
+        `user_email.ilike.%${term}%`,
+        `store_name.ilike.%${term}%`,
+        `api_key.ilike.%${term}%`,
+      ];
+
+      // Only add UUID exact matches if the term is a valid UUID format
+      if (isLikelyUUID) {
+        filters.push(`id.eq.${term}`);
+        filters.push(`identity_id.eq.${term}`);
+      }
+
       let query = supabase
         .from("api_users")
         .select("id, full_name, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference, identity_id")
-        .or(
-          [
-            `topup_reference.ilike.%${term}%`,
-            `full_name.ilike.%${term}%`,
-            `email.ilike.%${term}%`,
-            `user_email.ilike.%${term}%`,
-            `store_name.ilike.%${term}%`,
-            `api_key.ilike.%${term}%`,
-            `id.eq.${term}`,
-            `identity_id.eq.${term}`,
-          ].join(",")
-        )
+        .or(filters.join(","))
         .limit(20);
 
       const { data, error } = await query;
