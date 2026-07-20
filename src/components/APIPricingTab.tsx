@@ -147,27 +147,23 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     }
     setSaving(true);
     try {
-      // Call the admin-set-custom-prices edge function
-      const supabaseUrl = (supabase as any).supabaseUrl || import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = (supabase as any).supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const res = await fetch(`${supabaseUrl}/functions/v1/admin-set-custom-prices`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          api_key: selectedUser.api_key,
-          custom_prices: entries.map(([package_id, custom_price]) => ({
-            package_id,
-            custom_price: Number(custom_price),
-          })),
-        }),
+      // Upsert directly into api_user_package_prices
+      const rows = entries.map(([package_id, custom_price]) => ({
+        api_user_id: selectedUser.id,
+        package_id,
+        custom_price: Number(custom_price),
+      }));
+
+      const { error } = await supabase
+        .from("api_user_package_prices")
+        .upsert(rows, { onConflict: "api_user_id,package_id" });
+
+      if (error) throw error;
+
+      toast({
+        title: "Custom prices saved",
+        description: `${rows.length} price(s) updated for ${selectedUser.store_name || selectedUser.user_email || selectedUser.email}.`,
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
-      toast({ title: "Custom prices saved", description: `${json.custom_prices_set} package price(s) updated for ${selectedUser.store_name || selectedUser.user_email || selectedUser.email}.` });
-      // Refresh existing prices
       await selectUser(selectedUser);
     } catch (err: any) {
       toast({ title: "Save failed", description: err.message, variant: "destructive" });
