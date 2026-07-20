@@ -62,12 +62,13 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     try {
       const term = searchTerm.trim();
 
-      // Use RPC (SECURITY DEFINER) to bypass RLS on api_users
-      const { data, error } = await supabase.rpc("search_api_users", { search_term: term });
-      if (error) throw error;
+      // Call the admin API route which uses the service role key to bypass RLS
+      const res = await fetch(`/api/admin/search-api-users?q=${encodeURIComponent(term)}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Search failed");
 
-      setApiUsers((data as APIUser[]) || []);
-      if (!data || data.length === 0) {
+      setApiUsers((json.data as APIUser[]) || []);
+      if (!json.data || json.data.length === 0) {
         toast({ title: "No API user found", description: `No results for "${term}". Try top-up reference, name, email, store name or API key.`, variant: "destructive" });
       }
     } catch (err: any) {
