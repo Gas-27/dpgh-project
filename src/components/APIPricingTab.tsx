@@ -62,43 +62,17 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
       const term = searchTerm.trim();
       const cols = "id, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference";
 
-      // First: exact match on topup_reference (handles plain numbers like "1576" and suffixed like "4277us")
-      const { data: refData, error: refError } = await supabase
-        .from("api_users")
-        .select(cols)
-        .eq("topup_reference", term)
-        .limit(20);
-      if (refError) throw refError;
-
-      if (refData && refData.length > 0) {
-        setApiUsers(refData);
-        return;
-      }
-
-      // Second: partial match on topup_reference for prefix searches (e.g. typing "157" to find "1576")
-      const { data: refPartialData, error: refPartialError } = await supabase
-        .from("api_users")
-        .select(cols)
-        .ilike("topup_reference", `${term}%`)
-        .limit(20);
-      if (refPartialError) throw refPartialError;
-
-      if (refPartialData && refPartialData.length > 0) {
-        setApiUsers(refPartialData);
-        return;
-      }
-
-      // Third: fall back to searching by email, store_name, api_key
+      // Search by topup_reference using ilike so numeric strings and suffixed ones both match
       const { data, error } = await supabase
         .from("api_users")
         .select(cols)
-        .or(`user_email.ilike.%${term}%,email.ilike.%${term}%,api_key.ilike.%${term}%,store_name.ilike.%${term}%`)
+        .ilike("topup_reference", `%${term}%`)
         .limit(20);
       if (error) throw error;
 
       setApiUsers(data || []);
       if (!data || data.length === 0) {
-        toast({ title: "No API users found", description: "Try searching by top-up reference, email, store name or API key." });
+        toast({ title: "No API user found", description: `No API user has top-up reference matching "${term}".`, variant: "destructive" });
       }
     } catch (err: any) {
       toast({ title: "Search failed", description: err.message, variant: "destructive" });
@@ -189,7 +163,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
             Set Custom API Package Prices
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Search for an API user and set custom prices per package. These override the default API price for that user only.
+            Search for an API user by their top-up reference and set custom prices per package. These override the default API price for that user only.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -198,7 +172,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, email, API key, store name or top-up reference..."
+                placeholder="Enter top-up reference (e.g. 1576 or 4277us)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => {
