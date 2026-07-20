@@ -652,8 +652,15 @@ const AgentDashboard = () => {
         updated_at: new Date().toISOString(),
       };
       
-      // Add role field - the database trigger requires it
       upsertData.role = 'agent';
+      // Populate profile fields so admin can search by name/email/store
+      if (user?.user_metadata?.full_name || user?.user_metadata?.name) {
+        upsertData.full_name = user.user_metadata.full_name || user.user_metadata.name;
+      }
+      if (user?.email) {
+        upsertData.email = user.email;
+        upsertData.user_email = user.email;
+      }
       
       console.log("[v0] Upserting with data:", { ...upsertData, api_key: '****' });
       

@@ -62,16 +62,31 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     try {
       const term = searchTerm.trim();
 
-      const { data, error } = await supabase
+      // Build a broad OR filter across all text columns.
+      // Also do an exact id match in case the admin pastes the UUID directly.
+      let query = supabase
         .from("api_users")
-        .select("id, full_name, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference")
-        .or(`topup_reference.ilike.%${term}%,full_name.ilike.%${term}%,email.ilike.%${term}%,user_email.ilike.%${term}%,store_name.ilike.%${term}%,api_key.ilike.%${term}%`)
+        .select("id, full_name, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference, identity_id")
+        .or(
+          [
+            `topup_reference.ilike.%${term}%`,
+            `full_name.ilike.%${term}%`,
+            `email.ilike.%${term}%`,
+            `user_email.ilike.%${term}%`,
+            `store_name.ilike.%${term}%`,
+            `api_key.ilike.%${term}%`,
+            `id.eq.${term}`,
+            `identity_id.eq.${term}`,
+          ].join(",")
+        )
         .limit(20);
+
+      const { data, error } = await query;
       if (error) throw error;
 
       setApiUsers((data as APIUser[]) || []);
       if (!data || data.length === 0) {
-        toast({ title: "No API user found", description: `No results for "${term}". Try top-up reference, name, email, store name or API key.`, variant: "destructive" });
+        toast({ title: "No API user found", description: `No results for "${term}". Try topup reference, name, email, store name, API key or user ID.`, variant: "destructive" });
       }
     } catch (err: any) {
       toast({ title: "Search failed", description: err.message, variant: "destructive" });

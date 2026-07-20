@@ -556,6 +556,10 @@ const UserDashboard = () => {
         wallet: existingApiWallet,
         updated_at: new Date().toISOString(),
         role: 'user',
+        // Populate profile fields so admin can search by name/email
+        ...(user?.email && { email: user.email, user_email: user.email }),
+        ...(user?.user_metadata?.full_name && { full_name: user.user_metadata.full_name }),
+        ...(user?.user_metadata?.name && !user?.user_metadata?.full_name && { full_name: user.user_metadata.name }),
       };
 
       const { data, error } = await supabase
