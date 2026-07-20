@@ -283,6 +283,32 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setDataLoading(true);
     await refreshData();
+
+    // Load static config once on mount only (not on every refreshData call)
+    try {
+      const { data: afaSettings } = await supabase
+        .from("afa_settings")
+        .select("base_registration_price")
+        .single();
+      if (afaSettings?.base_registration_price) {
+        setAfaRegistrationFee(afaSettings.base_registration_price);
+      }
+    } catch {
+      setAfaRegistrationFee(14);
+    }
+
+    try {
+      const { data: ssData } = await supabase
+        .from("sub_subagent_stores")
+        .select("*, subagent_stores(id, store_name, agent_store_id)")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      setSubSubagents(ssData || []);
+      setLoadedTabs(prev => new Set([...prev, "sub_subagents"]));
+    } catch {
+      setSubSubagents([]);
+    }
+
     setDataLoading(false);
   };
 
@@ -609,35 +635,6 @@ const AdminDashboard = () => {
         });
       }
       
-      // Load AFA settings separately with error handling
-      try {
-        const { data: afaSettings } = await supabase
-          .from("afa_settings")
-          .select("base_registration_price")
-          .single();
-        if (afaSettings?.base_registration_price) {
-          setAfaRegistrationFee(afaSettings.base_registration_price);
-        }
-      } catch (afaError) {
-        console.log("[v0] AFA settings not found, using default");
-        setAfaRegistrationFee(14);
-      }
-      
-      // Fetch sub-subagents
-      try {
-        const { data, error } = await supabase
-          .from("sub_subagent_stores")
-          .select("*, subagent_stores(id, store_name, agent_store_id)")
-          .order("created_at", { ascending: false })
-          .limit(200);
-        
-        if (error) throw error;
-        setSubSubagents(data || []);
-      } catch (error) {
-        console.error("[v0] Error fetching sub-subagents:", error);
-        setSubSubagents([]);
-      }
-      
       setDataLoading(false);
     } catch (error) {
       console.error("[v0] Error in refreshData:", error);
@@ -648,14 +645,11 @@ const AdminDashboard = () => {
   // Fetch sub-subagents with their parent subagent info
   const fetchSubSubagents = async () => {
     try {
-      console.log("[v0] Fetching sub-subagents from Supabase...");
       const { data, error } = await supabase
         .from("sub_subagent_stores")
         .select("*, subagent_stores(id, store_name, agent_store_id)")
         .order("created_at", { ascending: false })
         .limit(200);
-      
-      console.log("[v0] Sub-subagents fetch - Error:", error?.message, "Data count:", data?.length || 0);
       
       if (error) {
         console.error("[v0] Supabase error:", error);
@@ -664,8 +658,8 @@ const AdminDashboard = () => {
         return;
       }
       
-      console.log("[v0] Successfully fetched", data?.length || 0, "sub-subagents");
       setSubSubagents(data || []);
+      setLoadedTabs(prev => new Set([...prev, "sub_subagents"]));
     } catch (error) {
       console.error("[v0] Exception fetching sub-subagents:", error);
       toast({ title: "Error", description: "Failed to load sub-subagents", variant: "destructive" });
@@ -679,7 +673,7 @@ const AdminDashboard = () => {
       handleTabChange("orders");
     } else if (activeTab === "subagents" && subagents.length === 0) {
       handleTabChange("subagents");
-    } else if (activeTab === "sub_subagents") {
+    } else if (activeTab === "sub_subagents" && !loadedTabs.has("sub_subagents")) {
       fetchSubSubagents();
     } else if (activeTab === "customers" && customers.length === 0) {
       fetchCustomers();
@@ -1123,8 +1117,8 @@ const AdminDashboard = () => {
     // Initial count refresh
     refreshCountsOnly();
     
-    // Refresh counts every 10 seconds (lightweight - counts only, no record data)
-    const interval = setInterval(refreshCountsOnly, 10000);
+    // Refresh counts every 60 seconds (lightweight - counts only, no record data)
+    const interval = setInterval(refreshCountsOnly, 60000);
     return () => clearInterval(interval);
   }, []);
   
@@ -1174,9 +1168,9 @@ const AdminDashboard = () => {
         console.error("[v0] Auto-retry error:", error);
       }
     };
-    const interval = setInterval(autoRetryPendingOrders, 3000); // 3 seconds
+    const interval = setInterval(autoRetryPendingOrders, 30000); // 30 seconds
     return () => clearInterval(interval);
-  }, [retryingOrders]);
+  }, []);
 
   // Calculate unapproved withdrawals count
   useEffect(() => {
@@ -1224,7 +1218,7 @@ const AdminDashboard = () => {
       };
 
       refreshBackgroundData();
-    }, 1000); // Refresh every 1 second
+    }, 30000); // Refresh every 30 seconds
 
     return () => clearInterval(intervalId);
   }, []);
@@ -1246,9 +1240,9 @@ const AdminDashboard = () => {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "orders" },
         (payload) => {
-          console.log("[v0] Order status updated:", payload.new);
-          // Refresh orders when any order status changes
-          refreshData();
+          // Update only the affected order in state — avoid full refreshData() which hammers the DB
+          const updated = payload.new as Order;
+          setOrders(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o));
         }
       )
       .subscribe();
