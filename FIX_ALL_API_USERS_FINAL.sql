@@ -1,27 +1,22 @@
 -- ============================================================
--- PART 1: Fix topup_reference — match by email since identity_id
--- may have type mismatches. Correct each user individually.
+-- PART 1: Correct topup_reference for ALL existing rows
+-- customers.user_id and agent_stores.user_id are uuid
+-- api_users.identity_id is text — use ::text cast to match
 -- ============================================================
 
--- Fix users: match api_users to customers by email, overwrite topup_reference
+-- Fix users: api_users.identity_id = customers.user_id
 UPDATE api_users au
 SET topup_reference = c.topup_reference
 FROM customers c
 WHERE au.role = 'user'
-  AND (
-    au.email = c.email
-    OR au.user_email = c.email
-  );
+  AND au.identity_id = c.user_id::text;
 
--- Fix agents: match api_users to agent_stores by email, overwrite topup_reference
+-- Fix agents: api_users.identity_id = agent_stores.user_id
 UPDATE api_users au
 SET topup_reference = a.topup_reference
 FROM agent_stores a
 WHERE au.role = 'agent'
-  AND (
-    au.email = a.email
-    OR au.user_email = a.email
-  );
+  AND au.identity_id = a.user_id::text;
 
 -- Verify corrections
 SELECT role, email, user_email, topup_reference FROM api_users ORDER BY role, email LIMIT 30;
@@ -169,7 +164,9 @@ USING (
 ALTER TABLE api_user_package_prices ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- PART 4: Fix trigger to match by email (more reliable than identity_id cast)
+-- PART 4: Fix trigger to use user_id join (agent_stores has no email column)
+-- customers.user_id and agent_stores.user_id are both uuid
+-- api_users.identity_id is text — cast it to uuid for comparison
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION sync_api_user_topup_reference()
@@ -179,13 +176,13 @@ BEGIN
     SELECT c.topup_reference
     INTO NEW.topup_reference
     FROM customers c
-    WHERE c.email = NEW.email OR c.email = NEW.user_email
+    WHERE c.user_id::text = NEW.identity_id
     LIMIT 1;
   ELSIF NEW.role = 'agent' AND NEW.topup_reference IS NULL THEN
     SELECT a.topup_reference
     INTO NEW.topup_reference
     FROM agent_stores a
-    WHERE a.email = NEW.email OR a.email = NEW.user_email
+    WHERE a.user_id::text = NEW.identity_id
     LIMIT 1;
   END IF;
   RETURN NEW;
