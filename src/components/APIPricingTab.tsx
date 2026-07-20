@@ -62,13 +62,15 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     try {
       const term = searchTerm.trim();
 
-      // Call the admin API route which uses the service role key to bypass RLS
-      const res = await fetch(`/api/admin/search-api-users?q=${encodeURIComponent(term)}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Search failed");
+      const { data, error } = await supabase
+        .from("api_users")
+        .select("id, full_name, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference")
+        .or(`topup_reference.ilike.%${term}%,full_name.ilike.%${term}%,email.ilike.%${term}%,user_email.ilike.%${term}%,store_name.ilike.%${term}%,api_key.ilike.%${term}%`)
+        .limit(20);
+      if (error) throw error;
 
-      setApiUsers((json.data as APIUser[]) || []);
-      if (!json.data || json.data.length === 0) {
+      setApiUsers((data as APIUser[]) || []);
+      if (!data || data.length === 0) {
         toast({ title: "No API user found", description: `No results for "${term}". Try top-up reference, name, email, store name or API key.`, variant: "destructive" });
       }
     } catch (err: any) {
