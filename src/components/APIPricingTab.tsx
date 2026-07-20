@@ -61,19 +61,12 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     setCustomPrices({});
     try {
       const term = searchTerm.trim();
-      const cols = "id, full_name, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference";
 
-      // Search across all text columns: topup_reference, full_name, email, user_email, store_name, api_key
-      const { data, error } = await supabase
-        .from("api_users")
-        .select(cols)
-        .or(
-          `topup_reference.ilike.%${term}%,full_name.ilike.%${term}%,email.ilike.%${term}%,user_email.ilike.%${term}%,store_name.ilike.%${term}%,api_key.ilike.%${term}%`
-        )
-        .limit(20);
+      // Use RPC (SECURITY DEFINER) to bypass RLS on api_users
+      const { data, error } = await supabase.rpc("search_api_users", { search_term: term });
       if (error) throw error;
 
-      setApiUsers(data || []);
+      setApiUsers((data as APIUser[]) || []);
       if (!data || data.length === 0) {
         toast({ title: "No API user found", description: `No results for "${term}". Try top-up reference, name, email, store name or API key.`, variant: "destructive" });
       }

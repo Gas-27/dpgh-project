@@ -143,7 +143,7 @@ const AdminDashboard = () => {
 
   // Lazy loading state - tracks which tabs have been clicked and loaded
   // Start with withdrawals tab (loads first)
-  const [activeTab, setActiveTab] = useState("withdrawals");
+  const [activeTab, setActiveTab] = useState("orders");
   const [loadedTabs, setLoadedTabs] = useState(new Set(["withdrawals"])); // Track which tabs have been loaded
 
   // Agent-specific pricing state
