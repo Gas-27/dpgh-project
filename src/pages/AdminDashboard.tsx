@@ -144,7 +144,7 @@ const AdminDashboard = () => {
   // Lazy loading state - tracks which tabs have been clicked and loaded
   // Start with withdrawals tab (loads first)
   const [activeTab, setActiveTab] = useState("orders");
-  const [loadedTabs, setLoadedTabs] = useState(new Set(["withdrawals"])); // Track which tabs have been loaded
+  const [loadedTabs, setLoadedTabs] = useState(new Set<string>()); // Track which tabs have been loaded
 
   // Agent-specific pricing state
   const [agentPriceDialogOpen, setAgentPriceDialogOpen] = useState(false);
@@ -517,7 +517,6 @@ const AdminDashboard = () => {
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
         const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount", { column: "created_at", ascending: false }, 1000);
-        console.log("[v0] Fetched orders:", data?.length || 0);
         setOrders(data ?? []);
       } else if (tabValue === "agents") {
         const data = await fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 1000);
@@ -676,7 +675,9 @@ const AdminDashboard = () => {
 
   // Load data when active tab changes
   useEffect(() => {
-    if (activeTab === "subagents" && subagents.length === 0) {
+    if (activeTab === "orders" && !loadedTabs.has("orders")) {
+      handleTabChange("orders");
+    } else if (activeTab === "subagents" && subagents.length === 0) {
       handleTabChange("subagents");
     } else if (activeTab === "sub_subagents") {
       fetchSubSubagents();
