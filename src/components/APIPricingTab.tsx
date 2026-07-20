@@ -62,12 +62,22 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     try {
       const term = searchTerm.trim();
 
-      // Check if term looks like a UUID (36 chars with hyphens, or no hyphens)
+      // Check if term looks like a UUID
       const isLikelyUUID = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(term);
+
+      // Handle topup_reference with/without "us" suffix for users
+      // e.g., search for "5326" should match "5326us", and search for "5326us" should match "5326us"
+      const topupVariants = [`topup_reference.ilike.%${term}%`];
+      if (!term.endsWith('us')) {
+        topupVariants.push(`topup_reference.ilike.%${term}us%`);
+      } else if (term.length > 2) {
+        const withoutUs = term.slice(0, -2);
+        topupVariants.push(`topup_reference.ilike.%${withoutUs}%`);
+      }
 
       // Build OR filter across text columns + optional UUID exact match
       const filters = [
-        `topup_reference.ilike.%${term}%`,
+        ...topupVariants,
         `full_name.ilike.%${term}%`,
         `email.ilike.%${term}%`,
         `user_email.ilike.%${term}%`,
