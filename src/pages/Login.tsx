@@ -43,13 +43,16 @@ const Login = () => {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account",
+        },
       },
     });
     if (error) {
       toast({ title: "Google sign-in failed", description: error.message, variant: "destructive" });
       setGoogleLoading(false);
     }
-    // On success the browser is redirected to Google — no further action needed here
   };
 
   const handleLogin = async (e: React.FormEvent) => {

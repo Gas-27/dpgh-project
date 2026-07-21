@@ -19,84 +19,51 @@ const ResetPassword = () => {
     const { toast } = useToast();
 
     useEffect(() => {
-        // ONLY treat this page as valid when Supabase fires PASSWORD_RECOVERY.
-        // Any other auth event (e.g. SIGNED_IN from Google OAuth) must be
-        // routed away so Google sign-in users are never stuck on this page.
+        // If this page receives a SIGNED_IN event (e.g. Google OAuth landed
+        // here because of a misconfigured Supabase Site URL), route the user
+        // to their correct dashboard immediately.
+        // Only activate the reset form on PASSWORD_RECOVERY.
+        const routeToDashboard = async (userId: string) => {
+            const { data: rolesData } = await supabase
+                .from("user_roles")
+                .select("role")
+                .eq("user_id", userId);
+            const roles = (rolesData ?? []).map((r: any) => r.role);
+            if (roles.includes("admin")) {
+                navigate("/only-admin/log.in", { replace: true });
+            } else if (roles.includes("agent")) {
+                navigate("/agent", { replace: true });
+            } else if (roles.includes("subagent")) {
+                navigate("/subagent-dashboard", { replace: true });
+            } else {
+                navigate("/user-dashboard", { replace: true });
+            }
+        };
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
+            (event, session) => {
                 if (event === "PASSWORD_RECOVERY") {
-                    // Valid password-reset flow — show the form
                     setValidSession(true);
-                } else if (event === "SIGNED_IN" && session) {
-                    // A normal sign-in landed here (e.g. Google OAuth when Site URL
-                    // is misconfigured). Route them to their correct dashboard.
-                    const { data: rolesData } = await supabase
-                        .from("user_roles")
-                        .select("role")
-                        .eq("user_id", session.user.id);
-                    const roles = (rolesData ?? []).map((r: any) => r.role);
-                    if (roles.includes("admin")) {
-                        navigate("/only-admin/log.in", { replace: true });
-                    } else if (roles.includes("agent")) {
-                        navigate("/agent", { replace: true });
-                    } else if (roles.includes("subagent")) {
-                        navigate("/subagent-dashboard", { replace: true });
-                    } else {
-                        navigate("/user-dashboard", { replace: true });
-                    }
+                } else if (event === "SIGNED_IN" && session?.user) {
+                    routeToDashboard(session.user.id);
                 }
             }
         );
 
-        // Also check URL params — if there is a `code` param but no
-        // PASSWORD_RECOVERY event, this is a Google OAuth callback that
-        // landed here due to Site URL misconfiguration. Exchange the code
-        // and redirect immediately.
+        // Also check for any error params in URL (bad_oauth_state etc.)
         const url = new URL(window.location.href);
-        const code = url.searchParams.get("code");
-        const errorCode = url.searchParams.get("error_code");
-
-        if (errorCode) {
-            // bad_oauth_state or similar — just go to login
+        if (url.searchParams.get("error_code")) {
             navigate("/login", { replace: true });
             return;
         }
 
-        if (code) {
-            supabase.auth.exchangeCodeForSession(code).then(async ({ data, error }) => {
-                if (error || !data.session) {
-                    toast({
-                        title: "Invalid or expired link",
-                        description: "Please request a new password reset link.",
-                        variant: "destructive",
-                    });
-                    navigate("/login", { replace: true });
-                    return;
-                }
-                // If this was a PASSWORD_RECOVERY token the onAuthStateChange
-                // above will fire and set validSession — don't redirect away.
-                // For any other sign-in type (Google OAuth), route to dashboard.
-                // We detect this by checking if the URL came from a reset email
-                // (Supabase appends type=recovery to the URL for reset flows).
-                const type = url.searchParams.get("type");
-                if (type !== "recovery") {
-                    const { data: rolesData } = await supabase
-                        .from("user_roles")
-                        .select("role")
-                        .eq("user_id", data.session.user.id);
-                    const roles = (rolesData ?? []).map((r: any) => r.role);
-                    if (roles.includes("admin")) {
-                        navigate("/only-admin/log.in", { replace: true });
-                    } else if (roles.includes("agent")) {
-                        navigate("/agent", { replace: true });
-                    } else if (roles.includes("subagent")) {
-                        navigate("/subagent-dashboard", { replace: true });
-                    } else {
-                        navigate("/user-dashboard", { replace: true });
-                    }
-                }
-            });
-        }
+        // If there is already an active session but no PASSWORD_RECOVERY event
+        // (meaning the user navigated here directly while logged in), route away.
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user && !url.hash.includes("type=recovery") && !url.searchParams.get("type")) {
+                routeToDashboard(session.user.id);
+            }
+        });
 
         return () => { subscription.unsubscribe(); };
     }, [navigate, toast]);
