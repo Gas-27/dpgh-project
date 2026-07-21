@@ -342,79 +342,34 @@ const PaymentDialog = ({
         console.log("[v0] Paystack Mashup - network:", network, "size_gb_text:", sizeGbText, "-> package_id:", datahubnetId);
       }
 
-      const metadataToSend = {
-        package_id: actualPackageId,
-        network,
-        package_name: displayPackageName,
-        agent_store_id: actualStoreId || null,
-        subagent_store_id: subagentStoreId || null,
-        ...(user && !actualStoreId && { customer_id: user.id }),
-        ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
-        ...(datahubnetId && { data_package_id: datahubnetId }),
-      };
+      // Mirror exactly how UserDashboard initializes payment:
+      // amount = total including 1.98% Paystack fee, phone always in metadata
+      const paystackTotal = Math.round((price + (price * PAYSTACK_CHARGE_PERCENT) / 100) * 100) / 100;
 
-      console.log("[v0] ===== PAYMENT SENDING TO PAYSTACK =====");
-      console.log("[v0] Network:", network);
-      console.log("[v0] Package full object:", packageInfo);
-      console.log("[v0] Package ID:", actualPackageId);
-      console.log("[v0] Package size_gb:", packageInfo?.size_gb);
-      console.log("[v0] Package size_gb_text:", packageInfo?.size_gb_text);
-      console.log("[v0] Datahubnet ID from mapping:", datahubnetId);
-      console.log("[v0] ALL METADATA KEYS:", Object.keys(metadataToSend));
-      console.log("[v0] data_package_id IN METADATA:", metadataToSend.data_package_id);
-      console.log("[v0] ===== COMPLETE METADATA =====");
-      console.log("[v0]", JSON.stringify(metadataToSend, null, 2));
-      console.log("[v0] ===== END METADATA =====");;
-
-      console.log("[v0] Calling initialize-payment with:", {
+      const payloadBody = {
+        amount: paystackTotal,
         email: userEmail,
-        amount: price,
         phone: normalizedPhone,
         callback_url: callbackUrl,
-        metadata: metadataToSend,
+        metadata: {
+          phone: normalizedPhone,
+          package_id: actualPackageId,
+          network,
+          package_name: displayPackageName,
+          size_gb: packageInfo?.size_gb ?? null,
+          customer_id: user?.id || null,
+          agent_store_id: actualStoreId || null,
+          subagent_store_id: subagentStoreId || null,
+          ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
+          ...(datahubnetId && { data_package_id: datahubnetId }),
+        },
+      };
+
+      const response = await supabase.functions.invoke("initialize-payment", {
+        body: payloadBody,
       });
 
-      let data, error;
-      let retries = 3;
-      
-      // Retry logic for connection issues
-      while (retries > 0) {
-        try {
-          const response = await supabase.functions.invoke(
-            "initialize-payment",
-            {
-              body: {
-                email: userEmail,
-                amount: price,
-                phone: normalizedPhone,
-                callback_url: callbackUrl,
-                metadata: metadataToSend,
-              },
-            }
-          );
-          
-          data = response.data;
-          error = response.error;
-          
-          if (!error) break; // Success, exit retry loop
-          retries--;
-          
-          if (retries > 0) {
-            console.log(`[v0] Payment initialization failed, retrying... (${retries} attempts left)`);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-          }
-        } catch (e) {
-          retries--;
-          if (retries > 0) {
-            console.log(`[v0] Network error, retrying... (${retries} attempts left)`, e);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } else {
-            error = e;
-          }
-        }
-      }
-
-      console.log("[v0] initialize-payment response:", { data, error, retries });
+      const { data, error } = response;
 
       clearTimeout(timeoutId);
 
