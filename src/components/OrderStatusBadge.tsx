@@ -26,13 +26,13 @@ const STATUS_CONFIG: Record<
     label: "Processing",
     className: "bg-blue-600/20 text-blue-400 border border-blue-600/30",
     description:
-      "Your order is currently being processed. This usually takes a few seconds.",
+      "Order sent to MTN for delivery.\nYour order is being processed by the network. The status will update automatically once delivered.",
   },
   pending: {
-    label: "Pending",
+    label: "Order Placed",
     className: "bg-yellow-600/20 text-yellow-400 border border-yellow-600/30",
     description:
-      "Your order is queued and waiting to be picked up for processing.",
+      "Order is placed and sent to the portal and now waiting for the portal to pick it up for processing.\nYour order has been received and is in the queue. It will be picked up by the portal for processing shortly.",
   },
   waiting: {
     label: "Waiting for Portal",
@@ -62,13 +62,25 @@ const STATUS_CONFIG: Record<
     label: "Number Verifying",
     className: "bg-cyan-600/20 text-cyan-400 border border-cyan-600/30",
     description:
-      "The recipient number is being verified against the network before delivery.",
+      "Your number is being added to our beneficiary list.\nMTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.",
   },
   verifying: {
-    label: "Verifying",
+    label: "Number Verifying",
     className: "bg-cyan-600/20 text-cyan-400 border border-cyan-600/30",
     description:
-      "The recipient number is being verified against the network before delivery.",
+      "Your number is being added to our beneficiary list.\nMTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.",
+  },
+  contact: {
+    label: "Number Verifying",
+    className: "bg-cyan-600/20 text-cyan-400 border border-cyan-600/30",
+    description:
+      "Your number is being added to our beneficiary list.\nMTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.",
+  },
+  adding_contact: {
+    label: "Number Verifying",
+    className: "bg-cyan-600/20 text-cyan-400 border border-cyan-600/30",
+    description:
+      "Your number is being added to our beneficiary list.\nMTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.",
   },
   cancelled: {
     label: "Cancelled",
@@ -109,9 +121,11 @@ export function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
         </TooltipTrigger>
         <TooltipContent
           side="top"
-          className="max-w-xs text-xs leading-relaxed"
+          className="max-w-sm text-xs leading-relaxed"
         >
-          {config.description}
+          {config.description.split("\n").map((line, i) => (
+            <p key={i} className={i > 0 ? "mt-1" : ""}>{line}</p>
+          ))}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
