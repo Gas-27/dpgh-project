@@ -221,17 +221,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get admin base price for this package
+    // Get admin base price for this package.
+    // We also fetch `price` (the public-facing price before Paystack fee) so we
+    // can detect whether a custom agent/subagent price was actually set.
     const { data: packageData } = await supabaseClient
       .from("data_packages")
-      .select("agent_price")
+      .select("agent_price, price")
       .eq("id", packageId)
       .maybeSingle();
 
+    // adminBasePrice is what the admin charges agents (exclusive of Paystack fee).
+    // amountPaid is what Paystack collected (inclusive of the 1.98% fee).
+    // When an agent has NOT set a custom sell price, both selling_price and
+    // base_price should be identical (= amountPaid) so profit is exactly 0.
+    // We only use agent_price as base when the agent HAS set a custom price
+    // (handled below per order type), so here we default base = amountPaid.
     const adminBasePrice = packageData?.agent_price ? Number(packageData.agent_price) : amountPaid;
 
     let sellingPrice = amountPaid;
-    let basePriceForOrder = adminBasePrice;
+    let basePriceForOrder = amountPaid; // default: no profit until custom price confirmed
     let profitForOrder = 0;
 
     if (subagentStoreId) {
@@ -244,7 +252,10 @@ Deno.serve(async (req) => {
 
       const parentAgentId = subagentStore?.agent_store_id;
 
-      let agentPriceToSubagent = adminBasePrice;
+      // agentPriceToSubagent = what the agent charges the subagent as their base cost.
+      // Only use a custom price if one was actually saved — otherwise default to
+      // amountPaid so profit is 0 when no price has been configured.
+      let agentPriceToSubagent: number | null = null;
       
       if (parentAgentId && packageId) {
         const { data: subagentPriceData } = await supabaseClient
@@ -260,7 +271,8 @@ Deno.serve(async (req) => {
       }
 
       sellingPrice = amountPaid;
-      basePriceForOrder = agentPriceToSubagent;
+      // If no custom base price has been set, cost = amountPaid → profit = 0
+      basePriceForOrder = agentPriceToSubagent !== null ? agentPriceToSubagent : amountPaid;
       profitForOrder = sellingPrice - basePriceForOrder;
 
       console.log(`Subagent order: selling=${sellingPrice.toFixed(2)}, base=${basePriceForOrder.toFixed(2)}, profit=${profitForOrder.toFixed(2)}`);
@@ -356,8 +368,24 @@ Deno.serve(async (req) => {
 
     } else if (agentStoreId) {
       // AGENT DIRECT ORDER
+      // Check if the agent has set a custom sell_price for this package.
+      // If they have, profit = amountPaid - adminBasePrice (agent markup).
+      // If they have NOT, profit = 0 (selling at cost — base = amountPaid).
+      const { data: agentCustomPrice } = await supabaseClient
+        .from("agent_package_prices")
+        .select("sell_price")
+        .eq("agent_store_id", agentStoreId)
+        .eq("package_id", packageId)
+        .maybeSingle();
+
       sellingPrice = amountPaid;
-      basePriceForOrder = adminBasePrice;
+      if (agentCustomPrice?.sell_price != null) {
+        // Agent has set a custom price — their profit is vs admin base price
+        basePriceForOrder = adminBasePrice;
+      } else {
+        // No custom price set — treat as cost price, profit = 0
+        basePriceForOrder = amountPaid;
+      }
       profitForOrder = sellingPrice - basePriceForOrder;
 
       console.log(`Agent order: selling=${sellingPrice.toFixed(2)}, base=${basePriceForOrder.toFixed(2)}, profit=${profitForOrder.toFixed(2)}`);
