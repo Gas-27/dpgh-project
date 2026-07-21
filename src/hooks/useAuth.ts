@@ -44,6 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }, []);
 
+  // Cache for pending agent store checks so we don't re-fetch every render
+  const pendingStoreCache = useRef<Record<string, boolean>>({});
+
   useEffect(() => {
     let mounted = true;
 
@@ -54,12 +57,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!currentUser) {
         setRoles([]);
-        if (forceRoles) rolesCache.current = {};
+        setHasPendingAgentStore(false);
+        if (forceRoles) {
+          rolesCache.current = {};
+          pendingStoreCache.current = {};
+        }
         setLoading(false);
         return;
       }
 
-      const nextRoles = await fetchRoles(currentUser.id, forceRoles);
+      // Fetch roles and pending agent store status in parallel so both are
+      // ready at the same time — prevents hasPendingAgentStore being false
+      // momentarily when PaymentDialog opens.
+      const [nextRoles] = await Promise.all([
+        fetchRoles(currentUser.id, forceRoles),
+        (async () => {
+          if (!forceRoles && pendingStoreCache.current[currentUser.id] !== undefined) return;
+          const { data } = await supabase
+            .from("agent_stores")
+            .select("id, approved")
+            .eq("user_id", currentUser.id)
+            .maybeSingle();
+          if (!mounted) return;
+          const isPending = !!(data && !data.approved);
+          pendingStoreCache.current[currentUser.id] = isPending;
+          setHasPendingAgentStore(isPending);
+        })(),
+      ]);
+
       if (!mounted) return;
 
       setRoles(nextRoles);
@@ -102,28 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSubagent = roles.includes("subagent");
   const isSubSubagent = roles.includes("sub_subagent");
 
-  // Track whether user has a pending (unapproved) agent store
+  // hasPendingAgentStore is now fetched in syncSession alongside roles
+  // so it is always ready before the component tree renders.
   const [hasPendingAgentStore, setHasPendingAgentStore] = useState(false);
-
-  useEffect(() => {
-    if (!user) {
-      setHasPendingAgentStore(false);
-      return;
-    }
-    // Check if user has an unapproved agent store
-    supabase
-      .from("agent_stores")
-      .select("id, approved")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data && !data.approved) {
-          setHasPendingAgentStore(true);
-        } else {
-          setHasPendingAgentStore(false);
-        }
-      });
-  }, [user]);
 
   const getDashboardRoute = useCallback(() => {
     if (roles.includes("admin")) return "/admin-only";
