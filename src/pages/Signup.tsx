@@ -34,9 +34,7 @@ const Signup = () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        // After Google auth completes, Supabase redirects back to /login
-        // where the existing session-check routes the user to the correct dashboard
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (error) {

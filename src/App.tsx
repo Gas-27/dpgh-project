@@ -36,6 +36,7 @@ const lazyWithReload = (importer: () => Promise<{ default: React.ComponentType<a
   });
 
 const ResetPassword = lazyWithReload(() => import("./pages/ResetPassword"));
+const AuthCallback = lazyWithReload(() => import("./pages/AuthCallback"));
 const Index = lazyWithReload(() => import("./pages/Index"));
 const NotFound = lazyWithReload(() => import("./pages/NotFound"));
 const Login = lazyWithReload(() => import("./pages/Login"));
@@ -127,6 +128,7 @@ const App = () => {
                   <Route path="/login" element={<SubagentLogin />} />
                   <Route path="/sub-subagent-login" element={<SubSubagentLogin />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route
                     path="/dashboard"
                     element={
@@ -164,6 +166,7 @@ const App = () => {
                   {/* Old paths – redirect to subdomain */}
                   <Route path="/agent/:storeName" element={<RedirectToAgentSubdomain />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/agent-registration-callback" element={<AgentRegistrationCallback />} />
                   <Route path="/subagent-registration/:agentStoreId" element={<SubagentRegistration />} />
                   <Route path="/sub-subagent-registration/:subagentStoreId" element={<SubagentRegistration />} />
