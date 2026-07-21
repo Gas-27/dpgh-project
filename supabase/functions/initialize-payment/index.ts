@@ -394,40 +394,52 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Fetch package base data — try the agent `packages` table first.
-    // If not found (e.g. user purchasing directly from /packages page which
-    // uses `data_packages` IDs), fall back to `data_packages`.
-    // A pending-agent user who has not been approved yet is treated as a
-    // regular customer and their purchase goes through the `data_packages`
-    // admin price path, not the agent price path.
+    // Fetch package base data — skip the `packages` table (agent storefront packages)
+    // entirely when this is a direct /packages page purchase (data_packages.id).
+    // A pending-agent or regular user buying from /packages always goes through
+    // data_packages with no agent_store_id, so we look there first.
     let packageData: { agent_price?: number; price: number; size_gb: number; network: string; data_package_id?: number } | null = null;
 
-    const { data: pkgFromPackages, error: packagesError } = await supabaseClient
-      .from("packages")
-      .select("agent_price, price, size_gb, network, data_package_id")
-      .eq("id", metadata.package_id)
-      .maybeSingle();
+    console.log("[init-pay] package_id:", metadata.package_id, "agent_store_id:", metadata.agent_store_id, "subagent_store_id:", metadata.subagent_store_id);
 
-    if (pkgFromPackages) {
-      packageData = pkgFromPackages;
-    } else {
-      // Fallback: treat package_id as a data_packages.id (direct site purchase)
-      const { data: pkgFromDataPackages, error: dataPackagesError } = await supabaseClient
-        .from("data_packages")
-        .select("price, size_gb, network")
+    // If an agent_store_id or subagent_store_id is present, this is a storefront
+    // purchase and the package_id refers to the `packages` table.
+    // If neither is present, this is a direct site purchase using a data_packages.id.
+    if (metadata.agent_store_id || metadata.subagent_store_id) {
+      const { data: pkgFromPackages, error: packagesError } = await supabaseClient
+        .from("packages")
+        .select("agent_price, price, size_gb, network, data_package_id")
         .eq("id", metadata.package_id)
         .maybeSingle();
 
+      console.log("[init-pay] packages lookup:", pkgFromPackages, "error:", packagesError?.message);
+
+      if (pkgFromPackages) {
+        packageData = pkgFromPackages;
+      }
+    }
+
+    // For direct /packages purchases (no store IDs) or storefront fallback:
+    // look up in data_packages using the data_packages.id
+    if (!packageData) {
+      const { data: pkgFromDataPackages, error: dataPackagesError } = await supabaseClient
+        .from("data_packages")
+        .select("price, size_gb, network, agent_price")
+        .eq("id", metadata.package_id)
+        .maybeSingle();
+
+      console.log("[init-pay] data_packages lookup:", pkgFromDataPackages, "error:", dataPackagesError?.message);
+
       if (pkgFromDataPackages) {
-        packageData = { price: pkgFromDataPackages.price, size_gb: pkgFromDataPackages.size_gb, network: pkgFromDataPackages.network };
-        // Clear agent/subagent store IDs — this is always a direct admin-price purchase
+        packageData = { price: pkgFromDataPackages.price, size_gb: pkgFromDataPackages.size_gb, network: pkgFromDataPackages.network, agent_price: pkgFromDataPackages.agent_price };
+        // Direct purchase — always clear store IDs regardless of what was sent
         metadata.agent_store_id = null;
         metadata.subagent_store_id = null;
       }
     }
 
     if (!packageData) {
-      console.error("Package not found in packages or data_packages:", metadata.package_id);
+      console.error("[init-pay] Package not found in packages or data_packages:", metadata.package_id);
       return new Response(JSON.stringify({ error: "Package not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
