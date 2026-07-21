@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Info } from "lucide-react";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const STATUS_CONFIG: Record<
   string,
@@ -107,27 +106,31 @@ interface OrderStatusBadgeProps {
 export function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
   const key = normalizeStatus(status);
   const config = STATUS_CONFIG[key] ?? DEFAULT_CONFIG;
+  const [open, setOpen] = useState(false);
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium cursor-help ${config.className}`}
-          >
-            {config.label}
-            <Info className="h-3 w-3 flex-shrink-0 opacity-70" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          className="max-w-sm text-xs leading-relaxed"
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={() => setOpen((v) => !v)}
+          onKeyDown={(e) => e.key === "Enter" && setOpen((v) => !v)}
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer select-none ${config.className}`}
         >
-          {config.description.split("\n").map((line, i) => (
-            <p key={i} className={i > 0 ? "mt-1" : ""}>{line}</p>
-          ))}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+          {config.label}
+          <Info className="h-3 w-3 flex-shrink-0 opacity-70" />
+        </span>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="start"
+        className="max-w-sm text-xs leading-relaxed p-3"
+      >
+        {config.description.split("\n").map((line, i) => (
+          <p key={i} className={i > 0 ? "mt-1.5" : ""}>{line}</p>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }

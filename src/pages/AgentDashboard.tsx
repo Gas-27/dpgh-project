@@ -3450,7 +3450,7 @@ const AgentDashboard = () => {
                   <div>
                     <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">network</span> - Filter by single network</li>
+                      <li>�� <span className="font-mono">network</span> - Filter by single network</li>
                       <li>• <span className="font-mono">networks[]</span> - Filter by multiple networks</li>
                     </ul>
                   </div>
@@ -4017,7 +4017,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     Now that you've set up your API, contact us to learn more about integration options and technical support.
                   </p>
                   <a 
-                    href={`https://wa.me/+233200511211?text=Hi,%20I%20am%20${encodeURIComponent(store?.name || 'Agent')}.%20I%20am%20contacting%20you%20to%20enquire%20about%20the%20API%20since%20I%20have%20set%20up%20my%20API%20and%20wanted%20to%20know%20more`}
+                    href="https://whatsapp.com/channel/0029Vb69LKt42DcgVbzaUS1q"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"

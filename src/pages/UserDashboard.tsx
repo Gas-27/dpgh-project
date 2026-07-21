@@ -1539,6 +1539,27 @@ const UserDashboard = () => {
 
   const renderApiKey = () => (
     <div className="space-y-6">
+      {/* Need Help with API Card */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-base">Need Help with API?</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Now that you&apos;ve set up your API, contact us to learn more about integration options and technical support.
+          </p>
+          <a
+            href="https://whatsapp.com/channel/0029Vb69LKt42DcgVbzaUS1q"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
+          >
+            <Send className="h-4 w-4" />
+            Contact via WhatsApp
+          </a>
+        </CardContent>
+      </Card>
+
       {/* API Wallet Card */}
       <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-pink-500/5 hover:border-purple-500/50 transition-all">
         <CardContent className="pt-6">
