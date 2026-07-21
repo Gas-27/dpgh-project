@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal } from "lucide-react";
+import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -2100,13 +2101,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     <tbody>
                       {filteredApiOrders.map(order => {
                         const fs = order.fulfillment_status || order.status || 'pending';
-                        const fsColor =
-                          fs === 'completed' || fs === 'delivered' ? 'bg-green-500/20 text-green-400' :
-                          fs === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                          fs === 'processing' ? 'bg-blue-500/20 text-blue-400' :
-                          fs === 'failed' ? 'bg-red-500/20 text-red-400' :
-                          fs === 'refunded' ? 'bg-amber-500/20 text-amber-400' :
-                          'bg-slate-500/20 text-slate-400';
                         return (
                           <tr key={order.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                             <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
@@ -2124,7 +2118,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                               GHC {Number(order.selling_price || order.amount || 0).toFixed(2)}
                             </td>
                             <td className="px-3 py-2 text-xs">
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${fsColor}`}>{getOrderStatusLabel(fs)}</span>
+                              <OrderStatusBadge status={fs} />
                             </td>
                           </tr>
                         );

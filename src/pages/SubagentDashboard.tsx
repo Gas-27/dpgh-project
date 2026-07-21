@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Navigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -2336,9 +2337,7 @@ const SubagentDashboard = () => {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>
-                                    {order.status === "paid" ? "completed" : order.status}
-                                  </Badge>
+                                  <OrderStatusBadge status={order.fulfillment_status || order.order_status || order.status} />
                                 </TableCell>
                               </TableRow>
                             );

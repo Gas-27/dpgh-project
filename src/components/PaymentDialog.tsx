@@ -65,7 +65,7 @@ const PaymentDialog = ({
   phoneNumber,
   onPhoneNumberChange,
 }: PaymentDialogProps) => {
-  const { user } = useAuth();
+  const { user, hasPendingAgentStore } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState<"phone" | "confirm">("phone");
@@ -338,7 +338,9 @@ const PaymentDialog = ({
           package_name: displayPackageName,
           size_gb: packageInfo?.size_gb ?? null,
           customer_id: user?.id || null,
-          agent_store_id: actualStoreId || null,
+          // Pending agents (store not yet approved) must be treated as regular users —
+          // send null so the edge function takes the direct data_packages path.
+          agent_store_id: hasPendingAgentStore ? null : (actualStoreId || null),
           subagent_store_id: subagentStoreId || null,
           ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
           ...(datahubnetId && { data_package_id: datahubnetId }),

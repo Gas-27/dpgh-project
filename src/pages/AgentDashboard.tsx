@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Navigate, Link } from "react-router-dom";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
@@ -2324,7 +2325,7 @@ const AgentDashboard = () => {
                         const paymentMethodDisplay = isAPIOrder ? "API Wallet" : (order.payment_method === "wallet" ? "Wallet" : "Paystack");
                         const subagentName = (order as any).subagent_stores?.store_name || "Unknown Subagent";
                         
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">{subagentName}</Badge> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell className="capitalize text-sm"><Badge variant="outline" className="text-xs">{getOrderStage(order)}</Badge></TableCell><TableCell><Badge className={order.status === "refunded" || order.fulfillment_status === "refunded" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" : order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{order.status === "refunded" || order.fulfillment_status === "refunded" ? "refunded" : order.status === "paid" ? "completed" : order.status}</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">{subagentName}</Badge> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell className="capitalize text-sm"><Badge variant="outline" className="text-xs">{getOrderStage(order)}</Badge></TableCell><TableCell><OrderStatusBadge status={order.fulfillment_status || order.status} /></TableCell></TableRow>); })}</TableBody></Table></div>
                     {/* Load More Button */}
                     {currentPage * ordersPerPage < filteredOrders.length && (
                       <div className="flex items-center justify-center mt-6">
@@ -3805,13 +3806,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       <TableBody>
                         {filteredApiOrders.map((order) => {
                           const fs = order.fulfillment_status || order.status || 'pending';
-                          const fsColor =
-                            fs === 'completed' || fs === 'delivered' ? 'bg-green-500/20 text-green-400' :
-                            fs === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                            fs === 'processing' ? 'bg-blue-500/20 text-blue-400' :
-                            fs === 'failed' ? 'bg-red-500/20 text-red-400' :
-                            fs === 'refunded' ? 'bg-amber-500/20 text-amber-400' :
-                            'bg-slate-500/20 text-slate-400';
                           return (
                           <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                             <TableCell className="text-xs whitespace-nowrap">
@@ -3825,9 +3819,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                             <TableCell className="text-xs text-muted-foreground">API Wallet</TableCell>
                             <TableCell className="text-xs font-semibold">GHC {Number(order.selling_price || order.amount || 0).toFixed(2)}</TableCell>
                             <TableCell className="text-xs">
-                              <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${fsColor}`}>
-                                {fs}
-                              </span>
+                              <OrderStatusBadge status={fs} />
                             </TableCell>
                           </TableRow>
                           );

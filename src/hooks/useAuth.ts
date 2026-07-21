@@ -13,6 +13,7 @@ interface AuthContextValue {
   isAgent: boolean;
   isSubagent: boolean;
   isSubSubagent: boolean;
+  hasPendingAgentStore: boolean;
   signOut: () => Promise<void>;
   getDashboardRoute: () => string;
 }
@@ -144,10 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAgent,
       isSubagent,
       isSubSubagent,
+      hasPendingAgentStore,
       signOut,
       getDashboardRoute,
     }),
-    [user, roles, loading, hasRole, isAdmin, isAgent, isSubagent, isSubSubagent, signOut, getDashboardRoute],
+    [user, roles, loading, hasRole, isAdmin, isAgent, isSubagent, isSubSubagent, hasPendingAgentStore, signOut, getDashboardRoute],
   );
 
   return createElement(AuthContext.Provider, { value }, children);
