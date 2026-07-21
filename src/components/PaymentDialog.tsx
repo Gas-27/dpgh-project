@@ -284,8 +284,15 @@ const PaymentDialog = ({
       const userEmail =
         user?.email || `${normalizedPhone.replace(/[^0-9]/g, "")}@datapluggh.com`;
 
+      // If buying from a storefront (agent/subagent) stay on that page.
+      // If a logged-in user buys from the public /packages page, redirect back
+      // to /user-dashboard so <PaymentVerifier> can process the order exactly
+      // like the UserDashboard buy-data Paystack flow does.
+      // Guest (no user) stays on /packages where its own verifier handles it.
       const returnPath = actualStoreId
         ? window.location.pathname
+        : user
+        ? "/user-dashboard"
         : "/packages";
 
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
