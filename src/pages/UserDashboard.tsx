@@ -1035,14 +1035,7 @@ const UserDashboard = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {(() => {
-                          const s = getDeliveryStatus(order);
-                          return (
-                            <Badge className={`text-xs ${deliveryStatusClass(s)}`}>
-                              {s.charAt(0).toUpperCase() + s.slice(1)}
-                            </Badge>
-                          );
-                        })()}
+                        <OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} />
                       </TableCell>
                     </TableRow>
                   ))}

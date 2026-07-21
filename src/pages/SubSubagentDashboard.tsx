@@ -1761,13 +1761,11 @@ const SubSubagentDashboard = () => {
                                   GHC{Number(profit).toFixed(2)}
                                 </TableCell>
                                 <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
-                                <TableCell className="capitalize text-sm">
-                                  <Badge variant="outline" className="text-xs">
-                                    {getOrderStage(order)}
-                                  </Badge>
+                                <TableCell>
+                                  <OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} />
                                 </TableCell>
                                 <TableCell>
-                                  <OrderStatusBadge status={order.fulfillment_status || order.order_status || order.status} />
+                                  <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>
                                 </TableCell>
                               </TableRow>
                             );
