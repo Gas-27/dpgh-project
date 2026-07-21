@@ -230,16 +230,17 @@ Deno.serve(async (req) => {
       .eq("id", packageId)
       .maybeSingle();
 
-    // adminBasePrice is what the admin charges agents (exclusive of Paystack fee).
-    // amountPaid is what Paystack collected (inclusive of the 1.98% fee).
-    // When an agent has NOT set a custom sell price, both selling_price and
-    // base_price should be identical (= amountPaid) so profit is exactly 0.
-    // We only use agent_price as base when the agent HAS set a custom price
-    // (handled below per order type), so here we default base = amountPaid.
+    // adminBasePrice = what the admin charges agents (the wholesale cost, fee-exclusive).
+    // packagePrice   = the public-facing price set by the admin (fee-exclusive).
+    //                  This is what we show as "Sell Price" — not amountPaid which
+    //                  includes the Paystack 1.98% fee and is higher than the listed price.
+    // amountPaid     = what Paystack actually collected (fee-inclusive). Used only for
+    //                  wallet/balance operations, never displayed as a sell price.
     const adminBasePrice = packageData?.agent_price ? Number(packageData.agent_price) : amountPaid;
+    const packagePrice   = packageData?.price        ? Number(packageData.price)        : adminBasePrice;
 
-    let sellingPrice = amountPaid;
-    let basePriceForOrder = amountPaid; // default: no profit until custom price confirmed
+    let sellingPrice = packagePrice;  // show the clean listed price, not the fee-inflated total
+    let basePriceForOrder = packagePrice; // default: no profit until custom price confirmed
     let profitForOrder = 0;
 
     if (subagentStoreId) {
@@ -267,7 +268,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      sellingPrice = amountPaid;
+      // Use the clean package price (fee-exclusive) as sell price, not amountPaid
+      sellingPrice = packagePrice;
       basePriceForOrder = agentPriceToSubagent;
       profitForOrder = sellingPrice - basePriceForOrder;
 
@@ -374,13 +376,14 @@ Deno.serve(async (req) => {
         .eq("package_id", packageId)
         .maybeSingle();
 
-      sellingPrice = amountPaid;
       if (agentCustomPrice?.sell_price != null) {
-        // Agent has set a custom price — their profit is vs admin base price
+        // Agent has set a custom sell price — show that price, profit vs admin base
+        sellingPrice = Number(agentCustomPrice.sell_price);
         basePriceForOrder = adminBasePrice;
       } else {
-        // No custom price set — treat as cost price, profit = 0
-        basePriceForOrder = amountPaid;
+        // No custom price set — sell at the admin-listed package price, profit = 0
+        sellingPrice = packagePrice;
+        basePriceForOrder = packagePrice;
       }
       profitForOrder = sellingPrice - basePriceForOrder;
 
