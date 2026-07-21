@@ -147,22 +147,26 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     }
     setSaving(true);
     try {
-      // Upsert directly into api_user_package_prices
-      const rows = entries.map(([package_id, custom_price]) => ({
-        api_user_id: selectedUser.id,
+      const custom_prices = entries.map(([package_id, custom_price]) => ({
         package_id,
         custom_price: Number(custom_price),
       }));
 
-      const { error } = await supabase
-        .from("api_user_package_prices")
-        .upsert(rows, { onConflict: "api_user_id,package_id" });
+      const res = await fetch("https://api.dataplug.store/functions/v1/admin-set-custom-prices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: selectedUser.api_key,
+          custom_prices,
+        }),
+      });
 
-      if (error) throw error;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to save custom prices");
 
       toast({
         title: "Custom prices saved",
-        description: `${rows.length} price(s) updated for ${selectedUser.store_name || selectedUser.user_email || selectedUser.email}.`,
+        description: `${json.custom_prices_set} price(s) updated for ${selectedUser.store_name || selectedUser.user_email || selectedUser.email}.`,
       });
       await selectUser(selectedUser);
     } catch (err: any) {
