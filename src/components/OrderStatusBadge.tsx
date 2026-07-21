@@ -35,10 +35,10 @@ const STATUS_CONFIG: Record<
       "Order is placed and sent to the portal and now waiting for the portal to pick it up for processing.\nYour order has been received and is in the queue. It will be picked up by the portal for processing shortly.",
   },
   waiting: {
-    label: "Waiting for Portal",
-    className: "bg-purple-600/20 text-purple-400 border border-purple-600/30",
+    label: "Number Verifying",
+    className: "bg-cyan-600/20 text-cyan-400 border border-cyan-600/30",
     description:
-      "The order is waiting for the network provider portal to become available. This may take a few minutes.",
+      "Your number is being added to our beneficiary list.\nMTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.",
   },
   waiting_for_portal: {
     label: "Waiting for Portal",
