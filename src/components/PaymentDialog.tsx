@@ -82,20 +82,7 @@ const PaymentDialog = ({
   const actualPackageId = packageId || pkg?.id || "";
   const actualStoreId = agentStoreId || storeId || "";
 
-  // 🔍 DEBUG LOGGING - Log all incoming package data
-  useEffect(() => {
-    if (pkg) {
-      console.log("[v0] ===== PAYMENT DIALOG PACKAGE INFO =====");
-      console.log("[v0] Full pkg object:", JSON.stringify(pkg, null, 2));
-      console.log("[v0] pkg.id:", pkg.id);
-      console.log("[v0] pkg.network:", pkg.network);
-      console.log("[v0] pkg.size_gb:", pkg.size_gb);
-      console.log("[v0] pkg.price:", pkg.price);
-      console.log("[v0] pkg.data_package_id:", pkg.data_package_id);
-      console.log("[v0] pkg.size_gb_text:", pkg.size_gb_text);
-      console.log("[v0] ===== END PACKAGE INFO =====");
-    }
-  }, [pkg]);
+
 
   const continueButtonRef = useRef<HTMLButtonElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
@@ -209,17 +196,6 @@ const PaymentDialog = ({
     // Clear any previous errors
     setPaymentError(null);
     
-    // Debug logging to identify issues with specific stores
-    console.log("[v0] PaymentDialog handlePay called with:", {
-      actualPackageId,
-      actualStoreId,
-      subagentStoreId,
-      price,
-      network,
-      phone,
-      packageInfo: pkg ? { id: pkg.id, network: pkg.network, size_gb: pkg.size_gb, size_gb_text: pkg.size_gb_text, data_package_id: pkg.data_package_id } : null,
-    });
-    
     // Validate package ID before proceeding
     if (!actualPackageId) {
       console.error("[v0] Payment failed: No package ID", { packageId, pkg });
@@ -256,8 +232,6 @@ const PaymentDialog = ({
       };
       const sizeGbText = packageInfo?.size_gb_text?.trim() || "";
       const datahubnetId = mashupMapping[sizeGbText];
-      
-      console.log("[v0] Mashup validation - sizeGbText:", JSON.stringify(sizeGbText), "availableKeys:", Object.keys(mashupMapping), "found:", datahubnetId);
       
       if (!datahubnetId) {
         console.error("[v0] Payment failed: Could not find datahubnet ID for mashup package", {
@@ -339,7 +313,6 @@ const PaymentDialog = ({
         };
         const sizeGbText = packageInfo.size_gb_text.trim();
         datahubnetId = mashupMapping[sizeGbText];
-        console.log("[v0] Paystack Mashup - network:", network, "size_gb_text:", sizeGbText, "-> package_id:", datahubnetId);
       }
 
       // Mirror exactly how UserDashboard initializes payment:
@@ -381,7 +354,6 @@ const PaymentDialog = ({
       }
 
       if (data?.authorization_url) {
-        console.log("[v0] Redirecting to Paystack:", data.authorization_url);
         storePurchaseTime(normalizedPhone);
         // Don't set loading false - let the page redirect handle it
         // This ensures UI shows "Processing..." during redirect
