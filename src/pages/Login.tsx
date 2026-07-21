@@ -39,10 +39,13 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
+    // Use the exact domain in Supabase's Site URL (no www) so Supabase
+    // honours the redirectTo instead of falling back to the Site URL root.
+    const appUrl = "https://dataplug.store";
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${appUrl}/auth/callback`,
         queryParams: {
           access_type: "offline",
           prompt: "select_account",
@@ -134,8 +137,10 @@ const Login = () => {
     }
 
     setSendingReset(true);
+    // Must match exactly the Site URL domain in Supabase URL Configuration
+    const appUrl = "https://dataplug.store";
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${appUrl}/reset-password`,
     });
 
     if (error) {
