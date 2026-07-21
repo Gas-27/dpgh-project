@@ -422,27 +422,30 @@ const UserDashboard = () => {
     };
   }, []);
 
-  // Fetch API orders when needed
+  // Fetch API orders when user is known
   useEffect(() => {
-    if (apiKey) {
+    const userId = impersonatedCustomerId || user?.id;
+    if (userId) {
       fetchApiOrders();
     }
-  }, [apiKey]);
+  }, [user?.id, impersonatedCustomerId]);
 
   const fetchApiOrders = async () => {
+    const userId = impersonatedCustomerId || user?.id;
+    if (!userId) return;
     setLoadingApiOrders(true);
     try {
-      const response = await fetch("/api/get-orders", {
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-        },
-      });
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("source", "api")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data?.orders) {
-          setApiOrders(data.data.orders);
-        }
+      if (error) {
+        console.log("[v0] Error fetching API orders:", error);
+      } else {
+        setApiOrders(data ?? []);
       }
     } catch (error) {
       console.log("[v0] Error fetching API orders:", error);

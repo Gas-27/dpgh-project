@@ -1078,27 +1078,30 @@ const AgentDashboard = () => {
     return () => window.removeEventListener("switchToAFAPricingTab", handleSwitchToAFAPricing);
   }, []);
 
-  // Fetch API orders when store or data changes
+  // Fetch API orders when user is known — no API key needed, query Supabase directly
   useEffect(() => {
-    if (store && store.agent_api_key) {
+    const userId = impersonatedUserId || user?.id;
+    if (userId) {
       fetchApiOrders();
     }
-  }, [store?.id]);
+  }, [user?.id, impersonatedUserId]);
 
   const fetchApiOrders = async () => {
+    const userId = impersonatedUserId || user?.id;
+    if (!userId) return;
     setLoadingApiOrders(true);
     try {
-      const response = await fetch("/api/get-orders", {
-        headers: {
-          "Authorization": `Bearer ${store?.agent_api_key}`,
-        },
-      });
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("source", "api")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data?.orders) {
-          setApiOrders(data.data.orders);
-        }
+      if (error) {
+        console.log("[v0] Error fetching API orders:", error);
+      } else {
+        setApiOrders(data ?? []);
       }
     } catch (error) {
       console.log("[v0] Error fetching API orders:", error);
