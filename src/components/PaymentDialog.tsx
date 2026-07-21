@@ -357,9 +357,27 @@ const PaymentDialog = ({
 
       if (error) {
         console.error("[v0] Payment error from edge function:", error);
-        const errorMsg = error?.message || "Failed to initialize payment. Please check your connection and try again.";
+        // supabase.functions.invoke wraps non-2xx responses in FunctionsHttpError.
+        // The real message the edge function returned lives in error.context (a Response).
+        let detailedMsg = "";
+        try {
+          const ctx = (error as any)?.context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.clone().json().catch(() => null);
+            console.error("[v0] Edge function error body (json):", body);
+            detailedMsg = body?.error || body?.message || "";
+          } else if (ctx && typeof ctx.text === "function") {
+            const text = await ctx.clone().text().catch(() => "");
+            console.error("[v0] Edge function error body (text):", text);
+            detailedMsg = text;
+          }
+        } catch (readErr) {
+          console.error("[v0] Failed to read edge error body:", readErr);
+        }
+        console.error("[v0] Payload that was sent:", JSON.stringify(payloadBody));
+        const errorMsg = detailedMsg || error?.message || "Failed to initialize payment. Please check your connection and try again.";
         setPaymentError(errorMsg);
-        throw error;
+        throw new Error(errorMsg);
       }
 
       if (data?.authorization_url) {
