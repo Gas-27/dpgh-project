@@ -252,10 +252,7 @@ Deno.serve(async (req) => {
 
       const parentAgentId = subagentStore?.agent_store_id;
 
-      // agentPriceToSubagent = what the agent charges the subagent as their base cost.
-      // Only use a custom price if one was actually saved — otherwise default to
-      // amountPaid so profit is 0 when no price has been configured.
-      let agentPriceToSubagent: number | null = null;
+      let agentPriceToSubagent = adminBasePrice;
       
       if (parentAgentId && packageId) {
         const { data: subagentPriceData } = await supabaseClient
@@ -271,8 +268,7 @@ Deno.serve(async (req) => {
       }
 
       sellingPrice = amountPaid;
-      // If no custom base price has been set, cost = amountPaid → profit = 0
-      basePriceForOrder = agentPriceToSubagent !== null ? agentPriceToSubagent : amountPaid;
+      basePriceForOrder = agentPriceToSubagent;
       profitForOrder = sellingPrice - basePriceForOrder;
 
       console.log(`Subagent order: selling=${sellingPrice.toFixed(2)}, base=${basePriceForOrder.toFixed(2)}, profit=${profitForOrder.toFixed(2)}`);
