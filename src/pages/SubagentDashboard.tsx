@@ -391,29 +391,19 @@ const SubagentDashboard = () => {
     };
   }, [subagentStore?.id]);
 
-  // data_packages changes (admin edits prices/activates packages) → update local packages & prices
+  // Poll data_packages every 5 minutes instead of subscribing to the entire table.
+  // An unfiltered subscription on data_packages broadcasts every admin price change
+  // to every subagent dashboard simultaneously — this was a large source of message volume.
   useEffect(() => {
-    const packagesChannel = supabase
-      .channel("subagent-dashboard-packages")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "data_packages" },
-        (payload) => {
-          if (payload.eventType === "UPDATE") {
-            setPackages((prev) =>
-              prev.map((pkg) => pkg.id === payload.new.id ? { ...pkg, ...payload.new } : pkg)
-                .sort((a, b) => a.size_gb - b.size_gb)
-            );
-          } else if (payload.eventType === "INSERT") {
-            setPackages((prev) => [...prev, payload.new as any].sort((a, b) => a.size_gb - b.size_gb));
-          } else if (payload.eventType === "DELETE") {
-            setPackages((prev) => prev.filter((pkg) => pkg.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(packagesChannel); };
+    const pollPackages = async () => {
+      const { data } = await supabase
+        .from("data_packages")
+        .select("*")
+        .order("size_gb", { ascending: true });
+      if (data) setPackages(data);
+    };
+    const timer = setInterval(pollPackages, 5 * 60 * 1000);
+    return () => clearInterval(timer);
   }, []);
 
   // subagent_package_prices changes (agent updates prices for this subagent) → re-fetch prices

@@ -594,13 +594,14 @@ export function SubSubagentStorefront() {
     };
   }, [store?.id]);
 
-  // ── Real-time order status updates ──
+  // ── Real-time order status updates — filtered to this store only ──
   useEffect(() => {
+    if (!store?.id) return;
     const ordersChannel = supabase
-      .channel("orders-updates")
+      .channel(`sub-subagent-orders-storefront-${store.id}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "orders" },
+        { event: "UPDATE", schema: "public", table: "orders", filter: `sub_subagent_store_id=eq.${store.id}` },
         (payload) => {
           const updatedOrder = payload.new as Order;
           setOrders(prevOrders =>
@@ -615,7 +616,7 @@ export function SubSubagentStorefront() {
       .subscribe();
     
     return () => { supabase.removeChannel(ordersChannel); };
-  }, []);
+  }, [store?.id]);
 
   // Notifications
   const fetchNotifications = useCallback(async () => {

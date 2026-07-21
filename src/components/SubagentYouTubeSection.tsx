@@ -22,48 +22,21 @@ export default function SubagentYouTubeSection() {
   useEffect(() => {
     fetchYouTubeSettings();
 
-    // Setup realtime listener
-    let subscription: any;
-    const setupListener = async () => {
-      subscription = supabase
-        .channel(`afa_settings_subagent_youtube_${Date.now()}`)
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'afa_settings' },
-          () => {
-            console.log('[v0] Detected YouTube settings update');
-            fetchYouTubeSettings();
-          }
-        )
-        .subscribe((status: string) => {
-          console.log('[v0] Realtime subscription status:', status);
-        });
-    };
-
-    setupListener();
-
-    // Cleanup on unmount
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
-  }, []);
-
-  const setupRealtimeListener = () => {
+    // Use a stable channel name (no Date.now()) so it is deduplicated and
+    // does not leak a new WebSocket connection on every render.
     const subscription = supabase
       .channel('afa_settings_subagent_youtube')
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'afa_settings' },
-        () => fetchYouTubeSettings()
+        () => { fetchYouTubeSettings(); }
       )
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(subscription);
     };
-  };
+  }, []);
 
   const fetchYouTubeSettings = async () => {
     setLoading(true);

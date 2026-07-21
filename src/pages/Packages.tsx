@@ -337,7 +337,7 @@ Please investigate and assist. Thank you.`;
   );
 };
 
-// ──────────────────────────────────────────────��� Spin Wheel Popup (unchanged) ──
+// ───────────────────────────────────���──────────��� Spin Wheel Popup (unchanged) ──
 interface SpinWheelPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1142,67 +1142,67 @@ const Packages = () => {
     }
   }, [cachedPackages, packagesLoading]);
 
-  // Real-time updates for packages and site config (spin wheel, etc.)
+  // Poll packages and site config every 5 minutes instead of real-time.
+  // This is a public page visited by all guests — WebSocket subscriptions on
+  // entire tables (no filter) were the biggest source of Supabase realtime
+  // message volume. Packages and site config change rarely, so polling is fine.
   useEffect(() => {
-    const packagesChannel = supabase
-      .channel("packages-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "data_packages" },
-        async () => {
-          // Simply invalidate the cache and let it refetch
-          const { data } = await supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price,active").order("size_gb", { ascending: true });
-          if (data) setPackages(data);
-        }
-      )
-      .subscribe();
-    
-    const siteConfigChannel = supabase
-      .channel("site-config-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "site_config" },
-        async () => {
-          const { data } = await supabase.from("site_config").select("*").eq("id", 1).maybeSingle();
-          if (data) {
-            setSiteConfig(
-              !data.spin_wheel_segments
-                ? { ...data, default_network: data.default_network as Network }
-                : { ...data, default_network: data.default_network as Network, segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
-            );
-          }
-        }
-      )
-      .subscribe();
-    
+    const refreshPackages = async () => {
+      const { data } = await supabase
+        .from("data_packages")
+        .select("id,network,size_gb,size_gb_text,price,active")
+        .order("size_gb", { ascending: true });
+      if (data) setPackages(data);
+    };
+
+    const refreshSiteConfig = async () => {
+      const { data } = await supabase
+        .from("site_config")
+        .select("*")
+        .eq("id", 1)
+        .maybeSingle();
+      if (data) {
+        setSiteConfig(
+          !data.spin_wheel_segments
+            ? { ...data, default_network: data.default_network as Network }
+            : { ...data, default_network: data.default_network as Network, segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
+        );
+      }
+    };
+
+    const packagesTimer = setInterval(refreshPackages, 5 * 60 * 1000);
+    const siteConfigTimer = setInterval(refreshSiteConfig, 5 * 60 * 1000);
+
     return () => {
-      supabase.removeChannel(packagesChannel);
-      supabase.removeChannel(siteConfigChannel);
+      clearInterval(packagesTimer);
+      clearInterval(siteConfigTimer);
     };
   }, []);
 
-  // ── Real-time order status updates ──
+  // Poll for order status updates every 30 seconds.
+  // The Packages page has no user context and no store filter, so a real-time
+  // subscription would broadcast every order in the system to every visitor.
+  // Polling is safe here — the orders list is for recent purchase tracking only.
   useEffect(() => {
-    const ordersChannel = supabase
-      .channel("orders-updates")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "orders" },
-        (payload) => {
-          const updatedOrder = payload.new as Order;
-          setOrders(prevOrders =>
-            prevOrders.map(order =>
-              order.id === updatedOrder.id
-                ? { ...order, ...updatedOrder }
-                : order
-            )
-          );
-        }
-      )
-      .subscribe();
-    
-    return () => { supabase.removeChannel(ordersChannel); };
-  }, []);
+    if (orders.length === 0) return;
+    const ids = orders.map((o) => o.id);
+    const pollOrders = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .in("id", ids);
+      if (data) {
+        setOrders((prev) =>
+          prev.map((order) => {
+            const updated = data.find((d) => d.id === order.id);
+            return updated ? { ...order, ...updated } : order;
+          })
+        );
+      }
+    };
+    const timer = setInterval(pollOrders, 30_000);
+    return () => clearInterval(timer);
+  }, [orders.length]);
 
   // Fetch Special MTN Mashup pricing
   useEffect(() => {

@@ -761,7 +761,6 @@ const AgentStorefront = () => {
         { event: "UPDATE", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` },
         (payload) => {
           const updatedOrder = payload.new as Order;
-          console.log("[v0] Real-time order update received:", { orderId: updatedOrder.id, network: updatedOrder.network, orderStatus: updatedOrder.order_status });
           setOrders(prevOrders =>
             prevOrders.map(order =>
               order.id === updatedOrder.id

@@ -22,31 +22,19 @@ export default function AgentYouTubeSection() {
   useEffect(() => {
     fetchYouTubeSettings();
 
-    // Setup realtime listener
-    let subscription: any;
-    const setupListener = async () => {
-      subscription = supabase
-        .channel(`afa_settings_agent_youtube_${Date.now()}`)
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'afa_settings' },
-          () => {
-            console.log('[v0] Detected YouTube settings update');
-            fetchYouTubeSettings();
-          }
-        )
-        .subscribe((status: string) => {
-          console.log('[v0] Realtime subscription status:', status);
-        });
-    };
+    // Use a stable channel name (no Date.now()) so it is deduplicated and
+    // does not leak a new WebSocket connection on every render.
+    const subscription = supabase
+      .channel('afa_settings_agent_youtube')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'afa_settings' },
+        () => { fetchYouTubeSettings(); }
+      )
+      .subscribe();
 
-    setupListener();
-
-    // Cleanup on unmount
     return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
+      supabase.removeChannel(subscription);
     };
   }, []);
 
