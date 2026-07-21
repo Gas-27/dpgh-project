@@ -59,8 +59,8 @@ const Signup = () => {
         }
       }
       
-      toast({ title: "Account created!", description: "Welcome to Data Plug STORE!" });
-      navigate("/user-dashboard");
+      toast({ title: "Account created!", description: "Welcome to Data Plug STORE! You can now buy data." });
+      navigate("/packages");
     }
   };
 

@@ -866,9 +866,6 @@ const AgentStorefront = () => {
 
   // ── Render helpers ──
   const filteredPackages = packages.filter((p) => {
-      // Only show active packages
-      if (p.active === false) return false;
-      
       // COMMENTED OUT: mashup packages deactivated
       if (false && networkFilter === "mtn_mashup") {
         // Group both mtn_mashup and mashup packages in the Special MTN Mashup section

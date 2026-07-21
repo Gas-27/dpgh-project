@@ -735,9 +735,6 @@ export function SubSubagentStorefront() {
 
   // Helpers
   const filteredPackages = packages.filter((p) => {
-      // Only show active packages
-      if (p.active === false) return false;
-      
       // COMMENTED OUT: mashup packages deactivated
       // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
       if (false && networkFilter === "mtn_mashup") {

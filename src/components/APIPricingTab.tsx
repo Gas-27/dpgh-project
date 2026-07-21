@@ -42,6 +42,7 @@ interface APIPricingTabProps {
 
 export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [exactMatch, setExactMatch] = useState(false);
   const [searching, setSearching] = useState(false);
   const [apiUsers, setApiUsers] = useState<APIUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<APIUser | null>(null);
@@ -99,8 +100,22 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
 
       if (error) throw error;
 
-      setApiUsers((data as APIUser[]) || []);
-      if (!data || data.length === 0) {
+      // Apply exact match filter client-side if checkbox is checked
+      let results = (data as APIUser[]) || [];
+      if (exactMatch && results.length > 0) {
+        const tl = term.toLowerCase();
+        results = results.filter((u) =>
+          u.topup_reference?.toLowerCase() === tl ||
+          u.full_name?.toLowerCase() === tl ||
+          u.email?.toLowerCase() === tl ||
+          u.user_email?.toLowerCase() === tl ||
+          u.store_name?.toLowerCase() === tl ||
+          u.api_key?.toLowerCase() === tl
+        );
+      }
+
+      setApiUsers(results);
+      if (results.length === 0) {
         toast({ title: "No API user found", description: `No results for "${term}". Try topup reference, name, email, store name, API key or user ID.`, variant: "destructive" });
       }
     } catch (err: any) {
@@ -108,7 +123,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
     } finally {
       setSearching(false);
     }
-  }, [searchTerm, supabase]);
+  }, [searchTerm, exactMatch, supabase]);
 
   const selectUser = useCallback(async (user: APIUser) => {
     setSelectedUser(user);
@@ -197,23 +212,34 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by top-up reference, name, email, store name or API key..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.nativeEvent.isComposing) searchUsers();
-                }}
-                className="pl-10"
-              />
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by top-up reference, name, email, store name or API key..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) searchUsers();
+                  }}
+                  className="pl-10"
+                />
+              </div>
+              <Button onClick={searchUsers} disabled={searching || !searchTerm.trim()}>
+                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Search
+              </Button>
             </div>
-            <Button onClick={searchUsers} disabled={searching || !searchTerm.trim()}>
-              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              Search
-            </Button>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={exactMatch}
+                onChange={(e) => setExactMatch(e.target.checked)}
+                className="rounded border-border"
+              />
+              Exact match only (search for the exact value you typed, not partial matches)
+            </label>
           </div>
 
           {/* User results */}

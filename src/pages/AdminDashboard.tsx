@@ -110,6 +110,10 @@ const AdminDashboard = () => {
   const [processingWithdrawals, setProcessingWithdrawals] = useState<Set<string>>(new Set());
 
   const [agentSearchTerm, setAgentSearchTerm] = useState("");
+  const [agentExactMatch, setAgentExactMatch] = useState(false);
+  const [subagentExactMatch, setSubagentExactMatch] = useState(false);
+  const [subSubagentExactMatch, setSubSubagentExactMatch] = useState(false);
+  const [subSubagentSearchTerm, setSubSubagentSearchTerm] = useState("");
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [orderSearchTerm, setOrderSearchTerm] = useState("");
   const [orderLatestFilter, setOrderLatestFilter] = useState<number | null>(null);
@@ -1995,7 +1999,14 @@ const AdminDashboard = () => {
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
   
   const filteredAgents = (agentSearchTerm.length > 0 ? agentSearch.results : agents)
-    .filter((agent) => agentApprovalFilter === "all" ? true : (agentApprovalFilter === "approved" ? agent.approved : !agent.approved));
+    .filter((agent) => {
+      if (agentExactMatch && agentSearchTerm.length > 0) {
+        const t = agentSearchTerm.toLowerCase();
+        const match = agent.store_name?.toLowerCase() === t || agent.topup_reference?.toLowerCase() === t;
+        if (!match) return false;
+      }
+      return agentApprovalFilter === "all" ? true : (agentApprovalFilter === "approved" ? agent.approved : !agent.approved);
+    });
   
   // Use database search results if searching, otherwise use local users (first 100)
   const filteredUsers = userSearchTerm.length > 0 ? profileSearch.results : users;
@@ -2062,7 +2073,24 @@ const AdminDashboard = () => {
     });
 
   const filteredSubagents = (subagentSearchTerm.length > 0 ? subagentSearch.results : subagents)
-    .filter((subagent) => subagentStatusFilter === "all" ? true : (subagentStatusFilter === "active" ? !subagent.suspended : subagent.suspended));
+    .filter((subagent) => {
+      if (subagentExactMatch && subagentSearchTerm.length > 0) {
+        const t = subagentSearchTerm.toLowerCase();
+        const match = subagent.store_name?.toLowerCase() === t || subagent.top_reference?.toLowerCase() === t;
+        if (!match) return false;
+      }
+      return subagentStatusFilter === "all" ? true : (subagentStatusFilter === "active" ? !subagent.suspended : subagent.suspended);
+    });
+
+  const filteredSubSubagents = subSubagentSearchTerm.length > 0
+    ? subSubagents.filter((s) => {
+        const t = subSubagentSearchTerm.toLowerCase();
+        if (subSubagentExactMatch) {
+          return s.store_name?.toLowerCase() === t || s.top_reference?.toLowerCase() === t;
+        }
+        return s.store_name?.toLowerCase().includes(t) || s.top_reference?.toLowerCase().includes(t);
+      })
+    : subSubagents;
 
   if (dataLoading) {
     return (
@@ -2486,6 +2514,15 @@ const AdminDashboard = () => {
                   />
                   {agentSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
                 </div>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agentExactMatch}
+                    onChange={(e) => setAgentExactMatch(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  Exact match
+                </label>
                 
                 <Select value={agentApprovalFilter} onValueChange={setAgentApprovalFilter}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Approval" /></SelectTrigger>
@@ -2591,6 +2628,15 @@ const AdminDashboard = () => {
                   />
                   {subagentSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
                 </div>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={subagentExactMatch}
+                    onChange={(e) => setSubagentExactMatch(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  Exact match
+                </label>
 
                 <Select value={subagentStatusFilter} onValueChange={setSubagentStatusFilter}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Status" /></SelectTrigger>
@@ -2755,12 +2801,22 @@ const AdminDashboard = () => {
                   <Input 
                     placeholder="Search by store name..." 
                     className="pl-10" 
-                    onChange={(e) => setSubagentSearchTerm(e.target.value)}
+                    value={subSubagentSearchTerm}
+                    onChange={(e) => setSubSubagentSearchTerm(e.target.value)}
                   />
                 </div>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={subSubagentExactMatch}
+                    onChange={(e) => setSubSubagentExactMatch(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  Exact match
+                </label>
               </div>
               
-              {subSubagents.length === 0 ? (
+              {filteredSubSubagents.length === 0 ? (
                 <Card className="border-yellow-500/30 bg-yellow-500/5">
                   <CardContent className="py-8 space-y-3 text-center">
                     <p className="text-muted-foreground font-semibold">No sub-subagents found.</p>
@@ -2770,9 +2826,9 @@ const AdminDashboard = () => {
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Total Sub-Subagents: {subSubagents.length}
+                    Total Sub-Subagents: {filteredSubSubagents.length}
                   </p>
-                  {subSubagents.map((subSubagent) => (
+                  {filteredSubSubagents.map((subSubagent) => (
                     <Card key={subSubagent.id} className="border-border bg-card/50">
                       <CardContent className="p-3 md:p-6">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
