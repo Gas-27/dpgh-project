@@ -394,15 +394,40 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Fetch package base data
-    const { data: packageData, error: packageError } = await supabaseClient
+    // Fetch package base data — try the agent `packages` table first.
+    // If not found (e.g. user purchasing directly from /packages page which
+    // uses `data_packages` IDs), fall back to `data_packages`.
+    // A pending-agent user who has not been approved yet is treated as a
+    // regular customer and their purchase goes through the `data_packages`
+    // admin price path, not the agent price path.
+    let packageData: { agent_price?: number; price: number; size_gb: number; network: string; data_package_id?: number } | null = null;
+
+    const { data: pkgFromPackages, error: packagesError } = await supabaseClient
       .from("packages")
       .select("agent_price, price, size_gb, network, data_package_id")
       .eq("id", metadata.package_id)
-      .single();
+      .maybeSingle();
 
-    if (packageError || !packageData) {
-      console.error("Package not found:", metadata.package_id);
+    if (pkgFromPackages) {
+      packageData = pkgFromPackages;
+    } else {
+      // Fallback: treat package_id as a data_packages.id (direct site purchase)
+      const { data: pkgFromDataPackages, error: dataPackagesError } = await supabaseClient
+        .from("data_packages")
+        .select("price, size_gb, network")
+        .eq("id", metadata.package_id)
+        .maybeSingle();
+
+      if (pkgFromDataPackages) {
+        packageData = { price: pkgFromDataPackages.price, size_gb: pkgFromDataPackages.size_gb, network: pkgFromDataPackages.network };
+        // Clear agent/subagent store IDs — this is always a direct admin-price purchase
+        metadata.agent_store_id = null;
+        metadata.subagent_store_id = null;
+      }
+    }
+
+    if (!packageData) {
+      console.error("Package not found in packages or data_packages:", metadata.package_id);
       return new Response(JSON.stringify({ error: "Package not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
