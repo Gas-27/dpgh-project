@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -183,6 +183,10 @@ const UserDashboard = () => {
     { id: "appearance", label: "Appearance", icon: Settings },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "withdraw", label: "Withdraw", icon: Wallet },
+    { id: "ussd-code", label: "USSD Code", icon: Smartphone },
+    { id: "view-subagents", label: "View Subagents", icon: Users },
+    { id: "view-sub-subagents", label: "View Sub-Subagents", icon: Users },
+    { id: "more", label: "More...", icon: MoreHorizontal },
   ];
 
   const { signOut } = useAuth();
@@ -2584,7 +2588,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           {/* Mobile Menu Button and Sidebar */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="lg:hidden fixed bottom-6 right-6 z-50">
-              <Button size="lg" className="rounded-full shadow-lg">
+              <Button size="lg" className="rounded-full shadow-lg animate-pulse hover:animate-none">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
@@ -2686,6 +2690,12 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 {buyPhone && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "") && (
                   <p className="text-xs text-red-400 mt-1">Phone number doesn't match {buyPkg?.network} network</p>
                 )}
+              </div>
+
+              {/* Network provider debt warning — shown before payment selection */}
+              <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-400 leading-relaxed">
+                <span className="font-semibold block mb-1">Important Notice</span>
+                Make sure you have no outstanding airtime, mobile money (MoMo), or bundle debt on the recipient number. Network providers will not deliver data to numbers with unpaid balances — this is a network rule we cannot override.
               </div>
 
               <div>

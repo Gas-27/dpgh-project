@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
@@ -337,7 +337,7 @@ Please investigate and assist. Thank you.`;
   );
 };
 
-// ───────────────────────────────────���──────────��� Spin Wheel Popup (unchanged) ──
+// ───────────────────────────────────�����──────────��� Spin Wheel Popup (unchanged) ──
 interface SpinWheelPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1056,6 +1056,21 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
 const Packages = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Auth state — used to gate purchases
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showLoginRequired, setShowLoginRequired] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUser(session?.user ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_ev, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
@@ -1440,14 +1455,14 @@ const Packages = () => {
                             <div className="space-y-1 text-xs text-white">
                               <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
                             </div>
-                            <Button variant="secondary" size="sm" disabled={isInactive || isOffline} className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0 disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:border disabled:border-white/20" onClick={() => !isInactive && !isOffline && setPaymentPkg(pkg)}>{isOffline ? "Currently Offline" : isInactive ? "Not Available" : "Buy Now"}</Button>
+                            <Button variant="secondary" size="sm" disabled={isInactive || isOffline} className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0 disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:border disabled:border-white/20" onClick={() => { if (isInactive || isOffline) return; if (!currentUser) { setShowLoginRequired(true); return; } setPaymentPkg(pkg); }}>{isOffline ? "Currently Offline" : isInactive ? "Not Available" : "Buy Now"}</Button>
                           </>
                         ) : (
                           <>
                             <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
                             <p className={`text-sm font-semibold uppercase tracking-wide ${networkColor}`}>{networkConfig[selectedNetwork as keyof typeof networkConfig]?.label || "Bundle"}</p>
                             <p className="text-xl font-bold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
-                            <Button variant="secondary" size="sm" disabled={isInactive || isOffline} className="w-full mt-2 font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && !isOffline && setPaymentPkg(pkg)}>{isOffline ? "Currently Offline" : isInactive ? "Not Available" : "Buy Now"}</Button>
+                            <Button variant="secondary" size="sm" disabled={isInactive || isOffline} className="w-full mt-2 font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => { if (isInactive || isOffline) return; if (!currentUser) { setShowLoginRequired(true); return; } setPaymentPkg(pkg); }}>{isOffline ? "Currently Offline" : isInactive ? "Not Available" : "Buy Now"}</Button>
                           </>
                         )}
                       </CardContent>
@@ -1685,6 +1700,26 @@ const Packages = () => {
         <PaymentDialog open={!!paymentPkg} onOpenChange={(v) => !v && setPaymentPkg(null)} package={paymentPkg as any} packageName={`${(paymentPkg as any).mins ? (paymentPkg as any).mins + " mins + " : ""}${(paymentPkg as any).size_gb_text || paymentPkg.size_gb + "GB"}`} network={paymentPkg.network} price={Number(paymentPkg.price)} packageId={paymentPkg.id} />
       )}
       <PaymentVerifier />
+
+      {/* Login Required Dialog — shown when a guest clicks Buy Now */}
+      <Dialog open={showLoginRequired} onOpenChange={setShowLoginRequired}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Sign In Required</DialogTitle>
+            <DialogDescription className="text-sm mt-1">
+              You need to be signed in to purchase data. Please log in or create an account to continue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-2">
+            <Button variant="hero" className="w-full" onClick={() => { setShowLoginRequired(false); navigate("/login"); }}>
+              Sign In
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => { setShowLoginRequired(false); navigate("/signup"); }}>
+              Create Account
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <SpinWheelPopup open={showSpinWheel} onOpenChange={setShowSpinWheel} config={spinConfig} />
       

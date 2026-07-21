@@ -2197,7 +2197,7 @@ const AdminDashboard = () => {
                 </div>
               )}
               <div className="flex flex-col gap-2">
-                <div className="relative max-w-sm">
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <textarea 
                     placeholder="Search by phone number (paste multiple separated by commas, newlines, or spaces)..." 
@@ -2219,9 +2219,9 @@ const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* Latest Orders & Date Range Filters */}
+              {/* Latest Orders & Date Range Filters — shown below search box */}
               {orderSearchTerm && (
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-3">
                   <div className="flex items-end gap-2">
                     <div>
                       <label className="text-xs font-medium block mb-1">Show Only Latest</label>
