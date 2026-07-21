@@ -435,11 +435,31 @@ const UserDashboard = () => {
     if (!userId) return;
     setLoadingApiOrders(true);
     try {
+      // Step 1: find this user's api_users.id via identity_id
+      const { data: apiUserRow, error: apiUserError } = await supabase
+        .from("api_users")
+        .select("id")
+        .eq("identity_id", userId)
+        .maybeSingle();
+
+      if (apiUserError) {
+        console.log("[v0] Error fetching api_users row:", apiUserError);
+        setLoadingApiOrders(false);
+        return;
+      }
+
+      if (!apiUserRow) {
+        // User has no api_users entry — no API orders
+        setApiOrders([]);
+        setLoadingApiOrders(false);
+        return;
+      }
+
+      // Step 2: fetch orders where api_user = api_users.id
       const { data, error } = await supabase
         .from("orders")
         .select("*")
-        .eq("source", "api")
-        .eq("user_id", userId)
+        .eq("api_user", apiUserRow.id)
         .order("created_at", { ascending: false });
 
       if (error) {
