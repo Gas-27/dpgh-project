@@ -443,7 +443,7 @@ const AgentDashboard = () => {
   };
   const withdrawalBalance = getWithdrawalBalance();
 
-  // ─── flyer scale ───────────────────────────────────────────�����──────────────
+  // ─── flyer scale ───────────────────────────────────────────�������──────────────
   const recalcScale = useCallback(() => {
     if (!flyerContainerRef.current) return;
     const cw = flyerContainerRef.current.clientWidth || 600;
@@ -3450,7 +3450,7 @@ const AgentDashboard = () => {
                   <div>
                     <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>�� <span className="font-mono">network</span> - Filter by single network</li>
+                      <li>��� <span className="font-mono">network</span> - Filter by single network</li>
                       <li>• <span className="font-mono">networks[]</span> - Filter by multiple networks</li>
                     </ul>
                   </div>
@@ -3828,7 +3828,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       </TableHeader>
                       <TableBody>
                         {filteredApiOrders.map((order) => {
-                          const fs = order.fulfillment_status || order.status || 'pending';
+                          const fs = order.order_status || order.fulfillment_status || order.status || 'pending';
                           return (
                           <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                             <TableCell className="text-xs whitespace-nowrap">

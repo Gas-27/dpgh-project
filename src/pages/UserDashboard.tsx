@@ -2137,7 +2137,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     </thead>
                     <tbody>
                       {filteredApiOrders.map(order => {
-                        const fs = order.fulfillment_status || order.status || 'pending';
+                        const fs = order.order_status || order.fulfillment_status || order.status || 'pending';
                         return (
                           <tr key={order.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                             <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
