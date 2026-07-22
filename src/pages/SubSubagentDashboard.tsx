@@ -1183,8 +1183,7 @@ const SubSubagentDashboard = () => {
       
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
         package_id: buyingPkg.id,
-        subagent_store_id: subagentStore.id,
-        agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
+        sub_subagent_store_id: subagentStore.id,
         customer_number: buyCustomerNumber,
         network: buyingPkg.network,
         size_gb: extractedSize,
@@ -1928,10 +1927,9 @@ const SubSubagentDashboard = () => {
                                   package_id: buyingPkg.id,
                                   network: buyingPkg.network,
                                   package_name: `${(buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") ? (buyingPkg as any).size_gb_text : buyingPkg.size_gb + "GB"}`,
-                                  subagent_store_id: subagentStore?.id,
-                                  agent_store_id: subagentStore?.agent_store_id,
+                                  subsubagent_store_id: subagentStore?.id,
                                   payment_method: "paystack",
-                                  is_subagent_order: true,
+                                  is_subsubagent_order: true,
                                   ...((buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && { data_package_id: (buyingPkg as any).data_package_id }),
                                 },
                               },

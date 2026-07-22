@@ -1129,7 +1129,7 @@ export function SubSubagentStorefront() {
           packageId={paymentPkg.id}
           price={selectedPaymentPrice}
           storeId={store.agent_store_id}
-          subagentStoreId={store.id}
+          subsubagentStoreId={store.id}
           phoneNumber={customerPhone}
           onPhoneNumberChange={setCustomerPhone}
           storeName={store.store_name}

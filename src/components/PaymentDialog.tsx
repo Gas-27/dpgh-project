@@ -28,6 +28,7 @@ interface PaymentDialogProps {
   packageId?: string;
   agentStoreId?: string;
   subagentStoreId?: string;
+  subsubagentStoreId?: string;
   storeId?: string;
   phoneNumber?: string;
   onPhoneNumberChange?: (phone: string) => void;
@@ -61,6 +62,7 @@ const PaymentDialog = ({
   packageId,
   agentStoreId,
   subagentStoreId,
+  subsubagentStoreId,
   storeId,
   phoneNumber,
   onPhoneNumberChange,
@@ -354,7 +356,8 @@ const PaymentDialog = ({
           // Pending agents (store not yet approved) must be treated as regular users —
           // send null so the edge function takes the direct data_packages path.
           agent_store_id: hasPendingAgentStore ? null : (actualStoreId || null),
-          subagent_store_id: subagentStoreId || null,
+          subagent_store_id: subsubagentStoreId ? null : (subagentStoreId || null),
+          subsubagent_store_id: subsubagentStoreId || null,
           ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
           ...(datahubnetId && { data_package_id: datahubnetId }),
         },
