@@ -829,22 +829,21 @@ Deno.serve(async (req) => {
       const parentSubagentId = subsubStore.subagent_store_id;
       const agentId = subsubStore.agent_store_id;
 
-      // What the SUBSUBAGENT pays the SUBAGENT (subsubagent's cost, e.g. 4.70).
-      // Prefer a row set specifically for this subsubagent, else the subagent's
-      // template row (sub_subagent_store_id IS NULL). Column: base_price.
+      // What the SUBSUBAGENT pays the SUBAGENT (the subsubagent's COST, e.g. 4.70).
+      // This is ALWAYS the parent subagent's TEMPLATE price (sub_subagent_store_id IS NULL),
+      // never the subsubagent's own row. A subsubagent's own row stores their CUSTOMER
+      // selling price in every column, so using it as the cost would zero out their profit.
       let subsubCost = adminBasePrice;
       if (parentSubagentId) {
-        const { data: costRows } = await supabaseClient
+        const { data: templateRow } = await supabaseClient
           .from("sub_subagent_package_prices")
-          .select("base_price, sub_subagent_store_id")
+          .select("base_price, sell_price")
           .eq("subagent_store_id", parentSubagentId)
-          .eq("package_id", package_id);
-        if (costRows && costRows.length) {
-          const specific = costRows.find((r) => r.sub_subagent_store_id === subsubagent_store_id);
-          const template = costRows.find((r) => r.sub_subagent_store_id === null);
-          const chosen = specific || template;
-          if (chosen && chosen.base_price != null) subsubCost = Number(chosen.base_price);
-        }
+          .is("sub_subagent_store_id", null)
+          .eq("package_id", package_id)
+          .maybeSingle();
+        const templateCost = templateRow?.base_price ?? templateRow?.sell_price;
+        if (templateCost != null) subsubCost = Number(templateCost);
       }
 
       // What the SUBAGENT pays the AGENT (subagent's cost, e.g. 4.20).

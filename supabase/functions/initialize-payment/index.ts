@@ -480,7 +480,8 @@ Deno.serve(async (req) => {
         baseAmount = Number(subsubagentPrice.sell_price);
         priceType = "subsubagent_sell_price";
       } else {
-        // Fall back to parent subagent's cost (base_price they set for this sub-subagent)
+        // Fall back to the parent subagent's TEMPLATE price (the cost charged to every sub-subagent).
+        // Template rows live in sub_subagent_package_prices with sub_subagent_store_id IS NULL.
         const { data: subsubStore } = await supabaseClient
           .from("sub_subagent_stores")
           .select("subagent_store_id")
@@ -488,16 +489,18 @@ Deno.serve(async (req) => {
           .single();
 
         if (subsubStore?.subagent_store_id) {
-          const { data: parentCostRow } = await supabaseClient
+          const { data: templateRow } = await supabaseClient
             .from("sub_subagent_package_prices")
-            .select("base_price")
-            .eq("sub_subagent_store_id", metadata.subsubagent_store_id)
+            .select("sell_price, base_price")
+            .eq("subagent_store_id", subsubStore.subagent_store_id)
+            .is("sub_subagent_store_id", null)
             .eq("package_id", metadata.package_id)
             .maybeSingle();
 
-          if (parentCostRow?.base_price != null) {
-            baseAmount = Number(parentCostRow.base_price);
-            priceType = "parent_subagent_cost";
+          const templateCost = templateRow?.sell_price ?? templateRow?.base_price;
+          if (templateCost != null) {
+            baseAmount = Number(templateCost);
+            priceType = "parent_subagent_template_cost";
           } else {
             baseAmount = Number(packageData.price);
             priceType = "admin_user_price";
