@@ -925,7 +925,7 @@ const SubagentDashboard = () => {
       
       if (fetchError) throw fetchError;
       if (!subSubagents || subSubagents.length === 0) {
-        toast({ title: "Info", description: "No sub-subagents to send notifications to" });
+        toast({ title: "Info", description: "No subagents to send notifications to" });
         setSendingSubSubagentNotification(false);
         return;
       }
@@ -942,7 +942,7 @@ const SubagentDashboard = () => {
       const { error } = await supabase.from("sub_subagent_notifications").insert(notifications);
       if (error) throw error;
       setSubSubagentNotificationMsg("");
-      toast({ title: "Success", description: `Notification sent to ${subSubagents.length} sub-subagent(s)` });
+      toast({ title: "Success", description: `Notification sent to ${subSubagents.length} subagent(s)` });
       fetchSubSubagentNotifications();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -1619,7 +1619,7 @@ const SubagentDashboard = () => {
       setSubSubagentMarkupPercentForSubsub("");
       toast({ 
         title: "Success", 
-        description: "Prices saved! Your sub-subagents will see these as their base prices." 
+        description: "Prices saved! Your subagents will see these as their base prices." 
       });
       fetchData(); // Refresh data
     } catch (error) {
@@ -1881,8 +1881,8 @@ const SubagentDashboard = () => {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "topup", label: "Top Up", icon: Wallet },
-    { id: "sub-subagents", label: "Sub-Subagents", icon: Users },
-    { id: "sub-subagent-pricing", label: "Sub-Subagent Pricing", icon: DollarSign },
+    { id: "sub-subagents", label: "Subagents", icon: Users },
+    { id: "sub-subagent-pricing", label: "Subagent Pricing", icon: DollarSign },
     { id: "flyer", label: "Flyer Generator", icon: Image },
     // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
@@ -2214,7 +2214,7 @@ const SubagentDashboard = () => {
                         {dateFilter !== "all" ? `Profit (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Profit"}
                       </p>
                       <p className="font-display text-2xl font-bold mt-1 text-yellow-400">GHC {totalProfit.toFixed(2)}</p>
-                      <details className="mt-2 cursor-pointer group"><summary className="text-xs text-yellow-300 font-semibold hover:text-yellow-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-yellow-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-1"><div className="text-muted-foreground text-xs leading-relaxed"><p>This is a display of your profit from store sales and profit from sub-subagent</p><p className="mt-1">This money is already part of your wallet balance and you can spend or withdraw it anytime</p></div></div></details>
+                      <details className="mt-2 cursor-pointer group"><summary className="text-xs text-yellow-300 font-semibold hover:text-yellow-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-yellow-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-1"><div className="text-muted-foreground text-xs leading-relaxed"><p>This is a display of your profit from store sales and profit from subagent</p><p className="mt-1">This money is already part of your wallet balance and you can spend or withdraw it anytime</p></div></div></details>
                     </div>
                   </div>
                 </CardContent>
@@ -2239,7 +2239,7 @@ const SubagentDashboard = () => {
                         <div className="space-y-1 text-muted-foreground leading-relaxed">
                           <p>+ Profits from store sales</p>
                           {profitBreakdown.subSubagentProfit > 0 && (
-                            <p>+ Profit from sub-subagent registration (only if you have set it up)</p>
+                            <p>+ Profit from subagent registration (only if you have set it up)</p>
                           )}
                           <p>+ Wallet top-ups</p>
                           <p className="text-xs text-muted-foreground mt-1">- Data purchases made using your wallet (Buy Data)</p>
@@ -3626,11 +3626,11 @@ const SubagentDashboard = () => {
             <Card className="border-orange-500/30 bg-orange-500/5">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-orange-400" /> Send Notification to All Sub-Subagents
+                  <Bell className="h-5 w-5 text-orange-400" /> Send Notification to All Subagents
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Send a popup notification that all your sub-subagents will see when they open their dashboard.</p>
+                <p className="text-sm text-muted-foreground">Send a popup notification that all your subagents will see when they open their dashboard.</p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     placeholder="Type your notification message..."
@@ -3669,19 +3669,19 @@ const SubagentDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-border">
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground mb-2">Total Sub-Subagents</p>
+                  <p className="text-sm text-muted-foreground mb-2">Total Subagents</p>
                   <p className="text-3xl font-bold">{subSubagents.length}</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground mb-2">Total Profit from Sub-Subagents</p>
+                  <p className="text-sm text-muted-foreground mb-2">Total Profit from Subagents</p>
                   <p className="text-3xl font-bold text-green-400">GHC {subSubagentProfitForSubagent?.toFixed(2) || "0.00"}</p>
                 </CardContent>
               </Card>
               <Card className="border-border">
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground mb-2">Total Orders from Sub-Subagents</p>
+                  <p className="text-sm text-muted-foreground mb-2">Total Orders from Subagents</p>
                   <p className="text-3xl font-bold text-blue-400">{subSubagentOrdersCount || 0}</p>
                 </CardContent>
               </Card>
@@ -3690,15 +3690,15 @@ const SubagentDashboard = () => {
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="font-display flex items-center gap-2">
-                  <Users className="h-5 w-5" /> Your Sub-Subagents
+                  <Users className="h-5 w-5" /> Your Subagents
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-3">
                     <div className="flex-1">
-                      <p className="font-semibold text-blue-400 mb-2">Allow Sub-Subagent Registration</p>
-                      <p className="text-sm text-muted-foreground mb-4">When enabled, a "Become a Sub-Subagent" button will appear on your storefront.</p>
+                      <p className="font-semibold text-blue-400 mb-2">Allow Subagent Registration</p>
+                      <p className="text-sm text-muted-foreground mb-4">When enabled, a "Become a Subagent" button will appear on your storefront.</p>
                     </div>
                     <Switch 
                       checked={subagentStore?.allow_sub_subagent_registration || false}
@@ -3783,9 +3783,9 @@ const SubagentDashboard = () => {
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
                   <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one {"\u{1F680}"} Markup Explanation (Remember to click save after applying markup)</p>
-                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your prices to sub-subagents for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (your cost price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
+                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your prices to subagents for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (your cost price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
-                <p className="text-sm text-muted-foreground">Your profit = Your Sub-Subagent Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
+                <p className="text-sm text-muted-foreground">Your profit = Your Subagent Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
                 <Card className="border-border">
                   <div className="overflow-x-auto">
                     <Table>
@@ -3793,7 +3793,7 @@ const SubagentDashboard = () => {
                         <TableRow>
                           <TableHead>Size</TableHead>
                           <TableHead>Cost from Agent</TableHead>
-                          <TableHead>Sub-Subagent Price</TableHead>
+                          <TableHead>Subagent Price</TableHead>
                           <TableHead>Profit</TableHead>
                         </TableRow>
                       </TableHeader>

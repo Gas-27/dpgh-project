@@ -197,8 +197,7 @@ const SubSubagentDashboard = () => {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   
-  // Agent notification popup state
-  const [showAgentNotificationPopup, setShowAgentNotificationPopup] = useState(true);
+  // Notification popup state
   const [showSubagentNotificationPopup, setShowSubagentNotificationPopup] = useState(true);
   const [subSubagentNotifications, setSubSubagentNotifications] = useState<any[]>([]);
 
@@ -676,23 +675,13 @@ const SubSubagentDashboard = () => {
     setLoadingNotifications(false);
   };
 
-  // Fetch notifications from agent
-  const [agentNotifications, setAgentNotifications] = useState<any[]>([]);
-  const fetchAgentNotifications = async () => {
-    if (!subagentStore?.agent_store_id) return;
-    const { data, error } = await supabase
-      .from("agent_to_subagent_notifications")
-      .select("*")
-      .eq("agent_store_id", subagentStore.agent_store_id)
-      .eq("is_active", true)
-      .order("created_at", { ascending: false });
-    if (!error && data) setAgentNotifications(data);
-  };
+  // NOTE: agent_to_subagent_notifications are intentionally NOT fetched here.
+  // Those are broadcasts from the agent to their DIRECT subagents and must only
+  // appear in the SubagentDashboard, not leak into the sub-subagent view.
 
   useEffect(() => {
     if (subagentStore?.id) {
       fetchNotifications();
-      fetchAgentNotifications();
       fetchSubSubagentNotifications();
     }
   }, [subagentStore?.id]);
@@ -1572,9 +1561,9 @@ const SubSubagentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Agent Notification Popup Dialog */}
-      {agentNotifications.length > 0 && showAgentNotificationPopup && (
-        <Dialog open={showAgentNotificationPopup} onOpenChange={setShowAgentNotificationPopup}>
+      {/* Notification from parent subagent (shown to sub-subagent as "Admin") */}
+      {subSubagentNotifications.length > 0 && showSubagentNotificationPopup && (
+        <Dialog open={showSubagentNotificationPopup} onOpenChange={setShowSubagentNotificationPopup}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-orange-400">
@@ -1585,37 +1574,8 @@ const SubSubagentDashboard = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              {agentNotifications.map((n) => (
-                <div key={n.id} className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                  <p className="text-foreground">{n.message}</p>
-                  <p className="text-xs text-muted-foreground mt-2">{new Date(n.created_at).toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={() => setShowAgentNotificationPopup(false)}>
-                Got it
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Subagent Notification Popup Dialog */}
-      {subSubagentNotifications.length > 0 && showSubagentNotificationPopup && (
-        <Dialog open={showSubagentNotificationPopup} onOpenChange={setShowSubagentNotificationPopup}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-blue-400">
-                <Bell className="h-5 w-5" /> Message from Your Subagent
-              </DialogTitle>
-              <DialogDescription>
-                Important notification from your subagent
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
               {subSubagentNotifications.map((n) => (
-                <div key={n.id} className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <div key={n.id} className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                   <p className="text-foreground">{n.message}</p>
                   <p className="text-xs text-muted-foreground mt-2">{new Date(n.created_at).toLocaleString()}</p>
                 </div>

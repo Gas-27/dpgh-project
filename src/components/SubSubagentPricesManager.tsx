@@ -121,7 +121,7 @@ export default function SubSubagentPricesManager({
         if (price < basePrice) {
           toast({
             title: "Invalid Price",
-            description: `Sub-subagent price cannot be below your cost price (GHC ${basePrice.toFixed(2)})`,
+            description: `Subagent price cannot be below your cost price (GHC ${basePrice.toFixed(2)})`,
             variant: "destructive"
           });
           setSavingPrices(false);
@@ -168,7 +168,7 @@ export default function SubSubagentPricesManager({
       setSavedBasePrices(prev => ({ ...prev, ...numericPrices }));
       setEditedPrices({});
       setMarkupPercent("");
-      toast({ title: "Success", description: "Sub-subagent base prices saved successfully" });
+      toast({ title: "Success", description: "Subagent base prices saved successfully" });
       
       // Refresh data
       if (onPricesSaved) onPricesSaved();
@@ -219,11 +219,11 @@ export default function SubSubagentPricesManager({
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
         <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br /> 💡 Markup Explanation (Remember to click save after applying markup)</p>
         <p className="text-xs text-muted-foreground mt-2">
-          Markup changes all sub-subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" ? "Telecel" : "Special MTN Mashup"}</strong>).
+          Markup changes all subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" ? "Telecel" : "Special MTN Mashup"}</strong>).
         </p>
       </div>
 
-      <p className="text-sm text-muted-foreground">Sub-subagent profit = Their Selling Price - Your Cost Price. Use markup to increase all sub-subagent prices by a % (based on your cost price).</p>
+      <p className="text-sm text-muted-foreground">Subagent profit = Their Selling Price - Your Cost Price. Use markup to increase all subagent prices by a % (based on your cost price).</p>
 
       <Card className="border-border">
         <div className="overflow-x-auto">
@@ -232,7 +232,7 @@ export default function SubSubagentPricesManager({
               <TableRow>
                 <TableHead>Size</TableHead>
                 <TableHead>Your Cost Price</TableHead>
-                <TableHead>Sub-Subagent Base Price</TableHead>
+                <TableHead>Subagent Base Price</TableHead>
                 <TableHead>Your Profit</TableHead>
               </TableRow>
             </TableHeader>

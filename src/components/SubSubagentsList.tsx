@@ -106,7 +106,7 @@ export default function SubSubagentsList({ subagentStoreId, subagentStoreName, s
       
       toast({
         title: "Success",
-        description: currentSuspended ? "Sub-subagent account has been unsuspended" : "Sub-subagent account has been suspended",
+        description: currentSuspended ? "Subagent account has been unsuspended" : "Subagent account has been suspended",
       });
       
       setSelectedSubSubagent(null);
@@ -139,7 +139,7 @@ export default function SubSubagentsList({ subagentStoreId, subagentStoreName, s
           <Card className="border-border">
             <CardContent className="py-8">
               <p className="text-center text-muted-foreground">
-                {subSubagents.length === 0 ? "No sub-subagents yet" : "No sub-subagents match your search"}
+                {subSubagents.length === 0 ? "No subagents yet" : "No subagents match your search"}
               </p>
             </CardContent>
           </Card>
@@ -178,7 +178,7 @@ export default function SubSubagentsList({ subagentStoreId, subagentStoreName, s
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedSubSubagent?.store_name}</DialogTitle>
-            <DialogDescription>View sub-subagent details, wallet balance, and orders</DialogDescription>
+            <DialogDescription>View subagent details, wallet balance, and orders</DialogDescription>
           </DialogHeader>
           
           {selectedSubSubagent && (

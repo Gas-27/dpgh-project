@@ -48,6 +48,7 @@ const PendingApproval = lazyWithReload(() => import("./pages/PendingApproval"));
 const AdminDashboard = lazyWithReload(() => import("./pages/AdminDashboard"));
 const AgentDashboard = lazyWithReload(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazyWithReload(() => import("./pages/AgentStorefront"));
+const BecomeAgent = lazyWithReload(() => import("./pages/BecomeAgent"));
 const AgentRegistrationCallback = lazyWithReload(() => import("./pages/AgentRegistrationCallback"));
 const SubagentDashboard = lazyWithReload(() => import("./pages/SubagentDashboard"));
 const SubagentLogin = lazyWithReload(() => import("./pages/SubagentLogin"));
@@ -152,7 +153,10 @@ const App = () => {
                 </Routes>
               ) : isAgentSubdomain ? (
                 // 🎯 On any agent subdomain, show the agent storefront
-                <AgentStorefront />
+                <Routes>
+                  <Route path="/become-agent" element={<BecomeAgent />} />
+                  <Route path="*" element={<AgentStorefront />} />
+                </Routes>
               ) : (
                 // 🌐 On the main datastores.shop domain, use normal routes
                 <Routes>
