@@ -367,14 +367,18 @@ const SubSubagentDashboard = () => {
           packagesResult,
           subagentPricesResult,
           parentSubagentResult,
-          parentTemplatePricesResult
+          parentTemplatePricesResult,
+          parentSubagentCostResult
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
+          // Parent subagent's OWN cost (what the subagent pays their agent) — fallback when
+          // the subagent has not set a sub-subagent price for a package.
+          store.subagent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
         console.log("[v0] Parallel queries completed");
 
@@ -389,14 +393,23 @@ const SubSubagentDashboard = () => {
         }
         
         // Build base prices = "Cost from Agent" for this sub-subagent.
-        // EXACT MIRROR of agent->subagent: the base price is the parent subagent's
-        // GLOBAL template price (sub_subagent_store_id IS NULL). Fallback = admin/default package price.
+        // Priority (lowest → highest):
+        //   1. admin/default package price (ultimate fallback)
+        //   2. parent subagent's OWN base cost (what the subagent pays their agent) —
+        //      this is what should show when the subagent has NOT set a sub-subagent price
+        //   3. parent subagent's sub-subagent template price (sub_subagent_store_id IS NULL)
         const basePriceMap: Record<string, number> = {};
-        // Ultimate fallback: admin/default package price
+        // 1. Ultimate fallback: admin/default package price
         (packagesResult.data || []).forEach((p: any) => {
           basePriceMap[p.id] = p.price;
         });
-        // Override with the parent subagent's template base price (what the subagent set for sub-subagents)
+        // 2. Fall back to the parent subagent's own cost from their agent
+        (parentSubagentCostResult.data || []).forEach((p: any) => {
+          if (p.base_price !== null && p.base_price !== undefined) {
+            basePriceMap[p.package_id] = Number(p.base_price);
+          }
+        });
+        // 3. Override with the parent subagent's sub-subagent template price (highest priority)
         (parentTemplatePricesResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
@@ -462,7 +475,8 @@ const SubSubagentDashboard = () => {
           subagentPricesResult,
           parentSubagentResult,
           parentPricesResult,
-          parentTemplatePricesResult
+          parentTemplatePricesResult,
+          parentSubagentCostResult
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -470,7 +484,10 @@ const SubSubagentDashboard = () => {
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null }),
-          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null })
+          store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
+          // Parent subagent's OWN cost (what the subagent pays their agent) — used as the
+          // fallback when the subagent has not set a sub-subagent price for a package.
+          store.subagent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -484,14 +501,23 @@ const SubSubagentDashboard = () => {
         }
         
         // Build base prices = "Cost from Agent" for this sub-subagent.
-        // EXACT MIRROR of agent->subagent: base price is the parent subagent's GLOBAL template
-        // price (sub_subagent_store_id IS NULL). Fallback = admin/default package price.
+        // Priority (lowest → highest):
+        //   1. admin/default package price (ultimate fallback)
+        //   2. parent subagent's OWN base cost (what the subagent pays their agent) —
+        //      this is what should show when the subagent has NOT set a sub-subagent price
+        //   3. parent subagent's sub-subagent template price (sub_subagent_store_id IS NULL)
         const basePriceMap: Record<string, number> = {};
-        // Ultimate fallback: admin/default package price
+        // 1. Ultimate fallback: admin/default package price
         (packagesResult.data || []).forEach((p: any) => {
           basePriceMap[p.id] = p.price;
         });
-        // Override with the parent subagent's template base price
+        // 2. Fall back to the parent subagent's own cost from their agent
+        (parentSubagentCostResult.data || []).forEach((p: any) => {
+          if (p.base_price !== null && p.base_price !== undefined) {
+            basePriceMap[p.package_id] = Number(p.base_price);
+          }
+        });
+        // 3. Override with the parent subagent's sub-subagent template price (highest priority)
         (parentTemplatePricesResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
