@@ -281,8 +281,18 @@ const PaymentDialog = ({
     
     try {
       const normalizedPhone = normalizePhone(phone.trim());
-      const userEmail =
-        user?.email || `${normalizedPhone.replace(/[^0-9]/g, "")}@datapluggh.com`;
+
+      // Paystack rejects malformed / fake email addresses (e.g. bogus TLDs like
+      // "@dhid.vlkcf") with "Invalid Email Address Passed", which surfaces as a
+      // 400 from the edge function. Many accounts — especially test and
+      // pending-agent accounts — were created with junk emails we cannot verify.
+      // To guarantee the charge always initializes, we send Paystack a
+      // deterministic, guaranteed-valid email built from the phone number on the
+      // store's real domain. The account's real email is still preserved in the
+      // metadata (user_email) for internal records and receipts.
+      const digitsOnlyPhone = normalizedPhone.replace(/[^0-9]/g, "");
+      const userEmail = `${digitsOnlyPhone}@dataplug.store`;
+      const accountEmail = user?.email?.trim() || "";
 
       // If buying from a storefront (agent/subagent) stay on that page.
       // If a logged-in user buys from the public /packages page, redirect back
@@ -338,6 +348,9 @@ const PaymentDialog = ({
           package_name: displayPackageName,
           size_gb: packageInfo?.size_gb ?? null,
           customer_id: user?.id || null,
+          // Preserve the account's real email for records/receipts even though the
+          // Paystack `email` field uses the guaranteed-valid phone-based address.
+          ...(accountEmail && { user_email: accountEmail }),
           // Pending agents (store not yet approved) must be treated as regular users —
           // send null so the edge function takes the direct data_packages path.
           agent_store_id: hasPendingAgentStore ? null : (actualStoreId || null),
@@ -374,7 +387,6 @@ const PaymentDialog = ({
         } catch (readErr) {
           console.error("[v0] Failed to read edge error body:", readErr);
         }
-        console.error("[v0] Payload that was sent:", JSON.stringify(payloadBody));
         const errorMsg = detailedMsg || error?.message || "Failed to initialize payment. Please check your connection and try again.";
         setPaymentError(errorMsg);
         throw new Error(errorMsg);
