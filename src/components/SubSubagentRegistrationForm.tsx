@@ -230,7 +230,16 @@ export default function SubSubagentRegistrationForm({
       // Sub-subagents are automatically approved when registering under a subagent
       console.log("[v0] Sub-subagent registration - no fees, auto-approving");
 
-      // Create the store directly without payment
+      // Generate a unique sequential top-up reference (used as the USSD access code).
+      // Prefix "ssa" keeps sub-subagent references in their own namespace so they
+      // never collide with subagent "agt" references.
+      const { count: subSubagentCount } = await supabase
+        .from("sub_subagent_stores")
+        .select("*", { count: "exact", head: true });
+      const topupReference = `ssa${(subSubagentCount || 0) + 1}`;
+
+      // Create the store directly without payment.
+      // agent_store_id is auto-populated by the DB trigger from the parent subagent.
       const { data: storeData, error: storeError } = await supabase
         .from("sub_subagent_stores")
         .insert({
@@ -245,6 +254,7 @@ export default function SubSubagentRegistrationForm({
           momo_network: formData.momoNetwork || null,
           wallet_balance: 0,
           approved: true,
+          topup_reference: topupReference,
         })
         .select()
         .single();
