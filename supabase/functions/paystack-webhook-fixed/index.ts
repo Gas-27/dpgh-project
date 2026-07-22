@@ -12,22 +12,14 @@ async function verifySignature(secret: string, signature: string, rawBody: strin
     const encoder = new TextEncoder();
     const key = encoder.encode(secret);
     const data = encoder.encode(rawBody);
-
     const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      key,
-      { name: "HMAC", hash: "SHA-512" },
-      false,
-      ["sign"]
+      "raw", key, { name: "HMAC", hash: "SHA-512" }, false, ["sign"]
     );
-
     const computedSignature = await crypto.subtle.sign("HMAC", cryptoKey, data);
     const computedHex = Array.from(new Uint8Array(computedSignature))
       .map(b => b.toString(16).padStart(2, "0"))
       .join("");
-
     if (computedHex.length !== signature.length) return false;
-
     let result = 0;
     for (let i = 0; i < computedHex.length; i++) {
       result |= computedHex.charCodeAt(i) ^ signature.charCodeAt(i);
@@ -46,57 +38,38 @@ Deno.serve(async (req) => {
 
   try {
     const signature = req.headers.get("x-paystack-signature");
-
     if (!signature) {
-      console.error("Missing x-paystack-signature header");
       return new Response(JSON.stringify({ error: "No signature provided" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const rawBody = await req.text();
-
     const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!secret) {
-      console.error("PAYSTACK_SECRET_KEY environment variable not set");
       return new Response(JSON.stringify({ error: "Webhook secret not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const isValid = await verifySignature(secret, signature, rawBody);
-
     if (!isValid) {
-      console.error("Invalid signature - webhook rejected");
       return new Response(JSON.stringify({ error: "Invalid signature" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    console.log("Signature verified successfully");
 
     const payload = JSON.parse(rawBody);
     console.log(`Event type: ${payload.event}`);
 
     if (payload.event !== "charge.success") {
-      console.log(`Ignoring event: ${payload.event}`);
-      return new Response(JSON.stringify({ message: "Event ignored" }), {
-        status: 200,
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ message: "Event ignored" }), { status: 200, headers: corsHeaders });
     }
 
     const { reference, metadata, amount } = payload.data;
     const paymentType = metadata?.type;
-    const customerId = metadata?.customer_id;
 
-    console.log(`Processing payment: ${reference}`);
-    console.log(`Amount paid (including fee): GHS ${Number(amount) / 100}`);
-    console.log(`Payment type: ${paymentType || "package_purchase"}`);
-    console.log(`Customer ID: ${customerId || "not provided"}`);
+    console.log(`Processing payment: ${reference}, type: ${paymentType}`);
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -106,636 +79,404 @@ Deno.serve(async (req) => {
     // =====================================
     // SUBAGENT REGISTRATION PAYMENT HANDLER
     // =====================================
-    if (paymentType === "subagent_registration") {
-      const subagentRegistrationId = metadata.subagent_registration_id;
-      const agentStoreId = metadata.agent_store_id;
-      const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
+    const isSubagentRegistration =
+      paymentType === "subagent_registration" ||
+      paymentType === "subagent-registration" ||
+      metadata?.subagent_registration_id ||
+      metadata?.subagentRegistrationId ||
+      metadata?.registration_type === "subagent";
 
-      if (!subagentRegistrationId || !agentStoreId) {
-        console.error("Missing subagent_registration_id or agent_store_id");
-        return new Response(JSON.stringify({ error: "Missing registration or agent store ID" }), {
-          status: 400,
-          headers: corsHeaders
-        });
-      }
+    if (isSubagentRegistration) {
+      console.log(`[SUBAGENT REGISTRATION] === STARTING ===`);
 
-      const { data: existingRegistration } = await supabaseClient
-        .from("subagent_registrations")
-        .select("id, status, payment_status")
-        .eq("id", subagentRegistrationId)
-        .maybeSingle();
+      const subagentRegistrationId =
+        metadata.subagent_registration_id ||
+        metadata.subagentRegistrationId ||
+        metadata.registration_id;
 
-      if (existingRegistration) {
-        if (existingRegistration.payment_status === "paid" || existingRegistration.status === "completed") {
-          console.log(`Subagent registration already processed for ${subagentRegistrationId}`);
-          return new Response(JSON.stringify({ message: "Registration already processed" }), {
-            status: 200,
-            headers: corsHeaders
+      const agentStoreId =
+        metadata.agent_store_id ||
+        metadata.agentStoreId ||
+        metadata.agent_store;
+
+      const baseAmount = Number(metadata.base_amount) || Number(metadata.amount) || (Number(amount) / 100);
+
+      // Resolve registration ID
+      let regId = subagentRegistrationId;
+      let agentId = agentStoreId;
+
+      if (!regId) {
+        const { data: foundReg } = await supabaseClient
+          .from("subagent_registrations")
+          .select("id, agent_store_id")
+          .eq("payment_reference", reference)
+          .maybeSingle();
+
+        if (foundReg) {
+          regId = foundReg.id;
+          agentId = agentId || foundReg.agent_store_id;
+        } else {
+          console.error(`[SUBAGENT REGISTRATION] Cannot find registration for reference: ${reference}`);
+          return new Response(JSON.stringify({ error: "Registration not found" }), {
+            status: 400, headers: corsHeaders,
           });
         }
       }
 
-      const { data: updatedRegistration, error: updateError } = await supabaseClient
+      if (!agentId) {
+        return new Response(JSON.stringify({ error: "Missing agent store ID" }), {
+          status: 400, headers: corsHeaders,
+        });
+      }
+
+      // ============================================================
+      // DUPLICATE GUARD
+      // If status is already "completed" the wallet was already
+      // credited — return 200 immediately so Paystack stops retrying
+      // ============================================================
+      const { data: existingReg, error: fetchError } = await supabaseClient
+        .from("subagent_registrations")
+        .select("id, payment_status, status, fee_amount, agent_store_id")
+        .eq("id", regId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error(`[SUBAGENT REGISTRATION] Fetch error:`, fetchError);
+        return new Response(JSON.stringify({ error: "Failed to fetch registration" }), {
+          status: 500, headers: corsHeaders,
+        });
+      }
+
+      if (existingReg?.status === "completed") {
+        console.log(`[SUBAGENT REGISTRATION] Already completed — skipping duplicate`);
+        return new Response(
+          JSON.stringify({ message: "Already completed — no duplicate credit applied" }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      // Create record if it doesn't exist
+      if (!existingReg) {
+        const { error: createError } = await supabaseClient
+          .from("subagent_registrations")
+          .insert({
+            id: regId,
+            agent_store_id: agentId,
+            payment_status: "processing",
+            payment_reference: reference,
+            status: "pending_payment",
+            fee_amount: baseAmount,
+          });
+        if (createError) {
+          console.error(`[SUBAGENT REGISTRATION] Create error:`, createError);
+          return new Response(JSON.stringify({ error: "Failed to create registration" }), {
+            status: 500, headers: corsHeaders,
+          });
+        }
+      }
+
+      // Lock against concurrent duplicates by setting status to processing
+      await supabaseClient
+        .from("subagent_registrations")
+        .update({ payment_status: "processing" })
+        .eq("id", regId)
+        .in("payment_status", ["pending", "pending_payment", "failed"]);
+
+      // Fetch agent store
+      const { data: agentStore, error: agentFetchError } = await supabaseClient
+        .from("agent_stores")
+        .select("id, wallet_balance, store_name")
+        .eq("id", agentId)
+        .single();
+
+      if (agentFetchError || !agentStore) {
+        await supabaseClient
+          .from("subagent_registrations")
+          .update({ payment_status: "failed", status: "failed" })
+          .eq("id", regId);
+        return new Response(JSON.stringify({ error: "Agent store not found" }), {
+          status: 404, headers: corsHeaders,
+        });
+      }
+
+      const previousBalance = Number(agentStore.wallet_balance) || 0;
+      const newBalance = previousBalance + baseAmount;
+
+      console.log(`[SUBAGENT REGISTRATION] Crediting GHS ${baseAmount} to ${agentStore.store_name}`);
+      console.log(`[SUBAGENT REGISTRATION] ${previousBalance} -> ${newBalance}`);
+
+      // Credit agent wallet
+      const { error: walletError } = await supabaseClient
+        .from("agent_stores")
+        .update({ wallet_balance: newBalance })
+        .eq("id", agentId);
+
+      if (walletError) {
+        console.error(`[SUBAGENT REGISTRATION] Wallet credit failed:`, walletError);
+        await supabaseClient
+          .from("subagent_registrations")
+          .update({ payment_status: "failed", status: "failed" })
+          .eq("id", regId);
+        return new Response(JSON.stringify({ error: "Failed to credit agent wallet" }), {
+          status: 500, headers: corsHeaders,
+        });
+      }
+
+      console.log(`[SUBAGENT REGISTRATION] ✅ Wallet credited`);
+
+      // Mark completed — this is what prevents future duplicates
+      const { error: completeError } = await supabaseClient
         .from("subagent_registrations")
         .update({
+          status: "completed",
           payment_status: "paid",
           payment_reference: reference,
-          status: "approved",
-          updated_at: new Date().toISOString(),
+          fee_amount: baseAmount,
         })
-        .eq("id", subagentRegistrationId)
-        .select()
-        .single();
+        .eq("id", regId);
 
-      if (updateError || !updatedRegistration) {
-        console.error("Failed to update subagent registration:", updateError);
-        return new Response(JSON.stringify({ error: "Failed to update registration" }), {
-          status: 500,
-          headers: corsHeaders
-        });
+      if (completeError) {
+        // Wallet was credited but status update failed
+        // Log critically but return 200 so Paystack stops retrying
+        console.error(`[SUBAGENT REGISTRATION] CRITICAL: Wallet credited but failed to mark completed:`, completeError);
       }
 
-      const { data: agentStore } = await supabaseClient
-        .from("agent_stores")
-        .select("wallet_balance")
-        .eq("id", agentStoreId)
-        .single();
+      console.log(`[SUBAGENT REGISTRATION] === COMPLETED ===`);
 
-      if (agentStore) {
-        const newWalletBalance = (Number(agentStore.wallet_balance) || 0) + baseAmount;
-        await supabaseClient
-          .from("agent_stores")
-          .update({ wallet_balance: newWalletBalance })
-          .eq("id", agentStoreId);
+      return new Response(
+        JSON.stringify({
+          message: "Subagent registration payment processed successfully",
+          subagent_registration_id: regId,
+          agent_store_id: agentId,
+          status: "completed",
+          amount_credited: baseAmount,
+          previous_balance: previousBalance,
+          new_balance: newBalance,
+          transaction_reference: reference,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }   
 
-        console.log(`Agent wallet credited: +GHS ${baseAmount.toFixed(2)}, new balance: GHS ${newWalletBalance.toFixed(2)}`);
-      }
 
-      return new Response(JSON.stringify({
-        message: "Subagent registration payment processed successfully",
-        subagent_registration_id: subagentRegistrationId,
-        status: "completed",
-        amount_paid: baseAmount
-      }), {
-        status: 200,
-        headers: corsHeaders
-      });
-    }
+
+
+
 
     // =====================================
-    // DATA PACKAGE PURCHASE HANDLER (ONLY HANDLER)
+    // API USER WALLET TOPUP HANDLER
     // =====================================
-    
-    // Extract order data
-    const phone = metadata?.phone ?? "";
-    const packageId = metadata?.package_id ?? "";
-    const network = metadata?.network ?? "";
-    const packageName = metadata?.package_name ?? "";
-    const agentStoreId = metadata?.agent_store_id ?? null;
-    const subagentStoreId = metadata?.subagent_store_id ?? null;
-    const subsubagentStoreId = metadata?.subsubagent_store_id ?? null;
-
-    // Extract size from package name
-    const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
-    const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
-
-    const amountPaid = Number(amount) / 100;
-
-    console.log(`Data package order: phone=${phone}, package=${packageId}, network=${network}, size=${sizeGb}GB`);
-
-    // Check if order already exists
-    const { data: existingOrder } = await supabaseClient
-      .from("orders")
-      .select("id")
-      .eq("paystack_reference", reference)
-      .maybeSingle();
-
-    if (existingOrder) {
-      console.log(`Order already exists for reference ${reference}`);
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Order already verified",
-        order_id: existingOrder.id,
-      }), {
-        status: 200,
-        headers: corsHeaders,
-      });
-    }
-
-    // Get admin base price for this package.
-    // We also fetch `price` (the public-facing price before Paystack fee) so we
-    // can detect whether a custom agent/subagent price was actually set.
-    const { data: packageData } = await supabaseClient
-      .from("data_packages")
-      .select("agent_price, price")
-      .eq("id", packageId)
-      .maybeSingle();
-
-    // adminBasePrice = what the admin charges agents (the wholesale cost, fee-exclusive).
-    // packagePrice   = the public-facing price set by the admin (fee-exclusive).
-    //                  This is what we show as "Sell Price" — not amountPaid which
-    //                  includes the Paystack 1.98% fee and is higher than the listed price.
-    // amountPaid     = what Paystack actually collected (fee-inclusive). Used only for
-    //                  wallet/balance operations, never displayed as a sell price.
-    const adminBasePrice = packageData?.agent_price ? Number(packageData.agent_price) : amountPaid;
-    const packagePrice   = packageData?.price        ? Number(packageData.price)        : adminBasePrice;
-
-    let sellingPrice = packagePrice;  // show the clean listed price, not the fee-inflated total
-    let basePriceForOrder = packagePrice; // default: no profit until custom price confirmed
-    let profitForOrder = 0;
-
-    if (subsubagentStoreId) {
-      // SUB-SUBAGENT ORDER (3-tier: sub-subagent -> subagent -> agent -> admin)
-      const { data: subsubStore } = await supabaseClient
-        .from("sub_subagent_stores")
-        .select("subagent_store_id, agent_store_id, wallet_balance")
-        .eq("id", subsubagentStoreId)
-        .single();
-
-      if (!subsubStore) {
-        return new Response(JSON.stringify({ error: "Sub-subagent store not found" }), {
-          status: 404,
-          headers: corsHeaders,
-        });
-      }
-
-      const parentSubagentStoreId = subsubStore.subagent_store_id;
-      const chainAgentStoreId = subsubStore.agent_store_id;
-
-      // What the sub-subagent paid its parent subagent
-      const { data: ssPrice } = await supabaseClient
-        .from("sub_subagent_package_prices")
-        .select("base_price")
-        .eq("sub_subagent_store_id", subsubagentStoreId)
-        .eq("package_id", packageId)
-        .maybeSingle();
-
-      // What the parent subagent paid the agent
-      const { data: subagentCostPrice } = await supabaseClient
-        .from("subagent_package_prices")
-        .select("base_price")
-        .eq("subagent_store_id", parentSubagentStoreId)
-        .eq("package_id", packageId)
-        .maybeSingle();
-
-      const costThatSubSubAgentPaid = ssPrice?.base_price != null ? Number(ssPrice.base_price) : adminBasePrice;
-      const costThatSubAgentPaid = subagentCostPrice?.base_price != null ? Number(subagentCostPrice.base_price) : adminBasePrice;
-
-      sellingPrice = packagePrice;
-      basePriceForOrder = costThatSubSubAgentPaid;
-      profitForOrder = sellingPrice - costThatSubSubAgentPaid;
-
-      console.log(`Sub-subagent order: selling=${sellingPrice.toFixed(2)}, subsubCost=${costThatSubSubAgentPaid.toFixed(2)}, subagentCost=${costThatSubAgentPaid.toFixed(2)}, adminBase=${adminBasePrice.toFixed(2)}`);
-
-      const { data: order, error: orderError } = await supabaseClient
-        .from("orders")
-        .insert({
-          customer_id: customerId,
-          customer_number: phone,
-          package_id: packageId,
-          network,
-          size_gb: sizeGb,
-          amount: amountPaid,
-          status: "paid",
-          fulfillment_status: "pending",
-          paystack_reference: reference,
-          selling_price: sellingPrice,
-          base_price: basePriceForOrder,
-          profit: profitForOrder,
-          profit_credited: false,
-          agent_store_id: chainAgentStoreId,
-          subagent_store_id: parentSubagentStoreId,
-          sub_subagent_store_id: subsubagentStoreId,
-        })
-        .select("id")
-        .single();
-
-      if (orderError) {
-        console.error("Failed to create sub-subagent order:", orderError);
-        return new Response(JSON.stringify({ error: "Failed to create order", details: orderError.message }), {
-          status: 500,
-          headers: corsHeaders,
-        });
-      }
-
-      console.log(`Sub-subagent order created: ${order.id}`);
-
-      // CREDIT SUB-SUBAGENT WALLET
-      if (profitForOrder > 0 && subsubStore) {
-        const newBalance = (Number(subsubStore.wallet_balance) || 0) + profitForOrder;
-        await supabaseClient
-          .from("sub_subagent_stores")
-          .update({ wallet_balance: newBalance })
-          .eq("id", subsubagentStoreId);
-        console.log(`Sub-subagent wallet credited: +GHS ${profitForOrder.toFixed(2)}, new balance: GHS ${newBalance.toFixed(2)}`);
-      }
-
-      // CREDIT PARENT SUBAGENT COMMISSION
-      if (parentSubagentStoreId) {
-        const parentCommission = costThatSubSubAgentPaid - costThatSubAgentPaid;
-        if (parentCommission > 0) {
-          const { data: parentStore } = await supabaseClient
-            .from("subagent_stores")
-            .select("wallet_balance")
-            .eq("id", parentSubagentStoreId)
-            .single();
-          if (parentStore) {
-            const newBalance = (Number(parentStore.wallet_balance) || 0) + parentCommission;
-            await supabaseClient
-              .from("subagent_stores")
-              .update({ wallet_balance: newBalance })
-              .eq("id", parentSubagentStoreId);
-            console.log(`Parent subagent commission credited: +GHS ${parentCommission.toFixed(2)}, new balance: GHS ${newBalance.toFixed(2)}`);
-          }
-        }
-      }
-
-      // CREDIT AGENT COMMISSION
-      if (chainAgentStoreId) {
-        const agentCommission = costThatSubAgentPaid - adminBasePrice;
-        if (agentCommission > 0) {
-          const { data: agentStore } = await supabaseClient
-            .from("agent_stores")
-            .select("subagent_commission_balance")
-            .eq("id", chainAgentStoreId)
-            .single();
-          if (agentStore) {
-            const newCommissionBalance = (Number(agentStore.subagent_commission_balance) || 0) + agentCommission;
-            await supabaseClient
-              .from("agent_stores")
-              .update({ subagent_commission_balance: newCommissionBalance })
-              .eq("id", chainAgentStoreId);
-            console.log(`Agent commission credited: +GHS ${agentCommission.toFixed(2)}, new balance: GHS ${newCommissionBalance.toFixed(2)}`);
-          }
-        }
-      }
-
-      // Trigger fulfillment
-      try {
-        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fulfill-order`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-          },
-          body: JSON.stringify({ order_id: order.id }),
-        });
-      } catch (err) {
-        console.error("Failed to trigger fulfillment:", err);
-      }
-
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Sub-subagent order processed successfully",
-        order_id: order.id,
-      }), {
-        status: 200,
-        headers: corsHeaders,
-      });
-    } else if (subagentStoreId) {
-      // SUBAGENT ORDER
-      const { data: subagentStore } = await supabaseClient
-        .from("subagent_stores")
-        .select("agent_store_id, wallet_balance")
-        .eq("id", subagentStoreId)
-        .single();
-
-      const parentAgentId = subagentStore?.agent_store_id;
-
-      let agentPriceToSubagent = adminBasePrice;
-      
-      if (parentAgentId && packageId) {
-        const { data: subagentPriceData } = await supabaseClient
-          .from("subagent_package_prices")
-          .select("base_price")
-          .eq("agent_store_id", parentAgentId)
-          .eq("package_id", packageId)
-          .maybeSingle();
-
-        if (subagentPriceData?.base_price) {
-          agentPriceToSubagent = Number(subagentPriceData.base_price);
-        }
-      }
-
-      // Use the clean package price (fee-exclusive) as sell price, not amountPaid
-      sellingPrice = packagePrice;
-      basePriceForOrder = agentPriceToSubagent;
-      profitForOrder = sellingPrice - basePriceForOrder;
-
-      console.log(`Subagent order: selling=${sellingPrice.toFixed(2)}, base=${basePriceForOrder.toFixed(2)}, profit=${profitForOrder.toFixed(2)}`);
-
-      // Create order
-      const { data: order, error: orderError } = await supabaseClient
-        .from("orders")
-        .insert({
-          customer_id: customerId,
-          customer_number: phone,
-          package_id: packageId,
-          network,
-          size_gb: sizeGb,
-          amount: amountPaid,
-          status: "paid",
-          fulfillment_status: "pending",
-          paystack_reference: reference,
-          selling_price: sellingPrice,
-          base_price: basePriceForOrder,
-          profit: profitForOrder,
-          profit_credited: false,
-          agent_store_id: parentAgentId,
-          subagent_store_id: subagentStoreId,
-        })
-        .select("id")
-        .single();
-
-      if (orderError) {
-        console.error("Failed to create order:", orderError);
-        return new Response(JSON.stringify({ error: "Failed to create order" }), {
-          status: 500,
-          headers: corsHeaders
-        });
-      }
-
-      console.log(`Order created: ${order.id}`);
-
-      // CREDIT SUBAGENT WALLET - ONLY ONCE
-      if (profitForOrder > 0 && subagentStore) {
-        const newBalance = (Number(subagentStore.wallet_balance) || 0) + profitForOrder;
-        await supabaseClient
-          .from("subagent_stores")
-          .update({ wallet_balance: newBalance })
-          .eq("id", subagentStoreId);
-
-        console.log(`Subagent wallet credited: +GHS ${profitForOrder.toFixed(2)}, new balance: GHS ${newBalance.toFixed(2)}`);
-
-        // CREDIT AGENT COMMISSION - ONLY ONCE
-        if (parentAgentId) {
-          const agentCommission = agentPriceToSubagent - adminBasePrice;
-          if (agentCommission > 0) {
-            const { data: agentStore } = await supabaseClient
-              .from("agent_stores")
-              .select("subagent_commission_balance")
-              .eq("id", parentAgentId)
-              .single();
-
-            if (agentStore) {
-              const newCommissionBalance = (Number(agentStore.subagent_commission_balance) || 0) + agentCommission;
-              await supabaseClient
-                .from("agent_stores")
-                .update({ subagent_commission_balance: newCommissionBalance })
-                .eq("id", parentAgentId);
-
-              console.log(`Agent commission credited: +GHS ${agentCommission.toFixed(2)}, new balance: GHS ${newCommissionBalance.toFixed(2)}`);
-            }
-          }
-        }
-      }
-
-      // Trigger fulfillment
-      try {
-        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fulfill-order`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-          },
-          body: JSON.stringify({ order_id: order.id }),
-        });
-      } catch (err) {
-        console.error("Failed to trigger fulfillment:", err);
-      }
-
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Subagent order processed",
-        order_id: order.id,
-      }), {
-        status: 200,
-        headers: corsHeaders,
-      });
-
-    } else if (agentStoreId) {
-      // AGENT DIRECT ORDER
-      // Check if the agent has set a custom sell_price for this package.
-      // If they have, profit = amountPaid - adminBasePrice (agent markup).
-      // If they have NOT, profit = 0 (selling at cost — base = amountPaid).
-      const { data: agentCustomPrice } = await supabaseClient
-        .from("agent_package_prices")
-        .select("sell_price")
-        .eq("agent_store_id", agentStoreId)
-        .eq("package_id", packageId)
-        .maybeSingle();
-
-      if (agentCustomPrice?.sell_price != null) {
-        // Agent has set a custom sell price — show that price, profit vs admin base
-        sellingPrice = Number(agentCustomPrice.sell_price);
-        basePriceForOrder = adminBasePrice;
-      } else {
-        // No custom price set — sell at the admin-listed package price, profit = 0
-        sellingPrice = packagePrice;
-        basePriceForOrder = packagePrice;
-      }
-      profitForOrder = sellingPrice - basePriceForOrder;
-
-      console.log(`Agent order: selling=${sellingPrice.toFixed(2)}, base=${basePriceForOrder.toFixed(2)}, profit=${profitForOrder.toFixed(2)}`);
-
-      // Create order
-      const { data: order, error: orderError } = await supabaseClient
-        .from("orders")
-        .insert({
-          customer_id: customerId,
-          customer_number: phone,
-          package_id: packageId,
-          network,
-          size_gb: sizeGb,
-          amount: amountPaid,
-          status: "paid",
-          fulfillment_status: "pending",
-          paystack_reference: reference,
-          selling_price: sellingPrice,
-          base_price: basePriceForOrder,
-          profit: profitForOrder,
-          profit_credited: false,
-          agent_store_id: agentStoreId,
-          subagent_store_id: null,
-        })
-        .select("id")
-        .single();
-
-      if (orderError) {
-        console.error("Failed to create order:", orderError);
-        return new Response(JSON.stringify({ error: "Failed to create order" }), {
-          status: 500,
-          headers: corsHeaders
-        });
-      }
-
-      console.log(`Order created: ${order.id}`);
-
-      // CREDIT AGENT WALLET - ONLY ONCE
-      if (profitForOrder > 0) {
-        const { data: agent } = await supabaseClient
-          .from("agent_stores")
-          .select("wallet_balance")
-          .eq("id", agentStoreId)
-          .single();
-
-        if (agent) {
-          const newBalance = (Number(agent.wallet_balance) || 0) + profitForOrder;
-          await supabaseClient
-            .from("agent_stores")
-            .update({ wallet_balance: newBalance })
-            .eq("id", agentStoreId);
-
-          console.log(`Agent wallet credited: +GHS ${profitForOrder.toFixed(2)}, new balance: GHS ${newBalance.toFixed(2)}`);
-        }
-      }
-
-      // Trigger fulfillment
-      try {
-        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fulfill-order`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-          },
-          body: JSON.stringify({ order_id: order.id }),
-        });
-      } catch (err) {
-        console.error("Failed to trigger fulfillment:", err);
-      }
-
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Agent order processed",
-        order_id: order.id,
-      }), {
-        status: 200,
-        headers: corsHeaders,
-      });
-
-    } else {
-      // DIRECT USER ORDER (no agent)
-      sellingPrice = amountPaid;
-      basePriceForOrder = adminBasePrice;
-      profitForOrder = 0;
-
-      console.log(`Direct order: selling=${sellingPrice.toFixed(2)}, base=${basePriceForOrder.toFixed(2)}`);
-
-      // Create order
-      const { data: order, error: orderError } = await supabaseClient
-        .from("orders")
-        .insert({
-          customer_id: customerId,
-          customer_number: phone,
-          package_id: packageId,
-          network,
-          size_gb: sizeGb,
-          amount: amountPaid,
-          status: "paid",
-          fulfillment_status: "pending",
-          paystack_reference: reference,
-          selling_price: sellingPrice,
-          base_price: basePriceForOrder,
-          profit: 0,
-          profit_credited: true,
-          agent_store_id: null,
-          subagent_store_id: null,
-        })
-        .select("id")
-        .single();
-
-      if (orderError) {
-        console.error("Failed to create order:", orderError);
-        return new Response(JSON.stringify({ error: "Failed to create order" }), {
-          status: 500,
-          headers: corsHeaders
-        });
-      }
-
-      console.log(`Order created: ${order.id}`);
-
-      // Trigger fulfillment
-      try {
-        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fulfill-order`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-          },
-          body: JSON.stringify({ order_id: order.id }),
-        });
-      } catch (err) {
-        console.error("Failed to trigger fulfillment:", err);
-      }
-
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Direct order processed",
-        order_id: order.id,
-      }), {
-        status: 200,
-        headers: corsHeaders,
-      });
-    }
-
-    // =====================================
-    // NORMAL WALLET TOPUP HANDLER
-    // =====================================
-    if (paymentType === "user_wallet_topup") {
+    if (paymentType === "api_wallet_topup") {
+      const apiUserId = metadata.api_user_id;
       const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
-
-      console.log(`[USER WALLET TOPUP] Customer: ${customerId}, Amount: GHS ${baseAmount}`);
-
-      if (!customerId) {
-        console.error("[USER WALLET TOPUP] Missing customer_id");
-        return new Response(JSON.stringify({ error: "Missing customer_id" }), {
+      const feeAmount = Number(metadata.fee_amount) || 0;
+      const totalAmount = Number(amount) / 100;
+      
+      if (!apiUserId) {
+        console.error("[API WALLET TOPUP] Missing api_user_id");
+        return new Response(JSON.stringify({ error: "Missing api_user_id" }), {
           status: 400,
           headers: corsHeaders
         });
       }
 
-      const { data: customer, error: customerError } = await supabaseClient
-        .from("customers")
-        .select("id, wallet_balance, email")
-        .eq("id", customerId)
+      // Check if topup already processed
+      const { data: existingTopup, error: checkError } = await supabaseClient
+        .from("api_wallet_topups")
+        .select("id, status")
+        .eq("paystack_reference", reference)
+        .maybeSingle();
+
+      if (existingTopup) {
+        if (existingTopup.status === "completed") {
+          console.log(`[API WALLET TOPUP] Already processed for reference ${reference}`);
+          return new Response(JSON.stringify({ message: "Topup already processed" }), {
+            status: 200,
+            headers: corsHeaders
+          });
+        }
+        // If status is pending, continue to process
+        console.log(`[API WALLET TOPUP] Found pending topup, continuing...`);
+      }
+
+      // Get current wallet balance
+      const { data: apiUser, error: userError } = await supabaseClient
+        .from("api_users")
+        .select("id, wallet")
+        .eq("id", apiUserId)
         .single();
 
-      if (customerError || !customer) {
-        console.error(`[USER WALLET TOPUP] Customer not found: ${customerId}`);
-        return new Response(JSON.stringify({ error: "Customer not found" }), {
+      if (userError || !apiUser) {
+        console.error(`[API WALLET TOPUP] API user not found: ${apiUserId}`);
+        return new Response(JSON.stringify({ error: "API user not found" }), {
           status: 404,
           headers: corsHeaders
         });
       }
 
-      const currentBalance = Number(customer.wallet_balance) || 0;
+      const currentBalance = Number(apiUser.wallet) || 0;
       const newBalance = currentBalance + baseAmount;
 
-      console.log(`[USER WALLET TOPUP] Updating wallet: ${currentBalance} → ${newBalance}`);
-
+      // Update wallet balance
       const { error: updateError } = await supabaseClient
-        .from("customers")
-        .update({
-          wallet_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", customerId);
+        .from("api_users")
+        .update({ wallet: newBalance })
+        .eq("id", apiUserId);
 
       if (updateError) {
-        console.error(`[USER WALLET TOPUP] Failed to update wallet:`, updateError);
+        console.error(`[API WALLET TOPUP] Failed to update wallet:`, updateError);
         return new Response(JSON.stringify({ error: "Failed to update wallet" }), {
           status: 500,
           headers: corsHeaders
         });
       }
 
-      console.log(`[USER WALLET TOPUP] ✅ Wallet topped up: GHS ${baseAmount}`);
+      // Update topup record to completed
+      const { error: updateTopupError } = await supabaseClient
+        .from("api_wallet_topups")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("paystack_reference", reference);
+
+      if (updateTopupError) {
+        console.error(`[API WALLET TOPUP] Failed to update topup record:`, updateTopupError);
+        // Don't fail the request, wallet is already credited
+      }
+
+      console.log(`[API WALLET TOPUP] ✅ Wallet topped up: GHS ${baseAmount} for user ${apiUserId}`);
+      console.log(`[API WALLET TOPUP] Balance: ${currentBalance} → ${newBalance}`);
 
       return new Response(
         JSON.stringify({
-          message: "Wallet topup processed successfully",
-          customer_id: customerId,
-          email: customer.email,
+          message: "API wallet topup processed successfully",
+          api_user_id: apiUserId,
+          amount_credited: baseAmount,
+          fee_charged: feeAmount,
+          total_paid: totalAmount,
+          previous_balance: currentBalance,
+          new_balance: newBalance,
+          transaction_reference: reference,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+       // =====================================
+    // NORMAL WALLET TOPUP HANDLER FOR CUSTOMERS
+    // =====================================
+    if (paymentType === "user_wallet_topup") {
+      const customerId = metadata.customer_id;
+      const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
+
+      console.log(`[USER WALLET TOPUP] === STARTING ===`);
+      console.log(`[USER WALLET TOPUP] Customer: ${customerId}, Amount: GHS ${baseAmount}, Reference: ${reference}`);
+
+      if (!customerId) {
+        console.error("[USER WALLET TOPUP] Missing customer_id");
+        return new Response(JSON.stringify({ error: "Missing customer_id" }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+
+      // Check if topup already processed (prevent duplicates)
+      const { data: existingTopup } = await supabaseClient
+        .from("user_wallet_topups")
+        .select("id, status")
+        .eq("paystack_reference", reference)
+        .maybeSingle();
+
+      if (existingTopup?.status === "completed") {
+        console.log(`[USER WALLET TOPUP] Already processed for reference ${reference}`);
+        return new Response(JSON.stringify({ message: "Topup already processed" }), {
+          status: 200,
+          headers: corsHeaders,
+        });
+      }
+
+      // Find the customer by PK (id) first, then fall back to auth user_id
+      let customer = null;
+
+      const { data: byId } = await supabaseClient
+        .from("customers")
+        .select("id, wallet_balance, email")
+        .eq("id", customerId)
+        .maybeSingle();
+
+      if (byId) {
+        customer = byId;
+      } else {
+        const { data: byUserId } = await supabaseClient
+          .from("customers")
+          .select("id, wallet_balance, email")
+          .eq("user_id", customerId)
+          .maybeSingle();
+        customer = byUserId;
+      }
+
+      if (!customer) {
+        console.error(`[USER WALLET TOPUP] Customer not found for id/user_id: ${customerId}`);
+        return new Response(JSON.stringify({ error: "Customer not found" }), {
+          status: 404,
+          headers: corsHeaders,
+        });
+      }
+
+      const realCustomerId = customer.id;
+      const currentBalance = Number(customer.wallet_balance) || 0;
+      const newBalance = currentBalance + baseAmount;
+
+      console.log(`[USER WALLET TOPUP] Updating wallet for ${customer.email}`);
+      console.log(`[USER WALLET TOPUP] Balance: ${currentBalance} → ${newBalance}`);
+
+      // Update customer wallet_balance (always use the real PK)
+      const { error: updateError } = await supabaseClient
+        .from("customers")
+        .update({
+          wallet_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", realCustomerId);
+
+      if (updateError) {
+        console.error(`[USER WALLET TOPUP] Failed to update wallet:`, updateError);
+        return new Response(JSON.stringify({ error: "Failed to update wallet" }), {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+
+      // Update or create the topup record as completed
+      if (existingTopup) {
+        await supabaseClient
+          .from("user_wallet_topups")
+          .update({
+            status: "completed",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("paystack_reference", reference);
+      } else {
+        // No pending record existed — create a completed one so history is accurate
+        await supabaseClient
+          .from("user_wallet_topups")
+          .insert({
+            customer_id: realCustomerId,
+            amount: baseAmount,
+            paystack_reference: reference,
+            status: "completed",
+            created_at: new Date().toISOString(),
+          });
+      }
+
+      console.log(`[USER WALLET TOPUP] ✅ Wallet topped up: GHS ${baseAmount}`);
+      console.log(`[USER WALLET TOPUP] === COMPLETED ===`);
+
+      return new Response(
+        JSON.stringify({
+          message: "Customer wallet topup processed successfully",
+          customer_id: realCustomerId,
+          customer_email: customer.email,
           amount_credited: baseAmount,
           previous_balance: currentBalance,
           new_balance: newBalance,
@@ -745,11 +486,572 @@ Deno.serve(async (req) => {
       );
     }
 
+
+
+
+
+
+
+
+    // =====================================
+    // AFA REGISTRATION PAYMENT HANDLER
+    // =====================================
+    if (paymentType === "afa_registration") {
+      const {
+        fullName, phoneNumber, idNumber, dateOfBirth,
+        town, occupation, region, cropProduce,
+        agent_store_id, subagent_store_id,
+      } = metadata;
+
+      const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
+      const ******** = Deno.env.get("CLEDANET_API_KEY");
+      const callbackUrl = metadata.callback_url || `${Deno.env.get("SUPABASE_URL")}/functions/v1/afa-webhook`;
+
+      if (!fullName || !phoneNumber || !idNumber || !dateOfBirth || !town || !occupation || !region || !cropProduce) {
+        return new Response(JSON.stringify({ error: "Missing required AFA registration fields" }), {
+          status: 400, headers: corsHeaders,
+        });
+      }
+
+      const { data: existingReg } = await supabaseClient
+        .from("afa_registrations")
+        .select("id, status")
+        .eq("paystack_reference", reference)
+        .maybeSingle();
+
+      if (existingReg?.status === "completed" || existingReg?.status === "failed") {
+        return new Response(JSON.stringify({ message: "AFA registration already processed" }), {
+          status: 200, headers: corsHeaders,
+        });
+      }
+
+      const { data: afaReg, error: updateError } = await supabaseClient
+        .from("afa_registrations")
+        .update({ registration_status: "processing", amount_paid: baseAmount, updated_at: new Date().toISOString() })
+        .eq("paystack_reference", reference)
+        .select()
+        .single();
+
+      let registrationToUse = afaReg;
+
+      if (updateError || !afaReg) {
+        const { data: newReg, error: insertError } = await supabaseClient
+          .from("afa_registrations")
+          .insert({
+            customer_name: fullName, customer_phone: phoneNumber, customer_id: idNumber,
+            date_of_birth: dateOfBirth, town, occupation, region, crop: cropProduce,
+            agent_store_id: agent_store_id || null, subagent_store_id: subagent_store_id || null,
+            paystack_reference: reference, amount_paid: baseAmount,
+            registration_status: "processing", updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          return new Response(JSON.stringify({ error: "Failed to create AFA registration" }), {
+            status: 500, headers: corsHeaders,
+          });
+        }
+        registrationToUse = newReg;
+      }
+
+      let profitAmount = 0;
+      const DEFAULT_AFA_PRICE = parseFloat(Deno.env.get("DEFAULT_AFA_PRICE") || "0");
+
+      if (subagent_store_id) {
+        const { data: sub } = await supabaseClient
+          .from("subagent_stores").select("afa_bundle_price").eq("id", subagent_store_id).single();
+        if (sub?.afa_bundle_price) profitAmount = baseAmount - sub.afa_bundle_price;
+      } else if (agent_store_id) {
+        const { data: ag } = await supabaseClient
+          .from("agent_stores").select("afa_bundle_price").eq("id", agent_store_id).single();
+        if (ag?.afa_bundle_price) profitAmount = ag.afa_bundle_price - DEFAULT_AFA_PRICE;
+      }
+
+      if (profitAmount > 0 && agent_store_id) {
+        const { data: ag } = await supabaseClient
+          .from("agent_stores").select("wallet_balance").eq("id", agent_store_id).single();
+        if (ag) {
+          await supabaseClient
+            .from("agent_stores")
+            .update({ wallet_balance: (Number(ag.wallet_balance) || 0) + profitAmount })
+            .eq("id", agent_store_id);
+        }
+      }
+
+      let externalApiResponse: any;
+      let externalApiSuccess = false;
+
+      try {
+        const res = await fetch("https://backend.mycledanet.com/api/afa-registration", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": ******** || "" },
+          body: JSON.stringify({ fullName, phoneNumber, idNumber, dateOfBirth, town, occupation, region, cropProduce, callback: callbackUrl }),
+        });
+        externalApiResponse = await res.json();
+        externalApiSuccess = res.ok;
+      } catch (err) {
+        console.error("AFA external API failed:", err);
+      }
+
+      await supabaseClient
+        .from("afa_registrations")
+        .update({ registration_status: externalApiSuccess ? "completed" : "failed", updated_at: new Date().toISOString() })
+        .eq("id", registrationToUse.id);
+
+      return new Response(JSON.stringify({
+        message: externalApiSuccess ? "AFA registration successful" : "AFA registration failed",
+        afa_registration_id: registrationToUse.id,
+        registration_status: externalApiSuccess ? "completed" : "failed",
+        profit: profitAmount,
+      }), { status: 200, headers: corsHeaders });
+    }
+
+    // =====================================
+    // TRANSFER EVENTS HANDLER
+    // =====================================
+    if (["transfer.success", "transfer.failed", "transfer.reversed"].includes(payload.event)) {
+      const { reference: txRef, transfer_code } = payload.data;
+      const { data: payoutReq } = await supabaseClient
+        .from("payout_requests").select("id, status").eq("paystack_reference", txRef).maybeSingle();
+
+      if (!payoutReq) return new Response(JSON.stringify({ message: "Payout not found" }), { status: 200, headers: corsHeaders });
+      if (["success", "failed"].includes(payoutReq.status)) return new Response(JSON.stringify({ message: "Already processed" }), { status: 200, headers: corsHeaders });
+
+      const newStatus = payload.event === "transfer.success" ? "success" : "failed";
+      const upd: any = { status: newStatus, completed_at: new Date().toISOString(), paystack_response: payload.data };
+      if (payload.event === "transfer.success") upd.transfer_code = transfer_code;
+      else upd.failure_reason = payload.data?.failure_reason || "Transfer failed";
+
+      await supabaseClient.from("payout_requests").update(upd).eq("id", payoutReq.id);
+      return new Response(JSON.stringify({ message: `Transfer ${payload.event} processed` }), { status: 200, headers: corsHeaders });
+    }
+
+    // =====================================
+    // AGENT REGISTRATION PAYMENT HANDLER
+    // =====================================
+    if (paymentType === "agent_registration") {
+      const agentStoreId = metadata.agent_store_id;
+      if (!agentStoreId) return new Response(JSON.stringify({ error: "Missing agent store ID" }), { status: 400, headers: corsHeaders });
+
+      const { data: store } = await supabaseClient.from("agent_stores").select("approved").eq("id", agentStoreId).single();
+      if (store?.approved) return new Response(JSON.stringify({ message: "Already processed" }), { status: 200, headers: corsHeaders });
+
+      await supabaseClient.from("agent_stores").update({ approved: true }).eq("id", agentStoreId);
+      return new Response(JSON.stringify({ message: "Agent store approved", agent_store_id: agentStoreId }), { status: 200, headers: corsHeaders });
+    }
+
+    // =====================================
+    // WALLET TOPUP HANDLER (Agent)
+    // =====================================
+    if (paymentType === "wallet_topup") {
+      const agentStoreId = metadata.agent_store_id;
+      const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
+      if (!agentStoreId) return new Response(JSON.stringify({ error: "Missing agent store ID" }), { status: 400, headers: corsHeaders });
+
+      const { data: existing } = await supabaseClient.from("wallet_topups").select("id").eq("paystack_reference", reference).maybeSingle();
+      if (existing) return new Response(JSON.stringify({ message: "Topup already processed" }), { status: 200, headers: corsHeaders });
+
+      const { data: store } = await supabaseClient.from("agent_stores").select("wallet_balance").eq("id", agentStoreId).single();
+      if (store) {
+        await supabaseClient.from("agent_stores").update({ wallet_balance: (Number(store.wallet_balance) || 0) + baseAmount }).eq("id", agentStoreId);
+        await supabaseClient.from("wallet_topups").insert({ agent_store_id: agentStoreId, amount: baseAmount, paystack_reference: reference });
+      }
+      return new Response(JSON.stringify({ message: "Wallet topup processed" }), { status: 200, headers: corsHeaders });
+    }
+
+    // =====================================
+    // SUBAGENT WALLET TOPUP HANDLER
+    // =====================================
+    if (paymentType === "subagent_wallet_topup") {
+      const subagentStoreId = metadata.subagent_store_id;
+      const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
+      if (!subagentStoreId) return new Response(JSON.stringify({ error: "Missing subagent store ID" }), { status: 400, headers: corsHeaders });
+
+      const { data: existing } = await supabaseClient.from("subagent_wallet_topups").select("id").eq("paystack_reference", reference).maybeSingle();
+      if (existing) return new Response(JSON.stringify({ message: "Topup already processed" }), { status: 200, headers: corsHeaders });
+
+      const { data: store } = await supabaseClient.from("subagent_stores").select("wallet_balance").eq("id", subagentStoreId).single();
+      if (store) {
+        await supabaseClient.from("subagent_stores").update({ wallet_balance: (Number(store.wallet_balance) || 0) + baseAmount }).eq("id", subagentStoreId);
+        await supabaseClient.from("subagent_wallet_topups").insert({ subagent_store_id: subagentStoreId, amount: baseAmount, paystack_reference: reference });
+      }
+      return new Response(JSON.stringify({ message: "Subagent wallet topup processed" }), { status: 200, headers: corsHeaders });
+    }
+    // =====================================
+    // SUBSUBAGENT WALLET TOPUP HANDLER
+    // =====================================
+    if (paymentType === "subsubagent_wallet_topup") {
+      const subsubagentStoreId = metadata.subsubagent_store_id;
+      const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
+      if (!subsubagentStoreId) return new Response(JSON.stringify({ error: "Missing subsubagent store ID" }), { status: 400, headers: corsHeaders });
+
+      const { data: existing } = await supabaseClient.from("sub_subagent_wallet_topups").select("id").eq("paystack_reference", reference).maybeSingle();
+      if (existing) return new Response(JSON.stringify({ message: "Topup already processed" }), { status: 200, headers: corsHeaders });
+
+           const { data: store } = await supabaseClient.from("sub_subagent_stores").select("wallet_balance").eq("id", subsubagentStoreId).single();
+      if (store) {
+        await supabaseClient.from("sub_subagent_stores").update({ wallet_balance: (Number(store.wallet_balance) || 0) + baseAmount }).eq("id", subsubagentStoreId);
+        await supabaseClient.from("sub_subagent_wallet_topups").insert({ sub_subagent_store_id: subsubagentStoreId, amount: baseAmount, paystack_reference: reference });
+       
+      }
+      return new Response(JSON.stringify({ message: "Subsubagent wallet topup processed" }), { status: 200, headers: corsHeaders });
+    }
+    // =====================================
+    // BULK ORDER PAYMENT HANDLER
+    // =====================================
+    if (paymentType === "bulk_order") {
+      const network = metadata.network;
+      const recipientsJson = metadata.recipients;
+      const agentStoreId = metadata.agent_store_id || null;
+      const subagentStoreId = metadata.subagent_store_id || null;
+
+      if (!recipientsJson || !network) return new Response(JSON.stringify({ error: "Missing bulk order data" }), { status: 400, headers: corsHeaders });
+
+      const { data: existingBulk } = await supabaseClient.from("orders").select("id").like("paystack_reference", `${reference}%`).maybeSingle();
+      if (existingBulk) return new Response(JSON.stringify({ message: "Bulk order already processed" }), { status: 200, headers: corsHeaders });
+
+      let recipients: Array<{ phone: string; size_gb: number; package_id: string; price: number }> = [];
+      try { recipients = JSON.parse(recipientsJson); } catch { return new Response(JSON.stringify({ error: "Invalid recipients data" }), { status: 400, headers: corsHeaders }); }
+
+      const { data: pkgData } = await supabaseClient.from("data_packages").select("id, agent_price, price");
+      const packagePrices: Record<string, { agent_price: number; price: number }> = {};
+      if (pkgData) for (const p of pkgData) packagePrices[p.id] = { agent_price: Number(p.agent_price) || 0, price: Number(p.price) || 0 };
+
+      let parentAgentId: string | null = null;
+      let subagentPrices: Record<string, number> = {};
+
+      if (subagentStoreId) {
+        const { data: ss } = await supabaseClient.from("subagent_stores").select("agent_store_id").eq("id", subagentStoreId).single();
+        if (ss) {
+          parentAgentId = ss.agent_store_id;
+          const { data: sp } = await supabaseClient.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", parentAgentId);
+          if (sp) for (const s of sp) subagentPrices[s.package_id] = Number(s.base_price) || 0;
+        }
+      }
+
+      const createdOrders: string[] = [];
+      const failedOrders: string[] = [];
+      let totalAgentProfit = 0, totalSubagentProfit = 0, totalAgentCommission = 0;
+
+      for (let i = 0; i < recipients.length; i++) {
+        const r = recipients[i];
+        try {
+          const pkg = packagePrices[r.package_id] || { agent_price: 0, price: r.price };
+          const adminBase = pkg.agent_price || pkg.price;
+          let base = adminBase, profit = 0;
+
+          if (subagentStoreId && parentAgentId) {
+            const agentToSub = subagentPrices[r.package_id] || adminBase;
+            base = agentToSub; profit = r.price - agentToSub;
+            totalSubagentProfit += profit; totalAgentCommission += agentToSub - adminBase;
+          } else if (agentStoreId) {
+            profit = r.price - adminBase; totalAgentProfit += profit;
+          }
+
+          const od: Record<string, unknown> = {
+            customer_number: r.phone, package_id: r.package_id, network,
+            size_gb: r.size_gb, amount: r.price, status: "paid", fulfillment_status: "pending",
+            paystack_reference: `${reference}_${i + 1}`, payment_method: "paystack",
+            selling_price: r.price, base_price: base, profit,
+          };
+          if (agentStoreId) od.agent_store_id = agentStoreId;
+          if (subagentStoreId) od.subagent_store_id = subagentStoreId;
+
+          const { data: ord, error: oe } = await supabaseClient.from("orders").insert(od).select("id").single();
+          if (oe) { failedOrders.push(r.phone); continue; }
+          createdOrders.push(ord.id);
+
+          try {
+            await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fulfill-order`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+              body: JSON.stringify({ order_id: ord.id }),
+            });
+          } catch (e) { console.error(`Fulfill failed:`, e); }
+        } catch { failedOrders.push(r.phone); }
+      }
+
+      if (subagentStoreId && totalSubagentProfit > 0) {
+        const { data: ss } = await supabaseClient.from("subagent_stores").select("wallet_balance").eq("id", subagentStoreId).single();
+        if (ss) await supabaseClient.from("subagent_stores").update({ wallet_balance: (Number(ss.wallet_balance) || 0) + totalSubagentProfit }).eq("id", subagentStoreId);
+      }
+      if (parentAgentId && totalAgentCommission > 0) {
+        const { data: as } = await supabaseClient.from("agent_stores").select("subagent_commission_balance").eq("id", parentAgentId).single();
+        if (as) await supabaseClient.from("agent_stores").update({ subagent_commission_balance: (Number(as.subagent_commission_balance) || 0) + totalAgentCommission }).eq("id", parentAgentId);
+      }
+      if (agentStoreId && !subagentStoreId && totalAgentProfit > 0) {
+        const { data: as } = await supabaseClient.from("agent_stores").select("wallet_balance").eq("id", agentStoreId).single();
+        if (as) await supabaseClient.from("agent_stores").update({ wallet_balance: (Number(as.wallet_balance) || 0) + totalAgentProfit }).eq("id", agentStoreId);
+      }
+
+      return new Response(JSON.stringify({ message: "Bulk order processed", created_orders: createdOrders.length, failed_orders: failedOrders.length }), { status: 200, headers: corsHeaders });
+    }
+
+    // =====================================
+    // DATA PACKAGE PURCHASE HANDLER (Default)
+    // =====================================
+    console.log(`[DATA PACKAGE] Processing regular package purchase`);
+
+    const phone = metadata?.phone ?? "";
+    const package_id = metadata?.package_id ?? "";
+    const network = metadata?.network ?? "";
+    const package_name = metadata?.package_name ?? "";
+    const agent_store_id = metadata?.agent_store_id ?? null;
+    const subagent_store_id = metadata?.subagent_store_id ?? null;
+    const subsubagent_store_id = metadata?.subsubagent_store_id ?? null;
+    const sizeMatch = package_name.match(/(\d+(?:\.\d+)?)/);
+    const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
+    const amountPaid = Number(amount) / 100;
+    const roundedBaseAmount = Math.round((amountPaid - amountPaid * (PAYSTACK_FEE_PERCENT / 100)) * 100) / 100;
+
+    const { data: existingOrder } = await supabaseClient.from("orders").select("id").eq("paystack_reference", reference).maybeSingle();
+    if (existingOrder) return new Response(JSON.stringify({ message: "Order already processed", order_id: existingOrder.id }), { status: 200, headers: corsHeaders });
+
+    const { data: pkgData } = await supabaseClient.from("data_packages").select("agent_price").eq("id", package_id).single();
+    const adminBasePrice = pkgData?.agent_price ? Number(pkgData.agent_price) : 0;
+
+    let basePriceForOrder = adminBasePrice;
+    let profitForOrder = 0;
+
+          if (subsubagent_store_id) {
+      // ========== SUBSUBAGENT PURCHASE (3-tier split) ==========
+      const { data: subsubStore } = await supabaseClient
+        .from("sub_subagent_stores")
+        .select("subagent_store_id, agent_store_id, wallet_balance")
+        .eq("id", subsubagent_store_id)
+        .single();
+
+      if (!subsubStore) {
+        return new Response(JSON.stringify({ error: "SubSubagent store not found" }), { status: 404, headers: corsHeaders });
+      }
+
+      const parentSubagentId = subsubStore.subagent_store_id;
+      const agentId = subsubStore.agent_store_id;
+
+      // What the SUBSUBAGENT pays the SUBAGENT (subsubagent's cost, e.g. 4.70).
+      // Prefer a row set specifically for this subsubagent, else the subagent's
+      // template row (sub_subagent_store_id IS NULL). Column: base_price.
+      let subsubCost = adminBasePrice;
+      if (parentSubagentId) {
+        const { data: costRows } = await supabaseClient
+          .from("sub_subagent_package_prices")
+          .select("base_price, sub_subagent_store_id")
+          .eq("subagent_store_id", parentSubagentId)
+          .eq("package_id", package_id);
+        if (costRows && costRows.length) {
+          const specific = costRows.find((r) => r.sub_subagent_store_id === subsubagent_store_id);
+          const template = costRows.find((r) => r.sub_subagent_store_id === null);
+          const chosen = specific || template;
+          if (chosen && chosen.base_price != null) subsubCost = Number(chosen.base_price);
+        }
+      }
+
+      // What the SUBAGENT pays the AGENT (subagent's cost, e.g. 4.20).
+      let agentPriceToSubagent = adminBasePrice;
+      if (parentSubagentId) {
+        const { data: subPrice } = await supabaseClient
+          .from("subagent_package_prices")
+          .select("base_price")
+          .eq("subagent_store_id", parentSubagentId)
+          .eq("package_id", package_id)
+          .maybeSingle();
+        if (subPrice?.base_price != null) agentPriceToSubagent = Number(subPrice.base_price);
+      }
+
+      // What the AGENT charges the subagent (agent's sell price, e.g. 4.20) for agent commission.
+      let agentSellPrice = adminBasePrice;
+      if (agentId) {
+        const { data: agentPrice } = await supabaseClient
+          .from("agent_package_prices")
+          .select("sell_price")
+          .eq("agent_store_id", agentId)
+          .eq("package_id", package_id)
+          .maybeSingle();
+        if (agentPrice?.sell_price != null) agentSellPrice = Number(agentPrice.sell_price);
+      }
+
+      const subsubagentSellingPrice = roundedBaseAmount;         // customer pays (e.g. 5.00)
+      basePriceForOrder = subsubCost;                            // subsubagent's cost (e.g. 4.70)
+      profitForOrder = subsubagentSellingPrice - subsubCost;     // subsubagent profit (e.g. 0.30)
+
+      console.log(`[SUBSUBAGENT PURCHASE] selling=${subsubagentSellingPrice.toFixed(2)}, subsubCost=${subsubCost.toFixed(2)}, agentToSub=${agentPriceToSubagent.toFixed(2)}, adminBase=${adminBasePrice.toFixed(2)}`);
+
+      // === CREDIT SUBSUBAGENT PROFIT -> sub_subagent_stores.wallet_balance ===
+      if (profitForOrder > 0) {
+        const newBal = (Number(subsubStore.wallet_balance) || 0) + profitForOrder;
+        await supabaseClient
+          .from("sub_subagent_stores")
+          .update({ wallet_balance: newBal })
+          .eq("id", subsubagent_store_id);
+        console.log(`[SUBSUBAGENT PURCHASE] SubSubagent profit +${profitForOrder} (balance ${newBal})`);
+      }
+
+      // === CREDIT SUBAGENT COMMISSION -> subagent_stores.wallet_balance ===
+      if (parentSubagentId) {
+        const subagentCommission = subsubCost - agentPriceToSubagent;
+        if (subagentCommission > 0) {
+          const { data: parentSub } = await supabaseClient
+            .from("subagent_stores")
+            .select("wallet_balance")
+            .eq("id", parentSubagentId)
+            .single();
+          if (parentSub) {
+            const newBal = (Number(parentSub.wallet_balance) || 0) + subagentCommission;
+            await supabaseClient
+              .from("subagent_stores")
+              .update({ wallet_balance: newBal })
+              .eq("id", parentSubagentId);
+            console.log(`[SUBSUBAGENT PURCHASE] Subagent commission +${subagentCommission} (balance ${newBal})`);
+          }
+        }
+      }
+
+      // === CREDIT AGENT COMMISSION -> agent_stores.subagent_commission_balance ===
+      if (agentId) {
+        const agentCommission = agentSellPrice - adminBasePrice;
+        if (agentCommission > 0) {
+          const { data: agentStore } = await supabaseClient
+            .from("agent_stores")
+            .select("subagent_commission_balance")
+            .eq("id", agentId)
+            .single();
+          if (agentStore) {
+            const newBal = (Number(agentStore.subagent_commission_balance) || 0) + agentCommission;
+            await supabaseClient
+              .from("agent_stores")
+              .update({ subagent_commission_balance: newBal })
+              .eq("id", agentId);
+            console.log(`[SUBSUBAGENT PURCHASE] Agent commission +${agentCommission} (balance ${newBal})`);
+          }
+        }
+      }
+
+    } else if (subagent_store_id) {
+     
+      // ========== SUBAGENT PURCHASE ==========
+      const { data: subagentStore } = await supabaseClient
+        .from("subagent_stores")
+        .select("agent_store_id, wallet_balance")
+        .eq("id", subagent_store_id)
+        .single();
+
+      if (!subagentStore) {
+        return new Response(JSON.stringify({ error: "Subagent store not found" }), { status: 404, headers: corsHeaders });
+      }
+
+      // What Subagent PAID to Agent
+      const { data: packagePrice } = await supabaseClient
+        .from("subagent_package_prices")
+        .select("base_price")
+        .eq("subagent_store_id", subagent_store_id)
+        .eq("package_id", package_id)
+        .maybeSingle();
+
+      const agentPriceToSubagent = packagePrice?.base_price != null 
+        ? Number(packagePrice.base_price) 
+        : adminBasePrice;
+      
+      const subagentSellingPrice = roundedBaseAmount;
+      basePriceForOrder = agentPriceToSubagent;
+      profitForOrder = subagentSellingPrice - basePriceForOrder;
+
+      console.log(`[SUBAGENT PURCHASE] selling=${subagentSellingPrice.toFixed(2)}, cost=${basePriceForOrder.toFixed(2)}, profit=${profitForOrder.toFixed(2)}`);
+
+      // === CREDIT SUBAGENT PROFIT ===
+      if (profitForOrder > 0) {
+        const newWalletBalance = (Number(subagentStore.wallet_balance) || 0) + profitForOrder;
+        await supabaseClient
+          .from("subagent_stores")
+          .update({ wallet_balance: newWalletBalance })
+          .eq("id", subagent_store_id);
+        
+        console.log(`[SUBAGENT PURCHASE] Subagent ${subagent_store_id} profit: +${profitForOrder}, new balance: ${newWalletBalance}`);
+      }
+
+      // === CREDIT AGENT COMMISSION ===
+      if (subagentStore.agent_store_id) {
+        const { data: agentPrice } = await supabaseClient
+          .from("agent_package_prices")
+          .select("sell_price")
+          .eq("agent_store_id", subagentStore.agent_store_id)
+          .eq("package_id", package_id)
+          .maybeSingle();
+
+        const agentCommission = (agentPrice?.sell_price != null 
+          ? Number(agentPrice.sell_price) 
+          : adminBasePrice) - adminBasePrice;
+        
+        if (agentCommission > 0) {
+          const { data: agentStore } = await supabaseClient
+            .from("agent_stores")
+            .select("subagent_commission_balance")
+            .eq("id", subagentStore.agent_store_id)
+            .single();
+          
+          if (agentStore) {
+            const newBalance = (Number(agentStore.subagent_commission_balance) || 0) + agentCommission;
+            await supabaseClient
+              .from("agent_stores")
+              .update({ subagent_commission_balance: newBalance })
+              .eq("id", subagentStore.agent_store_id);
+            
+            console.log(`[SUBAGENT PURCHASE] Agent ${subagentStore.agent_store_id} commission: +${agentCommission}, new balance: ${newBalance}`);
+          }
+        }
+      }
+
+    } else if (agent_store_id) {
+      // ========== AGENT PURCHASE ==========
+      basePriceForOrder = adminBasePrice;
+      profitForOrder = roundedBaseAmount - adminBasePrice;
+
+      if (profitForOrder > 0) {
+        const { data: agentStore } = await supabaseClient
+          .from("agent_stores")
+          .select("wallet_balance")
+          .eq("id", agent_store_id)
+          .single();
+
+        if (agentStore) {
+          const newBalance = (Number(agentStore.wallet_balance) || 0) + profitForOrder;
+          await supabaseClient
+            .from("agent_stores")
+            .update({ wallet_balance: newBalance })
+            .eq("id", agent_store_id);
+          
+          console.log(`[AGENT PURCHASE] Agent ${agent_store_id} profit: +${profitForOrder}, new balance: ${newBalance}`);
+        }
+      }
+    }
+
+    const orderData: Record<string, unknown> = {
+      customer_number: phone, package_id, network, size_gb: sizeGb,
+      amount: roundedBaseAmount, status: "paid", fulfillment_status: "pending",
+      paystack_reference: reference, payment_method: "paystack",
+      selling_price: roundedBaseAmount, base_price: basePriceForOrder, profit: profitForOrder,
+    };
+    if (agent_store_id) orderData.agent_store_id = agent_store_id;
+    if (subagent_store_id) orderData.subagent_store_id = subagent_store_id;
+        if (subsubagent_store_id) orderData.sub_subagent_store_id = subsubagent_store_id;
+    const { data: order, error: orderInsertError } = await supabaseClient.from("orders").insert(orderData).select("id").single();
+    if (orderInsertError) {
+      console.error("Failed to insert order:", orderInsertError);
+      return new Response(JSON.stringify({ error: "Failed to create order" }), { status: 500, headers: corsHeaders });
+    }
+
+    try {
+      await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fulfill-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+        body: JSON.stringify({ order_id: order.id }),
+      });
+    } catch (err) { console.error("Fulfill trigger failed:", err); }
+
+    return new Response(JSON.stringify({ message: "Payment processed successfully", order_id: order.id }), { status: 200, headers: corsHeaders });
+
   } catch (error) {
     console.error("Unexpected error:", error);
-    return new Response(JSON.stringify({ error: "Webhook processing failed" }), {
-      status: 500,
-      headers: corsHeaders
-    });
+    return new Response(JSON.stringify({ error: "Webhook processing failed" }), { status: 500, headers: corsHeaders });
   }
 });
