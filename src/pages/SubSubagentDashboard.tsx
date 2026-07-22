@@ -159,6 +159,9 @@ const SubSubagentDashboard = () => {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [packages, setPackages] = useState<any[]>([]);
   const [basePrices, setBasePrices] = useState<Record<string, number>>({});
+  // What the parent SUBAGENT pays their AGENT per package (the agent->subagent price).
+  // Kept separate from basePrices so wallet purchases can split profit across all 3 tiers.
+  const [agentToSubagentCost, setAgentToSubagentCost] = useState<Record<string, number>>({});
   const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [markupPercent, setMarkupPercent] = useState("");
@@ -403,12 +406,16 @@ const SubSubagentDashboard = () => {
         (packagesResult.data || []).forEach((p: any) => {
           basePriceMap[p.id] = p.price;
         });
-        // 2. Fall back to the parent subagent's own cost from their agent
+        // 2. Fall back to the parent subagent's own cost from their agent.
+        //    Also record it separately (agent->subagent price) for 3-tier profit split.
+        const agentToSubMap: Record<string, number> = {};
         (parentSubagentCostResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
+            agentToSubMap[p.package_id] = Number(p.base_price);
           }
         });
+        setAgentToSubagentCost(agentToSubMap);
         // 3. Override with the parent subagent's sub-subagent template price (highest priority)
         (parentTemplatePricesResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
@@ -513,12 +520,16 @@ const SubSubagentDashboard = () => {
         (packagesResult.data || []).forEach((p: any) => {
           basePriceMap[p.id] = p.price;
         });
-        // 2. Fall back to the parent subagent's own cost from their agent
+        // 2. Fall back to the parent subagent's own cost from their agent.
+        //    Also record it separately (agent->subagent price) for 3-tier profit split.
+        const agentToSubMap: Record<string, number> = {};
         (parentSubagentCostResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
+            agentToSubMap[p.package_id] = Number(p.base_price);
           }
         });
+        setAgentToSubagentCost(agentToSubMap);
         // 3. Override with the parent subagent's sub-subagent template price (highest priority)
         (parentTemplatePricesResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
@@ -1205,39 +1216,54 @@ const SubSubagentDashboard = () => {
         throw orderError;
       }
       
-      // ADD AGENT PROFIT for wallet purchases
-      // Agent profit = subagent_price (what they charge subagent) - admin_agent_price (what admin charges agent)
-      if (subagentStore.agent_store_id) {
-        try {
-          // Get admin base price (agent_price field in packages)
-          const adminBasePrice = buyingPkg.agent_price ? Number(buyingPkg.agent_price) : 0;
-          const agentProfit = price - adminBasePrice;
-          
-          console.log(`[v0] Wallet purchase - Subagent price: ${price}, Admin agent price: ${adminBasePrice}, Agent profit: ${agentProfit}`);
-          
-          if (agentProfit > 0) {
-            // Get agent's current subagent commission balance (Profit from Subagents)
-            const { data: agentStore, error: agentFetchError } = await supabase
+      // 3-TIER PROFIT SPLIT for a sub-subagent wallet purchase.
+      // The sub-subagent buys at THEIR cost (`price`), so they earn no margin here,
+      // but the upstream subagent and agent still earn their fixed margins:
+      //   agentToSub   = what the subagent pays the agent           (e.g. 4.20)
+      //   price        = what the sub-subagent pays the subagent     (e.g. 4.70)
+      //   adminBase    = what the agent pays admin                   (e.g. 3.85)
+      //   subagentCommission = price - agentToSub                    (e.g. 0.50)
+      //   agentCommission    = agentToSub - adminBase                (e.g. 0.35)
+      try {
+        const adminBasePrice = buyingPkg.agent_price ? Number(buyingPkg.agent_price) : 0;
+        const agentToSub = agentToSubagentCost[buyingPkg.id] ?? adminBasePrice;
+
+        // --- Parent SUBAGENT commission -> their wallet_balance ---
+        if (subagentStore.subagent_store_id) {
+          const subagentCommission = price - agentToSub;
+          if (subagentCommission > 0) {
+            const { data: parentSub } = await supabase
+              .from("subagent_stores")
+              .select("wallet_balance")
+              .eq("id", subagentStore.subagent_store_id)
+              .single();
+            if (parentSub) {
+              const newBal = (Number(parentSub.wallet_balance) || 0) + subagentCommission;
+              await supabase.from("subagent_stores").update({ wallet_balance: newBal }).eq("id", subagentStore.subagent_store_id);
+              console.log(`[v0] Wallet purchase - Subagent commission: +${subagentCommission} (new balance: ${newBal})`);
+            }
+          }
+        }
+
+        // --- AGENT commission -> their subagent_commission_balance ---
+        if (subagentStore.agent_store_id) {
+          const agentCommission = agentToSub - adminBasePrice;
+          if (agentCommission > 0) {
+            const { data: agentStore } = await supabase
               .from("agent_stores")
               .select("subagent_commission_balance")
               .eq("id", subagentStore.agent_store_id)
               .single();
-            
-            if (agentStore && !agentFetchError) {
-              const newCommissionBalance = (agentStore.subagent_commission_balance || 0) + agentProfit;
-              
-              await supabase
-                .from("agent_stores")
-                .update({ subagent_commission_balance: newCommissionBalance })
-                .eq("id", subagentStore.agent_store_id);
-              
-              console.log(`[v0] Added agent profit: +${agentProfit} to Profit from Subagents (new balance: ${newCommissionBalance})`);
+            if (agentStore) {
+              const newCommissionBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
+              await supabase.from("agent_stores").update({ subagent_commission_balance: newCommissionBalance }).eq("id", subagentStore.agent_store_id);
+              console.log(`[v0] Wallet purchase - Agent commission: +${agentCommission} (new balance: ${newCommissionBalance})`);
             }
           }
-        } catch (profitErr) {
-          console.error("[v0] Error adding agent profit:", profitErr);
-          // Don't throw - order already created successfully, just log the error
         }
+      } catch (profitErr) {
+        console.error("[v0] Error distributing profit:", profitErr);
+        // Don't throw - order already created successfully, just log the error
       }
       
       // Trigger fulfillment for the order
