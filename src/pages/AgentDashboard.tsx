@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useNavigate } from "react-router-dom";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1820,6 +1820,7 @@ const AgentDashboard = () => {
     }
   };
 
+  const navigate = useNavigate();
   const copyPhoneNumber = (p: string) => { navigator.clipboard.writeText(p); toast({ title: "Copied!", description: p }); };
   const copyStoreLink = () => { navigator.clipboard.writeText(storeUrl); toast({ title: "Link copied!", description: storeUrl }); };
   const subagentSignupUrl = storeUrl ? `${storeUrl}/become-agent` : "";
