@@ -2305,6 +2305,7 @@ const SubagentDashboard = () => {
                             <TableHead>Base Cost</TableHead>
                             <TableHead>Profit</TableHead>
                             <TableHead>Payment Method</TableHead>
+                            <TableHead>Source</TableHead>
                             <TableHead>Order Status</TableHead>
                             <TableHead>Payment Status</TableHead>
                           </TableRow>
@@ -2319,6 +2320,11 @@ const SubagentDashboard = () => {
                             const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
                             const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
                             const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
+                            // Determine the order source: a sub-subagent store, or the subagent's own store (Direct)
+                            const isSubSubagentOrder = !!order.sub_subagent_store_id;
+                            const subSubagentName = isSubSubagentOrder
+                              ? (subSubagents.find(s => s.id === order.sub_subagent_store_id)?.store_name || "Subagent")
+                              : null;
                             return (
                               <TableRow key={order.id}>
                                 <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
@@ -2331,6 +2337,13 @@ const SubagentDashboard = () => {
                                   GHC {Number(profit).toFixed(2)}
                                 </TableCell>
                                 <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
+                                <TableCell>
+                                  {isSubSubagentOrder ? (
+                                    <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">{subSubagentName}</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>
+                                  )}
+                                </TableCell>
                                 <TableCell>
                                   <OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} />
                                 </TableCell>
