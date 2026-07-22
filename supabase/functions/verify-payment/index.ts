@@ -276,7 +276,7 @@ Deno.serve(async (req) => {
       }
       
       const { data: existingTopup } = await supabase
-        .from("subsubagent_wallet_topups")
+        .from("sub_subagent_wallet_topups")
         .select("id")
         .eq("paystack_reference", reference)
         .maybeSingle();
@@ -292,13 +292,13 @@ Deno.serve(async (req) => {
       }
       
       const { data: store, error: storeError } = await supabase
-        .from("subagent_stores")
+        .from("sub_subagent_stores")
         .select("wallet_balance")
         .eq("id", subsubagentStoreId)
         .single();
       
       if (storeError || !store) {
-        return new Response(JSON.stringify({ error: "Subsubagent store not found" }), {
+        return new Response(JSON.stringify({ error: "Sub-subagent store not found" }), {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -307,20 +307,20 @@ Deno.serve(async (req) => {
       const newBalance = (Number(store.wallet_balance) || 0) + baseAmount;
       
       const { error: updateError } = await supabase
-        .from("subagent_stores")
+        .from("sub_subagent_stores")
         .update({ wallet_balance: newBalance })
         .eq("id", subsubagentStoreId);
       
       if (updateError) {
-        console.error("Failed to update subsubagent wallet:", updateError);
+        console.error("Failed to update sub-subagent wallet:", updateError);
         return new Response(JSON.stringify({ error: "Failed to update wallet" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       
-      await supabase.from("subsubagent_wallet_topups").insert({
-        subsubagent_store_id: subsubagentStoreId,
+      await supabase.from("sub_subagent_wallet_topups").insert({
+        sub_subagent_store_id: subsubagentStoreId,
         amount: baseAmount,
         paystack_reference: reference,
       });
@@ -440,7 +440,7 @@ Deno.serve(async (req) => {
       const { data: store, error: storeError } = await supabase
         .from("subagent_stores")
         .select("wallet_balance")
-        .eq("id", dataPackageSubagentStoreId)
+        .eq("id", subagentStoreId)
         .single();
       
       if (storeError || !store) {
@@ -455,7 +455,7 @@ Deno.serve(async (req) => {
       const { error: updateError } = await supabase
         .from("subagent_stores")
         .update({ wallet_balance: newBalance })
-        .eq("id", dataPackageSubagentStoreId);
+        .eq("id", subagentStoreId);
       
       if (updateError) {
         console.error("Failed to update subagent wallet:", updateError);
@@ -523,35 +523,52 @@ Deno.serve(async (req) => {
       const adminBasePrice = pkgData?.agent_price ? Number(pkgData.agent_price) : 0;
 
       const { data: subsubStore } = await supabase
-        .from("subagent_stores")
-        .select("parent_subagent_store_id, agent_store_id, wallet_balance")
+        .from("sub_subagent_stores")
+        .select("subagent_store_id, agent_store_id, wallet_balance")
         .eq("id", dataPackageSubsubagentStoreId)
         .single();
 
       if (!subsubStore) {
-        return new Response(JSON.stringify({ error: "SubSubagent store not found" }), {
+        return new Response(JSON.stringify({ error: "Sub-subagent store not found" }), {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // What SubSubagent PAID to parent Subagent
-      const { data: parentPrice } = await supabase
-        .from("subagent_package_prices")
-        .select("sell_price")
-        .eq("subagent_store_id", subsubStore.parent_subagent_store_id)
+      const parentSubagentStoreId = subsubStore.subagent_store_id;
+      const chainAgentStoreId = subsubStore.agent_store_id;
+
+      // What the SUB-SUBAGENT paid to its parent SUBAGENT (the base price the
+      // subagent set for this sub-subagent in sub_subagent_package_prices).
+      const { data: ssPrice } = await supabase
+        .from("sub_subagent_package_prices")
+        .select("base_price")
+        .eq("sub_subagent_store_id", dataPackageSubsubagentStoreId)
         .eq("package_id", packageId)
         .maybeSingle();
 
-      const costThatSubSubAgentPaid = parentPrice?.sell_price != null 
-        ? Number(parentPrice.sell_price) 
+      // What the parent SUBAGENT paid to the AGENT (the base price the agent set
+      // for this subagent in subagent_package_prices).
+      const { data: subagentCostPrice } = await supabase
+        .from("subagent_package_prices")
+        .select("base_price")
+        .eq("subagent_store_id", parentSubagentStoreId)
+        .eq("package_id", packageId)
+        .maybeSingle();
+
+      const costThatSubSubAgentPaid = ssPrice?.base_price != null
+        ? Number(ssPrice.base_price)
+        : adminBasePrice;
+
+      const costThatSubAgentPaid = subagentCostPrice?.base_price != null
+        ? Number(subagentCostPrice.base_price)
         : adminBasePrice;
 
       const sellingPrice = amount;
       const basePriceForOrder = costThatSubSubAgentPaid;
       const profitForOrder = sellingPrice - costThatSubSubAgentPaid;
 
-      console.log(`[SUBSUBAGENT] selling=${sellingPrice.toFixed(2)}, cost=${basePriceForOrder.toFixed(2)}, profit=${profitForOrder.toFixed(2)}`);
+      console.log(`[SUBSUBAGENT] selling=${sellingPrice.toFixed(2)}, subsubCost=${costThatSubSubAgentPaid.toFixed(2)}, subagentCost=${costThatSubAgentPaid.toFixed(2)}, adminBase=${adminBasePrice.toFixed(2)}, subsubProfit=${profitForOrder.toFixed(2)}`);
 
       // Create order
       const { data: order, error: orderError } = await supabase
@@ -571,16 +588,16 @@ Deno.serve(async (req) => {
           base_price: basePriceForOrder,
           profit: profitForOrder,
           profit_credited: false,
-          agent_store_id: subsubStore.agent_store_id,
-          subagent_store_id: subsubStore.parent_subagent_store_id,
-          subsubagent_store_id: subsubagentStoreId,
+          agent_store_id: chainAgentStoreId,
+          subagent_store_id: parentSubagentStoreId,
+          sub_subagent_store_id: dataPackageSubsubagentStoreId,
         })
         .select("id")
         .single();
 
       if (orderError) {
         console.error("Failed to create subsubagent order:", orderError);
-        return new Response(JSON.stringify({ error: "Failed to create order" }), {
+        return new Response(JSON.stringify({ error: "Failed to create order", details: orderError.message }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -588,71 +605,49 @@ Deno.serve(async (req) => {
 
       console.log(`[SUBSUBAGENT] Order created: ${order.id}`);
 
-      // === CREDIT SUBSUBAGENT PROFIT ===
+      // === CREDIT SUB-SUBAGENT PROFIT (their own wallet) ===
       if (profitForOrder > 0) {
         const newBalance = (Number(subsubStore.wallet_balance) || 0) + profitForOrder;
         await supabase
-          .from("subagent_stores")
+          .from("sub_subagent_stores")
           .update({ wallet_balance: newBalance })
-          .eq("id", subsubagentStoreId);
+          .eq("id", dataPackageSubsubagentStoreId);
 
-        console.log(`[SUBSUBAGENT] Wallet: +GHS ${profitForOrder.toFixed(2)}, balance: GHS ${newBalance.toFixed(2)}`);
+        console.log(`[SUBSUBAGENT] Sub-subagent wallet: +GHS ${profitForOrder.toFixed(2)}, balance: GHS ${newBalance.toFixed(2)}`);
       }
 
-      // === CREDIT PARENT SUBAGENT COMMISSION ===
-      if (subsubStore.parent_subagent_store_id) {
+      // === CREDIT PARENT SUBAGENT COMMISSION (subsubCost - subagentCost) ===
+      if (parentSubagentStoreId) {
         const { data: parentStore } = await supabase
           .from("subagent_stores")
           .select("wallet_balance")
-          .eq("id", subsubStore.parent_subagent_store_id)
+          .eq("id", parentSubagentStoreId)
           .single();
 
         if (parentStore) {
-          const { data: agentPrice } = await supabase
-            .from("agent_package_prices")
-            .select("sell_price")
-            .eq("agent_store_id", subsubStore.agent_store_id)
-            .eq("package_id", packageId)
-            .maybeSingle();
-
-          const agentToParentPrice = agentPrice?.sell_price != null 
-            ? Number(agentPrice.sell_price) 
-            : adminBasePrice;
-
-          const parentCommission = costThatSubSubAgentPaid - agentToParentPrice;
+          const parentCommission = costThatSubSubAgentPaid - costThatSubAgentPaid;
 
           if (parentCommission > 0) {
             const newBalance = (Number(parentStore.wallet_balance) || 0) + parentCommission;
             await supabase
               .from("subagent_stores")
               .update({ wallet_balance: newBalance })
-              .eq("id", subsubStore.parent_subagent_store_id);
+              .eq("id", parentSubagentStoreId);
 
-            console.log(`[SUBSUBAGENT] Parent commission: +GHS ${parentCommission.toFixed(2)}, balance: GHS ${newBalance.toFixed(2)}`);
+            console.log(`[SUBSUBAGENT] Parent subagent commission: +GHS ${parentCommission.toFixed(2)}, balance: GHS ${newBalance.toFixed(2)}`);
           }
         }
       }
 
-      // === CREDIT AGENT COMMISSION ===
-      if (subsubStore.agent_store_id) {
-        const { data: agentPrice } = await supabase
-          .from("agent_package_prices")
-          .select("sell_price")
-          .eq("agent_store_id", subsubStore.agent_store_id)
-          .eq("package_id", packageId)
-          .maybeSingle();
-
-        const agentSellPrice = agentPrice?.sell_price != null 
-          ? Number(agentPrice.sell_price) 
-          : adminBasePrice;
-
-        const agentCommission = agentSellPrice - adminBasePrice;
+      // === CREDIT AGENT COMMISSION (subagentCost - adminBase) ===
+      if (chainAgentStoreId) {
+        const agentCommission = costThatSubAgentPaid - adminBasePrice;
 
         if (agentCommission > 0) {
           const { data: agentStore } = await supabase
             .from("agent_stores")
             .select("subagent_commission_balance")
-            .eq("id", subsubStore.agent_store_id)
+            .eq("id", chainAgentStoreId)
             .single();
 
           if (agentStore) {
@@ -660,7 +655,7 @@ Deno.serve(async (req) => {
             await supabase
               .from("agent_stores")
               .update({ subagent_commission_balance: newBalance })
-              .eq("id", subsubStore.agent_store_id);
+              .eq("id", chainAgentStoreId);
 
             console.log(`[SUBSUBAGENT] Agent commission: +GHS ${agentCommission.toFixed(2)}, balance: GHS ${newBalance.toFixed(2)}`);
           }

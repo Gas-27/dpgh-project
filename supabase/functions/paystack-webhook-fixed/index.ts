@@ -193,6 +193,7 @@ Deno.serve(async (req) => {
     const packageName = metadata?.package_name ?? "";
     const agentStoreId = metadata?.agent_store_id ?? null;
     const subagentStoreId = metadata?.subagent_store_id ?? null;
+    const subsubagentStoreId = metadata?.subsubagent_store_id ?? null;
 
     // Extract size from package name
     const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
@@ -243,7 +244,155 @@ Deno.serve(async (req) => {
     let basePriceForOrder = packagePrice; // default: no profit until custom price confirmed
     let profitForOrder = 0;
 
-    if (subagentStoreId) {
+    if (subsubagentStoreId) {
+      // SUB-SUBAGENT ORDER (3-tier: sub-subagent -> subagent -> agent -> admin)
+      const { data: subsubStore } = await supabaseClient
+        .from("sub_subagent_stores")
+        .select("subagent_store_id, agent_store_id, wallet_balance")
+        .eq("id", subsubagentStoreId)
+        .single();
+
+      if (!subsubStore) {
+        return new Response(JSON.stringify({ error: "Sub-subagent store not found" }), {
+          status: 404,
+          headers: corsHeaders,
+        });
+      }
+
+      const parentSubagentStoreId = subsubStore.subagent_store_id;
+      const chainAgentStoreId = subsubStore.agent_store_id;
+
+      // What the sub-subagent paid its parent subagent
+      const { data: ssPrice } = await supabaseClient
+        .from("sub_subagent_package_prices")
+        .select("base_price")
+        .eq("sub_subagent_store_id", subsubagentStoreId)
+        .eq("package_id", packageId)
+        .maybeSingle();
+
+      // What the parent subagent paid the agent
+      const { data: subagentCostPrice } = await supabaseClient
+        .from("subagent_package_prices")
+        .select("base_price")
+        .eq("subagent_store_id", parentSubagentStoreId)
+        .eq("package_id", packageId)
+        .maybeSingle();
+
+      const costThatSubSubAgentPaid = ssPrice?.base_price != null ? Number(ssPrice.base_price) : adminBasePrice;
+      const costThatSubAgentPaid = subagentCostPrice?.base_price != null ? Number(subagentCostPrice.base_price) : adminBasePrice;
+
+      sellingPrice = packagePrice;
+      basePriceForOrder = costThatSubSubAgentPaid;
+      profitForOrder = sellingPrice - costThatSubSubAgentPaid;
+
+      console.log(`Sub-subagent order: selling=${sellingPrice.toFixed(2)}, subsubCost=${costThatSubSubAgentPaid.toFixed(2)}, subagentCost=${costThatSubAgentPaid.toFixed(2)}, adminBase=${adminBasePrice.toFixed(2)}`);
+
+      const { data: order, error: orderError } = await supabaseClient
+        .from("orders")
+        .insert({
+          customer_id: customerId,
+          customer_number: phone,
+          package_id: packageId,
+          network,
+          size_gb: sizeGb,
+          amount: amountPaid,
+          status: "paid",
+          fulfillment_status: "pending",
+          paystack_reference: reference,
+          selling_price: sellingPrice,
+          base_price: basePriceForOrder,
+          profit: profitForOrder,
+          profit_credited: false,
+          agent_store_id: chainAgentStoreId,
+          subagent_store_id: parentSubagentStoreId,
+          sub_subagent_store_id: subsubagentStoreId,
+        })
+        .select("id")
+        .single();
+
+      if (orderError) {
+        console.error("Failed to create sub-subagent order:", orderError);
+        return new Response(JSON.stringify({ error: "Failed to create order", details: orderError.message }), {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+
+      console.log(`Sub-subagent order created: ${order.id}`);
+
+      // CREDIT SUB-SUBAGENT WALLET
+      if (profitForOrder > 0 && subsubStore) {
+        const newBalance = (Number(subsubStore.wallet_balance) || 0) + profitForOrder;
+        await supabaseClient
+          .from("sub_subagent_stores")
+          .update({ wallet_balance: newBalance })
+          .eq("id", subsubagentStoreId);
+        console.log(`Sub-subagent wallet credited: +GHS ${profitForOrder.toFixed(2)}, new balance: GHS ${newBalance.toFixed(2)}`);
+      }
+
+      // CREDIT PARENT SUBAGENT COMMISSION
+      if (parentSubagentStoreId) {
+        const parentCommission = costThatSubSubAgentPaid - costThatSubAgentPaid;
+        if (parentCommission > 0) {
+          const { data: parentStore } = await supabaseClient
+            .from("subagent_stores")
+            .select("wallet_balance")
+            .eq("id", parentSubagentStoreId)
+            .single();
+          if (parentStore) {
+            const newBalance = (Number(parentStore.wallet_balance) || 0) + parentCommission;
+            await supabaseClient
+              .from("subagent_stores")
+              .update({ wallet_balance: newBalance })
+              .eq("id", parentSubagentStoreId);
+            console.log(`Parent subagent commission credited: +GHS ${parentCommission.toFixed(2)}, new balance: GHS ${newBalance.toFixed(2)}`);
+          }
+        }
+      }
+
+      // CREDIT AGENT COMMISSION
+      if (chainAgentStoreId) {
+        const agentCommission = costThatSubAgentPaid - adminBasePrice;
+        if (agentCommission > 0) {
+          const { data: agentStore } = await supabaseClient
+            .from("agent_stores")
+            .select("subagent_commission_balance")
+            .eq("id", chainAgentStoreId)
+            .single();
+          if (agentStore) {
+            const newCommissionBalance = (Number(agentStore.subagent_commission_balance) || 0) + agentCommission;
+            await supabaseClient
+              .from("agent_stores")
+              .update({ subagent_commission_balance: newCommissionBalance })
+              .eq("id", chainAgentStoreId);
+            console.log(`Agent commission credited: +GHS ${agentCommission.toFixed(2)}, new balance: GHS ${newCommissionBalance.toFixed(2)}`);
+          }
+        }
+      }
+
+      // Trigger fulfillment
+      try {
+        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/fulfill-order`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+          },
+          body: JSON.stringify({ order_id: order.id }),
+        });
+      } catch (err) {
+        console.error("Failed to trigger fulfillment:", err);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: "Sub-subagent order processed successfully",
+        order_id: order.id,
+      }), {
+        status: 200,
+        headers: corsHeaders,
+      });
+    } else if (subagentStoreId) {
       // SUBAGENT ORDER
       const { data: subagentStore } = await supabaseClient
         .from("subagent_stores")

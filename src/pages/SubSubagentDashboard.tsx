@@ -348,9 +348,9 @@ const SubSubagentDashboard = () => {
   const fetchTopupHistory = async () => {
     if (!subagentStore?.id) return;
     const { data } = await supabase
-      .from("subsubagent_wallet_topups")
+      .from("sub_subagent_wallet_topups")
       .select("id, amount, paystack_reference, created_at")
-      .eq("subsubagent_store_id", subagentStore.id)
+      .eq("sub_subagent_store_id", subagentStore.id)
       .order("created_at", { ascending: false })
       .limit(50);
     setTopupHistory(data || []);
