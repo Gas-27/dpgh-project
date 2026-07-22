@@ -496,17 +496,22 @@ export function SubSubagentStorefront() {
       // Don't override show_whatsapp_group_icon - use database value directly
       setStore(matched);
 
-      // Fetch packages and prices.
-      // sub_subagent_package_prices holds TWO kinds of rows:
-      //   1. CUSTOM rows  -> sub_subagent_store_id = this store's id (the sub-subagent's own customer price)
-      //   2. TEMPLATE rows -> sub_subagent_store_id IS NULL, subagent_store_id = parent (cost parent charges every sub-subagent)
-      // Display priority: custom price > parent template cost > admin base price.
-      const [pkgRes, customPricesRes, templatePricesRes, appSettingsRes, parentSubagentInfoRes] = await Promise.all([
+      // Compute the customer price EXACTLY like the sub-subagent dashboard "Store Prices" tab.
+      // Final price = the sub-subagent's own selling price (sell_price) if they have set one,
+      // otherwise the "Cost from Agent", which is built with this priority (lowest → highest):
+      //   1. admin/default package price (ultimate fallback)
+      //   2. parent subagent's OWN cost from their agent:
+      //      subagent_package_prices.base_price WHERE agent_store_id = matched.agent_store_id
+      //   3. parent subagent's sub-subagent template price:
+      //      sub_subagent_package_prices.base_price WHERE subagent_store_id = parent AND sub_subagent_store_id IS NULL
+      const [pkgRes, ownSellRes, agentCostRes, templatePricesRes, appSettingsRes, parentSubagentInfoRes] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
-        // 1. This sub-subagent's own custom prices
+        // This sub-subagent's own selling price (what they saved in their dashboard)
         supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", matched.id),
-        // 2. Parent subagent's template prices for their sub-subagents (sub_subagent_store_id IS NULL)
-        supabase.from("sub_subagent_package_prices").select("package_id, sell_price, base_price").eq("subagent_store_id", matched.subagent_store_id).is("sub_subagent_store_id", null),
+        // Parent subagent's own cost from their agent (base_price keyed by agent_store_id)
+        matched.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id) : Promise.resolve({ data: null, error: null }),
+        // Parent subagent's sub-subagent template price (sub_subagent_store_id IS NULL)
+        matched.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", matched.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
         supabase.from("subagent_stores").select("whatsapp_number, support_number").eq("id", matched.subagent_store_id).single(),
       ]);
@@ -514,19 +519,22 @@ export function SubSubagentStorefront() {
       setPackages(pkgRes.data || []);
       if (parentSubagentInfoRes.data) setAgentInfo(parentSubagentInfoRes.data);
 
-      const priceMap: Record<string, number> = {};
-      
-      // Level 3 (fallback): admin base prices
-      (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
-      
-      // Level 2: parent subagent's template cost (overrides admin)
-      (templatePricesRes.data || []).forEach((p: any) => { 
-        const cost = p.sell_price ?? p.base_price;
-        if (cost != null) priceMap[p.package_id] = Number(cost); 
+      // Build "Cost from Agent" map (levels 1-3)
+      const baseCostMap: Record<string, number> = {};
+      // 1. admin/default package price
+      (pkgRes.data || []).forEach((p: any) => { baseCostMap[p.id] = p.price; });
+      // 2. parent subagent's own cost from their agent
+      (agentCostRes.data || []).forEach((p: any) => { 
+        if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
       });
-      
-      // Level 1: sub-subagent's own custom customer price (overrides everything)
-      (customPricesRes.data || []).forEach((p: any) => { 
+      // 3. parent subagent's sub-subagent template price
+      (templatePricesRes.data || []).forEach((p: any) => { 
+        if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
+      });
+
+      // Final customer price = sub-subagent's own sell_price if set, else the cost-from-agent
+      const priceMap: Record<string, number> = { ...baseCostMap };
+      (ownSellRes.data || []).forEach((p: any) => { 
         if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
       });
       
@@ -565,23 +573,29 @@ export function SubSubagentStorefront() {
         "postgres_changes",
         { event: "*", schema: "public", table: "sub_subagent_package_prices", filter: `sub_subagent_store_id=eq.${store.id}` },
         async () => {
-          // Rebuild the full price hierarchy: custom price > parent template cost > admin base
-          const [customPrices, templatePrices, pkgs] = await Promise.all([
+          // Rebuild price exactly like the dashboard: sell_price if set, else cost-from-agent
+          // (admin → parent's agent cost → parent's sub-subagent template).
+          const [ownSell, agentCost, templatePrices, pkgs] = await Promise.all([
             supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-            supabase.from("sub_subagent_package_prices").select("package_id, sell_price, base_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null),
+            store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null }),
+            store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null }),
             supabase.from("data_packages").select("id, price").eq("active", true),
           ]);
           
-          const priceMap: Record<string, number> = {};
-          // Level 3: admin prices
-          (pkgs.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
-          // Level 2: parent subagent's template cost
-          (templatePrices.data || []).forEach((p: any) => { 
-            const cost = p.sell_price ?? p.base_price;
-            if (cost != null) priceMap[p.package_id] = Number(cost); 
+          const baseCostMap: Record<string, number> = {};
+          // 1. admin prices
+          (pkgs.data || []).forEach((p: any) => { baseCostMap[p.id] = p.price; });
+          // 2. parent subagent's own cost from their agent
+          (agentCost.data || []).forEach((p: any) => { 
+            if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
           });
-          // Level 1: sub-subagent's own custom customer price
-          (customPrices.data || []).forEach((p: any) => { 
+          // 3. parent subagent's sub-subagent template price
+          (templatePrices.data || []).forEach((p: any) => { 
+            if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
+          });
+          // Final: sub-subagent's own sell_price if set, else cost-from-agent
+          const priceMap: Record<string, number> = { ...baseCostMap };
+          (ownSell.data || []).forEach((p: any) => { 
             if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
           });
           

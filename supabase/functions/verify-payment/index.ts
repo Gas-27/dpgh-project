@@ -561,21 +561,31 @@ Deno.serve(async (req) => {
 
       const parentSubagentId = subsubStore.subagent_store_id;
 
-      // What the SUBSUBAGENT pays the SUBAGENT (the subsubagent's COST, e.g. 4.70).
-      // This is ALWAYS the parent subagent's TEMPLATE price (sub_subagent_store_id IS NULL),
-      // never the subsubagent's own row. A subsubagent's own row stores their CUSTOMER
-      // selling price in every column, so using it as the cost would zero out their profit.
+      // What the SUBSUBAGENT pays the SUBAGENT (the subsubagent's COST, i.e. "Cost from Agent").
+      // Built exactly like the sub-subagent dashboard, priority (lowest → highest):
+      //   1. admin base price
+      //   2. parent subagent's own cost from their agent (subagent_package_prices.base_price by agent_store_id)
+      //   3. parent subagent's sub-subagent template price (sub_subagent_package_prices.base_price, sub_subagent_store_id IS NULL)
+      // NEVER the subsubagent's own row (its columns all equal their selling price, which would zero out profit).
       let costThatSubSubAgentPaid = adminBasePrice;
+      if (subsubStore.agent_store_id) {
+        const { data: agentCostRow } = await supabase
+          .from("subagent_package_prices")
+          .select("base_price")
+          .eq("agent_store_id", subsubStore.agent_store_id)
+          .eq("package_id", packageId)
+          .maybeSingle();
+        if (agentCostRow?.base_price != null) costThatSubSubAgentPaid = Number(agentCostRow.base_price);
+      }
       if (parentSubagentId) {
         const { data: templateRow } = await supabase
           .from("sub_subagent_package_prices")
-          .select("base_price, sell_price")
+          .select("base_price")
           .eq("subagent_store_id", parentSubagentId)
           .is("sub_subagent_store_id", null)
           .eq("package_id", packageId)
           .maybeSingle();
-        const templateCost = templateRow?.base_price ?? templateRow?.sell_price;
-        if (templateCost != null) costThatSubSubAgentPaid = Number(templateCost);
+        if (templateRow?.base_price != null) costThatSubSubAgentPaid = Number(templateRow.base_price);
       }
 
       // What the SUBAGENT pays the AGENT (subagent's cost, e.g. 4.20).

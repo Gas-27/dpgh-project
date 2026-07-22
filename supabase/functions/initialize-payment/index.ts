@@ -480,34 +480,47 @@ Deno.serve(async (req) => {
         baseAmount = Number(subsubagentPrice.sell_price);
         priceType = "subsubagent_sell_price";
       } else {
-        // Fall back to the parent subagent's TEMPLATE price (the cost charged to every sub-subagent).
-        // Template rows live in sub_subagent_package_prices with sub_subagent_store_id IS NULL.
+        // No custom price: charge the "Cost from Agent" exactly like the dashboard/storefront.
+        // Priority (lowest → highest): admin price → parent subagent's own agent cost
+        // (subagent_package_prices.base_price by agent_store_id) → parent's sub-subagent
+        // template price (sub_subagent_package_prices.base_price, sub_subagent_store_id IS NULL).
         const { data: subsubStore } = await supabaseClient
           .from("sub_subagent_stores")
-          .select("subagent_store_id")
+          .select("subagent_store_id, agent_store_id")
           .eq("id", metadata.subsubagent_store_id)
           .single();
 
+        // Start from admin price
+        baseAmount = Number(packageData.price);
+        priceType = "admin_user_price";
+
+        // Level 2: parent subagent's own cost from their agent
+        if (subsubStore?.agent_store_id) {
+          const { data: agentCostRow } = await supabaseClient
+            .from("subagent_package_prices")
+            .select("base_price")
+            .eq("agent_store_id", subsubStore.agent_store_id)
+            .eq("package_id", metadata.package_id)
+            .maybeSingle();
+          if (agentCostRow?.base_price != null) {
+            baseAmount = Number(agentCostRow.base_price);
+            priceType = "parent_subagent_agent_cost";
+          }
+        }
+
+        // Level 3: parent subagent's sub-subagent template price (highest priority fallback)
         if (subsubStore?.subagent_store_id) {
           const { data: templateRow } = await supabaseClient
             .from("sub_subagent_package_prices")
-            .select("sell_price, base_price")
+            .select("base_price")
             .eq("subagent_store_id", subsubStore.subagent_store_id)
             .is("sub_subagent_store_id", null)
             .eq("package_id", metadata.package_id)
             .maybeSingle();
-
-          const templateCost = templateRow?.sell_price ?? templateRow?.base_price;
-          if (templateCost != null) {
-            baseAmount = Number(templateCost);
+          if (templateRow?.base_price != null) {
+            baseAmount = Number(templateRow.base_price);
             priceType = "parent_subagent_template_cost";
-          } else {
-            baseAmount = Number(packageData.price);
-            priceType = "admin_user_price";
           }
-        } else {
-          baseAmount = Number(packageData.price);
-          priceType = "admin_user_price";
         }
       }
     } else if (metadata.subagent_store_id) {

@@ -1823,7 +1823,8 @@ const AgentDashboard = () => {
   const navigate = useNavigate();
   const copyPhoneNumber = (p: string) => { navigator.clipboard.writeText(p); toast({ title: "Copied!", description: p }); };
   const copyStoreLink = () => { navigator.clipboard.writeText(storeUrl); toast({ title: "Link copied!", description: storeUrl }); };
-  const subagentSignupUrl = storeUrl ? `${storeUrl}/become-agent` : "";
+  // NOTE: subagentSignupUrl is defined AFTER storeUrl is declared (below). Defining it here
+  // caused a "Cannot access 'storeUrl' before initialization" TDZ crash of the whole dashboard.
   const copySubagentSignupLink = () => { navigator.clipboard.writeText(subagentSignupUrl); toast({ title: "Signup link copied!", description: subagentSignupUrl }); };
   const copyRef = () => { if (store?.topup_reference) { navigator.clipboard.writeText(store.topup_reference); toast({ title: "Reference copied!" }); } };
   
@@ -1959,6 +1960,7 @@ const AgentDashboard = () => {
   });
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
   const storeUrl = store ? DOMAINS.getAgentStoreUrl(store.store_name) : "";
+  const subagentSignupUrl = storeUrl ? `${storeUrl}/become-agent` : "";
   const storeName = store?.store_name || "DATA PLUG .STORE";
   const supportNum = store?.support_number || "";
 
