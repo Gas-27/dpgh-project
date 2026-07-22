@@ -443,7 +443,7 @@ const AgentDashboard = () => {
   };
   const withdrawalBalance = getWithdrawalBalance();
 
-  // ─── flyer scale ───────────────────────────────────────────���������──────────────
+  // ─── flyer scale ────────────────────────────────────���──────���������──────────────
   const recalcScale = useCallback(() => {
     if (!flyerContainerRef.current) return;
     const cw = flyerContainerRef.current.clientWidth || 600;
@@ -737,7 +737,7 @@ const AgentDashboard = () => {
         supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         // Fetch normal agent store orders with subagent info
-        supabase.from("orders").select("*, subagent_stores(store_name)", { count: "exact" }).eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999),
+        supabase.from("orders").select("*, subagent_stores(store_name), sub_subagent_stores(store_name)", { count: "exact" }).eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999),
         // Fetch API orders made by this api_user (orders where source=api and user_id is the api_user's identity)
         apiUserData ? supabase.from("orders").select("*", { count: "exact" }).eq("source", "api").eq("user_id", apiUserData.identity_id).order("created_at", { ascending: false }).range(0, 99999) : Promise.resolve({ data: [], count: 0, error: null }),
         supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", sd.id).order("created_at", { ascending: false }),
@@ -2320,7 +2320,8 @@ const AgentDashboard = () => {
                   <>
                     <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Number</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Sell Price</TableHead><TableHead>Base Cost</TableHead><TableHead>Profit</TableHead><TableHead>Method</TableHead><TableHead>Source</TableHead><TableHead>Order Status</TableHead><TableHead>Payment Status</TableHead></TableRow></TableHeader>
                       <TableBody>{paginatedOrders.map(order => { 
-                        const isSubagentOrder = !!order.subagent_store_id;
+                        const isSubSubagentOrder = !!(order as any).sub_subagent_store_id;
+                        const isSubagentOrder = !!order.subagent_store_id && !isSubSubagentOrder;
                         const pkg = packages.find(p => p.id === order.package_id);
                         const adminBasePrice = pkg?.agent_price || 0; // What admin charges agent
                         
@@ -2330,9 +2331,16 @@ const AgentDashboard = () => {
                         
                         if (isSubagentOrder) {
                           // AGENT'S PERSPECTIVE for subagent orders:
-                          // - Sell Price = what agent charged subagent (from subagent_package_prices)
-                          // - Base Cost = what admin charges agent (agent_price from data_packages)
-                          // - Profit = agent's commission (sell price - base cost)
+                          // Sell Price = what agent charged subagent; Base Cost = admin charges agent
+                          const agentPriceToSubagent = subagentBasePrices[order.package_id] || adminBasePrice;
+                          sellPrice = agentPriceToSubagent;
+                          baseCost = adminBasePrice;
+                          profit = sellPrice - baseCost;
+                        } else if (isSubSubagentOrder) {
+                          // AGENT'S PERSPECTIVE for sub-subagent orders:
+                          // Sell = what agent charged the parent subagent (same as subagent order: subagentBasePrices)
+                          // Cost = admin base price
+                          // Profit = agent's commission
                           const agentPriceToSubagent = subagentBasePrices[order.package_id] || adminBasePrice;
                           sellPrice = agentPriceToSubagent;
                           baseCost = adminBasePrice;
@@ -2352,8 +2360,9 @@ const AgentDashboard = () => {
                         const isAPIOrder = (order as any).source === "api";
                         const paymentMethodDisplay = isAPIOrder ? "API Wallet" : (order.payment_method === "wallet" ? "Wallet" : "Paystack");
                         const subagentName = (order as any).subagent_stores?.store_name || "Unknown Subagent";
+                        const subSubagentName = (order as any).sub_subagent_stores?.store_name || "Sub-Subagent";
                         
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">{subagentName}</Badge> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} /></TableCell><TableCell><Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30">{subSubagentName}</Badge> : isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">{subagentName}</Badge> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} /></TableCell><TableCell><Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
                     {/* Load More Button */}
                     {currentPage * ordersPerPage < filteredOrders.length && (
                       <div className="flex items-center justify-center mt-6">

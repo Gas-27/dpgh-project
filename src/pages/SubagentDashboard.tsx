@@ -579,10 +579,10 @@ const SubagentDashboard = () => {
           const subSubagentOrdersList = subSubagentOrders || [];
           setSubSubagentOrdersCount(subSubagentOrdersList.length);
           
-          // Calculate profit: difference between what sub-subagent charged (order_price) vs what we charged them (package price)
+          // Calculate profit: what subagent earns = sub-subagent's cost (base_price) minus what subagent pays agent
           let totalProfit = 0;
           subSubagentOrdersList.forEach(order => {
-            const profit = (Number(order.order_price) || 0) - (Number(order.package_price) || 0);
+            const profit = (Number(order.profit) || 0);
             if (profit > 0) totalProfit += profit;
           });
           
@@ -734,7 +734,7 @@ const SubagentDashboard = () => {
         const subSubagentsData = subSubagentsResult.data || [];
         setSubSubagents(subSubagentsData);
         
-        // Calculate sub-subagent stats
+        // Calculate sub-subagent stats and merge their orders into the main orders list
         if (subSubagentsData.length > 0) {
           const subSubagentIds = subSubagentsData.map(s => s.id);
           const { data: subSubagentOrders } = await supabase
@@ -748,10 +748,17 @@ const SubagentDashboard = () => {
           
           let totalProfit = 0;
           subSubagentOrdersList.forEach(order => {
-            const profit = (Number(order.selling_price) || 0) - (Number(order.base_price) || 0);
-            totalProfit += profit;
+            const profit = (Number(order.profit) || 0);
+            if (profit > 0) totalProfit += profit;
           });
           setSubSubagentProfitForSubagent(totalProfit);
+
+          // Merge sub-subagent orders into the main orders list so they appear in the Orders table
+          if (subSubagentOrdersList.length > 0) {
+            const merged = [...enrichedOrders2, ...subSubagentOrdersList]
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setOrders(merged);
+          }
         }
         
         // Build admin custom price map (admin's price to agents - NOT for subagents)
@@ -1928,20 +1935,37 @@ const SubagentDashboard = () => {
   // Apply date filter to orders for stats
   const dateFilteredOrders = getDateFilteredOrders(orders);
 
+  // Helper: compute subagent-perspective figures for any order
+  const getSubagentOrderFigures = (order: any) => {
+    const isSubSubagentOrder = !!order.sub_subagent_store_id;
+    const agentCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+    if (isSubSubagentOrder) {
+      // Sell = what sub-subagent paid subagent (= stored base_price = subsubCost from webhook)
+      // Cost = what subagent pays agent
+      const sell = Number(order.base_price) || 0;
+      const cost = agentCost;
+      return { sell, cost, profit: sell - cost };
+    }
+    const storedSell = order.selling_price ?? null;
+    const storedCost = order.base_price ?? null;
+    const storedProfit = order.profit ?? null;
+    const sell = (storedSell && storedSell > 0) ? Number(storedSell) : Number(order.amount || 0);
+    const cost = (storedCost && storedCost > 0) ? Number(storedCost) : agentCost;
+    const profit = (storedProfit !== null && storedProfit !== 0) ? Number(storedProfit) : (sell - cost);
+    return { sell, cost, profit };
+  };
+
   // Only count customer orders (not wallet purchases by subagent) for revenue
   const customerOrders = dateFilteredOrders.filter(o => o.payment_method !== "wallet");
-  const totalRevenue = customerOrders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.selling_price || order.amount) : 0), 0);
+  const totalRevenue = customerOrders.reduce((sum, order) => {
+    if (order.status !== "completed" && order.status !== "paid") return sum;
+    return sum + getSubagentOrderFigures(order).sell;
+  }, 0);
   
   // Calculate profit from ALL completed orders (customer pays, subagent earns profit)
   const allCompletedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
   const totalProfit = allCompletedOrders.reduce((sum, order) => {
-    // Use stored profit if available, otherwise calculate from stored prices or fallback
-    if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
-      return sum + Number(order.profit);
-    }
-    // Fallback for old orders without stored profit
-    const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
-    return sum + (Number(order.selling_price || order.amount) - baseCost);
+    return sum + getSubagentOrderFigures(order).profit;
   }, 0);
   
   const pendingOrders = dateFilteredOrders.filter(o => o.status !== "completed").length;
@@ -1965,17 +1989,15 @@ const SubagentDashboard = () => {
     let storefrontProfit = 0;
     let subSubagentProfit = 0;
     
-    // Storefront profit from orders
+    // Storefront profit from own orders (not sub-subagent)
     const completedOrders = allCompletedOrders;
     for (const order of completedOrders) {
-      const profit = order.profit !== null && order.profit !== undefined && order.profit !== 0 
-        ? Number(order.profit) 
-        : (Number(order.selling_price || order.amount) - (order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0)));
-      storefrontProfit += profit;
+      if (!order.sub_subagent_store_id) {
+        storefrontProfit += getSubagentOrderFigures(order).profit;
+      } else {
+        subSubagentProfit += getSubagentOrderFigures(order).profit;
+      }
     }
-    
-    // Sub-subagent profit
-    subSubagentProfit = subSubagentProfitForSubagent || 0;
     
     return { storefrontProfit, subSubagentProfit, totalProfit: storefrontProfit + subSubagentProfit };
   })();
@@ -2312,18 +2334,36 @@ const SubagentDashboard = () => {
                         </TableHeader>
                         <TableBody>
                           {paginatedOrders.map(order => {
-                            const storedSellPrice = order.selling_price ?? null;
-                            const storedBaseCost = order.base_price ?? null;
-                            const storedProfit = order.profit ?? null;
-                            const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
-                            const fallbackProfit = order.amount - fallbackBaseCost;
-                            const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
-                            const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
-                            const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
-                            // Determine the order source: a sub-subagent store, or the subagent's own store (Direct)
                             const isSubSubagentOrder = !!order.sub_subagent_store_id;
+                            const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+
+                            let sellPrice: number;
+                            let baseCost: number;
+                            let profit: number;
+
+                            if (isSubSubagentOrder) {
+                              // SUBAGENT's perspective for sub-subagent orders:
+                              // Sell = what sub-subagent paid subagent = stored base_price (the "Cost from Agent")
+                              // Cost = what subagent pays agent = basePrices (subagent_package_prices.base_price)
+                              // Profit = subagent commission = sell - cost
+                              const subSubagentPaidSubagent = Number(order.base_price) || 0;
+                              const subagentPaysAgent = fallbackBaseCost;
+                              sellPrice = subSubagentPaidSubagent;
+                              baseCost = subagentPaysAgent;
+                              profit = sellPrice - baseCost;
+                            } else {
+                              const storedSellPrice = order.selling_price ?? null;
+                              const storedBaseCost = order.base_price ?? null;
+                              const storedProfit = order.profit ?? null;
+                              const fallbackProfit = order.amount - fallbackBaseCost;
+                              sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
+                              baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
+                              profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
+                            }
+
+                            // Determine the order source: a sub-subagent store, or the subagent's own store (Direct)
                             const subSubagentName = isSubSubagentOrder
-                              ? (subSubagents.find(s => s.id === order.sub_subagent_store_id)?.store_name || "Subagent")
+                              ? (subSubagents.find(s => s.id === order.sub_subagent_store_id)?.store_name || "Sub-Subagent")
                               : null;
                             return (
                               <TableRow key={order.id}>
