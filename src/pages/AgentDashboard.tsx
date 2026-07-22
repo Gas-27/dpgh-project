@@ -443,7 +443,7 @@ const AgentDashboard = () => {
   };
   const withdrawalBalance = getWithdrawalBalance();
 
-  // ─── flyer scale ───────────────────────────────────────────�������──────────────
+  // ─── flyer scale ───────────────────────────────────────────���������──────────────
   const recalcScale = useCallback(() => {
     if (!flyerContainerRef.current) return;
     const cw = flyerContainerRef.current.clientWidth || 600;
@@ -1822,6 +1822,8 @@ const AgentDashboard = () => {
 
   const copyPhoneNumber = (p: string) => { navigator.clipboard.writeText(p); toast({ title: "Copied!", description: p }); };
   const copyStoreLink = () => { navigator.clipboard.writeText(storeUrl); toast({ title: "Link copied!", description: storeUrl }); };
+  const subagentSignupUrl = storeUrl ? `${storeUrl}/become-agent` : "";
+  const copySubagentSignupLink = () => { navigator.clipboard.writeText(subagentSignupUrl); toast({ title: "Signup link copied!", description: subagentSignupUrl }); };
   const copyRef = () => { if (store?.topup_reference) { navigator.clipboard.writeText(store.topup_reference); toast({ title: "Reference copied!" }); } };
   
   // Paystack wallet top up
@@ -4114,6 +4116,35 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
           {/* ============================= SUBAGENTS ============================= */}
           <TabsContent value="subagents" className="mt-0 space-y-6">
+            {/* Share Subagent Signup Link */}
+            {store?.allow_subagent_registration && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <Share2 className="h-5 w-5 text-primary" /> Subagent Signup Link
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Share this link with people you want to sign up as subagents. It opens the &quot;Become an Agent&quot; page on your storefront.
+                  </p>
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2">
+                    <span className="flex-1 truncate text-sm font-mono">{subagentSignupUrl || "Your store link will appear here"}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={copySubagentSignupLink} disabled={!subagentSignupUrl}>
+                      <Copy className="h-4 w-4 mr-1" /> Copy Link
+                    </Button>
+                    <Button variant="hero" size="sm" asChild disabled={!subagentSignupUrl}>
+                      <a href={subagentSignupUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-1" /> Open Page
+                      </a>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Send Notification to Subagents - AT THE TOP */}
             <Card className="border-orange-500/30 bg-orange-500/5">
               <CardHeader>

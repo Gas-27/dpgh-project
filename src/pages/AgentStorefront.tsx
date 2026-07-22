@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
 import { getStoreNameFromSubdomain, findStoreByName, fetchAllStores } from "@/utils/storeUtils";
@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
-import SubagentRegistrationForm from "@/components/SubagentRegistrationForm";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
@@ -497,6 +496,7 @@ const AgentStorefront = () => {
   const storeName = subdomainStoreName || paramStoreName;
 
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Simply render the storefront - subagent dashboard is on its own /subagent-dashboard route
 
@@ -507,7 +507,6 @@ const AgentStorefront = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
-  const [showSubagentForm, setShowSubagentForm] = useState(false);
 
   // ── Order tracking ──
   const [searchQuery, setSearchQuery] = useState("");
@@ -1101,7 +1100,7 @@ const AgentStorefront = () => {
               <div className="h-6 w-px bg-border"></div>
               <Button
                 variant="outline"
-                onClick={() => setShowSubagentForm(!showSubagentForm)}
+                onClick={() => navigate("/become-agent")}
                 className="font-semibold"
               >
                 Become an Agent
@@ -1621,34 +1620,6 @@ const AgentStorefront = () => {
         </div>
       ) : (
         <div className="container pb-20">{renderComingSoon()}</div>
-      )}
-
-      {/* Subagent Registration Modal */}
-      {showSubagentForm && store && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-background border border-border rounded-lg w-full max-w-2xl my-8">
-            <div className="sticky top-0 bg-background border-b border-border p-6 flex items-center justify-between rounded-t-lg">
-              <h2 className="font-display text-2xl font-bold text-foreground">
-                Become an <span style={{ color: primaryColor }}>Agent</span>
-              </h2>
-              <button
-                onClick={() => setShowSubagentForm(false)}
-                className="text-muted-foreground hover:text-foreground text-3xl leading-none font-light"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6 max-h-[70vh] overflow-y-auto">
-              <SubagentRegistrationForm
-                agentStoreId={store.id}
-                agentStoreName={store.store_name}
-                primaryColor={primaryColor}
-                primaryForeground={primaryForeground}
-                onClose={() => setShowSubagentForm(false)}
-              />
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Footer */}
