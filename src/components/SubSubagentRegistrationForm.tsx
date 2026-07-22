@@ -230,13 +230,13 @@ export default function SubSubagentRegistrationForm({
       // Sub-subagents are automatically approved when registering under a subagent
       console.log("[v0] Sub-subagent registration - no fees, auto-approving");
 
-      // Generate a unique sequential top-up reference (used as the USSD access code).
-      // Prefix "ssa" keeps sub-subagent references in their own namespace so they
-      // never collide with subagent "agt" references.
+      // Generate a sequential top-up reference (used as the USSD access code).
+      // Sub-subagents use the "Agt" prefix followed by their creation number
+      // (first sub-subagent = Agt1, second = Agt2, and so on).
       const { count: subSubagentCount } = await supabase
         .from("sub_subagent_stores")
         .select("*", { count: "exact", head: true });
-      const topupReference = `ssa${(subSubagentCount || 0) + 1}`;
+      const topupReference = `Agt${(subSubagentCount || 0) + 1}`;
 
       // Create the store directly without payment.
       // agent_store_id is auto-populated by the DB trigger from the parent subagent.

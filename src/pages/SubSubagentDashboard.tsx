@@ -342,7 +342,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id")
           .eq("id", storeId)
           .single();
 
@@ -376,9 +376,9 @@ const SubSubagentDashboard = () => {
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
-          // Parent subagent's OWN cost (what the subagent pays their agent) — fallback when
-          // the subagent has not set a sub-subagent price for a package.
-          store.subagent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
+          // Parent subagent's OWN cost = the AGENT's base price to subagents (base_price is
+          // keyed by agent_store_id). Fallback when the subagent has not set a sub-subagent price.
+          store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
         console.log("[v0] Parallel queries completed");
 
@@ -485,9 +485,11 @@ const SubSubagentDashboard = () => {
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
-          // Parent subagent's OWN cost (what the subagent pays their agent) — used as the
-          // fallback when the subagent has not set a sub-subagent price for a package.
-          store.subagent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id) : Promise.resolve({ data: null, error: null })
+          // Parent subagent's OWN cost = the AGENT's base price to subagents.
+          // base_price in subagent_package_prices is keyed by agent_store_id (rows keyed by
+          // subagent_store_id only hold sell_price). This is the subagent's cost from their
+          // agent, used as the fallback when the subagent has not set a sub-subagent price.
+          store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
 
         setOrders(ordersResult.data || []);
