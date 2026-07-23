@@ -1627,9 +1627,8 @@ const AdminDashboard = () => {
           // Agent order: refund to agent wallet using the base price admin charged the agent,
           // NOT the full selling price the agent charged their customer.
           refundAmount = await resolveAgentBasePrice(order, order.agent_store_id);
-          console.log("[v0] Refunding to agent", order.agent_store_id, "base price refund:", refundAmount, "(full selling price was:", paidAmount, ")");
           
-          const { data: agent, error: fetchErr } = await supabase
+          const { data: agent } = await supabase
             .from("agent_stores")
             .select("id, wallet_balance")
             .eq("id", order.agent_store_id)
@@ -1637,20 +1636,15 @@ const AdminDashboard = () => {
           
           if (agent) {
             const newBalance = (agent.wallet_balance || 0) + refundAmount;
-            console.log("[v0] Updating agent wallet:", { old: agent.wallet_balance, new: newBalance, refund: refundAmount });
             const { error: updateErr } = await supabase
               .from("agent_stores")
               .update({ wallet_balance: newBalance })
               .eq("id", agent.id);
             if (!updateErr) targetWalletUpdated = true;
-            else console.log("[v0] Agent wallet update failed:", updateErr);
-          } else {
-            console.log("[v0] Agent not found:", order.agent_store_id, fetchErr);
           }
         } else if (order.api_user) {
           // API user order: refund at base price admin charged the API user
           refundAmount = await resolveAgentBasePrice(order, null);
-          console.log("[v0] Refunding to API user", order.api_user, "base price refund:", refundAmount, "(full selling price was:", paidAmount, ")");
           
           const { data: apiUser, error: fetchErr } = await supabase
             .from("api_users")
@@ -1665,12 +1659,10 @@ const AdminDashboard = () => {
               .update({ wallet_balance: newBalance })
               .eq("id", apiUser.id);
             if (!updateErr) targetWalletUpdated = true;
-            else console.log("[v0] API user wallet update failed:", updateErr);
           }
         }
 
         if (targetWalletUpdated) {
-          console.log("[v0] Target wallet updated, marking order as refunded");
           // Mark order as refunded. Try to store the refund amount/date; if those
           // columns don't exist yet, fall back to just the status fields.
           let refundErr: any = null;
@@ -1683,7 +1675,6 @@ const AdminDashboard = () => {
               refunded_at: new Date().toISOString(),
             })
             .eq("id", orderId);
-          console.log("[v0] Order update error:", richUpdate.error);
           if (richUpdate.error) {
             const basicUpdate = await supabase
               .from("orders")
