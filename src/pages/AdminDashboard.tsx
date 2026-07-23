@@ -3344,7 +3344,7 @@ const AdminDashboard = () => {
                               </div>
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Last Purchase</p>
-                                <p className="font-semibold text-foreground">{customer.last_purchase_date ? new Date(customer.last_purchase_date).toLocaleDateString() : '—'}</p>
+                                <p className="font-semibold text-foreground">{customer.last_purchase_date ? new Date(customer.last_purchase_date).toLocaleDateString() : '���'}</p>
                               </div>
                             </div>
                           </div>
@@ -3356,7 +3356,7 @@ const AdminDashboard = () => {
                               onClick={() => {
                                 localStorage.setItem("admin_impersonate_customer", customer.user_id || customer.id);
                                 localStorage.setItem("admin_impersonate_customer_name", `${customer.first_name} ${customer.last_name}`);
-                                window.location.href = "/user";
+                                window.location.href = "/user-dashboard";
                               }}
                             >
                               <LogIn className="h-3 w-3 mr-1" />

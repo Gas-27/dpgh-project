@@ -397,31 +397,38 @@ const SubSubagentDashboard = () => {
     }
   };
 
-  // Check for pending wallet topup from URL params (Paystack callback)
+  // Check for pending wallet topup from URL params (Paystack callback).
+  // Persist the reference in sessionStorage so it survives even if the effect
+  // fires before the store finishes loading; the dependency on subagentStore?.id
+  // guarantees we retry once the store is available.
   useEffect(() => {
-    if (!subagentStore?.id) return;
+    // Capture URL reference immediately and stash it (before store is ready)
     const urlParams = new URLSearchParams(window.location.search);
     const urlRef = urlParams.get("reference") || urlParams.get("trxref");
-    const sessionRef = sessionStorage.getItem("pending_subsubagent_wallet_topup");
-    const ref = urlRef || sessionRef;
-    if (!ref) return;
     if (urlRef) {
+      sessionStorage.setItem("pending_subsubagent_wallet_topup", urlRef);
+      // Clean the URL so a page refresh doesn't re-trigger
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!subagentStore?.id) return;
+    const ref = sessionStorage.getItem("pending_subsubagent_wallet_topup");
+    if (!ref) return;
+    // Clear it first to prevent double-processing on re-renders
+    sessionStorage.removeItem("pending_subsubagent_wallet_topup");
     supabase.functions.invoke("verify-payment", { body: { reference: ref } })
       .then(({ data }) => {
         if (data?.success && !data?.already_processed) {
-          toast({ title: "Wallet topped up!", description: data.message });
-          fetchData();
-          fetchTopupHistory();
-        } else if (data?.already_processed) {
-          fetchData();
-          fetchTopupHistory();
+          toast({ title: "Wallet topped up!", description: data.message || "Your wallet has been credited." });
         }
-        sessionStorage.removeItem("pending_subsubagent_wallet_topup");
+        // Refresh data regardless of whether it was already processed
+        fetchData();
+        fetchTopupHistory();
       })
       .catch(() => {
-        sessionStorage.removeItem("pending_subsubagent_wallet_topup");
+        // Reference was cleared above; nothing else to do
       });
   }, [subagentStore?.id]);
 
@@ -1854,19 +1861,21 @@ const SubSubagentDashboard = () => {
                         </TableHeader>
                         <TableBody>
                           {paginatedOrders.map(order => {
-                            // Use stored values from order if available, otherwise fall back to current prices (for old orders)
+                            // Sell price = what the sub-subagent charged the customer
                             const storedSellPrice = order.selling_price ?? null;
-                            const storedBaseCost = order.base_price ?? null;
                             const storedProfit = order.profit ?? null;
-                            
-                            // Fallback calculation for old orders
-                            const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
-                            const fallbackProfit = order.amount - fallbackBaseCost;
-                            
-                            // Use stored values if they exist and are non-zero
+
+                            // Base Cost = what the subagent charges the sub-subagent (the sub-subagent's cost from agent).
+                            // basePrices holds the subagent's template cost for this sub-subagent (from sub_subagent_package_prices).
+                            // order.base_price stores the same value set at purchase time — use it as the authoritative source
+                            // if basePrices isn't loaded yet, but prefer basePrices because it reflects the current cost.
+                            const currentCostFromAgent = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+                            const storedCostFromAgent = order.base_price ?? null;
+                            // Use current cost from basePrices; fall back to what was stored at purchase time
+                            const baseCost = currentCostFromAgent > 0 ? currentCostFromAgent : (storedCostFromAgent && storedCostFromAgent > 0 ? storedCostFromAgent : 0);
+
                             const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
-                            const baseCost = (storedBaseCost && storedBaseCost > 0) ? storedBaseCost : fallbackBaseCost;
-                            const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : fallbackProfit;
+                            const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : (sellPrice - baseCost);
                             
                             return (
                               <TableRow key={order.id}>
