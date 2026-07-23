@@ -2283,6 +2283,27 @@ const AgentDashboard = () => {
               </Card>
             )}
 
+            {/* Refunds Received card — shows agent's own refunded orders */}
+            {(() => {
+              const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
+              if (refundedOrders.length === 0) return null;
+              const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number((o as any).refunded_amount ?? (o as any).base_price ?? o.amount) || 0), 0);
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-colors">
+                    <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
+                      <Wallet className="h-8 w-8 text-amber-400" />
+                      <div>
+                        <p className="font-semibold text-amber-400">{refundedOrders.length}</p>
+                        <p className="text-xs text-muted-foreground">Refunds Received</p>
+                        <p className="text-xs text-muted-foreground mt-2">GHC {refundedTotal.toFixed(2)}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })()}
+
             <Card className="border-border">
               <CardHeader className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -2451,15 +2472,24 @@ const AgentDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm text-muted-foreground">Admin-Refunded Orders Available</p>
-                    <p className="font-display text-3xl font-bold text-amber-400 mt-2">{subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded").length}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Total base price value: GHC {subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded").reduce((sum, o) => sum + (Number(o.agent_price || o.amount) || 0), 0).toFixed(2)}</p>
+                    {(() => {
+                      const isRef = (o: any) => o.fulfillment_status === "refunded" || o.status === "refunded" || (o.order_status || "").toLowerCase() === "refunded";
+                      const allRef = [...subagentOrders.filter(isRef), ...orders.filter(o => !o.subagent_store_id && isRef(o))];
+                      const total = allRef.reduce((sum, o) => sum + (Number(o.agent_price || o.amount) || 0), 0);
+                      return (
+                        <>
+                          <p className="font-display text-3xl font-bold text-amber-400 mt-2">{allRef.length}</p>
+                          <p className="text-xs text-muted-foreground mt-1">Total base price value: GHC {total.toFixed(2)}</p>
+                        </>
+                      );
+                    })()}
                   </div>
                   <Wallet className="h-8 w-8 text-amber-400 opacity-50" />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Refund Filter Buttons - Only show refunded orders */}
+              {/* Refund Filter Buttons - Only show refunded orders */}
             <div>
               <p className="text-sm font-semibold text-muted-foreground mb-3">Filter Orders:</p>
               <div className="flex flex-wrap gap-2">
@@ -2481,8 +2511,17 @@ const AgentDashboard = () => {
 
             {/* Subagent Orders Table with Multi-Select - Only show refunded orders */}
             {(() => {
-              // Only show orders that have been refunded by admin (can be refunded to subagent)
-              let filteredOrders = subagentOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded");
+              // Show all agent orders (direct + subagent) that have been refunded by admin.
+              // Also check order_status for case-insensitive match in case DB stores "Refunded".
+              const isRefunded = (o: any) =>
+                o.fulfillment_status === "refunded" ||
+                o.status === "refunded" ||
+                (o.order_status || "").toLowerCase() === "refunded";
+              const allRefundedOrders = [
+                ...subagentOrders.filter(isRefunded),
+                ...orders.filter(o => !o.subagent_store_id && isRefunded(o)),
+              ];
+              let filteredOrders = allRefundedOrders;
 
               return (
                 <>

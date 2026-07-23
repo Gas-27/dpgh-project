@@ -2184,8 +2184,13 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   );
 
   const renderRefunds = () => {
-    // Filter refunded orders
-    const refundedOrders = orders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded");
+    // Filter refunded orders — check all three status fields since different parts of
+    // the system may write to different columns (order_status vs fulfillment_status vs status).
+    const refundedOrders = orders.filter(o =>
+      o.fulfillment_status === "refunded" ||
+      o.status === "refunded" ||
+      (o.order_status || "").toLowerCase() === "refunded"
+    );
     
     let filteredRefunds = refundedOrders;
     if (refundFilter === "processing") {
@@ -2193,7 +2198,11 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
     } else if (refundFilter === "delivered") {
       filteredRefunds = refundedOrders.filter(o => o.fulfillment_status === "completed");
     } else if (refundFilter === "refunded") {
-      filteredRefunds = refundedOrders.filter(o => o.fulfillment_status === "refunded" || o.status === "refunded");
+      filteredRefunds = refundedOrders.filter(o =>
+        o.fulfillment_status === "refunded" ||
+        o.status === "refunded" ||
+        (o.order_status || "").toLowerCase() === "refunded"
+      );
     }
 
     const totalRefundAmount = filteredRefunds.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
