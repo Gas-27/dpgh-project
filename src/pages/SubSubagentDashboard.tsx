@@ -416,7 +416,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Loading by storeId:", resolvedStoreId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference")
           .eq("id", resolvedStoreId)
           .single();
 
@@ -521,7 +521,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] Querying sub_subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference")
           .eq("user_id", effectiveUserId)
           .order("created_at", { ascending: false });
 
@@ -1030,15 +1030,14 @@ const SubSubagentDashboard = () => {
           .eq("sub_subagent_store_id", subagentStore.id)
           .eq("package_id", packageId);
         
-        // Then insert new
+        // Then insert new — only store sell_price (what sub-subagent charges customers).
+        // base_price is set by the subagent via their template row and must NOT be overwritten here.
         const { error } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
             sub_subagent_store_id: subagentStore.id,
             subagent_store_id: subagentStore.subagent_store_id,
             package_id: packageId,
-            base_price: price,
-            subagent_minimum_price: price,
             sell_price: price
           });
 
@@ -1144,14 +1143,15 @@ const SubSubagentDashboard = () => {
           .eq("sub_subagent_store_id", subagentStore.id)
           .eq("package_id", packageId);
 
+        // Only save sell_price (what the sub-subagent charges their customers).
+        // base_price is the cost FROM the subagent — it is set by the subagent's
+        // template row and must NOT be overwritten by the sub-subagent's save.
         const { error } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
             sub_subagent_store_id: subagentStore.id,
             subagent_store_id: subagentStore.subagent_store_id,
             package_id: packageId,
-            base_price: price,
-            subagent_minimum_price: price,
             sell_price: price
           });
 

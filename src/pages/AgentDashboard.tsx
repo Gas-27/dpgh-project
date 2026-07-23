@@ -2283,30 +2283,6 @@ const AgentDashboard = () => {
               </Card>
             )}
 
-            {/* Agent Features Section */}
-            <div className="space-y-4">
-              <h3 className="font-display text-xl font-bold">Agent Features</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {(() => {
-                  const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
-                  if (refundedOrders.length === 0) return null;
-                  const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number((o as any).refunded_amount ?? (o as any).base_price ?? o.amount) || 0), 0);
-                  return (
-                    <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-colors">
-                      <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
-                        <Wallet className="h-8 w-8 text-amber-400" />
-                        <div>
-                          <p className="font-semibold text-amber-400">{refundedOrders.length}</p>
-                          <p className="text-xs text-muted-foreground">Refunds Received</p>
-                          <p className="text-xs text-muted-foreground mt-2">GHC {refundedTotal.toFixed(2)}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })()}
-              </div>
-            </div>
-
             <Card className="border-border">
               <CardHeader className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
