@@ -128,6 +128,8 @@ const AdminDashboard = () => {
   const [orderNetworkFilter, setOrderNetworkFilter] = useState<string>("all");
   const [orderFulfillmentFilter, setOrderFulfillmentFilter] = useState<string>("all");
   const [orderPaymentStatusFilter, setOrderPaymentStatusFilter] = useState<string>("all");
+  const [orderSourceFilter, setOrderSourceFilter] = useState<string>("all");
+  const [orderDeliveryFilter, setOrderDeliveryFilter] = useState<string>("all");
   const [agentApprovalFilter, setAgentApprovalFilter] = useState<string>("all");
   const [subagentStatusFilter, setSubagentStatusFilter] = useState<string>("all");
 
@@ -1591,9 +1593,9 @@ const AdminDashboard = () => {
         // Use base price (order.amount) as refund amount
         
         if (order.customer_id) {
-          // Customer order: refund to customer wallet (Paystack or wallet purchase)
-          console.log("[v0] Refunding to customer", order.customer_id, "amount:", paidAmount);
-          refundAmount = paidAmount;
+          // Customer order: refund at admin base price (NOT the full selling price the customer paid).
+          // resolveAgentBasePrice looks up agent_custom_base_prices then data_packages.agent_price.
+          refundAmount = await resolveAgentBasePrice(order, order.agent_store_id ?? null);
           
           // Try to find or create customer wallet row
           const { data: customer, error: fetchErr } = await supabase
@@ -2049,15 +2051,41 @@ const AdminDashboard = () => {
     baseOrders.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
   }
 
-  // Apply date range filter
+  // Apply date range, source, and delivery status filters
   const filteredOrders = baseOrders.filter(order => {
-    if (!orderDateFrom && !orderDateTo) return true;
-    
-    const orderDate = new Date(order.created_at || 0).getTime();
-    const fromDate = orderDateFrom ? new Date(orderDateFrom).getTime() : 0;
-    const toDate = orderDateTo ? new Date(orderDateTo).getTime() + 86400000 : Infinity; // Add 1 day to include the whole day
+    // Date range
+    if (orderDateFrom || orderDateTo) {
+      const orderDate = new Date(order.created_at || 0).getTime();
+      const fromDate = orderDateFrom ? new Date(orderDateFrom).getTime() : 0;
+      const toDate = orderDateTo ? new Date(orderDateTo).getTime() + 86400000 : Infinity;
+      if (orderDate < fromDate || orderDate > toDate) return false;
+    }
 
-    return orderDate >= fromDate && orderDate <= toDate;
+    // Source filter
+    if (orderSourceFilter !== "all") {
+      const hasSubSubagent = !!(order as any).sub_subagent_store_id;
+      const hasSubagent = !!order.subagent_store_id;
+      const hasAgent = !!order.agent_store_id;
+      const isAPI = !!(order.api_user && String(order.api_user).trim() !== "");
+      if (orderSourceFilter === "sub-subagent" && !hasSubSubagent) return false;
+      if (orderSourceFilter === "subagent" && (hasSubSubagent || !hasSubagent)) return false;
+      if (orderSourceFilter === "agent" && (hasSubagent || hasSubSubagent || isAPI)) return false;
+      if (orderSourceFilter === "direct" && (hasAgent || isAPI)) return false;
+      if (orderSourceFilter === "api" && !isAPI) return false;
+    }
+
+    // Delivery status filter
+    if (orderDeliveryFilter !== "all") {
+      const deliveryStatus = (
+        (order as any).order_status ||
+        order.fulfillment_status ||
+        order.status ||
+        ""
+      ).toLowerCase();
+      if (deliveryStatus !== orderDeliveryFilter) return false;
+    }
+
+    return true;
   });
   
   const filteredWithdrawals = withdrawals
@@ -2340,6 +2368,31 @@ const AdminDashboard = () => {
                     <SelectItem value="failed">Failed</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Select value={orderSourceFilter} onValueChange={setOrderSourceFilter}>
+                  <SelectTrigger className="w-44"><SelectValue placeholder="Filter by Source" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sources</SelectItem>
+                    <SelectItem value="agent">Agent Storefront</SelectItem>
+                    <SelectItem value="subagent">Subagent Storefront</SelectItem>
+                    <SelectItem value="sub-subagent">Sub-Subagent Storefront</SelectItem>
+                    <SelectItem value="direct">Direct (Main Site)</SelectItem>
+                    <SelectItem value="api">API</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={orderDeliveryFilter} onValueChange={setOrderDeliveryFilter}>
+                  <SelectTrigger className="w-44"><SelectValue placeholder="Filter by Delivery" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Delivery Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="refunded">Refunded</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {(() => {
                 // Show loading state if tab just loaded
@@ -2529,31 +2582,33 @@ const AdminDashboard = () => {
           {/* AGENTS TAB */}
           {canSee("agents") && (
             <TabsContent value="agents" className="space-y-4">
-              <div className="flex gap-2 flex-wrap">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search by store name..." 
-                    value={agentSearchTerm}
-                    onChange={(e) => {
-                      setAgentSearchTerm(e.target.value);
-                      if (e.target.value.length > 0) {
-                        agentSearch.search(e.target.value);
-                      }
-                    }}
-                    className="pl-10" 
-                  />
-                  {agentSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+              <div className="flex gap-2 flex-wrap items-end">
+                <div className="flex flex-col gap-1 flex-1 max-w-sm">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search by store name..." 
+                      value={agentSearchTerm}
+                      onChange={(e) => {
+                        setAgentSearchTerm(e.target.value);
+                        if (e.target.value.length > 0) {
+                          agentSearch.search(e.target.value);
+                        }
+                      }}
+                      className="pl-10" 
+                    />
+                    {agentSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={agentExactMatch}
+                      onChange={(e) => setAgentExactMatch(e.target.checked)}
+                      className="rounded border-border"
+                    />
+                    Exact match
+                  </label>
                 </div>
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agentExactMatch}
-                    onChange={(e) => setAgentExactMatch(e.target.checked)}
-                    className="rounded border-border"
-                  />
-                  Exact match
-                </label>
                 
                 <Select value={agentApprovalFilter} onValueChange={setAgentApprovalFilter}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Approval" /></SelectTrigger>
@@ -2643,31 +2698,33 @@ const AdminDashboard = () => {
           {/* SUBAGENTS TAB */}
           {canSee("subagents") && (
             <TabsContent value="subagents" className="space-y-4">
-              <div className="flex gap-2 flex-wrap">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search by store name..." 
-                    className="pl-10" 
-                    value={subagentSearchTerm}
-                    onChange={(e) => {
-                      setSubagentSearchTerm(e.target.value);
-                      if (e.target.value.length > 0) {
-                        subagentSearch.search(e.target.value);
-                      }
-                    }}
-                  />
-                  {subagentSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+              <div className="flex gap-2 flex-wrap items-end">
+                <div className="flex flex-col gap-1 flex-1 max-w-sm">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search by store name..." 
+                      className="pl-10" 
+                      value={subagentSearchTerm}
+                      onChange={(e) => {
+                        setSubagentSearchTerm(e.target.value);
+                        if (e.target.value.length > 0) {
+                          subagentSearch.search(e.target.value);
+                        }
+                      }}
+                    />
+                    {subagentSearch.isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={subagentExactMatch}
+                      onChange={(e) => setSubagentExactMatch(e.target.checked)}
+                      className="rounded border-border"
+                    />
+                    Exact match
+                  </label>
                 </div>
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={subagentExactMatch}
-                    onChange={(e) => setSubagentExactMatch(e.target.checked)}
-                    className="rounded border-border"
-                  />
-                  Exact match
-                </label>
 
                 <Select value={subagentStatusFilter} onValueChange={setSubagentStatusFilter}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Status" /></SelectTrigger>
@@ -2826,25 +2883,27 @@ const AdminDashboard = () => {
           {/* SUB-SUBAGENTS TAB */}
           {canSee("sub_subagents") && (
             <TabsContent value="sub_subagents" className="space-y-4">
-              <div className="flex gap-2 flex-wrap">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search by store name..." 
-                    className="pl-10" 
-                    value={subSubagentSearchTerm}
-                    onChange={(e) => setSubSubagentSearchTerm(e.target.value)}
-                  />
+              <div className="flex gap-2 flex-wrap items-end">
+                <div className="flex flex-col gap-1 flex-1 max-w-sm">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search by store name..." 
+                      className="pl-10" 
+                      value={subSubagentSearchTerm}
+                      onChange={(e) => setSubSubagentSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={subSubagentExactMatch}
+                      onChange={(e) => setSubSubagentExactMatch(e.target.checked)}
+                      className="rounded border-border"
+                    />
+                    Exact match
+                  </label>
                 </div>
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={subSubagentExactMatch}
-                    onChange={(e) => setSubSubagentExactMatch(e.target.checked)}
-                    className="rounded border-border"
-                  />
-                  Exact match
-                </label>
               </div>
               
               {filteredSubSubagents.length === 0 ? (
@@ -3344,7 +3403,7 @@ const AdminDashboard = () => {
                               </div>
                               <div className="min-w-0">
                                 <p className="text-muted-foreground text-xs">Last Purchase</p>
-                                <p className="font-semibold text-foreground">{customer.last_purchase_date ? new Date(customer.last_purchase_date).toLocaleDateString() : '���'}</p>
+                                <p className="font-semibold text-foreground">{customer.last_purchase_date ? new Date(customer.last_purchase_date).toLocaleDateString() : '�����'}</p>
                               </div>
                             </div>
                           </div>

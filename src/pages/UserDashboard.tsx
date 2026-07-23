@@ -479,8 +479,9 @@ const UserDashboard = () => {
       order.customer_number?.includes(apiOrdersSearch) ||
       order.network?.toLowerCase().includes(apiOrdersSearch.toLowerCase());
     
+    const effectiveStatus = (order.order_status || order.fulfillment_status || order.status || "").toLowerCase();
     const matchStatus = apiOrdersStatusFilter === "" || 
-      order.order_status === apiOrdersStatusFilter;
+      effectiveStatus === apiOrdersStatusFilter.toLowerCase();
 
     return matchSearch && matchStatus;
   });
@@ -2139,7 +2140,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       {filteredApiOrders.map(order => {
                         const fs = order.order_status || order.fulfillment_status || order.status || 'pending';
                         return (
-                          <tr key={order.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                          <tr key={order.id} className={`border-t border-border hover:bg-muted/30 transition-colors ${fs === 'refunded' ? 'bg-amber-500/5' : ''}`}>
                             <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
                               {new Date(order.created_at).toLocaleDateString()}{' '}
                               {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -2153,6 +2154,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                             </td>
                             <td className="px-3 py-2 text-xs font-semibold">
                               GHC {Number(order.selling_price || order.amount || 0).toFixed(2)}
+                              {fs === 'refunded' && order.refunded_amount != null && (
+                                <span className="block text-xs text-amber-400 mt-0.5">GHC {Number(order.refunded_amount).toFixed(2)} refunded</span>
+                              )}
                             </td>
                             <td className="px-3 py-2 text-xs">
                               <OrderStatusBadge status={fs} />

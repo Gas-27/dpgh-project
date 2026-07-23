@@ -202,6 +202,10 @@ const SubagentDashboard = () => {
   const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string }[]>([]);
   const [agentInfo, setAgentInfo] = useState<{ whatsapp_number?: string; support_number?: string; store_name?: string } | null>(null);
   
+  // Refunds
+  const [selectedSubSubagentRefundIds, setSelectedSubSubagentRefundIds] = useState<Set<string>>(new Set());
+  const [refundingSubSubagentOrders, setRefundingSubSubagentOrders] = useState<Set<string>>(new Set());
+
   // Sub-Subagents
   const [subSubagents, setSubSubagents] = useState<any[]>([]);
   const [subSubagentFormOpen, setSubSubagentFormOpen] = useState(false);
@@ -312,11 +316,6 @@ const SubagentDashboard = () => {
     }
   }, [user?.id, isImpersonating, impersonatedUserId, impersonatedStoreId]);
 
-  // Sync calculated wallet balance to database when data changes
-  // Use a ref to track if we've synced to prevent infinite loops
-  const hasSyncedRef = useRef(false);
-
-  
   // Real-time sync: subagent_stores row (wallet_balance, last_withdrawal_at, approved, etc.)
   // The DB is the single source of truth. The frontend NEVER writes wallet_balance —
   // only the edge functions (create-payout-request, order processing) do.
@@ -931,6 +930,96 @@ const SubagentDashboard = () => {
     const { error } = await supabase.from("subagent_notifications").delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
+  };
+
+  // Refund sub-subagent orders: credit the sub-subagent wallet at the base price this
+  // subagent gave the sub-subagent (sub_subagent_package_prices.sell_price), NOT the
+  // customer-facing price or the agent-to-subagent price.
+  const processSubSubagentRefunds = async () => {
+    if (selectedSubSubagentRefundIds.size === 0) {
+      toast({ title: "Error", description: "No orders selected", variant: "destructive" });
+      return;
+    }
+    setRefundingSubSubagentOrders(selectedSubSubagentRefundIds);
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Helper: resolve the price this subagent charged the sub-subagent for a package
+    const resolveSubSubagentBasePrice = async (order: any) => {
+      if (order.package_id && order.sub_subagent_store_id) {
+        const { data } = await supabase
+          .from("sub_subagent_package_prices")
+          .select("sell_price")
+          .eq("sub_subagent_store_id", order.sub_subagent_store_id)
+          .eq("package_id", order.package_id)
+          .maybeSingle();
+        if (data?.sell_price != null) return Number(data.sell_price);
+      }
+      // Fallback: subagent_package_prices row for this package (what subagent pays agent)
+      if (order.package_id && subagentStore?.id) {
+        const { data } = await supabase
+          .from("subagent_package_prices")
+          .select("base_price")
+          .eq("subagent_store_id", subagentStore.id)
+          .eq("package_id", order.package_id)
+          .maybeSingle();
+        if (data?.base_price != null) return Number(data.base_price);
+      }
+      return Number(order.base_price ?? order.agent_price ?? order.amount) || 0;
+    };
+
+    // Fetch sub-subagent orders that are refunded and selected
+    for (const orderId of selectedSubSubagentRefundIds) {
+      try {
+        const { data: order } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", orderId)
+          .maybeSingle();
+        if (!order) { errorCount++; continue; }
+
+        const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded" || (order.order_status || "").toLowerCase() === "refunded";
+        if (!isRefunded) { errorCount++; continue; }
+        if (!order.sub_subagent_store_id) { errorCount++; continue; }
+
+        const refundAmount = await resolveSubSubagentBasePrice(order);
+
+        const { data: ssa } = await supabase
+          .from("sub_subagent_stores")
+          .select("id, wallet_balance")
+          .eq("id", order.sub_subagent_store_id)
+          .maybeSingle();
+
+        if (!ssa) { errorCount++; continue; }
+
+        const newBalance = (ssa.wallet_balance || 0) + refundAmount;
+        const { error: updateErr } = await supabase
+          .from("sub_subagent_stores")
+          .update({ wallet_balance: newBalance })
+          .eq("id", ssa.id);
+
+        if (!updateErr) {
+          // Mark order as subagent-refunded to prevent double-refund
+          await supabase
+            .from("orders")
+            .update({ subagent_refunded_sub_subagent: true })
+            .eq("id", orderId);
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (err) {
+        errorCount++;
+      }
+    }
+
+    setRefundingSubSubagentOrders(new Set());
+    setSelectedSubSubagentRefundIds(new Set());
+    toast({
+      title: "Refund Complete",
+      description: `${successCount} refunded, ${errorCount} failed`,
+      variant: errorCount > 0 ? "destructive" : "default"
+    });
   };
 
   // Sub-Subagent Notification handlers
@@ -1900,6 +1989,7 @@ const SubagentDashboard = () => {
     { id: "bulk", label: "Bulk Orders", icon: Layers },
     { id: "store", label: "Store Prices", icon: Store },
     { id: "orders", label: "Orders", icon: ShoppingCart },
+    { id: "refunds", label: "Refunds", icon: RotateCcw },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "topup", label: "Top Up", icon: Wallet },
     { id: "sub-subagents", label: "Subagents", icon: Users },
@@ -2226,6 +2316,22 @@ const SubagentDashboard = () => {
                   </Badge>
                 </CardContent>
               </Card>
+              {/* Refunds Received Card */}
+              {(() => {
+                const isRef = (o: any) => o.fulfillment_status === "refunded" || o.status === "refunded" || (o.order_status || "").toLowerCase() === "refunded";
+                const refunded = [...orders].filter(isRef);
+                const total = refunded.reduce((s, o) => s + (Number((o as any).refunded_amount || o.amount) || 0), 0);
+                if (refunded.length === 0) return null;
+                return (
+                  <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-400/50 transition-all" onClick={() => setActiveTab("refunds")}>
+                    <CardContent className="p-6 text-center">
+                      <p className="text-muted-foreground text-sm">Refunds Received</p>
+                      <p className="font-display text-2xl font-bold mt-1 text-amber-400">{refunded.length}</p>
+                      <p className="text-xs text-muted-foreground mt-1">GHC {total.toFixed(2)}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
                   <p className="text-muted-foreground text-sm">
@@ -2653,6 +2759,150 @@ const SubagentDashboard = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* REFUNDS TAB */}
+          <TabsContent value="refunds" className="mt-0 space-y-6">
+            <Card className="border-blue-500/30 bg-blue-500/5">
+              <CardContent className="p-4 space-y-1">
+                <p className="text-sm text-blue-400">
+                  <strong>Refunds:</strong> Orders from your store appear as read-only. Orders that came from your sub-subagents can be selected to forward the refund to their wallet at the base price you gave them.
+                </p>
+              </CardContent>
+            </Card>
+
+            {(() => {
+              const isRefunded = (o: any) =>
+                o.fulfillment_status === "refunded" ||
+                o.status === "refunded" ||
+                (o.order_status || "").toLowerCase() === "refunded";
+
+              // Own-store orders (no sub-subagent) + sub-subagent orders that are refunded
+              const allRefunded = orders.filter(isRefunded);
+              const ownStoreRefunded = allRefunded.filter(o => !(o as any).sub_subagent_store_id);
+              const subSubagentRefunded = allRefunded.filter(o => !!(o as any).sub_subagent_store_id);
+
+              // Count already-forwarded to sub-subagent wallet
+              const forwardable = subSubagentRefunded.filter((o: any) => !o.subagent_refunded_sub_subagent);
+
+              return (
+                <>
+                  {/* Summary card */}
+                  <Card className="border-amber-500/30 bg-amber-500/5">
+                    <CardContent className="p-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Admin-Refunded Orders</p>
+                          <p className="font-display text-2xl font-bold text-amber-400 mt-1">{allRefunded.length}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Forwardable to Sub-Subagents</p>
+                          <p className="font-display text-2xl font-bold text-cyan-400 mt-1">{forwardable.length}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {selectedSubSubagentRefundIds.size > 0 && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between">
+                      <p className="text-sm font-medium text-amber-400">{selectedSubSubagentRefundIds.size} order{selectedSubSubagentRefundIds.size !== 1 ? "s" : ""} selected</p>
+                      <button
+                        onClick={processSubSubagentRefunds}
+                        disabled={refundingSubSubagentOrders.size > 0}
+                        className="px-4 py-2 rounded bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium transition-all"
+                      >
+                        {refundingSubSubagentOrders.size > 0 ? "Processing..." : "Refund to Sub-Subagent Wallets"}
+                      </button>
+                    </div>
+                  )}
+
+                  {allRefunded.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-12 text-center">
+                        <RotateCcw className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                        <p className="text-muted-foreground">No refunded orders yet</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead style={{ width: "40px" }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedSubSubagentRefundIds.size === forwardable.length && forwardable.length > 0}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedSubSubagentRefundIds(new Set(forwardable.map((o: any) => o.id)));
+                                  else setSelectedSubSubagentRefundIds(new Set());
+                                }}
+                                className="rounded border-border"
+                                title="Select all forwardable sub-subagent orders"
+                              />
+                            </TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Network</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Source</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {allRefunded.map((order: any) => {
+                            const isSubSub = !!order.sub_subagent_store_id;
+                            const alreadyForwarded = !!order.subagent_refunded_sub_subagent;
+                            const sourceLabel = isSubSub
+                              ? (order.sub_subagent_store_name || "Sub-Subagent")
+                              : "Own Store";
+                            const sourceBadgeClass = isSubSub
+                              ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                              : "bg-blue-500/10 text-blue-400 border-blue-500/30";
+                            return (
+                              <TableRow key={order.id} className={selectedSubSubagentRefundIds.has(order.id) ? "bg-amber-500/10" : ""}>
+                                <TableCell style={{ width: "40px" }} className="text-center">
+                                  {isSubSub && !alreadyForwarded ? (
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedSubSubagentRefundIds.has(order.id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) setSelectedSubSubagentRefundIds(new Set([...selectedSubSubagentRefundIds, order.id]));
+                                        else { const s = new Set(selectedSubSubagentRefundIds); s.delete(order.id); setSelectedSubSubagentRefundIds(s); }
+                                      }}
+                                      className="rounded border-border"
+                                    />
+                                  ) : (
+                                    <span className="text-muted-foreground/40 text-xs" title={alreadyForwarded ? "Already forwarded" : "Own-store order"}>—</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                                  {order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
+                                </TableCell>
+                                <TableCell className="font-medium">{order.customer_number}</TableCell>
+                                <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                                <TableCell>{order.size_gb}GB</TableCell>
+                                <TableCell className="text-sm">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={`text-xs ${sourceBadgeClass}`}>{sourceLabel}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {alreadyForwarded ? (
+                                    <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">Forwarded</Badge>
+                                  ) : (
+                                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Refunded by Agent</Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </Card>
+                  )}
+                </>
+              );
+            })()}
           </TabsContent>
 
           {/* WITHDRAW TAB */}

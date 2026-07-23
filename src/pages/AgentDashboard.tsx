@@ -1139,8 +1139,10 @@ const AgentDashboard = () => {
       order.customer_number?.includes(apiOrdersSearch) ||
       order.network?.toLowerCase().includes(apiOrdersSearch.toLowerCase());
     
+    // Check all status fields (order_status, fulfillment_status, status) for the filter value
+    const effectiveStatus = (order.order_status || order.fulfillment_status || order.status || "").toLowerCase();
     const matchStatus = apiOrdersStatusFilter === "" || 
-      order.order_status === apiOrdersStatusFilter;
+      effectiveStatus === apiOrdersStatusFilter.toLowerCase();
 
     return matchSearch && matchStatus;
   });
@@ -2460,9 +2462,12 @@ const AgentDashboard = () => {
           {/* ============================= REFUNDS ============================= */}
           <TabsContent value="refunds" className="space-y-6 mt-0">
             <Card className="border-blue-500/30 bg-blue-500/5">
-              <CardContent className="p-4">
+              <CardContent className="p-4 space-y-1">
                 <p className="text-sm text-blue-400">
-                  <strong>Note:</strong> You can only refund subagent orders that the admin has already refunded to you. The refund will be sent to the subagent&apos;s wallet at the base price you gave them.
+                  <strong>Note:</strong> Only subagent orders can be selected for refund. When you refund, the base price you charged the subagent is credited to their wallet.
+                </p>
+                <p className="text-xs text-blue-300/70">
+                  Direct agent-storefront orders (no subagent) appear as read-only — the admin&apos;s refund already covered those. Source column shows where each order originated.
                 </p>
               </CardContent>
             </Card>
@@ -2549,20 +2554,40 @@ const AgentDashboard = () => {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedSubagentOrderIds.size === filteredOrders.length && filteredOrders.length > 0} onChange={(e) => { if (e.target.checked) { setSelectedSubagentOrderIds(new Set(filteredOrders.map(o => o.id))); } else { setSelectedSubagentOrderIds(new Set()); } }} className="rounded border-border" /></TableHead>
+                            <TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedSubagentOrderIds.size === filteredOrders.filter(o => !!o.subagent_store_id).length && filteredOrders.filter(o => !!o.subagent_store_id).length > 0} onChange={(e) => { if (e.target.checked) { setSelectedSubagentOrderIds(new Set(filteredOrders.filter(o => !!o.subagent_store_id).map(o => o.id))); } else { setSelectedSubagentOrderIds(new Set()); } }} className="rounded border-border" title="Select all subagent orders" /></TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Phone</TableHead>
                             <TableHead>Network</TableHead>
                             <TableHead>Size</TableHead>
                             <TableHead>Customer Paid</TableHead>
                             <TableHead>Base Price (Refund)</TableHead>
+                            <TableHead>Source</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredOrders.map((order) => (
+                          {filteredOrders.map((order) => {
+                            const isSubagentOrder = !!order.subagent_store_id;
+                            const isSubSubagentOrder = !!(order as any).sub_subagent_store_id;
+                            const sourceLabel = isSubSubagentOrder
+                              ? ((order as any).sub_subagent_store_name || "Sub-Subagent")
+                              : isSubagentOrder
+                              ? (order.subagent_store_name || "Subagent")
+                              : "Agent Storefront";
+                            const sourceBadgeClass = isSubSubagentOrder
+                              ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                              : isSubagentOrder
+                              ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
+                              : "bg-blue-500/10 text-blue-400 border-blue-500/30";
+                            return (
                             <TableRow key={order.id} className={selectedSubagentOrderIds.has(order.id) ? "bg-amber-500/10" : ""}>
-                              <TableCell style={{ width: "40px" }} className="text-center"><input type="checkbox" checked={selectedSubagentOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedSubagentOrderIds(new Set([...selectedSubagentOrderIds, order.id])); } else { const newSet = new Set(selectedSubagentOrderIds); newSet.delete(order.id); setSelectedSubagentOrderIds(newSet); } }} className="rounded border-border" /></TableCell>
+                              <TableCell style={{ width: "40px" }} className="text-center">
+                                {isSubagentOrder ? (
+                                  <input type="checkbox" checked={selectedSubagentOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedSubagentOrderIds(new Set([...selectedSubagentOrderIds, order.id])); } else { const newSet = new Set(selectedSubagentOrderIds); newSet.delete(order.id); setSelectedSubagentOrderIds(newSet); } }} className="rounded border-border" />
+                                ) : (
+                                  <span title="Direct orders cannot be forwarded to subagent" className="text-muted-foreground/40 text-xs">—</span>
+                                )}
+                              </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}</TableCell>
                               <TableCell className="font-medium">{order.customer_number}</TableCell>
                               <TableCell className="uppercase text-sm">{order.network}</TableCell>
@@ -2570,12 +2595,16 @@ const AgentDashboard = () => {
                               <TableCell className="text-sm text-muted-foreground">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                               <TableCell className="font-semibold text-amber-400">GHC {Number(order.agent_price || order.amount || 0).toFixed(2)}</TableCell>
                               <TableCell>
+                                <Badge variant="outline" className={`text-xs ${sourceBadgeClass}`}>{sourceLabel}</Badge>
+                              </TableCell>
+                              <TableCell>
                                 <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
                                   Refunded by Admin
                                 </Badge>
                               </TableCell>
                             </TableRow>
-                          ))}
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </Card>
@@ -3856,6 +3885,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       <option value="processing">Processing</option>
                       <option value="failed">Failed</option>
                       <option value="delivered">Delivered</option>
+                      <option value="refunded">Refunded</option>
                     </select>
                   </div>
                 </div>
@@ -3888,7 +3918,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                         {filteredApiOrders.map((order) => {
                           const fs = order.order_status || order.fulfillment_status || order.status || 'pending';
                           return (
-                          <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
+                          <TableRow key={order.id} className={`hover:bg-muted/50 transition-colors ${fs === 'refunded' ? 'bg-amber-500/5' : ''}`}>
                             <TableCell className="text-xs whitespace-nowrap">
                               {new Date(order.created_at).toLocaleDateString()} {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </TableCell>
@@ -3901,6 +3931,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                             <TableCell className="text-xs font-semibold">GHC {Number(order.selling_price || order.amount || 0).toFixed(2)}</TableCell>
                             <TableCell className="text-xs">
                               <OrderStatusBadge status={fs} />
+                              {fs === 'refunded' && order.refunded_amount != null && (
+                                <span className="block text-xs text-amber-400 mt-0.5">GHC {Number(order.refunded_amount).toFixed(2)} refunded</span>
+                              )}
                             </TableCell>
                           </TableRow>
                           );
