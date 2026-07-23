@@ -582,7 +582,16 @@ const SubagentDashboard = () => {
           const subSubagentOrdersList = subSubagentOrders || [];
           setSubSubagentOrdersCount(subSubagentOrdersList.length);
           
-          // Calculate profit: what subagent earns = sub-subagent's cost (base_price) minus what subagent pays agent
+          // Merge sub-subagent orders into the main list
+          if (subSubagentOrdersList.length > 0) {
+            const ownOrders = ordersResult.data || [];
+            const merged = [...ownOrders, ...subSubagentOrdersList]
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setOrders(merged);
+            setTotalOrderCount(merged.length);
+          }
+
+          // Calculate profit: what subagent earns from sub-subagent orders
           let totalProfit = 0;
           subSubagentOrdersList.forEach(order => {
             const profit = (Number(order.profit) || 0);
@@ -761,6 +770,8 @@ const SubagentDashboard = () => {
             const merged = [...enrichedOrders2, ...subSubagentOrdersList]
               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             setOrders(merged);
+            // Update total order count to include sub-subagent orders
+            setTotalOrderCount(merged.length);
           }
         }
         

@@ -846,13 +846,18 @@ Deno.serve(async (req) => {
         if (agentCostRow?.base_price != null) subsubCost = Number(agentCostRow.base_price);
       }
       if (parentSubagentId) {
-        const { data: templateRow } = await supabaseClient
+        // Order by updated_at/created_at descending so the most-recently-saved row wins,
+        // matching the dashboard forEach which also gives the last row highest priority.
+        // Using limit(1) instead of maybeSingle() to avoid errors when duplicate rows exist.
+        const { data: templateRows } = await supabaseClient
           .from("sub_subagent_package_prices")
-          .select("base_price")
+          .select("base_price, updated_at, created_at")
           .eq("subagent_store_id", parentSubagentId)
           .is("sub_subagent_store_id", null)
           .eq("package_id", package_id)
-          .maybeSingle();
+          .order("updated_at", { ascending: false, nullsFirst: false })
+          .limit(1);
+        const templateRow = templateRows?.[0] ?? null;
         if (templateRow?.base_price != null) subsubCost = Number(templateRow.base_price);
       }
 

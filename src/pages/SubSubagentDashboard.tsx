@@ -222,51 +222,13 @@ const SubSubagentDashboard = () => {
     }
   }, [user?.id, storeIdFromUrl, impersonationData?.storeId]);
 
-  // Sync calculated wallet balance to database when data changes
-  // Use a ref to track if we've synced to prevent infinite loops
-  const lastSyncedBalanceRef = useRef<number | null>(null);
-  // Remember the store id we successfully loaded so that argument-less
-  // fetchData() calls (from realtime handlers and post-save refreshes) always
-  // reload by store id instead of falling into the user-id branch, which fails
-  // for stores opened via store URL / impersonation and wrongly shows "Store not found".
+  // Remember the store id we successfully loaded so that argument-less fetchData() calls
+  // always reload by store id (not user-id) to avoid "Store not found" errors.
   const loadedStoreIdRef = useRef<string | null>(null);
-  
-  useEffect(() => {
-    const syncWalletBalance = async () => {
-      if (!subagentStore?.id) return;
-      
-      // Calculate wallet: Profit + Topups - COMPLETED Withdrawals - Wallet Purchases
-      const profit = orders.reduce((sum, order) => sum + (order.profit || 0), 0);
-
-      const topups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
-      const completedWithdrawals = withdrawals
-        .filter((w) => w.status === "completed")
-        .reduce((s, w) => s + Number(w.amount || 0), 0);
-      const walletPurchases = orders
-        .filter((o) => o.payment_method === "wallet")
-        .reduce((s, o) => s + Number(o.amount || 0), 0);
-
-      const calculatedBalance = profit + topups - completedWithdrawals - walletPurchases;
-      
-      // Only sync if the balance has changed from last sync
-      if (lastSyncedBalanceRef.current === calculatedBalance) return;
-      
-      // Update the database
-      const { error } = await supabase
-        .from("sub_subagent_stores")
-        .update({ wallet_balance: calculatedBalance })
-        .eq("id", subagentStore.id);
-      
-      if (!error) {
-        lastSyncedBalanceRef.current = calculatedBalance;
-      }
-    };
-    
-    // Only sync if we have a store and at least some data loaded
-    if (subagentStore?.id && orders.length >= 0) {
-      syncWalletBalance();
-    }
-  }, [subagentStore?.id, JSON.stringify(basePrices), orders, withdrawals, topupHistory]);
+  // NOTE: We intentionally do NOT recalculate and sync wallet_balance from the frontend.
+  // The wallet is maintained exclusively by server-side functions (paystack-webhook and
+  // verify-payment) to prevent the frontend from overwriting valid server-set balances
+  // (e.g. topups would be wiped if orders have profit=0 due to a pricing issue).
 
   // Real-time wallet balance updates
   useEffect(() => {
