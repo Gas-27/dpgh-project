@@ -378,7 +378,9 @@ const SubSubagentDashboard = () => {
           amount,
           email: user.email,
           phone: subagentStore.support_number || subagentStore.whatsapp_number || "0000000000",
-          callback_url: `${window.location.origin}/sub-subagent-dashboard`,
+          // Always use dataplug.store as callback so the Supabase auth session
+          // is valid when Paystack redirects back (agentsstore.shop has a different origin).
+          callback_url: "https://www.dataplug.store/sub-subagent-dashboard",
           metadata: {
             type: "subsubagent_wallet_topup",
             subsubagent_store_id: subagentStore.id,
@@ -2023,7 +2025,7 @@ const SubSubagentDashboard = () => {
                                 email,
                                 amount: price,
                                 phone: buyCustomerNumber.trim(),
-                                callback_url: `${window.location.origin}/sub-subagent-dashboard`,
+                                callback_url: "https://www.dataplug.store/sub-subagent-dashboard",
                                 metadata: {
                                   package_id: buyingPkg.id,
                                   network: buyingPkg.network,
