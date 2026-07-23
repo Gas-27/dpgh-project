@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
@@ -311,6 +312,8 @@ const AgentDashboard = () => {
 
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
+  const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
+  const [sourceDialogInfo, setSourceDialogInfo] = useState<SourceInfo | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [storeBalance, setStoreBalance] = useState(0);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -2361,8 +2364,34 @@ const AgentDashboard = () => {
                         const paymentMethodDisplay = isAPIOrder ? "API Wallet" : (order.payment_method === "wallet" ? "Wallet" : "Paystack");
                         const subagentName = (order as any).subagent_stores?.store_name || "Unknown Subagent";
                         const subSubagentName = (order as any).sub_subagent_stores?.store_name || "Sub-Subagent";
-                        
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30">{subSubagentName}</Badge> : isSubagentOrder ? <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">{subagentName}</Badge> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} /></TableCell><TableCell><Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
+
+                        const handleSourceClick = () => {
+                          if (isSubSubagentOrder) {
+                            const subSubagentRow = (order as any).sub_subagent_stores;
+                            const parentSubagent = subagents.find(s => s.id === order.subagent_store_id);
+                            setSourceDialogInfo({
+                              type: "subsubagent",
+                              storeName: subSubagentName,
+                              storeUrl: subSubagentRow?.store_url || undefined,
+                              storePhone: subSubagentRow?.support_number || subSubagentRow?.whatsapp_number || undefined,
+                              parentSubagentName: parentSubagent?.store_name || (order as any).subagent_stores?.store_name || undefined,
+                              parentSubagentUrl: parentSubagent?.store_url || undefined,
+                              parentAgentName: store?.store_name || undefined,
+                            });
+                          } else if (isSubagentOrder) {
+                            const subagentRow = (order as any).subagent_stores;
+                            setSourceDialogInfo({
+                              type: "subagent",
+                              storeName: subagentName,
+                              storeUrl: subagentRow?.store_url || undefined,
+                              storePhone: subagentRow?.support_number || subagentRow?.whatsapp_number || undefined,
+                              agentName: store?.store_name || undefined,
+                            });
+                          } else { return; }
+                          setSourceDialogOpen(true);
+                        };
+
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} /></TableCell><TableCell><Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
                     {/* Load More Button */}
                     {currentPage * ordersPerPage < filteredOrders.length && (
                       <div className="flex items-center justify-center mt-6">
@@ -4518,6 +4547,12 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
       
       <WhatsAppFloatingButton />
       <ChatBot page="agent-dashboard" />
+
+      <SourceInfoDialog
+        open={sourceDialogOpen}
+        onClose={() => setSourceDialogOpen(false)}
+        info={sourceDialogInfo}
+      />
     </div>
   );
 };

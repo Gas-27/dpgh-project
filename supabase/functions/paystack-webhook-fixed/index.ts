@@ -856,13 +856,15 @@ Deno.serve(async (req) => {
         if (templateRow?.base_price != null) subsubCost = Number(templateRow.base_price);
       }
 
-      // What the SUBAGENT pays the AGENT (subagent's cost, e.g. 4.20).
+      // What the SUBAGENT pays the AGENT = the agent's sell price to the subagent.
+      // This is looked up by agent_store_id (not subagent_store_id) so we get
+      // the subagent's cost from their agent, not the subagent's own sell price.
       let agentPriceToSubagent = adminBasePrice;
-      if (parentSubagentId) {
+      if (agentId) {
         const { data: subPrice } = await supabaseClient
           .from("subagent_package_prices")
           .select("base_price")
-          .eq("subagent_store_id", parentSubagentId)
+          .eq("agent_store_id", agentId)
           .eq("package_id", package_id)
           .maybeSingle();
         if (subPrice?.base_price != null) agentPriceToSubagent = Number(subPrice.base_price);

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
 import { Navigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,6 +146,8 @@ const SubagentDashboard = () => {
 
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
+  const [sourceDialogInfo, setSourceDialogInfo] = useState<SourceInfo | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -2362,9 +2365,24 @@ const SubagentDashboard = () => {
                             }
 
                             // Determine the order source: a sub-subagent store, or the subagent's own store (Direct)
-                            const subSubagentName = isSubSubagentOrder
-                              ? (subSubagents.find(s => s.id === order.sub_subagent_store_id)?.store_name || "Sub-Subagent")
+                            const subSubagentRow = isSubSubagentOrder
+                              ? subSubagents.find(s => s.id === order.sub_subagent_store_id)
                               : null;
+                            const subSubagentName = subSubagentRow?.store_name || "Sub-Subagent";
+
+                            const handleSourceClick = () => {
+                              if (!isSubSubagentOrder) return;
+                              setSourceDialogInfo({
+                                type: "subsubagent",
+                                storeName: subSubagentName,
+                                storeUrl: subSubagentRow?.store_url || undefined,
+                                storePhone: subSubagentRow?.support_number || subSubagentRow?.whatsapp_number || undefined,
+                                parentSubagentName: subagentStore?.store_name || undefined,
+                                parentSubagentUrl: subagentStore?.store_url || undefined,
+                              });
+                              setSourceDialogOpen(true);
+                            };
+
                             return (
                               <TableRow key={order.id}>
                                 <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
@@ -2379,7 +2397,9 @@ const SubagentDashboard = () => {
                                 <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
                                 <TableCell>
                                   {isSubSubagentOrder ? (
-                                    <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">{subSubagentName}</Badge>
+                                    <button onClick={handleSourceClick} className="cursor-pointer">
+                                      <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subSubagentName}</Badge>
+                                    </button>
                                   ) : (
                                     <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>
                                   )}
@@ -4078,6 +4098,12 @@ const SubagentDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <SourceInfoDialog
+        open={sourceDialogOpen}
+        onClose={() => setSourceDialogOpen(false)}
+        info={sourceDialogInfo}
+      />
     </div>
   );
 };

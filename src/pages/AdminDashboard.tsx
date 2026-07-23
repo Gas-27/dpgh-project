@@ -248,7 +248,16 @@ const AdminDashboard = () => {
   
   // Source info dialog state
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
-  const [sourceInfo, setSourceInfo] = useState<{ type: string; storeName: string; contact: string } | null>(null);
+  const [sourceInfo, setSourceInfo] = useState<{
+    type: string;
+    storeName: string;
+    contact: string;
+    storeUrl?: string;
+    parentSubagentName?: string;
+    parentSubagentUrl?: string;
+    parentAgentName?: string;
+    parentAgentUrl?: string;
+  } | null>(null);
   
   // App settings state
   const [agentRegistrationFee, setAgentRegistrationFee] = useState(30);
@@ -2380,6 +2389,7 @@ const AdminDashboard = () => {
                               // Determine source
                               const agentStore = order.agent_store_id ? agents.find(a => a.id === order.agent_store_id) : null;
                               const subagentStore = order.subagent_store_id ? subagents.find(s => s.id === order.subagent_store_id) : null;
+                              const subSubagentStore = (order as any).sub_subagent_store_id ? subSubagents.find((s: any) => s.id === (order as any).sub_subagent_store_id) : null;
                               // An order is only an API order when it was actually placed via the API
                               // (i.e. the api_user field is set). Missing store IDs alone means a
                               // direct main-site order, NOT an API order.
@@ -2389,7 +2399,11 @@ const AdminDashboard = () => {
                               let sourceLabel = isAPIOrder ? "API" : "Direct";
                               let sourceBadgeClass = isAPIOrder ? "bg-orange-500/10 text-orange-400 border-orange-500/30" : "bg-blue-500/10 text-blue-400 border-blue-500/30";
                               
-                              if (subagentStore) {
+                              if (subSubagentStore) {
+                                sourceType = "Sub-Subagent";
+                                sourceLabel = subSubagentStore.store_name || "Sub-Subagent";
+                                sourceBadgeClass = "bg-cyan-500/10 text-cyan-400 border-cyan-500/30";
+                              } else if (subagentStore) {
                                 sourceType = "Subagent";
                                 sourceLabel = subagentStore.store_name || "Subagent";
                                 sourceBadgeClass = "bg-purple-500/10 text-purple-400 border-purple-500/30";
@@ -2419,20 +2433,37 @@ const AdminDashboard = () => {
                                     variant="outline" 
                                     className={`text-xs cursor-pointer hover:opacity-80 ${sourceBadgeClass}`}
                                     onClick={() => {
-                                      if (subagentStore) {
-                                        // For subagent, get contact from parent agent
-                                        const parentAgent = agents.find(a => a.id === subagentStore.agent_store_id);
+                                      if (subSubagentStore) {
+                                        const parentSubagent = subagentStore || subagents.find((s: any) => s.id === subSubagentStore.subagent_store_id);
+                                        const parentAgent = agentStore || (parentSubagent?.agent_store_id ? agents.find((a: any) => a.id === parentSubagent.agent_store_id) : null);
+                                        setSourceInfo({
+                                          type: "Sub-Subagent Store",
+                                          storeName: subSubagentStore.store_name || "Unknown",
+                                          contact: subSubagentStore.support_number || subSubagentStore.whatsapp_number || "N/A",
+                                          storeUrl: subSubagentStore.store_url || undefined,
+                                          parentSubagentName: parentSubagent?.store_name || undefined,
+                                          parentSubagentUrl: parentSubagent?.store_url || undefined,
+                                          parentAgentName: parentAgent?.store_name || undefined,
+                                          parentAgentUrl: parentAgent?.store_url || undefined,
+                                        });
+                                        setSourceDialogOpen(true);
+                                      } else if (subagentStore) {
+                                        const parentAgent = agents.find((a: any) => a.id === subagentStore.agent_store_id);
                                         setSourceInfo({
                                           type: "Subagent Store",
                                           storeName: subagentStore.store_name || "Unknown",
-                                          contact: parentAgent?.whatsapp_number || parentAgent?.support_number || "N/A"
+                                          contact: subagentStore.support_number || subagentStore.whatsapp_number || "N/A",
+                                          storeUrl: subagentStore.store_url || undefined,
+                                          parentAgentName: parentAgent?.store_name || undefined,
+                                          parentAgentUrl: parentAgent?.store_url || undefined,
                                         });
                                         setSourceDialogOpen(true);
                                       } else if (agentStore) {
                                         setSourceInfo({
                                           type: "Agent Store",
                                           storeName: agentStore.store_name || "Unknown",
-                                          contact: agentStore.whatsapp_number || agentStore.support_number || "N/A"
+                                          contact: agentStore.whatsapp_number || agentStore.support_number || "N/A",
+                                          storeUrl: agentStore.store_url || undefined,
                                         });
                                         setSourceDialogOpen(true);
                                       }
@@ -4161,29 +4192,67 @@ const AdminDashboard = () => {
 
       {/* Source Info Dialog */}
       <Dialog open={sourceDialogOpen} onOpenChange={setSourceDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Order Source Details</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Order Source Details
+            </DialogTitle>
             <DialogDescription>Information about where this order came from</DialogDescription>
           </DialogHeader>
           {sourceInfo && (
-            <div className="space-y-4 py-4">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground w-24">Type:</span>
-                <Badge variant="outline">{sourceInfo.type}</Badge>
+            <div className="space-y-3 py-2">
+              <Badge variant="outline" className="text-xs">{sourceInfo.type}</Badge>
+
+              {/* Store card */}
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Store</p>
+                <p className="font-semibold text-foreground">{sourceInfo.storeName}</p>
+                {sourceInfo.contact && sourceInfo.contact !== "N/A" && (
+                  <a href={`tel:${sourceInfo.contact}`} className="text-sm text-primary hover:underline block">{sourceInfo.contact}</a>
+                )}
+                {sourceInfo.storeUrl && (
+                  <Button variant="outline" size="sm" className="w-full text-xs mt-1" onClick={() => window.open(sourceInfo.storeUrl, "_blank")}>
+                    View Store
+                  </Button>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground w-24">Store Name:</span>
-                <span className="font-medium">{sourceInfo.storeName}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground w-24">Contact:</span>
-                <a href={`tel:${sourceInfo.contact}`} className="text-primary hover:underline font-medium">{sourceInfo.contact}</a>
-              </div>
+
+              {/* Hierarchy for sub-subagent */}
+              {(sourceInfo.parentSubagentName || sourceInfo.parentAgentName) && (
+                <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Hierarchy</p>
+                  {sourceInfo.parentSubagentName && (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Under Subagent</p>
+                        <p className="text-sm font-medium text-foreground">{sourceInfo.parentSubagentName}</p>
+                      </div>
+                      {sourceInfo.parentSubagentUrl && (
+                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => window.open(sourceInfo.parentSubagentUrl, "_blank")}>
+                          View
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  {sourceInfo.parentAgentName && (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Under Agent</p>
+                        <p className="text-sm font-medium text-foreground">{sourceInfo.parentAgentName}</p>
+                      </div>
+                      {sourceInfo.parentAgentUrl && (
+                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => window.open(sourceInfo.parentAgentUrl, "_blank")}>
+                          View
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setSourceDialogOpen(false)}>Close</Button>
+            <Button variant="outline" size="sm" onClick={() => setSourceDialogOpen(false)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>
