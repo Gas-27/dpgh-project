@@ -2283,10 +2283,7 @@ const AgentDashboard = () => {
               </Card>
             )}
 
-            {/* Agent Features Section */}
-            <div className="space-y-4">
-              <h3 className="font-display text-xl font-bold">Agent Features</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+           
                 {(() => {
                   const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
                   if (refundedOrders.length === 0) return null;
