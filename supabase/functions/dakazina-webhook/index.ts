@@ -59,13 +59,16 @@ Deno.serve(async (req: Request) => {
     id: webhook_id,
     status,
     previous_status,
-    order_code,   // e.g. "DKZ-TEST-RQ5WKR" or "#ORDER-980291"
-    reference,    // e.g. "REF-HETWWVUOTM" — this may match our paystack_reference
+    order_code,    // e.g. "DKZ-TEST-RQ5WKR" or "#ORDER-980291"
+    reference,     // e.g. "REF-HETWWVUOTM"
+    phone_number,  // e.g. "0241225981" — matches customer_number in orders
     amount,
     occurred_at,
     test,
     metadata,
   } = payload;
+
+  console.log(`[dakazina-webhook] phone_number from payload: ${phone_number}`);
 
   // Map Dakazina status -> our order_status
   const statusMap: Record<string, string> = {
@@ -167,6 +170,33 @@ Deno.serve(async (req: Request) => {
       order = data;
       matchMethod = `api_response LIKE %${reference}%`;
     }
+  }
+
+  // ─── MATCH 7: customer_number = phone_number (most recent processing order) ─
+  // Dakazina sends phone_number in their webhook payload.
+  // Match the most recent unfulfilled order for that phone number.
+  // This is the fallback when no reference/order_code exists in our DB.
+  if (!order && phone_number) {
+    // Normalise: strip leading country code if present
+    const digits = phone_number.replace(/^\+?233/, "0").replace(/\D/g, "");
+    const { data } = await supabase
+      .from("orders")
+      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
+      .or(`customer_number.eq.${digits},customer_number.eq.+233${digits.slice(1)},customer_number.eq.233${digits.slice(1)}`)
+      .in("order_status", ["processing", "pending"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data) {
+      order = data;
+      matchMethod = `customer_number = phone(${digits})`;
+      // Backfill so future webhooks match faster
+      await supabase
+        .from("orders")
+        .update({ provider_order_id: order_code ?? null })
+        .eq("id", data.id);
+    }
+    console.log(`[dakazina-webhook] Match7 customer_number=${digits}: ${data?.id ?? "NOT FOUND"}`);
   }
 
   console.log(`[dakazina-webhook] Match result: ${order ? `FOUND order ${order.id} via ${matchMethod}` : "NOT FOUND"}`);
