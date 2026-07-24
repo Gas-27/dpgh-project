@@ -97,29 +97,10 @@ Deno.serve(async (req: Request) => {
   let order: any = null;
   let matchMethod = "";
 
-  // ─── MATCH 1: provider_reference = order_code ───────────────────────────
-  // This works for orders where api_response stored Dakazina's order code
-  // in provider_reference (e.g. ORD6A... format)
-  if (!order && order_code) {
-    const { data } = await supabase
-      .from("orders")
-      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
-      .eq("provider_reference", order_code)
-      .maybeSingle();
-    if (data) { order = data; matchMethod = `provider_reference = order_code(${order_code})`; }
-  }
-
-  // ─── MATCH 2: provider_reference = reference ────────────────────────────
-  if (!order && reference) {
-    const { data } = await supabase
-      .from("orders")
-      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
-      .eq("provider_reference", reference)
-      .maybeSingle();
-    if (data) { order = data; matchMethod = `provider_reference = reference(${reference})`; }
-  }
-
-  // ─── MATCH 3: provider_order_id = order_code ────────────────────────────
+  // ─── MATCH 1: provider_order_id = order_code ────────────────────────────
+  // PRIMARY: fulfill-order now calls Dakazina's orders API after GHDATE confirms
+  // success and stores Dakazina's order_code in provider_order_id. This is the
+  // correct and fastest match for all new orders going forward.
   if (!order && order_code) {
     const { data } = await supabase
       .from("orders")
@@ -127,6 +108,30 @@ Deno.serve(async (req: Request) => {
       .eq("provider_order_id", order_code)
       .maybeSingle();
     if (data) { order = data; matchMethod = `provider_order_id = order_code(${order_code})`; }
+    console.log(`[dakazina-webhook] Match1 provider_order_id=${order_code}: ${data?.id ?? "NOT FOUND"}`);
+  }
+
+  // ─── MATCH 2: provider_reference = order_code ───────────────────────────
+  // Fallback for older orders where order_code was stored in provider_reference
+  if (!order && order_code) {
+    const { data } = await supabase
+      .from("orders")
+      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
+      .eq("provider_reference", order_code)
+      .maybeSingle();
+    if (data) { order = data; matchMethod = `provider_reference = order_code(${order_code})`; }
+    console.log(`[dakazina-webhook] Match2 provider_reference=${order_code}: ${data?.id ?? "NOT FOUND"}`);
+  }
+
+  // ─── MATCH 3: provider_reference = reference ────────────────────────────
+  if (!order && reference) {
+    const { data } = await supabase
+      .from("orders")
+      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
+      .eq("provider_reference", reference)
+      .maybeSingle();
+    if (data) { order = data; matchMethod = `provider_reference = reference(${reference})`; }
+    console.log(`[dakazina-webhook] Match3 provider_reference=${reference}: ${data?.id ?? "NOT FOUND"}`);
   }
 
   // ─── MATCH 4: paystack_reference = reference ────────────────────────────

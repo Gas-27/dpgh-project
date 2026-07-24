@@ -276,7 +276,8 @@ Deno.serve(async (req) => {
 
     if (isSuccess) {
       const orderData = parsedResponse?.data || parsedResponse;
-      // Extract reference from multiple possible locations
+
+      // Extract GHDATE transaction_code as provider_reference
       const providerRef =
         orderData?.reference ||
         orderData?.order_reference ||
@@ -286,8 +287,8 @@ Deno.serve(async (req) => {
         orderData?.transaction_code ||
         null;
 
-      // Extract provider_order_id — this is what Dakazina's webhook sends as "order_code"
-      const providerOrderId =
+      // Extract provider_order_id from GHDATE response if present
+      let providerOrderId: string | null =
         parsedResponse?.provider_order_id ||
         orderData?.provider_order_id ||
         parsedResponse?.order_id ||
@@ -296,7 +297,74 @@ Deno.serve(async (req) => {
         orderData?.order_code ||
         null;
 
-      console.log(`[fulfill] Success for order ${order_id}. provider_reference=${providerRef}, provider_order_id=${providerOrderId}`);
+      console.log(`[fulfill] GHDATE success for order ${order_id}. provider_reference=${providerRef}`);
+
+      // ── Fetch Dakazina order_code so the webhook can match this order ──────
+      // GHDATE routes through Dakazina internally. After GHDATE confirms success,
+      // call Dakazina's orders list API to find the matching order by phone number
+      // and store their order_code as provider_order_id.
+      const dakazinaApiKey = Deno.env.get("DAKAZINA_API_KEY");
+      if (dakazinaApiKey && !providerOrderId) {
+        try {
+          // Normalise phone: strip leading 0, add 233 prefix for Dakazina
+          const dakazinaPhone = phone.startsWith("0")
+            ? "233" + phone.slice(1)
+            : phone;
+
+          console.log(`[fulfill] Fetching Dakazina orders for phone=${dakazinaPhone}`);
+
+          const dkzRes = await fetch(
+            `https://reseller.dakazinabusinessconsult.com/api/v1/orders?phone=${dakazinaPhone}&limit=5`,
+            {
+              method: "GET",
+              headers: {
+                "Authorization": `Bearer ${dakazinaApiKey}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (dkzRes.ok) {
+            const dkzData = await dkzRes.json();
+            console.log(`[fulfill] Dakazina orders response:`, JSON.stringify(dkzData).slice(0, 500));
+
+            // Find most recent order for this phone (just placed, within last 5 min)
+            const orders: any[] = dkzData?.data || dkzData?.orders || dkzData || [];
+            const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+
+            const matchedDkzOrder = orders.find((o: any) => {
+              const orderTime = o.created_at ? new Date(o.created_at).getTime() : 0;
+              return orderTime > fiveMinutesAgo;
+            });
+
+            if (matchedDkzOrder) {
+              providerOrderId =
+                matchedDkzOrder.order_code ||
+                matchedDkzOrder.code ||
+                matchedDkzOrder.id?.toString() ||
+                null;
+              console.log(`[fulfill] Found Dakazina order_code=${providerOrderId} for order ${order_id}`);
+            } else {
+              // Fallback: just take the most recent order
+              const latest = orders[0];
+              if (latest) {
+                providerOrderId =
+                  latest.order_code ||
+                  latest.code ||
+                  latest.id?.toString() ||
+                  null;
+                console.log(`[fulfill] Using latest Dakazina order_code=${providerOrderId} (fallback) for order ${order_id}`);
+              }
+            }
+          } else {
+            const errText = await dkzRes.text();
+            console.error(`[fulfill] Dakazina orders API error: ${dkzRes.status} - ${errText.slice(0, 200)}`);
+          }
+        } catch (dkzErr) {
+          // Non-fatal — order still fulfilled via GHDATE, just can't link to Dakazina
+          console.error(`[fulfill] Failed to fetch Dakazina orders: ${(dkzErr as Error).message}`);
+        }
+      }
 
       // No profit crediting here - all profit crediting done in verify-payment
       // fulfill-order only handles order fulfillment via API
@@ -313,7 +381,7 @@ Deno.serve(async (req) => {
         })
         .eq("id", order_id);
 
-      return new Response(JSON.stringify({ success: true, message: "Order fulfilled", reference: providerRef }), {
+      return new Response(JSON.stringify({ success: true, message: "Order fulfilled", reference: providerRef, dakazina_order_code: providerOrderId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } else {
