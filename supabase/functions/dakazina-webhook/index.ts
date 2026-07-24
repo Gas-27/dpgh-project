@@ -65,18 +65,20 @@ Deno.serve(async (req: Request) => {
 
   let order: any = null;
 
-  // PRIMARY match: provider_order_id = order_code (e.g. ORD6A6344D9845E3392)
+  // PRIMARY match: provider_reference = order_code
+  // provider_reference stores the ORD6A... values from Dakazina api_response
+  // and Dakazina webhook sends that same value as order_code
   if (order_code) {
     const { data } = await supabase
       .from("orders")
       .select("id, order_status, fulfillment_status, status, customer_number")
-      .eq("provider_order_id", order_code)
+      .eq("provider_reference", order_code)
       .maybeSingle();
     order = data;
-    console.log(`[dakazina-webhook] Match by provider_order_id: ${order ? order.id : "NOT FOUND"}`);
+    console.log(`[dakazina-webhook] Match by provider_reference=order_code(${order_code}): ${order ? order.id : "NOT FOUND"}`);
   }
 
-  // FALLBACK match: provider_reference = reference (e.g. REF-HETWWVUOTM)
+  // FALLBACK match: provider_reference = reference field from webhook
   if (!order && reference) {
     const { data } = await supabase
       .from("orders")
@@ -84,10 +86,21 @@ Deno.serve(async (req: Request) => {
       .eq("provider_reference", reference)
       .maybeSingle();
     order = data;
-    console.log(`[dakazina-webhook] Match by provider_reference: ${order ? order.id : "NOT FOUND"}`);
+    console.log(`[dakazina-webhook] Match by provider_reference=reference(${reference}): ${order ? order.id : "NOT FOUND"}`);
   }
 
-  // LAST RESORT: search inside api_response JSON for the order_code
+  // FALLBACK 2: provider_order_id = order_code (for newer orders that save this)
+  if (!order && order_code) {
+    const { data } = await supabase
+      .from("orders")
+      .select("id, order_status, fulfillment_status, status, customer_number")
+      .eq("provider_order_id", order_code)
+      .maybeSingle();
+    order = data;
+    console.log(`[dakazina-webhook] Match by provider_order_id(${order_code}): ${order ? order.id : "NOT FOUND"}`);
+  }
+
+  // LAST RESORT: search inside api_response JSON text for the order_code
   if (!order && order_code) {
     const { data } = await supabase
       .from("orders")
@@ -95,13 +108,13 @@ Deno.serve(async (req: Request) => {
       .like("api_response", `%${order_code}%`)
       .maybeSingle();
     order = data;
-    console.log(`[dakazina-webhook] Match by api_response search: ${order ? order.id : "NOT FOUND"}`);
+    console.log(`[dakazina-webhook] Match by api_response LIKE search(${order_code}): ${order ? order.id : "NOT FOUND"}`);
 
-    // If found via api_response, backfill provider_order_id so future webhooks match faster
+    // Backfill provider_reference so future webhooks match on primary
     if (order) {
       await supabase
         .from("orders")
-        .update({ provider_order_id: order_code })
+        .update({ provider_reference: order_code })
         .eq("id", order.id);
     }
   }
