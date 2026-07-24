@@ -43,6 +43,8 @@ interface Order {
   payment_method?: string;
   refunded_amount?: number | null;
   created_at: string;
+  customer_id?: string;
+  api_user?: string | number;
 }
 
 // Delivery status shown to the user (mirrors the Agent dashboard).
@@ -1183,6 +1185,7 @@ const UserDashboard = () => {
                       <TableHead className="text-xs">Size</TableHead>
                       <TableHead className="text-xs">Amount</TableHead>
                       <TableHead className="text-xs">Method</TableHead>
+                      <TableHead className="text-xs">Source Account</TableHead>
                       <TableHead className="text-xs">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1198,6 +1201,16 @@ const UserDashboard = () => {
                           <Badge variant="outline" className="text-xs">
                             {order.payment_method === "wallet" ? "Wallet" : "Paystack"}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="space-y-1">
+                            <Badge className={`text-xs ${(order as any).api_user ? "bg-orange-500/20 text-orange-400 border-orange-500/30" : "bg-blue-500/20 text-blue-400 border-blue-500/30"}`}>
+                              {(order as any).api_user ? "API User" : "Direct"}
+                            </Badge>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {(order as any).api_user ? String((order as any).api_user).slice(0, 12) : (order as any).customer_id ? String((order as any).customer_id).slice(0, 12) : order.customer_number}
+                            </p>
+                          </div>
                         </TableCell>
                         <TableCell>
                           {(() => {
