@@ -1,23 +1,20 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// NOTE: This function must be deployed with --no-verify-jwt
-// or with verify_jwt = false in supabase/config.toml
-// Dakazina does not send any JWT token — requests without this setting
-// are silently rejected with 401 before the function even runs.
+// IMPORTANT: Deploy with --no-verify-jwt  OR  set verify_jwt = false in supabase/config.toml
+// Dakazina sends no JWT — without this flag every request is silently rejected with 401.
 
 Deno.serve(async (req: Request) => {
-  // Allow CORS preflight
+  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin":  "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers": "content-type, authorization",
       },
     });
   }
 
-  // Only accept POST
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
       status: 405,
@@ -30,7 +27,7 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Read raw body first for logging
+  // ─── Parse body ────────────────────────────────────────────────────────────
   let rawBody = "";
   let payload: any = {};
 
@@ -38,14 +35,12 @@ Deno.serve(async (req: Request) => {
     rawBody = await req.text();
     payload = JSON.parse(rawBody);
   } catch {
-    console.log(`[dakazina-webhook] ERROR: Invalid JSON body: ${rawBody.slice(0, 200)}`);
-    // Still log this malformed request
+    console.log(`[dakazina-webhook] Invalid JSON: ${rawBody.slice(0, 300)}`);
     await supabase.from("webhook_logs").insert({
       provider: "dakazina",
-      payload: { raw: rawBody.slice(0, 500) },
-      matched: false,
-      is_test: false,
-      created_at: new Date().toISOString(),
+      payload:  { raw: rawBody.slice(0, 500) },
+      matched:  false,
+      is_test:  false,
     }).catch(() => null);
     return new Response(JSON.stringify({ success: false, error: "Invalid JSON body" }), {
       status: 400,
@@ -53,25 +48,25 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  console.log(`[dakazina-webhook] RECEIVED PAYLOAD: ${JSON.stringify(payload)}`);
+  console.log(`[dakazina-webhook] PAYLOAD: ${JSON.stringify(payload)}`);
 
   const {
-    id: webhook_id,
+    id:              webhook_id,
     status,
     previous_status,
-    order_code,    // e.g. "DKZ-TEST-RQ5WKR" or "#ORDER-980291"
-    reference,     // e.g. "REF-HETWWVUOTM"
-    phone_number,  // e.g. "0241225981" — matches customer_number in orders
-    amount,
+    order_code,   // Dakazina's internal order code e.g. "#ORDER-980291" or "DKZ-XXXXX"
+    reference,    // incoming_api_ref we passed = our order UUID e.g. "19c2f2b4-87a7-..."
     occurred_at,
     test,
+    amount,
     metadata,
   } = payload;
 
-  console.log(`[dakazina-webhook] phone_number from payload: ${phone_number}`);
+  console.log(`[dakazina-webhook] status=${status} | order_code=${order_code} | reference=${reference}`);
 
-  // Map Dakazina status -> our order_status
-  const statusMap: Record<string, string> = {
+  // ─── Map statuses ──────────────────────────────────────────────────────────
+  // order_status values used in the orders table
+  const orderStatusMap: Record<string, string> = {
     PROCESSING: "processing",
     DELIVERED:  "delivered",
     FAILED:     "failed",
@@ -79,8 +74,8 @@ Deno.serve(async (req: Request) => {
     PENDING:    "pending",
   };
 
-  // Map Dakazina status -> our fulfillment_status
-  const fulfillmentMap: Record<string, string> = {
+  // fulfillment_status values used in the orders table
+  const fulfillmentStatusMap: Record<string, string> = {
     PROCESSING: "processing",
     DELIVERED:  "completed",
     FAILED:     "failed",
@@ -88,163 +83,159 @@ Deno.serve(async (req: Request) => {
     PENDING:    "pending",
   };
 
-  const upperStatus = status?.toUpperCase() ?? "";
-  const mappedOrderStatus      = statusMap[upperStatus]      ?? status?.toLowerCase() ?? "unknown";
-  const mappedFulfillmentStatus = fulfillmentMap[upperStatus] ?? "processing";
+  const upperStatus         = (status ?? "").toUpperCase();
+  const mappedOrderStatus   = orderStatusMap[upperStatus]      ?? status?.toLowerCase() ?? "unknown";
+  const mappedFulfillment   = fulfillmentStatusMap[upperStatus] ?? "processing";
 
-  console.log(`[dakazina-webhook] order_code=${order_code} | reference=${reference} | status=${status} -> ${mappedOrderStatus}`);
+  // ─── Order matching (7 tiers, best → worst) ────────────────────────────────
+  //
+  // HOW THIS WORKS:
+  //   When fulfill-order calls Dakazina it passes  incoming_api_ref = our order UUID.
+  //   Dakazina echoes that value back as the "reference" field in the webhook.
+  //   So  orders.id = webhook.reference  is the PRIMARY and most reliable match.
+  //
+  //   All other tiers are fallbacks for:
+  //   - Historical orders placed before incoming_api_ref was implemented
+  //   - Cases where Dakazina stores our UUID in order_code instead
+  //   - Last-resort api_response text search
 
-  let order: any = null;
-  let matchMethod = "";
+  let order: any    = null;
+  let matchMethod   = "";
 
-  // ─── MATCH 1: provider_order_id = order_code ────────────────────────────
-  // PRIMARY: fulfill-order now calls Dakazina's orders API after GHDATE confirms
-  // success and stores Dakazina's order_code in provider_order_id. This is the
-  // correct and fastest match for all new orders going forward.
+  // ── MATCH 1 (PRIMARY): orders.id = reference ──────────────────────────────
+  // fulfill-order passes order_id as incoming_api_ref → Dakazina echoes it as reference
+  if (!order && reference) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
+      .eq("id", reference)
+      .maybeSingle();
+    console.log(`[dakazina-webhook] MATCH1 id=${reference}: ${data?.id ?? "NOT FOUND"}${error ? ` ERR=${error.message}` : ""}`);
+    if (data) { order = data; matchMethod = `id = reference(${reference})`; }
+  }
+
+  // ── MATCH 2: orders.id = order_code ───────────────────────────────────────
+  // Some Dakazina setups echo our UUID in order_code instead of reference
+  if (!order && order_code) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
+      .eq("id", order_code)
+      .maybeSingle();
+    console.log(`[dakazina-webhook] MATCH2 id=${order_code}: ${data?.id ?? "NOT FOUND"}${error ? ` ERR=${error.message}` : ""}`);
+    if (data) { order = data; matchMethod = `id = order_code(${order_code})`; }
+  }
+
+  // ── MATCH 3: provider_order_id = order_code ───────────────────────────────
+  // Dakazina's order code stored in provider_order_id from a previous fulfillment
   if (!order && order_code) {
     const { data } = await supabase
       .from("orders")
       .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
       .eq("provider_order_id", order_code)
       .maybeSingle();
+    console.log(`[dakazina-webhook] MATCH3 provider_order_id=${order_code}: ${data?.id ?? "NOT FOUND"}`);
     if (data) { order = data; matchMethod = `provider_order_id = order_code(${order_code})`; }
-    console.log(`[dakazina-webhook] Match1 provider_order_id=${order_code}: ${data?.id ?? "NOT FOUND"}`);
   }
 
-  // ─── MATCH 2: provider_reference = order_code ───────────────────────────
-  // Fallback for older orders where order_code was stored in provider_reference
+  // ── MATCH 4: provider_reference = order_code ──────────────────────────────
   if (!order && order_code) {
     const { data } = await supabase
       .from("orders")
       .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
       .eq("provider_reference", order_code)
       .maybeSingle();
+    console.log(`[dakazina-webhook] MATCH4 provider_reference=${order_code}: ${data?.id ?? "NOT FOUND"}`);
     if (data) { order = data; matchMethod = `provider_reference = order_code(${order_code})`; }
-    console.log(`[dakazina-webhook] Match2 provider_reference=${order_code}: ${data?.id ?? "NOT FOUND"}`);
   }
 
-  // ─── MATCH 3: provider_reference = reference ────────────────────────────
+  // ── MATCH 5: provider_reference = reference ───────────────────────────────
   if (!order && reference) {
     const { data } = await supabase
       .from("orders")
       .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
       .eq("provider_reference", reference)
       .maybeSingle();
+    console.log(`[dakazina-webhook] MATCH5 provider_reference=${reference}: ${data?.id ?? "NOT FOUND"}`);
     if (data) { order = data; matchMethod = `provider_reference = reference(${reference})`; }
-    console.log(`[dakazina-webhook] Match3 provider_reference=${reference}: ${data?.id ?? "NOT FOUND"}`);
   }
 
-  // ─── MATCH 4: paystack_reference = reference ────────────────────────────
-  // In some setups, Dakazina's "reference" is the same as the Paystack reference
-  if (!order && reference) {
-    const { data } = await supabase
-      .from("orders")
-      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
-      .eq("paystack_reference", reference)
-      .maybeSingle();
-    if (data) { order = data; matchMethod = `paystack_reference = reference(${reference})`; }
-  }
-
-  // ─── MATCH 5: LIKE search inside api_response JSON text ─────────────────
-  // Last resort — search for the order_code string anywhere in api_response
+  // ── MATCH 6: api_response text contains order_code ────────────────────────
   if (!order && order_code) {
     const { data } = await supabase
       .from("orders")
-      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id, api_response")
+      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
       .like("api_response", `%${order_code}%`)
       .maybeSingle();
+    console.log(`[dakazina-webhook] MATCH6 api_response LIKE ${order_code}: ${data?.id ?? "NOT FOUND"}`);
     if (data) {
       order = data;
-      matchMethod = `api_response LIKE %${order_code}%`;
-      // Backfill so future webhooks match faster
-      await supabase
-        .from("orders")
-        .update({ provider_order_id: order_code })
-        .eq("id", order.id);
+      matchMethod = `api_response LIKE order_code(${order_code})`;
+      // Backfill so next webhook matches faster
+      await supabase.from("orders").update({ provider_order_id: order_code }).eq("id", data.id);
     }
   }
 
-  // ─── MATCH 6: LIKE search inside api_response for reference ─────────────
+  // ── MATCH 7: api_response text contains reference ─────────────────────────
   if (!order && reference) {
     const { data } = await supabase
       .from("orders")
-      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id, api_response")
+      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
       .like("api_response", `%${reference}%`)
       .maybeSingle();
+    console.log(`[dakazina-webhook] MATCH7 api_response LIKE ${reference}: ${data?.id ?? "NOT FOUND"}`);
     if (data) {
       order = data;
-      matchMethod = `api_response LIKE %${reference}%`;
+      matchMethod = `api_response LIKE reference(${reference})`;
     }
   }
 
-  // ─── MATCH 7: customer_number = phone_number (most recent processing order) ─
-  // Dakazina sends phone_number in their webhook payload.
-  // Match the most recent unfulfilled order for that phone number.
-  // This is the fallback when no reference/order_code exists in our DB.
-  if (!order && phone_number) {
-    // Normalise: strip leading country code if present
-    const digits = phone_number.replace(/^\+?233/, "0").replace(/\D/g, "");
-    const { data } = await supabase
-      .from("orders")
-      .select("id, order_status, fulfillment_status, status, customer_number, provider_reference, provider_order_id")
-      .or(`customer_number.eq.${digits},customer_number.eq.+233${digits.slice(1)},customer_number.eq.233${digits.slice(1)}`)
-      .in("order_status", ["processing", "pending"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (data) {
-      order = data;
-      matchMethod = `customer_number = phone(${digits})`;
-      // Backfill so future webhooks match faster
-      await supabase
-        .from("orders")
-        .update({ provider_order_id: order_code ?? null })
-        .eq("id", data.id);
-    }
-    console.log(`[dakazina-webhook] Match7 customer_number=${digits}: ${data?.id ?? "NOT FOUND"}`);
-  }
+  console.log(`[dakazina-webhook] Final match: ${order ? `order ${order.id} via ${matchMethod}` : "UNMATCHED"}`);
 
-  console.log(`[dakazina-webhook] Match result: ${order ? `FOUND order ${order.id} via ${matchMethod}` : "NOT FOUND"}`);
-
-  // Always log the webhook hit regardless of match outcome
-  const logInsert = await supabase.from("webhook_logs").insert({
+  // ─── Always log the webhook hit ────────────────────────────────────────────
+  await supabase.from("webhook_logs").insert({
     provider:    "dakazina",
     payload:     payload,
-    reference:   reference    ?? null,
-    order_code:  order_code   ?? null,
-    order_id:    order?.id    ?? null,
-    status:      status       ?? null,
+    reference:   reference   ?? null,
+    order_code:  order_code  ?? null,
+    order_id:    order?.id   ?? null,
+    status:      status      ?? null,
     matched:     !!order,
-    occurred_at: occurred_at  ?? null,
-    is_test:     test         ?? false,
-    created_at:  new Date().toISOString(),
-  });
+    occurred_at: occurred_at ?? null,
+    is_test:     test        ?? false,
+  }).catch((e: any) => console.log(`[dakazina-webhook] webhook_logs insert failed: ${e.message}`));
 
-  if (logInsert.error) {
-    console.log(`[dakazina-webhook] webhook_logs insert failed: ${logInsert.error.message}`);
-  }
-
-  // If no order found — return 200 so Dakazina stops retrying, but log it
+  // ─── If unmatched: return 200 so Dakazina does not retry endlessly ─────────
   if (!order) {
-    console.log(`[dakazina-webhook] UNMATCHED: order_code=${order_code}, reference=${reference}. Check provider_reference column.`);
+    console.log(`[dakazina-webhook] UNMATCHED — reference=${reference}, order_code=${order_code}`);
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Order not found in database",
-        tried: { order_code, reference },
+        message: "Order not found. Check webhook_logs for details.",
+        tried:   { reference, order_code },
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  // Update the order statuses
+  // ─── Update order status ───────────────────────────────────────────────────
+  // Also store Dakazina's order_code in provider_order_id for future reference
+  const updatePayload: Record<string, any> = {
+    order_status:       mappedOrderStatus,
+    fulfillment_status: mappedFulfillment,
+    status:             mappedFulfillment,
+  };
+
+  if (order_code && !order.provider_order_id) {
+    updatePayload.provider_order_id = order_code;
+  }
+  if (order_code && !order.provider_reference) {
+    updatePayload.provider_reference = order_code;
+  }
+
   const { error: updateErr } = await supabase
     .from("orders")
-    .update({
-      order_status:       mappedOrderStatus,
-      fulfillment_status: mappedFulfillmentStatus,
-      status:             mappedFulfillmentStatus,
-    })
+    .update(updatePayload)
     .eq("id", order.id);
 
   if (updateErr) {
@@ -255,14 +246,14 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  console.log(`[dakazina-webhook] SUCCESS: Updated order ${order.id} -> order_status=${mappedOrderStatus}, fulfillment_status=${mappedFulfillmentStatus} (matched via ${matchMethod})`);
+  console.log(`[dakazina-webhook] UPDATED order ${order.id}: order_status=${mappedOrderStatus}, fulfillment_status=${mappedFulfillment} (via ${matchMethod})`);
 
   return new Response(
     JSON.stringify({
-      success: true,
+      success:            true,
       order_id:           order.id,
       order_status:       mappedOrderStatus,
-      fulfillment_status: mappedFulfillmentStatus,
+      fulfillment_status: mappedFulfillment,
       matched_via:        matchMethod,
     }),
     { status: 200, headers: { "Content-Type": "application/json" } }

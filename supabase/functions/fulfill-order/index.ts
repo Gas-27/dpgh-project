@@ -6,17 +6,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Map your internal network names to GHDATE CONNECT network keys
-const NETWORK_MAP: Record<string, string> = {
-  mtn: "mtn",
-  telecel: "telecel",
-  airteltigo: "airteltigo",
-  mtn_mashup: "mtn", // Special MTN Mashup uses MTN network
-};
+interface NetworkConfig {
+  apiUrl: string;
+  networkMap: Record<string, string>;
+  buildRequest: (phone: string, sizeOrId: any, networkKey: string, network: string, orderId?: string, bundleId?: any) => any;
+  apiKeyEnvVar: string;
+  authHeader?: "bearer" | "x-api-key" | "both";
+}
 
-// Datahubnet Mashup Package ID Mappings - embedded directly for Deno compatibility
-const DATAHUBNET_MASHUP_IDS: Record<string, number> = {
+// ===== MASHUP PACKAGE ID MAPPING (datahubnet) =====
+const MASHUP_SIZE_TO_PACKAGE_ID: Record<string, number> = {
   "1.7": 14,
+  "5.1": 3,
   "3": 3,
   "2.6": 16,
   "8.2": 17,
@@ -31,32 +32,122 @@ const DATAHUBNET_MASHUP_IDS: Record<string, number> = {
   "1485mins + 3.61GB": 20,
   "1485 mins + 3.61GB": 20,
   "1485mins+3.61GB": 20,
-};
-  "1485mins + 3.61GB": 20,
-  "1485 mins + 3.61GB": 20,
+  "1077": 16,
+  "1485": 20,
 };
 
-// Get the datahubnet package ID for a mashup package
-function getDatahubnetPackageId(sizeGbText?: string, sizeGb?: number): number | undefined {
+function getMashupPackageId(sizeGbText?: string, sizeGb?: number): number | undefined {
   if (sizeGbText) {
-    const normalized = sizeGbText.toLowerCase().trim();
-    
-    if (normalized.includes("1.7")) return DATAHUBNET_MASHUP_IDS["1.7"];
-    if (normalized.includes("5.1")) return DATAHUBNET_MASHUP_IDS["3"];
-    if (normalized.includes("2.6")) return DATAHUBNET_MASHUP_IDS["2.6"];
-    if (normalized.includes("8.2")) return DATAHUBNET_MASHUP_IDS["8.2"];
-    if (normalized.includes("11.9")) return DATAHUBNET_MASHUP_IDS["11.9"];
-    if (normalized.includes("3.61")) return DATAHUBNET_MASHUP_IDS["3.61"];
-    if (normalized.includes("15.3")) return DATAHUBNET_MASHUP_IDS["15.3"];
+    const t = sizeGbText.toLowerCase().trim();
+    if (t.includes("1.7"))  return MASHUP_SIZE_TO_PACKAGE_ID["1.7"];
+    if (t.includes("5.1"))  return MASHUP_SIZE_TO_PACKAGE_ID["5.1"];
+    if (t.includes("2.6"))  return MASHUP_SIZE_TO_PACKAGE_ID["2.6"];
+    if (t.includes("8.2"))  return MASHUP_SIZE_TO_PACKAGE_ID["8.2"];
+    if (t.includes("11.9")) return MASHUP_SIZE_TO_PACKAGE_ID["11.9"];
+    if (t.includes("3.61")) return MASHUP_SIZE_TO_PACKAGE_ID["3.61"];
+    if (t.includes("15.3")) return MASHUP_SIZE_TO_PACKAGE_ID["15.3"];
+    if (t.includes("1077")) return MASHUP_SIZE_TO_PACKAGE_ID["1077"];
+    if (t.includes("1485")) return MASHUP_SIZE_TO_PACKAGE_ID["1485"];
+    // Try exact key match
+    const exact = MASHUP_SIZE_TO_PACKAGE_ID[sizeGbText.trim()];
+    if (exact) return exact;
   }
-
   if (sizeGb !== undefined) {
     const rounded = sizeGb.toFixed(1);
-    return DATAHUBNET_MASHUP_IDS[rounded];
+    return MASHUP_SIZE_TO_PACKAGE_ID[rounded] ?? MASHUP_SIZE_TO_PACKAGE_ID[String(sizeGb)];
   }
-
   return undefined;
 }
+
+// ===== PROVIDER CONFIGS =====
+const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
+  // Dakazina handles: mtn, telecel, at_ishare, mtn_mashup
+  dakazina: {
+    apiUrl: "https://reseller.dakazinabusinessconsult.com/api/v1/buy-data-package",
+    networkMap: {
+      mtn:        "mtn",
+      telecel:    "telecel",
+      airteltigo: "at_ishare",
+      mtn_mashup: "mtn_mashup",
+    },
+    buildRequest: (phone, sizeOrId, networkKey, network, orderId) => {
+      const networkIdMap: Record<string, number> = {
+        mtn:        6,
+        telecel:    2,
+        at_ishare:  1,
+        airteltigo: 1,
+        mtn_mashup: 7,
+      };
+      return {
+        recipient_msisdn: phone,
+        shared_bundle:    sizeOrId,
+        network_id:       networkIdMap[networkKey] ?? networkIdMap[network] ?? 6,
+        ...(orderId ? { incoming_api_ref: orderId } : {}),
+      };
+    },
+    apiKeyEnvVar: "DAKAZINA_API_KEY",
+    authHeader: "bearer",
+  },
+
+  // Datahubnet handles: mashup (Special MTN Mashup packages)
+  datahubnet: {
+    apiUrl: "https://www.datahubnet.online/api/v1/special-offers/",
+    networkMap: {
+      mashup: "mashup",
+    },
+    buildRequest: (phone, packageId) => ({
+      phone_number: phone,
+      package_id:   Number(packageId) || 0,
+    }),
+    apiKeyEnvVar: "DATAHUBNET_API_KEY",
+    authHeader: "bearer",
+  },
+
+  // Orisjay handles: telecel, airteltigo, atbigtime (fallback)
+  orisjay: {
+    apiUrl: "https://orisjay.store/api/process-order.php",
+    networkMap: {
+      telecel:    "telecel",
+      airteltigo: "ishare",
+      atbigtime:  "bigtime",
+    },
+    buildRequest: (phone, sizeGb, networkKey, network, orderId, bundleId) => ({
+      phone:      phone,
+      bundle_id:  bundleId,
+      network:    networkKey,
+      ...(orderId ? { external_reference: orderId } : {}),
+    }),
+    apiKeyEnvVar: "ORISJAY_API_KEY",
+    authHeader: "both",
+  },
+
+  // GHDataConnect handles: atbigtime
+  ghdataconnect: {
+    apiUrl: "https://ghdataconnect.com/api/v1/purchaseBundle",
+    networkMap: {
+      atbigtime: "atbigtime",
+    },
+    buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
+      msisdn:   phone,
+      capacity: Number(sizeGb),
+      network:  networkKey,
+      ...(orderId ? { reference: orderId } : {}),
+    }),
+    apiKeyEnvVar: "GHDATACONNECT_API_KEY",
+    authHeader: "bearer",
+  },
+};
+
+// ===== NETWORK → PROVIDER ROUTING =====
+// Order matters: more specific entries first
+const NETWORK_TO_PROVIDER: Record<string, string> = {
+  mtn:        "dakazina",
+  telecel:    "dakazina",
+  airteltigo: "dakazina",
+  mtn_mashup: "dakazina",
+  mashup:     "datahubnet",
+  atbigtime:  "ghdataconnect",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -64,19 +155,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseUrl    = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ghdateApiKey = Deno.env.get("GHDATE_API_KEY");
-    const ghdateApiUrl = Deno.env.get("GHDATE_API_URL") || "https://api.ghdate.com";
+    const supabase       = createClient(supabaseUrl, serviceRoleKey);
 
-    if (!ghdateApiKey) {
-      return new Response(JSON.stringify({ error: "GHDATE API key not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
     const { order_id, paystack_reference } = await req.json();
 
     if (!order_id) {
@@ -86,383 +168,277 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 🔴 CRITICAL: Check if this order has already been fulfilled
-    const { data: existingOrder } = await supabase
+    console.log(`[FULFILL] Starting fulfillment for order_id: ${order_id}`);
+
+    // ─── Fetch order ────────────────────────────────────────────────────────
+    const { data: order, error: orderErr } = await supabase
       .from("orders")
-      .select("id, fulfillment_status, status, customer_number, network, size_gb, package_id, data_package_id")
+      .select("*")
       .eq("id", order_id)
       .single();
 
-    if (!existingOrder) {
+    if (orderErr || !order) {
+      console.error(`[FULFILL] Order not found: ${order_id}`);
       return new Response(JSON.stringify({ error: "Order not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 🔴 CRITICAL: Don't re-fulfill already completed orders
-    if (existingOrder.fulfillment_status === "completed") {
-      console.log(`Order ${order_id} already fulfilled - skipping`);
+    console.log(`[FULFILL] Order found - fulfillment_status=${order.fulfillment_status}, network=${order.network}, size_gb=${order.size_gb}`);
+
+    // ─── Prevent double-fulfillment ─────────────────────────────────────────
+    if (order.fulfillment_status === "completed") {
+      console.log(`[FULFILL] Order ${order_id} already completed. Skipping.`);
       return new Response(JSON.stringify({ success: true, message: "Already fulfilled", skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (existingOrder.fulfillment_status === "failed") {
-      console.log(`Order ${order_id} previously failed - will retry`);
-    }
-
-    // 🔴 If paystack_reference is provided, check for duplicate orders
+    // ─── Duplicate paystack_reference check ─────────────────────────────────
     if (paystack_reference) {
-      const { data: duplicateOrders } = await supabase
+      const { data: dupes } = await supabase
         .from("orders")
         .select("id")
         .eq("paystack_reference", paystack_reference)
+        .eq("fulfillment_status", "completed")
         .neq("id", order_id);
 
-      if (duplicateOrders && duplicateOrders.length > 0) {
-        console.log(`Duplicate order detected for reference ${paystack_reference} - marking order ${order_id} as duplicate`);
+      if (dupes && dupes.length > 0) {
+        console.log(`[FULFILL] Duplicate detected for ${paystack_reference} - marking as duplicate`);
         await supabase
           .from("orders")
-          .update({
-            fulfillment_status: "duplicate",
-            status: "duplicate",
-            api_response: `Duplicate of order ${duplicateOrders[0].id}`
-          })
+          .update({ fulfillment_status: "duplicate", status: "duplicate", api_response: `Duplicate of order ${dupes[0].id}` })
           .eq("id", order_id);
-        return new Response(JSON.stringify({ success: false, message: "Duplicate order detected", skipped: true }), {
+        return new Response(JSON.stringify({ success: false, message: "Duplicate order", skipped: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     }
 
-    // Clean phone number (same logic as before)
-    let phone = existingOrder.customer_number.replace(/[^0-9]/g, "");
+    // ─── Lock order as processing ────────────────────────────────────────────
+    const { error: lockErr } = await supabase
+      .from("orders")
+      .update({ fulfillment_status: "processing" })
+      .eq("id", order_id)
+      .in("fulfillment_status", ["pending", "failed"]);
+
+    if (lockErr) {
+      console.error(`[FULFILL] Failed to lock order: ${lockErr.message}`);
+      return new Response(JSON.stringify({ error: "Failed to lock order" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Clean phone number ──────────────────────────────────────────────────
+    let phone = order.customer_number.replace(/[^0-9]/g, "");
     if (phone.startsWith("233")) phone = "0" + phone.slice(3);
-    if (!phone.startsWith("0")) phone = "0" + phone;
+    if (!phone.startsWith("0"))  phone = "0" + phone;
+
     if (phone.length !== 10) {
-      await supabase
-        .from("orders")
-        .update({ fulfillment_status: "failed", api_response: "Invalid phone number format" })
-        .eq("id", order_id);
+      await supabase.from("orders").update({ fulfillment_status: "failed", api_response: "Invalid phone number format" }).eq("id", order_id);
       return new Response(JSON.stringify({ success: false, error: "Invalid phone number" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Map network and capacity
-    const networkKey = NETWORK_MAP[existingOrder.network?.toLowerCase()] || "YELLO";
-    const capacity = Number(existingOrder.size_gb);
-    
-    // For mtn_mashup and mashup, use datahubnet package ID from size_gb_text
-    let dataPackageId = existingOrder.data_package_id;
-    let sizeGbText = null;
-    
-    if (!dataPackageId && (existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup")) {
-      sizeGbText = existingOrder.size_gb_text;
-      console.log(`[v0] Looking up datahubnet ID for mashup: sizeGbText="${sizeGbText}", sizeGb=${existingOrder.size_gb}`);
-      
-      // Use the embedded function to get the datahubnet ID
-      dataPackageId = getDatahubnetPackageId(sizeGbText, Number(existingOrder.size_gb));
-      
-      if (dataPackageId) {
-        console.log(`[v0] Found datahubnet ID: ${dataPackageId} for mashup package`);
-      } else {
-        console.error(`[v0] Could not find datahubnet ID for mashup package: "${sizeGbText}" (size_gb: ${existingOrder.size_gb})`);
-      }
-      
-      // If still not found, try fetching from data_packages table as last resort
-      if (!dataPackageId && existingOrder.package_id) {
-        console.log(`[v0] Trying to fetch from data_packages table for package_id: ${existingOrder.package_id}`);
-        const { data: pkg } = await supabase
-          .from("data_packages")
-          .select("data_package_id, size_gb_text")
-          .eq("id", existingOrder.package_id)
-          .single();
-        dataPackageId = pkg?.data_package_id || null;
-        sizeGbText = pkg?.size_gb_text || null;
-        if (dataPackageId) {
-          console.log(`[v0] Found from data_packages: data_package_id=${dataPackageId}`);
-        }
+    console.log(`[FULFILL] phone=${phone}, network=${order.network}, size_gb=${order.size_gb}`);
+
+    // ─── Fetch bundle_id from data_packages (used by orisjay) ───────────────
+    let bundleId: any = null;
+    if (order.package_id) {
+      const { data: pkg } = await supabase
+        .from("data_packages")
+        .select("bundle_id, data_package_id, size_gb_text")
+        .eq("id", order.package_id)
+        .single();
+      if (pkg) {
+        bundleId = pkg.bundle_id;
+        if (!order.size_gb_text && pkg.size_gb_text) order.size_gb_text = pkg.size_gb_text;
+        if (!order.data_package_id && pkg.data_package_id) order.data_package_id = pkg.data_package_id;
+        console.log(`[FULFILL] Package data: bundle_id=${bundleId}, data_package_id=${pkg.data_package_id}`);
       }
     }
-    
-    if (isNaN(capacity) || capacity <= 0) {
-      await supabase
-        .from("orders")
-        .update({ fulfillment_status: "failed", api_response: "Invalid data size" })
-        .eq("id", order_id);
-      return new Response(JSON.stringify({ success: false, error: "Invalid capacity" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+    // ─── Determine provider ──────────────────────────────────────────────────
+    const normalizedNetwork = (order.network ?? "").toLowerCase().trim();
+    const provider = NETWORK_TO_PROVIDER[normalizedNetwork];
+
+    if (!provider) {
+      console.error(`[FULFILL] No provider for network: ${order.network}`);
+      await supabase.from("orders").update({ fulfillment_status: "failed", api_response: `No provider for network: ${order.network}` }).eq("id", order_id);
+      return new Response(JSON.stringify({ error: `No provider for network: ${order.network}` }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log(`Fulfilling order ${order_id}: recipient=${phone}, capacity=${capacity}GB, network=${existingOrder.network}`);
+    const config = NETWORK_CONFIGS[provider];
+    const apiKey = Deno.env.get(config.apiKeyEnvVar);
 
-    // Call API based on network type
-    let apiUrl: string;
+    if (!apiKey) {
+      console.error(`[FULFILL] API key missing for ${provider} (${config.apiKeyEnvVar})`);
+      await supabase.from("orders").update({ fulfillment_status: "failed", api_response: `No API key for provider: ${provider}` }).eq("id", order_id);
+      return new Response(JSON.stringify({ error: `No API key for provider: ${provider}` }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const networkKey = config.networkMap[normalizedNetwork] ?? normalizedNetwork;
+
+    // ─── Build request body ──────────────────────────────────────────────────
     let requestBody: Record<string, any>;
-    let apiRes: Response;
-    
-    if (existingOrder.network === "mtn_mashup" || existingOrder.network === "mashup") {
-      // Use Datahubnet API for mtn_mashup and mashup
-      if (!dataPackageId) {
-        console.error(`[v0] ERROR: No datahubnet package ID found for mashup order. sizeGbText="${sizeGbText}", sizeGb=${capacity}`);
-        await supabase
-          .from("orders")
-          .update({ 
-            fulfillment_status: "failed", 
-            api_response: "Package configuration missing. Please contact support." 
-          })
-          .eq("id", order_id);
-        return new Response(JSON.stringify({ success: false, error: "Unable to process mashup package. Package configuration missing. Please contact support." }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+    if (provider === "datahubnet" || normalizedNetwork === "mashup") {
+      // Datahubnet needs a numeric package_id
+      let packageId = order.data_package_id ?? getMashupPackageId(order.size_gb_text, Number(order.size_gb));
+      console.log(`[FULFILL] Mashup → datahubnet package_id=${packageId} (size_gb_text="${order.size_gb_text}", size_gb=${order.size_gb})`);
+      if (!packageId) {
+        await supabase.from("orders").update({ fulfillment_status: "failed", api_response: `Cannot map mashup package: size_gb_text="${order.size_gb_text}", size_gb=${order.size_gb}` }).eq("id", order_id);
+        return new Response(JSON.stringify({ error: "Unable to map mashup package" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
-      apiUrl = "https://www.datahubnet.online/api/v1/special-offers/";
-      requestBody = {
-        "phone_number": phone,
-        "package_id": Number(dataPackageId),
-      };
-      const datahubnetApiKey = Deno.env.get("DATAHUBNET_API_KEY");
-      if (!datahubnetApiKey) {
-        throw new Error("DATAHUBNET_API_KEY not configured");
-      }
-      apiRes = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${datahubnetApiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
+      requestBody = config.buildRequest(phone, packageId, networkKey, normalizedNetwork, order_id, bundleId);
+
+    } else if (provider === "dakazina") {
+      // Dakazina needs: recipient_msisdn, shared_bundle (size as string), network_id, incoming_api_ref (our order UUID)
+      // For mtn_mashup the shared_bundle is the size_gb_text (e.g. "2.6 GB + 1,077 mins")
+      // For regular networks it is the numeric GB value as a string
+      const sharedBundle = (normalizedNetwork === "mtn_mashup" && order.size_gb_text)
+        ? order.size_gb_text
+        : String(order.size_gb);
+      console.log(`[FULFILL] Dakazina → network=${networkKey}, shared_bundle="${sharedBundle}", incoming_api_ref=${order_id}`);
+      requestBody = config.buildRequest(phone, sharedBundle, networkKey, normalizedNetwork, order_id, bundleId);
+
     } else {
-      // Use GHDATE API for other networks
-      apiUrl = `${ghdateApiUrl}/api/purchase`;
-      requestBody = {
-        network: networkKey,
-        phone: phone,
-        amount: capacity,
-      };
-      apiRes = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${ghdateApiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
+      requestBody = config.buildRequest(phone, order.size_gb, networkKey, normalizedNetwork, order_id, bundleId);
     }
 
-    const rawResponse = await apiRes.text();
-    let parsedResponse = null;
-    try {
-      parsedResponse = JSON.parse(rawResponse);
-    } catch {
-      // keep null
+    console.log(`[FULFILL] Sending to ${provider} (${config.apiUrl}):`, JSON.stringify(requestBody));
+
+    // ─── Build headers ───────────────────────────────────────────────────────
+    const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (config.authHeader === "bearer" || config.authHeader === "both") {
+      reqHeaders["Authorization"] = `Bearer ${apiKey}`;
+    }
+    if (config.authHeader === "x-api-key" || config.authHeader === "both") {
+      reqHeaders["X-API-Key"] = apiKey;
+    }
+    // Default: send both for maximum compatibility
+    if (!config.authHeader) {
+      reqHeaders["Authorization"] = `Bearer ${apiKey}`;
+      reqHeaders["X-API-Key"]     = apiKey;
     }
 
-    console.log(`API response for order ${order_id}: ${apiRes.status} - ${rawResponse.slice(0, 500)}`);
+    // ─── Call provider API ───────────────────────────────────────────────────
+    const apiRes  = await fetch(config.apiUrl, { method: "POST", headers: reqHeaders, body: JSON.stringify(requestBody) });
+    const rawText = await apiRes.text();
 
-    // ✅ Success condition: HTTP 2xx AND (status === "success" OR success === true)
+    let parsed: any = null;
+    try { parsed = JSON.parse(rawText); } catch { /* keep null */ }
+
+    console.log(`[FULFILL] ${provider} response: HTTP ${apiRes.status} - ${rawText.slice(0, 400)}`);
+
+    // ─── Determine success ───────────────────────────────────────────────────
+    // Dakazina returns: { "status": "success", "data": { ... } }  OR  { "success": true, ... }
     const isSuccess =
       apiRes.status >= 200 &&
       apiRes.status < 300 &&
-      (parsedResponse?.status === "success" || parsedResponse?.success === true);
+      (
+        parsed?.status  === "success"  ||
+        parsed?.success === true       ||
+        // Dakazina sometimes returns { "message": "Package purchased successfully." }
+        (typeof parsed?.message === "string" && parsed.message.toLowerCase().includes("purchased successfully"))
+      );
 
     if (isSuccess) {
-      const orderData = parsedResponse?.data || parsedResponse;
+      console.log(`[FULFILL] SUCCESS for order ${order_id}`);
 
-      // Extract GHDATE transaction_code as provider_reference
-      const providerRef =
-        orderData?.reference ||
-        orderData?.order_reference ||
-        parsedResponse?.reference ||
-        parsedResponse?.order_reference ||
-        parsedResponse?.transaction_code ||
-        orderData?.transaction_code ||
+      // Extract any reference Dakazina returns
+      const dakazinaOrderCode =
+        parsed?.data?.order_code     ??
+        parsed?.data?.code           ??
+        parsed?.data?.reference      ??
+        parsed?.order_code           ??
+        parsed?.reference            ??
+        parsed?.transaction_code     ??
+        parsed?.data?.transaction_code ??
         null;
 
-      // Extract provider_order_id from GHDATE response if present
-      let providerOrderId: string | null =
-        parsedResponse?.provider_order_id ||
-        orderData?.provider_order_id ||
-        parsedResponse?.order_id ||
-        orderData?.order_id ||
-        parsedResponse?.order_code ||
-        orderData?.order_code ||
-        null;
+      console.log(`[FULFILL] Dakazina order_code from response: ${dakazinaOrderCode}`);
 
-      console.log(`[fulfill] GHDATE success for order ${order_id}. provider_reference=${providerRef}`);
+      // Build update — provider_reference = dakazina order code (if any)
+      // provider_order_id = also store order code for webhook matching
+      // order_status stays "processing" — Dakazina webhook will update to "delivered"
+      const updatePayload: Record<string, any> = {
+        fulfillment_status: "completed",
+        api_response:       rawText,
+        order_status:       "processing",
+      };
 
-      // ── Fetch Dakazina order_code so the webhook can match this order ──────
-      // GHDATE routes through Dakazina internally. After GHDATE confirms success,
-      // call Dakazina's orders list API to find the matching order by phone number
-      // and store their order_code as provider_order_id.
-      const dakazinaApiKey = Deno.env.get("DAKAZINA_API_KEY");
-      if (dakazinaApiKey && !providerOrderId) {
-        try {
-          // Normalise phone: strip leading 0, add 233 prefix for Dakazina
-          const dakazinaPhone = phone.startsWith("0")
-            ? "233" + phone.slice(1)
-            : phone;
-
-          console.log(`[fulfill] Fetching Dakazina orders for phone=${dakazinaPhone}`);
-
-          const dkzRes = await fetch(
-            `https://reseller.dakazinabusinessconsult.com/api/v1/orders?phone=${dakazinaPhone}&limit=5`,
-            {
-              method: "GET",
-              headers: {
-                "Authorization": `Bearer ${dakazinaApiKey}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (dkzRes.ok) {
-            const dkzData = await dkzRes.json();
-            console.log(`[fulfill] Dakazina orders response:`, JSON.stringify(dkzData).slice(0, 500));
-
-            // Find most recent order for this phone (just placed, within last 5 min)
-            const orders: any[] = dkzData?.data || dkzData?.orders || dkzData || [];
-            const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-
-            const matchedDkzOrder = orders.find((o: any) => {
-              const orderTime = o.created_at ? new Date(o.created_at).getTime() : 0;
-              return orderTime > fiveMinutesAgo;
-            });
-
-            if (matchedDkzOrder) {
-              providerOrderId =
-                matchedDkzOrder.order_code ||
-                matchedDkzOrder.code ||
-                matchedDkzOrder.id?.toString() ||
-                null;
-              console.log(`[fulfill] Found Dakazina order_code=${providerOrderId} for order ${order_id}`);
-            } else {
-              // Fallback: just take the most recent order
-              const latest = orders[0];
-              if (latest) {
-                providerOrderId =
-                  latest.order_code ||
-                  latest.code ||
-                  latest.id?.toString() ||
-                  null;
-                console.log(`[fulfill] Using latest Dakazina order_code=${providerOrderId} (fallback) for order ${order_id}`);
-              }
-            }
-          } else {
-            const errText = await dkzRes.text();
-            console.error(`[fulfill] Dakazina orders API error: ${dkzRes.status} - ${errText.slice(0, 200)}`);
-          }
-        } catch (dkzErr) {
-          // Non-fatal — order still fulfilled via GHDATE, just can't link to Dakazina
-          console.error(`[fulfill] Failed to fetch Dakazina orders: ${(dkzErr as Error).message}`);
-        }
+      if (dakazinaOrderCode) {
+        updatePayload.provider_reference = dakazinaOrderCode;
+        updatePayload.provider_order_id  = dakazinaOrderCode;
       }
 
-      // No profit crediting here - all profit crediting done in verify-payment
-      // fulfill-order only handles order fulfillment via API
+      const { error: updateErr } = await supabase.from("orders").update(updatePayload).eq("id", order_id);
 
-      await supabase
-        .from("orders")
-        .update({
-          fulfillment_status: "completed",
-          status: "completed",
-          order_status: "processing",
-          api_response: rawResponse,
-          provider_reference: providerRef,
-          ...(providerOrderId ? { provider_order_id: providerOrderId } : {}),
-        })
-        .eq("id", order_id);
+      if (updateErr) {
+        console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+        return new Response(JSON.stringify({ error: updateErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-      return new Response(JSON.stringify({ success: true, message: "Order fulfilled", reference: providerRef, dakazina_order_code: providerOrderId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.log(`[FULFILL] Order ${order_id} marked as fulfilled. dakazina_code=${dakazinaOrderCode}`);
+      return new Response(JSON.stringify({
+        success: true,
+        message: "Order fulfilled successfully",
+        dakazina_order_code: dakazinaOrderCode,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
     } else {
-      // ❌ Failure (including 400, 401, 403, 429, 500, or unexpected JSON)
-      const errorMessage = parsedResponse?.message ||
-        parsedResponse?.error ||
-        `HTTP ${apiRes.status}: ${rawResponse.slice(0, 200)}`;
+      // ─── Failure ───────────────────────────────────────────────────────────
+      const errorMsg = parsed?.message ?? parsed?.error ?? `HTTP ${apiRes.status}: ${rawText.slice(0, 200)}`;
+      console.log(`[FULFILL] FAILED order ${order_id}: ${errorMsg}`);
 
-      await supabase
-        .from("orders")
-        .update({
-          fulfillment_status: "failed",
-          api_response: rawResponse,
-        })
-        .eq("id", order_id);
+      const isLowBalance   = errorMsg.toLowerCase().includes("low balance") || errorMsg.toLowerCase().includes("insufficient");
+      const isCapacityIssue = errorMsg.toLowerCase().includes("capacity not available") || errorMsg.toLowerCase().includes("bundle not available");
 
-      // Log API error for admin debugging
-      console.log(`[v0] Logging data order API error for order ${order_id}`);
+      if (isLowBalance)    console.warn(`[FULFILL] LOW BALANCE on ${provider}`);
+      if (isCapacityIssue) console.warn(`[FULFILL] CAPACITY ISSUE on ${provider}`);
+
+      await supabase.from("orders").update({ fulfillment_status: "failed", api_response: rawText }).eq("id", order_id);
+
+      // Log to api_error_logs for admin visibility
       try {
         await supabase.from("api_error_logs").insert({
-          order_id: order_id,
-          customer_number: existingOrder.customer_number,
-          network: existingOrder.network,
-          size_gb: existingOrder.size_gb,
-          amount: existingOrder.amount,
-          error_type: "DATA_ORDER_FULFILLMENT_FAILED",
-          error_message: errorMessage,
-          api_endpoint: apiUrl,
+          order_id:         order_id,
+          customer_number:  order.customer_number,
+          network:          order.network,
+          size_gb:          order.size_gb,
+          amount:           order.amount,
+          error_type:       "DATA_ORDER_FULFILLMENT_FAILED",
+          error_message:    errorMsg,
+          api_endpoint:     config.apiUrl,
           http_status_code: apiRes.status,
-          request_payload: requestBody,
-          response_payload: parsedResponse || { raw: rawResponse.slice(0, 500) },
+          request_payload:  requestBody,
+          response_payload: parsed ?? { raw: rawText.slice(0, 500) },
         });
       } catch (logErr) {
-        console.error(`[v0] Failed to log error: ${logErr}`);
+        console.error(`[FULFILL] Failed to write api_error_logs: ${logErr}`);
       }
 
-      return new Response(JSON.stringify({ success: false, message: "Fulfillment failed", api_response: errorMessage }), {
+      return new Response(JSON.stringify({ success: false, message: "Fulfillment failed", api_response: errorMsg }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-  } catch (err) {
-    console.error("Fulfill error:", err);
-    
-    // Try to log the error if we have order_id
-    try {
-      const body = await req.clone().json().catch(() => ({}));
-      const orderId = body.order_id;
-      if (orderId) {
-        // Get order details
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const supabase = createClient(supabaseUrl, serviceRoleKey);
-        
-        const { data: order } = await supabase
-          .from("orders")
-          .select("customer_number, network, size_gb, amount")
-          .eq("id", orderId)
-          .single()
-          .catch(() => ({ data: null }));
 
-        // Log the exception error
-        if (order) {
-          await supabase.from("api_error_logs").insert({
-            order_id: orderId,
-            customer_number: order.customer_number,
-            network: order.network,
-            size_gb: order.size_gb,
-            amount: order.amount,
-            error_type: "DATA_ORDER_EXCEPTION_ERROR",
-            error_message: (err as Error).message || "Unknown error in fulfillment",
-            api_endpoint: `${ghdateApiUrl}/api/purchase`,
-          }).catch(() => null);
-        }
-      }
-    } catch (logErr) {
-      console.error(`[v0] Failed to log exception: ${logErr}`);
-    }
-    
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  } catch (err) {
+    console.error("[FULFILL] Unhandled exception:", err);
+    return new Response(JSON.stringify({ error: "Internal server error", details: String(err) }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
