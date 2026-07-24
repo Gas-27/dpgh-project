@@ -2621,48 +2621,73 @@ const AdminDashboard = () => {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs cursor-pointer hover:opacity-80 ${sourceBadgeClass}`}
-                                    onClick={() => {
-                                      if (subSubagentStore) {
-                                        const parentSubagent = subagentStore || subagents.find((s: any) => s.id === subSubagentStore.subagent_store_id);
-                                        const parentAgent = agentStore || (parentSubagent?.agent_store_id ? agents.find((a: any) => a.id === parentSubagent.agent_store_id) : null);
-                                        setSourceInfo({
-                                          type: "Sub-Subagent Store",
-                                          storeName: subSubagentStore.store_name || "Unknown",
-                                          contact: subSubagentStore.support_number || subSubagentStore.whatsapp_number || "N/A",
-                                          storeUrl: subSubagentStore.store_url || undefined,
-                                          parentSubagentName: parentSubagent?.store_name || undefined,
-                                          parentSubagentUrl: parentSubagent?.store_url || undefined,
-                                          parentAgentName: parentAgent?.store_name || undefined,
-                                          parentAgentUrl: parentAgent?.store_url || undefined,
-                                        });
-                                        setSourceDialogOpen(true);
-                                      } else if (subagentStore) {
-                                        const parentAgent = agents.find((a: any) => a.id === subagentStore.agent_store_id);
-                                        setSourceInfo({
-                                          type: "Subagent Store",
-                                          storeName: subagentStore.store_name || "Unknown",
-                                          contact: subagentStore.support_number || subagentStore.whatsapp_number || "N/A",
-                                          storeUrl: subagentStore.store_url || undefined,
-                                          parentAgentName: parentAgent?.store_name || undefined,
-                                          parentAgentUrl: parentAgent?.store_url || undefined,
-                                        });
-                                        setSourceDialogOpen(true);
-                                      } else if (agentStore) {
-                                        setSourceInfo({
-                                          type: "Agent Store",
-                                          storeName: agentStore.store_name || "Unknown",
-                                          contact: agentStore.whatsapp_number || agentStore.support_number || "N/A",
-                                          storeUrl: agentStore.store_url || undefined,
-                                        });
-                                        setSourceDialogOpen(true);
-                                      }
-                                    }}
-                                  >
-                                    {sourceLabel.length > 12 ? sourceLabel.slice(0, 12) + "..." : sourceLabel}
-                                  </Badge>
+                                  <div className="space-y-1">
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`text-xs cursor-pointer hover:opacity-80 ${sourceBadgeClass}`}
+                                      onClick={() => {
+                                        if (subSubagentStore) {
+                                          const parentSubagent = subagentStore || subagents.find((s: any) => s.id === subSubagentStore.subagent_store_id);
+                                          const parentAgent = agentStore || (parentSubagent?.agent_store_id ? agents.find((a: any) => a.id === parentSubagent.agent_store_id) : null);
+                                          setSourceInfo({
+                                            type: "Sub-Subagent Store",
+                                            storeName: subSubagentStore.store_name || "Unknown",
+                                            contact: subSubagentStore.support_number || subSubagentStore.whatsapp_number || "N/A",
+                                            storeUrl: subSubagentStore.store_url || undefined,
+                                            parentSubagentName: parentSubagent?.store_name || undefined,
+                                            parentSubagentUrl: parentSubagent?.store_url || undefined,
+                                            parentAgentName: parentAgent?.store_name || undefined,
+                                            parentAgentUrl: parentAgent?.store_url || undefined,
+                                          });
+                                          setSourceDialogOpen(true);
+                                        } else if (subagentStore) {
+                                          const parentAgent = agents.find((a: any) => a.id === subagentStore.agent_store_id);
+                                          setSourceInfo({
+                                            type: "Subagent Store",
+                                            storeName: subagentStore.store_name || "Unknown",
+                                            contact: subagentStore.support_number || subagentStore.whatsapp_number || "N/A",
+                                            storeUrl: subagentStore.store_url || undefined,
+                                            parentAgentName: parentAgent?.store_name || undefined,
+                                            parentAgentUrl: parentAgent?.store_url || undefined,
+                                          });
+                                          setSourceDialogOpen(true);
+                                        } else if (agentStore) {
+                                          setSourceInfo({
+                                            type: "Agent Store",
+                                            storeName: agentStore.store_name || "Unknown",
+                                            contact: agentStore.whatsapp_number || agentStore.support_number || "N/A",
+                                            storeUrl: agentStore.store_url || undefined,
+                                          });
+                                          setSourceDialogOpen(true);
+                                        } else if (isAPIOrder) {
+                                          setSourceInfo({
+                                            type: "API User",
+                                            storeName: order.api_user || "Unknown API User",
+                                            contact: "N/A",
+                                          });
+                                          setSourceDialogOpen(true);
+                                        } else {
+                                          setSourceInfo({
+                                            type: "Customer Account",
+                                            storeName: order.customer_number || "Unknown Customer",
+                                            contact: order.customer_id || "N/A",
+                                          });
+                                          setSourceDialogOpen(true);
+                                        }
+                                      }}
+                                    >
+                                      {sourceLabel.length > 12 ? sourceLabel.slice(0, 12) + "..." : sourceLabel}
+                                    </Badge>
+                                    <p className="text-xs text-muted-foreground">
+                                      {isAPIOrder ? (
+                                        <span>API: {(order.api_user || "").slice(0, 16)}</span>
+                                      ) : subSubagentStore || subagentStore || agentStore ? (
+                                        <span>Store ID: {(order.agent_store_id || order.subagent_store_id || (order as any).sub_subagent_store_id || "—")?.slice(0, 12)}</span>
+                                      ) : (
+                                        <span>Phone: {order.customer_number || "—"}</span>
+                                      )}
+                                    </p>
+                                  </div>
                                 </TableCell>
                                 <TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell>
                                 <TableCell>{order.status === "refunded" ? <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Refunded</Badge> : <Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge>}</TableCell>
