@@ -282,9 +282,21 @@ Deno.serve(async (req) => {
         orderData?.order_reference ||
         parsedResponse?.reference ||
         parsedResponse?.order_reference ||
+        parsedResponse?.transaction_code ||
+        orderData?.transaction_code ||
         null;
 
-      console.log(`[fulfill] Success for order ${order_id}. provider_reference=${providerRef}`);
+      // Extract provider_order_id — this is what Dakazina's webhook sends as "order_code"
+      const providerOrderId =
+        parsedResponse?.provider_order_id ||
+        orderData?.provider_order_id ||
+        parsedResponse?.order_id ||
+        orderData?.order_id ||
+        parsedResponse?.order_code ||
+        orderData?.order_code ||
+        null;
+
+      console.log(`[fulfill] Success for order ${order_id}. provider_reference=${providerRef}, provider_order_id=${providerOrderId}`);
 
       // No profit crediting here - all profit crediting done in verify-payment
       // fulfill-order only handles order fulfillment via API
@@ -297,6 +309,7 @@ Deno.serve(async (req) => {
           order_status: "processing",
           api_response: rawResponse,
           provider_reference: providerRef,
+          ...(providerOrderId ? { provider_order_id: providerOrderId } : {}),
         })
         .eq("id", order_id);
 
