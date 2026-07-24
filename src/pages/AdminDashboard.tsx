@@ -137,6 +137,8 @@ const AdminDashboard = () => {
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
   const [refundAction, setRefundAction] = useState<"" | "refund">("") ;
+  const [showRefundedOnly, setShowRefundedOnly] = useState(false);
+  const [reversingRefundIds, setReversingRefundIds] = useState<Set<string>>(new Set());
 
   // Pagination state
   const [agentPage, setAgentPage] = useState(1);
@@ -1723,6 +1725,133 @@ const AdminDashboard = () => {
     });
   };
 
+  // Reverse a refund: take money back from the wallet and mark order as not refunded
+  const reverseRefund = async (orderId: string) => {
+    try {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) {
+        toast({ title: "Error", description: "Order not found", variant: "destructive" });
+        return;
+      }
+
+      const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded" || (order.order_status || "").toLowerCase() === "refunded";
+      if (!isRefunded || !order.refunded_amount) {
+        toast({ title: "Error", description: "This order has not been refunded", variant: "destructive" });
+        return;
+      }
+
+      setReversingRefundIds(new Set([...reversingRefundIds, orderId]));
+      const refundAmount = Number(order.refunded_amount);
+      let targetWalletUpdated = false;
+
+      // Determine target wallet and deduct the refund amount
+      if (order.customer_id) {
+        // Customer refund: deduct from customer wallet
+        const { data: customer } = await supabase
+          .from("user_wallets")
+          .select("wallet_balance")
+          .eq("user_id", order.customer_id)
+          .maybeSingle();
+
+        if (customer) {
+          const newBalance = Math.max(0, (customer.wallet_balance || 0) - refundAmount);
+          const { error: updateErr } = await supabase
+            .from("user_wallets")
+            .update({ wallet_balance: newBalance })
+            .eq("user_id", order.customer_id);
+          if (!updateErr) targetWalletUpdated = true;
+        }
+      } else if (order.subagent_store_id) {
+        // Subagent refund: deduct from subagent wallet
+        const { data: subagent } = await supabase
+          .from("subagent_stores")
+          .select("wallet_balance")
+          .eq("id", order.subagent_store_id)
+          .maybeSingle();
+
+        if (subagent) {
+          const newBalance = Math.max(0, (subagent.wallet_balance || 0) - refundAmount);
+          const { error: updateErr } = await supabase
+            .from("subagent_stores")
+            .update({ wallet_balance: newBalance })
+            .eq("id", order.subagent_store_id);
+          if (!updateErr) targetWalletUpdated = true;
+        }
+      } else if (order.agent_store_id) {
+        // Agent refund: deduct from agent wallet
+        const { data: agent } = await supabase
+          .from("agent_stores")
+          .select("wallet_balance")
+          .eq("id", order.agent_store_id)
+          .maybeSingle();
+
+        if (agent) {
+          const newBalance = Math.max(0, (agent.wallet_balance || 0) - refundAmount);
+          const { error: updateErr } = await supabase
+            .from("agent_stores")
+            .update({ wallet_balance: newBalance })
+            .eq("id", order.agent_store_id);
+          if (!updateErr) targetWalletUpdated = true;
+        }
+      } else if (order.api_user) {
+        // API refund: deduct from API user wallet
+        const { data: apiUser } = await supabase
+          .from("api_users")
+          .select("wallet")
+          .eq("topup_reference", order.api_user)
+          .maybeSingle();
+
+        if (apiUser) {
+          const newBalance = Math.max(0, (apiUser.wallet || 0) - refundAmount);
+          const { error: updateErr } = await supabase
+            .from("api_users")
+            .update({ wallet: newBalance })
+            .eq("topup_reference", order.api_user);
+          if (!updateErr) targetWalletUpdated = true;
+        }
+      }
+
+      if (targetWalletUpdated) {
+        // Mark order as NOT refunded
+        const { error: updateErr } = await supabase
+          .from("orders")
+          .update({
+            fulfillment_status: "completed",
+            status: "completed",
+            refunded_amount: null,
+            refunded_at: null,
+          })
+          .eq("id", orderId);
+
+        if (!updateErr) {
+          toast({
+            title: "Refund Reversed",
+            description: `GHC ${refundAmount.toFixed(2)} has been deducted from the wallet`,
+            variant: "default"
+          });
+          // Refresh orders
+          const { data: updatedOrder } = await supabase
+            .from("orders")
+            .select("*")
+            .eq("id", orderId)
+            .maybeSingle();
+          if (updatedOrder) {
+            setOrders(orders.map(o => o.id === orderId ? updatedOrder : o));
+          }
+        } else {
+          toast({ title: "Error", description: "Failed to mark order as completed", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Error", description: "Failed to deduct from wallet", variant: "destructive" });
+      }
+
+      setReversingRefundIds(new Set([...reversingRefundIds].filter(id => id !== orderId)));
+    } catch (error) {
+      toast({ title: "Error", description: String(error), variant: "destructive" });
+      setReversingRefundIds(new Set([...reversingRefundIds].filter(id => id !== orderId)));
+    }
+  };
+
   // ======================== API User Wallet topup ========================
   const searchApiTopupRef = async () => {
     const raw = apiTopupSearch.trim();
@@ -2042,8 +2171,14 @@ const AdminDashboard = () => {
     baseOrders.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
   }
 
-  // Apply date range, source, and delivery status filters
+  // Apply date range, source, delivery status, and refund filters
   const filteredOrders = baseOrders.filter(order => {
+    // Refund filter
+    if (showRefundedOnly) {
+      const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded" || (order.order_status || "").toLowerCase() === "refunded";
+      if (!isRefunded) return false;
+    }
+
     // Date range
     if (orderDateFrom || orderDateTo) {
       const orderDate = new Date(order.created_at || 0).getTime();
@@ -2303,6 +2438,19 @@ const AdminDashboard = () => {
                 </div>
               )}
               
+              {/* Show Refunded Only Checkbox */}
+              <div className="flex items-center gap-2 mb-2">
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showRefundedOnly}
+                    onChange={(e) => setShowRefundedOnly(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  <span>Show refunded orders only</span>
+                </label>
+              </div>
+
               {/* Order Filters */}
               <div className="flex gap-2 flex-wrap">
                 <Select value={orderNetworkFilter} onValueChange={(value) => {
@@ -2548,6 +2696,16 @@ const AdminDashboard = () => {
                                     >
                                       {order.fulfillment_status === "completed" || order.fulfillment_status === "delivered" ? "Unfulfill" : "Fulfill"}
                                     </Button>
+                                    {(order.fulfillment_status === "refunded" || order.status === "refunded" || (order.order_status || "").toLowerCase() === "refunded") && order.refunded_amount && (
+                                      <Button 
+                                        variant="destructive" 
+                                        size="sm" 
+                                        onClick={() => reverseRefund(order.id)}
+                                        disabled={reversingRefundIds.has(order.id)}
+                                      >
+                                        {reversingRefundIds.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reverse"}
+                                      </Button>
+                                    )}
                                   </div>
                                 </TableCell>
                               </TableRow>
