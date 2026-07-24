@@ -1874,6 +1874,8 @@ const AgentDashboard = () => {
   };
   
   // Process refunds for subagent orders (defined before guards to keep hook order stable)
+  // Handles: direct subagent orders → credit subagent wallet at agent_price
+  //          sub-subagent orders → credit subagent wallet at subagent_package_prices.base_price
   const processSubagentRefunds = async () => {
     if (selectedSubagentOrderIds.size === 0) {
       toast({ title: "Error", description: "No orders selected", variant: "destructive" });
@@ -1884,53 +1886,91 @@ const AgentDashboard = () => {
     let successCount = 0;
     let errorCount = 0;
 
+    // Helper: resolve the price subagent charged the sub-subagent (for sub-subagent orders)
+    const resolveSubagentBasePrice = async (order: any) => {
+      if (order.package_id && order.subagent_store_id) {
+        const { data } = await supabase
+          .from("subagent_package_prices")
+          .select("base_price")
+          .eq("subagent_store_id", order.subagent_store_id)
+          .eq("package_id", order.package_id)
+          .maybeSingle();
+        if (data?.base_price != null) return Number(data.base_price);
+      }
+      // Fallback to agent_price (admin base price)
+      return Number(order.agent_price || 0);
+    };
+
     for (const orderId of selectedSubagentOrderIds) {
       try {
-        const order = subagentOrders.find(o => o.id === orderId);
+        // Check both subagentOrders and orders for the order
+        let order = subagentOrders.find(o => o.id === orderId);
+        if (!order) {
+          order = orders.find(o => o.id === orderId);
+        }
         if (!order) continue;
 
         // Only allow refunding orders that have already been refunded by admin
-        if (order.fulfillment_status !== "refunded" && order.status !== "refunded") {
+        const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded" || (order.order_status || "").toLowerCase() === "refunded";
+        if (!isRefunded) {
           errorCount++;
           continue;
         }
 
-        // Use agent_price (base price given to subagent) for refund, not customer-paid amount
-        const refundAmount = Number(order.agent_price || order.amount);
+        // Determine refund target and amount
+        let targetSubagentId: string | null = null;
+        let refundAmount = 0;
 
-        // Find the subagent who placed this order and refund to their wallet
-        if (order.subagent_store_id) {
-          const { data: subagent } = await supabase
+        const isSubSubagentOrder = !!(order as any).sub_subagent_store_id;
+        if (isSubSubagentOrder && order.subagent_store_id) {
+          // Sub-subagent order: refund to the subagent at the subagent-to-sub-subagent base price
+          targetSubagentId = order.subagent_store_id;
+          refundAmount = await resolveSubagentBasePrice(order);
+        } else if (order.subagent_store_id) {
+          // Direct subagent order: refund to the subagent at the agent-to-subagent base price
+          targetSubagentId = order.subagent_store_id;
+          refundAmount = Number(order.agent_price || 0);
+        }
+
+        if (!targetSubagentId || refundAmount <= 0) {
+          errorCount++;
+          continue;
+        }
+
+        const { data: subagent } = await supabase
+          .from("subagent_stores")
+          .select("wallet_balance")
+          .eq("id", targetSubagentId)
+          .maybeSingle();
+
+        if (subagent) {
+          const newBalance = (subagent.wallet_balance || 0) + refundAmount;
+          const { error: updateErr } = await supabase
             .from("subagent_stores")
-            .select("wallet_balance")
-            .eq("id", order.subagent_store_id)
-            .maybeSingle();
+            .update({ wallet_balance: newBalance })
+            .eq("id", targetSubagentId);
 
-          if (subagent) {
-            const newBalance = (subagent.wallet_balance || 0) + refundAmount;
-            const { error: updateErr } = await supabase
-              .from("subagent_stores")
-              .update({ wallet_balance: newBalance })
-              .eq("id", order.subagent_store_id);
-
-            if (!updateErr) {
-              successCount++;
-              setSubagentOrdersState((prev) =>
-                prev.map((o) =>
-                  o.id === orderId
-                    ? { ...o, wallet_refunded: true }
-                    : o
-                )
-              );
-            } else {
-              errorCount++;
-            }
+          if (!updateErr) {
+            // Mark as agent-refunded to prevent double-refund
+            await supabase
+              .from("orders")
+              .update({ agent_refunded_subagent: true })
+              .eq("id", orderId);
+            successCount++;
+            setSubagentOrdersState((prev) =>
+              prev.map((o) =>
+                o.id === orderId
+                  ? { ...o, wallet_refunded: true }
+                  : o
+              )
+            );
           } else {
             errorCount++;
           }
+        } else {
+          errorCount++;
         }
       } catch (error) {
-        console.error("[v0] Refund error:", error);
         errorCount++;
       }
     }
@@ -2464,10 +2504,12 @@ const AgentDashboard = () => {
             <Card className="border-blue-500/30 bg-blue-500/5">
               <CardContent className="p-4 space-y-1">
                 <p className="text-sm text-blue-400">
-                  <strong>Note:</strong> Only subagent orders can be selected for refund. When you refund, the base price you charged the subagent is credited to their wallet.
+                  <strong>Note:</strong> Subagent and sub-subagent orders can be selected for refund.
                 </p>
                 <p className="text-xs text-blue-300/70">
-                  Direct agent-storefront orders (no subagent) appear as read-only — the admin&apos;s refund already covered those. Source column shows where each order originated.
+                  • <strong>Subagent orders:</strong> Refund credits the subagent wallet at the agent-to-subagent base price.<br/>
+                  • <strong>Sub-subagent orders:</strong> Refund goes to the subagent wallet at the subagent-to-sub-subagent base price.<br/>
+                  • Direct agent-storefront orders appear as read-only — the admin&apos;s refund already covered those.
                 </p>
               </CardContent>
             </Card>
@@ -2554,14 +2596,15 @@ const AgentDashboard = () => {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedSubagentOrderIds.size === filteredOrders.filter(o => !!o.subagent_store_id).length && filteredOrders.filter(o => !!o.subagent_store_id).length > 0} onChange={(e) => { if (e.target.checked) { setSelectedSubagentOrderIds(new Set(filteredOrders.filter(o => !!o.subagent_store_id).map(o => o.id))); } else { setSelectedSubagentOrderIds(new Set()); } }} className="rounded border-border" title="Select all subagent orders" /></TableHead>
+                            <TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedSubagentOrderIds.size === filteredOrders.filter(o => !!o.subagent_store_id || !!(o as any).sub_subagent_store_id).length && filteredOrders.filter(o => !!o.subagent_store_id || !!(o as any).sub_subagent_store_id).length > 0} onChange={(e) => { if (e.target.checked) { setSelectedSubagentOrderIds(new Set(filteredOrders.filter(o => !!o.subagent_store_id || !!(o as any).sub_subagent_store_id).map(o => o.id))); } else { setSelectedSubagentOrderIds(new Set()); } }} className="rounded border-border" title="Select all subagent/sub-subagent orders" /></TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Phone</TableHead>
                             <TableHead>Network</TableHead>
                             <TableHead>Size</TableHead>
                             <TableHead>Customer Paid</TableHead>
-                            <TableHead>Base Price (Refund)</TableHead>
-                            <TableHead>Source</TableHead>
+                            <TableHead>Base Price</TableHead>
+                            <TableHead>Subagent</TableHead>
+                            <TableHead>Sub-Subagent</TableHead>
                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -2569,36 +2612,38 @@ const AgentDashboard = () => {
                           {filteredOrders.map((order) => {
                             const isSubagentOrder = !!order.subagent_store_id;
                             const isSubSubagentOrder = !!(order as any).sub_subagent_store_id;
-                            const sourceLabel = isSubSubagentOrder
-                              ? ((order as any).sub_subagent_store_name || "Sub-Subagent")
-                              : isSubagentOrder
-                              ? (order.subagent_store_name || "Subagent")
-                              : "Agent Storefront";
-                            const sourceBadgeClass = isSubSubagentOrder
-                              ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
-                              : isSubagentOrder
-                              ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
-                              : "bg-blue-500/10 text-blue-400 border-blue-500/30";
+                            const isSelectable = isSubagentOrder || isSubSubagentOrder;
                             return (
                             <TableRow key={order.id} className={selectedSubagentOrderIds.has(order.id) ? "bg-amber-500/10" : ""}>
                               <TableCell style={{ width: "40px" }} className="text-center">
-                                {isSubagentOrder ? (
+                                {isSelectable ? (
                                   <input type="checkbox" checked={selectedSubagentOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedSubagentOrderIds(new Set([...selectedSubagentOrderIds, order.id])); } else { const newSet = new Set(selectedSubagentOrderIds); newSet.delete(order.id); setSelectedSubagentOrderIds(newSet); } }} className="rounded border-border" />
                                 ) : (
-                                  <span title="Direct orders cannot be forwarded to subagent" className="text-muted-foreground/40 text-xs">—</span>
+                                  <span title="Direct orders cannot be refunded" className="text-muted-foreground/40 text-xs">—</span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}</TableCell>
-                              <TableCell className="font-medium">{order.customer_number}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}</TableCell>
+                              <TableCell className="font-medium text-xs">{order.customer_number}</TableCell>
                               <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                              <TableCell>{order.size_gb}GB</TableCell>
+                              <TableCell className="text-sm">{order.size_gb}GB</TableCell>
                               <TableCell className="text-sm text-muted-foreground">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
-                              <TableCell className="font-semibold text-amber-400">GHC {Number(order.agent_price || order.amount || 0).toFixed(2)}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className={`text-xs ${sourceBadgeClass}`}>{sourceLabel}</Badge>
+                              <TableCell className="font-semibold text-amber-400 text-sm">GHC {Number(order.agent_price || 0).toFixed(2)}</TableCell>
+                              <TableCell className="text-xs">
+                                {isSubagentOrder ? (
+                                  <span className="text-purple-400">{order.subagent_store_name || `Subagent ${order.subagent_store_id?.slice(0, 6)}`}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {isSubSubagentOrder ? (
+                                  <span className="text-cyan-400">{(order as any).sub_subagent_store_name || `Sub-Subagent ${(order as any).sub_subagent_store_id?.slice(0, 6)}`}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell>
-                                <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                                <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">
                                   Refunded by Admin
                                 </Badge>
                               </TableCell>
