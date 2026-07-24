@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.fulfill-order]
 verify_jwt = false
+
+[functions.dakazina-webhook]
+verify_jwt = false
