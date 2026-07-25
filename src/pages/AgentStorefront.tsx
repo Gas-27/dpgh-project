@@ -864,11 +864,6 @@ const AgentStorefront = () => {
 
   // ── Render helpers ──
   const filteredPackages = packages.filter((p) => {
-      // COMMENTED OUT: mashup packages deactivated
-      if (false && networkFilter === "mtn_mashup") {
-        // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
-        return p.network === "mtn_mashup" || p.network === "mashup";
-    }
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
@@ -1244,27 +1239,21 @@ const AgentStorefront = () => {
           {/* ── Network filter ── */}
           <div className="container pb-6">
             <div className="flex gap-2 justify-center flex-wrap">
-              {["mtn", "airteltigo", "telecel"].map((net) => (
+              {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
                 <Button
                   key={net}
                   variant={networkFilter === net ? "default" : "outline"}
                   size="sm"
                   className="text-xs sm:text-sm"
+                  style={networkFilter === net && net === "mtn" ? { background: "#fbbf24", color: "#000" } :
+                         networkFilter === net && net === "mtn_express" ? { background: "#f59e0b", color: "#000" } :
+                         networkFilter === net && net === "telecel" ? { background: "#ef4444", color: "#fff" } :
+                         networkFilter === net && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } : {}}
                   onClick={() => setNetworkFilter(net)}
                 >
-                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
                 </Button>
               ))}
-              <Button
-      // COMMENTED OUT: mashup packages deactivated
-      // variant={networkFilter === "mtn_mashup" ? "default" : "outline"}
-      // className="px-8 py-6 text-lg font-bold"
-      // onClick={() => setNetworkFilter("mtn_mashup" as any)}
-      variant="outline"
-      className="px-8 py-6 text-lg font-bold hidden"
-              >
-                MTN Special Mashup
-              </Button>
             </div>
           </div>
 

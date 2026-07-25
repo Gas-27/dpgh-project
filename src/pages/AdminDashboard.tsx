@@ -1625,6 +1625,25 @@ const AdminDashboard = () => {
             if (!insertErr) targetWalletUpdated = true;
             else console.log("[v0] Customer wallet insert failed:", insertErr);
           }
+        } else if (order.subagent_store_id) {
+          // Subagent order (or sub-subagent order whose subagent_store_id is the parent subagent):
+          // refund to the subagent wallet at the base price admin charged the subagent.
+          refundAmount = await resolveAgentBasePrice(order, order.agent_store_id ?? null);
+
+          const { data: subagent } = await supabase
+            .from("subagent_stores")
+            .select("id, wallet_balance")
+            .eq("id", order.subagent_store_id)
+            .maybeSingle();
+
+          if (subagent) {
+            const newBalance = (subagent.wallet_balance || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("subagent_stores")
+              .update({ wallet_balance: newBalance })
+              .eq("id", subagent.id);
+            if (!updateErr) targetWalletUpdated = true;
+          }
         } else if (order.agent_store_id) {
           // Agent order: refund to agent wallet using the base price admin charged the agent,
           // NOT the full selling price the agent charged their customer.
