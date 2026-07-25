@@ -1432,7 +1432,16 @@ const AdminDashboard = () => {
       let filtered = allOrders || [];
       
       if (network !== "all") {
-        filtered = filtered.filter(o => o.network && o.network.toLowerCase().includes(network.toLowerCase()));
+        filtered = filtered.filter(o => {
+          const n = (o.network || "").toLowerCase();
+          // "mtn" should show only pure MTN orders, NOT mtn_express
+          if (network === "mtn") return n === "mtn";
+          // "mtn_express" shows only MTN Express orders
+          if (network === "mtn_express") return n === "mtn_express";
+          // AirtelTigo covers all AT variants
+          if (network === "airtel") return n === "airteltigo" || n === "atbigtime" || n === "atbigshare";
+          return n === network.toLowerCase();
+        });
       }
       if (fulfillment !== "all") {
         filtered = filtered.filter(o => (o.order_status || "").toLowerCase() === fulfillment.toLowerCase());
@@ -2488,12 +2497,9 @@ const AdminDashboard = () => {
                   <SelectContent>
                     <SelectItem value="all">All Networks</SelectItem>
                     <SelectItem value="mtn">MTN</SelectItem>
+                    <SelectItem value="mtn_express">MTN Express</SelectItem>
                     <SelectItem value="airtel">AirtelTigo</SelectItem>
                     <SelectItem value="telecel">Telecel</SelectItem>
-                {/* COMMENTED OUT: mashup packages deactivated
-                <SelectItem value="mtn_mashup">Special MTN Mashup</SelectItem>
-                <SelectItem value="mashup">Mashup</SelectItem>
-                */}
                   </SelectContent>
                 </Select>
 
