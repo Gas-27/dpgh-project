@@ -32,7 +32,7 @@ import {
 import { Label } from "@/components/ui/label";
 
 // ──────────────────────────────────────────────────────────── Types ─────
-type Network = "mtn" | "airteltigo" | "telecel";
+type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel";
 
 interface DataPackage {
   id: string;
@@ -68,6 +68,7 @@ interface SpinSegment {
 // ───────────────────────────────────────────────────────── Constants ──
 const networkConfig: Record<Network, { label: string; color: string }> = {
   mtn: { label: "MTN", color: "text-yellow-400" },
+  mtn_express: { label: "MTN Express", color: "text-amber-500" },
   airteltigo: { label: "AirtelTigo", color: "text-blue-400" },
   telecel: { label: "Telecel", color: "text-red-400" },
 };
@@ -1075,7 +1076,7 @@ const Packages = () => {
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
     const n = searchParams.get("network");
-    return n === "mtn" || n === "airteltigo" || n === "telecel" ? n : "mtn";
+    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" ? n : "mtn";
   });
   const [loading, setLoading] = useState(true);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
@@ -1222,14 +1223,10 @@ const Packages = () => {
   // Fetch Special MTN Mashup pricing
   useEffect(() => {
     const n = searchParams.get("network");
-    if (n === "mtn" || n === "airteltigo" || n === "telecel" || n === "mtn_mashup") setSelectedNetwork(n as any);
+    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel") setSelectedNetwork(n as Network);
   }, [searchParams]);
 
   const filtered = useMemo(() => packages.filter(p => {
-    // COMMENTED OUT: mashup packages deactivated
-    if (false && selectedNetwork === "mtn_mashup") {
-      return p.network === "mtn_mashup" || p.network === "mashup";
-    }
     if (selectedNetwork === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
@@ -1421,9 +1418,6 @@ const Packages = () => {
               {(Object.keys(networkConfig) as Network[]).map((net) => (
                 <Button key={net} variant={selectedNetwork === net ? "hero" : "outline"} onClick={() => setSelectedNetwork(net)} className="font-semibold">{networkConfig[net].label}</Button>
               ))}
-              {/* COMMENTED OUT: mashup packages deactivated
-      <Button variant={selectedNetwork === "mtn_mashup" ? "hero" : "outline"} onClick={() => setSelectedNetwork("mtn_mashup" as any)} className="font-semibold bg-amber-500/90 hover:bg-amber-600 text-white border-0">Special MTN Mashup</Button>
-      */}
             </div>
 
             {loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (

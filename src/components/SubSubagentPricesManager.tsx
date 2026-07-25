@@ -58,9 +58,7 @@ export default function SubSubagentPricesManager({
 
   const filteredPackages = packages.filter(p => {
     let networkMatch;
-    if (networkFilter === "mtn_mashup") {
-      networkMatch = p.network === "mtn_mashup" || p.network === "mashup";
-    } else if (networkFilter === "airteltigo") {
+    if (networkFilter === "airteltigo") {
       networkMatch = p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     } else {
       networkMatch = p.network === networkFilter;
@@ -82,7 +80,7 @@ export default function SubSubagentPricesManager({
     }
 
     const markup = parseFloat(markupPercent) / 100;
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
     
     filteredPackages.forEach(pkg => {
       // Use your subagent price as the base
@@ -184,14 +182,19 @@ export default function SubSubagentPricesManager({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 flex-wrap">
-          {["mtn", "airteltigo", "telecel", "mtn_mashup"].map(net => (
+          {[
+            { key: "mtn", label: "MTN" },
+            { key: "mtn_express", label: "MTN Express" },
+            { key: "airteltigo", label: "AirtelTigo" },
+            { key: "telecel", label: "Telecel" },
+          ].map(({ key, label }) => (
             <Button
-              key={net}
-              variant={networkFilter === net ? "hero" : "outline"}
+              key={key}
+              variant={networkFilter === key ? "hero" : "outline"}
               size="sm"
-              onClick={() => setNetworkFilter(net)}
+              onClick={() => setNetworkFilter(key)}
             >
-              {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "Special MTN Mashup"}
+              {label}
             </Button>
           ))}
         </div>
@@ -219,7 +222,7 @@ export default function SubSubagentPricesManager({
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
         <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br /> 💡 Markup Explanation (Remember to click save after applying markup)</p>
         <p className="text-xs text-muted-foreground mt-2">
-          Markup changes all subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" ? "Telecel" : "Special MTN Mashup"}</strong>).
+          Markup changes all subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).
         </p>
       </div>
 

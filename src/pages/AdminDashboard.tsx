@@ -1625,6 +1625,25 @@ const AdminDashboard = () => {
             if (!insertErr) targetWalletUpdated = true;
             else console.log("[v0] Customer wallet insert failed:", insertErr);
           }
+        } else if (order.subagent_store_id) {
+          // Subagent order (or sub-subagent order whose subagent_store_id is the parent subagent):
+          // refund to the subagent wallet at the base price admin charged the subagent.
+          refundAmount = await resolveAgentBasePrice(order, order.agent_store_id ?? null);
+
+          const { data: subagent } = await supabase
+            .from("subagent_stores")
+            .select("id, wallet_balance")
+            .eq("id", order.subagent_store_id)
+            .maybeSingle();
+
+          if (subagent) {
+            const newBalance = (subagent.wallet_balance || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("subagent_stores")
+              .update({ wallet_balance: newBalance })
+              .eq("id", subagent.id);
+            if (!updateErr) targetWalletUpdated = true;
+          }
         } else if (order.agent_store_id) {
           // Agent order: refund to agent wallet using the base price admin charged the agent,
           // NOT the full selling price the agent charged their customer.
@@ -2316,10 +2335,14 @@ const AdminDashboard = () => {
             <TabsContent value="prices" className="space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex gap-2">
-                  {/* COMMENTED OUT: mashup packages deactivated */}
-                  {["mtn", "airteltigo", "telecel"].map((net) => (
-                    <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
-                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                  {[
+                    { key: "mtn", label: "MTN" },
+                    { key: "mtn_express", label: "MTN Express" },
+                    { key: "airteltigo", label: "AirtelTigo" },
+                    { key: "telecel", label: "Telecel" },
+                  ].map(({ key, label }) => (
+                    <Button key={key} variant={networkFilter === key ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(key)}>
+                      {label}
                     </Button>
                   ))}
                 </div>
@@ -4280,7 +4303,7 @@ const AdminDashboard = () => {
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display">Add New Package</DialogTitle><DialogDescription>Create a new data package.</DialogDescription></DialogHeader>
           <div className="space-y-4 pt-2">
-            <div className="space-y-2"><Label>Network</Label><Select value={newPkg.network} onValueChange={(v) => setNewPkg((p) => ({ ...p, network: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="mtn">MTN</SelectItem><SelectItem value="airteltigo">AirtelTigo</SelectItem><SelectItem value="telecel">Telecel</SelectItem></SelectContent></Select></div>
+            <div className="space-y-2"><Label>Network</Label><Select value={newPkg.network} onValueChange={(v) => setNewPkg((p) => ({ ...p, network: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="mtn">MTN</SelectItem><SelectItem value="mtn_express">MTN Express</SelectItem><SelectItem value="airteltigo">AirtelTigo</SelectItem><SelectItem value="telecel">Telecel</SelectItem></SelectContent></Select></div>
             <div className="space-y-2"><Label>Size (GB)</Label><Input type="number" placeholder="e.g. 5" value={newPkg.size_gb} onChange={(e) => setNewPkg((p) => ({ ...p, size_gb: e.target.value }))} /></div>
             <div className="space-y-2"><Label>User Price (GHC)</Label><Input type="number" step="0.01" placeholder="e.g. 15.00" value={newPkg.price} onChange={(e) => setNewPkg((p) => ({ ...p, price: e.target.value }))} /></div>
             <div className="space-y-2"><Label>Agent Price (GHC)</Label><Input type="number" step="0.01" placeholder="e.g. 12.00" value={newPkg.agent_price} onChange={(e) => setNewPkg((p) => ({ ...p, agent_price: e.target.value }))} /></div>
@@ -4308,16 +4331,19 @@ const AdminDashboard = () => {
           ) : (
             <div className="space-y-4 pt-2">
               <div className="flex gap-2 flex-wrap">
-                {/* COMMENTED OUT: mashup packages deactivated */}
-                {["mtn", "airteltigo", "telecel"].map((net) => (
+                {[
+                  { key: "mtn", label: "MTN" },
+                  { key: "mtn_express", label: "MTN Express" },
+                  { key: "airteltigo", label: "AirtelTigo" },
+                  { key: "telecel", label: "Telecel" },
+                ].map(({ key, label }) => (
                   <Button
-                    key={net}
-                    variant={agentPriceNetworkFilter === net ? "hero" : "outline"}
+                    key={key}
+                    variant={agentPriceNetworkFilter === key ? "hero" : "outline"}
                     size="sm"
-                    onClick={() => setAgentPriceNetworkFilter(net)}
-                    className={net === "mtn_mashup" ? "bg-amber-500 hover:bg-amber-600 text-white border-0" : ""}
+                    onClick={() => setAgentPriceNetworkFilter(key)}
                   >
-                    {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : "MTN Special Mashup"}
+                    {label}
                   </Button>
                 ))}
               </div>
