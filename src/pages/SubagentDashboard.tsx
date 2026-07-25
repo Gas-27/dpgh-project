@@ -249,7 +249,7 @@ const SubagentDashboard = () => {
   
   // Bulk Orders
   // COMMENTED OUT: mashup packages deactivated
-  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
+  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "mtn_express" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
@@ -1506,10 +1506,6 @@ const SubagentDashboard = () => {
   };
 
   const filteredPackages = packages.filter(p => {
-    // COMMENTED OUT: mashup packages deactivated
-    if (false && networkFilter === "mtn_mashup") {
-      return p.network === "mtn_mashup" || p.network === "mashup";
-    }
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
@@ -1517,9 +1513,6 @@ const SubagentDashboard = () => {
   });
 
   const filteredSubSubagentPackages = packages.filter(p => {
-    if (false && subSubagentNetworkFilter === "mtn_mashup") {
-      return p.network === "mtn_mashup" || p.network === "mashup";
-    }
     if (subSubagentNetworkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
@@ -1541,7 +1534,7 @@ const SubagentDashboard = () => {
     }
 
     const markup = parseFloat(markupPercent) / 100;
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" ? "Telecel" : "MTN Special Mashup";
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
     
     filteredPackages.forEach(pkg => {
       const basePrice = basePrices[pkg.id] || pkg.price || 0;
@@ -1645,7 +1638,7 @@ const SubagentDashboard = () => {
     }
 
     const markup = parseFloat(subSubagentMarkupPercentForSubsub) / 100;
-    const networkName = subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "mtn_express" ? "MTN Express" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel";
     
     const filteredPkgs = packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub);
     filteredPkgs.forEach(pkg => {
@@ -2561,9 +2554,14 @@ const SubagentDashboard = () => {
               </CardContent>
             </Card>
             <div className="flex gap-2 flex-wrap">
-              {["mtn", "airteltigo", "telecel"].map(net => (
-                <Button key={net} variant={networkFilter === net ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(net)}>
-                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+              {[
+                { key: "mtn", label: "MTN" },
+                { key: "mtn_express", label: "MTN Express" },
+                { key: "airteltigo", label: "AirtelTigo" },
+                { key: "telecel", label: "Telecel" },
+              ].map(({ key, label }) => (
+                <Button key={key} variant={networkFilter === key ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(key)}>
+                  {label}
                 </Button>
               ))}
             </div>
@@ -3604,16 +3602,20 @@ const SubagentDashboard = () => {
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  {/* COMMENTED OUT: mashup packages deactivated */}
                   <div className="flex gap-2 flex-wrap">
-                    {["mtn", "airteltigo", "telecel"].map(net => (
+                    {[
+                      { key: "mtn", label: "MTN" },
+                      { key: "mtn_express", label: "MTN Express" },
+                      { key: "airteltigo", label: "AirtelTigo" },
+                      { key: "telecel", label: "Telecel" },
+                    ].map(({ key, label }) => (
                       <Button 
-                        key={net} 
-                        variant={networkFilter === net ? "hero" : "outline"} 
+                        key={key} 
+                        variant={networkFilter === key ? "hero" : "outline"} 
                         size="sm" 
-                        onClick={() => setNetworkFilter(net)}
+                        onClick={() => setNetworkFilter(key)}
                       >
-                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                        {label}
                       </Button>
                     ))}
                   </div>
@@ -3639,7 +3641,7 @@ const SubagentDashboard = () => {
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
                   <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one {"\u{1F680}"} Markup Explanation (Remember to click save after applying markup)</p>
-                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
+                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
                 <Card className="border-border">
@@ -3696,7 +3698,7 @@ const SubagentDashboard = () => {
                         ) : (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                              No packages for {networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" ? "Telecel" : "MTN Special Mashup"}
+                              No packages for {networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}
                             </TableCell>
                           </TableRow>
                         )}
@@ -4084,14 +4086,19 @@ const SubagentDashboard = () => {
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex gap-2 flex-wrap">
-                    {["mtn", "airteltigo", "telecel"].map(net => (
+                    {[
+                      { key: "mtn", label: "MTN" },
+                      { key: "mtn_express", label: "MTN Express" },
+                      { key: "airteltigo", label: "AirtelTigo" },
+                      { key: "telecel", label: "Telecel" },
+                    ].map(({ key, label }) => (
                       <Button 
-                        key={net} 
-                        variant={subSubagentNetworkFilterForSubsub === net ? "hero" : "outline"} 
+                        key={key} 
+                        variant={subSubagentNetworkFilterForSubsub === key ? "hero" : "outline"} 
                         size="sm" 
-                        onClick={() => setSubSubagentNetworkFilterForSubsub(net)}
+                        onClick={() => setSubSubagentNetworkFilterForSubsub(key)}
                       >
-                        {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
+                        {label}
                       </Button>
                     ))}
                   </div>
