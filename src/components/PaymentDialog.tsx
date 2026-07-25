@@ -174,12 +174,12 @@ const PaymentDialog = ({
       return;
     }
 
-    // Check if phone matches the selected network (allow mtn to buy mtn_mashup and mashup)
-    const isValidForMTNMashup = (selectedNetwork === "mtn_mashup" || selectedNetwork === "mashup") && detectedNetwork === "mtn";
-    if (selectedNetwork && selectedNetwork !== "mtn_mashup" && selectedNetwork !== "mashup" && !isValidForMTNMashup && !phoneMatchesNetwork(phone, selectedNetwork)) {
+    // Check if phone matches the selected network (allow mtn to buy mtn_mashup, mashup, and mtn_express)
+    const isValidForMTNVariant = (selectedNetwork === "mtn_mashup" || selectedNetwork === "mashup" || selectedNetwork === "mtn_express") && detectedNetwork === "mtn";
+    if (selectedNetwork && selectedNetwork !== "mtn_mashup" && selectedNetwork !== "mashup" && selectedNetwork !== "mtn_express" && !isValidForMTNVariant && !phoneMatchesNetwork(phone, selectedNetwork)) {
       toast({
         title: "Network mismatch",
-        description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork.toUpperCase()} package`,
+        description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork === "mtn_express" ? "MTN Express" : selectedNetwork.toUpperCase()} package`,
         variant: "destructive",
       });
       return;

@@ -1,6 +1,6 @@
 // Phone number utilities for network detection and validation
 
-export type NetworkType = "mtn" | "telecel" | "airteltigo" | "unknown";
+export type NetworkType = "mtn" | "mtn_express" | "telecel" | "airteltigo" | "unknown";
 
 // Network prefixes
 const MTN_PREFIXES = ["024", "025", "053", "054", "055", "059"];
@@ -92,6 +92,11 @@ export const phoneMatchesNetwork = (phone: string, expectedNetwork: string): boo
     return detectedNetwork === "airteltigo";
   }
   
+  // MTN numbers work for both MTN and MTN Express
+  if (normalizedExpected === "mtn_express") {
+    return detectedNetwork === "mtn";
+  }
+  
   return detectedNetwork === normalizedExpected;
 };
 
@@ -117,7 +122,7 @@ export const isValidPhone = (phone: string): boolean => {
 export const getPrefixesForNetwork = (network: string): string[] => {
   const normalizedNetwork = network.toLowerCase();
   
-  if (normalizedNetwork === "mtn") return MTN_PREFIXES;
+  if (normalizedNetwork === "mtn" || normalizedNetwork === "mtn_express") return MTN_PREFIXES;
   if (normalizedNetwork === "telecel") return TELECEL_PREFIXES;
   if (normalizedNetwork === "airteltigo" || normalizedNetwork === "at" || normalizedNetwork === "airtel-tigo") {
     return AIRTELTIGO_PREFIXES;
