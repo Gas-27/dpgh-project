@@ -123,11 +123,9 @@ interface Notification {
 // ─────────────────────────────────────────────────────────────────────────────
 const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
+  if (network === "mtn_express") return "MTN Express";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
-  // COMMENTED OUT: mashup packages deactivated
-  // if (network === "mtn_mashup") return "MTN Special Mashup";
-  // if (network === "mashup") return "Mashup";
   return network;
 };
 
@@ -143,7 +141,7 @@ const copyToClipboard = async (text: string, toast: any) => {
 // Note: getStoreNameFromSubdomain and slugify are now imported from @/utils/storeUtils
 
 const getNetworkLabelColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#60a5fa", telecel: "#f87171" };
+  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#60a5fa", telecel: "#f87171" };
   return colors[network] || "#ffffff";
 };
 
