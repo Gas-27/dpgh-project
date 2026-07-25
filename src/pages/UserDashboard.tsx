@@ -1068,19 +1068,14 @@ const UserDashboard = () => {
         <CardContent className="space-y-4">
           {/* Network Filter */}
           <div className="flex gap-2 flex-wrap">
-            {[
-              { key: 'mtn', label: 'MTN' },
-              { key: 'mtn_express', label: 'MTN Express' },
-              { key: 'telecel', label: 'Telecel' },
-              { key: 'airteltigo', label: 'AirtelTigo' },
-            ].map(({ key, label }) => (
+            {['mtn', 'telecel', 'airteltigo'].map(network => (
               <Button
-                key={key}
-                variant={networkFilter === key ? "default" : "outline"}
-                onClick={() => setNetworkFilter(key)}
+                key={network}
+                variant={networkFilter === network ? "default" : "outline"}
+                onClick={() => setNetworkFilter(network)}
                 className="text-xs sm:text-sm"
               >
-                {label}
+                {network.toUpperCase()}
               </Button>
             ))}
           </div>
@@ -1650,20 +1645,14 @@ const UserDashboard = () => {
         <CardContent className="space-y-4">
           {/* Network Filter Buttons */}
           <div className="flex gap-2 flex-wrap">
-            {[
-              { key: "mtn", label: "MTN" },
-              { key: "mtn_express", label: "MTN Express" },
-              { key: "airteltigo", label: "AirtelTigo" },
-              { key: "telecel", label: "Telecel" },
-              { key: "afa", label: "AFA Registration" },
-            ].map(({ key, label }) => (
+            {["mtn", "airteltigo", "telecel", "afa"].map(net => (
               <Button 
-                key={key} 
-                variant={networkFilter === key ? "hero" : "outline"} 
+                key={net} 
+                variant={networkFilter === net ? "hero" : "outline"} 
                 size="sm" 
-                onClick={() => setNetworkFilter(key)}
+                onClick={() => setNetworkFilter(net)}
               >
-                {label}
+                {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : net === "afa" ? "AFA Registration" : ""}
               </Button>
             ))}
           </div>

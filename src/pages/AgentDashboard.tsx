@@ -2454,24 +2454,20 @@ const AgentDashboard = () => {
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
             <div className="flex gap-2 flex-wrap">
-              {[
-                { key: "mtn", label: "MTN" },
-                { key: "mtn_express", label: "MTN Express" },
-                { key: "airteltigo", label: "AirtelTigo" },
-                { key: "telecel", label: "Telecel" },
-              ].map(({ key, label }) => (
+              {["mtn", "airteltigo", "telecel"].map(net => (
                 <Button 
-                  key={key} 
-                  variant={networkFilter === key ? "hero" : "outline"} 
+                  key={net} 
+                  variant={networkFilter === net ? "hero" : "outline"} 
                   size="sm" 
-                  onClick={() => setNetworkFilter(key)}
+                  onClick={() => setNetworkFilter(net)}
                 >
-                  {label}
+                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
                 </Button>
               ))}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {packages.filter(p => {
+                // COMMENTED OUT: mashup packages deactivated
                 if (false && networkFilter === "mtn_mashup") {
                   return p.network === "mtn_mashup" || p.network === "mashup";
                 }
@@ -2668,19 +2664,14 @@ const AgentDashboard = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Network filter buttons */}
               <div className="flex gap-2 flex-wrap">
-                {[
-                  { key: "mtn", label: "MTN" },
-                  { key: "mtn_express", label: "MTN Express" },
-                  { key: "airteltigo", label: "AirtelTigo" },
-                  { key: "telecel", label: "Telecel" },
-                ].map(({ key, label }) => (
+                {["mtn", "airteltigo", "telecel"].map(net => (
                   <Button 
-                    key={key} 
-                    variant={networkFilter === key ? "hero" : "outline"} 
+                    key={net} 
+                    variant={networkFilter === net ? "hero" : "outline"} 
                     size="sm" 
-                    onClick={() => setNetworkFilter(key)}
+                    onClick={() => setNetworkFilter(net)}
                   >
-                    {label}
+                    {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : ""}
                   </Button>
                 ))}
               </div>
@@ -4098,20 +4089,14 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2 flex-wrap">
-                  {[
-                    { key: "mtn", label: "MTN" },
-                    { key: "mtn_express", label: "MTN Express" },
-                    { key: "airteltigo", label: "AirtelTigo" },
-                    { key: "telecel", label: "Telecel" },
-                    { key: "afa", label: "AFA Registration" },
-                  ].map(({ key, label }) => (
+                  {["mtn", "airteltigo", "telecel", "afa"].map(net => (
                     <Button 
-                      key={key} 
-                      variant={networkFilter === key ? "hero" : "outline"} 
+                      key={net} 
+                      variant={networkFilter === net ? "hero" : "outline"} 
                       size="sm" 
-                      onClick={() => setNetworkFilter(key)}
+                      onClick={() => setNetworkFilter(net)}
                     >
-                      {label}
+                      {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : net === "telecel" ? "Telecel" : net === "afa" ? "AFA Registration" : ""}
                     </Button>
                   ))}
                 </div>

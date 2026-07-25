@@ -114,16 +114,18 @@ interface Notification {
 
 const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
-  if (network === "mtn_express") return "MTN Express";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
+  // COMMENTED OUT: mashup packages deactivated
+  // if (network === "mtn_mashup") return "MTN Special Mashup";
+  // if (network === "mashup") return "Mashup";
   return network;
 };
 
 // Note: slugify is now imported from @/utils/storeUtils
 
 const getNetworkColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#3b82f6", telecel: "#ef4444" };
+  const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#3b82f6", telecel: "#ef4444" };
   return colors[network] || "#22c55e";
 };
 
@@ -727,6 +729,11 @@ export function SubagentStorefront() {
 
   // Helpers
   const filteredPackages = packages.filter((p) => {
+      // COMMENTED OUT: mashup packages deactivated
+      // Group both mtn_mashup and mashup packages in the Special MTN Mashup section
+      if (false && networkFilter === "mtn_mashup") {
+        return p.network === "mtn_mashup" || p.network === "mashup";
+    }
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
@@ -974,13 +981,14 @@ export function SubagentStorefront() {
 
         {/* Network Tabs */}
         <div className="flex flex-wrap gap-2 pb-2 items-center">
-        {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
+          {/* COMMENTED OUT: "mtn_mashup" deactivated */}
+        {["mtn", "airteltigo", "telecel"].map((net) => (
             <Button
               key={net}
               variant={networkFilter === net && !showBulkOrders ? "default" : "outline"}
               size="sm"
               onClick={() => { setNetworkFilter(net); setShowBulkOrders(false); }}
-              style={networkFilter === net && !showBulkOrders ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
+              style={networkFilter === net && !showBulkOrders ? { background: getNetworkColor(net), color: "#000" } : {}}
               className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
