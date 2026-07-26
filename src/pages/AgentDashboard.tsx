@@ -138,7 +138,7 @@ Payment Methods:
 
 NOTE: If you have a pending withdrawal, the system will prevent you from buying data that would push your balance below the pending withdrawal amount to protect your funds.
 
-Note: 10-minute cooldown per phone number to prevent duplicate orders.` },
+Note: 4-minute cooldown per phone number to prevent duplicate orders.` },
   {
     icon: "i", title: "Bulk Orders", content: `Send data to multiple recipients at once using your wallet.
 

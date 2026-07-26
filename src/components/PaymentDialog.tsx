@@ -35,7 +35,7 @@ interface PaymentDialogProps {
   storeName?: string;
 }
 
-const LOCK_MINUTES = 10;
+const LOCK_MINUTES = 4;
 const PAYSTACK_CHARGE_PERCENT = 1.98;
 
 // Calculate Paystack charge
