@@ -73,26 +73,34 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
     try {
       setLoading(true);
       setTableError(false);
-      // Simplified query - fetch complaints only without complex joins
-      let query = supabase
-        .from("complaints")
-        .select("id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at")
-        .order("created_at", { ascending: false });
 
-      // If viewing as agent, only show complaints from their store
-      if (isAgent && agentStoreId) {
-        query = query.eq("agent_store_id", agentStoreId);
-      }
+      const BASE_SELECT = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at";
+      const EXTENDED_SELECT = BASE_SELECT + ", screenshot_url, owing_airtime, owing_bundle, owing_momo";
 
-      const { data, error } = await query;
+      const buildQuery = (select: string) => {
+        let q = supabase.from("complaints").select(select).order("created_at", { ascending: false });
+        if (isAgent && agentStoreId) q = q.eq("agent_store_id", agentStoreId);
+        return q;
+      };
+
+      // Try with extended columns first; fall back to base columns if they don't exist yet
+      let { data, error } = await buildQuery(EXTENDED_SELECT);
 
       if (error) {
-        if (error.message?.includes("Could not find the table")) {
-          setTableError(true);
-          return;
+        const isSchemaError = error.code === "PGRST204" || error.code === "400" || error.message?.includes("column") || error.message?.includes("Could not find");
+        if (isSchemaError) {
+          // New columns not yet migrated — fetch without them
+          ({ data, error } = await buildQuery(BASE_SELECT));
         }
-        throw error;
+        if (error) {
+          if (error.message?.includes("Could not find the table")) {
+            setTableError(true);
+            return;
+          }
+          throw error;
+        }
       }
+
       setComplaints((data as Complaint[]) || []);
     } catch (error) {
       console.error("Error fetching complaints:", error);
@@ -118,7 +126,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
     try {
       const { error } = await supabase
         .from("complaints")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .update({ status: newStatus })
         .eq("id", id);
 
       if (error) throw error;
@@ -144,7 +152,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
 
       const { error } = await supabase
         .from("complaints")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .update({ status: newStatus })
         .in("id", complaintIds);
 
       if (error) throw error;

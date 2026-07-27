@@ -176,7 +176,7 @@ ${checklistSummary}
 ⚠️ Issue: Data shows delivered but not received.
 Please investigate and assist. Thank You.`;
 
-      // Try inserting with new columns first; fall back to base columns if they don't exist yet
+      // Core fields — always present in the DB schema
       const basePayload = {
         complaint_type: complaintType,
         order_id: order.id,
@@ -188,17 +188,23 @@ Please investigate and assist. Thank You.`;
         status: "in-progress",
       };
 
-      const { error } = await supabase.from("complaints").insert({
+      // Extended fields — only present after migration runs
+      const extendedPayload = {
         ...basePayload,
-        screenshot_url: screenshotUrl || null,
+        ...(screenshotUrl ? { screenshot_url: screenshotUrl } : {}),
         owing_airtime: owingAirtime,
         owing_bundle: owingBundle,
         owing_momo: owingMomo,
-      });
+      };
+
+      // Try extended columns first; if schema hasn't migrated, fall back to base
+      const { error } = await supabase.from("complaints").insert(extendedPayload);
 
       if (error) {
-        // If new columns don't exist in schema yet, retry with base payload only
-        const isSchemaError = error.code === "PGRST204" || error.message?.includes("column");
+        const isSchemaError =
+          error.code === "PGRST204" ||
+          (error.message || "").toLowerCase().includes("column") ||
+          (error.message || "").toLowerCase().includes("could not find");
         if (isSchemaError) {
           const { error: fallbackError } = await supabase.from("complaints").insert(basePayload);
           if (fallbackError) throw fallbackError;
