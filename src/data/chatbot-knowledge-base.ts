@@ -35,7 +35,11 @@ export const SYNONYMS: Record<string, string> = {
   farmer: "afa", "afa registration": "afa",
   key: "apikey", "api key": "apikey", token: "apikey",
   down: "offline", unavailable: "offline", "not showing": "offline",
-  refund: "dispute", complaint: "dispute", wrong: "dispute", issue: "dispute",
+  complaint: "dispute", wrong: "dispute", issue: "dispute",
+  refund: "refund_how", "money back": "refund_how", "get my money back": "refund_how",
+  "mtn express": "mtn_express_info", express: "mtn_express_info",
+  "*124": "mtn_bundle_location", "124#": "mtn_bundle_location", "master beneficiary": "mtn_bundle_location",
+  "owing": "owing_debt_issue", debt: "owing_debt_issue",
 };
 
 function normalize(text: string): string {
@@ -304,18 +308,76 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
     category: "features",
   },
 
+  // ───────────────────────── Networks & Bundle Details ─────────────────────────
+  {
+    id: "mtn_bundle_location",
+    questions: ["master beneficiary", "where is my bundle", "where is mtn bundle", "mtn bundle location", "where to find data mtn", "124", "*124#"],
+    answer: "For MTN and MTN Express orders, your bundle lands under 'Master Beneficiary Data Bundle' — NOT under Mashup Data or any other section.\n\nTo check:\n1. Dial *124# on your MTN line\n2. Select 'Data Balance'\n3. Look at the 'Balance Breakdown' section\n4. Find 'Master Beneficiary Data Bundle'\n\nIf you see it there, your data was delivered successfully. The GB amount shown is your current remaining balance from our bundle.",
+    category: "packages",
+    relatedIds: ["mtn_express_info", "delivery_time"],
+  },
+  {
+    id: "mtn_express_info",
+    questions: ["mtn express", "what is mtn express", "mtn express vs mtn", "express bundle"],
+    answer: "MTN Express is our faster MTN delivery route. Like standard MTN, the bundle lands under 'Master Beneficiary Data Bundle' in your MTN app balance (dial *124# → Data Balance → Balance Breakdown).\n\nBoth MTN and MTN Express use the same delivery location — 'Master Beneficiary Data Bundle' — so always check there first if you think your data hasn't arrived.",
+    category: "packages",
+    relatedIds: ["mtn_bundle_location", "delivery_time"],
+  },
+  {
+    id: "telecel_balance_check",
+    questions: ["telecel balance", "check telecel data", "telecel app", "telecel bundle location"],
+    answer: "For Telecel orders, check your data balance in the official Telecel Ghana app:\n1. Open the Telecel app\n2. Go to your data balance or account section\n3. Your bundle should appear there\n\nIf you don't see it after 2 hours, use 'Track Order' first, then report if still unresolved.",
+    category: "packages",
+  },
+  {
+    id: "airteltigo_balance_check",
+    questions: ["airteltigo balance", "check airteltigo data", "airteltigo app", "airtel tigo bundle"],
+    answer: "For AirtelTigo orders, check your data balance in the official AirtelTigo Ghana app:\n1. Open the AirtelTigo app\n2. Go to Balance or My Account\n3. Your bundle should appear there\n\nIf you don't see it after 2 hours, use 'Track Order' first, then report if still unresolved.",
+    category: "packages",
+  },
+
+  // ───────────────────────── Refunds ─────────────────────────
+  {
+    id: "refund_how",
+    questions: ["refund", "how does refund work", "refund process", "get refund", "money back", "refund policy"],
+    answer: "Here is how refunds work on this platform:\n\n1. An order must fail or be marked as failed/undeliverable by our system before a refund is issued.\n2. When a refund is approved, the amount is returned to your platform wallet — NOT to your Mobile Money directly.\n3. With the refunded wallet balance, you can immediately place a new order for the same or a different number.\n4. Refunds appear in your wallet balance within minutes of being processed.\n\nIMPORTANT: After a refund, you can repurchase for the same phone number right away — the cooldown does not block you from using refunded funds.",
+    category: "support",
+    relatedIds: ["refund_same_number", "dispute", "wallet_topup"],
+  },
+  {
+    id: "refund_same_number",
+    questions: ["buy same number after refund", "retry same number", "refund retry", "failed order retry", "buy again after refund"],
+    answer: "After receiving a refund, you can buy again for the same phone number immediately using your wallet balance. Here's what to do:\n\n1. Check your wallet balance — the refunded amount will be there\n2. Go to Packages (or Buy Data in your dashboard)\n3. Select the same network and package\n4. Enter the same phone number\n5. Pay with wallet balance\n6. Your new order will be processed\n\nFor MTN and MTN Express: try the other route if one keeps failing. If MTN fails, try MTN Express (or vice versa) — they use different delivery paths.",
+    category: "support",
+    relatedIds: ["refund_how", "mtn_express_info", "wallet_topup"],
+  },
+  {
+    id: "wallet_topup",
+    questions: ["topup wallet", "add money wallet", "fund wallet", "wallet balance low", "top up account"],
+    answer: "To add funds to your wallet:\n1. Go to the top-up section in your dashboard\n2. Enter the amount you want to add\n3. Pay via Paystack (Mobile Money)\n4. Funds reflect in your wallet instantly after payment confirms\n\nYou can then use your wallet balance to buy data without going through Paystack each time.",
+    category: "payment",
+  },
+  {
+    id: "owing_debt_issue",
+    questions: ["owing airtime", "owing bundle", "owing momo", "debt on sim", "sim blocked"],
+    answer: "If you are owing airtime, bundles, or MoMo on your SIM card, the network provider may hold or redirect data bundles sent to that number. Before reporting a missing bundle:\n\n1. Check if you owe airtime on the SIM\n2. Check if you owe any bundles or subscriptions\n3. Check if you owe Mobile Money on that number\n4. Clear any outstanding debts first\n5. Then re-check your data balance (dial *124# for MTN)\n\nThis is the most common reason a delivered bundle seems 'missing' — clearing the debt often reveals the data is already there.",
+    category: "support",
+    relatedIds: ["mtn_bundle_location", "refund_how"],
+  },
+
   // ───────────────────────── Disputes / Support ─────────────────────────
   {
     id: "dispute",
-    questions: ["refund", "complaint", "wrong package", "charged twice", "double charge"],
-    answer: "Sorry for the trouble. Share your phone number and the order details (package, network, amount) and I'll look into it — most issues are resolved once we confirm the transaction reference with the provider.",
+    questions: ["complaint", "wrong package", "charged twice", "double charge", "report issue"],
+    answer: "Sorry for the trouble. To submit a complaint on a delivered order:\n1. Go to your order history\n2. Find the order marked 'Delivered'\n3. Tap the Report button\n4. Answer the quick pre-check questions (owing airtime/bundle/MoMo)\n5. Upload a screenshot of your data balance\n6. Submit\n\nBefore reporting, please dial *124# (MTN) or open your network's app to verify the bundle isn't already there under 'Master Beneficiary Data Bundle'.",
     category: "support",
     followUp: "collect_phone",
+    relatedIds: ["mtn_bundle_location", "owing_debt_issue", "refund_how"],
   },
   {
     id: "help",
     questions: ["help", "support", "question", "what can you do"],
-    answer: "I'm here to help! Ask me about:\n• Packages, buying & delivery\n• AFA registration\n• Becoming an Agent/Subagent\n• Dashboards, Storefronts\n• API access\n• Withdrawals & payments\n• Order tracking\n\nWhat would you like to know?",
+    answer: "I'm here to help! Ask me about:\n• Data packages, buying & delivery\n• Where to find your MTN bundle (*124# → Master Beneficiary Data Bundle)\n• AFA registration\n• Becoming an Agent/Subagent\n• Dashboards, Storefronts\n• API access\n• Withdrawals & payments\n• Order tracking\n• How refunds work\n• What to do if data seems missing\n\nWhat would you like to know?",
     category: "support",
   },
 ];
@@ -324,18 +386,19 @@ export const FREQUENT_QUESTIONS = [
   "Show Available Packages",
   "How do I buy data?",
   "How do I track my order?",
+  "Where is my MTN bundle? (dial *124#)",
+  "What is MTN Express?",
+  "How does a refund work?",
+  "Can I buy again for the same number after a refund?",
+  "My data hasn't arrived, what do I do?",
   "What is AFA?",
   "How do I become an agent?",
   "How much commission do agents earn?",
   "What is a subagent?",
   "How do I withdraw money?",
   "How do I set prices?",
-  "What is the Flyer Generator?",
-  "What are bulk orders?",
-  "Check AFA status (*1848#)",
   "What payment methods can I use?",
   "How does the Spin-to-Win wheel work?",
-  "My data hasn't arrived, what do I do?",
 ];
 
 // ---------------------------------------------------------------------------

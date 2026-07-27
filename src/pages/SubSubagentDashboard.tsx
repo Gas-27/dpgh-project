@@ -28,6 +28,7 @@ import FlyerGenerator from "@/components/FlyerGenerator";
 // import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import { DOMAINS } from "@/config/domains";
+import ChatBot from "@/components/ChatBot";
 
 // Helper function to get current order stage
 function getOrderStatusLabel(status: string): string {
@@ -2797,6 +2798,7 @@ const SubSubagentDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <ChatBot page="subsubagent-dashboard" />
     </div>
   );
 };

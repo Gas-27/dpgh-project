@@ -31,6 +31,7 @@ import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import SubSubagentPricesManager from "@/components/SubSubagentPricesManager";
 import SubSubagentsList from "@/components/SubSubagentsList";
 import { DOMAINS } from "@/config/domains";
+import ChatBot from "@/components/ChatBot";
 
 // Helper function to get current order stage
 function getOrderStatusLabel(status: string): string {
@@ -4372,6 +4373,7 @@ const SubagentDashboard = () => {
         onClose={() => setSourceDialogOpen(false)}
         info={sourceDialogInfo}
       />
+      <ChatBot page="subagent-dashboard" />
     </div>
   );
 };
