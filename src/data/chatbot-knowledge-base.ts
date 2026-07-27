@@ -113,7 +113,7 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   {
     id: "networks",
     questions: ["networks", "which networks", "supported networks"],
-    answer: "Supported networks:\n✓ MTN\n✓ AirtelTigo\n✓ Telecel\n\nAll three have multiple package sizes with fast delivery.",
+    answer: "Supported networks:\n✓ MTN — bundle lands under 'Master Beneficiary Data Bundle' (check with *124#)\n✓ MTN Express — faster MTN delivery route, same bundle location as MTN\n✓ AirtelTigo — check balance in AirtelTigo app\n✓ Telecel — check balance in Telecel app\n\nAll networks have multiple package sizes with fast delivery.",
     category: "packages",
   },
   {
@@ -159,8 +159,8 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   // ───────────────────────── Agent Program ─────────────────────────
   {
     id: "become_agent",
-    questions: ["become agent", "how to be agent", "join as agent", "agent signup"],
-    answer: "To become an agent:\n1. Tap 'Become an Agent'\n2. Fill the form\n3. Verify your phone number\n4. Wait 24–48 hours for approval\n5. Log in to your Agent Dashboard\n6. Start selling\n\nThere's no startup cost to become an agent!",
+    questions: ["become agent", "how to be agent", "join as agent", "agent signup", "agent fee", "agent cost"],
+    answer: "To become an agent:\n1. Click 'Become an Agent' on the top menu or homepage\n2. Fill in the registration form with your details\n3. Pay the agent registration fee (if applicable — check the signup page for the current fee)\n4. Your account is activated immediately — no waiting period or approval required\n5. Log in to your Agent Dashboard and start selling right away\n\nOnce registered you get your own dashboard, storefront URL, and full pricing control.",
     category: "agent",
     relatedIds: ["agent_dashboard", "agent_commission"],
   },
@@ -263,7 +263,7 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   {
     id: "api_info",
     questions: ["api", "api key", "integration", "developer access"],
-    answer: "Your API Key is in your dashboard under Settings. With it you can:\n• Fetch available packages\n• Create orders programmatically\n• Check order status\n• Manage your resale prices\n\nCheck the API documentation link in your dashboard for endpoint details and authentication.",
+    answer: "Your API Key is in your dashboard under Settings. With it you can:\n• Fetch available packages\n• Create orders programmatically\n• Check order status\n�� Manage your resale prices\n\nCheck the API documentation link in your dashboard for endpoint details and authentication.",
     category: "api",
   },
   {
@@ -340,7 +340,7 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   {
     id: "refund_how",
     questions: ["refund", "how does refund work", "refund process", "get refund", "money back", "refund policy"],
-    answer: "Here is how refunds work on this platform:\n\n1. An order must fail or be marked as failed/undeliverable by our system before a refund is issued.\n2. When a refund is approved, the amount is returned to your platform wallet — NOT to your Mobile Money directly.\n3. With the refunded wallet balance, you can immediately place a new order for the same or a different number.\n4. Refunds appear in your wallet balance within minutes of being processed.\n\nIMPORTANT: After a refund, you can repurchase for the same phone number right away — the cooldown does not block you from using refunded funds.",
+    answer: "Here is how refunds work — they flow down the chain:\n\n1. Admin refunds an order → the base price is credited to the Agent's wallet\n2. Agent refunds the order to their Subagent → the amount is deducted from the Agent's wallet and credited to the Subagent's wallet\n3. Subagent refunds to their Sub-Subagent → the amount is deducted from the Subagent's wallet and credited to the Sub-Subagent's wallet\n\nKey points:\n• Refunds go to platform wallets — NOT to Mobile Money directly\n• Each level must have enough wallet balance before they can refund downward\n• After receiving a refund in your wallet you can immediately buy again for the same number\n• Refunded orders show an orange 'Refunded' badge in your order history",
     category: "support",
     relatedIds: ["refund_same_number", "dispute", "wallet_topup"],
   },

@@ -993,6 +993,32 @@ const SubagentDashboard = () => {
 
         if (!ssa) { errorCount++; continue; }
 
+        // Deduct refund amount from this subagent's own wallet first
+        const { data: myStore } = await supabase
+          .from("subagent_stores")
+          .select("id, wallet_balance")
+          .eq("id", subagentStore?.id)
+          .maybeSingle();
+
+        const myBalance = Number(myStore?.wallet_balance || 0);
+        if (myBalance < refundAmount) {
+          toast({
+            title: "Insufficient Wallet Balance",
+            description: `Your wallet balance (GHC ${myBalance.toFixed(2)}) is not enough to refund GHC ${refundAmount.toFixed(2)}. Please top up your wallet first.`,
+            variant: "destructive",
+          });
+          errorCount++;
+          continue;
+        }
+
+        // Deduct from subagent wallet
+        const { error: deductErr } = await supabase
+          .from("subagent_stores")
+          .update({ wallet_balance: myBalance - refundAmount })
+          .eq("id", myStore!.id);
+        if (deductErr) { errorCount++; continue; }
+
+        // Credit sub-subagent wallet
         const newBalance = (ssa.wallet_balance || 0) + refundAmount;
         const { error: updateErr } = await supabase
           .from("sub_subagent_stores")
@@ -1007,6 +1033,11 @@ const SubagentDashboard = () => {
             .eq("id", orderId);
           successCount++;
         } else {
+          // Reverse the wallet deduction since credit failed
+          await supabase
+            .from("subagent_stores")
+            .update({ wallet_balance: myBalance })
+            .eq("id", myStore!.id);
           errorCount++;
         }
       } catch (err) {
@@ -2519,7 +2550,9 @@ const SubagentDashboard = () => {
                                   <OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} />
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>
+                                  {(order.status === "refunded" || order.fulfillment_status === "refunded")
+                                    ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge>
+                                    : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}
                                 </TableCell>
                               </TableRow>
                             );
@@ -2527,13 +2560,24 @@ const SubagentDashboard = () => {
                         </TableBody>
                       </Table>
                     </div>
-                    {currentPage * ordersPerPage < filteredOrders.length && (
-                      <div className="flex items-center justify-center mt-6">
-                        <Button onClick={() => setCurrentPage(p => p + 1)} className="w-full sm:w-auto">
-                          Load More Orders ({filteredOrders.length - currentPage * ordersPerPage} remaining)
-                        </Button>
-                      </div>
-                    )}
+                    {filteredOrders.length > ordersPerPage && (() => {
+                      const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+                      return (
+                        <div className="flex items-center justify-center gap-1 mt-6 flex-wrap">
+                          <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>First</Button>
+                          <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2).map((p, idx, arr) => (
+                            <span key={p}>
+                              {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-muted-foreground">…</span>}
+                              <Button variant={currentPage === p ? "hero" : "outline"} size="sm" onClick={() => setCurrentPage(p)}>{p}</Button>
+                            </span>
+                          ))}
+                          <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
+                          <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>Last</Button>
+                          <span className="text-xs text-muted-foreground ml-2">Page {currentPage} of {totalPages} ({filteredOrders.length} orders)</span>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </CardContent>

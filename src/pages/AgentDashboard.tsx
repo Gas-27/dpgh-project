@@ -1937,6 +1937,31 @@ const AgentDashboard = () => {
           continue;
         }
 
+        // Check agent's own wallet balance before deducting
+        const { data: freshAgentStore } = await supabase
+          .from("agent_stores")
+          .select("id, wallet_balance")
+          .eq("id", store.id)
+          .maybeSingle();
+
+        const agentBalance = Number(freshAgentStore?.wallet_balance || 0);
+        if (agentBalance < refundAmount) {
+          toast({
+            title: "Insufficient Wallet Balance",
+            description: `Your wallet balance (GHC ${agentBalance.toFixed(2)}) is not enough to refund GHC ${refundAmount.toFixed(2)}. Please top up your wallet first.`,
+            variant: "destructive",
+          });
+          errorCount++;
+          continue;
+        }
+
+        // Deduct refund amount from agent wallet
+        const { error: deductErr } = await supabase
+          .from("agent_stores")
+          .update({ wallet_balance: agentBalance - refundAmount })
+          .eq("id", freshAgentStore!.id);
+        if (deductErr) { errorCount++; continue; }
+
         const { data: subagent } = await supabase
           .from("subagent_stores")
           .select("wallet_balance")
@@ -1951,6 +1976,8 @@ const AgentDashboard = () => {
             .eq("id", targetSubagentId);
 
           if (!updateErr) {
+            // Update local agent wallet state
+            setStore(prev => prev ? { ...prev, wallet_balance: agentBalance - refundAmount } : prev);
             // Mark as agent-refunded to prevent double-refund
             await supabase
               .from("orders")
@@ -1965,9 +1992,19 @@ const AgentDashboard = () => {
               )
             );
           } else {
+            // Reverse the wallet deduction since credit failed
+            await supabase
+              .from("agent_stores")
+              .update({ wallet_balance: agentBalance })
+              .eq("id", freshAgentStore!.id);
             errorCount++;
           }
         } else {
+          // Reverse the wallet deduction since subagent not found
+          await supabase
+            .from("agent_stores")
+            .update({ wallet_balance: agentBalance })
+            .eq("id", freshAgentStore!.id);
           errorCount++;
         }
       } catch (error) {
@@ -2430,15 +2467,26 @@ const AgentDashboard = () => {
                           setSourceDialogOpen(true);
                         };
 
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} /></TableCell><TableCell><Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge></TableCell></TableRow>); })}</TableBody></Table></div>
-                    {/* Load More Button */}
-                    {currentPage * ordersPerPage < filteredOrders.length && (
-                      <div className="flex items-center justify-center mt-6">
-                        <Button onClick={() => setCurrentPage(p => p + 1)} className="w-full sm:w-auto">
-                          Load More Orders ({filteredOrders.length - currentPage * ordersPerPage} remaining)
-                        </Button>
-                      </div>
-                    )}
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-sm">{order.customer_number}</TableCell><TableCell className="uppercase text-sm">{order.network}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} /></TableCell><TableCell>{(order.status === "refunded" || order.fulfillment_status === "refunded") ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge> : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}</TableCell></TableRow>); })}</TableBody></Table></div>
+                    {/* Pagination */}
+                    {filteredOrders.length > ordersPerPage && (() => {
+                      const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+                      return (
+                        <div className="flex items-center justify-center gap-1 mt-6 flex-wrap">
+                          <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>First</Button>
+                          <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2).map((p, idx, arr) => (
+                            <span key={p}>
+                              {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-muted-foreground">…</span>}
+                              <Button variant={currentPage === p ? "hero" : "outline"} size="sm" onClick={() => setCurrentPage(p)}>{p}</Button>
+                            </span>
+                          ))}
+                          <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
+                          <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>Last</Button>
+                          <span className="text-xs text-muted-foreground ml-2">Page {currentPage} of {totalPages} ({filteredOrders.length} orders)</span>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </CardContent>

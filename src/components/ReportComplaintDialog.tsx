@@ -139,14 +139,19 @@ export default function ReportComplaintDialog({
 
       let screenshotUrl = "";
       if (screenshotFile) {
-        const fileExt = screenshotFile.name.split(".").pop();
-        const fileName = `complaint-${order.id}-${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("complaints")
-          .upload(fileName, screenshotFile, { upsert: true });
-        if (!uploadError && uploadData) {
-          const { data: urlData } = supabase.storage.from("complaints").getPublicUrl(uploadData.path);
-          screenshotUrl = urlData?.publicUrl || "";
+        try {
+          const fileExt = screenshotFile.name.split(".").pop();
+          const fileName = `complaint-${order.id}-${Date.now()}.${fileExt}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("complaints")
+            .upload(fileName, screenshotFile, { upsert: true });
+          if (!uploadError && uploadData) {
+            const { data: urlData } = supabase.storage.from("complaints").getPublicUrl(uploadData.path);
+            screenshotUrl = urlData?.publicUrl || "";
+          }
+          // If upload fails (e.g. bucket not set up), continue without screenshot
+        } catch (_) {
+          // Screenshot upload failed silently — complaint still submits
         }
       }
 
@@ -170,22 +175,36 @@ ${checklistSummary}
 ⚠️ Issue: Data shows delivered but not received.
 Please investigate and assist. Thank You.`;
 
-      const { error } = await supabase.from("complaints").insert({
+      // Try inserting with new columns first; fall back to base columns if they don't exist yet
+      const basePayload = {
         complaint_type: complaintType,
         order_id: order.id,
-        agent_store_id: complaintType === "agent" ? agentStoreId : null,
-        subagent_store_id: complaintType === "subagent" ? subagentStoreId : null,
+        agent_store_id: agentStoreId || null,
+        subagent_store_id: subagentStoreId || null,
         customer_number: order.customer_number,
         complaint_title: "Delivered but Data Not Received",
         complaint_details: complaintDetails,
+        status: "in-progress",
+      };
+
+      const { error } = await supabase.from("complaints").insert({
+        ...basePayload,
         screenshot_url: screenshotUrl || null,
         owing_airtime: owingAirtime,
         owing_bundle: owingBundle,
         owing_momo: owingMomo,
-        status: "in-progress",
       });
 
-      if (error) throw error;
+      if (error) {
+        // If new columns don't exist in schema yet, retry with base payload only
+        const isSchemaError = error.code === "PGRST204" || error.message?.includes("column");
+        if (isSchemaError) {
+          const { error: fallbackError } = await supabase.from("complaints").insert(basePayload);
+          if (fallbackError) throw fallbackError;
+        } else {
+          throw error;
+        }
+      }
 
       setStep("sent");
       toast({ title: "Complaint Submitted", description: "Your complaint has been submitted successfully." });

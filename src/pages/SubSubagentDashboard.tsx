@@ -1858,7 +1858,9 @@ const SubSubagentDashboard = () => {
                                   <OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} />
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>
+                                  {(order.status === "refunded" || order.fulfillment_status === "refunded")
+                                    ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge>
+                                    : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}
                                 </TableCell>
                               </TableRow>
                             );
@@ -1866,14 +1868,24 @@ const SubSubagentDashboard = () => {
                         </TableBody>
                       </Table>
                     </div>
-                    {/* Load More Button */}
-                    {currentPage * ordersPerPage < filteredOrders.length && (
-                      <div className="flex items-center justify-center mt-6">
-                        <Button onClick={() => setCurrentPage(p => p + 1)} className="w-full sm:w-auto">
-                          Load More Orders ({filteredOrders.length - currentPage * ordersPerPage} remaining)
-                        </Button>
-                      </div>
-                    )}
+                    {filteredOrders.length > ordersPerPage && (() => {
+                      const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+                      return (
+                        <div className="flex items-center justify-center gap-1 mt-6 flex-wrap">
+                          <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>First</Button>
+                          <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2).map((p, idx, arr) => (
+                            <span key={p}>
+                              {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-muted-foreground">…</span>}
+                              <Button variant={currentPage === p ? "hero" : "outline"} size="sm" onClick={() => setCurrentPage(p)}>{p}</Button>
+                            </span>
+                          ))}
+                          <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
+                          <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>Last</Button>
+                          <span className="text-xs text-muted-foreground ml-2">Page {currentPage} of {totalPages} ({filteredOrders.length} orders)</span>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </CardContent>
