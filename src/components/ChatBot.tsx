@@ -14,7 +14,7 @@ interface Message {
 }
 
 interface ChatBotProps {
-  page: 'home' | 'packages' | 'agent-dashboard';
+  page: string;
 }
 
 interface ChatState {
@@ -303,11 +303,10 @@ What would you like to know?`;
 
   return (
     <>
-      {/* Chat Widget - Disabled for now */}
-      {/* 
+      {/* Chat Widget Button */}
       {!isOpen && (
         <div
-          className="fixed z-40 md:flex hidden"
+          className="fixed z-40 hidden md:flex"
           style={{
             transform: `translate(${position.x}px, ${position.y}px)`,
             bottom: position.y === 0 ? '32px' : 'auto',
@@ -328,7 +327,7 @@ What would you like to know?`;
 
       {!isOpen && (
         <div
-          className="fixed z-40 md:hidden flex"
+          className="fixed z-40 flex md:hidden"
           style={{
             transform: `translate(${position.x}px, ${position.y}px)`,
             bottom: position.y === 0 ? '24px' : 'auto',
@@ -345,7 +344,6 @@ What would you like to know?`;
           </button>
         </div>
       )}
-      */}
 
       {/* Chat Window */}
       {isOpen && (
