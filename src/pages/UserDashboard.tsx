@@ -1811,7 +1811,7 @@ const UserDashboard = () => {
             <div>
               <p className="text-sm font-semibold mb-2">Request Body:</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">network</span> (required) - mtn, telecel, airteltigo</li>
+                      <li>• <span className="font-mono">network</span> (required) - mtn, mtn_express, telecel, airteltigo</li>
                 <li>• <span className="font-mono">size_gb</span> (required) - Package size in GB</li>
                 <li>• <span className="font-mono">phone</span> (required) - Recipient phone number (024XXXXXXX)</li>
               </ul>
@@ -1867,7 +1867,7 @@ const UserDashboard = () => {
                 <li>• <span className="font-mono">limit</span> (integer) - Orders to return (default: 50)</li>
                 <li>• <span className="font-mono">offset</span> (integer) - Orders to skip (default: 0)</li>
                 <li>• <span className="font-mono">status</span> - Filter by status (pending, processing, completed, failed, delivered)</li>
-                      <li>• <span className="font-mono">network</span> - Filter by network (mtn, telecel, airteltigo)</li>
+                      <li>• <span className="font-mono">network</span> - Filter by network (mtn, mtn_express, telecel, airteltigo)</li>
               </ul>
             </div>
             <div className="bg-muted p-3 rounded-lg border border-border">

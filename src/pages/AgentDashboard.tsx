@@ -3155,61 +3155,7 @@ const AgentDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Manual MoMo Top Up */}
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <Coins className="h-5 w-5 text-yellow-400" /> Manual Top Up via MoMo
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">Transfer directly via MTN MoMo (minimum GHC 100)</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-yellow-400">🏷️ Minimum top up amount: GHC 100</p>
-                </div>
 
-                <div className="space-y-3 text-sm">
-                  <div className="flex gap-3">
-                    <span className="font-bold text-primary flex-shrink-0">1.</span>
-                    <span>Dial <span className="font-mono bg-slate-800 px-2 py-1 rounded">*188#</span> on your MTN Mobile phone</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="font-bold text-primary flex-shrink-0">2.</span>
-                    <span>Select 1 (Transfer Money) → 1 (Mobile User)</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="font-bold text-primary flex-shrink-0">3.</span>
-                    <span>Recipient: <span className="font-mono bg-slate-800 px-2 py-1 rounded">80984482202</span></span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="font-bold text-primary flex-shrink-0">4.</span>
-                    <span>Enter the amount (minimum GHC 100)</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="font-bold text-primary flex-shrink-0">5.</span>
-                    <span>Reference: (optional)</span>
-                  </div>
-                </div>
-
-                <div className="bg-slate-800 rounded-lg p-4 space-y-2">
-                  <p className="text-xs text-muted-foreground">Send transaction ID to:</p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      WhatsApp
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Phone className="h-4 w-4 mr-2" />
-                      Call
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                  <p className="text-xs text-red-400 font-medium">🚨 Important: Always include your reference code. Admin credits your wallet after verifying the transaction.</p>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Top Up History */}
             <Card className="border-border">
@@ -3663,7 +3609,7 @@ const AgentDashboard = () => {
                   <div>
                     <p className="text-sm font-semibold mb-2">Request Body:</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">network</span> (required) - mtn, telecel, airteltigo</li>
+                      <li>• <span className="font-mono">network</span> (required) - mtn, mtn_express, telecel, airteltigo</li>
                       <li>• <span className="font-mono">size_gb</span> (required) - Package size in GB</li>
                       <li>• <span className="font-mono">phone</span> (required) - Recipient phone number (024XXXXXXX)</li>
                     </ul>
@@ -3719,7 +3665,7 @@ const AgentDashboard = () => {
                       <li>• <span className="font-mono">limit</span> (integer) - Orders to return (default: 50)</li>
                       <li>• <span className="font-mono">offset</span> (integer) - Orders to skip (default: 0)</li>
                       <li>• <span className="font-mono">status</span> - Filter by status (pending, processing, completed, failed, delivered)</li>
-                      <li>• <span className="font-mono">network</span> - Filter by network (mtn, telecel, airteltigo)</li>
+                      <li>• <span className="font-mono">network</span> - Filter by network (mtn, mtn_express, telecel, airteltigo)</li>
                     </ul>
                   </div>
                   <div className="bg-muted p-3 rounded-lg border border-border">

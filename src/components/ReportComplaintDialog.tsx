@@ -38,6 +38,7 @@ export default function ReportComplaintDialog({
   agentStoreId,
   subagentStoreId,
 }: ReportComplaintDialogProps) {
+  const isRefunded = order.status === "refunded" || order.fulfillment_status === "refunded";
   const [step, setStep] = useState<"checklist" | "screenshot" | "sending" | "sent" | "response">("checklist");
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
@@ -271,8 +272,38 @@ Please investigate and assist. Thank You.`;
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
 
+        {/* ── REFUNDED ORDER BLOCK ── */}
+        {isRefunded && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-orange-400">
+                <AlertTriangle className="h-5 w-5" />
+                Order Already Refunded
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <Card className="border-orange-500/30 bg-orange-500/10">
+                <CardContent className="pt-4 pb-3 text-sm space-y-2">
+                  <p className="text-orange-300 font-medium">This order has already been refunded.</p>
+                  <p className="text-muted-foreground">A refund was issued for this order, so a complaint cannot be submitted. The refunded amount has been credited to the relevant wallet and can be used to place a new order.</p>
+                  <div className="pt-1 grid grid-cols-2 gap-x-4 gap-y-1">
+                    <span className="text-muted-foreground">Number</span>
+                    <span className="font-medium">{order.customer_number}</span>
+                    <span className="text-muted-foreground">Network</span>
+                    <span className="font-medium">{networkLabel}</span>
+                    <span className="text-muted-foreground">Package</span>
+                    <span className="font-medium">{order.size_gb}GB</span>
+                  </div>
+                </CardContent>
+              </Card>
+              <p className="text-xs text-muted-foreground">If you believe this refund was made in error, please contact support directly via WhatsApp.</p>
+              <Button className="w-full" variant="outline" onClick={handleClose}>Close</Button>
+            </div>
+          </>
+        )}
+
         {/* ── STEP 1: CHECKLIST ── */}
-        {step === "checklist" && (
+        {!isRefunded && step === "checklist" && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -365,7 +396,7 @@ Please investigate and assist. Thank You.`;
         )}
 
         {/* ── STEP 2: SCREENSHOT ── */}
-        {step === "screenshot" && (
+        {!isRefunded && step === "screenshot" && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -478,7 +509,7 @@ Please investigate and assist. Thank You.`;
         )}
 
         {/* ── SENDING ── */}
-        {step === "sending" && (
+        {!isRefunded && step === "sending" && (
           <div className="py-8 flex flex-col items-center gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-muted-foreground text-sm">Submitting your report...</p>
@@ -486,7 +517,7 @@ Please investigate and assist. Thank You.`;
         )}
 
         {/* ── SENT ── */}
-        {step === "sent" && (
+        {!isRefunded && step === "sent" && (
           <>
             <DialogHeader>
               <DialogTitle>Report Sent</DialogTitle>
@@ -504,7 +535,7 @@ Please investigate and assist. Thank You.`;
         )}
 
         {/* ── RESPONSE ── */}
-        {step === "response" && (
+        {!isRefunded && step === "response" && (
           <>
             <DialogHeader>
               <DialogTitle>Support Team Response</DialogTitle>

@@ -18,7 +18,8 @@ interface ChatBotProps {
 }
 
 interface ChatState {
-  mode: 'normal' | 'tracking_phone' | 'packages';
+  mode: 'normal' | 'tracking_phone' | 'tracking_count' | 'packages';
+  trackingCount?: number; // how many orders to show
 }
 
 export default function ChatBot({ page }: ChatBotProps) {
@@ -27,12 +28,19 @@ export default function ChatBot({ page }: ChatBotProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [chatState, setChatState] = useState<ChatState>({ mode: 'normal' });
+  const [showLabel, setShowLabel] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const dragStartRef = useRef({ x: 0, y: 0 });
+
+  // Hide "Ask Chatbot" label text after 5 seconds
+  useEffect(() => {
+    const t = setTimeout(() => setShowLabel(false), 5000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Load conversation from localStorage
   useEffect(() => {
@@ -159,15 +167,15 @@ export default function ChatBot({ page }: ChatBotProps) {
     }
   };
 
-  // Fetch order by phone number
-  const fetchOrderByPhone = async (phoneNumber: string): Promise<string> => {
+  // Fetch order(s) by phone number
+  const fetchOrderByPhone = async (phoneNumber: string, count: number = 1): Promise<string> => {
     try {
       const { data, error } = await supabase
         .from('orders')
         .select('id, network, size_gb, amount, status, fulfillment_status, created_at')
         .eq('customer_number', phoneNumber)
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(count);
 
       if (error) throw error;
 
@@ -175,8 +183,20 @@ export default function ChatBot({ page }: ChatBotProps) {
         return `No orders found for phone number ${phoneNumber}. Please check the number or contact support.`;
       }
 
-      const order = data[0];
-      return `📍 **Order Status for ${phoneNumber}**\n\n**Order ID:** ${order.id}\n**Network:** ${order.network}\n**Size:** ${order.size_gb}GB\n**Amount:** GHC${order.amount}\n**Status:** ${order.status || 'Processing'}\n**Delivery Status:** ${order.fulfillment_status || 'Pending'}\n**Date:** ${new Date(order.created_at).toLocaleDateString()}\n\nIf you need more help, contact our WhatsApp support!`;
+      const label = count === 1 ? 'Most Recent Order' : `Last ${data.length} Order${data.length > 1 ? 's' : ''}`;
+      let response = `📍 **${label} for ${phoneNumber}**\n\n`;
+      data.forEach((order, i) => {
+        if (count > 1) response += `**Order ${i + 1}:**\n`;
+        response += `**ID:** ${order.id.slice(0, 8)}...\n`;
+        response += `**Network:** ${order.network?.toUpperCase()}\n`;
+        response += `**Size:** ${order.size_gb}GB\n`;
+        response += `**Amount:** GHC ${order.amount}\n`;
+        response += `**Status:** ${order.fulfillment_status || order.status || 'Processing'}\n`;
+        response += `**Date:** ${new Date(order.created_at).toLocaleDateString()}\n`;
+        if (i < data.length - 1) response += '\n---\n\n';
+      });
+      response += '\n\nIf you need more help, contact our WhatsApp support!';
+      return response;
     } catch (error) {
       console.error('Error fetching order:', error);
       return "I couldn't retrieve your order information. Please contact our WhatsApp support team for assistance.";
@@ -245,30 +265,35 @@ What would you like to know?`;
       let answer = '';
 
       // Handle tracking modes
-      if (chatState.mode === 'tracking_phone') {
-        answer = await fetchOrderByPhone(input.trim());
+      if (chatState.mode === 'tracking_count') {
+        // User has picked how many orders to show — now ask for phone
+        const lower = input.trim().toLowerCase();
+        let count = 1;
+        if (lower.includes('last 5') || lower === '5' || lower.includes('five')) count = 5;
+        else if (lower.includes('last 2') || lower === '2' || lower.includes('two')) count = 2;
+        // else most recent = 1
+        setChatState({ mode: 'tracking_phone', trackingCount: count });
+        answer = "Please enter the phone number (e.g. 0501234567):";
+      } else if (chatState.mode === 'tracking_phone') {
+        answer = await fetchOrderByPhone(input.trim(), chatState.trackingCount ?? 1);
         setChatState({ mode: 'normal' });
       } else if (chatState.mode === 'packages') {
         answer = await fetchAvailablePackages();
         setChatState({ mode: 'normal' });
       } else {
-        // Check if user is asking about tracking
         const lowerInput = input.toLowerCase();
-        
-        // Check for phone number input during tracking
-        if (lowerInput.match(/^\d{10}$/) && chatState.mode === 'tracking_phone') {
-          answer = await fetchOrderByPhone(input.trim());
-          setChatState({ mode: 'normal' });
-        } 
+
         // Check if user wants to track order naturally
-        else if (lowerInput.includes('track') || lowerInput.includes('order') || 
-                 lowerInput.includes('where') || lowerInput.includes('status')) {
-          answer = "I can track your order! Please enter your phone number:";
-          setChatState({ mode: 'tracking_phone' });
-        } 
+        if (lowerInput.includes('track') || lowerInput.includes('order status') ||
+            (lowerInput.includes('where') && lowerInput.includes('order')) ||
+            lowerInput.includes('check my order')) {
+          // Ask how many orders to show
+          answer = "How many orders would you like to check?\n\n• Most Recent (1 order)\n• Last 2 orders\n• Last 5 orders\n\nJust type your choice:";
+          setChatState({ mode: 'tracking_count' });
+        }
         else if (lowerInput.includes('package') || lowerInput.includes('available')) {
           answer = await fetchAvailablePackages();
-        } 
+        }
         else {
           answer = getAnswer(input);
         }
@@ -303,7 +328,7 @@ What would you like to know?`;
 
   return (
     <>
-      {/* Chat Widget Button */}
+      {/* Chat Widget Button — desktop */}
       {!isOpen && (
         <div
           className="fixed z-40 hidden md:flex"
@@ -319,12 +344,15 @@ What would you like to know?`;
             className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-4 py-3 shadow-lg transition-all hover:scale-105 cursor-grab active:cursor-grabbing"
             title="Ask the chatbot any question - Click to open, drag to move"
           >
-            <MessageCircle className="h-5 w-5" />
-            <span className="font-semibold text-sm">Ask Chatbot</span>
+            <MessageCircle className="h-5 w-5 flex-shrink-0" />
+            {showLabel && (
+              <span className="font-semibold text-sm animate-pulse">Ask Chatbot</span>
+            )}
           </button>
         </div>
       )}
 
+      {/* Chat Widget Button — mobile */}
       {!isOpen && (
         <div
           className="fixed z-40 flex md:hidden"
@@ -337,10 +365,13 @@ What would you like to know?`;
           <button
             onMouseDown={handleDragStart}
             onClick={() => setIsOpen(true)}
-            className="flex items-center justify-center bg-cyan-500 hover:bg-cyan-600 text-white rounded-full w-14 h-14 shadow-lg transition-all hover:scale-105 cursor-grab active:cursor-grabbing"
+            className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-4 py-3 shadow-lg transition-all hover:scale-105 cursor-grab active:cursor-grabbing"
             title="Ask the chatbot - Drag to move"
           >
-            <MessageCircle className="h-6 w-6" />
+            <MessageCircle className="h-6 w-6 flex-shrink-0" />
+            {showLabel && (
+              <span className="font-semibold text-sm animate-pulse">Ask Chatbot</span>
+            )}
           </button>
         </div>
       )}
@@ -364,7 +395,8 @@ What would you like to know?`;
             <h2 className="font-semibold text-white">Chatbot Assistant</h2>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-700 hover:bg-red-600 text-white transition-colors"
+              aria-label="Close chatbot"
             >
               <X className="h-5 w-5" />
             </button>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, AlertCircle, CheckCircle, Clock, Image } from "lucide-react";
+import { Search, AlertCircle, CheckCircle, Clock, Image, Download, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 interface Complaint {
   id: string;
@@ -60,6 +61,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [page, setPage] = useState(1);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const PAGE_SIZE = 50;
   const { toast } = useToast();
 
@@ -74,7 +76,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
       // Simplified query - fetch complaints only without complex joins
       let query = supabase
         .from("complaints")
-        .select("id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at")
+        .select("id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at")
         .order("created_at", { ascending: false });
 
       // If viewing as agent, only show complaints from their store
@@ -231,6 +233,15 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
             </DialogContent>
           </Dialog>
 
+          {/* Complaint detail dialog */}
+          <ComplaintDetailDialog
+            complaint={selectedComplaint}
+            onClose={() => setSelectedComplaint(null)}
+            onPreviewImage={setPreviewImage}
+            updateComplaintStatus={updateComplaintStatus}
+            getStatusBadge={getStatusBadge}
+          />
+
           {/* Tabs — admin sees all types; agents see their own */}
           {!isAgent && (
             <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setPage(1); setSelectedComplaints(new Set()); }}>
@@ -258,6 +269,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
                   setPage={setPage}
                   PAGE_SIZE={PAGE_SIZE}
                   onPreviewImage={setPreviewImage}
+                  onSelectComplaint={setSelectedComplaint}
                 />
               </TabsContent>
             </Tabs>
@@ -289,6 +301,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
                 setPage={setPage}
                 PAGE_SIZE={PAGE_SIZE}
                 onPreviewImage={setPreviewImage}
+                onSelectComplaint={setSelectedComplaint}
               />
             </div>
           )}
@@ -297,6 +310,176 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
     </div>
   );
 };
+
+// ---------------------------------------------------------------------------
+// ComplaintDetailDialog — full complaint detail with download & share
+// ---------------------------------------------------------------------------
+interface ComplaintDetailDialogProps {
+  complaint: Complaint | null;
+  onClose: () => void;
+  onPreviewImage: (url: string) => void;
+  updateComplaintStatus: (id: string, status: string) => void;
+  getStatusBadge: (status: string) => React.ReactNode;
+}
+
+function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateComplaintStatus, getStatusBadge }: ComplaintDetailDialogProps) {
+  if (!complaint) return null;
+
+  const networkName = (n: string) =>
+    n === "mtn" ? "MTN" : n === "mtn_express" ? "MTN Express" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : (n || "").toUpperCase();
+
+  const boolLabel = (v: boolean | null | undefined) =>
+    v == null ? "—" : v ? <span className="text-red-400 font-semibold">Yes</span> : <span className="text-green-400">No</span>;
+
+  const handleDownload = async () => {
+    // Build text report
+    const lines = [
+      "COMPLAINT REPORT",
+      "================",
+      `Date: ${new Date(complaint.created_at).toLocaleString()}`,
+      `Status: ${complaint.status}`,
+      `Type: ${complaint.complaint_type}`,
+      "",
+      "CUSTOMER DETAILS",
+      `Number: ${complaint.customer_number}`,
+      `Store: ${complaint.agent_stores?.store_name || complaint.subagent_stores?.store_name || "—"}`,
+      "",
+      "ORDER DETAILS",
+      complaint.orders ? `Network: ${networkName(complaint.orders.network)}` : "",
+      complaint.orders ? `Package: ${complaint.orders.size_gb}GB` : "",
+      complaint.orders ? `Amount: GHC ${Number(complaint.orders.amount).toFixed(2)}` : "",
+      complaint.orders ? `Delivery Status: ${complaint.orders.fulfillment_status}` : "",
+      "",
+      "CHECKLIST",
+      `Owing Airtime: ${complaint.owing_airtime == null ? "Not answered" : complaint.owing_airtime ? "YES" : "No"}`,
+      `Owing Bundle: ${complaint.owing_bundle == null ? "Not answered" : complaint.owing_bundle ? "YES" : "No"}`,
+      `Owing MoMo: ${complaint.owing_momo == null ? "Not answered" : complaint.owing_momo ? "YES" : "No"}`,
+      "",
+      "COMPLAINT",
+      complaint.complaint_title,
+      complaint.complaint_details,
+      "",
+      complaint.screenshot_url ? `Screenshot: ${complaint.screenshot_url}` : "No screenshot attached",
+    ].filter(l => l !== undefined).join("\n");
+
+    const blob = new Blob([lines], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `complaint-${complaint.id.slice(0, 8)}-${complaint.customer_number}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShare = async () => {
+    const text = `Complaint Report\nCustomer: ${complaint.customer_number}\nOrder: ${complaint.orders ? `${networkName(complaint.orders.network)} ${complaint.orders.size_gb}GB` : complaint.order_id}\nStatus: ${complaint.status}\nDate: ${new Date(complaint.created_at).toLocaleString()}\n\n${complaint.complaint_details}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: "Complaint Report", text }); } catch (_) {}
+    } else {
+      await navigator.clipboard.writeText(text);
+      alert("Report copied to clipboard!");
+    }
+  };
+
+  return (
+    <Dialog open={!!complaint} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle className="text-base">Complaint Details</DialogTitle>
+            <div className="flex gap-2">
+              <button onClick={handleShare} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
+                <Share2 className="h-3.5 w-3.5" /> Share
+              </button>
+              <button onClick={handleDownload} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
+                <Download className="h-3.5 w-3.5" /> Download
+              </button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Status + Meta */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            {getStatusBadge(complaint.status)}
+            <span className="text-xs text-muted-foreground">{new Date(complaint.created_at).toLocaleString()}</span>
+          </div>
+
+          {/* Order info */}
+          <Card className="border-border">
+            <CardContent className="pt-4 pb-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+              <span className="text-muted-foreground">Customer</span><span className="font-medium">{complaint.customer_number}</span>
+              {complaint.orders && <>
+                <span className="text-muted-foreground">Network</span><span className="font-medium">{networkName(complaint.orders.network)}</span>
+                <span className="text-muted-foreground">Package</span><span className="font-medium">{complaint.orders.size_gb}GB — GHC {Number(complaint.orders.amount).toFixed(2)}</span>
+                <span className="text-muted-foreground">Delivery</span><span className="font-medium">{complaint.orders.fulfillment_status}</span>
+              </>}
+              <span className="text-muted-foreground">Store</span><span className="font-medium">{complaint.agent_stores?.store_name || complaint.subagent_stores?.store_name || "—"}</span>
+              <span className="text-muted-foreground">Type</span><span className="capitalize font-medium">{complaint.complaint_type}</span>
+            </CardContent>
+          </Card>
+
+          {/* Checklist */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Pre-submission Checklist</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[["Owing Airtime", complaint.owing_airtime], ["Owing Bundle", complaint.owing_bundle], ["Owing MoMo", complaint.owing_momo]].map(([label, val]) => (
+                <div key={String(label)} className="border border-border rounded-lg p-3 text-center text-xs">
+                  <p className="text-muted-foreground mb-1">{String(label)}</p>
+                  <p>{boolLabel(val as boolean | null)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Complaint text */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{complaint.complaint_title}</p>
+            <p className="text-sm whitespace-pre-wrap">{complaint.complaint_details}</p>
+          </div>
+
+          {/* Screenshot */}
+          {complaint.screenshot_url ? (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Screenshot</p>
+              <img
+                src={complaint.screenshot_url}
+                alt="Customer screenshot"
+                className="w-full rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => onPreviewImage(complaint.screenshot_url!)}
+              />
+              <div className="flex gap-2 mt-2">
+                <a
+                  href={complaint.screenshot_url}
+                  download
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
+                >
+                  <Download className="h-3.5 w-3.5" /> Save Image
+                </a>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">No screenshot attached</p>
+          )}
+
+          {/* Actions */}
+          {complaint.status !== "resolved" && (
+            <div className="flex gap-2 pt-2">
+              {complaint.status !== "in-progress" && (
+                <Button size="sm" variant="outline" onClick={() => { updateComplaintStatus(complaint.id, "in-progress"); onClose(); }}>Mark In Progress</Button>
+              )}
+              <Button size="sm" variant="hero" onClick={() => { updateComplaintStatus(complaint.id, "resolved"); onClose(); }}>Mark Resolved</Button>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // ComplaintsTable — reusable table used in all tabs
@@ -317,6 +500,7 @@ interface ComplaintsTableProps {
   setPage: (p: number | ((prev: number) => number)) => void;
   PAGE_SIZE: number;
   onPreviewImage: (url: string) => void;
+  onSelectComplaint: (c: Complaint) => void;
 }
 
 function ComplaintsTable({
@@ -324,7 +508,7 @@ function ComplaintsTable({
   selectedComplaints, setSelectedComplaints,
   selectAll, setSelectAll,
   bulkUpdating, bulkUpdateStatus, updateComplaintStatus,
-  getStatusBadge, page, setPage, PAGE_SIZE, onPreviewImage,
+  getStatusBadge, page, setPage, PAGE_SIZE, onPreviewImage, onSelectComplaint,
 }: ComplaintsTableProps) {
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
@@ -409,7 +593,7 @@ function ComplaintsTable({
               </TableHeader>
               <TableBody>
                 {paginated.map(c => (
-                  <TableRow key={c.id} className={c.status === "resolved" ? "opacity-60" : ""}>
+                  <TableRow key={c.id} className={`${c.status === "resolved" ? "opacity-60" : ""} cursor-pointer hover:bg-muted/40`} onClick={(e) => { if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return; onSelectComplaint(c); }}>
                     <TableCell>
                       <input
                         type="checkbox"
