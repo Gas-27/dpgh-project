@@ -25,37 +25,26 @@ const AgentRegistrationCallback = () => {
             }
 
             try {
-                // Verify payment with Paystack
-                const { data, error: verifyError } = await supabase.functions.invoke("verify-registration-payment", {
+                // Get store data from session storage
+                const storedData = sessionStorage.getItem("pending_registration_store_data");
+                const userId = sessionStorage.getItem("pending_registration_user_id");
+
+                if (!storedData || !userId) {
+                    throw new Error("Missing registration data. Please register again.");
+                }
+
+                const storeData = JSON.parse(storedData);
+
+                // Verify the payment with Paystack via verify-payment edge function
+                const { data, error: verifyError } = await supabase.functions.invoke("verify-payment", {
                     body: { reference },
                 });
 
-                if (verifyError || !data?.success) {
-                    throw new Error(verifyError?.message || "Payment verification failed");
+                if (verifyError) {
+                    throw new Error(verifyError.message || "Payment verification failed");
                 }
 
-                // Get store data from metadata (primary source)
-                let storeData = data.store_data;
-                let userId = data.user_id;
-
-                // Fallback to session storage if metadata doesn't have the data
-                if (!storeData) {
-                    const storedData = sessionStorage.getItem("pending_registration_store_data");
-                    if (storedData) {
-                        storeData = JSON.parse(storedData);
-                    } else {
-                        throw new Error("Missing registration data");
-                    }
-                }
-
-                if (!userId) {
-                    userId = sessionStorage.getItem("pending_registration_user_id");
-                    if (!userId) {
-                        throw new Error("Missing user ID");
-                    }
-                }
-
-                // Create the agent store
+                // Create the agent store — approved immediately since payment is verified
                 const { error: insertError } = await supabase.from("agent_stores").insert({
                     user_id: userId,
                     store_name: storeData.store_name,
@@ -65,6 +54,7 @@ const AgentRegistrationCallback = () => {
                     momo_number: storeData.momo_number,
                     momo_name: storeData.momo_name,
                     momo_network: storeData.momo_network,
+                    approved: true,
                 });
 
                 if (insertError) throw insertError;
@@ -76,15 +66,15 @@ const AgentRegistrationCallback = () => {
 
                 toast({
                     title: "Registration Successful!",
-                    description: "Your store has been created and is pending approval.",
+                    description: "Your store is live! Taking you to your dashboard...",
                 });
 
                 setStatus("success");
 
-                // Redirect after 3 seconds
+                // Redirect directly to agent dashboard — store is approved
                 setTimeout(() => {
-                    navigate("/pending-approval");
-                }, 3000);
+                    navigate("/agent", { replace: true });
+                }, 2000);
 
             } catch (err: any) {
                 console.error("Registration error:", err);
@@ -130,7 +120,7 @@ const AgentRegistrationCallback = () => {
                         </div>
                         <h2 className="text-xl font-semibold">Payment Successful!</h2>
                         <p className="text-muted-foreground">
-                            Your store is being set up. Redirecting you to the pending approval page...
+                            Your store is live! Redirecting you to your agent dashboard...
                         </p>
                     </CardContent>
                 </Card>
