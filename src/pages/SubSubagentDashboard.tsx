@@ -1581,9 +1581,7 @@ const SubSubagentDashboard = () => {
   const pendingOrders = dateFilteredOrders.filter(o => o.status !== "completed").length;
   // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
   const totalOrders = dateFilter === "all" ? totalOrderCount : dateFilteredOrders.length;
-  const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
-  const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
-  const completedWithdrawals = withdrawals.filter(w => w.status === "completed").reduce((s, w) => s + Number(w.amount), 0);
+  const completedWithdrawals = withdrawals.filter(w => w.status === "completed" || w.status === "success").reduce((s, w) => s + Number(w.amount), 0);
   const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
   // Calculate wallet purchases from orders
   const walletPurchases = orders
@@ -1593,12 +1591,8 @@ const SubSubagentDashboard = () => {
   const totalTopups = topupHistory.reduce((s, t) => s + Number(t.amount || 0), 0);
   // Wallet balance = Profit + Topups - Completed Withdrawals - Wallet Purchases
   const calculatedWalletBalance = totalProfit + totalTopups - completedWithdrawals - walletPurchases;
-  // Prefer database value as it's synced correctly
-  const availableWalletBalance = subagentStore?.wallet_balance !== undefined && subagentStore?.wallet_balance !== null 
-    ? Number(subagentStore.wallet_balance) 
-    : calculatedWalletBalance;
-  
-  // Available for use = actual wallet balance - pending withdrawals
+
+  // Available for use = actual wallet balance - pending withdrawals (availableWalletBalance already declared at top)
   const availableForUse = availableWalletBalance - pendingWithdrawalAmount;
   
   // Use store_name, fallback to checking what's actually in the store object
