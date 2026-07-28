@@ -1416,6 +1416,7 @@ const SubSubagentDashboard = () => {
     { id: "flyer", label: "Flyer Generator", icon: Image },
     // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
+    { id: "refunds", label: "Refunds", icon: RotateCcw },
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "settings", label: "Settings", icon: Settings },
@@ -2834,6 +2835,81 @@ const SubSubagentDashboard = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* =================== REFUNDS TAB =================== */}
+          <TabsContent value="refunds" className="mt-0 space-y-6">
+            <Card className="border-orange-500/30 bg-orange-500/5">
+              <CardContent className="p-4">
+                <p className="text-sm text-orange-400">
+                  <strong>Refunds:</strong> These are your orders that have been marked as refunded by admin. Contact your subagent or admin if you need a refund credited back to your wallet.
+                </p>
+              </CardContent>
+            </Card>
+
+            {(() => {
+              const isRefunded = (o: Order) =>
+                o.fulfillment_status === "refunded" ||
+                o.status === "refunded" ||
+                (o.order_status || "").toLowerCase() === "refunded";
+
+              const refundedOrders = orders.filter(isRefunded);
+
+              return (
+                <>
+                  <Card className="border-orange-500/30 bg-orange-500/5">
+                    <CardContent className="p-6">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Refunded Orders</p>
+                        <p className="font-display text-3xl font-bold text-orange-400 mt-1">{refundedOrders.length}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {refundedOrders.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-12 text-center">
+                        <RotateCcw className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                        <p className="text-muted-foreground">No refunded orders yet</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Network</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {refundedOrders.map((order: any) => (
+                            <TableRow key={order.id}>
+                              <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                                {order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
+                              </TableCell>
+                              <TableCell className="font-medium">{order.customer_number}</TableCell>
+                              <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                              <TableCell>{order.size_gb}GB</TableCell>
+                              <TableCell className="font-medium">GHS {Number(order.selling_price || order.amount || 0).toFixed(2)}</TableCell>
+                              <TableCell>
+                                <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                                  Refunded
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Card>
+                  )}
+                </>
+              );
+            })()}
           </TabsContent>
         </Tabs>
       </div>
