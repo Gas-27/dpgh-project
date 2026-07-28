@@ -138,22 +138,24 @@ export default function ReportComplaintDialog({
       setSending(true);
       setStep("sending");
 
+      // Screenshot is required — upload and throw if it fails
+      if (!screenshotFile) {
+        throw new Error("A screenshot is required to submit a complaint.");
+      }
+
       let screenshotUrl = "";
-      if (screenshotFile) {
-        try {
-          const fileExt = screenshotFile.name.split(".").pop();
-          const fileName = `complaint-${order.id}-${Date.now()}.${fileExt}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from("complaints")
-            .upload(fileName, screenshotFile, { upsert: true });
-          if (!uploadError && uploadData) {
-            const { data: urlData } = supabase.storage.from("complaints").getPublicUrl(uploadData.path);
-            screenshotUrl = urlData?.publicUrl || "";
-          }
-          // If upload fails (e.g. bucket not set up), continue without screenshot
-        } catch (_) {
-          // Screenshot upload failed silently — complaint still submits
-        }
+      const fileExt = screenshotFile.name.split(".").pop();
+      const fileName = `complaint-${order.id}-${Date.now()}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("complaints")
+        .upload(fileName, screenshotFile, { upsert: true });
+
+      if (uploadError) {
+        throw new Error(`Screenshot upload failed: ${uploadError.message}. Please ensure the storage bucket is set up (run the provided SQL) and try again.`);
+      }
+      if (uploadData) {
+        const { data: urlData } = supabase.storage.from("complaints").getPublicUrl(uploadData.path);
+        screenshotUrl = urlData?.publicUrl || "";
       }
 
       const checklistSummary = `
@@ -453,7 +455,10 @@ Please investigate and assist. Thank You.`;
 
             {/* Upload area */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Upload Your Screenshot</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-sm font-medium">Upload Your Screenshot</Label>
+                <span className="text-xs font-semibold text-destructive">* Required</span>
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -465,14 +470,15 @@ Please investigate and assist. Thank You.`;
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-border rounded-lg py-8 flex flex-col items-center gap-2 hover:border-primary/60 transition-colors"
+                  className="w-full border-2 border-dashed border-destructive/50 rounded-lg py-8 flex flex-col items-center gap-2 hover:border-destructive transition-colors bg-destructive/5"
                 >
-                  <Upload className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Tap to upload screenshot</p>
-                  <p className="text-xs text-muted-foreground/70">JPG, PNG — max 5MB</p>
+                  <Upload className="h-8 w-8 text-destructive/70" />
+                  <p className="text-sm font-medium">Tap to upload screenshot</p>
+                  <p className="text-xs text-muted-foreground">JPG, PNG — max 5MB</p>
+                  <p className="text-xs text-destructive font-medium">A screenshot is required to submit this report</p>
                 </button>
               ) : (
-                <div className="relative rounded-lg overflow-hidden border border-border">
+                <div className="relative rounded-lg overflow-hidden border border-primary">
                   <img src={screenshotPreview} alt="Your screenshot" className="w-full max-h-52 object-contain bg-muted" />
                   <button
                     type="button"
@@ -485,18 +491,15 @@ Please investigate and assist. Thank You.`;
               )}
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Screenshot is required for faster resolution. If you cannot provide one, you can still submit but resolution may take longer.
-            </p>
-
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep("checklist")} className="flex-1">
                 Back
               </Button>
               <Button
                 onClick={handleSendComplaint}
-                disabled={sending}
+                disabled={sending || !screenshotFile}
                 className="flex-1"
+                title={!screenshotFile ? "A screenshot is required to submit" : undefined}
               >
                 {sending ? (
                   <>
@@ -506,7 +509,7 @@ Please investigate and assist. Thank You.`;
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    Submit Report
+                    {screenshotFile ? "Submit Report" : "Upload Screenshot to Submit"}
                   </>
                 )}
               </Button>
