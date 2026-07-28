@@ -924,8 +924,12 @@ Deno.serve(async (req) => {
       }
 
       // === CREDIT AGENT COMMISSION -> agent_stores.subagent_commission_balance ===
+      // agentPriceToSubagent = what the subagent pays the agent (already fetched above as
+      // subagent_package_prices.base_price for this agent). Agent profit = that minus admin base.
+      // agentSellPrice (agent_package_prices.sell_price) is NOT used here because it may reflect
+      // a different price tier, causing the over-credit seen in logs (+1.45 instead of +0.94).
       if (agentId) {
-        const agentCommission = agentSellPrice - adminBasePrice;
+        const agentCommission = agentPriceToSubagent - adminBasePrice;
         if (agentCommission > 0) {
           const { data: agentStore } = await supabaseClient
             .from("agent_stores")
