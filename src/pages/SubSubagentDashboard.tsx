@@ -341,9 +341,10 @@ const SubSubagentDashboard = () => {
           amount,
           email: user.email,
           phone: subagentStore.support_number || subagentStore.whatsapp_number || "0000000000",
-          // Always use dataplug.store as callback so the Supabase auth session
-          // is valid when Paystack redirects back (agentsstore.shop has a different origin).
-          callback_url: `https://${DOMAINS.SUBAGENT_STORE}/sub-subagent-dashboard`,
+          // Include store_id in callback so page can load store by ID directly
+          // after Paystack redirects back, avoiding the user_id lookup that fails
+          // when user_id is not set on the sub_subagent_stores record.
+          callback_url: `https://${DOMAINS.SUBAGENT_STORE}/sub-subagent-dashboard?store_id=${subagentStore.id}`,
           metadata: {
             type: "subsubagent_wallet_topup",
             subsubagent_store_id: subagentStore.id,
@@ -353,7 +354,9 @@ const SubSubagentDashboard = () => {
       });
       if (res.error) throw new Error(res.error.message);
       if (!res.data?.authorization_url) throw new Error("No authorization URL");
+      // Also stash the store ID so the post-redirect effect can find it
       sessionStorage.setItem("pending_subsubagent_wallet_topup", res.data.reference);
+      sessionStorage.setItem("pending_subsubagent_topup_store_id", subagentStore.id);
       window.location.href = res.data.authorization_url;
     } catch (e: any) {
       toast({ title: "Payment error", description: e.message, variant: "destructive" });
@@ -381,19 +384,24 @@ const SubSubagentDashboard = () => {
     if (!subagentStore?.id) return;
     const ref = sessionStorage.getItem("pending_subsubagent_wallet_topup");
     if (!ref) return;
-    // Clear it first to prevent double-processing on re-renders
+    // Clear both items to prevent double-processing on re-renders
     sessionStorage.removeItem("pending_subsubagent_wallet_topup");
+    sessionStorage.removeItem("pending_subsubagent_topup_store_id");
     supabase.functions.invoke("verify-payment", { body: { reference: ref } })
       .then(({ data }) => {
         if (data?.success && !data?.already_processed) {
           toast({ title: "Wallet topped up!", description: data.message || "Your wallet has been credited." });
+        } else if (data?.already_processed) {
+          toast({ title: "Wallet topped up!", description: "Your wallet has been credited." });
         }
-        // Refresh data regardless of whether it was already processed
+        // Refresh wallet balance and history from DB
         fetchData();
         fetchTopupHistory();
       })
       .catch(() => {
-        // Reference was cleared above; nothing else to do
+        // Even on error, refresh in case webhook already handled it
+        fetchData();
+        fetchTopupHistory();
       });
   }, [subagentStore?.id]);
 

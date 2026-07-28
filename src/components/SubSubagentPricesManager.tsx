@@ -141,14 +141,17 @@ export default function SubSubagentPricesManager({
           .eq("package_id", packageId);
         
         // Then insert new price with all required fields
+        // base_price = what this subagent pays their parent (from subagentPrices prop)
+        // sell_price = what this subagent charges their sub-subagent (the entered price)
+        const costToSubagent = subagentPrices?.[packageId] ?? price;
         const { error } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
             subagent_store_id: subagentStoreId,
             sub_subagent_store_id: selectedSubSubagentId,
             package_id: packageId,
-            base_price: price,
-            subagent_minimum_price: price,
+            base_price: costToSubagent,
+            subagent_minimum_price: costToSubagent,
             sell_price: price
           });
 
