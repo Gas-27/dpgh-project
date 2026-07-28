@@ -84,14 +84,13 @@ const PendingApproval = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
     
-    // Verify payment with backend AND directly approve the store as a fallback
+    // Approve the store directly — allowed by RLS "Agents can update own store" policy
     const approveStoreDirectly = async () => {
       const { error } = await supabase
         .from("agent_stores")
         .update({ approved: true })
         .eq("id", store.id);
       if (!error) {
-        console.log("[v0] Store approved directly");
         toast({ title: "Payment successful!", description: "Your store has been approved!" });
         navigate("/agent", { replace: true });
       }
@@ -100,7 +99,7 @@ const PendingApproval = () => {
     supabase.functions.invoke("verify-registration-payment", { body: { reference: ref } })
       .then(({ data, error }) => {
         if (error) {
-          console.error("[v0] Payment verification error, attempting direct approval:", error);
+          // Edge function failed — fall back to direct approval
           approveStoreDirectly();
           return;
         }
@@ -108,7 +107,6 @@ const PendingApproval = () => {
           toast({ title: "Payment successful!", description: "Your store has been approved!" });
           setTimeout(() => navigate("/agent", { replace: true }), 1500);
         } else if (data?.already_processed) {
-          // Check if store is now approved, if not approve directly
           supabase
             .from("agent_stores")
             .select("approved")
@@ -122,14 +120,11 @@ const PendingApproval = () => {
               }
             });
         } else {
-          // Fallback: if response doesn't indicate approval, approve directly
-          console.log("[v0] Payment verified but no approval status, attempting direct approval");
           approveStoreDirectly();
         }
         sessionStorage.removeItem("pending_agent_registration_payment");
       })
-      .catch((err) => {
-        console.error("[v0] Payment verification failed, attempting direct approval:", err);
+      .catch(() => {
         sessionStorage.removeItem("pending_agent_registration_payment");
         approveStoreDirectly();
       });

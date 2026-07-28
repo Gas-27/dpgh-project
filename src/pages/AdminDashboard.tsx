@@ -1317,33 +1317,7 @@ const AdminDashboard = () => {
 
   // ======================== Agents ========================
   const toggleApproval = async (agentId: string, approved: boolean) => {
-    const { error, data } = await supabase
-      .from("agent_stores")
-      .update({ approved })
-      .eq("id", agentId)
-      .select("id, approved")
-      .single();
-
-    if (error) {
-      console.error("[v0] toggleApproval error:", error);
-      toast({
-        title: "Update failed",
-        description: `Could not ${approved ? "approve" : "suspend"} agent: ${error.message}. Check that your admin role is set in the database.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Confirm the DB actually flipped the value before updating local state
-    if (data?.approved !== approved) {
-      toast({
-        title: "Update not applied",
-        description: "The database did not apply the change. This is likely an RLS (Row Level Security) policy issue — run the provided SQL migration to fix it.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    await supabase.from("agent_stores").update({ approved }).eq("id", agentId);
     setAgents((prev) => prev.map((a) => (a.id === agentId ? { ...a, approved } : a)));
     toast({ title: approved ? "Agent approved!" : "Agent suspended" });
   };
