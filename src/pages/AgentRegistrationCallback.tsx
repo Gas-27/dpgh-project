@@ -55,7 +55,7 @@ const AgentRegistrationCallback = () => {
                     }
                 }
 
-                // Create the agent store — approved immediately since payment is verified
+                // Create the agent store
                 const { error: insertError } = await supabase.from("agent_stores").insert({
                     user_id: userId,
                     store_name: storeData.store_name,
@@ -65,7 +65,6 @@ const AgentRegistrationCallback = () => {
                     momo_number: storeData.momo_number,
                     momo_name: storeData.momo_name,
                     momo_network: storeData.momo_network,
-                    approved: true,
                 });
 
                 if (insertError) throw insertError;
@@ -77,15 +76,15 @@ const AgentRegistrationCallback = () => {
 
                 toast({
                     title: "Registration Successful!",
-                    description: "Your store is live! Taking you to your dashboard now.",
+                    description: "Your store has been created and is pending approval.",
                 });
 
                 setStatus("success");
 
-                // Redirect directly to agent dashboard — store is already approved
+                // Redirect after 3 seconds
                 setTimeout(() => {
-                    navigate("/agent", { replace: true });
-                }, 2000);
+                    navigate("/pending-approval");
+                }, 3000);
 
             } catch (err: any) {
                 console.error("Registration error:", err);
@@ -131,7 +130,7 @@ const AgentRegistrationCallback = () => {
                         </div>
                         <h2 className="text-xl font-semibold">Payment Successful!</h2>
                         <p className="text-muted-foreground">
-                            Your store is live! Redirecting you to your agent dashboard...
+                            Your store is being set up. Redirecting you to the pending approval page...
                         </p>
                     </CardContent>
                 </Card>

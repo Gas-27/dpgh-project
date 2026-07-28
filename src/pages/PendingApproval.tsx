@@ -84,29 +84,14 @@ const PendingApproval = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
     
-    // Approve the store directly — allowed by RLS "Agents can update own store" policy
-    const approveStoreDirectly = async () => {
-      const { error } = await supabase
-        .from("agent_stores")
-        .update({ approved: true })
-        .eq("id", store.id);
-      if (!error) {
-        toast({ title: "Payment successful!", description: "Your store has been approved!" });
-        navigate("/agent", { replace: true });
-      }
-    };
-
-    supabase.functions.invoke("verify-registration-payment", { body: { reference: ref } })
-      .then(({ data, error }) => {
-        if (error) {
-          // Edge function failed — fall back to direct approval
-          approveStoreDirectly();
-          return;
-        }
+    // Verify payment
+    supabase.functions.invoke("verify-payment", { body: { reference: ref } })
+      .then(({ data }) => {
         if (data?.success && data?.approved) {
           toast({ title: "Payment successful!", description: "Your store has been approved!" });
-          setTimeout(() => navigate("/agent", { replace: true }), 1500);
+          navigate("/agent", { replace: true });
         } else if (data?.already_processed) {
+          // Check if store is now approved
           supabase
             .from("agent_stores")
             .select("approved")
@@ -115,18 +100,13 @@ const PendingApproval = () => {
             .then(({ data: storeData }) => {
               if (storeData?.approved) {
                 navigate("/agent", { replace: true });
-              } else {
-                approveStoreDirectly();
               }
             });
-        } else {
-          approveStoreDirectly();
         }
         sessionStorage.removeItem("pending_agent_registration_payment");
       })
       .catch(() => {
         sessionStorage.removeItem("pending_agent_registration_payment");
-        approveStoreDirectly();
       });
   }, [user, store, navigate, toast]);
 
