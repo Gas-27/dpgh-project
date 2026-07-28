@@ -197,6 +197,7 @@ const SubSubagentDashboard = () => {
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+  const [showRefundedOnly, setShowRefundedOnly] = useState(false);
   
   // Notification popup state
   const [showSubagentNotificationPopup, setShowSubagentNotificationPopup] = useState(true);
@@ -1501,8 +1502,6 @@ const SubSubagentDashboard = () => {
   // For sub-subagents, use the sub-subagent URL which includes parent subagent store name
   const storeUrl = (storeName && parentSubagentStoreName) ? DOMAINS.getSubSubagentStoreUrl(parentSubagentStoreName, storeName) : "";
   
-  const [showRefundedOnly, setShowRefundedOnly] = useState(false);
-
   // Filter orders by search, date, and optional refunded-only toggle
   const filteredOrders = getDateFilteredOrders(orders).filter(o => {
     const matchesSearch = o.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) ||
