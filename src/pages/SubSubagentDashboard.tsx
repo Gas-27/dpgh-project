@@ -158,6 +158,16 @@ const SubSubagentDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawLoading, setWithdrawLoading] = useState(false);
+  // Payout / transfer recipient state (mirrors SubagentDashboard)
+  const [transferRecipients, setTransferRecipients] = useState<any[]>([]);
+  const [selectedRecipient, setSelectedRecipient] = useState("");
+  const [createNewRecipient, setCreateNewRecipient] = useState(false);
+  const [recipientName, setRecipientName] = useState("");
+  const [mobileNetwork, setMobileNetwork] = useState("mtn");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [editingRecipient, setEditingRecipient] = useState<any>(null);
+  const [withdrawalCooldownEndTime, setWithdrawalCooldownEndTime] = useState<number | null>(null);
+  const [cooldownTimeRemaining, setCooldownTimeRemaining] = useState<string | null>(null);
   const [packages, setPackages] = useState<any[]>([]);
   const [basePrices, setBasePrices] = useState<Record<string, number>>({});
   // What the parent SUBAGENT pays their AGENT per package (the agent->subagent price).
@@ -203,14 +213,12 @@ const SubSubagentDashboard = () => {
   const [showSubagentNotificationPopup, setShowSubagentNotificationPopup] = useState(true);
   const [subSubagentNotifications, setSubSubagentNotifications] = useState<any[]>([]);
 
-  // Helper function to get available wallet balance
-  // Uses the actual wallet_balance from database, minus any pending withdrawals
-  const getAvailableBalance = () => {
-    const dbBalance = subagentStore?.wallet_balance || 0;
-    // Deduct pending withdrawals from available balance
-    const pendingWithdrawals = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
-    return dbBalance - pendingWithdrawals;
-  };
+  // Payout-aware balance helpers (mirrors SubagentDashboard)
+  const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending" || w.status === "processing");
+  const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending" || w.status === "processing").reduce((s, w) => s + Number(w.amount), 0);
+  const availableWalletBalance = Math.max(0, (subagentStore?.wallet_balance ?? 0) - pendingWithdrawalAmount);
+
+  const getAvailableBalance = () => availableWalletBalance;
 
   useEffect(() => {
     // For sub-subagents: use store_id from URL (after registration) or user's stored data
@@ -449,6 +457,7 @@ const SubSubagentDashboard = () => {
         const [
           ordersResult,
           withdrawResult,
+          recipientsResult,
           packagesResult,
           subagentPricesResult,
           parentSubagentResult,
@@ -456,20 +465,24 @@ const SubSubagentDashboard = () => {
           parentSubagentCostResult
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
-          supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
+          supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id || "").eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
-          // Parent subagent's OWN cost = the AGENT's base price to subagents (base_price is
-          // keyed by agent_store_id). Fallback when the subagent has not set a sub-subagent price.
           store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
         console.log("[v0] Parallel queries completed");
 
+        const payoutData = (withdrawResult.data ?? []).map((p: any) => {
+          const rd = p.transfer_recipients || {};
+          return { ...p, provider_type: rd.provider_type, account_holder_name: rd.account_holder_name, mobile_money_network: rd.mobile_money_network, mobile_money_number: rd.mobile_money_number };
+        });
         setOrders(ordersResult.data || []);
         setTotalOrderCount(ordersResult.count ?? (ordersResult.data?.length || 0));
-        setWithdrawals(withdrawResult.data || []);
+        setWithdrawals(payoutData);
+        setTransferRecipients(recipientsResult.data ?? []);
         setPackages(packagesResult.data || []);
         
         // Set parent subagent store name if available
@@ -561,6 +574,7 @@ const SubSubagentDashboard = () => {
         const [
           ordersResult,
           withdrawResult,
+          recipientsResult2,
           packagesResult,
           subagentPricesResult,
           parentSubagentResult,
@@ -569,7 +583,8 @@ const SubSubagentDashboard = () => {
           parentSubagentCostResult
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
-          supabase.from("withdrawal_requests").select("*").eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
+          supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id || effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
@@ -582,9 +597,14 @@ const SubSubagentDashboard = () => {
           store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null, error: null })
         ]);
 
+        const payoutData2 = (withdrawResult.data ?? []).map((p: any) => {
+          const rd = p.transfer_recipients || {};
+          return { ...p, provider_type: rd.provider_type, account_holder_name: rd.account_holder_name, mobile_money_network: rd.mobile_money_network, mobile_money_number: rd.mobile_money_number };
+        });
         setOrders(ordersResult.data || []);
         setTotalOrderCount(ordersResult.count ?? (ordersResult.data?.length || 0));
-        setWithdrawals(withdrawResult.data || []);
+        setWithdrawals(payoutData2);
+        setTransferRecipients(recipientsResult2.data ?? []);
         setPackages(packagesResult.data || []);
         
         // Set parent subagent store name if available
@@ -593,18 +613,10 @@ const SubSubagentDashboard = () => {
         }
         
         // Build base prices = "Cost from Agent" for this sub-subagent.
-        // Priority (lowest → highest):
-        //   1. admin/default package price (ultimate fallback)
-        //   2. parent subagent's OWN base cost (what the subagent pays their agent) —
-        //      this is what should show when the subagent has NOT set a sub-subagent price
-        //   3. parent subagent's sub-subagent template price (sub_subagent_store_id IS NULL)
         const basePriceMap: Record<string, number> = {};
-        // 1. Ultimate fallback: admin/default package price
         (packagesResult.data || []).forEach((p: any) => {
           basePriceMap[p.id] = p.price;
         });
-        // 2. Fall back to the parent subagent's own cost from their agent.
-        //    Also record it separately (agent->subagent price) for 3-tier profit split.
         const agentToSubMap: Record<string, number> = {};
         (parentSubagentCostResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
@@ -613,7 +625,6 @@ const SubSubagentDashboard = () => {
           }
         });
         setAgentToSubagentCost(agentToSubMap);
-        // 3. Override with the parent subagent's sub-subagent template price (highest priority)
         (parentTemplatePricesResult.data || []).forEach((p: any) => {
           if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
@@ -621,7 +632,6 @@ const SubSubagentDashboard = () => {
         });
         setBasePrices(basePriceMap);
         
-        // Build sub-subagent's own sell prices map
         const subagentPriceMap: Record<string, number> = {};
         (subagentPricesResult.data || []).forEach((p: any) => {
           if (p.sell_price !== null && p.sell_price !== undefined) {
@@ -863,46 +873,139 @@ const SubSubagentDashboard = () => {
     }
   };
 
+  // 24-hour cooldown driven by most recent completed payout
+  useEffect(() => {
+    const lastCompleted = withdrawals
+      .filter(w => w.status === "success" || w.status === "completed")
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+    if (!lastCompleted) { setWithdrawalCooldownEndTime(null); setCooldownTimeRemaining(null); return; }
+
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    const cooldownEnd = new Date(lastCompleted.created_at).getTime() + TWENTY_FOUR_HOURS;
+
+    if (Date.now() >= cooldownEnd) { setWithdrawalCooldownEndTime(null); setCooldownTimeRemaining(null); return; }
+
+    setWithdrawalCooldownEndTime(cooldownEnd);
+    const interval = setInterval(() => {
+      const remaining = cooldownEnd - Date.now();
+      if (remaining <= 0) { setCooldownTimeRemaining(null); setWithdrawalCooldownEndTime(null); clearInterval(interval); }
+      else {
+        const h = Math.floor(remaining / (60 * 60 * 1000));
+        const m = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+        setCooldownTimeRemaining(`${h}h ${m}m`);
+      }
+    }, 30000);
+    const r = cooldownEnd - Date.now();
+    const h = Math.floor(r / (60 * 60 * 1000));
+    const m = Math.floor((r % (60 * 60 * 1000)) / (60 * 1000));
+    setCooldownTimeRemaining(`${h}h ${m}m`);
+    return () => clearInterval(interval);
+  }, [withdrawals]);
+
+  const handleAddRecipient = async () => {
+    if (!recipientName.trim() || !mobileNumber.trim()) { toast({ title: "Please fill all fields", variant: "destructive" }); return; }
+    if (transferRecipients.length >= 2) { toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); return; }
+    try {
+      setWithdrawLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Authentication failed");
+      const resp = await fetch("https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          requester_type: "sub_subagent", requester_id: subagentStore!.id,
+          amount: 0, withdrawal_source: "wallet_balance",
+          recipient_details: { account_holder_name: recipientName, provider_type: "mobile_money", mobile_money_network: mobileNetwork, mobile_money_number: mobileNumber }
+        })
+      });
+      // We only care about the recipient being created — the amount:0 call will fail the transfer but still register the recipient
+      const { data: updated } = await supabase.from("transfer_recipients").select("*").eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "").eq("status", "active").order("created_at", { ascending: false });
+      setTransferRecipients(updated ?? []);
+      setCreateNewRecipient(false); setRecipientName(""); setMobileNetwork("mtn"); setMobileNumber("");
+      toast({ title: "Recipient saved!", description: "Recipient verified with Paystack." });
+    } catch (err: any) {
+      toast({ title: "Failed to save recipient", description: err.message, variant: "destructive" });
+    } finally { setWithdrawLoading(false); }
+  };
+
+  const handleDeleteRecipient = async (recipientCode: string) => {
+    if (!window.confirm("Delete this recipient? This cannot be undone.")) return;
+    try {
+      const { error } = await supabase.from("transfer_recipients").delete().eq("recipient_code", recipientCode);
+      if (error) throw error;
+      toast({ title: "Recipient deleted" });
+      setTransferRecipients(transferRecipients.filter(r => r.recipient_code !== recipientCode));
+      if (selectedRecipient === recipientCode) setSelectedRecipient("");
+    } catch (err: any) { toast({ title: "Failed to delete recipient", description: err.message, variant: "destructive" }); }
+  };
+
+  const handleEditRecipient = (recipient: any) => {
+    setEditingRecipient(recipient);
+    setRecipientName(recipient.account_holder_name);
+    setMobileNetwork(recipient.mobile_money_network || "mtn");
+    setMobileNumber(recipient.mobile_money_number);
+    setCreateNewRecipient(true);
+  };
+
+  const handleSaveEditedRecipient = async () => {
+    if (!recipientName.trim() || !mobileNumber.trim()) { toast({ title: "Please fill all fields", variant: "destructive" }); return; }
+    try {
+      const { error } = await supabase.from("transfer_recipients").update({ account_holder_name: recipientName, mobile_money_network: mobileNetwork, mobile_money_number: mobileNumber }).eq("recipient_code", editingRecipient.recipient_code);
+      if (error) throw error;
+      toast({ title: "Recipient updated" });
+      setTransferRecipients(transferRecipients.map(r => r.recipient_code === editingRecipient.recipient_code ? { ...r, account_holder_name: recipientName, mobile_money_network: mobileNetwork, mobile_money_number: mobileNumber } : r));
+      setEditingRecipient(null); setRecipientName(""); setMobileNetwork("mtn"); setMobileNumber(""); setCreateNewRecipient(false);
+    } catch (err: any) { toast({ title: "Failed to update recipient", description: err.message, variant: "destructive" }); }
+  };
+
   const handleRequestWithdrawal = async () => {
     if (!withdrawAmount || !subagentStore) return;
-    
     const amount = parseFloat(withdrawAmount);
-    
-    // Validate minimum withdrawal
-    if (amount < 10) {
-      toast({ title: "Error", description: "Minimum withdrawal is GHC 10.00", variant: "destructive" });
-      return;
-    }
-    
-    // Check for pending withdrawal
-    const hasPending = withdrawals.some(w => w.status === "pending");
-    if (hasPending) {
-      toast({ title: "Error", description: "You already have a pending withdrawal. Please wait until it completes.", variant: "destructive" });
-      return;
-    }
-    
-    if (amount > getAvailableBalance()) {
-      toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
-      return;
+
+    if (amount < 10) { toast({ title: "Error", description: "Minimum withdrawal is GHC 10.00", variant: "destructive" }); return; }
+    if (hasPendingWithdrawal) { toast({ title: "Error", description: "You have a withdrawal in progress. Wait until it completes.", variant: "destructive" }); return; }
+    if (amount > availableWalletBalance) { toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" }); return; }
+    if (!createNewRecipient && !selectedRecipient) { toast({ title: "Select a recipient", variant: "destructive" }); return; }
+    if (createNewRecipient) {
+      if (transferRecipients.length >= 2) { toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); return; }
+      if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
+      if (!mobileNumber.trim()) { toast({ title: "Enter mobile number", variant: "destructive" }); return; }
     }
 
     try {
       setWithdrawLoading(true);
-      const { error } = await supabase
-        .from("withdrawal_requests")
-        .insert({
-          sub_subagent_store_id: subagentStore.id,
-          amount,
-          status: "pending"
-        });
+      const feePercentage = amount < 100 ? 0.05 : 0.015;
+      const amountAfterFee = amount * (1 - feePercentage);
 
-      if (error) throw error;
-      toast({ title: "Success", description: "Withdrawal request submitted successfully" });
-      setWithdrawAmount("");
+      const payload: any = {
+        requester_type: "sub_subagent",
+        requester_id: subagentStore.id,
+        amount: amountAfterFee,
+        withdrawal_source: "wallet_balance",
+      };
+      if (createNewRecipient) {
+        payload.recipient_details = { account_holder_name: recipientName, provider_type: "mobile_money", mobile_money_network: mobileNetwork, mobile_money_number: mobileNumber };
+      } else {
+        payload.recipient_id = selectedRecipient;
+      }
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) throw new Error("Authentication failed. Please log in again.");
+
+      const response = await fetch("https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Withdrawal failed");
+
+      toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent (after ${(feePercentage * 100).toFixed(1)}% fee).` });
+      setWithdrawAmount(""); setSelectedRecipient(""); setCreateNewRecipient(false);
       fetchData();
-    } catch (error) {
-      console.error("Error requesting withdrawal:", error);
-      toast({ title: "Error", description: "Failed to submit withdrawal request", variant: "destructive" });
+    } catch (error: any) {
+      toast({ title: "Withdrawal Failed", description: error.message, variant: "destructive" });
     } finally {
       setWithdrawLoading(false);
     }
@@ -2220,78 +2323,205 @@ const SubSubagentDashboard = () => {
           </TabsContent>
 
           {/* WITHDRAW */}
-          <TabsContent value="withdraw" className="mt-0 space-y-6">
+          <TabsContent value="withdraw" className="mt-0 space-y-4">
             <Card className="border-border">
               <CardHeader>
-                <CardTitle className="font-display text-lg">Request Withdrawal</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowDownToLine className="h-5 w-5" />
+                  Request Paystack Transfer
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Wallet Balance */}
+                <Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
+                  <CardContent className="p-4 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-5 w-5 text-primary" />
+                        <span className="font-medium">Wallet Balance:</span>
+                      </div>
+                      <span className="font-display text-xl font-bold text-primary">GHC {availableWalletBalance.toFixed(2)}</span>
+                    </div>
+                    {hasPendingWithdrawal && (
+                      <p className="text-xs text-orange-400">GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal.</p>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {hasPendingWithdrawal && (
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                    <p className="text-sm text-yellow-400 font-medium">You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes before requesting another.</p>
+                    <p className="text-sm text-yellow-400 font-medium">WARNING: You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Please wait until it completes.</p>
                   </div>
                 )}
-                <div className="rounded-xl border border-border bg-secondary/50 p-4">
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">MoMo Name</p>
-                      <p className="font-bold">{subagentStore?.momo_name || "Not set"}</p>
+
+                {/* Existing recipients */}
+                {transferRecipients.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <Label>Select Recipient</Label>
+                      <p className="text-xs text-muted-foreground">Tap on the dropdown to select a recipient</p>
                     </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">MoMo Number</p>
-                      <p className="font-bold">{subagentStore?.momo_number || "Not set"}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">Network</p>
-                      <p className="font-bold">{subagentStore?.momo_network?.toUpperCase() || "Not set"}</p>
-                    </div>
+                    <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a recipient..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {transferRecipients.map((r) => (
+                          <SelectItem key={r.recipient_code} value={r.recipient_code}>
+                            {r.account_holder_name} • {r.mobile_money_network?.toUpperCase()}: {r.mobile_money_number}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {transferRecipients.map((r) => (
+                      <div key={r.recipient_code} className="bg-card border border-border rounded-lg p-3 flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{r.account_holder_name}</p>
+                          <p className="text-xs text-muted-foreground">{r.mobile_money_number} • {r.mobile_money_network?.toUpperCase()}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditRecipient(r)} title="Edit"><Edit2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteRecipient(r.recipient_code)} title="Delete"><Trash2 className="h-4 w-4 text-red-400" /></Button>
+                        </div>
+                      </div>
+                    ))}
+                    {transferRecipients.length < 2 && (
+                      <Button variant="outline" className="w-full" onClick={() => { setCreateNewRecipient(true); setRecipientName(""); setMobileNetwork("mtn"); setMobileNumber(""); setEditingRecipient(null); }}>
+                        + Add New Recipient ({transferRecipients.length}/2)
+                      </Button>
+                    )}
                   </div>
-                </div>
-                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                  <p className="text-sm text-yellow-400">My Wallet Balance: <span className="font-bold">GH�� {availableWalletBalance.toFixed(2)}</span></p>
-                  {pendingWithdrawalAmount > 0 && (
-                    <p className="text-xs text-yellow-400 mt-2">
-                      (GHC {pendingWithdrawalAmount.toFixed(2)} pending withdrawal - cannot be used until approved)
-                    </p>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">Minimum: GHC 10.00. Processed within 24 hours.</p>
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1 space-y-1">
-                    <Label>Amount (GHC)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="e.g. 10.00"
-                      value={withdrawAmount}
-                      onChange={e => setWithdrawAmount(e.target.value)}
-                      disabled={hasPendingWithdrawal}
-                    />
-                  </div>
-                  <Button variant="hero" onClick={handleRequestWithdrawal} disabled={withdrawLoading || hasPendingWithdrawal}>
-                    {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
-                    Withdraw
+                )}
+
+                {/* Add recipient toggle */}
+                {(!transferRecipients.length || createNewRecipient) ? (
+                  <Button variant="outline" className="w-full" onClick={() => setCreateNewRecipient(!createNewRecipient)}>
+                    {createNewRecipient ? "Back to Recipients" : "Add Recipient"}
                   </Button>
-                </div>
+                ) : null}
+
+                {/* New recipient form */}
+                {createNewRecipient && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Full Name</Label>
+                      <Input placeholder="e.g. John Doe" value={recipientName} onChange={e => setRecipientName(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Mobile Network</Label>
+                      <Select value={mobileNetwork} onValueChange={setMobileNetwork} disabled={!!editingRecipient}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mtn">MTN</SelectItem>
+                          <SelectItem value="telecel">Telecel</SelectItem>
+                          <SelectItem value="airteltigo">AirtelTigo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {editingRecipient && <p className="text-xs text-muted-foreground mt-1">Cannot change network when editing</p>}
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Mobile Number</Label>
+                      <Input placeholder="024XXXXXXX" value={mobileNumber} onChange={e => setMobileNumber(e.target.value)} disabled={!!editingRecipient} />
+                      {editingRecipient && <p className="text-xs text-muted-foreground mt-1">Cannot change number when editing</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => { setCreateNewRecipient(false); setEditingRecipient(null); setRecipientName(""); setMobileNumber(""); setMobileNetwork("mtn"); }}>Cancel</Button>
+                      <Button variant="hero" onClick={() => editingRecipient ? handleSaveEditedRecipient() : handleAddRecipient()} disabled={withdrawLoading || !recipientName || !mobileNumber}>
+                        {withdrawLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : <><Save className="h-4 w-4 mr-2" />{editingRecipient ? "Update" : "Save"} Recipient</>}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Amount + Transfer button */}
+                {!createNewRecipient && transferRecipients.length > 0 && selectedRecipient && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label>Amount (GHC)</Label>
+                      <Input type="number" step="0.01" placeholder="e.g. 20.00" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} disabled={hasPendingWithdrawal || !!cooldownTimeRemaining} />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => { setWithdrawAmount(""); setSelectedRecipient(""); }} disabled={withdrawLoading}>Clear</Button>
+                      <Button variant="hero" onClick={handleRequestWithdrawal} disabled={withdrawLoading || hasPendingWithdrawal || !selectedRecipient || !!cooldownTimeRemaining} className="flex-1">
+                        {withdrawLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ArrowDownToLine className="h-4 w-4 mr-1" />}
+                        {cooldownTimeRemaining ? `Cooldown: ${cooldownTimeRemaining}` : "Transfer"}
+                      </Button>
+                    </div>
+
+                    {cooldownTimeRemaining && (
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded p-3 flex items-start gap-2">
+                        <div className="text-sm">
+                          <p className="font-semibold text-amber-400">Withdrawal Cooldown Active</p>
+                          <p className="text-amber-300 text-xs mt-1">Next withdrawal in <strong>{cooldownTimeRemaining}</strong></p>
+                        </div>
+                      </div>
+                    )}
+
+                    {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                      <div className="bg-card border border-border rounded p-3 space-y-2">
+                        {(() => {
+                          const amt = parseFloat(withdrawAmount);
+                          const fee = amt < 100 ? 0.05 : 0.015;
+                          const feeAmt = amt * fee;
+                          const receives = amt - feeAmt;
+                          return (
+                            <>
+                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Amount to Deduct:</span><span>GHC {amt.toFixed(2)}</span></div>
+                              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Fee ({(fee * 100).toFixed(1)}%):</span><span className="text-red-400">GHC {feeAmt.toFixed(2)}</span></div>
+                              <div className="border-t border-border pt-2 flex justify-between text-sm font-semibold"><span>Recipient Receives:</span><span className="text-green-400">GHC {receives.toFixed(2)}</span></div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    <details className="cursor-pointer group">
+                      <summary className="text-xs text-blue-400 font-semibold p-2 rounded hover:bg-blue-500/10 flex items-center gap-2">
+                        <span>Withdrawal Fees</span>
+                        <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3 mt-1 space-y-2 text-xs">
+                        <p className="text-blue-300">A small fee applies based on your withdrawal amount:</p>
+                        <div className="space-y-1 pl-2">
+                          <p className="text-muted-foreground">• Less than GHC 100: 5% fee</p>
+                          <p className="text-muted-foreground">• GHC 100 or more: 1.5% fee</p>
+                        </div>
+                      </div>
+                    </details>
+
+                    <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
+                      <p className="text-xs text-red-400 font-semibold mb-1">IMPORTANT WARNING</p>
+                      <p className="text-xs text-red-300">Once a withdrawal is sent, it CANNOT be reversed. Please double-check the recipient details before confirming.</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">Minimum: GHC 10.00 | Processed Instantly</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
+            {/* Payout History */}
             <Card className="border-border">
-              <CardHeader>
-                <CardTitle>Withdrawal History</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Payout History</CardTitle></CardHeader>
               <CardContent>
                 {withdrawals.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No withdrawals yet</p>
+                  <p className="text-center text-muted-foreground py-8">No transfers yet</p>
                 ) : (
                   <div className="space-y-2">
                     {withdrawals.map(w => (
                       <div key={w.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
-                        <div>
-                          <p className="font-medium">GHC{w.amount.toFixed(2)}</p>
+                        <div className="flex-1">
+                          <p className="font-medium">GHC {Number(w.amount).toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString()}</p>
+                          {w.account_holder_name && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {w.mobile_money_network?.toUpperCase()} • {w.mobile_money_number} ({w.account_holder_name})
+                            </p>
+                          )}
                         </div>
-                        <Badge variant={w.status === "completed" ? "default" : "secondary"}>{w.status}</Badge>
+                        <Badge variant={w.status === "success" || w.status === "completed" ? "default" : w.status === "failed" ? "destructive" : "secondary"}>
+                          {w.status}
+                        </Badge>
                       </div>
                     ))}
                   </div>
