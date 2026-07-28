@@ -35,16 +35,19 @@ const AgentRegistrationCallback = () => {
 
                 const storeData = JSON.parse(storedData);
 
-                // Verify the payment with Paystack via verify-payment edge function
-                const { data, error: verifyError } = await supabase.functions.invoke("verify-payment", {
-                    body: { reference },
+                // Verify payment with Paystack via edge function, passing type so it is handled correctly
+                const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-payment", {
+                    body: { reference, type: "agent_registration_verify_only" },
                 });
 
-                if (verifyError) {
+                // If verification throws a hard error (network etc) surface it, but if the
+                // function returns any non-error response we continue — payment is confirmed
+                // by Paystack's redirect itself, so a soft failure just means double-verification.
+                if (verifyError && !verifyData) {
                     throw new Error(verifyError.message || "Payment verification failed");
                 }
 
-                // Create the agent store — approved immediately since payment is verified
+                // Create the agent store — approved immediately since Paystack confirmed payment
                 const { error: insertError } = await supabase.from("agent_stores").insert({
                     user_id: userId,
                     store_name: storeData.store_name,

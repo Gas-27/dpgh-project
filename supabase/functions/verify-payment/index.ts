@@ -105,6 +105,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    // =========================================================
+    // AGENT REGISTRATION VERIFY-ONLY (called from callback page)
+    // Just confirms Paystack says success — store is created by the frontend
+    // =========================================================
+    if (paymentType === "agent_registration_verify_only") {
+      console.log("[v0] Agent registration payment verified (verify-only mode)");
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // =====================================
     // AGENT REGISTRATION PAYMENT HANDLER
     // =====================================
