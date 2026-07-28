@@ -1008,7 +1008,7 @@ export function SubagentStorefront() {
                 style={showSubSubagentForm ? { background: primaryColor, color: primaryForeground } : {}}
                 className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
               >
-                Become a Sub-Subagent
+                Become Agent
               </Button>
             </>
           )}
@@ -1307,7 +1307,7 @@ export function SubagentStorefront() {
           <DialogContent className="max-w-md max-h-[95vh] flex flex-col">
             <div className="overflow-y-auto flex-1">
               <DialogHeader>
-                <DialogTitle>Become a Sub-Subagent</DialogTitle>
+                <DialogTitle>Become Agent</DialogTitle>
                 <DialogDescription>
                   Register your sub-subagent store under {store?.store_name}
                 </DialogDescription>

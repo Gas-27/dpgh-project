@@ -33,7 +33,7 @@ interface FlyerGeneratorProps {
 // Default colors matching the agent flyer
 const DEFAULT_FLYER_COLORS = {
     mtnColor: "#fbbf24",
-    airtelColor: "#dc2626",
+    airtelColor: "#3b82f6",
     telecelColor: "#dc2626",
     buttonBg: "#2563eb",
 };

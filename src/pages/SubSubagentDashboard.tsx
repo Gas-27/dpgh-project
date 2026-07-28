@@ -1039,14 +1039,17 @@ const SubSubagentDashboard = () => {
           .eq("sub_subagent_store_id", subagentStore.id)
           .eq("package_id", packageId);
         
-        // Then insert new — only store sell_price (what sub-subagent charges customers).
-        // base_price is set by the subagent via their template row and must NOT be overwritten here.
+        // Insert sell_price (what this sub-subagent charges customers).
+        // base_price and subagent_minimum_price = their cost from the parent subagent.
+        const costFromAgent = basePrices[packageId] ?? price;
         const { error } = await supabase
           .from("sub_subagent_package_prices")
           .insert({
             sub_subagent_store_id: subagentStore.id,
             subagent_store_id: subagentStore.subagent_store_id,
             package_id: packageId,
+            base_price: costFromAgent,
+            subagent_minimum_price: costFromAgent,
             sell_price: price
           });
 
@@ -1498,11 +1501,18 @@ const SubSubagentDashboard = () => {
   // For sub-subagents, use the sub-subagent URL which includes parent subagent store name
   const storeUrl = (storeName && parentSubagentStoreName) ? DOMAINS.getSubSubagentStoreUrl(parentSubagentStoreName, storeName) : "";
   
-  // Filter orders by search and apply date filter
-  const filteredOrders = getDateFilteredOrders(orders).filter(o => 
-    o.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) ||
-    o.id?.toLowerCase().includes(orderSearch.toLowerCase())
-  );
+  const [showRefundedOnly, setShowRefundedOnly] = useState(false);
+
+  // Filter orders by search, date, and optional refunded-only toggle
+  const filteredOrders = getDateFilteredOrders(orders).filter(o => {
+    const matchesSearch = o.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) ||
+      o.id?.toLowerCase().includes(orderSearch.toLowerCase());
+    if (!matchesSearch) return false;
+    if (showRefundedOnly) {
+      return o.status === "refunded" || o.fulfillment_status === "refunded" || (o.order_status || "").toLowerCase() === "refunded";
+    }
+    return true;
+  });
   
   // Pagination calculations
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
@@ -1805,9 +1815,19 @@ const SubSubagentDashboard = () => {
               <CardHeader className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <CardTitle className="font-display text-lg">Orders ({filteredOrders.length})</CardTitle>
-                  <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search by number..." value={orderSearch} onChange={e => { setOrderSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      variant={showRefundedOnly ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => { setShowRefundedOnly(v => !v); setCurrentPage(1); }}
+                      className={showRefundedOnly ? "bg-orange-500 hover:bg-orange-600 text-white border-0" : "border-orange-500/50 text-orange-400 hover:bg-orange-500/10"}
+                    >
+                      Refunded Only
+                    </Button>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input placeholder="Search by number..." value={orderSearch} onChange={e => { setOrderSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
+                    </div>
                   </div>
                 </div>
               </CardHeader>

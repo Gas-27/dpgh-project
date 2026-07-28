@@ -82,7 +82,7 @@ interface Notification { id: string; message: string; is_active: boolean; create
 
 // ==================== CONSTANTS ====================
 const DEFAULT_THEME = { primary: "#38bdf8", primary_foreground: "#000000", background: "#0a0a0a", card_background: "#171717", gridColumns: 2 };
-const DEFAULT_FLYER_COLORS = { mtnColor: "#f5b81b", airtelColor: "#3b3bdb", telecelColor: "#cc0000", buttonBg: "#0066ff" };
+const DEFAULT_FLYER_COLORS = { mtnColor: "#f5b81b", airtelColor: "#3b82f6", telecelColor: "#cc0000", buttonBg: "#0066ff" };
 
 const FLYER_W = 1080;
 const FLYER_H = 1920;
