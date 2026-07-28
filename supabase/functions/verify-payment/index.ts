@@ -304,57 +304,17 @@ Deno.serve(async (req) => {
         .eq("paystack_reference", reference)
         .maybeSingle();
       
-      if (existingTopup) {
-        console.log("[v0] Subsubagent topup already processed");
-        return new Response(JSON.stringify({
-          success: true,
-          message: "Topup already processed",
-          already_processed: true,
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      const { data: store, error: storeError } = await supabase
-        .from("sub_subagent_stores")
-        .select("wallet_balance")
-        .eq("id", topupSubsubagentStoreId)
-        .single();
-      
-      if (storeError || !store) {
-        console.error("[v0] Subsubagent store not found:", storeError);
-        return new Response(JSON.stringify({ error: "Subsubagent store not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      const newBalance = (Number(store.wallet_balance) || 0) + baseAmount;
-      
-      const { error: updateError } = await supabase
-        .from("sub_subagent_stores")
-        .update({ wallet_balance: newBalance })
-        .eq("id", topupSubsubagentStoreId);
-      
-      if (updateError) {
-        console.error("[v0] Failed to update subsubagent wallet:", updateError);
-        return new Response(JSON.stringify({ error: "Failed to update wallet" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      await supabase.from("sub_subagent_wallet_topups").insert({
-        sub_subagent_store_id: topupSubsubagentStoreId,
-        amount: baseAmount,
-        paystack_reference: reference,
-      });
-      
-      console.log(`[v0] Subsubagent wallet topup: +${baseAmount}, new balance=${newBalance}`);
+      // Wallet credit and topup record insert are handled exclusively by the
+      // Paystack webhook (paystack-webhook-fixed). verify-payment only confirms
+      // that Paystack reports the payment as successful — it does NOT touch
+      // sub_subagent_stores.wallet_balance or sub_subagent_wallet_topups here
+      // to prevent double-crediting.
+      const alreadyDone = !!existingTopup;
+      console.log(`[v0] Subsubagent topup verified via Paystack. Webhook handles credit. already_processed=${alreadyDone}`);
       return new Response(JSON.stringify({
         success: true,
-        message: `Wallet topped up with GH₵${baseAmount.toFixed(2)}`,
-        new_balance: newBalance,
+        message: alreadyDone ? "Topup already processed" : "Payment verified — wallet will be credited shortly",
+        already_processed: alreadyDone,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
