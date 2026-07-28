@@ -1886,7 +1886,8 @@ const AgentDashboard = () => {
     let successCount = 0;
     let errorCount = 0;
 
-    // Helper: resolve the price subagent charged the sub-subagent (for sub-subagent orders)
+    // Helper: resolve the price the subagent was charged (i.e. admin base price stored on order).
+    // For sub-subagent orders we look up subagent_package_prices; fallback is order.base_price.
     const resolveSubagentBasePrice = async (order: any) => {
       if (order.package_id && order.subagent_store_id) {
         const { data } = await supabase
@@ -1897,8 +1898,8 @@ const AgentDashboard = () => {
           .maybeSingle();
         if (data?.base_price != null) return Number(data.base_price);
       }
-      // Fallback to agent_price (admin base price)
-      return Number(order.agent_price || 0);
+      // Fallback: use the admin base price stored on the order itself
+      return Number(order.base_price || 0);
     };
 
     for (const orderId of selectedSubagentOrderIds) {
@@ -1927,12 +1928,18 @@ const AgentDashboard = () => {
           targetSubagentId = order.subagent_store_id;
           refundAmount = await resolveSubagentBasePrice(order);
         } else if (order.subagent_store_id) {
-          // Direct subagent order: refund to the subagent at the agent-to-subagent base price
+          // Direct subagent order: refund at admin base price (stored as order.base_price)
           targetSubagentId = order.subagent_store_id;
-          refundAmount = Number(order.agent_price || 0);
+          refundAmount = Number(order.base_price || 0);
         }
 
-        if (!targetSubagentId || refundAmount <= 0) {
+        if (!targetSubagentId) {
+          toast({ title: "Refund Error", description: "Order has no subagent linked — cannot refund.", variant: "destructive" });
+          errorCount++;
+          continue;
+        }
+        if (refundAmount <= 0) {
+          toast({ title: "Refund Error", description: "Could not determine refund amount for this order. The base price may be missing.", variant: "destructive" });
           errorCount++;
           continue;
         }
@@ -1951,8 +1958,9 @@ const AgentDashboard = () => {
             description: `Your wallet balance (GHC ${agentBalance.toFixed(2)}) is not enough to refund GHC ${refundAmount.toFixed(2)}. Please top up your wallet first.`,
             variant: "destructive",
           });
-          errorCount++;
-          continue;
+          // Stop the whole loop — no point continuing if wallet is empty
+          setRefundingSubagentOrders(new Set());
+          return;
         }
 
         // Deduct refund amount from agent wallet
@@ -4492,7 +4500,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
           {/* ============================= NOTIFICATIONS ============================= */}
           <TabsContent value="notifications" className="mt-0 space-y-6">
-            <Card className="border-border"><CardHeader><CardTitle className="font-display flex items-center gap-2"><Bell className="h-5 w-5" /> Send Notification to Storefront</CardTitle></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Message</Label><Textarea placeholder="e.g., 🎉 Special offer: 20% off all bundles this weekend!" value={newNotificationMsg} onChange={e => setNewNotificationMsg(e.target.value)} rows={3} /></div><div className="space-y-2"><Label>Expiry (optional)</Label><Input type="datetime-local" value={newNotificationExpiry} onChange={e => setNewNotificationExpiry(e.target.value)} /><p className="text-xs text-muted-foreground">Leave empty for no expiry.</p></div><Button variant="hero" onClick={createNotification} disabled={sendingNotification}>{sendingNotification ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}Send Notification</Button></CardContent></Card>
+            <Card className="border-border"><CardHeader><CardTitle className="font-display flex items-center gap-2"><Bell className="h-5 w-5" /> Send Notification to Storefront</CardTitle></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Message</Label><Textarea placeholder="e.g., �� Special offer: 20% off all bundles this weekend!" value={newNotificationMsg} onChange={e => setNewNotificationMsg(e.target.value)} rows={3} /></div><div className="space-y-2"><Label>Expiry (optional)</Label><Input type="datetime-local" value={newNotificationExpiry} onChange={e => setNewNotificationExpiry(e.target.value)} /><p className="text-xs text-muted-foreground">Leave empty for no expiry.</p></div><Button variant="hero" onClick={createNotification} disabled={sendingNotification}>{sendingNotification ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}Send Notification</Button></CardContent></Card>
             <Card className="border-border"><CardHeader><CardTitle className="font-display">Active &amp; Past Notifications</CardTitle></CardHeader><CardContent>{loadingNotifications ? (<div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>) : notifications.length === 0 ? (<p className="text-center text-muted-foreground py-8">No notifications yet.</p>) : (<div className="space-y-4">{notifications.map(n => (<div key={n.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-border rounded-lg bg-card"><div className="flex-1"><p className="font-medium">{n.message}</p><div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1"><span>Created: {new Date(n.created_at).toLocaleString()}</span>{n.expires_at && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Expires: {new Date(n.expires_at).toLocaleString()}</span>}</div></div><div className="flex gap-2"><Badge variant={n.is_active ? "default" : "secondary"} className="cursor-pointer" onClick={() => toggleNotificationActive(n.id, n.is_active)}>{n.is_active ? "Active" : "Inactive"}</Badge><Button variant="ghost" size="icon" onClick={() => deleteNotification(n.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></div>))}</div>)}</CardContent></Card>
           </TabsContent>
 
