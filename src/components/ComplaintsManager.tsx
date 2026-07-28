@@ -74,8 +74,13 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
       setLoading(true);
       setTableError(false);
 
-      const BASE_SELECT = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at";
-      const EXTENDED_SELECT = BASE_SELECT + ", screenshot_url, owing_airtime, owing_bundle, owing_momo";
+      // Three-tier fallback — try most columns first, degrade gracefully
+      // Tier 1: all new columns (requires migration)
+      // Tier 2: screenshot_url only (may exist without the owing_* columns)
+      // Tier 3: base columns only (always works)
+      const TIER1 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at";
+      const TIER2 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, status, created_at";
+      const TIER3 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at";
 
       const buildQuery = (select: string) => {
         let q = supabase.from("complaints").select(select).order("created_at", { ascending: false });
@@ -83,22 +88,26 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
         return q;
       };
 
-      // Try with extended columns first; fall back to base columns if they don't exist yet
-      let { data, error } = await buildQuery(EXTENDED_SELECT);
+      const isSchemaErr = (e: { code?: string; message?: string }) =>
+        e.code === "PGRST204" || e.code === "400" ||
+        (e.message || "").toLowerCase().includes("column") ||
+        (e.message || "").toLowerCase().includes("could not find");
+
+      let { data, error } = await buildQuery(TIER1);
+
+      if (error && isSchemaErr(error)) {
+        ({ data, error } = await buildQuery(TIER2));
+      }
+      if (error && isSchemaErr(error)) {
+        ({ data, error } = await buildQuery(TIER3));
+      }
 
       if (error) {
-        const isSchemaError = error.code === "PGRST204" || error.code === "400" || error.message?.includes("column") || error.message?.includes("Could not find");
-        if (isSchemaError) {
-          // New columns not yet migrated — fetch without them
-          ({ data, error } = await buildQuery(BASE_SELECT));
+        if ((error.message || "").includes("Could not find the table")) {
+          setTableError(true);
+          return;
         }
-        if (error) {
-          if (error.message?.includes("Could not find the table")) {
-            setTableError(true);
-            return;
-          }
-          throw error;
-        }
+        throw error;
       }
 
       setComplaints((data as Complaint[]) || []);
@@ -427,36 +436,50 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
             </CardContent>
           </Card>
 
-          {/* Checklist */}
+          {/* Checklist — shown prominently before any other detail */}
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Pre-submission Checklist</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Customer Pre-submission Checklist</p>
             <div className="grid grid-cols-3 gap-2">
-              {[["Owing Airtime", complaint.owing_airtime], ["Owing Bundle", complaint.owing_bundle], ["Owing MoMo", complaint.owing_momo]].map(([label, val]) => (
-                <div key={String(label)} className="border border-border rounded-lg p-3 text-center text-xs">
-                  <p className="text-muted-foreground mb-1">{String(label)}</p>
-                  <p>{boolLabel(val as boolean | null)}</p>
+              {([
+                ["Owing Airtime", complaint.owing_airtime],
+                ["Owing Bundle", complaint.owing_bundle],
+                ["Owing MoMo", complaint.owing_momo],
+              ] as [string, boolean | null | undefined][]).map(([label, val]) => (
+                <div
+                  key={label}
+                  className={`rounded-lg p-3 text-center text-xs border
+                    ${val == null
+                      ? "border-border bg-muted/30"
+                      : val
+                        ? "border-red-500/40 bg-red-500/10"
+                        : "border-green-500/40 bg-green-500/10"
+                    }`}
+                >
+                  <p className="text-muted-foreground mb-1.5">{label}</p>
+                  <p className={`font-bold text-sm ${val == null ? "text-muted-foreground" : val ? "text-red-400" : "text-green-400"}`}>
+                    {val == null ? "Not answered" : val ? "YES" : "No"}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
 
-          <Separator />
-
-          {/* Complaint text */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{complaint.complaint_title}</p>
-            <p className="text-sm whitespace-pre-wrap">{complaint.complaint_details}</p>
-          </div>
-
-          {/* Screenshot */}
+          {/* Screenshot — shown before complaint narrative */}
           {complaint.screenshot_url ? (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Screenshot</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Customer Screenshot</p>
               <img
                 src={complaint.screenshot_url}
-                alt="Customer screenshot"
+                alt="Customer data balance screenshot"
                 className="w-full rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => onPreviewImage(complaint.screenshot_url!)}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                  const msg = document.createElement("p");
+                  msg.className = "text-xs text-muted-foreground italic";
+                  msg.textContent = "Screenshot could not be loaded — the file may have been removed.";
+                  (e.currentTarget as HTMLImageElement).parentElement?.appendChild(msg);
+                }}
               />
               <div className="flex gap-2 mt-2">
                 <a
@@ -468,11 +491,27 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
                 >
                   <Download className="h-3.5 w-3.5" /> Save Image
                 </a>
+                <button
+                  onClick={() => onPreviewImage(complaint.screenshot_url!)}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
+                >
+                  <Image className="h-3.5 w-3.5" /> Fullscreen
+                </button>
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground italic">No screenshot attached</p>
+            <div className="rounded-lg border border-dashed border-border p-4 text-center">
+              <p className="text-xs text-muted-foreground italic">No screenshot was attached to this complaint</p>
+            </div>
           )}
+
+          <Separator />
+
+          {/* Complaint text */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{complaint.complaint_title}</p>
+            <p className="text-sm whitespace-pre-wrap">{complaint.complaint_details}</p>
+          </div>
 
           {/* Actions */}
           {complaint.status !== "resolved" && (
@@ -631,20 +670,43 @@ function ComplaintsTable({
                       <p className="font-medium">{c.agent_stores?.store_name || c.subagent_stores?.store_name || "—"}</p>
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-0.5 text-xs">
-                        <p>Airtime: <span className={c.owing_airtime ? "text-red-400 font-medium" : "text-green-400"}>{c.owing_airtime == null ? "—" : c.owing_airtime ? "Yes" : "No"}</span></p>
-                        <p>Bundle: <span className={c.owing_bundle ? "text-red-400 font-medium" : "text-green-400"}>{c.owing_bundle == null ? "—" : c.owing_bundle ? "Yes" : "No"}</span></p>
-                        <p>MoMo: <span className={c.owing_momo ? "text-red-400 font-medium" : "text-green-400"}>{c.owing_momo == null ? "—" : c.owing_momo ? "Yes" : "No"}</span></p>
+                      <div className="flex flex-col gap-1">
+                        {[
+                          { label: "Air", val: c.owing_airtime },
+                          { label: "Bndl", val: c.owing_bundle },
+                          { label: "MoMo", val: c.owing_momo },
+                        ].map(({ label, val }) => (
+                          <span
+                            key={label}
+                            className={`inline-flex items-center gap-1 text-[10px] font-medium rounded px-1.5 py-0.5 w-fit
+                              ${val == null
+                                ? "bg-muted text-muted-foreground"
+                                : val
+                                  ? "bg-red-500/15 text-red-400 border border-red-500/30"
+                                  : "bg-green-500/15 text-green-400 border border-green-500/30"
+                              }`}
+                          >
+                            {label}: {val == null ? "?" : val ? "YES" : "No"}
+                          </span>
+                        ))}
                       </div>
                     </TableCell>
                     <TableCell>
                       {c.screenshot_url ? (
                         <button
-                          onClick={() => onPreviewImage(c.screenshot_url!)}
-                          className="flex items-center gap-1 text-xs text-primary hover:underline"
+                          onClick={(e) => { e.stopPropagation(); onPreviewImage(c.screenshot_url!); }}
+                          className="block rounded overflow-hidden border border-border hover:border-primary transition-colors"
+                          title="Click to enlarge screenshot"
                         >
-                          <Image className="h-3.5 w-3.5" />
-                          View
+                          <img
+                            src={c.screenshot_url}
+                            alt="Customer screenshot"
+                            className="w-14 h-14 object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                              (e.currentTarget.parentElement as HTMLElement).innerHTML = '<span class="flex items-center gap-1 text-xs text-primary px-2 py-1"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>View</span>';
+                            }}
+                          />
                         </button>
                       ) : (
                         <span className="text-xs text-muted-foreground">None</span>
