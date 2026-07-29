@@ -1695,16 +1695,21 @@ const AdminDashboard = () => {
             if (!updateErr) targetWalletUpdated = true;
           }
         } else if (order.api_user) {
-          // API user order: order.api_user stores the api_users.identity_id (auth UUID).
-          // Look up by identity_id to get the correct row and its pk id.
-          const { data: apiUser } = await supabase
+          // API user order: order.api_user stores api_users.id (the PK uuid).
+          // The 400 error was caused by selecting a non-existent column 'wallet_balance'
+          // — the actual column is 'wallet'. Look up directly by PK id.
+          const { data: apiUser, error: apiUserErr } = await supabase
             .from("api_users")
             .select("id, wallet")
-            .eq("identity_id", order.api_user)
+            .eq("id", order.api_user)
             .maybeSingle();
 
+          if (apiUserErr) {
+            console.log("[v0] api_users lookup error:", apiUserErr.message, apiUserErr.details);
+          }
+
           // Refund using the price admin charged this specific API user (per-user or api_price)
-          refundAmount = await resolveApiPrice(order, apiUser?.id ?? "");
+          refundAmount = await resolveApiPrice(order, apiUser?.id ?? order.api_user);
 
           if (apiUser) {
             const newBalance = (Number(apiUser.wallet) || 0) + refundAmount;
@@ -1712,7 +1717,28 @@ const AdminDashboard = () => {
               .from("api_users")
               .update({ wallet: newBalance })
               .eq("id", apiUser.id);
-            if (!updateErr) targetWalletUpdated = true;
+            if (!updateErr) {
+              targetWalletUpdated = true;
+            } else {
+              console.log("[v0] api_users wallet update error:", updateErr.message);
+            }
+          } else {
+            // Fallback: try looking up by identity_id in case old orders stored auth UUID
+            const { data: apiUserByIdentity } = await supabase
+              .from("api_users")
+              .select("id, wallet")
+              .eq("identity_id", order.api_user)
+              .maybeSingle();
+
+            if (apiUserByIdentity) {
+              refundAmount = await resolveApiPrice(order, apiUserByIdentity.id);
+              const newBalance = (Number(apiUserByIdentity.wallet) || 0) + refundAmount;
+              const { error: updateErr } = await supabase
+                .from("api_users")
+                .update({ wallet: newBalance })
+                .eq("id", apiUserByIdentity.id);
+              if (!updateErr) targetWalletUpdated = true;
+            }
           }
         }
 
