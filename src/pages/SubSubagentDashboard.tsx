@@ -922,40 +922,66 @@ const SubSubagentDashboard = () => {
   }, [withdrawals]);
 
   const handleAddRecipient = async () => {
-    if (!recipientName.trim() || !mobileNumber.trim()) { toast({ title: "Please fill all fields", variant: "destructive" }); return; }
-    if (transferRecipients.length >= 2) { toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); return; }
-    try {
-      setWithdrawLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Authentication failed");
+    if (!user?.id) {
+      toast({ title: "Not authenticated", variant: "destructive" });
+      return;
+    }
+    if (transferRecipients.length >= 2) {
+      toast({ title: "Maximum 2 recipients allowed", variant: "destructive" });
+      return;
+    }
+    if (!recipientName.trim()) {
+      toast({ title: "Enter recipient name", variant: "destructive" });
+      return;
+    }
+    if (!mobileNumber.trim()) {
+      toast({ title: "Enter mobile number", variant: "destructive" });
+      return;
+    }
 
-      // Use the dedicated create-recipient function (not create-payout-request)
-      const resp = await fetch("https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-recipient", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-        body: JSON.stringify({
+    setWithdrawLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("You must be logged in to add a recipient");
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-transfer-recipient', {
+        body: {
+          user_id: user.id,
           account_holder_name: recipientName,
           provider_type: "mobile_money",
           mobile_money_network: mobileNetwork,
           mobile_money_number: mobileNumber,
-        })
+        }
       });
-      const result = await resp.json();
-      if (!resp.ok || !result.success) throw new Error(result.error || "Failed to save recipient");
 
-      // Re-fetch recipients using effectiveUserId (the sub-subagent's own auth uid)
+      if (error) {
+        throw new Error(error.message || "Failed to create recipient");
+      }
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to create recipient");
+      }
+
+      // Refresh recipients list using the same user_id we saved with
       const { data: updated } = await supabase
         .from("transfer_recipients")
         .select("*")
-        .eq("user_id", user?.id ?? "")
+        .eq("user_id", user.id)
         .eq("status", "active")
         .order("created_at", { ascending: false });
+
       setTransferRecipients(updated ?? []);
-      setCreateNewRecipient(false); setRecipientName(""); setMobileNetwork("mtn"); setMobileNumber("");
-      toast({ title: "Recipient saved!", description: "Recipient verified with Paystack." });
+      setCreateNewRecipient(false);
+      setRecipientName("");
+      setMobileNetwork("mtn");
+      setMobileNumber("");
+      toast({ title: "Recipient saved successfully!", description: "Recipient verified with Paystack." });
     } catch (err: any) {
       toast({ title: "Failed to save recipient", description: err.message, variant: "destructive" });
-    } finally { setWithdrawLoading(false); }
+    } finally {
+      setWithdrawLoading(false);
+    }
   };
 
   const handleDeleteRecipient = async (recipientCode: string) => {
