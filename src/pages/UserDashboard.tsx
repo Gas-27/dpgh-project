@@ -267,12 +267,29 @@ const UserDashboard = () => {
         // Auto-create the customers row if it doesn't exist so topup_reference
         // (set by a DB trigger on insert) is always available for the user.
         if (!customerData) {
-          const { data: newCustomer } = await supabase
+          const { data: newCustomer, error: insertErr } = await supabase
             .from("customers")
-            .insert({ user_id: effectiveUserId, wallet_balance: 0 })
+            .upsert(
+              { user_id: effectiveUserId, wallet_balance: 0 },
+              { onConflict: "user_id", ignoreDuplicates: false }
+            )
             .select("*")
             .maybeSingle();
-          if (newCustomer) customerData = newCustomer;
+          if (newCustomer) {
+            customerData = newCustomer;
+          } else {
+            // upsert may fail due to RLS — try a plain insert as fallback
+            const { data: created, error: createErr } = await supabase
+              .from("customers")
+              .insert({ user_id: effectiveUserId, wallet_balance: 0 })
+              .select("*")
+              .maybeSingle();
+            if (created) {
+              customerData = created;
+            } else {
+              console.log("[v0] customers row creation failed:", insertErr?.message || createErr?.message);
+            }
+          }
         }
 
         let customerPkId: string | null = null;

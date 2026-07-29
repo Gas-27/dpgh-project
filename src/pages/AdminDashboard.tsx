@@ -1614,13 +1614,7 @@ const AdminDashboard = () => {
         let refundAmount = paidAmount;
         let targetWalletUpdated = false;
 
-        console.log("[v0] Processing refund for order", orderId, "- Source:", { 
-          subagent_store_id: order.subagent_store_id, 
-          agent_store_id: order.agent_store_id, 
-          customer_id: order.customer_id,
-          api_user: order.api_user,
-          amount: order.amount
-        });
+
 
         // Simplified refund logic:
         // 1. If customer_id exists → refund to customer wallet (regardless of payment method)
@@ -1628,33 +1622,36 @@ const AdminDashboard = () => {
         // Use base price (order.amount) as refund amount
         
         if (order.customer_id) {
-          // Customer order: refund the full amount the customer actually paid.
+          // Customer order: refund the base price (data_packages.price = what admin set).
+          // Use the stored order.amount which IS the price the admin set.
+          // We call a server-side API route that uses the service-role key to bypass
+          // RLS on the customers table — client-side supabase can't update another user's row.
           refundAmount = paidAmount;
 
-          // Upsert the customer wallet row
-          const { data: customer } = await supabase
-            .from("customers")
-            .select("id, wallet_balance")
-            .eq("user_id", order.customer_id)
-            .maybeSingle();
-          
-          if (customer) {
-            const newBalance = (customer.wallet_balance || 0) + refundAmount;
-            console.log("[v0] Updating customer wallet:", { old: customer.wallet_balance, new: newBalance, refund: refundAmount });
-            const { error: updateErr } = await supabase
-              .from("customers")
-              .update({ wallet_balance: newBalance })
-              .eq("id", customer.id);
-            if (!updateErr) targetWalletUpdated = true;
-            else console.log("[v0] Customer wallet update failed:", updateErr);
+          const refundRes = await fetch("/api/admin/refund-to-customer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customer_auth_id: order.customer_id,
+              refund_amount: refundAmount,
+              order_id: orderId,
+            }),
+          });
+          const refundData = await refundRes.json();
+
+          if (refundRes.ok && refundData.success) {
+            targetWalletUpdated = true;
+            // Order already marked refunded by the API route — update local state and continue
+            setOrders(prev => prev.map((o: any) =>
+              o.id === orderId
+                ? { ...o, fulfillment_status: "refunded", status: "refunded", refunded_amount: refundAmount }
+                : o
+            ));
+            continue;
           } else {
-            // Create new wallet row if it doesn't exist — DB trigger sets topup_reference
-            console.log("[v0] Creating customer wallet for:", order.customer_id, "balance:", refundAmount);
-            const { error: insertErr } = await supabase
-              .from("customers")
-              .insert({ user_id: order.customer_id, wallet_balance: refundAmount });
-            if (!insertErr) targetWalletUpdated = true;
-            else console.log("[v0] Customer wallet insert failed:", insertErr);
+            console.log("[v0] Customer refund API failed:", refundData.error);
+            toast({ title: `Refund failed for order ${orderId}`, description: refundData.error || "Customer wallet update failed", variant: "destructive" });
+            continue;
           }
         } else if (order.subagent_store_id) {
           // Subagent order (or sub-subagent order whose subagent_store_id is the parent subagent):
