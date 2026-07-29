@@ -165,6 +165,24 @@ const SubSubagentDashboard = () => {
   const [recipientName, setRecipientName] = useState("");
   const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [mobileNumber, setMobileNumber] = useState("");
+
+  const detectNetwork = (number: string): string => {
+    const prefix = number.replace(/\D/g, "").substring(0, 3);
+    const mtn = ["024","025","053","054","055","059"];
+    const telecel = ["020","050"];
+    const airteltigo = ["026","027","056","057"];
+    if (mtn.includes(prefix)) return "mtn";
+    if (telecel.includes(prefix)) return "telecel";
+    if (airteltigo.includes(prefix)) return "airteltigo";
+    return mobileNetwork;
+  };
+
+  const handleMobileNumberChange = (value: string) => {
+    setMobileNumber(value);
+    if (value.replace(/\D/g, "").length >= 3) {
+      setMobileNetwork(detectNetwork(value));
+    }
+  };
   const [editingRecipient, setEditingRecipient] = useState<any>(null);
   const [withdrawalCooldownEndTime, setWithdrawalCooldownEndTime] = useState<number | null>(null);
   const [cooldownTimeRemaining, setCooldownTimeRemaining] = useState<string | null>(null);
@@ -466,7 +484,7 @@ const SubSubagentDashboard = () => {
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
-          supabase.from("transfer_recipients").select("*").eq("user_id", user?.id ?? "").eq("status", "active").order("created_at", { ascending: false }),
+          supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
@@ -584,7 +602,7 @@ const SubSubagentDashboard = () => {
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
-          supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id || effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
+          supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
@@ -925,12 +943,11 @@ const SubSubagentDashboard = () => {
       const result = await resp.json();
       if (!resp.ok || !result.success) throw new Error(result.error || "Failed to save recipient");
 
-      // Re-fetch recipients using the auth user id (transfer_recipients is keyed by user_id = auth.uid)
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      // Re-fetch recipients using effectiveUserId (the sub-subagent's own auth uid)
       const { data: updated } = await supabase
         .from("transfer_recipients")
         .select("*")
-        .eq("user_id", authUser?.id ?? "")
+        .eq("user_id", effectiveUserId)
         .eq("status", "active")
         .order("created_at", { ascending: false });
       setTransferRecipients(updated ?? []);
@@ -2427,7 +2444,7 @@ const SubSubagentDashboard = () => {
                     </div>
                     <div className="space-y-1">
                       <Label>Mobile Number</Label>
-                      <Input placeholder="024XXXXXXX" value={mobileNumber} onChange={e => setMobileNumber(e.target.value)} disabled={!!editingRecipient} />
+                      <Input placeholder="024XXXXXXX" value={mobileNumber} onChange={e => handleMobileNumberChange(e.target.value)} disabled={!!editingRecipient} />
                       {editingRecipient && <p className="text-xs text-muted-foreground mt-1">Cannot change number when editing</p>}
                     </div>
                     <div className="flex gap-2">

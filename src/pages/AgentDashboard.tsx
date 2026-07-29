@@ -351,6 +351,25 @@ const AgentDashboard = () => {
   const [recipientName, setRecipientName] = useState("");
   const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [mobileNumber, setMobileNumber] = useState("");
+
+  const detectNetwork = (number: string): string => {
+    const prefix = number.replace(/\D/g, "").substring(0, 3);
+    const mtn = ["024","025","053","054","055","059"];
+    const telecel = ["020","050"];
+    const airteltigo = ["026","027","056","057"];
+    if (mtn.includes(prefix)) return "mtn";
+    if (telecel.includes(prefix)) return "telecel";
+    if (airteltigo.includes(prefix)) return "airteltigo";
+    return mobileNetwork;
+  };
+
+  const handleMobileNumberChange = (value: string) => {
+    setMobileNumber(value);
+    if (value.replace(/\D/g, "").length >= 3) {
+      setMobileNetwork(detectNetwork(value));
+    }
+  };
+
   const [showTopupDialog, setShowTopupDialog] = useState(false);
   const [topupAmount, setTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
@@ -3330,7 +3349,7 @@ const AgentDashboard = () => {
                         <Input 
                           placeholder="024XXXXXXX" 
                           value={mobileNumber}
-                          onChange={e => setMobileNumber(e.target.value)}
+                          onChange={e => handleMobileNumberChange(e.target.value)}
                         />
                       </div>
                       
