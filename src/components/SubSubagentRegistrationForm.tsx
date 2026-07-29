@@ -176,9 +176,6 @@ export default function SubSubagentRegistrationForm({
     try {
       setLoading(true);
 
-      // Step 1: Always create the user account and subagent store first
-      console.log("[v0] Creating user account and subagent store first");
-
       // Sign up the user.
       // NOTE: "sub_subagent" is NOT in the app_role enum so passing it as role
       // in metadata causes the handle_new_user trigger to fail with a 500.
@@ -199,10 +196,6 @@ export default function SubSubagentRegistrationForm({
 
       // user_roles also uses the app_role enum — skip inserting "sub_subagent"
       // (not a valid enum value). Role is determined by sub_subagent_stores membership.
-
-      // Step 2: Check if fees are required (Sub-Subagents don't have registration fees)
-      // Sub-subagents are automatically approved when registering under a subagent
-      console.log("[v0] Sub-subagent registration - no fees, auto-approving");
 
       // Generate a sequential top-up reference (used as the USSD access code).
       // Sub-subagents use the "Agt" prefix followed by their creation number
@@ -233,25 +226,16 @@ export default function SubSubagentRegistrationForm({
         .select()
         .single();
 
-      if (storeError) {
-        console.error("[v0] Error creating sub-subagent store:", storeError);
-        throw storeError;
-      }
-
-      console.log("[v0] Sub-subagent store created:", storeData.id);
+      if (storeError) throw storeError;
 
       // Auto sign-in the newly created user
-      console.log("[v0] Auto signing in user...");
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
       if (signInError) {
-        console.error("[v0] Auto sign-in failed:", signInError);
         // Still redirect even if auto-signin fails - user can sign in manually
-      } else {
-        console.log("[v0] User auto signed in successfully");
       }
 
       // Sub-subagents don't need payment, so skip to dashboard
@@ -267,7 +251,6 @@ export default function SubSubagentRegistrationForm({
         window.location.href = `/sub-subagent-dashboard?store_id=${storeData.id}`;
       }, 500);
     } catch (error: any) {
-      console.error("[v0] Registration error:", error);
       toast({
         title: "Registration Failed",
         description: error.message || "Failed to create agent account",

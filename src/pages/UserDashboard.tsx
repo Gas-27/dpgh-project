@@ -264,39 +264,38 @@ const UserDashboard = () => {
           .eq("user_id", effectiveUserId)
           .maybeSingle();
 
-        // Auto-create the customers row if it doesn't exist so topup_reference
-        // (set by a DB trigger on insert) is always available for the user.
+        // Auto-create the customers row if it doesn't exist.
         if (!customerData) {
-          const { data: newCustomer, error: insertErr } = await supabase
+          const { data: created } = await supabase
             .from("customers")
-            .upsert(
-              { user_id: effectiveUserId, wallet_balance: 0 },
-              { onConflict: "user_id", ignoreDuplicates: false }
-            )
+            .insert({ user_id: effectiveUserId, wallet_balance: 0 })
             .select("*")
             .maybeSingle();
-          if (newCustomer) {
-            customerData = newCustomer;
-          } else {
-            // upsert may fail due to RLS — try a plain insert as fallback
-            const { data: created, error: createErr } = await supabase
-              .from("customers")
-              .insert({ user_id: effectiveUserId, wallet_balance: 0 })
-              .select("*")
-              .maybeSingle();
-            if (created) {
-              customerData = created;
-            } else {
-              console.log("[v0] customers row creation failed:", insertErr?.message || createErr?.message);
-            }
-          }
+          if (created) customerData = created;
+        }
+
+        // If the row exists but topup_reference is null (created before the DB trigger
+        // was added, or the trigger didn't fire), generate one in app code and save it.
+        // Format matches the DB trigger: sequential number + "us" suffix e.g. "2822us".
+        if (customerData && !customerData.topup_reference) {
+          const { count: customerCount } = await supabase
+            .from("customers")
+            .select("*", { count: "exact", head: true });
+          const generatedRef = `${(customerCount || 1)}us`;
+          const { data: updatedCustomer } = await supabase
+            .from("customers")
+            .update({ topup_reference: generatedRef })
+            .eq("id", customerData.id)
+            .select("*")
+            .maybeSingle();
+          if (updatedCustomer) customerData = updatedCustomer;
+          else customerData = { ...customerData, topup_reference: generatedRef };
         }
 
         let customerPkId: string | null = null;
         if (customerData) {
           customerPkId = customerData.id;
           setNormalWallet(customerData.wallet_balance || 0);
-          // Always use the DB value — the SQL trigger assigns it on row creation
           setTopupReference(customerData.topup_reference || "");
         }
 
@@ -892,12 +891,13 @@ const UserDashboard = () => {
             </div>
             <p className="font-display text-3xl font-bold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</p>
             <p className="text-xs text-muted-foreground mt-2">For regular purchases</p>
-            {topupReference && (
-              <div className="mt-3 flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 rounded-md px-3 py-2">
-                <span className="text-xs text-muted-foreground shrink-0">Top-up Reference:</span>
-                <span className="font-mono font-bold text-cyan-400 text-sm tracking-wider">{topupReference}</span>
-              </div>
-            )}
+            <div className="mt-3 flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 rounded-md px-3 py-2">
+              <span className="text-xs text-muted-foreground shrink-0">Top-up Reference:</span>
+              {topupReference
+                ? <span className="font-mono font-bold text-cyan-400 text-sm tracking-wider">{topupReference}</span>
+                : <span className="text-xs text-muted-foreground italic">Loading...</span>
+              }
+            </div>
             <div className="flex gap-2 mt-4">
               <Button onClick={() => setActiveMenu("buy-data")} className="flex-1" size="sm" variant="default">
                 Buy Data
