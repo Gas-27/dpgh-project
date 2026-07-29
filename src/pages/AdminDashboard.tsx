@@ -1622,36 +1622,39 @@ const AdminDashboard = () => {
         // Use base price (order.amount) as refund amount
         
         if (order.customer_id) {
-          // Customer order: refund the base price (data_packages.price = what admin set).
-          // Use the stored order.amount which IS the price the admin set.
-          // We call a server-side API route that uses the service-role key to bypass
-          // RLS on the customers table — client-side supabase can't update another user's row.
+          // Customer order: refund order.amount (the base price admin set) to customer wallet.
           refundAmount = paidAmount;
 
-          const refundRes = await fetch("/api/admin/refund-to-customer", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              customer_auth_id: order.customer_id,
-              refund_amount: refundAmount,
-              order_id: orderId,
-            }),
-          });
-          const refundData = await refundRes.json();
+          // Try to find the customer row by user_id (auth UUID stored in order.customer_id)
+          const { data: customer, error: fetchErr } = await supabase
+            .from("customers")
+            .select("id, wallet_balance")
+            .eq("user_id", order.customer_id)
+            .maybeSingle();
 
-          if (refundRes.ok && refundData.success) {
-            targetWalletUpdated = true;
-            // Order already marked refunded by the API route — update local state and continue
-            setOrders(prev => prev.map((o: any) =>
-              o.id === orderId
-                ? { ...o, fulfillment_status: "refunded", status: "refunded", refunded_amount: refundAmount }
-                : o
-            ));
-            continue;
+          if (customer) {
+            const newBalance = (Number(customer.wallet_balance) || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("customers")
+              .update({ wallet_balance: newBalance })
+              .eq("id", customer.id);
+            if (!updateErr) {
+              targetWalletUpdated = true;
+            } else {
+              toast({ title: `Refund failed`, description: updateErr.message, variant: "destructive" });
+              continue;
+            }
           } else {
-            console.log("[v0] Customer refund API failed:", refundData.error);
-            toast({ title: `Refund failed for order ${orderId}`, description: refundData.error || "Customer wallet update failed", variant: "destructive" });
-            continue;
+            // Row doesn't exist yet — create it. DB trigger assigns topup_reference.
+            const { error: insertErr } = await supabase
+              .from("customers")
+              .insert({ user_id: order.customer_id, wallet_balance: refundAmount });
+            if (!insertErr) {
+              targetWalletUpdated = true;
+            } else {
+              toast({ title: `Refund failed`, description: insertErr.message || fetchErr?.message || "Customer wallet not found", variant: "destructive" });
+              continue;
+            }
           }
         } else if (order.subagent_store_id) {
           // Subagent order (or sub-subagent order whose subagent_store_id is the parent subagent):
@@ -1796,19 +1799,19 @@ const AdminDashboard = () => {
 
       // Determine target wallet and deduct the refund amount
       if (order.customer_id) {
-        // Customer refund: deduct from customer wallet
+        // Customer refund reversal: deduct from customer wallet (customers table, not user_wallets)
         const { data: customer } = await supabase
-          .from("user_wallets")
-          .select("wallet_balance")
+          .from("customers")
+          .select("id, wallet_balance")
           .eq("user_id", order.customer_id)
           .maybeSingle();
 
         if (customer) {
-          const newBalance = Math.max(0, (customer.wallet_balance || 0) - refundAmount);
+          const newBalance = Math.max(0, (Number(customer.wallet_balance) || 0) - refundAmount);
           const { error: updateErr } = await supabase
-            .from("user_wallets")
+            .from("customers")
             .update({ wallet_balance: newBalance })
-            .eq("user_id", order.customer_id);
+            .eq("id", customer.id);
           if (!updateErr) targetWalletUpdated = true;
         }
       } else if (order.subagent_store_id) {
