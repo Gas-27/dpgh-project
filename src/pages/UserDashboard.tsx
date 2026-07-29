@@ -258,11 +258,22 @@ const UserDashboard = () => {
 
         // Fetch user's normal wallet from customers table
         // customers.user_id is the auth user id; customers.id is the PK
-        const { data: customerData } = await supabase
+        let { data: customerData } = await supabase
           .from("customers")
           .select("*")
           .eq("user_id", effectiveUserId)
           .maybeSingle();
+
+        // Auto-create the customers row if it doesn't exist so topup_reference
+        // (set by a DB trigger on insert) is always available for the user.
+        if (!customerData) {
+          const { data: newCustomer } = await supabase
+            .from("customers")
+            .insert({ user_id: effectiveUserId, wallet_balance: 0 })
+            .select("*")
+            .maybeSingle();
+          if (newCustomer) customerData = newCustomer;
+        }
 
         let customerPkId: string | null = null;
         if (customerData) {

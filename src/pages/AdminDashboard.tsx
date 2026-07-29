@@ -1604,19 +1604,17 @@ const AdminDashboard = () => {
         // Use base price (order.amount) as refund amount
         
         if (order.customer_id) {
-          // Customer order: refund at admin base price (NOT the full selling price the customer paid).
-          // resolveAgentBasePrice looks up agent_custom_base_prices then data_packages.agent_price.
-          refundAmount = await resolveAgentBasePrice(order, order.agent_store_id ?? null);
-          
-          // Try to find or create customer wallet row
-          const { data: customer, error: fetchErr } = await supabase
+          // Customer order: refund the full amount the customer actually paid.
+          refundAmount = paidAmount;
+
+          // Upsert the customer wallet row
+          const { data: customer } = await supabase
             .from("customers")
             .select("id, wallet_balance")
             .eq("user_id", order.customer_id)
             .maybeSingle();
           
           if (customer) {
-            // Update existing wallet
             const newBalance = (customer.wallet_balance || 0) + refundAmount;
             console.log("[v0] Updating customer wallet:", { old: customer.wallet_balance, new: newBalance, refund: refundAmount });
             const { error: updateErr } = await supabase
@@ -1625,8 +1623,8 @@ const AdminDashboard = () => {
               .eq("id", customer.id);
             if (!updateErr) targetWalletUpdated = true;
             else console.log("[v0] Customer wallet update failed:", updateErr);
-          } else if (!fetchErr) {
-            // Create new wallet row if it doesn't exist
+          } else {
+            // Create new wallet row if it doesn't exist — DB trigger sets topup_reference
             console.log("[v0] Creating customer wallet for:", order.customer_id, "balance:", refundAmount);
             const { error: insertErr } = await supabase
               .from("customers")
