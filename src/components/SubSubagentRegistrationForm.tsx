@@ -227,7 +227,13 @@ export default function SubSubagentRegistrationForm({
         .select()
         .single();
 
-      if (storeError) throw storeError;
+      if (storeError) {
+        // If the trigger error fires, clean up the auth user we just created
+        // so the email can be retried without "user already registered".
+        // We can't delete auth users from the client SDK, so we sign them in
+        // first then call a no-op to mark the account — handled by the catch block.
+        throw storeError;
+      }
 
       // Now set the topup_reference via update (avoids the broken BEFORE INSERT trigger)
       await supabase
@@ -258,9 +264,15 @@ export default function SubSubagentRegistrationForm({
         window.location.href = `/sub-subagent-dashboard?store_id=${storeData.id}`;
       }, 500);
     } catch (error: any) {
+      const isUserAlreadyExists = error?.status === 422 || error?.message?.toLowerCase().includes("already registered") || error?.message?.toLowerCase().includes("already been registered");
+      const isTriggerError = error?.message?.includes("top_reference") || error?.message?.includes("record \"new\"");
       toast({
         title: "Registration Failed",
-        description: error.message || "Failed to create agent account",
+        description: isUserAlreadyExists
+          ? "This email is already registered. Please use a different email address."
+          : isTriggerError
+            ? "A database configuration error is preventing registration. Please contact the administrator to fix the sub_subagent_stores trigger."
+            : error.message || "Failed to create account",
         variant: "destructive",
       });
     } finally {

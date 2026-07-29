@@ -1557,7 +1557,9 @@ const AdminDashboard = () => {
           .maybeSingle();
         if (pkg?.agent_price != null) return Number(pkg.agent_price);
       }
-      return Number(order.base_price ?? order.agent_price ?? order.amount) || 0;
+      // Use || (not ??) so that 0 falls through to the next value.
+      // base_price is often stored as 0 on old orders; fall back to agent_price then amount.
+      return Number(order.base_price || order.agent_price || order.amount) || 0;
     };
 
     // Resolves the price the admin charged an API user for a given order.
