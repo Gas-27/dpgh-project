@@ -466,7 +466,7 @@ const SubSubagentDashboard = () => {
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
-          supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id || "").eq("status", "active").order("created_at", { ascending: false }),
+          supabase.from("transfer_recipients").select("*").eq("user_id", user?.id ?? "").eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
@@ -910,17 +910,29 @@ const SubSubagentDashboard = () => {
       setWithdrawLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("Authentication failed");
-      const resp = await fetch("https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request", {
+
+      // Use the dedicated create-recipient function (not create-payout-request)
+      const resp = await fetch("https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-recipient", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
         body: JSON.stringify({
-          requester_type: "sub_subagent", requester_id: subagentStore!.id,
-          amount: 0, withdrawal_source: "wallet_balance",
-          recipient_details: { account_holder_name: recipientName, provider_type: "mobile_money", mobile_money_network: mobileNetwork, mobile_money_number: mobileNumber }
+          account_holder_name: recipientName,
+          provider_type: "mobile_money",
+          mobile_money_network: mobileNetwork,
+          mobile_money_number: mobileNumber,
         })
       });
-      // We only care about the recipient being created — the amount:0 call will fail the transfer but still register the recipient
-      const { data: updated } = await supabase.from("transfer_recipients").select("*").eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "").eq("status", "active").order("created_at", { ascending: false });
+      const result = await resp.json();
+      if (!resp.ok || !result.success) throw new Error(result.error || "Failed to save recipient");
+
+      // Re-fetch recipients using the auth user id (transfer_recipients is keyed by user_id = auth.uid)
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: updated } = await supabase
+        .from("transfer_recipients")
+        .select("*")
+        .eq("user_id", authUser?.id ?? "")
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
       setTransferRecipients(updated ?? []);
       setCreateNewRecipient(false); setRecipientName(""); setMobileNetwork("mtn"); setMobileNumber("");
       toast({ title: "Recipient saved!", description: "Recipient verified with Paystack." });
