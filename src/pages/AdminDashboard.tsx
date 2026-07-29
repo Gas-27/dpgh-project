@@ -1560,6 +1560,30 @@ const AdminDashboard = () => {
       return Number(order.base_price ?? order.agent_price ?? order.amount) || 0;
     };
 
+    // Resolves the price the admin charged an API user for a given order.
+    // Checks per-user custom prices first, then falls back to data_packages.api_price,
+    // then the stored order.amount as a last resort.
+    const resolveApiPrice = async (order: any, apiUserId: string) => {
+      if (order.package_id && apiUserId) {
+        const { data: custom } = await supabase
+          .from("api_user_package_prices")
+          .select("custom_price")
+          .eq("api_user_id", apiUserId)
+          .eq("package_id", order.package_id)
+          .maybeSingle();
+        if (custom?.custom_price != null) return Number(custom.custom_price);
+      }
+      if (order.package_id) {
+        const { data: pkg } = await supabase
+          .from("data_packages")
+          .select("api_price")
+          .eq("id", order.package_id)
+          .maybeSingle();
+        if (pkg?.api_price != null) return Number(pkg.api_price);
+      }
+      return Number(order.base_price ?? order.amount) || 0;
+    };
+
     for (const orderId of selectedOrderIds) {
       try {
         // Try to find order in local array first, then fetch from Supabase if not found
@@ -1671,22 +1695,25 @@ const AdminDashboard = () => {
             if (!updateErr) targetWalletUpdated = true;
           }
         } else if (order.api_user) {
-          // API user order: refund at base price admin charged the API user
-          refundAmount = await resolveAgentBasePrice(order, null);
-          
-          const { data: apiUser, error: fetchErr } = await supabase
+          // API user order: refund using the price admin charged this specific API user
+          refundAmount = await resolveApiPrice(order, order.api_user);
+
+          const { data: apiUser } = await supabase
             .from("api_users")
             .select("id, wallet_balance")
             .eq("id", order.api_user)
             .maybeSingle();
-          
+
           if (apiUser) {
-            const newBalance = (apiUser.wallet_balance || 0) + refundAmount;
+            const newBalance = (Number(apiUser.wallet_balance) || 0) + refundAmount;
             const { error: updateErr } = await supabase
               .from("api_users")
               .update({ wallet_balance: newBalance })
               .eq("id", apiUser.id);
             if (!updateErr) targetWalletUpdated = true;
+            else console.log("[v0] API user wallet update failed:", updateErr);
+          } else {
+            console.log("[v0] API user not found for refund:", order.api_user);
           }
         }
 

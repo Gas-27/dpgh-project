@@ -24,10 +24,10 @@ export default async function handler(
       });
     }
 
-    // Fetch the user from api_users using the api_key
+    // Fetch the user from api_users using the api_key — include id for price lookup
     const { data: apiUser, error: apiUserError } = await supabase
       .from('api_users')
-      .select('identity_id, is_user')
+      .select('id, identity_id, is_user')
       .eq('api_key', api_key)
       .single();
 
@@ -35,10 +35,10 @@ export default async function handler(
       return res.status(401).json({ error: 'Invalid or inactive API key' });
     }
 
-    // Fetch package details to get pricing
+    // Fetch package details — include api_price (the default API price)
     const { data: packageData, error: packageError } = await supabase
       .from('data_packages')
-      .select('id, price, name')
+      .select('id, price, api_price, name')
       .eq('id', package_id)
       .single();
 
@@ -46,12 +46,23 @@ export default async function handler(
       return res.status(404).json({ error: 'Package not found' });
     }
 
-    // Calculate amount and sizing
-    const amount = Number(packageData.price) || 0;
+    // Check if this API user has a per-user custom price for this package
+    const { data: customPriceRow } = await supabase
+      .from('api_user_package_prices')
+      .select('custom_price')
+      .eq('api_user_id', apiUser.id)
+      .eq('package_id', package_id)
+      .maybeSingle();
+
+    // Price priority: per-user custom price → package api_price → public price
+    const amount = Number(
+      customPriceRow?.custom_price ?? packageData.api_price ?? packageData.price
+    ) || 0;
+
     const sizeMatch = packageData.name?.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
 
-    // Create the order (user orders don't have agent_store_id)
+    // Create the order — set api_user so it appears in the user's API orders tab
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -64,6 +75,7 @@ export default async function handler(
         status: 'pending',
         fulfillment_status: 'pending',
         payment_method: 'api',
+        api_user: apiUser.id,
         selling_price: amount,
         base_price: amount,
         profit: 0,
