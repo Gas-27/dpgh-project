@@ -3331,26 +3331,29 @@ const AgentDashboard = () => {
                       </div>
                       
                       <div className="space-y-1">
-                        <Label>Mobile Network</Label>
-                        <Select value={mobileNetwork} onValueChange={setMobileNetwork}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="mtn">MTN</SelectItem>
-                            <SelectItem value="telecel">Telecel</SelectItem>
-                            <SelectItem value="airteltigo">AirtelTigo</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-1">
                         <Label>Mobile Number</Label>
                         <Input 
-                          placeholder="024XXXXXXX" 
+                          placeholder="e.g. 0241234567"
                           value={mobileNumber}
-                          onChange={e => handleMobileNumberChange(e.target.value)}
+                          onChange={e => {
+                            const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                            handleMobileNumberChange(digits);
+                          }}
+                          maxLength={10}
                         />
+                        <p className="text-xs text-muted-foreground">Enter 10-digit Ghana number. Example: 0241234567</p>
+                        {mobileNumber.replace(/\D/g, "").length >= 3 && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-muted-foreground">Detected network:</span>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              mobileNetwork === "mtn" ? "bg-yellow-100 text-yellow-800" :
+                              mobileNetwork === "telecel" ? "bg-red-100 text-red-800" :
+                              "bg-blue-100 text-blue-800"
+                            }`}>
+                              {mobileNetwork === "mtn" ? "MTN" : mobileNetwork === "telecel" ? "Telecel" : "AirtelTigo"}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
