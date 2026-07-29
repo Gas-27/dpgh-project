@@ -1788,6 +1788,7 @@ const UserDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
               { code: "mtn", name: "MTN Ghana" },
+              { code: "mtn_express", name: "MTN Ghana" },
               { code: "telecel", name: "Telecel Ghana" },
               { code: "airteltigo", name: "AirtelTigo Ghana" },
             ].map(network => (

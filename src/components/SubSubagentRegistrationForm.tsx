@@ -198,15 +198,17 @@ export default function SubSubagentRegistrationForm({
       // (not a valid enum value). Role is determined by sub_subagent_stores membership.
 
       // Generate a sequential top-up reference (used as the USSD access code).
-      // Sub-subagents use the "Agt" prefix followed by their creation number
-      // (first sub-subagent = Agt1, second = Agt2, and so on).
+      // Sub-subagents use the "Agt" prefix followed by their creation number.
       const { count: subSubagentCount } = await supabase
         .from("sub_subagent_stores")
         .select("*", { count: "exact", head: true });
       const topupReference = `Agt${(subSubagentCount || 0) + 1}`;
 
-      // Create the store directly without payment.
-      // agent_store_id is auto-populated by the DB trigger from the parent subagent.
+      // Insert the store row WITHOUT topup_reference first. The DB trigger on
+      // sub_subagent_stores has a typo (references NEW.top_reference which does
+      // not exist) and will error if topup_reference is included in the INSERT
+      // payload. By omitting it we let the trigger run on a null value, then
+      // immediately update the row with the correct reference value after insert.
       const { data: storeData, error: storeError } = await supabase
         .from("sub_subagent_stores")
         .insert({
@@ -221,12 +223,17 @@ export default function SubSubagentRegistrationForm({
           momo_network: formData.momoNetwork || null,
           wallet_balance: 0,
           approved: true,
-          topup_reference: topupReference,
         })
         .select()
         .single();
 
       if (storeError) throw storeError;
+
+      // Now set the topup_reference via update (avoids the broken BEFORE INSERT trigger)
+      await supabase
+        .from("sub_subagent_stores")
+        .update({ topup_reference: topupReference })
+        .eq("id", storeData.id);
 
       // Auto sign-in the newly created user
       const { error: signInError } = await supabase.auth.signInWithPassword({
