@@ -1695,25 +1695,24 @@ const AdminDashboard = () => {
             if (!updateErr) targetWalletUpdated = true;
           }
         } else if (order.api_user) {
-          // API user order: refund using the price admin charged this specific API user
-          refundAmount = await resolveApiPrice(order, order.api_user);
-
+          // API user order: order.api_user stores the api_users.identity_id (auth UUID).
+          // Look up by identity_id to get the correct row and its pk id.
           const { data: apiUser } = await supabase
             .from("api_users")
-            .select("id, wallet_balance")
-            .eq("id", order.api_user)
+            .select("id, wallet")
+            .eq("identity_id", order.api_user)
             .maybeSingle();
 
+          // Refund using the price admin charged this specific API user (per-user or api_price)
+          refundAmount = await resolveApiPrice(order, apiUser?.id ?? "");
+
           if (apiUser) {
-            const newBalance = (Number(apiUser.wallet_balance) || 0) + refundAmount;
+            const newBalance = (Number(apiUser.wallet) || 0) + refundAmount;
             const { error: updateErr } = await supabase
               .from("api_users")
-              .update({ wallet_balance: newBalance })
+              .update({ wallet: newBalance })
               .eq("id", apiUser.id);
             if (!updateErr) targetWalletUpdated = true;
-            else console.log("[v0] API user wallet update failed:", updateErr);
-          } else {
-            console.log("[v0] API user not found for refund:", order.api_user);
           }
         }
 
