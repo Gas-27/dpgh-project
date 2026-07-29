@@ -179,13 +179,17 @@ export default function SubSubagentRegistrationForm({
       // Step 1: Always create the user account and subagent store first
       console.log("[v0] Creating user account and subagent store first");
 
-      // Sign up the user
+      // Sign up the user.
+      // NOTE: "sub_subagent" is NOT in the app_role enum so passing it as role
+      // in metadata causes the handle_new_user trigger to fail with a 500.
+      // We pass "user" (a valid enum value) and rely on sub_subagent_stores
+      // membership to identify this user as a sub-subagent.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
-            role: "sub_subagent",
+            role: "user",
           },
         },
       });
@@ -193,38 +197,8 @@ export default function SubSubagentRegistrationForm({
       if (authError) throw authError;
       if (!authData.user?.id) throw new Error("Failed to create user account");
 
-      console.log("[v0] User account created:", authData.user.id);
-
-      // COMMENTED OUT: Store creation moved to webhook after payment
-      // const approvalStatus = agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 ? false : true;
-      // const { data: storeData, error: storeError } = await supabase
-      //   .from("subagent_stores")
-      //   .insert({...})
-      //   .select()
-      //   .single();
-
-      // Assign sub-subagent role
-      const { data: existingRole } = await supabase
-        .from("user_roles")
-        .select("id")
-        .eq("user_id", authData.user.id)
-        .eq("role", "sub_subagent")
-        .single();
-
-      if (!existingRole) {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: authData.user.id,
-            role: "sub_subagent",
-          });
-
-        if (roleError && roleError.code !== "PGRST116") {
-          throw new Error("Failed to create user role");
-        }
-      }
-
-      console.log("[v0] User role assigned");
+      // user_roles also uses the app_role enum — skip inserting "sub_subagent"
+      // (not a valid enum value). Role is determined by sub_subagent_stores membership.
 
       // Step 2: Check if fees are required (Sub-Subagents don't have registration fees)
       // Sub-subagents are automatically approved when registering under a subagent
