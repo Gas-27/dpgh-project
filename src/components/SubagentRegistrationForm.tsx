@@ -263,7 +263,7 @@ export default function SubagentRegistrationForm({
         console.log("[v0] Registration record created:", registration.id);
 
         // Call the edge function to initialize payment
-        const callbackUrl = `${window.location.origin}/verify-subagent-payment?registration_id=${registration.id}&user_id=${authData.user.id}`;
+        const callbackUrl = `${window.location.origin}/subagent-dashboard?registration_id=${registration.id}&payment_verified=true`;
         
         console.log("[v0] Calling initialize-payment with:", {
           email: formData.email,
