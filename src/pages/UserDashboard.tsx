@@ -671,6 +671,10 @@ const UserDashboard = () => {
   const phoneMatchesNetwork = (phone: string, network: string) => {
     const detectedNetwork = detectNetwork(phone);
     const normalizedNetwork = network.toLowerCase();
+    // MTN numbers are valid for both mtn and mtn_express packages
+    if (normalizedNetwork === "mtn_express" || normalizedNetwork === "mtn_mashup" || normalizedNetwork === "mashup") {
+      return detectedNetwork === "mtn";
+    }
     return detectedNetwork === normalizedNetwork;
   };
 
@@ -2785,7 +2789,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                   className="mt-1"
                 />
                 {buyPhone && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "") && (
-                  <p className="text-xs text-red-400 mt-1">Phone number doesn't match {buyPkg?.network} network</p>
+                  <p className="text-xs text-red-400 mt-1">
+                    Phone number doesn&apos;t match {buyPkg?.network === "mtn_express" ? "MTN Express" : buyPkg?.network === "airteltigo" ? "AirtelTigo" : (buyPkg?.network || "").toUpperCase()} network
+                  </p>
                 )}
               </div>
 
