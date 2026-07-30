@@ -355,14 +355,14 @@ export default function SubagentRegistrationForm({
       console.log("[v0] Approved subagent store created:", storeData.id);
 
       toast({
-        title: "✅ Account Created!",
-        description: "Your agent account has been created and is ready to use.",
+        title: "✅ Subagent Account Created!",
+        description: "Your subagent account has been created and is ready to use.",
       });
 
       if (onClose) onClose();
 
       setTimeout(() => {
-        window.location.href = "/dashboard";
+        window.location.href = "/subagent-dashboard";
       }, 500);
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
