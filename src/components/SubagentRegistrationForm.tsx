@@ -361,9 +361,8 @@ export default function SubagentRegistrationForm({
 
       if (onClose) onClose();
 
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 500);
+      console.log("[v0] Redirecting to /dashboard immediately");
+      window.location.href = "/dashboard";
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
       toast({
