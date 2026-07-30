@@ -262,9 +262,8 @@ export default function SubagentRegistrationForm({
 
         console.log("[v0] Registration record created:", registration.id);
 
-        // Call the edge function to initialize payment
-        // After Paystack payment, redirect to subagent login page where they can access their dashboard
-        const callbackUrl = `https://agentsstore.shop/login?registration_id=${registration.id}&payment_verified=true`;
+        // After Paystack payment, redirect directly to subagent dashboard
+        const callbackUrl = `https://agentsstore.shop/dashboard`;
         
         console.log("[v0] Calling initialize-payment with:", {
           email: formData.email,
@@ -362,13 +361,7 @@ export default function SubagentRegistrationForm({
 
       if (onClose) onClose();
 
-      // Import DOMAINS to construct the correct subagent dashboard URL
-      const { DOMAINS } = await import("../config/domains");
-      const sanitizedStoreName = DOMAINS.sanitizeStoreName(formData.storeName);
-      const dashboardUrl = `https://agentsstore.shop/${sanitizedStoreName}/dashboard`;
-      
-      console.log("[v0] Redirecting to subagent dashboard:", dashboardUrl);
-      window.location.href = dashboardUrl;
+      window.location.href = "https://agentsstore.shop/dashboard";
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
       toast({
