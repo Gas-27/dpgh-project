@@ -339,10 +339,17 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   // ───────────────────────── Refunds ─────────────────────────
   {
     id: "refund_how",
-    questions: ["refund", "how does refund work", "refund process", "get refund", "money back", "refund policy"],
-    answer: "Here is how refunds work — they flow down the chain:\n\n1. Admin refunds an order → the base price is credited to the Agent's wallet\n2. Agent refunds the order to their Subagent → the amount is deducted from the Agent's wallet and credited to the Subagent's wallet\n3. Subagent refunds to their Sub-Subagent → the amount is deducted from the Subagent's wallet and credited to the Sub-Subagent's wallet\n\nKey points:\n• Refunds go to platform wallets — NOT to Mobile Money directly\n• Each level must have enough wallet balance before they can refund downward\n• After receiving a refund in your wallet you can immediately buy again for the same number\n• Refunded orders show an orange 'Refunded' badge in your order history",
+    questions: ["refund", "how does refund work", "refund process", "get refund", "money back", "refund policy", "where do refunds go", "refund wallet", "storefront refund"],
+    answer: "**COMPLETE REFUND SYSTEM** — Refunds flow down the network chain based on order source:\n\n🔷 **DIRECT CUSTOMERS** (bought from Packages page with their own account):\n→ Refund lands in their **User Dashboard Wallet**\n→ They can use it to buy data again or withdraw it\n\n🔷 **AGENTS** (created an account as an Agent, buy from Packages page themselves):\n→ Refund lands in their **Agent Wallet** (not the user dashboard)\n→ They use this to resell or support subagents\n\n🔷 **AGENT STOREFRONT ORDERS** (customers buy from an Agent's storefront):\n→ Refund goes to the **Agent's wallet** (at the base price the agent bought at)\n→ Agent can then:\n   • Send the money back to the customer via MoMo (direct refund)\n   • Retry the order for the customer using wallet balance\n   • Use it for other inventory\n\n🔷 **SUBAGENT ORDERS** (when an Agent created a Subagent):\n→ When Admin refunds: money goes to **Agent's wallet**\n→ Agent can then refund to the **Subagent's wallet** using the refund tab\n→ Subagent receives the credit and can retry or withdraw\n\n🔷 **SUB-SUBAGENT ORDERS** (when a Subagent created a Sub-Subagent):\n→ Admin refunds → **Subagent's wallet**\n→ Subagent refunds → **Sub-Subagent's wallet**\n→ Sub-Subagent can retry or withdraw\n\n**KEY RULES:**\n✓ Each order can ONLY be refunded once — system blocks double-refunds\n✓ Refunds land in **platform wallets** (not Mobile Money)\n✓ Wallet balance is shown in the dashboard Overview\n✓ From wallet you can buy, retry orders, or withdraw\n✓ Minimum withdrawal: GHC15\n✓ Withdrawals process in under 2 minutes",
     category: "support",
-    relatedIds: ["refund_same_number", "dispute", "wallet_topup"],
+    relatedIds: ["refund_same_number", "dispute", "wallet_topup", "storefront_info", "withdraw"],
+  },
+  {
+    id: "storefront_refund",
+    questions: ["storefront refund", "customer refund", "how to handle refund", "send money back customer", "refund customer momo"],
+    answer: "**STOREFRONT REFUND WORKFLOW** — When a storefront customer's order is refunded:\n\n1. **Admin refunds the order** → You receive credit in your **Agent Wallet**\n2. **You have 2 choices:**\n   \n   **Option A: Send money back to customer (MoMo)**\n   • Go to your Agent Dashboard\n   • Check your wallet balance (shows the refund amount)\n   • Send the amount to the customer via MoMo directly\n   • The customer receives their money back\n   \n   **Option B: Retry the order**\n   • Use the refund amount from your wallet\n   • Go to Buy Data or your Refunds tab\n   • Select the customer's phone number and reorder the same package\n   • Pay with your wallet balance\n   • The new order processes immediately\n   • Customer gets their data on retry\n\n3. **Notification**\n   • Your storefront customers see the refund status in their order history\n   • They can track if you've retried their order\n\nChoose whichever option works best for your business — the wallet balance gives you the flexibility to decide on a per-order basis.",
+    category: "agent",
+    relatedIds: ["refund_how", "storefront_info", "wallet_topup"],
   },
   {
     id: "refund_same_number",
@@ -391,6 +398,7 @@ export const FREQUENT_QUESTIONS = [
   "How does a refund work?",
   "Can I buy again for the same number after a refund?",
   "My data hasn't arrived, what do I do?",
+  "What do I do when a storefront customer is refunded?",
   "What is AFA?",
   "How do I become an agent?",
   "How much commission do agents earn?",
