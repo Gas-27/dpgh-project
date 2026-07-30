@@ -1233,7 +1233,7 @@ const AdminDashboard = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ======================== Withdrawal email listener ========================
+  // ======================== Withdrawal email listener + UI refresh ========================
   useEffect(() => {
     const channel = supabase
       .channel("withdrawal-inserts")
@@ -1241,6 +1241,12 @@ const AdminDashboard = () => {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "withdrawal_requests" },
         async (payload) => {
+          // Refresh withdrawal list if withdrawals tab is loaded
+          if (loadedTabs.has("withdrawals")) {
+            const updatedWithdrawals = await fetchWithdrawalsWithStores(10000);
+            setWithdrawals(updatedWithdrawals ?? []);
+          }
+
           const newWithdrawal = payload.new as WithdrawalRequest;
           const { data: agent } = await supabase
             .from("agent_stores")
@@ -3468,11 +3474,24 @@ const AdminDashboard = () => {
                                   <TableCell className="uppercase text-sm">{momoNetwork || "—"}</TableCell>
                                   <TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{w.status}</Badge></TableCell>
                                   <TableCell>
-                                    {w.status === "pending" && (
-                                      <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount), w.withdrawal_source, w.subagent_store_id, w.sub_subagent_store_id)} disabled={processingWithdrawals.has(w.id)}>
-                                        {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
-                                      </Button>
-                                    )}
+                                    <div className="flex gap-1 flex-wrap">
+                                      {w.status === "pending" && (
+                                        <Button variant="hero" size="sm" onClick={() => processWithdrawal(w.id, w.agent_store_id, Number(w.amount), w.withdrawal_source, w.subagent_store_id, w.sub_subagent_store_id)} disabled={processingWithdrawals.has(w.id)}>
+                                          {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
+                                        </Button>
+                                      )}
+                                      {store && (
+                                        <a 
+                                          href={isSubsubagentWithdrawal ? `/sub-subagent-dashboard/${w.sub_subagent_store_id}` : isSubagentWithdrawal ? `/subagent-dashboard/${w.subagent_store_id}` : `/agent-dashboard/${w.agent_store_id}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                        >
+                                          <Button variant="outline" size="sm">
+                                            <LogIn className="h-4 w-4 mr-1" /> Visit Store
+                                          </Button>
+                                        </a>
+                                      )}
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               );
