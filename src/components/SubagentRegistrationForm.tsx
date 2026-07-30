@@ -263,7 +263,7 @@ export default function SubagentRegistrationForm({
         console.log("[v0] Registration record created:", registration.id);
 
         // Call the edge function to initialize payment
-        const callbackUrl = `${window.location.origin}/subagent-dashboard?registration_id=${registration.id}&payment_verified=true`;
+        const callbackUrl = `${window.location.origin}/dashboard?registration_id=${registration.id}&payment_verified=true`;
         
         console.log("[v0] Calling initialize-payment with:", {
           email: formData.email,
@@ -362,7 +362,7 @@ export default function SubagentRegistrationForm({
       if (onClose) onClose();
 
       setTimeout(() => {
-        window.location.href = "/subagent-dashboard";
+        window.location.href = "/dashboard";
       }, 500);
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
