@@ -384,76 +384,88 @@ const AdminDashboard = () => {
 
   const fetchWithdrawalsWithStores = async (limit: number = 10000) => {
     try {
-      const { data, error } = await supabase.rpc('get_withdrawals_with_stores', { limit_count: limit });
-      if (error) {
-        console.error('Error fetching withdrawals with stores:', error);
-        return [];
-      }
-      
-      // Transform the flat response into nested structure for compatibility
-      const transformed = (data || []).map((w: any) => ({
-        id: w.id,
-        agent_store_id: w.agent_store_id,
-        subagent_store_id: w.subagent_store_id,
-        sub_subagent_store_id: w.sub_subagent_store_id,
-        amount: w.amount,
-        status: w.status,
-        created_at: w.created_at,
-        processed_at: w.processed_at,
-        withdrawal_source: w.withdrawal_source,
-        agent_store: {
-          id: w.agent_store_id,
-          store_name: w.agent_store_name,
-          momo_name: w.agent_momo_name,
-          momo_number: w.agent_momo_number,
-          momo_network: w.agent_momo_network,
-          wallet_balance: w.agent_wallet_balance,
-          subagent_commission_balance: w.agent_subagent_commission_balance,
-        },
-        subagent_store: {
-          id: w.subagent_store_id || w.sub_subagent_store_id,
-          store_name: w.subagent_store_name || w.sub_subagent_store_name,
-          momo_name: w.subagent_momo_name || w.sub_subagent_momo_name,
-          momo_number: w.subagent_momo_number || w.sub_subagent_momo_number,
-          momo_network: w.subagent_momo_network || w.sub_subagent_momo_network,
-          wallet_balance: w.subagent_wallet_balance || w.sub_subagent_wallet_balance,
-        },
-      }));
-
-      // For subsubagent withdrawals with missing store data, fetch directly
-      const missingStoreIds = transformed
-        .filter(w => w.sub_subagent_store_id && !w.subagent_store.store_name)
-        .map(w => w.sub_subagent_store_id);
-
-      if (missingStoreIds.length > 0) {
-        const { data: storeData } = await supabase
-          .from("sub_subagent_stores")
-          .select("id, store_name, momo_name, momo_number, momo_network, wallet_balance")
-          .in("id", missingStoreIds);
-
-        if (storeData && storeData.length > 0) {
-          const storeMap = Object.fromEntries(storeData.map(s => [s.id, s]));
-          transformed.forEach(w => {
-            if (w.sub_subagent_store_id && !w.subagent_store.store_name) {
-              const store = storeMap[w.sub_subagent_store_id];
-              if (store) {
-                w.subagent_store = {
-                  id: store.id,
-                  store_name: store.store_name,
-                  momo_name: store.momo_name,
-                  momo_number: store.momo_number,
-                  momo_network: store.momo_network,
-                  wallet_balance: store.wallet_balance,
-                };
-              }
-            }
-          });
+      // Query payout_requests directly — paginate to get everything past Supabase's 1000-row default
+      let allRows: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data: chunk, error } = await supabase
+          .from("payout_requests")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        if (error) {
+          console.error("Error fetching payout_requests:", error);
+          break;
         }
+        if (!chunk || chunk.length === 0) break;
+        allRows = allRows.concat(chunk);
+        if (chunk.length < pageSize || allRows.length >= limit) break;
+        page++;
       }
 
-      return transformed;
+      if (allRows.length === 0) return [];
+
+      // Collect store IDs to join store data
+      const agentIds = [...new Set(allRows.filter(r => r.agent_store_id).map(r => r.agent_store_id))];
+      const subagentIds = [...new Set(allRows.filter(r => r.subagent_store_id && !r.sub_subagent_store_id).map(r => r.subagent_store_id))];
+      const subSubIds = [...new Set(allRows.filter(r => r.sub_subagent_store_id).map(r => r.sub_subagent_store_id))];
+
+      const [agentStoresRes, subagentStoresRes, subSubStoresRes] = await Promise.all([
+        agentIds.length > 0 ? supabase.from("agent_stores").select("id, store_name, momo_name, momo_number, momo_network, wallet_balance, subagent_commission_balance").in("id", agentIds) : { data: [] },
+        subagentIds.length > 0 ? supabase.from("subagent_stores").select("id, store_name, momo_name, momo_number, momo_network, wallet_balance").in("id", subagentIds) : { data: [] },
+        subSubIds.length > 0 ? supabase.from("sub_subagent_stores").select("id, store_name, momo_name, momo_number, momo_network, wallet_balance").in("id", subSubIds) : { data: [] },
+      ]);
+
+      const agentMap = Object.fromEntries((agentStoresRes.data || []).map((s: any) => [s.id, s]));
+      const subagentMap = Object.fromEntries((subagentStoresRes.data || []).map((s: any) => [s.id, s]));
+      const subSubMap = Object.fromEntries((subSubStoresRes.data || []).map((s: any) => [s.id, s]));
+
+      return allRows.map((w: any) => {
+        const agentStore = agentMap[w.agent_store_id] || null;
+        const isSubSub = !!w.sub_subagent_store_id;
+        const subStore = isSubSub
+          ? (subSubMap[w.sub_subagent_store_id] || null)
+          : (subagentMap[w.subagent_store_id] || null);
+
+        return {
+          id: w.id,
+          agent_store_id: w.agent_store_id,
+          subagent_store_id: w.subagent_store_id,
+          sub_subagent_store_id: w.sub_subagent_store_id,
+          recipient_id: w.recipient_id,
+          amount: w.amount,
+          status: w.status,
+          created_at: w.created_at,
+          processed_at: w.processed_at,
+          approved_at: w.approved_at,
+          withdrawal_source: w.withdrawal_source || w.source_balance_before !== undefined ? (w.subagent_store_id || w.sub_subagent_store_id ? "subagent_commission" : "wallet_balance") : "wallet_balance",
+          transfer_code: w.transfer_code,
+          paystack_reference: w.paystack_reference,
+          failure_reason: w.failure_reason,
+          source_balance_before: w.source_balance_before,
+          source_balance_after: w.source_balance_after,
+          agent_store: agentStore ? {
+            id: agentStore.id,
+            store_name: agentStore.store_name,
+            momo_name: agentStore.momo_name,
+            momo_number: agentStore.momo_number,
+            momo_network: agentStore.momo_network,
+            wallet_balance: agentStore.wallet_balance,
+            subagent_commission_balance: agentStore.subagent_commission_balance,
+          } : null,
+          subagent_store: subStore ? {
+            id: subStore.id,
+            store_name: subStore.store_name,
+            momo_name: subStore.momo_name,
+            momo_number: subStore.momo_number,
+            momo_network: subStore.momo_network,
+            wallet_balance: subStore.wallet_balance,
+          } : null,
+        };
+      });
     } catch (err) {
-      console.error('Exception fetching withdrawals with stores:', err);
+      console.error("Exception fetching payout_requests:", err);
       return [];
     }
   };
@@ -3423,9 +3435,9 @@ const AdminDashboard = () => {
                     </p>
                     <Card className="border-border">
                       <Table>
-                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Agent/Subagent</TableHead><TableHead>Type</TableHead><TableHead>Source</TableHead><TableHead>Amount</TableHead><TableHead>Wallet Balance</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Agent/Subagent</TableHead><TableHead>Type</TableHead><TableHead>Source</TableHead><TableHead>Amount</TableHead><TableHead>Before</TableHead><TableHead>After</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Transfer Code</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                          {paginated.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
+                          {paginated.length === 0 ? <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
                             paginated.map((w) => {
                               const isSubsubagentWithdrawal = !!w.sub_subagent_store_id;
                               const isSubagentWithdrawal = !!w.subagent_store_id && !isSubsubagentWithdrawal;
@@ -3474,11 +3486,18 @@ const AdminDashboard = () => {
                                   </TableCell>
                                   <TableCell><Badge className={isSubagentProfit ? "bg-purple-600/20 text-purple-400 border-purple-600/30" : "bg-blue-600/20 text-blue-400 border-blue-600/30"}>{isSubagentProfit ? "Subagent Profit" : "Wallet"}</Badge></TableCell>
                                   <TableCell className="font-display font-bold text-primary">GHC {Number(w.amount || 0).toFixed(2)}</TableCell>
-                                  <TableCell className="font-bold text-green-400">GHC {Number(walletBalance || 0).toFixed(2)}</TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">{(w as any).source_balance_before != null ? `GHC ${Number((w as any).source_balance_before).toFixed(2)}` : "—"}</TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">{(w as any).source_balance_after != null ? `GHC ${Number((w as any).source_balance_after).toFixed(2)}` : "—"}</TableCell>
                                   <TableCell>{momoName || "—"}</TableCell>
                                   <TableCell className="font-mono">{momoNumber || "—"}</TableCell>
                                   <TableCell className="uppercase text-sm">{momoNetwork || "—"}</TableCell>
-                                  <TableCell><Badge className={w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{w.status}</Badge></TableCell>
+                                  <TableCell className="font-mono text-xs">{(w as any).transfer_code || (w as any).paystack_reference || "—"}</TableCell>
+                                  <TableCell>
+                                    <div className="space-y-0.5">
+                                      <Badge className={w.status === "success" || w.status === "completed" ? "bg-green-600/20 text-green-400 border-green-600/30" : w.status === "failed" ? "bg-red-600/20 text-red-400 border-red-600/30" : "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"}>{w.status}</Badge>
+                                      {(w as any).failure_reason && <p className="text-xs text-destructive max-w-[140px] truncate" title={(w as any).failure_reason}>{(w as any).failure_reason}</p>}
+                                    </div>
+                                  </TableCell>
                                   <TableCell>
                                     <div className="flex gap-1 flex-wrap">
                                       {w.status === "pending" && (
