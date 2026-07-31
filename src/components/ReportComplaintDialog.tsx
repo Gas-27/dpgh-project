@@ -226,8 +226,13 @@ Please investigate and assist. Thank You.`;
         status: "in-progress",
       };
 
-      // Extended fields — only present after migration runs
-      const extendedPayload = {
+      const isSchemaError = (e: { code?: string; message?: string }) =>
+        e.code === "PGRST204" || e.code === "400" ||
+        (e.message || "").toLowerCase().includes("column") ||
+        (e.message || "").toLowerCase().includes("could not find");
+
+      // TIER 1: all fields including sms_screenshot_url (requires latest migration)
+      const tier1Payload = {
         ...basePayload,
         ...(screenshotUrl ? { screenshot_url: screenshotUrl } : {}),
         ...(smsScreenshotUrl ? { sms_screenshot_url: smsScreenshotUrl } : {}),
@@ -236,19 +241,32 @@ Please investigate and assist. Thank You.`;
         owing_momo: owingMomo,
       };
 
-      // Try extended columns first; if schema hasn't migrated, fall back to base
-      const { error } = await supabase.from("complaints").insert(extendedPayload);
+      // TIER 2: no sms_screenshot_url but keeps screenshot + checklist answers
+      const tier2Payload = {
+        ...basePayload,
+        ...(screenshotUrl ? { screenshot_url: screenshotUrl } : {}),
+        owing_airtime: owingAirtime,
+        owing_bundle: owingBundle,
+        owing_momo: owingMomo,
+      };
 
-      if (error) {
-        const isSchemaError =
-          error.code === "PGRST204" ||
-          (error.message || "").toLowerCase().includes("column") ||
-          (error.message || "").toLowerCase().includes("could not find");
-        if (isSchemaError) {
-          const { error: fallbackError } = await supabase.from("complaints").insert(basePayload);
-          if (fallbackError) throw fallbackError;
+      // Try TIER 1 first
+      const { error: t1Error } = await supabase.from("complaints").insert(tier1Payload);
+      if (t1Error) {
+        if (isSchemaError(t1Error)) {
+          // TIER 1 failed on schema — try TIER 2 (drop sms_screenshot_url)
+          const { error: t2Error } = await supabase.from("complaints").insert(tier2Payload);
+          if (t2Error) {
+            if (isSchemaError(t2Error)) {
+              // TIER 2 also failed — fall all the way back to base columns only
+              const { error: fallbackError } = await supabase.from("complaints").insert(basePayload);
+              if (fallbackError) throw fallbackError;
+            } else {
+              throw t2Error;
+            }
+          }
         } else {
-          throw error;
+          throw t1Error;
         }
       }
 

@@ -87,9 +87,19 @@ const UserDashboard = () => {
   // Admin impersonation: when an admin clicks "Login As" on a customer, the
   // customer's auth user id is stored in localStorage. Use it as the effective
   // user id so all reads/writes target the customer's account, not the admin's.
-  const [impersonatedCustomerId] = useState<string | null>(
-    () => (typeof window !== "undefined" ? localStorage.getItem("admin_impersonate_customer") : null)
-  );
+  // Also supports ?impersonate=<userId> URL param (used when admin clicks a Direct order source).
+  const [impersonatedCustomerId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    // Check URL param first — admin may have opened this via ?impersonate=<id>
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlImpersonate = urlParams.get("impersonate");
+    if (urlImpersonate) {
+      // Persist to localStorage so the impersonation survives navigation
+      localStorage.setItem("admin_impersonate_customer", urlImpersonate);
+      return urlImpersonate;
+    }
+    return localStorage.getItem("admin_impersonate_customer");
+  });
   const [impersonatedCustomerName] = useState<string | null>(
     () => (typeof window !== "undefined" ? localStorage.getItem("admin_impersonate_customer_name") : null)
   );
@@ -981,6 +991,36 @@ const UserDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Refund Notification Banner — shown in overview if user has refunded orders */}
+      {(() => {
+        const refundedOrders = orders.filter(o =>
+          o.status === "refunded" ||
+          o.fulfillment_status === "refunded" ||
+          (o.order_status || "").toLowerCase() === "refunded"
+        );
+        if (refundedOrders.length === 0) return null;
+        const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number((o as any).refunded_amount ?? o.amount) || 0), 0);
+        return (
+          <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-colors" onClick={() => setActiveMenu("refunds")}>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                <span className="text-amber-400 font-bold text-sm">{refundedOrders.length}</span>
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-amber-400">Refunds Received</p>
+                <p className="text-xs text-muted-foreground mt-0.5">GHC {refundedTotal.toFixed(2)} credited to your wallet</p>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setActiveMenu("refunds"); }}
+                className="text-xs px-3 py-1.5 rounded border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors whitespace-nowrap"
+              >
+                View Details
+              </button>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Account Reference and Codes Card */}
       <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">

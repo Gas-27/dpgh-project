@@ -408,11 +408,22 @@ const AdminDashboard = () => {
 
       if (allRows.length === 0) return [];
 
-      // Collect store IDs and recipient IDs to join store + recipient data
-      const agentIds = [...new Set(allRows.filter(r => r.agent_store_id).map(r => r.agent_store_id))];
-      const subagentIds = [...new Set(allRows.filter(r => r.subagent_store_id && !r.sub_subagent_store_id).map(r => r.subagent_store_id))];
-      const subSubIds = [...new Set(allRows.filter(r => r.sub_subagent_store_id).map(r => r.sub_subagent_store_id))];
-      const recipientIds = [...new Set(allRows.filter(r => r.recipient_id).map(r => r.recipient_id))];
+      // payout_requests uses requester_type + requester_id (not agent_store_id/subagent_store_id).
+      // Also support legacy rows that use agent_store_id / subagent_store_id / sub_subagent_store_id.
+      const agentIds = [...new Set(allRows.flatMap((r: any) => {
+        const ids: string[] = [];
+        if (r.requester_type === "agent" && r.requester_id) ids.push(r.requester_id);
+        if (r.agent_store_id) ids.push(r.agent_store_id);
+        return ids;
+      }))];
+      const subagentIds = [...new Set(allRows.flatMap((r: any) => {
+        const ids: string[] = [];
+        if (r.requester_type === "subagent" && r.requester_id && !r.sub_subagent_store_id) ids.push(r.requester_id);
+        if (r.subagent_store_id && !r.sub_subagent_store_id) ids.push(r.subagent_store_id);
+        return ids;
+      }))];
+      const subSubIds = [...new Set(allRows.filter((r: any) => r.sub_subagent_store_id).map((r: any) => r.sub_subagent_store_id))];
+      const recipientIds = [...new Set(allRows.filter((r: any) => r.recipient_id).map((r: any) => r.recipient_id))];
 
       const [agentStoresRes, subagentStoresRes, subSubStoresRes, recipientsRes] = await Promise.all([
         agentIds.length > 0 ? supabase.from("agent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance, subagent_commission_balance").in("id", agentIds) : { data: [] },
@@ -427,11 +438,17 @@ const AdminDashboard = () => {
       const recipientMap = Object.fromEntries((recipientsRes.data || []).map((r: any) => [r.id, r]));
 
       return allRows.map((w: any) => {
-        const agentStore = agentMap[w.agent_store_id] || null;
+        // Resolve agent store: try requester_id (new schema) then legacy agent_store_id
+        const agentStoreId = (w.requester_type === "agent" ? w.requester_id : null) || w.agent_store_id || null;
+        const agentStore = agentStoreId ? (agentMap[agentStoreId] || null) : null;
+
         const isSubSub = !!w.sub_subagent_store_id;
+        // Resolve subagent/sub-subagent store
+        const subagentStoreId = (w.requester_type === "subagent" && !isSubSub ? w.requester_id : null) || (w.subagent_store_id && !isSubSub ? w.subagent_store_id : null) || null;
         const subStore = isSubSub
           ? (subSubMap[w.sub_subagent_store_id] || null)
-          : (subagentMap[w.subagent_store_id] || null);
+          : (subagentStoreId ? (subagentMap[subagentStoreId] || null) : null);
+
         // Paystack recipient — used as fallback for MoMo name/number/network
         const recipient = recipientMap[w.recipient_id] || null;
         const recipientMomoName = recipient?.account_name || recipient?.recipient_name || null;
@@ -439,21 +456,27 @@ const AdminDashboard = () => {
         const recipientMomoNetwork = recipient?.momo_network || recipient?.bank_name || null;
 
         // Determine the withdrawing store for name/momo display
-        const displayStore = isSubSub ? subStore : (w.subagent_store_id ? subStore : agentStore);
+        const isSubagentType = w.requester_type === "subagent" || !!w.subagent_store_id;
+        const displayStore = isSubSub ? subStore : (isSubagentType ? subStore : agentStore);
+
+        // Derive effective IDs for backward compat with rest of component
+        const effectiveAgentStoreId = agentStoreId;
+        const effectiveSubagentStoreId = isSubSub ? null : (subagentStoreId || w.subagent_store_id || null);
+        const effectiveSubSubStoreId = isSubSub ? (w.sub_subagent_store_id || null) : null;
 
         return {
           id: w.id,
-          agent_store_id: w.agent_store_id,
-          subagent_store_id: w.subagent_store_id,
-          sub_subagent_store_id: w.sub_subagent_store_id,
+          agent_store_id: effectiveAgentStoreId,
+          subagent_store_id: effectiveSubagentStoreId,
+          sub_subagent_store_id: effectiveSubSubStoreId,
           recipient_id: w.recipient_id,
-          request_type: w.request_type || null,
+          request_type: w.request_type || w.requester_type || null,
           amount: w.amount,
           status: w.status,
           created_at: w.created_at,
-          processed_at: w.processed_at,
+          processed_at: w.processed_at || w.completed_at || null,
           approved_at: w.approved_at,
-          withdrawal_source: w.withdrawal_source || (w.subagent_store_id || w.sub_subagent_store_id ? "subagent_commission" : "wallet_balance"),
+          withdrawal_source: w.withdrawal_source || (isSubagentType || isSubSub ? "subagent_commission" : "wallet_balance"),
           transfer_code: w.transfer_code,
           paystack_reference: w.paystack_reference,
           failure_reason: w.failure_reason,
@@ -463,7 +486,6 @@ const AdminDashboard = () => {
             id: agentStore.id,
             store_name: agentStore.store_name,
             user_id: agentStore.user_id,
-            // Use agent store momo, fallback to recipient data
             momo_name: agentStore.momo_name || (displayStore === agentStore ? recipientMomoName : null),
             momo_number: agentStore.momo_number || (displayStore === agentStore ? recipientMomoNumber : null),
             momo_network: agentStore.momo_network || (displayStore === agentStore ? recipientMomoNetwork : null),
@@ -479,7 +501,6 @@ const AdminDashboard = () => {
             momo_network: subStore.momo_network || recipientMomoNetwork,
             wallet_balance: subStore.wallet_balance,
           } : (recipientMomoName || recipientMomoNumber ? {
-            // No store found but we have recipient data — show it
             id: null,
             store_name: recipientMomoName || "—",
             user_id: null,
