@@ -1272,7 +1272,6 @@ const AdminDashboard = () => {
           const alreadyRefunded =
             updated.status === "refunded" ||
             updated.fulfillment_status === "refunded" ||
-            (updated as any).order_status === "refunded" ||
             Number((updated as any).refunded_amount) > 0;
 
           if (newStatus === "failed" && oldStatus !== "failed" && !alreadyRefunded) {
@@ -1664,12 +1663,13 @@ const AdminDashboard = () => {
           console.log("[v0] Order fetched from Supabase:", orderId);
         }
 
-        // Skip orders that are already refunded — check all three status fields and
-        // the refunded_amount column so no order can ever be refunded twice.
+        // Skip orders that are already refunded — check status, fulfillment_status,
+        // and refunded_amount so no order can ever be refunded twice.
+        // NOTE: order_status is intentionally NOT checked here because it is
+        // preserved as "failed" (or whatever it was) so the admin can see the cause.
         const alreadyRefunded =
           order.status === "refunded" ||
           order.fulfillment_status === "refunded" ||
-          (order as any).order_status === "refunded" ||
           (Number((order as any).refunded_amount) > 0);
         if (alreadyRefunded) {
           // Only show a warning toast when the admin manually triggered the refund
@@ -1842,12 +1842,14 @@ const AdminDashboard = () => {
           // Mark order as refunded. Try to store the refund amount/date; if those
           // columns don't exist yet, fall back to just the status fields.
           let refundErr: any = null;
+          // NOTE: we intentionally preserve order_status as-is (e.g. "failed") so
+          // the admin can see why the refund was triggered. We only mark status and
+          // fulfillment_status as "refunded" to flag the payment/fulfillment columns.
           const richUpdate = await supabase
             .from("orders")
             .update({
               fulfillment_status: "refunded",
               status: "refunded",
-              order_status: "refunded",
               refunded_amount: refundAmount,
               refunded_at: new Date().toISOString(),
             })
@@ -1855,7 +1857,7 @@ const AdminDashboard = () => {
           if (richUpdate.error) {
             const basicUpdate = await supabase
               .from("orders")
-              .update({ fulfillment_status: "refunded", status: "refunded", order_status: "refunded" })
+              .update({ fulfillment_status: "refunded", status: "refunded" })
               .eq("id", orderId);
             refundErr = basicUpdate.error;
           }
@@ -1865,7 +1867,7 @@ const AdminDashboard = () => {
             setOrders((prev) =>
               prev.map((o) =>
                 o.id === orderId
-                  ? { ...o, fulfillment_status: "refunded", status: "refunded", order_status: "refunded", refunded_amount: refundAmount }
+                  ? { ...o, fulfillment_status: "refunded", status: "refunded", refunded_amount: refundAmount }
                   : o
               )
             );
@@ -1918,7 +1920,7 @@ const AdminDashboard = () => {
         order = fetchedOrder;
       }
 
-      const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded" || (order.order_status || "").toLowerCase() === "refunded";
+      const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded";
       if (!isRefunded || !order.refunded_amount) {
         toast({ title: "Error", description: "This order has not been refunded", variant: "destructive" });
         return;
@@ -2331,6 +2333,7 @@ const AdminDashboard = () => {
     return p.network === networkFilter;
   });
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
+  const refundedCount = orders.filter((o) => o.fulfillment_status === "refunded" || o.status === "refunded").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
   
   const filteredAgents = (agentSearchTerm.length > 0 ? agentSearch.results : agents)
@@ -2377,9 +2380,10 @@ const AdminDashboard = () => {
 
   // Apply date range, source, delivery status, and refund filters
   const filteredOrders = baseOrders.filter(order => {
-    // Refund filter
+    // Refund filter — an order is considered refunded when status OR fulfillment_status is "refunded"
+    // (order_status is preserved as the original value, e.g. "failed", so we don't check it here)
     if (showRefundedOnly) {
-      const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded" || (order.order_status || "").toLowerCase() === "refunded";
+      const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded";
       if (!isRefunded) return false;
     }
 
@@ -2560,6 +2564,21 @@ const AdminDashboard = () => {
                 <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
                   <p className="text-sm text-foreground"><span className="font-bold text-destructive">{failedCount} failed</span> order(s) — payment received but data not fulfilled. Top up API balance and retry.</p>
                   <Button variant="destructive" size="sm" onClick={retryAllFailed}><RefreshCw className="h-4 w-4 mr-1" /> Retry All Failed</Button>
+                </div>
+              )}
+              {refundedCount > 0 && (
+                <div className="flex items-center justify-between p-4 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                  <p className="text-sm text-foreground">
+                    <span className="font-bold text-amber-500">{refundedCount} refunded</span> order(s) in the current view — these orders had their payments returned to the buyer&apos;s wallet.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                    onClick={() => setShowRefundedOnly(!showRefundedOnly)}
+                  >
+                    {showRefundedOnly ? "Show All Orders" : "View Refunded Only"}
+                  </Button>
                 </div>
               )}
               <div className="flex flex-col gap-2">
@@ -2898,8 +2917,32 @@ const AdminDashboard = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell>
-                                <TableCell>{order.status === "refunded" ? <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Refunded</Badge> : <Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge>}</TableCell>
-                                <TableCell>{order.fulfillment_status === "refunded" ? <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">Refunded</Badge> : order.fulfillment_status === "delivered" ? <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Delivered</Badge> : <Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge>}</TableCell>
+                                <TableCell>
+                                  {/* Payment status: for failed orders that have been refunded,
+                                      show "paid" because the customer did pay — then show refund badge */}
+                                  {order.status === "refunded" ? (
+                                    <div className="flex flex-col gap-1">
+                                      <Badge variant="default" className="text-xs">paid</Badge>
+                                      <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Refunded</Badge>
+                                    </div>
+                                  ) : (
+                                    <Badge variant={order.status === "completed" || order.status === "paid" ? "default" : "secondary"}>{order.status}</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {/* Fulfillment status: for failed orders that have been refunded,
+                                      show "completed" because delivery was attempted — then show refund badge */}
+                                  {order.fulfillment_status === "refunded" ? (
+                                    <div className="flex flex-col gap-1">
+                                      <Badge variant="default" className="text-xs">completed</Badge>
+                                      <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Refunded</Badge>
+                                    </div>
+                                  ) : order.fulfillment_status === "delivered" ? (
+                                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Delivered</Badge>
+                                  ) : (
+                                    <Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge>
+                                  )}
+                                </TableCell>
                                 <TableCell>
                                   {(() => {
                                     const os = (order.order_status || "").toLowerCase().trim();
@@ -2929,7 +2972,7 @@ const AdminDashboard = () => {
                                     >
                                       {order.fulfillment_status === "completed" || order.fulfillment_status === "delivered" ? "Unfulfill" : "Fulfill"}
                                     </Button>
-                                    {(order.fulfillment_status === "refunded" || order.status === "refunded" || (order.order_status || "").toLowerCase() === "refunded") && order.refunded_amount && (
+                                    {(order.fulfillment_status === "refunded" || order.status === "refunded") && order.refunded_amount && (
                                       <Button 
                                         variant="destructive" 
                                         size="sm" 
