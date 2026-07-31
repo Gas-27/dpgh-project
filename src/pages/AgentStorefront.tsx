@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
-import ReportComplaintDialog from "@/components/ReportComplaintDialog";
+const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import {
@@ -1703,16 +1703,18 @@ const AgentStorefront = () => {
       <PaymentVerifier />
       <AFARegistrationSuccess />
 
-      {/* Report Complaint Dialog */}
-      {reportOrder && (
-        <ReportComplaintDialog
-          open={reportDialogOpen}
-          onOpenChange={setReportDialogOpen}
-          order={reportOrder}
-          complaintType="agent"
-          agentStoreId={store?.id}
-        />
-      )}
+      {/* Report Complaint Dialog — lazy-loaded to break circular dep */}
+      <Suspense fallback={null}>
+        {reportOrder && (
+          <ReportComplaintDialog
+            open={reportDialogOpen}
+            onOpenChange={setReportDialogOpen}
+            order={reportOrder}
+            complaintType="agent"
+            agentStoreId={store?.id}
+          />
+        )}
+      </Suspense>
 
       {/* Claim Free Data Dialog — lazy-loaded to break circular dep */}
       <Suspense fallback={null}>

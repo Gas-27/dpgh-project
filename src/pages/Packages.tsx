@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback, lazy, Suspense } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCachedData } from "@/hooks/useCachedData";
@@ -6,9 +6,9 @@ import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
-import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
-import { lazy, Suspense } from "react";
+// Lazy-loaded to break circular dependency (ReferenceError: Cannot access 'J' before initialization)
+const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
@@ -1836,14 +1836,17 @@ const Packages = () => {
         </DialogContent>
       </Dialog>
 
-      {reportOrder && (
-        <ReportComplaintDialog
-          open={reportDialogOpen}
-          onOpenChange={setReportDialogOpen}
-          order={reportOrder}
-          complaintType="storefront"
-        />
-      )}
+      {/* Report Complaint Dialog — lazy-loaded to break circular dep */}
+      <Suspense fallback={null}>
+        {reportOrder && (
+          <ReportComplaintDialog
+            open={reportDialogOpen}
+            onOpenChange={setReportDialogOpen}
+            order={reportOrder}
+            complaintType="storefront"
+          />
+        )}
+      </Suspense>
 
       {!showSpinWheel && <WhatsAppFloatingButton />}
 

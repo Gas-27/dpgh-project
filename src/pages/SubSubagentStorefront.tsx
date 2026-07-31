@@ -17,7 +17,7 @@ import {
   LinkIcon, Share2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import ReportComplaintDialog from "@/components/ReportComplaintDialog";
+const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
@@ -1149,16 +1149,18 @@ export function SubSubagentStorefront() {
 
       <PaymentVerifier storeId={store.id} isSubagent={true} />
 
-      {/* Report Complaint Dialog */}
-      {reportOrder && (
-        <ReportComplaintDialog
-          open={reportDialogOpen}
-          onOpenChange={setReportDialogOpen}
-          order={reportOrder}
-          complaintType="subagent"
-          subagentStoreId={store.id}
-        />
-      )}
+      {/* Report Complaint Dialog — lazy-loaded to break circular dep */}
+      <Suspense fallback={null}>
+        {reportOrder && (
+          <ReportComplaintDialog
+            open={reportDialogOpen}
+            onOpenChange={setReportDialogOpen}
+            order={reportOrder}
+            complaintType="subagent"
+            subagentStoreId={store.id}
+          />
+        )}
+      </Suspense>
 
       {/* Floating WhatsApp Group Icon - Draggable */}
       {groupLink && (

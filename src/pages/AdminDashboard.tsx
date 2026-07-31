@@ -1262,11 +1262,28 @@ const AdminDashboard = () => {
         (payload) => {
           // Update only the affected order in state — avoid full refreshData() which hammers the DB
           const updated = payload.new as Order;
-          setOrders(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o));
+          const prev = payload.old as Partial<Order>;
+          setOrders(prevOrders => prevOrders.map(o => o.id === updated.id ? { ...o, ...updated } : o));
+
+          // Auto-refund: when order_status transitions TO "failed" and the order has not
+          // already been refunded, trigger processRefunds automatically.
+          const newStatus = ((updated as any).order_status || "").toLowerCase();
+          const oldStatus = ((prev as any).order_status || "").toLowerCase();
+          const alreadyRefunded =
+            updated.status === "refunded" ||
+            updated.fulfillment_status === "refunded" ||
+            (updated as any).order_status === "refunded" ||
+            Number((updated as any).refunded_amount) > 0;
+
+          if (newStatus === "failed" && oldStatus !== "failed" && !alreadyRefunded) {
+            // Use a small delay so the state update above has propagated
+            setTimeout(() => processRefunds(new Set([updated.id])), 500);
+          }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ======================== Withdrawal email listener + UI refresh ========================
@@ -1563,13 +1580,16 @@ const AdminDashboard = () => {
   };
 
   // Process refunds for selected orders
-  const processRefunds = async () => {
-    if (selectedOrderIds.size === 0) {
-      toast({ title: "Error", description: "No orders selected", variant: "destructive" });
+  const processRefunds = async (overrideOrderIds?: Set<string>) => {
+    const idsToProcess = overrideOrderIds ?? selectedOrderIds;
+    if (idsToProcess.size === 0) {
+      if (!overrideOrderIds) {
+        toast({ title: "Error", description: "No orders selected", variant: "destructive" });
+      }
       return;
     }
 
-    setRefundingOrders(selectedOrderIds);
+    setRefundingOrders(idsToProcess);
     let successCount = 0;
     let errorCount = 0;
 
@@ -1624,7 +1644,7 @@ const AdminDashboard = () => {
       return Number(order.base_price ?? order.amount) || 0;
     };
 
-    for (const orderId of selectedOrderIds) {
+    for (const orderId of idsToProcess) {
       try {
         // Try to find order in local array first, then fetch from Supabase if not found
         let order = orders.find(o => o.id === orderId);
@@ -1644,8 +1664,18 @@ const AdminDashboard = () => {
           console.log("[v0] Order fetched from Supabase:", orderId);
         }
 
-        // Skip orders that are already refunded
-        if (order.status === "refunded" || order.fulfillment_status === "refunded") {
+        // Skip orders that are already refunded — check all three status fields and
+        // the refunded_amount column so no order can ever be refunded twice.
+        const alreadyRefunded =
+          order.status === "refunded" ||
+          order.fulfillment_status === "refunded" ||
+          (order as any).order_status === "refunded" ||
+          (Number((order as any).refunded_amount) > 0);
+        if (alreadyRefunded) {
+          // Only show a warning toast when the admin manually triggered the refund
+          if (!overrideOrderIds) {
+            toast({ title: "Already refunded", description: `Order ${orderId.slice(0, 8)} was already refunded.`, variant: "destructive" });
+          }
           continue;
         }
 
