@@ -139,6 +139,8 @@ const AdminDashboard = () => {
   const [refundAction, setRefundAction] = useState<"" | "refund">("") ;
   const [showRefundedOnly, setShowRefundedOnly] = useState(false);
   const [reversingRefundIds, setReversingRefundIds] = useState<Set<string>>(new Set());
+  // Incremented by the realtime listener to signal the auto-refund draining effect
+  const [pendingAutoRefundTick, setPendingAutoRefundTick] = useState(0);
 
   // Pagination state
   const [agentPage, setAgentPage] = useState(1);
@@ -1252,6 +1254,13 @@ const AdminDashboard = () => {
     return () => clearTimeout(debounceTimer);
   }, [topupSearchTerm]);
 
+  // ======================== Pending auto-refund queue ========================
+  // The realtime listener runs inside a useEffect with [] so it holds a stale
+  // closure — processRefunds does not exist yet when that effect mounts.
+  // Instead the listener pushes order IDs into this ref and a separate effect
+  // (declared AFTER processRefunds) drains the queue and runs the actual refund.
+  const pendingAutoRefundIds = useRef<Set<string>>(new Set());
+
   // ======================== Real-time order status listener ========================
   useEffect(() => {
     const channel = supabase
@@ -1265,8 +1274,9 @@ const AdminDashboard = () => {
           const prev = payload.old as Partial<Order>;
           setOrders(prevOrders => prevOrders.map(o => o.id === updated.id ? { ...o, ...updated } : o));
 
-          // Auto-refund: when order_status transitions TO "failed" and the order has not
-          // already been refunded, trigger processRefunds automatically.
+          // Queue auto-refund when order_status transitions TO "failed" and the
+          // order has not already been refunded.  The actual processRefunds call
+          // happens in the effect below (declared after processRefunds).
           const newStatus = ((updated as any).order_status || "").toLowerCase();
           const oldStatus = ((prev as any).order_status || "").toLowerCase();
           const alreadyRefunded =
@@ -1275,14 +1285,14 @@ const AdminDashboard = () => {
             Number((updated as any).refunded_amount) > 0;
 
           if (newStatus === "failed" && oldStatus !== "failed" && !alreadyRefunded) {
-            // Use a small delay so the state update above has propagated
-            setTimeout(() => processRefunds(new Set([updated.id])), 500);
+            pendingAutoRefundIds.current.add(updated.id);
+            // Trigger the draining effect by updating a state counter
+            setPendingAutoRefundTick(t => t + 1);
           }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ======================== Withdrawal email listener + UI refresh ========================
@@ -1901,6 +1911,23 @@ const AdminDashboard = () => {
       variant: errorCount > 0 ? "destructive" : "default"
     });
   };
+
+  // ======================== Auto-refund draining effect ========================
+  // This effect is declared AFTER processRefunds so it holds a fresh closure.
+  // The realtime listener above cannot call processRefunds directly because it
+  // is mounted before processRefunds is defined (stale closure). Instead it
+  // pushes IDs to pendingAutoRefundIds and increments pendingAutoRefundTick to
+  // wake this effect up with the current version of processRefunds.
+  useEffect(() => {
+    if (pendingAutoRefundTick === 0) return;
+    const ids = new Set(pendingAutoRefundIds.current);
+    if (ids.size === 0) return;
+    pendingAutoRefundIds.current.clear();
+    processRefunds(ids);
+  // processRefunds is intentionally omitted from deps — we want the version
+  // that is current when the tick fires, not a stale re-subscribed copy.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAutoRefundTick]);
 
   // Reverse a refund: take money back from the wallet and mark order as not refunded
   const reverseRefund = async (orderId: string) => {
