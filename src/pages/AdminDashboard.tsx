@@ -164,7 +164,7 @@ const AdminDashboard = () => {
   const orderSearch = useDatabaseSearch<Order>(
     "orders",
     "customer_number",
-    "id, customer_number, network, size_gb, amount, status, fulfillment_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id"
+    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id"
   );
   
   const profileSearch = useDatabaseSearch<UserProfile>(
@@ -1760,6 +1760,7 @@ const AdminDashboard = () => {
             .update({
               fulfillment_status: "refunded",
               status: "refunded",
+              order_status: "refunded",
               refunded_amount: refundAmount,
               refunded_at: new Date().toISOString(),
             })
@@ -1767,7 +1768,7 @@ const AdminDashboard = () => {
           if (richUpdate.error) {
             const basicUpdate = await supabase
               .from("orders")
-              .update({ fulfillment_status: "refunded", status: "refunded" })
+              .update({ fulfillment_status: "refunded", status: "refunded", order_status: "refunded" })
               .eq("id", orderId);
             refundErr = basicUpdate.error;
           }
@@ -1777,7 +1778,7 @@ const AdminDashboard = () => {
             setOrders((prev) =>
               prev.map((o) =>
                 o.id === orderId
-                  ? { ...o, fulfillment_status: "refunded", status: "refunded", refunded_amount: refundAmount }
+                  ? { ...o, fulfillment_status: "refunded", status: "refunded", order_status: "refunded", refunded_amount: refundAmount }
                   : o
               )
             );
@@ -2577,6 +2578,7 @@ const AdminDashboard = () => {
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="refunded">Refunded</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -2594,6 +2596,7 @@ const AdminDashboard = () => {
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="refunded">Refunded</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -2677,7 +2680,11 @@ const AdminDashboard = () => {
                               const isAPIOrder = !!(order.api_user && String(order.api_user).trim() !== "");
                               
                               let sourceType = "Main Site";
-                              let sourceLabel = isAPIOrder ? "API" : "Direct";
+                              // For direct (non-agent/non-API) orders, show the customer email
+                              const directCustomerEmail = (!order.agent_store_id && !order.subagent_store_id && !(order as any).sub_subagent_store_id && !isAPIOrder)
+                                ? (customers as any[])?.find?.((c: any) => c.user_id === order.customer_id)?.email || null
+                                : null;
+                              let sourceLabel = isAPIOrder ? "API" : (directCustomerEmail || "Direct");
                               let sourceBadgeClass = isAPIOrder ? "bg-orange-500/10 text-orange-400 border-orange-500/30" : "bg-blue-500/10 text-blue-400 border-blue-500/30";
                               
                               if (subSubagentStore) {
@@ -2756,10 +2763,16 @@ const AdminDashboard = () => {
                                           });
                                           setSourceDialogOpen(true);
                                         } else {
+                                          // Fetch customer email from customers table for direct orders
+                                          const customerEmail = (() => {
+                                            const c = (customers as any[])?.find?.((c: any) => c.user_id === order.customer_id);
+                                            return c?.email || order.customer_number || "Unknown Customer";
+                                          })();
                                           setSourceInfo({
                                             type: "Customer Account",
-                                            storeName: order.customer_number || "Unknown Customer",
-                                            contact: order.customer_id || "N/A",
+                                            storeName: customerEmail,
+                                            contact: order.customer_number || "N/A",
+                                            storeUrl: `/user-dashboard?impersonate=${order.customer_id}`,
                                           });
                                           setSourceDialogOpen(true);
                                         }

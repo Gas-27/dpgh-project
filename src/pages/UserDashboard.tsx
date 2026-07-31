@@ -1189,6 +1189,33 @@ const UserDashboard = () => {
           </Card>
         </div>
 
+        {/* Refund Notification Banner */}
+        {(() => {
+          const refundedOrders = orders.filter(o =>
+            o.status === "refunded" ||
+            o.fulfillment_status === "refunded" ||
+            (o.order_status || "").toLowerCase() === "refunded"
+          );
+          if (refundedOrders.length === 0) return null;
+          const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number((o as any).refunded_amount ?? o.amount) || 0), 0);
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <Card className="border-amber-500/30 bg-amber-500/5">
+                <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
+                  <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <span className="text-amber-400 font-bold text-sm">{refundedOrders.length}</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-400">Refunds Received</p>
+                    <p className="text-xs text-muted-foreground mt-1">GHC {refundedTotal.toFixed(2)} credited to your wallet</p>
+                    <p className="text-xs text-muted-foreground mt-1">Go to Refunds tab to view details</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })()}
+
         {/* Orders Table with Search */}
         <Card className="border-border">
           <CardHeader className="flex flex-col gap-3">
