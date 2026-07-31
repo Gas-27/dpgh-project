@@ -52,14 +52,15 @@ export default function ReportComplaintDialog({
   // Screenshot 1: MTN app / data balance
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  // network must be declared before requiresTwoScreenshots which references it
+  const network = order.network;
+  const networkLabel = formatNetworkName(network);
+
   // Screenshot 2: MTN SMS confirmation message thread (required for MTN orders)
   const smsFileInputRef = useRef<HTMLInputElement>(null);
   const [smsScreenshotFile, setSmsScreenshotFile] = useState<File | null>(null);
   const [smsScreenshotPreview, setSmsScreenshotPreview] = useState<string | null>(null);
   const requiresTwoScreenshots = isMTN(network);
-
-  const network = order.network;
-  const networkLabel = formatNetworkName(network);
   const canProceedChecklist = owingAirtime !== null && owingBundle !== null && owingMomo !== null;
 
   const getScreenshotInstructions = () => {
