@@ -56,6 +56,10 @@ interface Order {
   fulfillment_status: string;
   order_status: string;
   created_at: string;
+  agent_store_id?: string | null;
+  subagent_store_id?: string | null;
+  sub_subagent_store_id?: string | null;
+  customer_id?: string | null;
 }
 
 interface SpinSegment {
@@ -207,9 +211,12 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     msg = `Order sent to ${formatNetworkName(order.network)} for delivery.`;
     note = "Your order is being processed by the network. The status will update automatically once delivered.";
   } else if (orderStatus === "refunded") {
-    step = 1;
-    msg = "This order has been refunded.";
-    note = "Please contact support if you have any questions.";
+    step = 4;
+    const isFromStore = !!(order.agent_store_id || order.subagent_store_id || (order as any).sub_subagent_store_id);
+    msg = "REFUNDED";
+    note = isFromStore
+      ? "Your order has been refunded to the account you bought from — your agent's wallet on the site (not your MoMo wallet). Your agent will refund you shortly."
+      : "Your order has been refunded to your user wallet on the site. Visit your dashboard to see your refund.";
   } else if (orderStatus === "failed") {
     step = 1;
     msg = "This order could not be fulfilled.";
@@ -249,31 +256,50 @@ Please investigate and assist. Thank you.`;
   const waLink = `https://wa.me/233200511211?text=${encodeURIComponent(reportMessage)}`;
   const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${encodeURIComponent("Order Support - Delivered but not received")}&body=${encodeURIComponent(reportMessage)}`;
 
-  // All networks now use 4 steps: Order Placed → Number Verifying → Processing → Delivered
-  const labels = ["Order Placed", "Number Verifying", "Processing", "Delivered"];
+  // All networks now use 4 steps: Order Placed → Number Verifying → Processing → Delivered/Refunded
+  const isRefunded = orderStatus === "refunded";
+  const lastLabel = isRefunded ? "Refunded" : "Delivered";
+  const labels = ["Order Placed", "Number Verifying", "Processing", lastLabel];
 
   if (step === 4) return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Delivery Status</span>
-        <Badge className="bg-green-600/20 text-green-400 border-green-600/30"><CheckCircle className="h-3 w-3 mr-1" />Delivered</Badge>
+        {isRefunded ? (
+          <Badge className="bg-red-600/20 text-red-400 border-red-600/30 font-semibold tracking-wide">
+            <CheckCircle className="h-3 w-3 mr-1" />Refunded
+          </Badge>
+        ) : (
+          <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
+            <CheckCircle className="h-3 w-3 mr-1" />Delivered
+          </Badge>
+        )}
       </div>
       <div className="relative">
         <div className="flex justify-between">
           {labels.map((l, i) => (
             <div key={i} className="flex flex-col items-center flex-1">
-              <div className="w-8 h-8 rounded-full bg-green-600/20 text-green-400 flex items-center justify-center"><Check className="h-4 w-4" /></div>
-              <span className="text-xs text-center mt-1 text-muted-foreground">{l}</span>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRefunded ? "bg-red-600/20 text-red-400" : "bg-green-600/20 text-green-400"}`}>
+                <Check className="h-4 w-4" />
+              </div>
+              <span className={`text-xs text-center mt-1 ${i === 3 && isRefunded ? "text-red-400 font-semibold" : "text-muted-foreground"}`}>{l}</span>
             </div>
           ))}
         </div>
-        <div className="absolute top-4 left-0 w-full h-0.5 bg-green-600/30 -z-10" />
+        <div className={`absolute top-4 left-0 w-full h-0.5 -z-10 ${isRefunded ? "bg-red-600/30" : "bg-green-600/30"}`} />
       </div>
-      <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
-        <p className="text-sm font-medium">{msg}</p>
-        {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-600/20">{note}</p>}
-      </div>
-      {/* Report button only shows when order status is "delivered" */}
+      {isRefunded ? (
+        <div className="p-3 rounded-lg bg-red-600/10 border border-red-600/30">
+          <p className="text-sm font-semibold text-red-400 uppercase tracking-wide">{msg}</p>
+          {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-red-600/20">{note}</p>}
+        </div>
+      ) : (
+        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+          <p className="text-sm font-medium">{msg}</p>
+          {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-600/20">{note}</p>}
+        </div>
+      )}
+      {/* Report button only shows when order status is "delivered" (not refunded) */}
       {orderStatus === "delivered" && !complaintStatus && (
         <Button 
           variant="outline" 
@@ -338,7 +364,7 @@ Please investigate and assist. Thank you.`;
   );
 };
 
-// ─���─────────────────────────────────�����──────────��� Spin Wheel Popup (unchanged) ──
+// ─����─────────────────────────────────�����──────────��� Spin Wheel Popup (unchanged) ──
 interface SpinWheelPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1239,7 +1265,7 @@ const Packages = () => {
     let q = searchQuery.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
     q = q.replace(/\s/g, "");
-    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,order_status,created_at,package_id");
+    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,order_status,created_at,package_id,agent_store_id,subagent_store_id,sub_subagent_store_id,customer_id");
     // If query is a UUID (contains hyphens), search by ID; otherwise search by phone number (without spaces)
     if (q.length === 36 && q.includes("-")) {
       query = query.eq("id", q);
