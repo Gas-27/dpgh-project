@@ -28,6 +28,7 @@ interface Complaint {
   complaint_title: string;
   complaint_details: string;
   screenshot_url?: string;
+  sms_screenshot_url?: string;
   owing_airtime?: boolean;
   owing_bundle?: boolean;
   owing_momo?: boolean;
@@ -39,14 +40,20 @@ interface Complaint {
     amount: number;
     fulfillment_status: string;
     created_at: string;
+    agent_store_id?: string;
+    subagent_store_id?: string;
+    customer_id?: string;
+    customer_number?: string;
   };
   agent_stores?: {
     store_name: string;
     phone_number: string;
+    store_url?: string;
   };
   subagent_stores?: {
     store_name: string;
     whatsapp_number: string;
+    store_url?: string;
   };
 }
 
@@ -78,9 +85,11 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
       // Tier 1: all new columns (requires migration)
       // Tier 2: screenshot_url only (may exist without the owing_* columns)
       // Tier 3: base columns only (always works)
-      const TIER1 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at";
-      const TIER2 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, status, created_at";
-      const TIER3 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at";
+      const ORDER_JOIN = "orders(network, size_gb, amount, fulfillment_status, created_at, agent_store_id, subagent_store_id, customer_id, customer_number)";
+      const STORE_JOIN = "agent_stores(store_name, phone_number, store_url), subagent_stores(store_name, whatsapp_number, store_url)";
+      const TIER1 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, sms_screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
+      const TIER2 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
+      const TIER3 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
 
       const buildQuery = (select: string) => {
         let q = supabase.from("complaints").select(select).order("created_at", { ascending: false });
@@ -427,11 +436,32 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
             <CardContent className="pt-4 pb-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
               <span className="text-muted-foreground">Customer</span><span className="font-medium">{complaint.customer_number}</span>
               {complaint.orders && <>
+                <span className="text-muted-foreground">Order Date</span>
+                <span className="font-medium">{complaint.orders.created_at ? new Date(complaint.orders.created_at).toLocaleString() : "—"}</span>
                 <span className="text-muted-foreground">Network</span><span className="font-medium">{networkName(complaint.orders.network)}</span>
                 <span className="text-muted-foreground">Package</span><span className="font-medium">{complaint.orders.size_gb}GB — GHC {Number(complaint.orders.amount).toFixed(2)}</span>
                 <span className="text-muted-foreground">Delivery</span><span className="font-medium">{complaint.orders.fulfillment_status}</span>
+                <span className="text-muted-foreground">Order Source</span>
+                <span className="font-medium">
+                  {complaint.agent_stores?.store_name ? (
+                    <span className="flex items-center gap-1">
+                      {complaint.agent_stores.store_name}
+                      {complaint.agent_stores.store_url && (
+                        <a href={complaint.agent_stores.store_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline ml-1">Visit</a>
+                      )}
+                    </span>
+                  ) : complaint.subagent_stores?.store_name ? (
+                    <span className="flex items-center gap-1">
+                      {complaint.subagent_stores.store_name}
+                      {complaint.subagent_stores.store_url && (
+                        <a href={complaint.subagent_stores.store_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline ml-1">Visit</a>
+                      )}
+                    </span>
+                  ) : (
+                    <span>Direct</span>
+                  )}
+                </span>
               </>}
-              <span className="text-muted-foreground">Store</span><span className="font-medium">{complaint.agent_stores?.store_name || complaint.subagent_stores?.store_name || "—"}</span>
               <span className="text-muted-foreground">Type</span><span className="capitalize font-medium">{complaint.complaint_type}</span>
             </CardContent>
           </Card>
@@ -501,9 +531,31 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-border p-4 text-center">
-              <p className="text-xs text-muted-foreground italic">No screenshot was attached to this complaint</p>
+              <p className="text-xs text-muted-foreground italic">No data balance screenshot was attached to this complaint</p>
             </div>
           )}
+
+          {/* SMS Screenshot (2nd screenshot for MTN complaints) */}
+          {(complaint as any).sms_screenshot_url ? (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">MTN SMS Confirmation Screenshot</p>
+              <img
+                src={(complaint as any).sms_screenshot_url}
+                alt="MTN SMS confirmation screenshot"
+                className="w-full rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => onPreviewImage((complaint as any).sms_screenshot_url)}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+              <div className="flex gap-2 mt-2">
+                <a href={(complaint as any).sms_screenshot_url} download target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
+                  <Download className="h-3.5 w-3.5" /> Save SMS Image
+                </a>
+                <button onClick={() => onPreviewImage((complaint as any).sms_screenshot_url)} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
+                  <Image className="h-3.5 w-3.5" /> Fullscreen
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <Separator />
 
@@ -630,7 +682,8 @@ function ComplaintsTable({
                   <TableHead className="w-24">Type</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Order</TableHead>
-                  <TableHead>Store</TableHead>
+                  <TableHead className="whitespace-nowrap">Order Date</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead>Checklist</TableHead>
                   <TableHead>Screenshot</TableHead>
                   <TableHead className="whitespace-nowrap">Reported At</TableHead>
@@ -666,8 +719,27 @@ function ComplaintsTable({
                         </div>
                       ) : <span className="text-muted-foreground text-xs">{c.order_id?.slice(0,8)}…</span>}
                     </TableCell>
-                    <TableCell className="text-sm">
-                      <p className="font-medium">{c.agent_stores?.store_name || c.subagent_stores?.store_name || "—"}</p>
+                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                      {c.orders?.created_at ? new Date(c.orders.created_at).toLocaleString() : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {c.agent_stores?.store_name ? (
+                        <div>
+                          <p className="font-medium text-blue-400">{c.agent_stores.store_name}</p>
+                          {c.agent_stores.store_url && (
+                            <a href={c.agent_stores.store_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline" onClick={e => e.stopPropagation()}>Visit</a>
+                          )}
+                        </div>
+                      ) : c.subagent_stores?.store_name ? (
+                        <div>
+                          <p className="font-medium text-purple-400">{c.subagent_stores.store_name}</p>
+                          {c.subagent_stores.store_url && (
+                            <a href={c.subagent_stores.store_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline" onClick={e => e.stopPropagation()}>Visit</a>
+                          )}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">Direct</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">

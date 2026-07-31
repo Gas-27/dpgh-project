@@ -257,6 +257,7 @@ const AdminDashboard = () => {
     storeName: string;
     contact: string;
     storeUrl?: string;
+    topupReference?: string;
     parentSubagentName?: string;
     parentSubagentUrl?: string;
     parentAgentName?: string;
@@ -1421,45 +1422,41 @@ const AdminDashboard = () => {
   const queryOrdersFromDB = async (network: string, fulfillment: string, paymentStatus: string) => {
     setIsFilteringOrders(true);
     try {
-      // Fetch ALL orders first to include API orders (which have no agent_store_id)
-      const { data: allOrders, error } = await supabase
+      // Build query with DB-side filters — do NOT filter in memory
+      let query = supabase
         .from("orders")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(1000);
-      
+        .limit(5000);
+
+      // Apply network filter directly on DB
+      if (network !== "all") {
+        if (network === "airtel") {
+          query = query.in("network", ["airteltigo", "atbigtime", "atbigshare"]);
+        } else {
+          query = query.eq("network", network);
+        }
+      }
+
+      // Apply fulfillment/order_status filter directly on DB
+      if (fulfillment !== "all") {
+        query = query.eq("order_status", fulfillment);
+      }
+
+      // Apply payment/status filter directly on DB
+      if (paymentStatus !== "all") {
+        query = query.eq("status", paymentStatus);
+      }
+
+      const { data: filtered, error } = await query;
+
       if (error) {
-        console.error("[v0] Error querying orders:", error);
+        console.error("[v0] Error querying orders from DB:", error);
         toast({ title: "Error", description: "Failed to filter orders", variant: "destructive" });
         return;
       }
-      
-      // Filter in memory to ensure API orders are preserved
-      let filtered = allOrders || [];
-      
-      if (network !== "all") {
-        filtered = filtered.filter(o => {
-          const n = (o.network || "").toLowerCase();
-          // "mtn" should show only pure MTN orders, NOT mtn_express
-          if (network === "mtn") return n === "mtn";
-          // "mtn_express" shows only MTN Express orders
-          if (network === "mtn_express") return n === "mtn_express";
-          // AirtelTigo covers all AT variants
-          if (network === "airtel") return n === "airteltigo" || n === "atbigtime" || n === "atbigshare";
-          return n === network.toLowerCase();
-        });
-      }
-      if (fulfillment !== "all") {
-        filtered = filtered.filter(o => (o.order_status || "").toLowerCase() === fulfillment.toLowerCase());
-      }
-      if (paymentStatus !== "all") {
-        filtered = filtered.filter(o => o.status === paymentStatus);
-      }
-      
-      const apiOrders = filtered.filter(o => !o.agent_store_id && !o.subagent_store_id);
-      console.log("[v0] Total orders:", allOrders?.length, "Filtered:", filtered.length, "API orders:", apiOrders.length, "Filters:", { network, fulfillment, paymentStatus });
-      
-      setFilteredOrdersFromDB(filtered);
+
+      setFilteredOrdersFromDB(filtered || []);
     } catch (error) {
       console.error("[v0] Error querying orders from DB:", error);
       toast({ title: "Error", description: "Failed to filter orders", variant: "destructive" });
@@ -2729,11 +2726,11 @@ const AdminDashboard = () => {
                                             type: "Sub-Subagent Store",
                                             storeName: subSubagentStore.store_name || "Unknown",
                                             contact: subSubagentStore.support_number || subSubagentStore.whatsapp_number || "N/A",
-                                            storeUrl: subSubagentStore.store_url || undefined,
+                                            storeUrl: subSubagentStore.user_id ? `#impersonate:sub_subagent:${subSubagentStore.user_id}` : subSubagentStore.store_url || undefined,
                                             parentSubagentName: parentSubagent?.store_name || undefined,
-                                            parentSubagentUrl: parentSubagent?.store_url || undefined,
+                                            parentSubagentUrl: parentSubagent?.user_id ? `#impersonate:subagent:${parentSubagent.user_id}` : parentSubagent?.store_url || undefined,
                                             parentAgentName: parentAgent?.store_name || undefined,
-                                            parentAgentUrl: parentAgent?.store_url || undefined,
+                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.user_id}` : parentAgent?.store_url || undefined,
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (subagentStore) {
@@ -2742,9 +2739,9 @@ const AdminDashboard = () => {
                                             type: "Subagent Store",
                                             storeName: subagentStore.store_name || "Unknown",
                                             contact: subagentStore.support_number || subagentStore.whatsapp_number || "N/A",
-                                            storeUrl: subagentStore.store_url || undefined,
+                                            storeUrl: subagentStore.user_id ? `#impersonate:subagent:${subagentStore.user_id}` : subagentStore.store_url || undefined,
                                             parentAgentName: parentAgent?.store_name || undefined,
-                                            parentAgentUrl: parentAgent?.store_url || undefined,
+                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.user_id}` : parentAgent?.store_url || undefined,
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (agentStore) {
@@ -2752,7 +2749,7 @@ const AdminDashboard = () => {
                                             type: "Agent Store",
                                             storeName: agentStore.store_name || "Unknown",
                                             contact: agentStore.whatsapp_number || agentStore.support_number || "N/A",
-                                            storeUrl: agentStore.store_url || undefined,
+                                            storeUrl: agentStore.user_id ? `#impersonate:agent:${agentStore.user_id}` : agentStore.store_url || undefined,
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (isAPIOrder) {
@@ -2763,15 +2760,15 @@ const AdminDashboard = () => {
                                           });
                                           setSourceDialogOpen(true);
                                         } else {
-                                          // Fetch customer email from customers table for direct orders
-                                          const customerEmail = (() => {
-                                            const c = (customers as any[])?.find?.((c: any) => c.user_id === order.customer_id);
-                                            return c?.email || order.customer_number || "Unknown Customer";
-                                          })();
+                                          // Show customer email + top-up reference for direct orders
+                                          const customerRecord = (customers as any[])?.find?.((c: any) => c.user_id === order.customer_id);
+                                          const customerEmail = customerRecord?.email || order.customer_number || "Unknown Customer";
+                                          const topupRef = (order as any).topup_reference || (order as any).paystack_reference || (order as any).payment_reference || undefined;
                                           setSourceInfo({
                                             type: "Customer Account",
                                             storeName: customerEmail,
                                             contact: order.customer_number || "N/A",
+                                            topupReference: topupRef,
                                             storeUrl: `/user-dashboard?impersonate=${order.customer_id}`,
                                           });
                                           setSourceDialogOpen(true);
@@ -2780,15 +2777,11 @@ const AdminDashboard = () => {
                                     >
                                       {sourceLabel.length > 12 ? sourceLabel.slice(0, 12) + "..." : sourceLabel}
                                     </Badge>
-                                    <p className="text-xs text-muted-foreground">
-                                      {isAPIOrder ? (
+                                    {isAPIOrder && (
+                                      <p className="text-xs text-muted-foreground">
                                         <span>API: {(order.api_user || "").slice(0, 16)}</span>
-                                      ) : subSubagentStore || subagentStore || agentStore ? (
-                                        <span>Store ID: {(order.agent_store_id || order.subagent_store_id || (order as any).sub_subagent_store_id || "—")?.slice(0, 12)}</span>
-                                      ) : (
-                                        <span>Phone: {order.customer_number || "—"}</span>
-                                      )}
-                                    </p>
+                                      </p>
+                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell><Badge variant="outline" className="text-xs">{order.payment_method === "wallet" ? "Wallet" : "Paystack"}</Badge></TableCell>
@@ -4554,21 +4547,70 @@ const AdminDashboard = () => {
             <div className="space-y-3 py-2">
               <Badge variant="outline" className="text-xs">{sourceInfo.type}</Badge>
 
-              {/* Store card */}
+              {/* Main store / customer card */}
               <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Store</p>
-                <p className="font-semibold text-foreground">{sourceInfo.storeName}</p>
-                {sourceInfo.contact && sourceInfo.contact !== "N/A" && (
-                  <a href={`tel:${sourceInfo.contact}`} className="text-sm text-primary hover:underline block">{sourceInfo.contact}</a>
-                )}
-                {sourceInfo.storeUrl && (
-                  <Button variant="outline" size="sm" className="w-full text-xs mt-1" onClick={() => window.open(sourceInfo.storeUrl, "_blank")}>
-                    View Store
-                  </Button>
+                {sourceInfo.type === "Customer Account" ? (
+                  <>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Customer</p>
+                    <p className="font-semibold text-foreground">{sourceInfo.storeName}</p>
+                    {sourceInfo.topupReference && (
+                      <p className="text-xs text-muted-foreground">Top-up Ref: <span className="font-mono text-foreground">{sourceInfo.topupReference}</span></p>
+                    )}
+                    {sourceInfo.contact && sourceInfo.contact !== "N/A" && (
+                      <p className="text-sm text-muted-foreground">Phone: {sourceInfo.contact}</p>
+                    )}
+                    {sourceInfo.storeUrl && (
+                      <Button variant="outline" size="sm" className="w-full text-xs mt-1" onClick={() => {
+                        const url = sourceInfo!.storeUrl!;
+                        if (url.startsWith("#impersonate:customer:")) {
+                          const customerId = url.split(":")[2];
+                          window.open(`/user-dashboard?impersonate=${customerId}`, "_blank");
+                        } else {
+                          window.open(url, "_blank");
+                        }
+                      }}>
+                        Login to Customer Dashboard
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                      {sourceInfo.type === "Agent Store" ? "Agent" : sourceInfo.type === "Subagent Store" ? "Subagent" : sourceInfo.type === "Sub-Subagent Store" ? "Sub-Subagent" : "Store"}
+                    </p>
+                    <p className="font-semibold text-foreground">{sourceInfo.storeName}</p>
+                    {sourceInfo.contact && sourceInfo.contact !== "N/A" && (
+                      <a href={`tel:${sourceInfo.contact}`} className="text-sm text-primary hover:underline block">{sourceInfo.contact}</a>
+                    )}
+                    {sourceInfo.storeUrl && (
+                      <Button variant="outline" size="sm" className="w-full text-xs mt-1" onClick={() => {
+                        const url = sourceInfo!.storeUrl!;
+                        if (url.startsWith("#impersonate:")) {
+                          const parts = url.split(":");
+                          const role = parts[1];
+                          const userId = parts[2];
+                          if (role === "agent") {
+                            localStorage.setItem("admin_impersonate_agent", userId);
+                            window.open("/agent", "_blank");
+                          } else if (role === "subagent") {
+                            localStorage.setItem("admin_impersonate_subagent", userId);
+                            window.open("/subagent-dashboard", "_blank");
+                          } else if (role === "sub_subagent") {
+                            localStorage.setItem("admin_impersonate_sub_subagent", userId);
+                            window.open("/sub-subagent-dashboard", "_blank");
+                          }
+                        } else {
+                          window.open(url, "_blank");
+                        }
+                      }}>
+                        Login to {sourceInfo.type === "Agent Store" ? "Agent" : sourceInfo.type === "Subagent Store" ? "Subagent" : "Sub-Subagent"} Dashboard
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
 
-              {/* Hierarchy for sub-subagent */}
+              {/* Hierarchy for subagent / sub-subagent */}
               {(sourceInfo.parentSubagentName || sourceInfo.parentAgentName) && (
                 <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Hierarchy</p>
@@ -4579,8 +4621,14 @@ const AdminDashboard = () => {
                         <p className="text-sm font-medium text-foreground">{sourceInfo.parentSubagentName}</p>
                       </div>
                       {sourceInfo.parentSubagentUrl && (
-                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => window.open(sourceInfo.parentSubagentUrl, "_blank")}>
-                          View
+                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => {
+                          const url = sourceInfo!.parentSubagentUrl!;
+                          if (url.startsWith("#impersonate:subagent:")) {
+                            localStorage.setItem("admin_impersonate_subagent", url.split(":")[2]);
+                            window.open("/subagent-dashboard", "_blank");
+                          } else { window.open(url, "_blank"); }
+                        }}>
+                          Login
                         </Button>
                       )}
                     </div>
@@ -4592,8 +4640,14 @@ const AdminDashboard = () => {
                         <p className="text-sm font-medium text-foreground">{sourceInfo.parentAgentName}</p>
                       </div>
                       {sourceInfo.parentAgentUrl && (
-                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => window.open(sourceInfo.parentAgentUrl, "_blank")}>
-                          View
+                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => {
+                          const url = sourceInfo!.parentAgentUrl!;
+                          if (url.startsWith("#impersonate:agent:")) {
+                            localStorage.setItem("admin_impersonate_agent", url.split(":")[2]);
+                            window.open("/agent", "_blank");
+                          } else { window.open(url, "_blank"); }
+                        }}>
+                          Login
                         </Button>
                       )}
                     </div>

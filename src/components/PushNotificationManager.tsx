@@ -57,21 +57,26 @@ export default function PushNotificationManager() {
 
   const fetchData = async () => {
     try {
-      // Fetch push subscriptions - explicitly set high limit to get all subscribers
-      const { data: subs, error: subsError } = await supabase
-        .from("push_subscriptions")
-        .select("*", { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range(0, 99999);
-      
-      if (subsError) {
-        console.error("[v0] Error fetching subscriptions:", subsError);
+      // Paginate through ALL push subscriptions (Supabase caps at 1000 per request)
+      let allSubs: PushSubscription[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data: chunk, error: subsError } = await supabase
+          .from("push_subscriptions")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        if (subsError) {
+          console.error("[v0] Error fetching subscriptions:", subsError);
+          break;
+        }
+        if (!chunk || chunk.length === 0) break;
+        allSubs = allSubs.concat(chunk);
+        if (chunk.length < pageSize) break;
+        page++;
       }
-      
-      if (subs) {
-        console.log("[v0] Fetched", subs.length, "PWA subscribers");
-        setSubscriptions(subs);
-      }
+      setSubscriptions(allSubs);
 
       // Fetch sent notifications
       const { data: notifs } = await supabase

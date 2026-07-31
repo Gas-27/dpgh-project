@@ -49,9 +49,14 @@ export default function ReportComplaintDialog({
   const [owingBundle, setOwingBundle] = useState<boolean | null>(null);
   const [owingMomo, setOwingMomo] = useState<boolean | null>(null);
 
-  // Screenshot
+  // Screenshot 1: MTN app / data balance
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  // Screenshot 2: MTN SMS confirmation message thread (required for MTN orders)
+  const smsFileInputRef = useRef<HTMLInputElement>(null);
+  const [smsScreenshotFile, setSmsScreenshotFile] = useState<File | null>(null);
+  const [smsScreenshotPreview, setSmsScreenshotPreview] = useState<string | null>(null);
+  const requiresTwoScreenshots = isMTN(network);
 
   const network = order.network;
   const networkLabel = formatNetworkName(network);
@@ -116,9 +121,7 @@ export default function ReportComplaintDialog({
 
   const instructions = getScreenshotInstructions();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const validateAndReadFile = (file: File, onSuccess: (f: File, preview: string) => void) => {
     if (!file.type.startsWith("image/")) {
       toast({ title: "Invalid file", description: "Please upload an image file (JPG, PNG, etc.)", variant: "destructive" });
       return;
@@ -127,10 +130,21 @@ export default function ReportComplaintDialog({
       toast({ title: "File too large", description: "Please upload an image under 5MB", variant: "destructive" });
       return;
     }
-    setScreenshotFile(file);
     const reader = new FileReader();
-    reader.onloadend = () => setScreenshotPreview(reader.result as string);
+    reader.onloadend = () => onSuccess(file, reader.result as string);
     reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    validateAndReadFile(file, (f, preview) => { setScreenshotFile(f); setScreenshotPreview(preview); });
+  };
+
+  const handleSmsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    validateAndReadFile(file, (f, preview) => { setSmsScreenshotFile(f); setSmsScreenshotPreview(preview); });
   };
 
   const handleSendComplaint = async () => {
@@ -138,24 +152,44 @@ export default function ReportComplaintDialog({
       setSending(true);
       setStep("sending");
 
-      // Screenshot is required — upload and throw if it fails
+      // Both screenshots required for MTN, one for others
       if (!screenshotFile) {
-        throw new Error("A screenshot is required to submit a complaint.");
+        throw new Error("A data balance screenshot is required to submit a complaint.");
+      }
+      if (requiresTwoScreenshots && !smsScreenshotFile) {
+        throw new Error("An MTN SMS confirmation screenshot is also required for MTN complaints.");
       }
 
+      // Upload screenshot 1: data balance
       let screenshotUrl = "";
       const fileExt = screenshotFile.name.split(".").pop();
       const fileName = `complaint-${order.id}-${Date.now()}.${fileExt}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("complaints")
         .upload(fileName, screenshotFile, { upsert: true });
-
       if (uploadError) {
-        throw new Error(`Screenshot upload failed: ${uploadError.message}. Please ensure the storage bucket is set up (run the provided SQL) and try again.`);
+        throw new Error(`Data balance screenshot upload failed: ${uploadError.message}`);
       }
       if (uploadData) {
         const { data: urlData } = supabase.storage.from("complaints").getPublicUrl(uploadData.path);
         screenshotUrl = urlData?.publicUrl || "";
+      }
+
+      // Upload screenshot 2: SMS confirmation (MTN only)
+      let smsScreenshotUrl = "";
+      if (requiresTwoScreenshots && smsScreenshotFile) {
+        const smsExt = smsScreenshotFile.name.split(".").pop();
+        const smsFileName = `complaint-sms-${order.id}-${Date.now()}.${smsExt}`;
+        const { data: smsUploadData, error: smsUploadError } = await supabase.storage
+          .from("complaints")
+          .upload(smsFileName, smsScreenshotFile, { upsert: true });
+        if (smsUploadError) {
+          throw new Error(`SMS screenshot upload failed: ${smsUploadError.message}`);
+        }
+        if (smsUploadData) {
+          const { data: smsUrlData } = supabase.storage.from("complaints").getPublicUrl(smsUploadData.path);
+          smsScreenshotUrl = smsUrlData?.publicUrl || "";
+        }
       }
 
       const checklistSummary = `
@@ -163,7 +197,8 @@ Checklist Answers:
 • Owing airtime on SIM: ${owingAirtime ? "YES" : "NO"}
 • Owing bundle: ${owingBundle ? "YES" : "NO"}
 • Owing MoMo: ${owingMomo ? "YES" : "NO"}
-${screenshotUrl ? `\nScreenshot: ${screenshotUrl}` : "\nNo screenshot provided"}`;
+${screenshotUrl ? `\nData Balance Screenshot: ${screenshotUrl}` : "\nNo data balance screenshot provided"}
+${smsScreenshotUrl ? `\nSMS Confirmation Screenshot: ${smsScreenshotUrl}` : ""}`;
 
       const complaintDetails = `📱 Order Complaint Report
 ━━━━━━━━━━━━━━━━━━━━━━━━
@@ -194,6 +229,7 @@ Please investigate and assist. Thank You.`;
       const extendedPayload = {
         ...basePayload,
         ...(screenshotUrl ? { screenshot_url: screenshotUrl } : {}),
+        ...(smsScreenshotUrl ? { sms_screenshot_url: smsScreenshotUrl } : {}),
         owing_airtime: owingAirtime,
         owing_bundle: owingBundle,
         owing_momo: owingMomo,
@@ -235,6 +271,8 @@ Please investigate and assist. Thank You.`;
     setOwingMomo(null);
     setScreenshotFile(null);
     setScreenshotPreview(null);
+    setSmsScreenshotFile(null);
+    setSmsScreenshotPreview(null);
     onOpenChange(false);
   };
 
@@ -491,15 +529,67 @@ Please investigate and assist. Thank You.`;
               )}
             </div>
 
+            {/* Screenshot 2: MTN SMS confirmation */}
+            {requiresTwoScreenshots && (
+              <div className="space-y-2 border-t border-border pt-4">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-sm font-medium">Screenshot 2 — MTN SMS Confirmation</Label>
+                  <span className="text-xs font-semibold text-destructive">* Required</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Open your MTN SMS/message inbox, go to messages from <span className="font-semibold">MTN</span> and take a screenshot showing the bundle credit confirmation message.
+                </p>
+                {/* Example SMS screenshot */}
+                <div className="rounded-lg overflow-hidden border border-border">
+                  <img
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-nnfGxeIDcD0TkQUAOYHwNAOaDGSB4c.png"
+                    alt="Example MTN SMS confirmation showing 'Your Account has been credited'"
+                    className="w-full max-h-48 object-contain bg-muted"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Your screenshot should look similar to the example above.</p>
+                <input
+                  ref={smsFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleSmsFileChange}
+                />
+                {!smsScreenshotPreview ? (
+                  <button
+                    type="button"
+                    onClick={() => smsFileInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-destructive/50 rounded-lg py-6 flex flex-col items-center gap-2 hover:border-destructive transition-colors bg-destructive/5"
+                  >
+                    <Upload className="h-7 w-7 text-destructive/70" />
+                    <p className="text-sm font-medium">Tap to upload SMS screenshot</p>
+                    <p className="text-xs text-muted-foreground">JPG, PNG — max 5MB</p>
+                    <p className="text-xs text-destructive font-medium">Required for MTN complaints</p>
+                  </button>
+                ) : (
+                  <div className="relative rounded-lg overflow-hidden border border-primary">
+                    <img src={smsScreenshotPreview} alt="SMS confirmation screenshot" className="w-full max-h-52 object-contain bg-muted" />
+                    <button
+                      type="button"
+                      onClick={() => { setSmsScreenshotFile(null); setSmsScreenshotPreview(null); }}
+                      className="absolute top-2 right-2 bg-background/80 rounded-full p-1 border border-border hover:bg-destructive/20"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep("checklist")} className="flex-1">
                 Back
               </Button>
               <Button
                 onClick={handleSendComplaint}
-                disabled={sending || !screenshotFile}
+                disabled={sending || !screenshotFile || (requiresTwoScreenshots && !smsScreenshotFile)}
                 className="flex-1"
-                title={!screenshotFile ? "A screenshot is required to submit" : undefined}
+                title={!screenshotFile ? "Upload your data balance screenshot" : requiresTwoScreenshots && !smsScreenshotFile ? "Upload your MTN SMS screenshot too" : undefined}
               >
                 {sending ? (
                   <>
@@ -509,7 +599,7 @@ Please investigate and assist. Thank You.`;
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    {screenshotFile ? "Submit Report" : "Upload Screenshot to Submit"}
+                    {!screenshotFile ? "Upload Screenshots to Submit" : requiresTwoScreenshots && !smsScreenshotFile ? "Upload SMS Screenshot to Submit" : "Submit Report"}
                   </>
                 )}
               </Button>

@@ -36,17 +36,26 @@ export default async function handler(req, res) {
       VAPID_PRIVATE_KEY
     );
 
-    // Get all subscriptions from database - explicitly set high limit to get all
+    // Get ALL subscriptions by paginating (Supabase default max is 1000 per request)
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data: subscriptions, error: fetchError } = await supabase
-      .from("push_subscriptions")
-      .select("*")
-      .limit(10000);
-
-    if (fetchError) {
-      console.error("Error fetching subscriptions:", fetchError);
-      return res.status(500).json({ error: "Failed to fetch subscriptions" });
+    let allSubscriptions = [];
+    let page = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data: chunk, error: fetchError } = await supabase
+        .from("push_subscriptions")
+        .select("*")
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      if (fetchError) {
+        console.error("Error fetching subscriptions:", fetchError);
+        return res.status(500).json({ error: "Failed to fetch subscriptions" });
+      }
+      if (!chunk || chunk.length === 0) break;
+      allSubscriptions = allSubscriptions.concat(chunk);
+      if (chunk.length < pageSize) break;
+      page++;
     }
+    const subscriptions = allSubscriptions;
 
     if (!subscriptions || subscriptions.length === 0) {
       return res.status(200).json({ success: true, sent: 0, message: "No subscribers found" });
