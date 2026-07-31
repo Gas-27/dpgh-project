@@ -406,20 +406,23 @@ const AdminDashboard = () => {
 
       if (allRows.length === 0) return [];
 
-      // Collect store IDs to join store data
+      // Collect store IDs and recipient IDs to join store + recipient data
       const agentIds = [...new Set(allRows.filter(r => r.agent_store_id).map(r => r.agent_store_id))];
       const subagentIds = [...new Set(allRows.filter(r => r.subagent_store_id && !r.sub_subagent_store_id).map(r => r.subagent_store_id))];
       const subSubIds = [...new Set(allRows.filter(r => r.sub_subagent_store_id).map(r => r.sub_subagent_store_id))];
+      const recipientIds = [...new Set(allRows.filter(r => r.recipient_id).map(r => r.recipient_id))];
 
-      const [agentStoresRes, subagentStoresRes, subSubStoresRes] = await Promise.all([
-        agentIds.length > 0 ? supabase.from("agent_stores").select("id, store_name, momo_name, momo_number, momo_network, wallet_balance, subagent_commission_balance").in("id", agentIds) : { data: [] },
-        subagentIds.length > 0 ? supabase.from("subagent_stores").select("id, store_name, momo_name, momo_number, momo_network, wallet_balance").in("id", subagentIds) : { data: [] },
-        subSubIds.length > 0 ? supabase.from("sub_subagent_stores").select("id, store_name, momo_name, momo_number, momo_network, wallet_balance").in("id", subSubIds) : { data: [] },
+      const [agentStoresRes, subagentStoresRes, subSubStoresRes, recipientsRes] = await Promise.all([
+        agentIds.length > 0 ? supabase.from("agent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance, subagent_commission_balance").in("id", agentIds) : { data: [] },
+        subagentIds.length > 0 ? supabase.from("subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subagentIds) : { data: [] },
+        subSubIds.length > 0 ? supabase.from("sub_subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subSubIds) : { data: [] },
+        recipientIds.length > 0 ? supabase.from("transfer_recipients").select("id, recipient_name, account_name, momo_number, momo_network, account_number, bank_name").in("id", recipientIds) : { data: [] },
       ]);
 
       const agentMap = Object.fromEntries((agentStoresRes.data || []).map((s: any) => [s.id, s]));
       const subagentMap = Object.fromEntries((subagentStoresRes.data || []).map((s: any) => [s.id, s]));
       const subSubMap = Object.fromEntries((subSubStoresRes.data || []).map((s: any) => [s.id, s]));
+      const recipientMap = Object.fromEntries((recipientsRes.data || []).map((r: any) => [r.id, r]));
 
       return allRows.map((w: any) => {
         const agentStore = agentMap[w.agent_store_id] || null;
@@ -427,6 +430,14 @@ const AdminDashboard = () => {
         const subStore = isSubSub
           ? (subSubMap[w.sub_subagent_store_id] || null)
           : (subagentMap[w.subagent_store_id] || null);
+        // Paystack recipient — used as fallback for MoMo name/number/network
+        const recipient = recipientMap[w.recipient_id] || null;
+        const recipientMomoName = recipient?.account_name || recipient?.recipient_name || null;
+        const recipientMomoNumber = recipient?.momo_number || recipient?.account_number || null;
+        const recipientMomoNetwork = recipient?.momo_network || recipient?.bank_name || null;
+
+        // Determine the withdrawing store for name/momo display
+        const displayStore = isSubSub ? subStore : (w.subagent_store_id ? subStore : agentStore);
 
         return {
           id: w.id,
@@ -439,7 +450,7 @@ const AdminDashboard = () => {
           created_at: w.created_at,
           processed_at: w.processed_at,
           approved_at: w.approved_at,
-          withdrawal_source: w.withdrawal_source || w.source_balance_before !== undefined ? (w.subagent_store_id || w.sub_subagent_store_id ? "subagent_commission" : "wallet_balance") : "wallet_balance",
+          withdrawal_source: w.withdrawal_source || (w.subagent_store_id || w.sub_subagent_store_id ? "subagent_commission" : "wallet_balance"),
           transfer_code: w.transfer_code,
           paystack_reference: w.paystack_reference,
           failure_reason: w.failure_reason,
@@ -448,20 +459,32 @@ const AdminDashboard = () => {
           agent_store: agentStore ? {
             id: agentStore.id,
             store_name: agentStore.store_name,
-            momo_name: agentStore.momo_name,
-            momo_number: agentStore.momo_number,
-            momo_network: agentStore.momo_network,
+            user_id: agentStore.user_id,
+            // Use agent store momo, fallback to recipient data
+            momo_name: agentStore.momo_name || (displayStore === agentStore ? recipientMomoName : null),
+            momo_number: agentStore.momo_number || (displayStore === agentStore ? recipientMomoNumber : null),
+            momo_network: agentStore.momo_network || (displayStore === agentStore ? recipientMomoNetwork : null),
             wallet_balance: agentStore.wallet_balance,
             subagent_commission_balance: agentStore.subagent_commission_balance,
           } : null,
           subagent_store: subStore ? {
             id: subStore.id,
             store_name: subStore.store_name,
-            momo_name: subStore.momo_name,
-            momo_number: subStore.momo_number,
-            momo_network: subStore.momo_network,
+            user_id: subStore.user_id,
+            momo_name: subStore.momo_name || recipientMomoName,
+            momo_number: subStore.momo_number || recipientMomoNumber,
+            momo_network: subStore.momo_network || recipientMomoNetwork,
             wallet_balance: subStore.wallet_balance,
-          } : null,
+          } : (recipientMomoName || recipientMomoNumber ? {
+            // No store found but we have recipient data — show it
+            id: null,
+            store_name: recipientMomoName || "—",
+            user_id: null,
+            momo_name: recipientMomoName,
+            momo_number: recipientMomoNumber,
+            momo_network: recipientMomoNetwork,
+            wallet_balance: 0,
+          } : null),
         };
       });
     } catch (err) {
@@ -2389,13 +2412,8 @@ const AdminDashboard = () => {
             <TabsTrigger value="subagents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Subagents ({subagents.filter((s) => !s.approved).length})</TabsTrigger>
             <TabsTrigger value="sub_subagents" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Sub-Subagents ({subSubagents.filter((s) => !s.approved).length})</TabsTrigger>
             <TabsTrigger value="topup" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Wallet className="h-3 w-3 md:h-4 md:w-4" /> Topup</TabsTrigger>
-            <TabsTrigger value="withdrawals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1 relative">
+            <TabsTrigger value="withdrawals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
               <DollarSign className="h-3 w-3 md:h-4 md:w-4" /> Withdrawals ({totalCounts.withdrawals})
-              {unapprovedWithdrawals > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                  {unapprovedWithdrawals}
-                </span>
-              )}
             </TabsTrigger>
             <TabsTrigger value="users" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Users</TabsTrigger>
             <TabsTrigger value="customers" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Users className="h-3 w-3 md:h-4 md:w-4" /> Customers</TabsTrigger>
@@ -3505,17 +3523,37 @@ const AdminDashboard = () => {
                                           {processingWithdrawals.has(w.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" /> Confirm Sent</>}
                                         </Button>
                                       )}
-                                      {store && (
-                                        <a 
-                                          href={isSubsubagentWithdrawal ? `/sub-subagent-dashboard/${w.sub_subagent_store_id}` : isSubagentWithdrawal ? `/subagent-dashboard/${w.subagent_store_id}` : `/agent-dashboard/${w.agent_store_id}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                        >
-                                          <Button variant="outline" size="sm">
-                                            <LogIn className="h-4 w-4 mr-1" /> Visit Store
+                                      {/* Login as the withdrawing store owner */}
+                                      {(() => {
+                                        const loginUserId = isSubsubagentWithdrawal
+                                          ? w.subagent_store?.user_id
+                                          : isSubagentWithdrawal
+                                          ? w.subagent_store?.user_id
+                                          : w.agent_store?.user_id;
+                                        const loginRole = isSubsubagentWithdrawal ? "sub_subagent" : isSubagentWithdrawal ? "subagent" : "agent";
+                                        const loginLabel = isSubsubagentWithdrawal ? "Sub-Subagent" : isSubagentWithdrawal ? "Subagent" : "Agent";
+                                        if (!loginUserId) return null;
+                                        return (
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                              if (loginRole === "agent") {
+                                                localStorage.setItem("admin_impersonate_agent", loginUserId);
+                                                window.open("/agent-dashboard", "_blank");
+                                              } else if (loginRole === "subagent") {
+                                                localStorage.setItem("admin_impersonate_subagent", loginUserId);
+                                                window.open("/subagent-dashboard", "_blank");
+                                              } else {
+                                                localStorage.setItem("admin_impersonate_sub_subagent", loginUserId);
+                                                window.open("/sub-subagent-dashboard", "_blank");
+                                              }
+                                            }}
+                                          >
+                                            <LogIn className="h-4 w-4 mr-1" /> Login as {loginLabel}
                                           </Button>
-                                        </a>
-                                      )}
+                                        );
+                                      })()}
                                     </div>
                                   </TableCell>
                                 </TableRow>

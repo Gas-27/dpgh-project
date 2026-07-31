@@ -177,7 +177,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
           .eq("order_id", order.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (!error && data) {
           setComplaintStatus(data.status);
@@ -193,7 +193,12 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   }, [order.id]);
 
   // ── Status-based step logic (no time dependency) ──
-  const orderStatus = order.order_status?.toLowerCase().trim() || "";
+  // Check both order_status and status fields — refunded may be set on either
+  const rawOrderStatus = order.order_status?.toLowerCase().trim() || "";
+  const rawStatus = order.status?.toLowerCase().trim() || "";
+  const orderStatus = rawOrderStatus === "refunded" || rawStatus === "refunded"
+    ? "refunded"
+    : rawOrderStatus || rawStatus;
   let step = 1, msg = "", note: string | null = null;
 
   if (orderStatus === "delivered") {

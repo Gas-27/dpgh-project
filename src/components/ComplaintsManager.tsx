@@ -48,12 +48,10 @@ interface Complaint {
   agent_stores?: {
     store_name: string;
     phone_number: string;
-    store_url?: string;
   };
   subagent_stores?: {
     store_name: string;
     whatsapp_number: string;
-    store_url?: string;
   };
 }
 
@@ -86,7 +84,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
       // Tier 2: screenshot_url only (may exist without the owing_* columns)
       // Tier 3: base columns only (always works)
       const ORDER_JOIN = "orders(network, size_gb, amount, fulfillment_status, created_at, agent_store_id, subagent_store_id, customer_id, customer_number)";
-      const STORE_JOIN = "agent_stores(store_name, phone_number, store_url), subagent_stores(store_name, whatsapp_number, store_url)";
+      const STORE_JOIN = "agent_stores(store_name, phone_number), subagent_stores(store_name, whatsapp_number)";
       const TIER1 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, sms_screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
       const TIER2 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
       const TIER3 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;

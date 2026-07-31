@@ -10,10 +10,9 @@ import { useFetchRealtimePackages } from "@/hooks/useRealtimePackages";
 
 const networks = [
   { id: "mtn", name: "MTN", color: "bg-mtn text-primary-foreground" },
+  { id: "mtn_express", name: "MTN Exp", color: "bg-mtn text-primary-foreground" },
   { id: "airteltigo", name: "AT", color: "bg-telecel text-foreground" },
   { id: "telecel", name: "Telecel", color: "bg-telecel text-foreground" },
-  // COMMENTED OUT: mashup packages deactivated
-  // { id: "mtn_mashup", name: "Mashup", color: "bg-orange-500 text-foreground" },
 ];
 
 interface DataPackage {
