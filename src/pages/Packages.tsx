@@ -8,7 +8,8 @@ import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
-import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
+import { lazy, Suspense } from "react";
+const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
@@ -26,6 +27,7 @@ import {
   Loader2, Check, Mail, MessageCircle, Rocket, Gift, Trophy, UserPlus, Layers, FileSpreadsheet, RotateCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -1089,6 +1091,26 @@ const Packages = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user: authUser, isAgent, hasPendingAgentStore } = useAuth();
+
+  // Agent store ID — when an agent buys from the Packages page their order must be
+  // attributed to their store so that refunds correctly credit their agent wallet.
+  const [agentStoreIdForPayment, setAgentStoreIdForPayment] = useState<string | null>(null);
+  useEffect(() => {
+    if (!authUser || !isAgent || hasPendingAgentStore) {
+      setAgentStoreIdForPayment(null);
+      return;
+    }
+    supabase
+      .from("agent_stores")
+      .select("id")
+      .eq("user_id", authUser.id)
+      .eq("is_active", true)
+      .maybeSingle()
+      .then(({ data }) => {
+        setAgentStoreIdForPayment(data?.id ?? null);
+      });
+  }, [authUser, isAgent, hasPendingAgentStore]);
 
   // Auth state — used to gate purchases
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -1708,7 +1730,18 @@ const Packages = () => {
       </div>
 
       {paymentPkg && (
-        <PaymentDialog open={!!paymentPkg} onOpenChange={(v) => !v && setPaymentPkg(null)} package={paymentPkg as any} packageName={`${(paymentPkg as any).mins ? (paymentPkg as any).mins + " mins + " : ""}${(paymentPkg as any).size_gb_text || paymentPkg.size_gb + "GB"}`} network={paymentPkg.network} price={Number(paymentPkg.price)} packageId={paymentPkg.id} />
+        <PaymentDialog
+          open={!!paymentPkg}
+          onOpenChange={(v) => !v && setPaymentPkg(null)}
+          package={paymentPkg as any}
+          packageName={`${(paymentPkg as any).mins ? (paymentPkg as any).mins + " mins + " : ""}${(paymentPkg as any).size_gb_text || paymentPkg.size_gb + "GB"}`}
+          network={paymentPkg.network}
+          price={Number(paymentPkg.price)}
+          packageId={paymentPkg.id}
+          // When an active agent buys from the Packages page, attribute the order to
+          // their store so refunds correctly credit their agent wallet.
+          agentStoreId={agentStoreIdForPayment || undefined}
+        />
       )}
       <PaymentVerifier />
 
@@ -1814,11 +1847,13 @@ const Packages = () => {
 
       {!showSpinWheel && <WhatsAppFloatingButton />}
 
-      {/* Claim Free Data Dialog */}
-      <ClaimFreeDataDialog
-        open={showClaimFreeData}
-        onOpenChange={setShowClaimFreeData}
-      />
+      {/* Claim Free Data Dialog — lazy-loaded to break circular dep */}
+      <Suspense fallback={null}>
+        <ClaimFreeDataDialog
+          open={showClaimFreeData}
+          onOpenChange={setShowClaimFreeData}
+        />
+      </Suspense>
 
       {/* Claim Free Data FAB */}
       {!showSpinWheel && freeDataEnabled && (

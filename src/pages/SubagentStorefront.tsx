@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
-import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
+const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import DraggableFAB from "@/components/DraggableFAB";
 import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
@@ -187,7 +187,7 @@ const SubagentOrderTrackingCard = ({
           .eq("order_id", order.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (!error && data) {
           setComplaintStatus(data.status);
@@ -203,7 +203,12 @@ const SubagentOrderTrackingCard = ({
   }, [order.id]);
 
   // ── Status-based step logic (no time dependency) ──
-  const orderStatus = order.order_status?.toLowerCase().trim() || "";
+  // Check both order_status and status fields — refunded may be set on either
+  const rawOrderStatus = order.order_status?.toLowerCase().trim() || "";
+  const rawStatus = (order as any).status?.toLowerCase().trim() || "";
+  const orderStatus = rawOrderStatus === "refunded" || rawStatus === "refunded"
+    ? "refunded"
+    : rawOrderStatus || rawStatus;
   let currentStep = 1;
   let statusMessage = "";
   let extraNote: string | null = null;
@@ -228,9 +233,9 @@ const SubagentOrderTrackingCard = ({
     statusMessage = `Order sent to ${formatNetworkName(order.network)} for delivery.`;
     extraNote = "Your order is being processed by the network. The status will update automatically once delivered.";
   } else if (orderStatus === "refunded") {
-    currentStep = 1;
-    statusMessage = "This order has been refunded.";
-    extraNote = "Please contact support if you have any questions.";
+    currentStep = 4;
+    statusMessage = "REFUNDED";
+    extraNote = "Your order has been refunded to the account you bought from — your agent's wallet on the site (not your MoMo wallet). Your agent will refund you shortly.";
   } else if (orderStatus === "failed") {
     currentStep = 1;
     statusMessage = "This order could not be fulfilled.";
@@ -260,46 +265,56 @@ const SubagentOrderTrackingCard = ({
   // Report button: show only when order status is "delivered"
   const showReportButton = orderStatus === "delivered";
 
-  const stepLabels = ["Order Placed", "Number Verifying", "Processing", "Delivered"];
+  const isRefunded = orderStatus === "refunded";
+  const stepLabels = ["Order Placed", "Number Verifying", "Processing", isRefunded ? "Refunded" : "Delivered"];
   const theme = store.theme_config || defaultTheme;
   const primaryColor = theme.primary || defaultTheme.primary;
 
-  // Delivered state
+  // Delivered / Refunded state
   if (currentStep === 4) {
     return (
       <div className="space-y-4 mt-3 p-4 rounded-lg border border-border bg-background/50">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-foreground">Delivery Status</span>
-          <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
-            <CheckCircle className="h-3 w-3 mr-1" /> Delivered
-          </Badge>
+          {isRefunded ? (
+            <Badge className="bg-red-600/20 text-red-400 border-red-600/30 font-semibold tracking-wide">
+              <CheckCircle className="h-3 w-3 mr-1" /> Refunded
+            </Badge>
+          ) : (
+            <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
+              <CheckCircle className="h-3 w-3 mr-1" /> Delivered
+            </Badge>
+          )}
         </div>
 
         <div className="relative">
           <div className="flex items-center justify-between">
             {stepLabels.map((label, idx) => (
               <div key={idx} className="flex flex-col items-center flex-1">
-                <div className="w-8 h-8 rounded-full bg-green-600/20 text-green-400 flex items-center justify-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRefunded ? "bg-red-600/20 text-red-400" : "bg-green-600/20 text-green-400"}`}>
                   <Check className="h-4 w-4" />
                 </div>
-                <span className="text-xs text-center mt-1 text-muted-foreground">{label}</span>
+                <span className={`text-xs text-center mt-1 ${idx === 3 && isRefunded ? "text-red-400 font-semibold" : "text-muted-foreground"}`}>{label}</span>
               </div>
             ))}
           </div>
-          <div className="absolute top-4 left-0 w-full h-0.5 bg-green-600/30 -z-10" />
+          <div className={`absolute top-4 left-0 w-full h-0.5 -z-10 ${isRefunded ? "bg-red-600/30" : "bg-green-600/30"}`} />
         </div>
 
-        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
-          <p className="text-sm text-foreground font-medium">{statusMessage}</p>
-          {extraNote && (
-            <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">
-              {extraNote}
-            </p>
-          )}
-        </div>
+        {isRefunded ? (
+          <div className="p-3 rounded-lg bg-red-600/10 border border-red-600/30">
+            <p className="text-sm font-semibold text-red-400 uppercase tracking-wide">{statusMessage}</p>
+            {extraNote && <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-red-600/20">{extraNote}</p>}
+          </div>
+        ) : (
+          <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+            <p className="text-sm text-foreground font-medium">{statusMessage}</p>
+            {extraNote && <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">{extraNote}</p>}
+          </div>
+        )}
 
-        {/* Report button - only if no complaint submitted yet */}
-        {showReportButton && !complaintStatus && (
+        {/* Report button - only if delivered (not refunded) and no complaint yet */}
+        {showReportButton && !isRefunded && !complaintStatus && (
           <Button
             variant="outline"
             size="sm"
@@ -1412,13 +1427,15 @@ export function SubagentStorefront() {
         </DraggableFAB>
       )}
 
-      {/* Claim Free Data Dialog */}
-      <ClaimFreeDataDialog
-        open={claimFreeDataOpen}
-        onOpenChange={setClaimFreeDataOpen}
-        storeId={store.agent_store_id}
-        subagentStoreId={store.id}
-      />
+      {/* Claim Free Data Dialog — lazy-loaded to break circular dep */}
+      <Suspense fallback={null}>
+        <ClaimFreeDataDialog
+          open={claimFreeDataOpen}
+          onOpenChange={setClaimFreeDataOpen}
+          storeId={store.agent_store_id}
+          subagentStoreId={store.id}
+        />
+      </Suspense>
 
       {/* Claim Free Data FAB - draggable */}
       {freeDataEnabled && (

@@ -1703,6 +1703,30 @@ const AdminDashboard = () => {
             if (!updateErr) targetWalletUpdated = true;
           }
         } else if (order.customer_id) {
+          // Check first: did an agent buy this from the Packages page? (agent_store_id was null
+          // at the time of order but the customer_id maps to an active agent store)
+          const { data: agentByUser } = await supabase
+            .from("agent_stores")
+            .select("id, wallet_balance")
+            .eq("user_id", order.customer_id)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          if (agentByUser) {
+            // Treat as an agent order: refund base price to agent wallet
+            refundAmount = await resolveAgentBasePrice(order, agentByUser.id);
+            const newBalance = (Number(agentByUser.wallet_balance) || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("agent_stores")
+              .update({ wallet_balance: newBalance })
+              .eq("id", agentByUser.id);
+            if (!updateErr) {
+              targetWalletUpdated = true;
+            } else {
+              toast({ title: `Refund failed`, description: updateErr.message, variant: "destructive" });
+              continue;
+            }
+          } else {
           // Direct customer order (no agent involved): refund to customers.wallet_balance.
           refundAmount = paidAmount;
 
@@ -1735,6 +1759,7 @@ const AdminDashboard = () => {
               continue;
             }
           }
+          } // end else (not an agent buying from Packages)
         } else if (order.api_user) {
           // API user order: order.api_user stores api_users.id (the PK uuid).
           // The 400 error was caused by selecting a non-existent column 'wallet_balance'
@@ -1848,10 +1873,19 @@ const AdminDashboard = () => {
   // Reverse a refund: take money back from the wallet and mark order as not refunded
   const reverseRefund = async (orderId: string) => {
     try {
-      const order = orders.find(o => o.id === orderId);
+      // Try local array first; if not found (e.g. from a different page of results) fetch from DB
+      let order: typeof orders[0] | null = orders.find(o => o.id === orderId) ?? null;
       if (!order) {
-        toast({ title: "Error", description: "Order not found", variant: "destructive" });
-        return;
+        const { data: fetchedOrder, error: fetchErr } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", orderId)
+          .maybeSingle();
+        if (fetchErr || !fetchedOrder) {
+          toast({ title: "Error", description: "Order not found in database", variant: "destructive" });
+          return;
+        }
+        order = fetchedOrder;
       }
 
       const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded" || (order.order_status || "").toLowerCase() === "refunded";
@@ -1899,6 +1933,24 @@ const AdminDashboard = () => {
           if (!updateErr) targetWalletUpdated = true;
         }
       } else if (order.customer_id) {
+        // Check if this customer_id belongs to an agent (e.g. bought via Packages page
+        // where agent_store_id was null at the time of the original order).
+        const { data: agentByUser } = await supabase
+          .from("agent_stores")
+          .select("id, wallet_balance")
+          .eq("user_id", order.customer_id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (agentByUser) {
+          // Deduct from agent wallet instead
+          const newBalance = Math.max(0, (Number(agentByUser.wallet_balance) || 0) - refundAmount);
+          const { error: updateErr } = await supabase
+            .from("agent_stores")
+            .update({ wallet_balance: newBalance })
+            .eq("id", agentByUser.id);
+          if (!updateErr) targetWalletUpdated = true;
+        } else {
         // Direct customer refund reversal: deduct from customers.wallet_balance
         const { data: customer } = await supabase
           .from("customers")
@@ -1914,6 +1966,7 @@ const AdminDashboard = () => {
             .eq("id", customer.id);
           if (!updateErr) targetWalletUpdated = true;
         }
+        } // end else (not an agent)
       } else if (order.api_user) {
         // API refund: deduct from API user wallet
         const { data: apiUser } = await supabase
