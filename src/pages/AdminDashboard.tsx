@@ -447,6 +447,7 @@ const AdminDashboard = () => {
           subagent_store_id: w.subagent_store_id,
           sub_subagent_store_id: w.sub_subagent_store_id,
           recipient_id: w.recipient_id,
+          request_type: w.request_type || null,
           amount: w.amount,
           status: w.status,
           created_at: w.created_at,
@@ -3614,17 +3615,20 @@ const AdminDashboard = () => {
                               const isSubagentWithdrawal = !!w.subagent_store_id && !isSubsubagentWithdrawal;
                               const isSubagentProfit = w.withdrawal_source === "subagent_commission";
                               
-                              // Get store data from nested objects - handle all three types
+                              // Get store data from nested objects - handle all three types.
+                              // Prefer request_type from the payout_requests row; fall back to
+                              // inferring from store ID presence when request_type is absent.
+                              const rawRequestType = ((w as any).request_type || "").toLowerCase();
                               let store, typeLabel;
-                              if (isSubsubagentWithdrawal) {
-                                store = w.subagent_store; // sub_subagent_store is stored as subagent_store
-                                typeLabel = "SubSubagent";
-                              } else if (isSubagentWithdrawal) {
+                              if (rawRequestType === "sub_subagent" || rawRequestType === "sub-subagent" || isSubsubagentWithdrawal) {
+                                store = w.subagent_store;
+                                typeLabel = "Sub-Subagent";
+                              } else if (rawRequestType === "subagent" || isSubagentWithdrawal) {
                                 store = w.subagent_store;
                                 typeLabel = "Subagent";
                               } else {
                                 store = w.agent_store;
-                                typeLabel = "Agent";
+                                typeLabel = rawRequestType === "agent" ? "Agent" : (w.agent_store?.store_name ? "Agent" : "—");
                               }
                               
                               const storeName = store?.store_name || "—";

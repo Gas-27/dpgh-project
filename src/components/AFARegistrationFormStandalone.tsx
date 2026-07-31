@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import 'react-day-picker/dist/style.css';
 
 export default function AFARegistrationFormStandalone({ 
-  registrationFee = 50,
+  registrationFee: registrationFeeProp = 50,
   agentStoreId,
   agentBundlePrice
 }: {
@@ -25,6 +25,8 @@ export default function AFARegistrationFormStandalone({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // registrationFee is a prop — we need internal state to allow the useEffect to update it
+  const [registrationFee, setRegistrationFee] = useState(registrationFeeProp);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
 

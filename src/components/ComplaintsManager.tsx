@@ -85,9 +85,13 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
       // Tier 3: base columns only (always works)
       const ORDER_JOIN = "orders(network, size_gb, amount, fulfillment_status, created_at, agent_store_id, subagent_store_id, customer_id, customer_number)";
       const STORE_JOIN = "agent_stores(store_name, phone_number), subagent_stores(store_name, whatsapp_number)";
+      // TIER1: all columns including sms_screenshot_url (requires that column to exist)
+      // TIER2: drops sms_screenshot_url but keeps owing_* and screenshot_url
+      // TIER3: drops owing_* and screenshot_url (absolute minimum — always works)
       const TIER1 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, sms_screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
-      const TIER2 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
-      const TIER3 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
+      const TIER2 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
+      const TIER3 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
+      const TIER4 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
 
       const buildQuery = (select: string) => {
         let q = supabase.from("complaints").select(select).order("created_at", { ascending: false });
@@ -107,6 +111,9 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
       }
       if (error && isSchemaErr(error)) {
         ({ data, error } = await buildQuery(TIER3));
+      }
+      if (error && isSchemaErr(error)) {
+        ({ data, error } = await buildQuery(TIER4));
       }
 
       if (error) {
@@ -347,6 +354,9 @@ interface ComplaintDetailDialogProps {
 }
 
 function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateComplaintStatus, getStatusBadge }: ComplaintDetailDialogProps) {
+  // Screenshot tab state must live at component level (hooks cannot be called inside IIFE/callbacks)
+  const [activeScreenshotTab, setActiveScreenshotTab] = useState<"data" | "sms">("data");
+
   if (!complaint) return null;
 
   const networkName = (n: string) =>
@@ -492,68 +502,90 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
             </div>
           </div>
 
-          {/* Screenshot — shown before complaint narrative */}
-          {complaint.screenshot_url ? (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Customer Screenshot</p>
-              <img
-                src={complaint.screenshot_url}
-                alt="Customer data balance screenshot"
-                className="w-full rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => onPreviewImage(complaint.screenshot_url!)}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                  const msg = document.createElement("p");
-                  msg.className = "text-xs text-muted-foreground italic";
-                  msg.textContent = "Screenshot could not be loaded — the file may have been removed.";
-                  (e.currentTarget as HTMLImageElement).parentElement?.appendChild(msg);
-                }}
-              />
-              <div className="flex gap-2 mt-2">
-                <a
-                  href={complaint.screenshot_url}
-                  download
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
-                >
-                  <Download className="h-3.5 w-3.5" /> Save Image
-                </a>
-                <button
-                  onClick={() => onPreviewImage(complaint.screenshot_url!)}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
-                >
-                  <Image className="h-3.5 w-3.5" /> Fullscreen
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-border p-4 text-center">
-              <p className="text-xs text-muted-foreground italic">No data balance screenshot was attached to this complaint</p>
-            </div>
-          )}
+          {/* Screenshots — tabbed view: Data Balance tab + SMS Confirmation tab */}
+          {(() => {
+            const hasData = !!complaint.screenshot_url;
+            const hasSms = !!(complaint as any).sms_screenshot_url;
+            // activeScreenshotTab / setActiveScreenshotTab are declared at the component level above
 
-          {/* SMS Screenshot (2nd screenshot for MTN complaints) */}
-          {(complaint as any).sms_screenshot_url ? (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">MTN SMS Confirmation Screenshot</p>
-              <img
-                src={(complaint as any).sms_screenshot_url}
-                alt="MTN SMS confirmation screenshot"
-                className="w-full rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => onPreviewImage((complaint as any).sms_screenshot_url)}
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-              />
-              <div className="flex gap-2 mt-2">
-                <a href={(complaint as any).sms_screenshot_url} download target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
-                  <Download className="h-3.5 w-3.5" /> Save SMS Image
-                </a>
-                <button onClick={() => onPreviewImage((complaint as any).sms_screenshot_url)} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
-                  <Image className="h-3.5 w-3.5" /> Fullscreen
-                </button>
+            return (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Screenshots</p>
+
+                {/* Tab selector */}
+                <div className="flex gap-1 mb-3">
+                  <button
+                    onClick={() => setActiveScreenshotTab("data")}
+                    className={`text-xs px-3 py-1.5 rounded border transition-colors ${activeScreenshotTab === "data" ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}
+                  >
+                    Data Balance {hasData ? "" : "(none)"}
+                  </button>
+                  <button
+                    onClick={() => setActiveScreenshotTab("sms")}
+                    className={`text-xs px-3 py-1.5 rounded border transition-colors ${activeScreenshotTab === "sms" ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}
+                  >
+                    SMS Confirmation {hasSms ? "" : "(none)"}
+                  </button>
+                </div>
+
+                {activeScreenshotTab === "data" ? (
+                  hasData ? (
+                    <div>
+                      <img
+                        src={complaint.screenshot_url!}
+                        alt="Customer data balance screenshot"
+                        className="w-full rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => onPreviewImage(complaint.screenshot_url!)}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                          const msg = document.createElement("p");
+                          msg.className = "text-xs text-muted-foreground italic";
+                          msg.textContent = "Screenshot could not be loaded.";
+                          (e.currentTarget as HTMLImageElement).parentElement?.appendChild(msg);
+                        }}
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <a href={complaint.screenshot_url!} download target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
+                          <Download className="h-3.5 w-3.5" /> Save Image
+                        </a>
+                        <button onClick={() => onPreviewImage(complaint.screenshot_url!)} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
+                          <Image className="h-3.5 w-3.5" /> Fullscreen
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                      <p className="text-xs text-muted-foreground italic">No data balance screenshot was attached</p>
+                    </div>
+                  )
+                ) : (
+                  hasSms ? (
+                    <div>
+                      <img
+                        src={(complaint as any).sms_screenshot_url}
+                        alt="MTN SMS confirmation screenshot"
+                        className="w-full rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => onPreviewImage((complaint as any).sms_screenshot_url)}
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <a href={(complaint as any).sms_screenshot_url} download target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
+                          <Download className="h-3.5 w-3.5" /> Save SMS Image
+                        </a>
+                        <button onClick={() => onPreviewImage((complaint as any).sms_screenshot_url)} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
+                          <Image className="h-3.5 w-3.5" /> Fullscreen
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                      <p className="text-xs text-muted-foreground italic">No SMS confirmation screenshot was attached</p>
+                    </div>
+                  )
+                )}
               </div>
-            </div>
-          ) : null}
+            );
+          })()}
 
           <Separator />
 
