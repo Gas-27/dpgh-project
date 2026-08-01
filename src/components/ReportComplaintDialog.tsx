@@ -226,9 +226,11 @@ Please investigate and assist. Thank You.`;
         status: "in-progress",
       };
 
+      // 42703 = PostgreSQL "undefined_column"; PGRST204 = PostgREST no-content schema error
       const isSchemaError = (e: { code?: string; message?: string }) =>
-        e.code === "PGRST204" || e.code === "400" ||
+        e.code === "PGRST204" || e.code === "42703" || e.code === "400" ||
         (e.message || "").toLowerCase().includes("column") ||
+        (e.message || "").toLowerCase().includes("does not exist") ||
         (e.message || "").toLowerCase().includes("could not find");
 
       // TIER 1: all fields including sms_screenshot_url (requires latest migration)

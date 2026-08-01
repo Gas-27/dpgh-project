@@ -61,6 +61,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "storefront" | "agent" | "subagent">(isAgent ? "agent" : "all");
   const [tableError, setTableError] = useState(false);
+  const [columnsMissing, setColumnsMissing] = useState(false);
   const [selectedComplaints, setSelectedComplaints] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [bulkUpdating, setBulkUpdating] = useState(false);
@@ -99,14 +100,17 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
         return q;
       };
 
+      // 42703 = PostgreSQL "undefined_column"; PGRST204 = PostgREST schema error
       const isSchemaErr = (e: { code?: string; message?: string }) =>
-        e.code === "PGRST204" || e.code === "400" ||
+        e.code === "PGRST204" || e.code === "42703" || e.code === "400" ||
         (e.message || "").toLowerCase().includes("column") ||
+        (e.message || "").toLowerCase().includes("does not exist") ||
         (e.message || "").toLowerCase().includes("could not find");
 
       let { data, error } = await buildQuery(TIER1);
 
       if (error && isSchemaErr(error)) {
+        setColumnsMissing(true);
         ({ data, error } = await buildQuery(TIER2));
       }
       if (error && isSchemaErr(error)) {
@@ -244,6 +248,29 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
         <Card className="border-red-600/30 bg-red-600/10">
           <CardContent className="pt-6">
             <p className="text-red-400">Complaints table not yet created in Supabase. Please run the migration SQL code provided.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {columnsMissing && !tableError && (
+        <Card className="border-yellow-500/30 bg-yellow-500/10">
+          <CardContent className="pt-4 pb-4 space-y-3">
+            <p className="text-yellow-400 font-medium text-sm">Database migration required</p>
+            <p className="text-yellow-300/80 text-xs">
+              The checklist and screenshot columns are missing from your complaints table.
+              Run the SQL below in your Supabase dashboard (SQL Editor) to fix this.
+              Complaints are still saving but without checklist answers or screenshots until you apply this migration.
+            </p>
+            <pre className="text-xs bg-black/40 rounded p-3 overflow-x-auto text-green-300 select-all">
+{`ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS screenshot_url TEXT;
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS sms_screenshot_url TEXT;
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_airtime BOOLEAN;
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_bundle BOOLEAN;
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_momo BOOLEAN;`}
+            </pre>
+            <p className="text-yellow-300/60 text-xs">
+              After running this SQL in Supabase, reload the page and new complaints will save with full data.
+            </p>
           </CardContent>
         </Card>
       )}
