@@ -195,6 +195,16 @@ const PaymentDialog = ({
       return;
     }
 
+    // Beneficiary verification check only applies to MTN and MTN Express packages.
+    // All other networks (Telecel, AirtelTigo, etc.) skip this check entirely.
+    const isMTNPackage = selectedNetwork === "mtn" || selectedNetwork === "mtn_express";
+
+    if (!isMTNPackage) {
+      setChecking(false);
+      setStep("confirm");
+      return;
+    }
+
     try {
       const { count } = await supabase
         .from("orders")
@@ -204,7 +214,7 @@ const PaymentDialog = ({
       setChecking(false);
 
       if ((count ?? 0) === 0) {
-        // Brand-new number — show the beneficiary verification warning first
+        // Brand-new MTN number — show the beneficiary verification warning first
         setShowNewNumberWarning(true);
       } else {
         // Known number — proceed directly to confirm
