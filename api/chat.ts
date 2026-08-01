@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 
 const openai = new OpenAI({
