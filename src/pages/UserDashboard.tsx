@@ -268,14 +268,17 @@ const UserDashboard = () => {
 
         // Fetch user's normal wallet from customers table
         // customers.user_id is the auth user id; customers.id is the PK
+        // When impersonating, the admin's auth.uid() differs from effectiveUserId,
+        // so RLS on the customers table may block the query — handle gracefully.
         let { data: customerData } = await supabase
           .from("customers")
           .select("*")
           .eq("user_id", effectiveUserId)
           .maybeSingle();
 
-        // Auto-create the customers row if it doesn't exist.
-        if (!customerData) {
+        // Auto-create the customers row only for the real logged-in user, NOT when
+        // impersonating — creating a row for the wrong auth uid would be incorrect.
+        if (!customerData && !isImpersonating) {
           const { data: created } = await supabase
             .from("customers")
             .insert({ user_id: effectiveUserId, wallet_balance: 0 })
@@ -287,7 +290,8 @@ const UserDashboard = () => {
         // If the row exists but topup_reference is null (created before the DB trigger
         // was added, or the trigger didn't fire), generate one in app code and save it.
         // Format matches the DB trigger: sequential number + "us" suffix e.g. "2822us".
-        if (customerData && !customerData.topup_reference) {
+        // Skip this when impersonating to avoid mutating another user's record.
+        if (customerData && !customerData.topup_reference && !isImpersonating) {
           const { count: customerCount } = await supabase
             .from("customers")
             .select("*", { count: "exact", head: true });

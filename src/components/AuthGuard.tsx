@@ -77,6 +77,7 @@ const AuthGuard = ({ children, requiredRole }: AuthGuardProps) => {
 
   // Determine appropriate login page based on required role
   const getLoginPage = () => {
+    if (requiredRole === "admin") return "/only-admin/log.in";
     if (requiredRole === "sub_subagent") return "/sub-subagent-login";
     if (requiredRole === "subagent") return "/login";
     return "/login";

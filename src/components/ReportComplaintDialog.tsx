@@ -250,17 +250,34 @@ Please investigate and assist. Thank You.`;
         owing_momo: owingMomo,
       };
 
+      // TIER 3: base + screenshot_url only (no sms, no owing_*)
+      const tier3Payload = {
+        ...basePayload,
+        ...(screenshotUrl ? { screenshot_url: screenshotUrl } : {}),
+      };
+
       // Try TIER 1 first
       const { error: t1Error } = await supabase.from("complaints").insert(tier1Payload);
       if (t1Error) {
+        console.log("[v0] Complaint TIER1 failed:", t1Error.code, t1Error.message);
         if (isSchemaError(t1Error)) {
           // TIER 1 failed on schema — try TIER 2 (drop sms_screenshot_url)
           const { error: t2Error } = await supabase.from("complaints").insert(tier2Payload);
           if (t2Error) {
+            console.log("[v0] Complaint TIER2 failed:", t2Error.code, t2Error.message);
             if (isSchemaError(t2Error)) {
-              // TIER 2 also failed — fall all the way back to base columns only
-              const { error: fallbackError } = await supabase.from("complaints").insert(basePayload);
-              if (fallbackError) throw fallbackError;
+              // TIER 2 also failed — try TIER 3 (screenshot only, no checklist)
+              const { error: t3Error } = await supabase.from("complaints").insert(tier3Payload);
+              if (t3Error) {
+                console.log("[v0] Complaint TIER3 failed:", t3Error.code, t3Error.message);
+                if (isSchemaError(t3Error)) {
+                  // Last resort: base columns only
+                  const { error: fallbackError } = await supabase.from("complaints").insert(basePayload);
+                  if (fallbackError) throw fallbackError;
+                } else {
+                  throw t3Error;
+                }
+              }
             } else {
               throw t2Error;
             }

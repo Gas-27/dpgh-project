@@ -614,8 +614,20 @@ const AdminDashboard = () => {
         setTopupHistory(data ?? []);
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
-        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount, sub_subagent_store_id", { column: "created_at", ascending: false }, 1000);
         setOrders(data ?? []);
+        // Auto-refund any orders that are already order_status="failed" but not yet refunded.
+        // These may have arrived before the realtime listener was active.
+        const unrefundedFailed = (data ?? []).filter((o: any) => {
+          const os = (o.order_status || "").toLowerCase();
+          const alreadyDone = o.status === "refunded" || o.fulfillment_status === "refunded" || Number(o.refunded_amount) > 0;
+          return os === "failed" && !alreadyDone;
+        });
+        if (unrefundedFailed.length > 0) {
+          const ids = new Set<string>(unrefundedFailed.map((o: any) => o.id as string));
+          // Small delay to ensure processRefunds closure is fresh
+          setTimeout(() => { processRefunds(ids); }, 200);
+        }
       } else if (tabValue === "agents") {
         const data = await fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 1000);
         setAgents(data ?? []);
@@ -2901,8 +2913,8 @@ const AdminDashboard = () => {
                                       className={`text-xs cursor-pointer hover:opacity-80 ${sourceBadgeClass}`}
                                       onClick={() => {
                                         if (subSubagentStore) {
-                                          const parentSubagent = subagentStore || subagents.find((s: any) => s.id === subSubagentStore.subagent_store_id);
-                                          const parentAgent = agentStore || (parentSubagent?.agent_store_id ? agents.find((a: any) => a.id === parentSubagent.agent_store_id) : null);
+                                          const parentSubagent = subagentStore || subagents.find((s: any) => s.id === subSubagentStore.subagent_store_id) || (subSubagentStore as any).subagent_stores || null;
+                                          const parentAgent = agentStore || (parentSubagent?.agent_store_id ? agents.find((a: any) => a.id === parentSubagent.agent_store_id) || (parentSubagent as any).agent_stores || null : null);
                                           setSourceInfo({
                                             type: "Sub-Subagent Store",
                                             storeName: subSubagentStore.store_name || "Unknown",
@@ -2915,7 +2927,9 @@ const AdminDashboard = () => {
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (subagentStore) {
-                                          const parentAgent = agents.find((a: any) => a.id === subagentStore.agent_store_id);
+                                          // Try local agents array first; fall back to the embedded agent_stores join on subagentStore
+                                          const parentAgent = agents.find((a: any) => a.id === subagentStore.agent_store_id)
+                                            || (subagentStore as any).agent_stores || null;
                                           setSourceInfo({
                                             type: "Subagent Store",
                                             storeName: subagentStore.store_name || "Unknown",
