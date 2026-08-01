@@ -3,6 +3,7 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
+import PremiumSubscriptionBanner from "@/components/PremiumSubscriptionBanner";
 import NotificationPopup from "@/components/NotificationPopup";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
@@ -1086,7 +1087,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
   );
 };
 
-// ─────────────────────────────────────────────────── Packages Page (UPDATED: phone search strips spaces) ──
+// ──────────────────────��──────────────────────────── Packages Page (UPDATED: phone search strips spaces) ──
 const Packages = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -1347,7 +1348,9 @@ const Packages = () => {
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
 
-
+        <div className="mb-8">
+          <PremiumSubscriptionBanner />
+        </div>
 
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {(["data", "afa", "vouchers", "services", "bulk"] as const).map((cat) => (

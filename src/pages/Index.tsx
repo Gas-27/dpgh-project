@@ -9,6 +9,7 @@ import AgentSection from "@/components/AgentSection";
 import Footer from "@/components/Footer";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import ChatBot from "@/components/ChatBot";
+import PremiumSubscriptionBanner from "@/components/PremiumSubscriptionBanner";
 
 const Index = () => {
   const location = useLocation();
@@ -34,6 +35,9 @@ const Index = () => {
         <HeroSection />
         <TrustTicker />
         <ServicesSection />
+        <section className="container max-w-5xl mx-auto px-4 py-8">
+          <PremiumSubscriptionBanner />
+        </section>
         <AgentSection />
       </main>
       <Footer />
