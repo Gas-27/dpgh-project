@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Phone, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Loader2, Phone, ShieldCheck, AlertTriangle, Clock, RefreshCw, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -75,6 +75,7 @@ const PaymentDialog = ({
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [showNewNumberWarning, setShowNewNumberWarning] = useState(false);
 
   // Support both prop patterns
   const isDialogOpen = open ?? isOpen ?? false;
@@ -186,12 +187,40 @@ const PaymentDialog = ({
     }
 
     setChecking(true);
-    const isBlocked = checkRecentPurchase(phone);
-    setChecking(false);
 
-    if (!isBlocked) {
+    // Check if this number has any previous orders in our system
+    const isBlocked = checkRecentPurchase(phone);
+    if (isBlocked) {
+      setChecking(false);
+      return;
+    }
+
+    try {
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("customer_number", phone);
+
+      setChecking(false);
+
+      if ((count ?? 0) === 0) {
+        // Brand-new number — show the beneficiary verification warning first
+        setShowNewNumberWarning(true);
+      } else {
+        // Known number — proceed directly to confirm
+        setStep("confirm");
+      }
+    } catch {
+      setChecking(false);
+      // On DB error, fall through and let them continue rather than blocking
       setStep("confirm");
     }
+  };
+
+  // Called when user clicks "I Understand, Continue" on the new-number warning
+  const handleNewNumberAcknowledge = () => {
+    setShowNewNumberWarning(false);
+    setStep("confirm");
   };
 
   const handlePay = async () => {
@@ -424,6 +453,8 @@ const PaymentDialog = ({
     if (!val) {
       setStep("phone");
       setPhone("");
+      setShowNewNumberWarning(false);
+      setPaymentError(null);
     }
     onOpenChange(val);
   };
@@ -439,6 +470,104 @@ const PaymentDialog = ({
   }, [open, step]);
 
   return (
+    <>
+    {/* New beneficiary number warning — shown before the confirm step */}
+    <Dialog open={showNewNumberWarning} onOpenChange={(val) => { if (!val) setShowNewNumberWarning(false); }}>
+      <DialogContent
+        className="sm:max-w-md border-border bg-card p-0 overflow-hidden"
+        style={{ zIndex: 100000 }}
+      >
+        <div className="flex flex-col">
+          {/* Amber header bar */}
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-4 flex items-center gap-3">
+            <div className="flex-shrink-0 rounded-full bg-amber-500/20 p-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-amber-700 dark:text-amber-400">
+                New Number Detected
+              </DialogTitle>
+              <DialogDescription className="text-xs text-amber-600/80 dark:text-amber-500/80 mt-0.5">
+                {phone} is new to our beneficiary list
+              </DialogDescription>
+            </div>
+          </div>
+
+          <div className="px-6 py-5 space-y-4">
+            {/* What this means */}
+            <p className="text-sm text-foreground leading-relaxed">
+              This number has not made a purchase on DataPlug before. Because of this, your order may take <span className="font-semibold">longer than usual to be delivered</span>.
+            </p>
+
+            {/* Step-by-step explanation */}
+            <div className="rounded-lg border border-border bg-secondary/40 divide-y divide-border">
+              <div className="flex items-start gap-3 p-3">
+                <div className="flex-shrink-0 mt-0.5 rounded-full bg-primary/10 p-1.5">
+                  <UserCheck className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">MTN Beneficiary Verification Required</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    MTN now requires that new numbers be registered and verified on each sender&apos;s portal before data can be delivered to them.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3">
+                <div className="flex-shrink-0 mt-0.5 rounded-full bg-amber-500/10 p-1.5">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Order Stays Pending During Verification</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Your order will be placed and remain in <span className="font-medium text-amber-600">Pending</span> status while the number is being verified by MTN. Once verified, your data will be delivered automatically.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3">
+                <div className="flex-shrink-0 mt-0.5 rounded-full bg-green-500/10 p-1.5">
+                  <RefreshCw className="h-4 w-4 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Future Orders Will Be Instant</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Once this number is verified, all future data purchases to it will be delivered immediately without any delay.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Failed order / refund notice */}
+            <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3">
+              <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">If the order fails</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                In some cases the order may fail during verification. If this happens, your payment will be <span className="font-medium text-foreground">fully refunded</span>. You can repurchase after <span className="font-semibold text-foreground">2 days</span>, by which time your number will be fully verified on our system and delivery will be instant.
+              </p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowNewNumberWarning(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="hero"
+                className="flex-1"
+                onClick={handleNewNumberAcknowledge}
+              >
+                I Understand, Continue
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
     <Dialog open={isDialogOpen} onOpenChange={handleClose}>
       <DialogContent
         className="sm:max-w-md border-border bg-card p-0 overflow-hidden"
@@ -604,6 +733,7 @@ const PaymentDialog = ({
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 };
 
