@@ -161,14 +161,14 @@ export default function SubAdminDashboard() {
     setCustomerLoading(true);
     const { data } = await supabase
       .from("profiles")
-      .select("id, full_name, email: id, phone, created_at")
+      .select("id, full_name, phone, created_at")
       .order("created_at", { ascending: false })
       .limit(200);
     setCustomers(
       ((data as any[]) ?? []).map((p: any) => ({
         id: p.id,
         full_name: p.full_name || "—",
-        email: p.email || "—",
+        email: "—",
         phone: p.phone || "—",
         created_at: p.created_at,
       }))
@@ -674,7 +674,7 @@ function SubAdminComplaintsView() {
         You can view complaints and add notes/questions to customers, but you cannot change complaint status or resolve them.
       </p>
       <div className="mt-4">
-        <ComplaintsManager />
+        <ComplaintsManager readOnly={true} />
       </div>
     </div>
   );

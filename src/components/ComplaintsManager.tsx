@@ -56,7 +56,7 @@ interface Complaint {
   };
 }
 
-export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?: boolean; agentStoreId?: string } = {}) => {
+export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = false }: { isAgent?: boolean; agentStoreId?: string; readOnly?: boolean } = {}) => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -263,14 +263,30 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId }: { isAgent?:
               Complaints are still saving but without checklist answers or screenshots until you apply this migration.
             </p>
             <pre className="text-xs bg-black/40 rounded p-3 overflow-x-auto text-green-300 select-all">
-{`ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS screenshot_url TEXT;
+{`-- Complaint checklist & screenshot columns
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS screenshot_url TEXT;
 ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS sms_screenshot_url TEXT;
 ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_airtime BOOLEAN;
 ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_bundle BOOLEAN;
-ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_momo BOOLEAN;`}
+ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_momo BOOLEAN;
+
+-- Admin notes/questions on complaints
+CREATE TABLE IF NOT EXISTS public.complaint_notes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  complaint_id UUID NOT NULL,
+  note_text TEXT NOT NULL,
+  requires_response BOOLEAN DEFAULT FALSE,
+  response_text TEXT,
+  responded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.complaint_notes DISABLE ROW LEVEL SECURITY;
+
+-- Sub-admin role
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'sub_admin';`}
             </pre>
             <p className="text-yellow-300/60 text-xs">
-              After running this SQL in Supabase, reload the page and new complaints will save with full data.
+              After running this SQL in Supabase, reload the page. All features will work correctly.
             </p>
           </CardContent>
         </Card>
@@ -299,6 +315,7 @@ ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_momo BOOLEAN;`}
             onPreviewImage={setPreviewImage}
             updateComplaintStatus={updateComplaintStatus}
             getStatusBadge={getStatusBadge}
+            readOnly={readOnly}
           />
 
           {/* Tabs — admin sees all types; agents see their own */}
@@ -329,6 +346,7 @@ ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_momo BOOLEAN;`}
                   PAGE_SIZE={PAGE_SIZE}
                   onPreviewImage={setPreviewImage}
                   onSelectComplaint={setSelectedComplaint}
+                  readOnly={readOnly}
                 />
               </TabsContent>
             </Tabs>
@@ -361,6 +379,7 @@ ALTER TABLE public.complaints ADD COLUMN IF NOT EXISTS owing_momo BOOLEAN;`}
                 PAGE_SIZE={PAGE_SIZE}
                 onPreviewImage={setPreviewImage}
                 onSelectComplaint={setSelectedComplaint}
+                readOnly={readOnly}
               />
             </div>
           )}
@@ -379,9 +398,10 @@ interface ComplaintDetailDialogProps {
   onPreviewImage: (url: string) => void;
   updateComplaintStatus: (id: string, status: string) => void;
   getStatusBadge: (status: string) => React.ReactNode;
+  readOnly?: boolean;
 }
 
-function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateComplaintStatus, getStatusBadge }: ComplaintDetailDialogProps) {
+function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateComplaintStatus, getStatusBadge, readOnly = false }: ComplaintDetailDialogProps) {
   // Screenshot tab state must live at component level (hooks cannot be called inside IIFE/callbacks)
   const [activeScreenshotTab, setActiveScreenshotTab] = useState<"data" | "sms">("data");
 
@@ -631,8 +651,8 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
             isAdmin={true}
           />
 
-          {/* Actions */}
-          {complaint.status !== "resolved" && (
+          {/* Actions — hidden for read-only viewers (e.g. sub-admins) */}
+          {!readOnly && complaint.status !== "resolved" && (
             <div className="flex gap-2 pt-2">
               {complaint.status !== "in-progress" && (
                 <Button size="sm" variant="outline" onClick={() => { updateComplaintStatus(complaint.id, "in-progress"); onClose(); }}>Mark In Progress</Button>
@@ -666,6 +686,7 @@ interface ComplaintsTableProps {
   PAGE_SIZE: number;
   onPreviewImage: (url: string) => void;
   onSelectComplaint: (c: Complaint) => void;
+  readOnly?: boolean;
 }
 
 function ComplaintsTable({
@@ -674,6 +695,7 @@ function ComplaintsTable({
   selectAll, setSelectAll,
   bulkUpdating, bulkUpdateStatus, updateComplaintStatus,
   getStatusBadge, page, setPage, PAGE_SIZE, onPreviewImage, onSelectComplaint,
+  readOnly = false,
 }: ComplaintsTableProps) {
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
@@ -712,7 +734,7 @@ function ComplaintsTable({
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
-        {selectedComplaints.size > 0 && (
+        {!readOnly && selectedComplaints.size > 0 && (
           <>
             <button
               className="text-xs px-3 py-1.5 rounded border border-border bg-background hover:bg-muted disabled:opacity-50"
@@ -742,9 +764,11 @@ function ComplaintsTable({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="w-10">
-                    <input type="checkbox" checked={selectAll} onChange={e => handleSelectAll(e.target.checked)} className="rounded border" />
-                  </TableHead>
+                  {!readOnly && (
+                    <TableHead className="w-10">
+                      <input type="checkbox" checked={selectAll} onChange={e => handleSelectAll(e.target.checked)} className="rounded border" />
+                    </TableHead>
+                  )}
                   <TableHead className="w-24">Type</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Order</TableHead>
@@ -754,21 +778,23 @@ function ComplaintsTable({
                   <TableHead>Screenshot</TableHead>
                   <TableHead className="whitespace-nowrap">Reported At</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Action</TableHead>
+                  {!readOnly && <TableHead>Action</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginated.map(c => (
                   <TableRow key={c.id} className={`${c.status === "resolved" ? "opacity-60" : ""} cursor-pointer hover:bg-muted/40`} onClick={(e) => { if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return; onSelectComplaint(c); }}>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={selectedComplaints.has(c.id)}
-                        onChange={e => handleSelect(c.id, e.target.checked)}
-                        disabled={c.status === "resolved"}
-                        className="rounded border"
-                      />
-                    </TableCell>
+                    {!readOnly && (
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedComplaints.has(c.id)}
+                          onChange={e => handleSelect(c.id, e.target.checked)}
+                          disabled={c.status === "resolved"}
+                          className="rounded border"
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>{typeLabel(c.complaint_type)}</TableCell>
                     <TableCell className="text-sm">
                       <div>
@@ -852,20 +878,22 @@ function ComplaintsTable({
                     </TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{new Date(c.created_at).toLocaleString()}</TableCell>
                     <TableCell>{getStatusBadge(c.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-col">
-                        {c.status !== "in-progress" && (
-                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateComplaintStatus(c.id, "in-progress")}>
-                            In Progress
-                          </Button>
-                        )}
-                        {c.status !== "resolved" && (
-                          <Button size="sm" variant="hero" className="text-xs h-7" onClick={() => updateComplaintStatus(c.id, "resolved")}>
-                            Resolve
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+                    {!readOnly && (
+                      <TableCell>
+                        <div className="flex gap-1 flex-col">
+                          {c.status !== "in-progress" && (
+                            <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => updateComplaintStatus(c.id, "in-progress")}>
+                              In Progress
+                            </Button>
+                          )}
+                          {c.status !== "resolved" && (
+                            <Button size="sm" variant="hero" className="text-xs h-7" onClick={() => updateComplaintStatus(c.id, "resolved")}>
+                              Resolve
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
