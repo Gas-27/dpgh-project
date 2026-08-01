@@ -1,13 +1,15 @@
 # robots.txt — DataPlug Ghana (dataplug.store)
+#
+# Only the 5 public pages are allowed.
+# Everything else is blocked — no private paths are named here.
 
 User-agent: *
-Disallow: /
-
-Allow: /
+Allow: /$
 Allow: /packages
 Allow: /login
 Allow: /signup
 Allow: /become-agent
+Disallow: /
 
 # Sitemap
 Sitemap: https://dataplug.store/sitemap.xml
