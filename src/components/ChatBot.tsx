@@ -1,330 +1,267 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Send, X, MessageCircle } from 'lucide-react';
-import { CHATBOT_KNOWLEDGE_BASE, findAnswer, FREQUENT_QUESTIONS } from '@/data/chatbot-knowledge-base';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Send, X, MessageCircle, Copy, RotateCcw, Check } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
-  isHtml?: boolean;
+  error?: boolean;    // marks a failed assistant reply so it can be retried
 }
 
 interface ChatBotProps {
   page: string;
 }
 
-interface ChatState {
-  mode: 'normal' | 'tracking_phone' | 'tracking_count' | 'packages';
-  trackingCount?: number; // how many orders to show
+// Suggested questions shown on the empty state screen
+const SUGGESTED_QUESTIONS = [
+  'What data bundles do you have?',
+  'How do I buy data on DataPlug?',
+  'How do I track my order?',
+  'How do I become an agent?',
+  'What payment methods do you accept?',
+  'How long does delivery take?',
+  'How do I top up my wallet?',
+  'What is the AFA bundle?',
+  'How do I become a sub-agent?',
+  'What is the DataPlug API?',
+  'How do I get a refund?',
+  'What is the premium subscription?',
+];
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function buildStorageKey(page: string) {
+  return `chatbot_ai_${page}`;
 }
 
-export default function ChatBot({ page }: ChatBotProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [chatState, setChatState] = useState<ChatState>({ mode: 'normal' });
-  const [showLabel, setShowLabel] = useState(true);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatWindowRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const dragStartRef = useRef({ x: 0, y: 0 });
+function formatTime(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 
-  // Hide "Ask Chatbot" label text after 5 seconds
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export default function ChatBot({ page }: ChatBotProps) {
+  const [isOpen, setIsOpen]             = useState(false);
+  const [messages, setMessages]         = useState<Message[]>([]);
+  const [input, setInput]               = useState('');
+  const [isLoading, setIsLoading]       = useState(false);
+  const [showLabel, setShowLabel]       = useState(true);
+  const [rateLimited, setRateLimited]   = useState(false);
+  const [copiedId, setCopiedId]         = useState<string | null>(null);
+
+  // Drag state
+  const [isDragging, setIsDragging]     = useState(false);
+  const [position, setPosition]         = useState({ x: 0, y: 0 });
+  const dragStartRef                    = useRef({ x: 0, y: 0 });
+
+  const messagesEndRef                  = useRef<HTMLDivElement>(null);
+  const chatWindowRef                   = useRef<HTMLDivElement>(null);
+  const inputRef                        = useRef<HTMLInputElement>(null);
+
+  // Hide "Ask Chatbot" label after 5 s
   useEffect(() => {
     const t = setTimeout(() => setShowLabel(false), 5000);
     return () => clearTimeout(t);
   }, []);
 
-  // Load conversation from localStorage
+  // Load persisted conversation
   useEffect(() => {
-    const storageKey = `chatbot_${page}`;
-    const saved = localStorage.getItem(storageKey);
+    const saved = localStorage.getItem(buildStorageKey(page));
     if (saved) {
-      try {
-        setMessages(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load chat history', e);
-      }
+      try { setMessages(JSON.parse(saved)); } catch { /* ignore */ }
     }
   }, [page]);
 
-  // Auto scroll to bottom
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isLoading]);
 
-  // Save messages to localStorage
-  const saveMessages = (newMessages: Message[]) => {
-    const storageKey = `chatbot_${page}`;
-    localStorage.setItem(storageKey, JSON.stringify(newMessages));
-  };
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen) setTimeout(() => inputRef.current?.focus(), 150);
+  }, [isOpen]);
 
-  // Handle drag start
+  const persist = useCallback((msgs: Message[]) => {
+    localStorage.setItem(buildStorageKey(page), JSON.stringify(msgs));
+  }, [page]);
+
+  // -------------------------------------------------------------------------
+  // Drag handlers (unchanged from original)
+  // -------------------------------------------------------------------------
+
   const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) {
-      return; // Don't drag if clicking buttons or inputs
-    }
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input')) return;
     setIsDragging(true);
     dragStartRef.current = { x: e.clientX, y: e.clientY };
   };
 
-  // Handle drag move
   useEffect(() => {
     if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
+    const onMove = (e: MouseEvent) => {
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
-      setPosition(prev => ({
-        x: prev.x + dx,
-        y: prev.y + dy
-      }));
+      setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
       dragStartRef.current = { x: e.clientX, y: e.clientY };
     };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
+    const onUp = () => setIsDragging(false);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
     };
   }, [isDragging]);
 
-  // Fetch available packages from Supabase
-  const fetchAvailablePackages = async (): Promise<string> => {
-    try {
-      const { data, error } = await supabase
-        .from('data_packages')
-        .select('*')
-        .order('network', { ascending: true });
+  // -------------------------------------------------------------------------
+  // AI call
+  // -------------------------------------------------------------------------
 
-      if (error) throw error;
+  const callAI = useCallback(async (
+    userText: string,
+    history: Message[],
+  ): Promise<string> => {
+    const conversation = history
+      .filter(m => !m.error)
+      .map(m => ({ role: m.role, content: m.content }));
 
-      if (!data || data.length === 0) {
-        return "Currently, all packages are offline for maintenance. Please check back in a few minutes.";
-      }
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userText, conversation }),
+    });
 
-      // Separate active and offline packages
-      const activePackages = data.filter(pkg => pkg.active && pkg.is_online !== false);
-      const offlinePackages = data.filter(pkg => !pkg.active || pkg.is_online === false);
-
-      // Group by network
-      const activeByNetwork: Record<string, any[]> = {};
-      const offlineByNetwork: Record<string, any[]> = {};
-
-      activePackages.forEach(pkg => {
-        if (!activeByNetwork[pkg.network]) activeByNetwork[pkg.network] = [];
-        activeByNetwork[pkg.network].push(pkg);
-      });
-
-      offlinePackages.forEach(pkg => {
-        if (!offlineByNetwork[pkg.network]) offlineByNetwork[pkg.network] = [];
-        offlineByNetwork[pkg.network].push(pkg);
-      });
-
-      let response = "📦 **Available Data Packages**\n\n";
-
-      // Show active packages
-      if (Object.keys(activeByNetwork).length > 0) {
-        Object.entries(activeByNetwork).forEach(([network, packages]) => {
-          response += `**${network}:**\n`;
-          packages.forEach(pkg => {
-            response += `• ${pkg.size_gb_text || pkg.size_gb + 'GB'}\n`;
-          });
-          response += "\n";
-        });
-      }
-
-      // Show offline packages if any
-      if (Object.keys(offlineByNetwork).length > 0) {
-        response += "🔴 **Offline Packages:**\n";
-        Object.entries(offlineByNetwork).forEach(([network, packages]) => {
-          response += `**${network}:**\n`;
-          packages.forEach(pkg => {
-            response += `• ${pkg.size_gb_text || pkg.size_gb + 'GB'} (Offline)\n`;
-          });
-          response += "\n";
-        });
-      }
-
-      response += "For pricing details, please visit the Packages page!";
-      return response;
-    } catch (error) {
-      console.error('Error fetching packages:', error);
-      return "I couldn't load available packages right now. Please check the Packages page on our site or contact support.";
-    }
-  };
-
-  // Fetch order(s) by phone number
-  const fetchOrderByPhone = async (phoneNumber: string, count: number = 1): Promise<string> => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('id, network, size_gb, amount, status, fulfillment_status, created_at')
-        .eq('customer_number', phoneNumber)
-        .order('created_at', { ascending: false })
-        .limit(count);
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
-        return `No orders found for phone number ${phoneNumber}. Please check the number or contact support.`;
-      }
-
-      const label = count === 1 ? 'Most Recent Order' : `Last ${data.length} Order${data.length > 1 ? 's' : ''}`;
-      let response = `📍 **${label} for ${phoneNumber}**\n\n`;
-      data.forEach((order, i) => {
-        if (count > 1) response += `**Order ${i + 1}:**\n`;
-        response += `**ID:** ${order.id.slice(0, 8)}...\n`;
-        response += `**Network:** ${order.network?.toUpperCase()}\n`;
-        response += `**Size:** ${order.size_gb}GB\n`;
-        response += `**Amount:** GHC ${order.amount}\n`;
-        response += `**Status:** ${order.fulfillment_status || order.status || 'Processing'}\n`;
-        response += `**Date:** ${new Date(order.created_at).toLocaleDateString()}\n`;
-        if (i < data.length - 1) response += '\n---\n\n';
-      });
-      response += '\n\nIf you need more help, contact our WhatsApp support!';
-      return response;
-    } catch (error) {
-      console.error('Error fetching order:', error);
-      return "I couldn't retrieve your order information. Please contact our WhatsApp support team for assistance.";
-    }
-  };
-
-  // Fetch order by order ID
-  const fetchOrderById = async (orderId: string): Promise<string> => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at')
-        .eq('id', orderId)
-        .single();
-
-      if (error) throw error;
-
-      if (!data) {
-        return `Order ${orderId} not found. Please check the ID and try again.`;
-      }
-
-      return `📍 **Order Status for ${data.customer_number}**\n\n**Order ID:** ${data.id}\n**Network:** ${data.network}\n**Size:** ${data.size_gb}GB\n**Amount:** GHC${data.amount}\n**Status:** ${data.status || 'Processing'}\n**Delivery Status:** ${data.fulfillment_status || 'Pending'}\n**Date:** ${new Date(data.created_at).toLocaleDateString()}\n\nIf you need more help, contact our WhatsApp support!`;
-    } catch (error) {
-      console.error('Error fetching order:', error);
-      return "I couldn't retrieve that order. Please verify the order ID or contact support.";
-    }
-  };
-
-  // Enhanced answer finding with comprehensive knowledge base
-  const getAnswer = (userQuery: string): string => {
-    const match = findAnswer(userQuery);
-    if (match) {
-      return match.answer;
+    if (res.status === 429) {
+      setRateLimited(true);
+      setTimeout(() => setRateLimited(false), 60_000);
+      throw new Error('rate_limited');
     }
 
-    // Fallback with helpful suggestions
-    return `I'm here to help! You can ask me about:
-📦 Data packages & pricing
-🚚 Order tracking & delivery
-💳 Payment methods & safety
-🤝 Becoming an agent & earning commissions
-👨‍🌾 AFA bundles for farmers
-💰 Withdrawals & payments
-📞 Support & contact info
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? 'API error');
+    }
 
-What would you like to know?`;
-  };
+    const data = await res.json();
+    return data.reply as string;
+  }, []);
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  // -------------------------------------------------------------------------
+  // Send message (shared by keyboard, button, and suggested questions)
+  // -------------------------------------------------------------------------
 
-    const userMessage: Message = {
-      id: `msg-${Date.now()}`,
+  const sendMessage = useCallback(async (text: string, currentMessages?: Message[]) => {
+    const trimmed = text.trim();
+    if (!trimmed || isLoading) return;
+
+    const base = currentMessages ?? messages;
+
+    const userMsg: Message = {
+      id: `u-${Date.now()}`,
       role: 'user',
-      content: input,
+      content: trimmed,
       timestamp: Date.now(),
     };
 
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    saveMessages(updatedMessages);
+    const withUser = [...base, userMsg];
+    setMessages(withUser);
+    persist(withUser);
     setInput('');
     setIsLoading(true);
 
-    setTimeout(async () => {
-      let answer = '';
-
-      // Handle tracking modes
-      if (chatState.mode === 'tracking_count') {
-        // User has picked how many orders to show — now ask for phone
-        const lower = input.trim().toLowerCase();
-        let count = 1;
-        if (lower.includes('last 5') || lower === '5' || lower.includes('five')) count = 5;
-        else if (lower.includes('last 2') || lower === '2' || lower.includes('two')) count = 2;
-        // else most recent = 1
-        setChatState({ mode: 'tracking_phone', trackingCount: count });
-        answer = "Please enter the phone number (e.g. 0501234567):";
-      } else if (chatState.mode === 'tracking_phone') {
-        answer = await fetchOrderByPhone(input.trim(), chatState.trackingCount ?? 1);
-        setChatState({ mode: 'normal' });
-      } else if (chatState.mode === 'packages') {
-        answer = await fetchAvailablePackages();
-        setChatState({ mode: 'normal' });
-      } else {
-        const lowerInput = input.toLowerCase();
-
-        // Check if user wants to track order naturally
-        if (lowerInput.includes('track') || lowerInput.includes('order status') ||
-            (lowerInput.includes('where') && lowerInput.includes('order')) ||
-            lowerInput.includes('check my order')) {
-          // Ask how many orders to show
-          answer = "How many orders would you like to check?\n\n• Most Recent (1 order)\n• Last 2 orders\n• Last 5 orders\n\nJust type your choice:";
-          setChatState({ mode: 'tracking_count' });
-        }
-        else if (lowerInput.includes('package') || lowerInput.includes('available')) {
-          answer = await fetchAvailablePackages();
-        }
-        else {
-          answer = getAnswer(input);
-        }
-      }
-
-      const assistantMessage: Message = {
-        id: `msg-${Date.now()}-1`,
+    try {
+      const reply = await callAI(trimmed, base);
+      const aiMsg: Message = {
+        id: `a-${Date.now()}`,
         role: 'assistant',
-        content: answer,
+        content: reply,
         timestamp: Date.now(),
       };
+      const final = [...withUser, aiMsg];
+      setMessages(final);
+      persist(final);
+    } catch (err: any) {
+      const errorContent = err.message === 'rate_limited'
+        ? 'You have sent too many messages. Please wait a moment and try again.'
+        : 'Sorry, I could not get a response right now. Please try again.';
 
-      const finalMessages = [...updatedMessages, assistantMessage];
-      setMessages(finalMessages);
-      saveMessages(finalMessages);
+      const errMsg: Message = {
+        id: `e-${Date.now()}`,
+        role: 'assistant',
+        content: errorContent,
+        timestamp: Date.now(),
+        error: true,
+      };
+      const final = [...withUser, errMsg];
+      setMessages(final);
+      persist(final);
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
+  }, [messages, isLoading, callAI, persist]);
+
+  const handleSendMessage = () => sendMessage(input);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
+
+  // -------------------------------------------------------------------------
+  // Retry last failed message
+  // -------------------------------------------------------------------------
+
+  const handleRetry = useCallback((failedMsgId: string) => {
+    const idx = messages.findIndex(m => m.id === failedMsgId);
+    if (idx < 1) return;
+    const userMsg = messages[idx - 1];
+    if (userMsg?.role !== 'user') return;
+    // Remove the error message and resend
+    const pruned = messages.filter((_, i) => i !== idx);
+    setMessages(pruned);
+    persist(pruned);
+    sendMessage(userMsg.content, pruned.filter((_, i) => i < idx - 1));
+  }, [messages, persist, sendMessage]);
+
+  // -------------------------------------------------------------------------
+  // Copy message
+  // -------------------------------------------------------------------------
+
+  const handleCopy = (msgId: string, content: string) => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopiedId(msgId);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
+
+  // -------------------------------------------------------------------------
+  // Clear chat
+  // -------------------------------------------------------------------------
 
   const handleClearChat = () => {
     if (window.confirm('Clear all messages?')) {
       setMessages([]);
-      const storageKey = `chatbot_${page}`;
-      localStorage.removeItem(storageKey);
+      localStorage.removeItem(buildStorageKey(page));
     }
   };
 
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
 
   return (
     <>
@@ -388,11 +325,14 @@ What would you like to know?`;
           }}
         >
           {/* Header */}
-          <div 
+          <div
             onMouseDown={handleDragStart}
             className="flex items-center justify-between bg-slate-950 border-b border-slate-700 p-4 cursor-grab hover:bg-slate-900 transition-colors select-none"
           >
-            <h2 className="font-semibold text-white">Chatbot Assistant</h2>
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" aria-hidden="true" />
+              <h2 className="font-semibold text-white">DataPlug Assistant</h2>
+            </div>
             <button
               onClick={() => setIsOpen(false)}
               className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-700 hover:bg-red-600 text-white transition-colors"
@@ -405,117 +345,22 @@ What would you like to know?`;
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 pb-20">
+              /* Empty state with suggested questions */
+              <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 pb-10">
                 <MessageCircle className="h-12 w-12 mb-3 opacity-50" />
-                <p className="text-sm font-semibold mb-2">Hi! I'm your Chatbot Assistant</p>
+                <p className="text-sm font-semibold mb-1">Hi! I'm DataPlug Assistant</p>
                 <p className="text-xs mb-4 opacity-75">
-                  Ask me anything about packages, agents, AFA, APIs, features, or anything else. I'm here 24/7!
+                  Powered by AI. Ask me anything about packages, agents, AFA, or orders — 24/7!
                 </p>
-                
-                {/* Frequently Asked Questions and Quick Actions */}
-                <div className="w-full px-2 space-y-2 max-h-72 overflow-y-auto">
-                  {/* Quick Action Buttons */}
-                  <button
-                    onClick={() => {
-                      const userMsg: Message = {
-                        id: `msg-${Date.now()}`,
-                        role: 'user',
-                        content: 'Track my order by phone',
-                        timestamp: Date.now(),
-                      };
-                      const updatedMessages = [...messages, userMsg];
-                      setMessages(updatedMessages);
-                      saveMessages(updatedMessages);
-
-                      const assistantMsg: Message = {
-                        id: `msg-${Date.now()}-1`,
-                        role: 'assistant',
-                        content: 'Please enter your phone number (e.g., 0501234567):',
-                        timestamp: Date.now(),
-                      };
-                      const finalMessages = [...updatedMessages, assistantMsg];
-                      setMessages(finalMessages);
-                      saveMessages(finalMessages);
-                      setChatState({ mode: 'tracking_phone' });
-                    }}
-                    className="w-full text-left text-xs bg-blue-900 hover:bg-blue-800 text-blue-100 hover:text-white p-2 rounded border border-blue-700 hover:border-blue-500 transition-all font-semibold"
-                  >
-                    📍 Track Order by Phone
-                  </button>
-
-                  <button
-                    onClick={async () => {
-                      const userMsg: Message = {
-                        id: `msg-${Date.now()}`,
-                        role: 'user',
-                        content: 'Show available packages',
-                        timestamp: Date.now(),
-                      };
-                      const updatedMessages = [...messages, userMsg];
-                      setMessages(updatedMessages);
-                      saveMessages(updatedMessages);
-                      setIsLoading(true);
-
-                      setTimeout(async () => {
-                        const answer = await fetchAvailablePackages();
-                        const assistantMsg: Message = {
-                          id: `msg-${Date.now()}-1`,
-                          role: 'assistant',
-                          content: answer,
-                          timestamp: Date.now(),
-                        };
-                        const finalMessages = [...updatedMessages, assistantMsg];
-                        setMessages(finalMessages);
-                        saveMessages(finalMessages);
-                        setIsLoading(false);
-                      }, 500);
-                    }}
-                    className="w-full text-left text-xs bg-green-900 hover:bg-green-800 text-green-100 hover:text-white p-2 rounded border border-green-700 hover:border-green-500 transition-all font-semibold"
-                  >
-                    📦 Show Available Packages
-                  </button>
-
-                  <div className="border-t border-slate-700 pt-2 mt-2">
-                    <p className="text-xs text-slate-400 px-2 py-1">Quick Questions:</p>
-                  </div>
-
-                  {/* FAQ Questions */}
-                  {FREQUENT_QUESTIONS.slice(0, 15).map((question, idx) => (
+                <div className="w-full px-1 space-y-1.5 max-h-72 overflow-y-auto">
+                  {SUGGESTED_QUESTIONS.map((q) => (
                     <button
-                      key={idx}
-                      onClick={() => {
-                        setInput(question);
-                        const userMsg: Message = {
-                          id: `msg-${Date.now()}`,
-                          role: 'user',
-                          content: question,
-                          timestamp: Date.now(),
-                        };
-                        const updatedMessages = [...messages, userMsg];
-                        setMessages(updatedMessages);
-                        saveMessages(updatedMessages);
-                        setInput('');
-                        setIsLoading(true);
-
-                        setTimeout(() => {
-                          const match = findAnswer(question);
-                          const answer = match?.answer || `I'm here to help! You can ask me about data packages, pricing, delivery, becoming an agent, AFA programs, withdrawals, and more. What would you like to know?`;
-                          const assistantMsg: Message = {
-                            id: `msg-${Date.now()}-1`,
-                            role: 'assistant',
-                            content: answer,
-                            timestamp: Date.now(),
-                          };
-                          const finalMessages = [...updatedMessages, assistantMsg];
-                          setMessages(finalMessages);
-                          saveMessages(finalMessages);
-                          setIsLoading(false);
-                        }, 500);
-                      }}
+                      key={q}
+                      onClick={() => sendMessage(q)}
                       className="w-full text-left text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2 rounded border border-slate-700 hover:border-cyan-500 transition-all truncate"
-                      title={question}
+                      title={q}
                     >
-                      {question}
+                      {q}
                     </button>
                   ))}
                 </div>
@@ -527,47 +372,87 @@ What would you like to know?`;
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-xs px-4 py-2 rounded-lg text-sm ${
+                    className={`relative group max-w-xs px-4 py-2 rounded-lg text-sm ${
                       msg.role === 'user'
                         ? 'bg-cyan-600 text-white rounded-br-none'
-                        : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'
+                        : msg.error
+                          ? 'bg-red-900/60 text-red-200 rounded-bl-none border border-red-700'
+                          : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap break-words text-sm">
-                      {msg.content.split('\n').map((line, i) => (
-                        <div key={i} className={line.startsWith('**') ? 'font-semibold' : ''}>
-                          {line.replace(/\*\*/g, '')}
-                        </div>
-                      ))}
+                    {/* Markdown-rendered content */}
+                    {msg.role === 'assistant' ? (
+                      <div className="prose prose-invert prose-sm max-w-none leading-relaxed
+                        prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0
+                        prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline
+                        prose-headings:text-white prose-headings:text-sm prose-code:bg-slate-700 prose-code:px-1 prose-code:rounded">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                    )}
+
+                    <div className="flex items-center justify-between mt-1 gap-2">
+                      <p className="text-xs opacity-60">{formatTime(msg.timestamp)}</p>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Copy button (assistant messages) */}
+                        {msg.role === 'assistant' && !msg.error && (
+                          <button
+                            onClick={() => handleCopy(msg.id, msg.content)}
+                            className="p-0.5 rounded hover:bg-slate-700 transition-colors"
+                            aria-label="Copy message"
+                            title="Copy"
+                          >
+                            {copiedId === msg.id
+                              ? <Check className="h-3 w-3 text-green-400" />
+                              : <Copy className="h-3 w-3 text-slate-400" />
+                            }
+                          </button>
+                        )}
+                        {/* Retry button (error messages) */}
+                        {msg.error && (
+                          <button
+                            onClick={() => handleRetry(msg.id)}
+                            className="p-0.5 rounded hover:bg-slate-700 transition-colors"
+                            aria-label="Retry message"
+                            title="Retry"
+                          >
+                            <RotateCcw className="h-3 w-3 text-red-400" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs mt-1 opacity-60">
-                      {formatTime(msg.timestamp)}
-                    </p>
                   </div>
                 </div>
               ))
             )}
+
+            {/* Typing indicator */}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg border border-slate-700 rounded-bl-none">
-                  <div className="flex gap-1">
-                    <div className="h-2 w-2 bg-slate-500 rounded-full animate-bounce" />
-                    <div
-                      className="h-2 w-2 bg-slate-500 rounded-full animate-bounce"
-                      style={{ animationDelay: '0.1s' }}
-                    />
-                    <div
-                      className="h-2 w-2 bg-slate-500 rounded-full animate-bounce"
-                      style={{ animationDelay: '0.2s' }}
-                    />
+                <div className="bg-slate-800 text-slate-200 px-4 py-3 rounded-lg border border-slate-700 rounded-bl-none">
+                  <div className="flex gap-1 items-center">
+                    <div className="h-2 w-2 bg-cyan-400 rounded-full animate-bounce" />
+                    <div className="h-2 w-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.12s' }} />
+                    <div className="h-2 w-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.24s' }} />
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Rate limit banner */}
+            {rateLimited && (
+              <div className="bg-yellow-900/50 border border-yellow-700 rounded-lg px-3 py-2 text-xs text-yellow-300 text-center">
+                Rate limit reached. Please wait 60 seconds before sending another message.
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
+          {/* Input footer */}
           <div className="border-t border-slate-700 p-4 bg-slate-800 rounded-none md:rounded-b-lg space-y-2">
             {messages.length > 0 && (
               <button
@@ -579,28 +464,26 @@ What would you like to know?`;
             )}
             <div className="flex gap-2">
               <input
+                ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
+                onKeyDown={handleKeyDown}
                 placeholder="Ask me anything..."
-                className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                disabled={isLoading || rateLimited}
+                className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 disabled:opacity-50"
               />
               <button
                 onClick={handleSendMessage}
-                disabled={!input.trim() || isLoading}
+                disabled={!input.trim() || isLoading || rateLimited}
                 className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-3 py-2 transition"
+                aria-label="Send message"
               >
                 <Send className="h-4 w-4" />
               </button>
             </div>
             <p className="text-xs text-slate-500 text-center">
-              Press Enter to send
+              Press Enter to send &middot; AI-powered 24/7 support
             </p>
           </div>
         </div>
