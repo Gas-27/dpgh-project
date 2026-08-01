@@ -1,28 +1,13 @@
 # robots.txt — DataPlug Ghana (dataplug.store)
 
 User-agent: *
+Disallow: /
+
 Allow: /
 Allow: /packages
 Allow: /login
 Allow: /signup
 Allow: /become-agent
-
-Disallow: /admin-only
-Disallow: /only-admin/
-Disallow: /sub-admin
-Disallow: /sub-admin-login
-Disallow: /user-dashboard
-Disallow: /agent
-Disallow: /dashboard
-Disallow: /subagent-dashboard
-Disallow: /sub-subagent-dashboard
-Disallow: /auth/
-Disallow: /api/
-Disallow: /reset-password
-Disallow: /pending-approval
-Disallow: /agent-registration-callback
-Disallow: /subagent-approval-payment
-Disallow: /verify-subagent-payment
 
 # Sitemap
 Sitemap: https://dataplug.store/sitemap.xml
