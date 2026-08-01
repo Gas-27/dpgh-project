@@ -63,6 +63,14 @@ const UserDashboard = lazyWithReload(() => import("./pages/UserDashboard"));
 const SubAdminDashboard = lazyWithReload(() => import("./pages/SubAdminDashboard"));
 const SubAdminLogin = lazyWithReload(() => import("./pages/SubAdminLogin"));
 
+// SEO landing pages
+const MtnDataBundles = lazyWithReload(() => import("./pages/seo/MtnDataBundles"));
+const TelecelDataBundles = lazyWithReload(() => import("./pages/seo/TelecelDataBundles"));
+const AirtelTigoDataBundles = lazyWithReload(() => import("./pages/seo/AirtelTigoDataBundles"));
+const CheapDataBundlesGhana = lazyWithReload(() => import("./pages/seo/CheapDataBundlesGhana"));
+const DataResellerAgent = lazyWithReload(() => import("./pages/seo/DataResellerAgent"));
+const DataApiGhana = lazyWithReload(() => import("./pages/seo/DataApiGhana"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -235,6 +243,13 @@ const App = () => {
                       </AuthGuard>
                     }
                   />
+                  {/* SEO landing pages */}
+                  <Route path="/mtn-data-bundles" element={<MtnDataBundles />} />
+                  <Route path="/telecel-data-bundles" element={<TelecelDataBundles />} />
+                  <Route path="/airteltigo-data-bundles" element={<AirtelTigoDataBundles />} />
+                  <Route path="/cheap-data-bundles-ghana" element={<CheapDataBundlesGhana />} />
+                  <Route path="/data-reseller-agent-ghana" element={<DataResellerAgent />} />
+                  <Route path="/data-api-ghana" element={<DataApiGhana />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               )}

@@ -44,4 +44,59 @@
     <priority>0.85</priority>
   </url>
 
+  <!-- SEO Landing Pages -->
+  <url>
+    <loc>https://dataplug.store/mtn-data-bundles</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/mtn-data-bundles" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/mtn-data-bundles" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/telecel-data-bundles</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/telecel-data-bundles" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/telecel-data-bundles" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/airteltigo-data-bundles</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/airteltigo-data-bundles" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/airteltigo-data-bundles" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/cheap-data-bundles-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.88</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/cheap-data-bundles-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/cheap-data-bundles-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/data-reseller-agent-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/data-reseller-agent-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/data-reseller-agent-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/data-api-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/data-api-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/data-api-ghana" />
+  </url>
+
 </urlset>

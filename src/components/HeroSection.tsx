@@ -17,12 +17,42 @@ const HeroSection = () => {
             Instant Delivery • 24/7 Reliable
           </div>
           <h1 id="hero-heading" className="font-display text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl text-balance">
-            Your <span className="text-primary">Data Plug</span> in Ghana
+            Buy <span className="text-primary">Data Bundles</span> in Ghana — Fast &amp; Cheap
           </h1>
           <p className="max-w-lg text-lg text-muted-foreground leading-relaxed">
-            Buy affordable MTN, AirtelTigo &amp; Telecel data bundles instantly online.
-            Fast, reliable delivery 24/7 — Ghana&apos;s trusted data bundle store.
+            Ghana&apos;s trusted online data bundle store. Buy MTN, Telecel &amp; AirtelTigo
+            data bundles at wholesale prices with instant delivery to any number — 24/7,
+            no queues, no USSD codes.
           </p>
+
+          {/* Network quick-links */}
+          <nav aria-label="Network quick links" className="flex flex-wrap gap-2">
+            <Link
+              to="/mtn-data-bundles"
+              className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-xs font-medium text-yellow-400 hover:bg-yellow-400/20 transition-colors"
+            >
+              MTN Data
+            </Link>
+            <Link
+              to="/telecel-data-bundles"
+              className="inline-flex items-center gap-1.5 rounded-full border border-red-400/30 bg-red-400/10 px-3 py-1 text-xs font-medium text-red-400 hover:bg-red-400/20 transition-colors"
+            >
+              Telecel Data
+            </Link>
+            <Link
+              to="/airteltigo-data-bundles"
+              className="inline-flex items-center gap-1.5 rounded-full border border-orange-400/30 bg-orange-400/10 px-3 py-1 text-xs font-medium text-orange-400 hover:bg-orange-400/20 transition-colors"
+            >
+              AirtelTigo Data
+            </Link>
+            <Link
+              to="/cheap-data-bundles-ghana"
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              Cheap Data
+            </Link>
+          </nav>
+
           <div className="flex flex-wrap gap-4">
             <Button
               variant="hero"
@@ -30,24 +60,24 @@ const HeroSection = () => {
               asChild
               className="relative animate-[pulse-glow_1.5s_ease-in-out_infinite] shadow-lg shadow-primary/50 hover:scale-105 transition-transform duration-200"
             >
-              <Link to="/packages">Get Started</Link>
+              <Link to="/packages">Buy Data Bundles Now</Link>
             </Button>
             <Button variant="hero-outline" size="lg" asChild>
-              <Link to="/signup">Become an Agent</Link>
+              <Link to="/become-agent">Become an Agent</Link>
             </Button>
           </div>
           <div className="flex gap-8 pt-4">
             <div>
               <p className="font-display text-2xl font-bold text-foreground">72K+</p>
-              <p className="text-xs text-muted-foreground">Happy Users</p>
+              <p className="text-xs text-muted-foreground">Happy Customers</p>
             </div>
             <div>
               <p className="font-display text-2xl font-bold text-foreground">99.9%</p>
               <p className="text-xs text-muted-foreground">Uptime</p>
             </div>
             <div>
-              <p className="font-display text-2xl font-bold text-foreground">&lt;2 hours</p>
-              <p className="text-xs text-muted-foreground">Delivery Time</p>
+              <p className="font-display text-2xl font-bold text-foreground">Instant</p>
+              <p className="text-xs text-muted-foreground">Delivery</p>
             </div>
           </div>
         </div>

@@ -6,8 +6,8 @@ const Footer = () => {
 
   return (
     <footer id="about" className="border-t border-border py-12" aria-label="Site footer">
-      <div className="container grid gap-8 sm:grid-cols-3">
-        <div className="space-y-3">
+      <div className="container grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-3 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" aria-hidden="true" />
             <span className="font-display text-sm font-bold">
@@ -24,8 +24,20 @@ const Footer = () => {
           <ul className="space-y-2 text-xs text-muted-foreground list-none">
             <li><Link to="/#services" className="hover:text-foreground transition-colors">Buy Data Bundles</Link></li>
             <li><Link to="/packages" className="hover:text-foreground transition-colors">Data Bundle Packages</Link></li>
-            <li><Link to="/#agent" className="hover:text-foreground transition-colors">Become a Data Reseller</Link></li>
+            <li><Link to="/become-agent" className="hover:text-foreground transition-colors">Become an Agent</Link></li>
             <li><Link to="/signup" className="hover:text-foreground transition-colors">Agent Registration</Link></li>
+            <li><Link to="/data-reseller-agent-ghana" className="hover:text-foreground transition-colors">Data Reseller Business</Link></li>
+            <li><Link to="/data-api-ghana" className="hover:text-foreground transition-colors">Data Bundle API</Link></li>
+          </ul>
+        </nav>
+
+        <nav aria-label="Data bundle guides">
+          <h4 className="font-display text-sm font-semibold mb-3">Data Bundle Guides</h4>
+          <ul className="space-y-2 text-xs text-muted-foreground list-none">
+            <li><Link to="/mtn-data-bundles" className="hover:text-foreground transition-colors">MTN Data Bundles Ghana</Link></li>
+            <li><Link to="/telecel-data-bundles" className="hover:text-foreground transition-colors">Telecel Data Bundles Ghana</Link></li>
+            <li><Link to="/airteltigo-data-bundles" className="hover:text-foreground transition-colors">AirtelTigo Data Bundles Ghana</Link></li>
+            <li><Link to="/cheap-data-bundles-ghana" className="hover:text-foreground transition-colors">Cheap Data Bundles Ghana</Link></li>
           </ul>
         </nav>
 
