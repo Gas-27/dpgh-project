@@ -25,7 +25,7 @@ const Footer = () => {
         <div className="space-y-3">
           <h4 className="font-display text-sm font-semibold">Contact</h4>
           <div className="space-y-2 text-xs text-muted-foreground">
-            <a href="make report on site directly" target="_blank" rel="noopener noreferrer" className="block hover:text-foreground transition-colors">WhatsApp Support</a>
+            <a href="make report on site directlyd this is what happens " target="_blank" rel="noopener noreferrer" className="block hover:text-foreground transition-colors">WhatsApp Support</a>
             <a href="mailto:support@datapluggh.com" className="block hover:text-foreground transition-colors">dataplugstore@gmail.com</a>
           </div>
         </div>

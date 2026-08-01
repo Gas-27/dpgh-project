@@ -315,7 +315,7 @@ const OrderTrackingCard = ({
           </div>
         ) : (
           <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
-            <p className="text-sm text-foreground font-medium">{statusMessage}</p>
+            <p className="text-sm font-semibold text-green-400">{statusMessage}</p>
             {extraNote && <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">{extraNote}</p>}
           </div>
         )}
