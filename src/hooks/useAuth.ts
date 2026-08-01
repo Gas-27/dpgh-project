@@ -2,7 +2,7 @@ import { createContext, createElement, useCallback, useContext, useEffect, useMe
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
-export type AppRole = "admin" | "agent" | "user" | "subagent" | "sub_subagent";
+export type AppRole = "admin" | "agent" | "user" | "subagent" | "sub_subagent" | "sub_admin";
 
 interface AuthContextValue {
   user: User | null;

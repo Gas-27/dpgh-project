@@ -60,6 +60,8 @@ const SubagentApprovalPayment = lazyWithReload(() => import("./pages/SubagentApp
 const VerifySubagentPayment = lazyWithReload(() => import("./pages/VerifySubagentPayment"));
 const SubSubagentDashboard = lazyWithReload(() => import("./pages/SubSubagentDashboard"));
 const UserDashboard = lazyWithReload(() => import("./pages/UserDashboard"));
+const SubAdminDashboard = lazyWithReload(() => import("./pages/SubAdminDashboard"));
+const SubAdminLogin = lazyWithReload(() => import("./pages/SubAdminLogin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -176,6 +178,15 @@ const App = () => {
                   <Route path="/sub-subagent-registration/:subagentStoreId" element={<SubagentRegistration />} />
                   <Route path="/subagent-approval-payment" element={<SubagentApprovalPayment />} />
                   <Route path="/verify-subagent-payment" element={<VerifySubagentPayment />} />
+                  <Route path="/sub-admin-login" element={<SubAdminLogin />} />
+                  <Route
+                    path="/sub-admin"
+                    element={
+                      <AuthGuard requiredRole="sub_admin">
+                        <SubAdminDashboard />
+                      </AuthGuard>
+                    }
+                  />
                   <Route
                     path="/admin-only"
                     element={

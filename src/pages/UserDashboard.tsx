@@ -13,12 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
+import { UserComplaintsView } from "@/components/UserComplaintsView";
 
 interface DataPackage {
   id: string;
@@ -177,6 +179,7 @@ const UserDashboard = () => {
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "orders", label: "Orders", icon: BarChart3 },
     { id: "refunds", label: "Refunds", icon: Wallet },
+    { id: "my-complaints", label: "My Complaints", icon: MessageCircle },
     { id: "rewards", label: "Rewards & Benefits", icon: ImageIcon },
     { id: "api-key", label: "API Key", icon: Zap },
     { id: "api-docs", label: "API Docs", icon: BookOpen },
@@ -859,6 +862,8 @@ const UserDashboard = () => {
         return renderOrders();
       case "refunds":
         return renderRefunds();
+      case "my-complaints":
+        return renderMyComplaints();
       case "rewards":
         return renderFlyerGenerator();
       case "api-key":
@@ -1197,6 +1202,10 @@ const UserDashboard = () => {
       </Card>
     </div>
   );
+
+  const renderMyComplaints = () => {
+    return <UserComplaintsView userId={effectiveUserId || ""} />;
+  };
 
   const renderOrders = () => {
     // Filter orders based on search

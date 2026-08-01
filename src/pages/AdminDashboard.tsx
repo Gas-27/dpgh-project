@@ -3814,13 +3814,35 @@ const AdminDashboard = () => {
                                 <TableCell className="text-muted-foreground text-sm">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</TableCell>
                                 <TableCell className="space-x-2">
                                   {u.role !== "admin" ? (
-                                    <Button variant="outline" size="sm" onClick={() => {
-                                      setSelectedUserForAdmin(u);
-                                      setNewAdminSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "customers", "notifications", "spinwheel", "complaints"]);
-                                      setMakeAdminDialogOpen(true);
-                                    }}>
-                                      <ShieldAlert className="h-4 w-4 mr-1" /> Make Admin
-                                    </Button>
+                                    <div className="flex gap-2 flex-wrap">
+                                      <Button variant="outline" size="sm" onClick={() => {
+                                        setSelectedUserForAdmin(u);
+                                        setNewAdminSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "customers", "notifications", "spinwheel", "complaints"]);
+                                        setMakeAdminDialogOpen(true);
+                                      }}>
+                                        <ShieldAlert className="h-4 w-4 mr-1" /> Make Admin
+                                      </Button>
+                                      <Button variant="outline" size="sm" onClick={async () => {
+                                        try {
+                                          // Check if already a sub_admin
+                                          const { data: existing } = await supabase.from("user_roles").select("id").eq("user_id", u.id).eq("role", "sub_admin").maybeSingle();
+                                          if (existing) {
+                                            // Remove sub_admin role
+                                            await supabase.from("user_roles").delete().eq("user_id", u.id).eq("role", "sub_admin");
+                                            toast({ title: "Sub-Admin role removed", description: `${u.full_name || u.id} is no longer a sub-admin.` });
+                                          } else {
+                                            await supabase.from("user_roles").insert({ user_id: u.id, role: "sub_admin" });
+                                            toast({ title: "Sub-Admin role granted", description: `${u.full_name || u.id} can now access /sub-admin.` });
+                                          }
+                                          fetchUsers();
+                                        } catch (e: any) {
+                                          toast({ title: "Error", description: e.message, variant: "destructive" });
+                                        }
+                                      }} className="border-primary/40 text-primary hover:bg-primary/10">
+                                        <Shield className="h-4 w-4 mr-1" />
+                                        {u.role === "sub_admin" ? "Remove Sub-Admin" : "Make Sub-Admin"}
+                                      </Button>
+                                    </div>
                                   ) : (
                                     <>
                                       <Button variant="outline" size="sm" onClick={() => {

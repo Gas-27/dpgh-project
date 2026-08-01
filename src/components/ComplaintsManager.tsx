@@ -17,6 +17,7 @@ import { Search, AlertCircle, CheckCircle, Clock, Image, Download, Share2 } from
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 
 interface Complaint {
   id: string;
@@ -621,6 +622,14 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{complaint.complaint_title}</p>
             <p className="text-sm whitespace-pre-wrap">{complaint.complaint_details}</p>
           </div>
+
+          <Separator />
+
+          {/* Admin Notes & Q&A Thread */}
+          <ComplaintNotesThread
+            complaintId={complaint.id}
+            isAdmin={true}
+          />
 
           {/* Actions */}
           {complaint.status !== "resolved" && (
