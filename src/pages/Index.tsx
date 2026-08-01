@@ -30,10 +30,12 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <NotificationPopup />
       <Navbar />
-      <HeroSection />
-      <TrustTicker />
-      <ServicesSection />
-      <AgentSection />
+      <main id="main-content">
+        <HeroSection />
+        <TrustTicker />
+        <ServicesSection />
+        <AgentSection />
+      </main>
       <Footer />
 
       <WhatsAppFloatingButton />

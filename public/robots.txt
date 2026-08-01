@@ -1,14 +1,38 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
+# robots.txt — DataPlug Ghana (dataplug.store)
 
 User-agent: *
 Allow: /
+Allow: /packages
+Allow: /login
+Allow: /signup
+Allow: /become-agent
+
+Disallow: /admin-only
+Disallow: /only-admin/
+Disallow: /sub-admin
+Disallow: /sub-admin-login
+Disallow: /user-dashboard
+Disallow: /agent
+Disallow: /dashboard
+Disallow: /subagent-dashboard
+Disallow: /sub-subagent-dashboard
+Disallow: /auth/
+Disallow: /api/
+Disallow: /reset-password
+Disallow: /pending-approval
+Disallow: /agent-registration-callback
+Disallow: /subagent-approval-payment
+Disallow: /verify-subagent-payment
+
+# Sitemap
+Sitemap: https://dataplug.store/sitemap.xml
+
+# Polite crawl delay for aggressive bots
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Crawl-delay: 10

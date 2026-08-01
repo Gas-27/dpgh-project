@@ -4,7 +4,10 @@ import QuickBuyWidget from "./QuickBuyWidget";
 
 const HeroSection = () => {
   return (
-    <section className="relative min-h-screen pt-16 flex items-center overflow-hidden">
+    <section
+      className="relative min-h-screen pt-16 flex items-center overflow-hidden"
+      aria-labelledby="hero-heading"
+    >
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
 
       <div className="container grid gap-12 lg:grid-cols-2 lg:gap-16 items-center py-20">
@@ -13,12 +16,12 @@ const HeroSection = () => {
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
             Instant Delivery • 24/7 Reliable
           </div>
-          <h1 className="font-display text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">
+          <h1 id="hero-heading" className="font-display text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl text-balance">
             Your <span className="text-primary">Data Plug</span> in Ghana
           </h1>
           <p className="max-w-lg text-lg text-muted-foreground leading-relaxed">
-            Buy affordable data bundles for MTN, AirtelTigo & Telecel instantly.
-            Fast, reliable, and available around the clock.
+            Buy affordable MTN, AirtelTigo &amp; Telecel data bundles instantly online.
+            Fast, reliable delivery 24/7 — Ghana&apos;s trusted data bundle store.
           </p>
           <div className="flex flex-wrap gap-4">
             <Button
