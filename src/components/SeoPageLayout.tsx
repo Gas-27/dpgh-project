@@ -3,6 +3,7 @@ import { ChevronRight, Home, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useSeoMeta } from "@/hooks/useSeoMeta";
 import {
   Accordion,
   AccordionContent,
@@ -23,6 +24,8 @@ export interface FaqItem {
 interface SeoPageLayoutProps {
   /** Page <title> value — used for JSON-LD WebPage name */
   title: string;
+  /** Meta description (150–160 chars) */
+  description?: string;
   /** Canonical slug, e.g. "/mtn-data-bundles" */
   canonicalPath: string;
   /** Breadcrumb trail: [Home, Category, This page] */
@@ -76,6 +79,7 @@ function buildBreadcrumbSchema(breadcrumbs: BreadcrumbItem[]) {
 
 export default function SeoPageLayout({
   title,
+  description = "",
   canonicalPath,
   breadcrumbs,
   headline,
@@ -85,6 +89,12 @@ export default function SeoPageLayout({
   schemas = [],
   children,
 }: SeoPageLayoutProps) {
+  useSeoMeta({
+    title,
+    description: description || subheadline,
+    canonicalPath,
+  });
+
   const allSchemas = [
     buildBreadcrumbSchema(breadcrumbs),
     buildFaqSchema(faqs, canonicalPath),

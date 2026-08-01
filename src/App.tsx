@@ -84,6 +84,20 @@ const BlogHowToBuyCheapData = lazyWithReload(() => import("./pages/blog/HowToBuy
 const BlogDataResellerBusiness = lazyWithReload(() => import("./pages/blog/HowToStartDataResellerBusiness"));
 const BlogStudentData = lazyWithReload(() => import("./pages/blog/BestDataBundlesStudentsGhana"));
 const BlogStreamingData = lazyWithReload(() => import("./pages/blog/HowMuchDataStreamingUses"));
+// SEO landing pages — Phase 3
+const BuyDataOnlineGhana = lazyWithReload(() => import("./pages/seo/BuyDataOnlineGhana"));
+const WholesaleDataBundlesGhana = lazyWithReload(() => import("./pages/seo/WholesaleDataBundlesGhana"));
+const InternetBundlesGhana = lazyWithReload(() => import("./pages/seo/InternetBundlesGhana"));
+const BecomeSubAgent = lazyWithReload(() => import("./pages/seo/BecomeSubAgent"));
+const AfaBundleGhana = lazyWithReload(() => import("./pages/seo/AfaBundleGhana"));
+const DataBundlePricesGhana = lazyWithReload(() => import("./pages/seo/DataBundlePricesGhana"));
+// Trust & legal pages
+const About = lazyWithReload(() => import("./pages/About"));
+const Contact = lazyWithReload(() => import("./pages/Contact"));
+const PrivacyPolicy = lazyWithReload(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazyWithReload(() => import("./pages/TermsOfService"));
+const RefundPolicy = lazyWithReload(() => import("./pages/RefundPolicy"));
+const CookiePolicy = lazyWithReload(() => import("./pages/CookiePolicy"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -280,6 +294,20 @@ const App = () => {
                   <Route path="/blog/how-to-start-data-reseller-business-ghana" element={<BlogDataResellerBusiness />} />
                   <Route path="/blog/best-data-bundles-for-students-ghana" element={<BlogStudentData />} />
                   <Route path="/blog/how-much-data-does-streaming-use-ghana" element={<BlogStreamingData />} />
+                  {/* SEO landing pages — Phase 3 */}
+                  <Route path="/buy-data-online-ghana" element={<BuyDataOnlineGhana />} />
+                  <Route path="/wholesale-data-bundles-ghana" element={<WholesaleDataBundlesGhana />} />
+                  <Route path="/internet-bundles-ghana" element={<InternetBundlesGhana />} />
+                  <Route path="/become-sub-agent" element={<BecomeSubAgent />} />
+                  <Route path="/afa-bundle-ghana" element={<AfaBundleGhana />} />
+                  <Route path="/data-bundle-prices-ghana" element={<DataBundlePricesGhana />} />
+                  {/* Trust & legal pages */}
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<TermsOfService />} />
+                  <Route path="/refund-policy" element={<RefundPolicy />} />
+                  <Route path="/cookie-policy" element={<CookiePolicy />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               )}

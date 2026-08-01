@@ -22,12 +22,12 @@ const Footer = () => {
         <nav aria-label="Quick links">
           <h4 className="font-display text-sm font-semibold mb-3">Quick Links</h4>
           <ul className="space-y-2 text-xs text-muted-foreground list-none">
-            <li><Link to="/#services" className="hover:text-foreground transition-colors">Buy Data Bundles</Link></li>
-            <li><Link to="/packages" className="hover:text-foreground transition-colors">Data Bundle Packages</Link></li>
-            <li><Link to="/become-agent" className="hover:text-foreground transition-colors">Become an Agent</Link></li>
-            <li><Link to="/signup" className="hover:text-foreground transition-colors">Agent Registration</Link></li>
-            <li><Link to="/data-reseller-agent-ghana" className="hover:text-foreground transition-colors">Data Reseller Business</Link></li>
-            <li><Link to="/data-api-ghana" className="hover:text-foreground transition-colors">Data Bundle API</Link></li>
+            <li><Link to="/packages" className="hover:text-foreground transition-colors">Buy Data Bundles</Link></li>
+            <li><Link to="/buy-data-online-ghana" className="hover:text-foreground transition-colors">Buy Data Online Ghana</Link></li>
+            <li><Link to="/data-bundle-prices-ghana" className="hover:text-foreground transition-colors">Data Bundle Prices Ghana</Link></li>
+            <li><Link to="/internet-bundles-ghana" className="hover:text-foreground transition-colors">Internet Bundles Ghana</Link></li>
+            <li><Link to="/wholesale-data-bundles-ghana" className="hover:text-foreground transition-colors">Wholesale Data Bundles</Link></li>
+            <li><Link to="/afa-bundle-ghana" className="hover:text-foreground transition-colors">MTN AFA Bundle Ghana</Link></li>
           </ul>
         </nav>
 
@@ -45,35 +45,30 @@ const Footer = () => {
           </ul>
         </nav>
 
-        <div className="space-y-3">
-          <h4 className="font-display text-sm font-semibold">Contact &amp; Support</h4>
+        <nav aria-label="Agent programme">
+          <h4 className="font-display text-sm font-semibold mb-3">Agent Programme</h4>
           <ul className="space-y-2 text-xs text-muted-foreground list-none">
-            <li>
-              <a
-                href="https://wa.me/233000000000"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-foreground transition-colors"
-                aria-label="Contact DataPlug on WhatsApp"
-              >
-                WhatsApp Support
-              </a>
-            </li>
-            <li>
-              <a
-                href="mailto:dataplugstore@gmail.com"
-                className="hover:text-foreground transition-colors"
-                aria-label="Email DataPlug support"
-              >
-                dataplugstore@gmail.com
-              </a>
-            </li>
+            <li><Link to="/become-agent" className="hover:text-foreground transition-colors">Become an Agent</Link></li>
+            <li><Link to="/become-sub-agent" className="hover:text-foreground transition-colors">Become a Sub-Agent</Link></li>
+            <li><Link to="/data-reseller-agent-ghana" className="hover:text-foreground transition-colors">Data Reseller Programme</Link></li>
+            <li><Link to="/data-agent-business-ghana" className="hover:text-foreground transition-colors">Data Agent Business Ghana</Link></li>
+            <li><Link to="/data-api-ghana" className="hover:text-foreground transition-colors">Data Bundle API</Link></li>
           </ul>
-        </div>
+        </nav>
       </div>
 
-      <div className="container mt-8 pt-6 border-t border-border text-center text-xs text-muted-foreground">
-        <p>© {currentYear} DataPlug Ghana. All rights reserved. | Buy MTN, Telecel &amp; AirtelTigo Data Bundles Online in Ghana.</p>
+      <div className="container mt-8 pt-6 border-t border-border">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mb-4 text-xs text-muted-foreground">
+          <Link to="/about" className="hover:text-foreground transition-colors">About</Link>
+          <Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+          <a href="https://wa.me/233000000000" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">WhatsApp</a>
+          <a href="mailto:dataplugstore@gmail.com" className="hover:text-foreground transition-colors">Email</a>
+          <Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+          <Link to="/refund-policy" className="hover:text-foreground transition-colors">Refund Policy</Link>
+          <Link to="/cookie-policy" className="hover:text-foreground transition-colors">Cookie Policy</Link>
+        </div>
+        <p className="text-center text-xs text-muted-foreground">© {currentYear} DataPlug Ghana. All rights reserved. | Buy MTN, Telecel &amp; AirtelTigo Data Bundles Online in Ghana.</p>
       </div>
     </footer>
   );

@@ -1,15 +1,55 @@
 # robots.txt — DataPlug Ghana (dataplug.store)
-#
-# Only the 5 public pages are allowed.
-# Everything else is blocked — no private paths are named here.
+# Updated: 2026-08-01 — Allow all public pages, block only private dashboard paths
 
 User-agent: *
-Allow: /$
+
+# Allow all public pages
+Allow: /
 Allow: /packages
-Allow: /login
-Allow: /signup
 Allow: /become-agent
-Disallow: /
+Allow: /blog
+Allow: /blog/
+Allow: /about
+Allow: /contact
+Allow: /privacy-policy
+Allow: /terms
+Allow: /refund-policy
+Allow: /cookie-policy
+
+# SEO landing pages
+Allow: /mtn-data-bundles
+Allow: /telecel-data-bundles
+Allow: /airteltigo-data-bundles
+Allow: /cheap-data-bundles-ghana
+Allow: /data-reseller-agent-ghana
+Allow: /data-api-ghana
+Allow: /streaming-data-bundles-ghana
+Allow: /student-data-bundles-ghana
+Allow: /airtime-top-up-ghana
+Allow: /premium-subscription
+Allow: /data-agent-business-ghana
+Allow: /ussd-data-services-ghana
+Allow: /bece-results-checker
+Allow: /wassce-results-checker
+Allow: /buy-data-online-ghana
+Allow: /wholesale-data-bundles-ghana
+Allow: /internet-bundles-ghana
+Allow: /become-sub-agent
+Allow: /afa-bundle-ghana
+Allow: /data-bundle-prices-ghana
+
+# Block private authenticated paths
+Disallow: /user-dashboard
+Disallow: /agent-dashboard
+Disallow: /subagent-dashboard
+Disallow: /sub-subagent-dashboard
+Disallow: /admin
+Disallow: /subadmin
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /api/
 
 # Sitemap
 Sitemap: https://dataplug.store/sitemap.xml

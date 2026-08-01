@@ -4,9 +4,11 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import PushNotificationSubscribe from "@/components/PushNotificationSubscribe";
+import SiteSearchModal from "@/components/SiteSearchModal";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { user, isAdmin, isAgent, signOut, getDashboardRoute, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -42,6 +44,16 @@ const Navbar = () => {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+            aria-label="Search DataPlug"
+          >
+            <Search className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Search</span>
+            <kbd className="ml-1 hidden xl:inline-block rounded border border-border px-1 py-0.5 font-mono text-[10px] text-muted-foreground/60">/</kbd>
+          </button>
           <PushNotificationSubscribe variant="icon" />
           {loading ? (
             <Button variant="ghost" size="sm" disabled>
@@ -82,6 +94,17 @@ const Navbar = () => {
     {mobileOpen && (
       <div className="md:hidden fixed inset-0 top-0 z-30 bg-slate-950 bg-opacity-98 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
         <div className="pt-20 px-6 py-8 space-y-8 pb-20">
+          {/* Search */}
+          <button
+            type="button"
+            onClick={() => { setMobileOpen(false); setSearchOpen(true); }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary/40 border border-border text-slate-300 hover:text-white hover:border-primary/40 transition-all"
+            aria-label="Search DataPlug"
+          >
+            <Search className="h-5 w-5" />
+            <span className="font-medium">Search DataPlug</span>
+          </button>
+
           {/* MENU Section */}
           <div>
             <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">MENU</h3>
@@ -157,6 +180,7 @@ const Navbar = () => {
         </div>
       </div>
     )}
+      <SiteSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 };

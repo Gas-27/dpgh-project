@@ -217,4 +217,106 @@
     <priority>0.82</priority>
   </url>
 
+  <!-- SEO Landing Pages — Phase 3 -->
+  <url>
+    <loc>https://dataplug.store/buy-data-online-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.92</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/buy-data-online-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/buy-data-online-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/internet-bundles-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/internet-bundles-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/internet-bundles-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/data-bundle-prices-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/data-bundle-prices-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/data-bundle-prices-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/wholesale-data-bundles-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.87</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/wholesale-data-bundles-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/wholesale-data-bundles-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/become-sub-agent</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/become-sub-agent" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/become-sub-agent" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/afa-bundle-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/afa-bundle-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/afa-bundle-ghana" />
+  </url>
+
+  <!-- Trust & Legal Pages -->
+  <url>
+    <loc>https://dataplug.store/about</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/about" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/about" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/contact</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/contact" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/contact" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/privacy-policy</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.50</priority>
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/terms</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.50</priority>
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/refund-policy</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.50</priority>
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/cookie-policy</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.40</priority>
+  </url>
+
 </urlset>

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useSeoMeta } from "@/hooks/useSeoMeta";
 import { ChevronRight, Home, Calendar, Clock, ArrowRight } from "lucide-react";
 
 interface RelatedPost {
@@ -31,6 +32,8 @@ export default function BlogArticleLayout({
   children,
   relatedPosts = [],
 }: BlogArticleLayoutProps) {
+  useSeoMeta({ title, description, canonicalPath, ogType: "article" });
+
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
