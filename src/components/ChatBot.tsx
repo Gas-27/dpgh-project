@@ -6,6 +6,19 @@ import ReactMarkdown from 'react-markdown';
 import { callLocalEngine } from '@/lib/chatEngine';
 
 // ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
+const EDGE_FUNCTION_URL =
+  'https://api.dataplug.store/functions/v1/dataplug-chat';
+
+// VITE_SUPABASE_PUBLISHABLE_KEY is the public anon key injected by Vite
+const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  '';
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -138,8 +151,35 @@ export default function ChatBot({ page }: ChatBotProps) {
       .filter(m => !m.error)
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-    // Use the local knowledge-base engine (works in dev + production with no API key).
-    // Swap this for a fetch('/api/chat', ...) call once the Supabase Edge Function is live.
+    // Try the live Supabase Edge Function first.
+    // Falls back to the local knowledge-base engine if the request fails.
+    try {
+      const res = await fetch(EDGE_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ message: userText, conversation }),
+      });
+
+      if (res.status === 429) {
+        setRateLimited(true);
+        setTimeout(() => setRateLimited(false), 60_000);
+        throw new Error('rate_limited');
+      }
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.reply) return data.reply as string;
+      }
+    } catch (err) {
+      // If rate-limited, re-throw so the UI shows the rate-limit banner
+      if (err instanceof Error && err.message === 'rate_limited') throw err;
+      // Any network / CORS / 5xx error: silently fall through to local engine
+    }
+
+    // Local fallback — always works, no API key required
     const result = callLocalEngine(userText, conversation);
     return result.reply;
   }, []);
