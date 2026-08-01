@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, X, MessageCircle, Copy, RotateCcw, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { callLocalEngine } from '@/lib/chatEngine';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -135,27 +136,12 @@ export default function ChatBot({ page }: ChatBotProps) {
   ): Promise<string> => {
     const conversation = history
       .filter(m => !m.error)
-      .map(m => ({ role: m.role, content: m.content }));
+      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userText, conversation }),
-    });
-
-    if (res.status === 429) {
-      setRateLimited(true);
-      setTimeout(() => setRateLimited(false), 60_000);
-      throw new Error('rate_limited');
-    }
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? 'API error');
-    }
-
-    const data = await res.json();
-    return data.reply as string;
+    // Use the local knowledge-base engine (works in dev + production with no API key).
+    // Swap this for a fetch('/api/chat', ...) call once the Supabase Edge Function is live.
+    const result = callLocalEngine(userText, conversation);
+    return result.reply;
   }, []);
 
   // -------------------------------------------------------------------------
