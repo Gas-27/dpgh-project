@@ -28,6 +28,7 @@ import {
   LayoutGrid, Minus, Plus as PlusIcon, Coins, Menu, Image, Download, Share2,
   ChevronDown, ChevronUp, BookOpen, Percent, Users, AlertCircle, ShieldAlert,
   Send, Eye, Upload, FileSpreadsheet, Layers, MessageCircle, Clock, Key, Globe,
+  AlertTriangle, UserCheck, RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ChatBot from "@/components/ChatBot";
@@ -341,6 +342,7 @@ const AgentDashboard = () => {
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
   const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
+  const [showNewNumberWarning, setShowNewNumberWarning] = useState(false);
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
   const [buyLoading, setBuyLoading] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -2514,7 +2516,7 @@ const AgentDashboard = () => {
                           <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
                           {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2).map((p, idx, arr) => (
                             <span key={p}>
-                              {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-muted-foreground">…</span>}
+                              {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-muted-foreground">��</span>}
                               <Button variant={currentPage === p ? "hero" : "outline"} size="sm" onClick={() => setCurrentPage(p)}>{p}</Button>
                             </span>
                           ))}
@@ -4727,7 +4729,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy ${(buyPkg as any).mins || 0} mins + ${buyPkg?.size_gb}GB` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
           {buyStep === "phone" ? (
-            <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`pl-10 ${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus /></div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={() => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } const detected = detectNetwork(buyPhone); if ((buyPkg?.network === "mtn_mashup" || buyPkg?.network === "mashup") && detected !== "mtn") { toast({ title: "MTN Only", description: `This package is only available for MTN numbers. This appears to be ${detected.toUpperCase()}.`, variant: "destructive" }); return; } if (buyPkg?.network && buyPkg.network !== "mtn_mashup" && buyPkg.network !== "mashup" && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } setBuyStep("confirm"); }}>Continue</Button></div>
+            <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`pl-10 ${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus /></div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={async () => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } const detected = detectNetwork(buyPhone); if ((buyPkg?.network === "mtn_mashup" || buyPkg?.network === "mashup") && detected !== "mtn") { toast({ title: "MTN Only", description: `This package is only available for MTN numbers. This appears to be ${detected.toUpperCase()}.`, variant: "destructive" }); return; } if (buyPkg?.network && buyPkg.network !== "mtn_mashup" && buyPkg.network !== "mashup" && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express"; if (isMTNPackage) { const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyPhone.trim()); if ((count ?? 0) === 0) { setShowNewNumberWarning(true); return; } } setBuyStep("confirm"); }}>Continue</Button></div>
           ) : (
             <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
               <>
@@ -4745,6 +4747,32 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     </button>
                   </div><button type="button" onClick={() => setBuyPaymentMethod("paystack")} aria-pressed={buyPaymentMethod === "paystack"} className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${buyPaymentMethod === "paystack" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}><span className="flex items-center gap-2"><span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "paystack" ? "border-primary" : "border-muted-foreground"}`}>{buyPaymentMethod === "paystack" && <span className="h-2 w-2 rounded-full bg-primary" />}</span><CreditCard className="h-4 w-4" />Paystack</span><span className="text-xs text-yellow-400 font-medium">1.98% fee added</span></button></div></div><div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyConfirm} disabled={buyLoading}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div></div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* New MTN beneficiary number warning */}
+      <Dialog open={showNewNumberWarning} onOpenChange={(v) => { if (!v) setShowNewNumberWarning(false); }}>
+        <DialogContent className="sm:max-w-md border-border bg-card p-0 overflow-hidden" style={{ zIndex: 100000 }}>
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-4 flex items-center gap-3">
+            <div className="flex-shrink-0 rounded-full bg-amber-500/20 p-2"><AlertTriangle className="h-5 w-5 text-amber-500" /></div>
+            <div>
+              <DialogTitle className="text-base font-bold text-amber-700 dark:text-amber-400">New Number Detected</DialogTitle>
+              <DialogDescription className="text-xs text-amber-600/80 dark:text-amber-500/80 mt-0.5">{buyPhone} is new to our beneficiary list</DialogDescription>
+            </div>
+          </div>
+          <div className="px-6 py-5 space-y-4">
+            <p className="text-sm text-foreground leading-relaxed">This number has not made a purchase on DataPlug before. Your order may take <span className="font-semibold">longer than usual to be delivered</span>.</p>
+            <div className="rounded-lg border border-border bg-secondary/40 divide-y divide-border">
+              <div className="flex items-start gap-3 p-3"><div className="flex-shrink-0 mt-0.5 rounded-full bg-primary/10 p-1.5"><UserCheck className="h-4 w-4 text-primary" /></div><div><p className="text-xs font-semibold text-foreground">MTN Beneficiary Verification Required</p><p className="text-xs text-muted-foreground mt-0.5">MTN now requires that new numbers be registered and verified on each sender&apos;s portal before data can be delivered.</p></div></div>
+              <div className="flex items-start gap-3 p-3"><div className="flex-shrink-0 mt-0.5 rounded-full bg-amber-500/10 p-1.5"><Clock className="h-4 w-4 text-amber-500" /></div><div><p className="text-xs font-semibold text-foreground">Order Stays Pending During Verification</p><p className="text-xs text-muted-foreground mt-0.5">Your order will remain in <span className="font-medium text-amber-600">Pending</span> status while MTN verifies the number. Once verified, data is delivered automatically.</p></div></div>
+              <div className="flex items-start gap-3 p-3"><div className="flex-shrink-0 mt-0.5 rounded-full bg-green-500/10 p-1.5"><RefreshCw className="h-4 w-4 text-green-500" /></div><div><p className="text-xs font-semibold text-foreground">Future Orders Will Be Instant</p><p className="text-xs text-muted-foreground mt-0.5">Once verified, all future purchases to this number will be delivered immediately.</p></div></div>
+            </div>
+            <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3"><p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">If the order fails</p><p className="text-xs text-muted-foreground leading-relaxed">Your payment will be <span className="font-medium text-foreground">fully refunded</span>. You can repurchase after <span className="font-semibold text-foreground">2 days</span>, by which time your number will be fully verified.</p></div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowNewNumberWarning(false)}>Cancel</Button>
+              <Button variant="hero" className="flex-1" onClick={() => { setShowNewNumberWarning(false); setBuyStep("confirm"); }}>I Understand, Continue</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
       

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
@@ -131,6 +131,7 @@ const UserDashboard = () => {
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
   const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
+  const [showNewNumberWarning, setShowNewNumberWarning] = useState(false);
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("paystack");
   const [buyLoading, setBuyLoading] = useState(false);
   const [topupReference, setTopupReference] = useState<string>("");
@@ -2929,7 +2930,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </div>
 
               <Button
-                onClick={() => {
+                onClick={async () => {
                   if (!buyPhone || !isValidPhoneLength(buyPhone)) {
                     toast({ title: "Invalid phone", description: "Please enter a valid 10-digit phone number", variant: "destructive" });
                     return;
@@ -2937,6 +2938,11 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                   if (!phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) {
                     toast({ title: "Network mismatch", description: "Phone number doesn't match the selected network", variant: "destructive" });
                     return;
+                  }
+                  const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express";
+                  if (isMTNPackage) {
+                    const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyPhone.trim());
+                    if ((count ?? 0) === 0) { setShowNewNumberWarning(true); return; }
                   }
                   setBuyStep("confirm");
                 }}
@@ -2975,6 +2981,32 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* New MTN beneficiary number warning */}
+      <Dialog open={showNewNumberWarning} onOpenChange={(v) => { if (!v) setShowNewNumberWarning(false); }}>
+        <DialogContent className="sm:max-w-md border-border bg-card p-0 overflow-hidden" style={{ zIndex: 100000 }}>
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-4 flex items-center gap-3">
+            <div className="flex-shrink-0 rounded-full bg-amber-500/20 p-2"><AlertTriangle className="h-5 w-5 text-amber-500" /></div>
+            <div>
+              <DialogTitle className="text-base font-bold text-amber-700 dark:text-amber-400">New Number Detected</DialogTitle>
+              <DialogDescription className="text-xs text-amber-600/80 dark:text-amber-500/80 mt-0.5">{buyPhone} is new to our beneficiary list</DialogDescription>
+            </div>
+          </div>
+          <div className="px-6 py-5 space-y-4">
+            <p className="text-sm text-foreground leading-relaxed">This number has not made a purchase on DataPlug before. Your order may take <span className="font-semibold">longer than usual to be delivered</span>.</p>
+            <div className="rounded-lg border border-border bg-secondary/40 divide-y divide-border">
+              <div className="flex items-start gap-3 p-3"><div className="flex-shrink-0 mt-0.5 rounded-full bg-primary/10 p-1.5"><UserCheck className="h-4 w-4 text-primary" /></div><div><p className="text-xs font-semibold text-foreground">MTN Beneficiary Verification Required</p><p className="text-xs text-muted-foreground mt-0.5">MTN now requires that new numbers be registered and verified on each sender&apos;s portal before data can be delivered.</p></div></div>
+              <div className="flex items-start gap-3 p-3"><div className="flex-shrink-0 mt-0.5 rounded-full bg-amber-500/10 p-1.5"><Clock className="h-4 w-4 text-amber-500" /></div><div><p className="text-xs font-semibold text-foreground">Order Stays Pending During Verification</p><p className="text-xs text-muted-foreground mt-0.5">Your order will remain in <span className="font-medium text-amber-600">Pending</span> status while MTN verifies the number. Once verified, data is delivered automatically.</p></div></div>
+              <div className="flex items-start gap-3 p-3"><div className="flex-shrink-0 mt-0.5 rounded-full bg-green-500/10 p-1.5"><RefreshCw className="h-4 w-4 text-green-500" /></div><div><p className="text-xs font-semibold text-foreground">Future Orders Will Be Instant</p><p className="text-xs text-muted-foreground mt-0.5">Once verified, all future purchases to this number will be delivered immediately.</p></div></div>
+            </div>
+            <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3"><p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">If the order fails</p><p className="text-xs text-muted-foreground leading-relaxed">Your payment will be <span className="font-medium text-foreground">fully refunded</span>. You can repurchase after <span className="font-semibold text-foreground">2 days</span>, by which time your number will be fully verified.</p></div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowNewNumberWarning(false)}>Cancel</Button>
+              <Button variant="hero" className="flex-1" onClick={() => { setShowNewNumberWarning(false); setBuyStep("confirm"); }}>I Understand, Continue</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
