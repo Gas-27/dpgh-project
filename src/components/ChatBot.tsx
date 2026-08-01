@@ -37,16 +37,21 @@ interface ChatBotProps {
 // Suggested questions shown on the empty state screen
 const SUGGESTED_QUESTIONS = [
   'What data bundles do you have?',
-  'How do I buy data on DataPlug?',
+  'How do I buy data?',
   'How do I track my order?',
+  'What does each order status mean?',
+  'How do I report an order not received?',
   'How do I become an agent?',
-  'What payment methods do you accept?',
-  'How long does delivery take?',
-  'How do I top up my wallet?',
   'What is the AFA bundle?',
+  'How do I register for AFA?',
   'How do I become a sub-agent?',
-  'What is the DataPlug API?',
+  'How long does delivery take?',
   'How do I get a refund?',
+  'I made a wrong order, what can I do?',
+  'How do I reset my password?',
+  'How do I sign up?',
+  'What payment methods do you accept?',
+  'How do I top up my wallet?',
   'What is the premium subscription?',
 ];
 
@@ -220,8 +225,8 @@ export default function ChatBot({ page }: ChatBotProps) {
       persist(final);
     } catch (err: any) {
       const errorContent = err.message === 'rate_limited'
-        ? 'You have sent too many messages. Please wait a moment and try again.'
-        : 'Sorry, I could not get a response right now. Please try again.';
+        ? 'You have sent quite a few messages in a short time — please wait a moment and then try again.'
+        : 'I was not able to get a response right now. Please try again in a moment.';
 
       const errMsg: Message = {
         id: `e-${Date.now()}`,
@@ -357,7 +362,7 @@ export default function ChatBot({ page }: ChatBotProps) {
           >
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" aria-hidden="true" />
-              <h2 className="font-semibold text-white">DataPlug Assistant</h2>
+              <h2 className="font-semibold text-white">Support Assistant</h2>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -374,11 +379,32 @@ export default function ChatBot({ page }: ChatBotProps) {
               /* Empty state with suggested questions */
               <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 pb-10">
                 <MessageCircle className="h-12 w-12 mb-3 opacity-50" />
-                <p className="text-sm font-semibold mb-1">Hi! I'm DataPlug Assistant</p>
+                <p className="text-sm font-semibold mb-1">Hi! How can I help you today?</p>
                 <p className="text-xs mb-4 opacity-75">
-                  Powered by AI. Ask me anything about packages, agents, AFA, or orders — 24/7!
+                  Ask me anything about packages, orders, AFA, agents, accounts, and more.
                 </p>
-                <div className="w-full px-1 space-y-1.5 max-h-72 overflow-y-auto">
+                {/* Quick action chips */}
+                <div className="w-full px-1 flex gap-2 mb-2 flex-wrap justify-center">
+                  <button
+                    onClick={() => sendMessage('How do I track my order?')}
+                    className="text-xs bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-full transition-all font-medium"
+                  >
+                    Track Order
+                  </button>
+                  <button
+                    onClick={() => sendMessage('How do I report an order that shows Delivered but I did not receive the data?')}
+                    className="text-xs bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-full transition-all font-medium"
+                  >
+                    Report Order Not Received
+                  </button>
+                  <button
+                    onClick={() => sendMessage('What does each order status mean?')}
+                    className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-full transition-all"
+                  >
+                    Order Status Guide
+                  </button>
+                </div>
+                <div className="w-full px-1 space-y-1.5 max-h-60 overflow-y-auto">
                   {SUGGESTED_QUESTIONS.map((q) => (
                     <button
                       key={q}
@@ -509,7 +535,7 @@ export default function ChatBot({ page }: ChatBotProps) {
               </button>
             </div>
             <p className="text-xs text-slate-500 text-center">
-              Press Enter to send &middot; AI-powered 24/7 support
+              Press Enter to send &middot; 24/7 support
             </p>
           </div>
         </div>

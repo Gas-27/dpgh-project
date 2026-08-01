@@ -165,9 +165,10 @@ function looksLikePhone(text: string): boolean {
 // ---------------------------------------------------------------------------
 
 const FALLBACKS = [
-  "I'm not sure I caught that. Could you rephrase? You can ask about **packages**, **buying data**, **agent sign-up**, **AFA**, **refunds**, **withdrawals**, or **order tracking**.",
-  "I didn't quite get that. Try asking something like: _'How do I buy data?'_ or _'How do I become an agent?'_",
-  "That one's tricky! Could you be more specific? I can help with **orders**, **packages**, **payments**, **AFA bundles**, or anything on the platform.",
+  "I am not sure I caught that — could you rephrase it? You can ask me about **packages**, **buying data**, **AFA**, **order tracking**, **reporting an order**, **agents**, **refunds**, **login or password reset**, and more.",
+  "I did not quite understand that one. Try something like: _'How do I track my order?'_ or _'How do I register for AFA?'_ or _'What does Pending status mean?'_",
+  "Could you be a bit more specific? I can help with **orders**, **packages**, **payments**, **AFA bundles**, **account issues**, or anything else on the platform — just describe what you need.",
+  "That is a bit outside what I can help with right now. Feel free to ask about packages, your orders, account setup, agents, AFA, refunds, or anything related to using the platform.",
 ];
 
 let fallbackIndex = 0;
@@ -180,7 +181,7 @@ function nextFallback(): string {
 // ---------------------------------------------------------------------------
 
 function handlePhoneFollowUp(phone: string): string {
-  return `Got it — I've noted **${phone}**. In production this will pull your order history live from the database. For now, please tap **Track Order** in your dashboard or contact WhatsApp support with this number for the fastest resolution.`;
+  return `Got it — I have noted **${phone}**. Please go to your **Order History** in the dashboard to see the full status of your recent orders. If an order shows **Delivered** but you have not received the data, tap the **Report** button on that order and follow the steps shown.`;
 }
 
 // ---------------------------------------------------------------------------

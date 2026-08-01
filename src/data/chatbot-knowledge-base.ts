@@ -58,20 +58,55 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   {
     id: "greeting",
     questions: ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"],
-    answer: "Hello! 👋 I'm your platform assistant. I can help with data packages, buying & delivery, AFA registration, becoming an agent/subagent, dashboards, storefronts, withdrawals, the API, order tracking, or anything else on the site. What do you need?",
+    answer: "Hello! How are you doing? I'm your support assistant — here to help with data packages, buying, delivery, AFA, agent and subagent accounts, dashboards, storefronts, withdrawals, order tracking, and more. What can I help you with today?",
     category: "greeting",
   },
   {
     id: "thanks",
     questions: ["thanks", "thank you", "ok thanks", "great", "cool", "appreciate it"],
-    answer: "You're welcome! Let me know if there's anything else I can help you with. 😊",
+    answer: "You're welcome! Happy to help. Let me know if anything else comes up.",
     category: "greeting",
   },
   {
     id: "human_agent",
     questions: ["talk to human", "real person", "customer care", "contact support", "speak to someone"],
-    answer: "I can answer most questions instantly, but if you need a human, use the Support/Help Center link in the footer or the WhatsApp support contact shown on your dashboard — it's dynamically set per store.",
+    answer: "Sure, I can connect you. Use the **Support** link in your dashboard menu or reach out via the WhatsApp contact shown there — the team responds quickly during business hours.",
     category: "support",
+  },
+
+  // ───────────────────────── Login / Signup / Account ─────────────────────────
+  {
+    id: "signup",
+    questions: ["sign up", "register", "create account", "how to register", "join", "new account", "open account"],
+    answer: "To create an account:\n1. Click **Sign Up** at the top of the page\n2. Enter your name, phone number, and a password\n3. Verify your phone number with the OTP sent to you\n4. Your account is ready — you can start buying data immediately\n\nIf you want to sell data, look for the **Become an Agent** option during or after signup.",
+    category: "account",
+    relatedIds: ["become_agent"],
+  },
+  {
+    id: "login",
+    questions: ["login", "log in", "sign in", "how to login", "cant login", "login problem", "access my account"],
+    answer: "To log in:\n1. Click **Log In** at the top of the page\n2. Enter your registered phone number and password\n3. Tap **Log In**\n\nIf you get an error, double-check your phone number format (start with 0 or +233). If the password is wrong, use the **Forgot Password** link just below the login form.",
+    category: "account",
+    relatedIds: ["forgot_password"],
+  },
+  {
+    id: "forgot_password",
+    questions: ["forgot password", "reset password", "lost password", "change password", "password reset", "cant remember password"],
+    answer: "No worries — here is how to reset your password:\n1. Go to the login page\n2. Tap **Forgot Password** below the login form\n3. Enter the phone number linked to your account\n4. You will receive an OTP via SMS\n5. Enter the OTP\n6. Set a new password\n7. Log in with your new password\n\nMake sure you enter the exact phone number you used when registering. If you no longer have access to that number, contact support through your dashboard.",
+    category: "account",
+  },
+  {
+    id: "change_password",
+    questions: ["change password", "update password", "new password", "password settings"],
+    answer: "To change your password while logged in:\n1. Go to your dashboard\n2. Tap **Settings**\n3. Find the **Security** or **Password** section\n4. Enter your current password, then your new one\n5. Save\n\nIf you have forgotten your current password, use the **Forgot Password** option on the login page instead.",
+    category: "account",
+    relatedIds: ["forgot_password"],
+  },
+  {
+    id: "account_locked",
+    questions: ["account locked", "account suspended", "account blocked", "account disabled"],
+    answer: "If your account has been locked or suspended, it is usually due to too many failed login attempts or a security flag. Contact support through the Help link in your dashboard or via the WhatsApp contact shown there to get it reviewed.",
+    category: "account",
   },
 
   // ───────────────────────── Packages ─────────────────────────
@@ -126,34 +161,45 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   // ───────────────────────── AFA Program ─────────────────────────
   {
     id: "afa_info",
-    questions: ["afa", "what is afa"],
-    answer: "AFA is an affordable data access program — you do NOT need to be a farmer to join, despite the name. Registration fee: GHC15. Approval takes 24–72 hours. Check status anytime by dialing *1848# on MTN.",
+    questions: ["afa", "what is afa", "afa bundle", "afa data", "afa cheap data"],
+    answer: "**AFA (Affordable Farmer Access)** is a heavily discounted MTN data program — and you do **NOT** need to be a farmer to join, despite the name. It was launched by MTN Ghana to provide cheap internet access.\n\n**Key facts:**\n- Registration fee: **GHC 15** (one-time)\n- Approval time: **24–72 hours** (MTN reviews it)\n- Once approved, you unlock much cheaper bundle rates — often 50–70% cheaper than standard MTN rates\n- Your AFA status stays active as long as your MTN line is active\n- Check status any time: dial **\\*1848#** on your MTN line\n\n**Who can register?**\nAnyone with an active MTN Ghana SIM card. You do not need a farm, a farmer ID, or any special documentation.",
+    category: "afa",
+    relatedIds: ["afa_register", "afa_status", "afa_approval"],
+  },
+  {
+    id: "afa_register",
+    questions: ["afa register", "register afa", "join afa", "how to register afa", "how to get afa"],
+    answer: "**How to register for AFA:**\n1. Go to the **AFA Bundles** section\n2. Tap **Register for AFA**\n3. Fill in the registration form (name, phone, ID details)\n4. Pay the **GHC 15** registration fee via Mobile Money\n5. Wait **24–72 hours** for MTN to review and approve\n6. You will receive an **SMS from MTN** once approved\n7. Come back and your AFA bundle prices will be unlocked\n\n**Important notes:**\n- Use the exact name and ID details on your MTN SIM registration\n- A mismatch is the most common reason for rejection\n- If rejected, you can re-register with corrected details",
+    category: "afa",
+    relatedIds: ["afa_approval", "afa_status", "afa_rejected"],
+  },
+  {
+    id: "afa_approval",
+    questions: ["afa approval", "how long afa", "afa waiting", "afa pending", "afa not approved yet"],
+    answer: "AFA approval is handled entirely by MTN Ghana — it takes **24 to 72 hours** from when you submit the registration.\n\n**What happens during this time:**\n- MTN verifies the details you submitted against their records\n- If everything matches, your registration is approved automatically\n- You get a confirmation SMS from MTN\n\n**To check progress:**\n- Dial **\\*1848#** on your MTN line at any time\n- If it says 'not registered', your application is still pending or was rejected\n\n**If it has been more than 72 hours with no SMS:** your details likely didn't match. Re-register with corrected information.",
+    category: "afa",
+    relatedIds: ["afa_status", "afa_rejected"],
+  },
+  {
+    id: "afa_status",
+    questions: ["*1848", "check afa status", "afa status", "check afa", "how to check afa"],
+    answer: "**To check your AFA registration status:**\n1. Dial **\\*1848#** on your MTN line\n2. Follow the menu prompts\n3. It will show if you are registered, pending, or not registered\n\nYou can dial this any time — it is the official MTN check for AFA status. If it shows 'not registered' and you have already paid, your details may not have matched. Contact support.",
+    category: "afa",
+    relatedIds: ["afa_approval", "afa_rejected"],
+  },
+  {
+    id: "afa_rejected",
+    questions: ["afa rejected", "afa denied", "afa failed", "afa not approved", "afa registration failed"],
+    answer: "If your AFA registration was not approved, it is almost always because the **name or ID details** you entered did not match what is on your MTN SIM registration.\n\n**What to do:**\n1. Check the exact name MTN has on your SIM (visit an MTN service centre or check your original SIM registration details)\n2. Go to AFA Bundles → Register again\n3. Enter the corrected details that match exactly\n4. Pay the GHC 15 fee again\n5. Wait another 24–72 hours\n\nIf you paid but were rejected and want a refund of the registration fee, contact support through your dashboard.",
     category: "afa",
     relatedIds: ["afa_register", "afa_status"],
   },
   {
-    id: "afa_register",
-    questions: ["afa register", "register afa", "join afa", "how to register afa"],
-    answer: "To register for AFA:\n1. Tap AFA Bundles\n2. Tap Register\n3. Fill in the form\n4. Pay the GHC15 registration fee\n5. Wait 24–72 hours for MTN to review\n6. You'll get an SMS once approved\n7. Start using your AFA bundle rate",
+    id: "afa_prices",
+    questions: ["afa prices", "afa bundle prices", "afa rates", "how cheap is afa", "afa vs normal data"],
+    answer: "AFA bundles are significantly cheaper than standard data rates — typically **50–70% cheaper** than buying regular MTN data.\n\nExact prices are shown on the AFA Bundles page once your registration is approved. The savings make AFA bundles one of the best value options on the platform, especially for high-volume users and agents selling to students.\n\nTo see the prices, go to **AFA Bundles** in your dashboard — prices display once your AFA status is active.",
     category: "afa",
-  },
-  {
-    id: "afa_approval",
-    questions: ["afa approval", "how long afa", "afa waiting", "afa pending"],
-    answer: "AFA approval takes 24–72 hours. MTN reviews the registration and sends an SMS confirmation. You can check progress anytime by dialing *1848# on MTN.",
-    category: "afa",
-  },
-  {
-    id: "afa_status",
-    questions: ["*1848", "check status", "afa status", "check afa"],
-    answer: "To check your AFA status:\n1. Dial *1848# on your MTN line\n2. Follow the prompts\n3. See your current registration status\n\nUse this any time to check approval progress.",
-    category: "afa",
-  },
-  {
-    id: "afa_rejected",
-    questions: ["afa rejected", "afa denied", "afa failed"],
-    answer: "If AFA registration wasn't approved, it's usually a details mismatch (name/ID/number). Re-register with the corrected details via AFA Bundles → Register, or reach support if you were charged but not approved.",
-    category: "afa",
+    relatedIds: ["afa_register", "afa_info"],
   },
 
   // ───────────────────────── Agent Program ─────────────────────────
@@ -273,13 +319,33 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
     category: "api",
   },
 
-  // ───────────────────────── Order Tracking ─────────────────────────
+  // ───────────────────────── Order Tracking & Status ─────────────────────────
   {
     id: "track_order",
-    questions: ["track order", "where order", "order status", "check my order"],
-    answer: "I can help track your order! Please share the phone number used for the purchase and I'll look up the status for you.",
+    questions: ["track order", "where order", "order status", "check my order", "track my order"],
+    answer: "You can track your order directly from your dashboard:\n1. Go to **Order History** or **Track Order** in your dashboard\n2. Find the order in the list\n3. The current status is shown next to it\n\nIf an order shows **Delivered** but you have not received the data, tap the **Report** button on that order. This opens a quick check — it will ask a few questions first before submitting the report.",
     category: "tracking",
-    followUp: "collect_phone",
+    relatedIds: ["order_status_meanings", "report_order", "dispute"],
+  },
+  {
+    id: "order_status_meanings",
+    questions: ["what does order status mean", "order status meaning", "what is pending order", "what is processing", "what is delivered", "what is failed", "order status explained", "status pending processing delivered failed"],
+    answer: "**What each order status means:**\n\n- **Pending** — Your payment was received and the order is queued. It has not been sent to the network yet. Usually moves within a few minutes.\n\n- **Processing** — The order has been submitted to the network provider and is actively being delivered. Most orders complete at this stage within 5–30 minutes.\n\n- **Delivered** — The network confirmed successful delivery. Your data should be on the recipient's line. For MTN/MTN Express, dial \\*124# and check under **Master Beneficiary Data Bundle**.\n\n- **Failed** — The delivery attempt did not go through. This could be due to a network issue, wrong number, or provider downtime. A refund is usually processed automatically back to your wallet.\n\n- **Refunded** — The order was not delivered and the amount has been credited back to your platform wallet. You can retry the order or use the balance for another purchase.\n\n**Still not sure?** If it says Delivered but you do not see the data, tap the **Report** button on that order.",
+    category: "tracking",
+    relatedIds: ["report_order", "mtn_bundle_location", "owing_debt_issue"],
+  },
+  {
+    id: "report_order",
+    questions: ["report order", "report not received", "report button", "report delivered not received", "report issue with order", "data not received how to report", "how to report"],
+    answer: "If an order shows **Delivered** in your order history but you have not received the data, here is exactly what to do:\n\n1. Go to **Order History** in your dashboard\n2. Find the order — it must show status **Delivered**\n3. Tap the **Report** button that appears on that order\n4. Answer the pre-check questions honestly:\n   - Do you owe airtime on this number?\n   - Do you owe bundle subscriptions?\n   - Do you owe Mobile Money on this number?\n5. If you answered No to all, upload a **screenshot of your data balance** (dial \\*124# for MTN, or check your network app)\n6. Submit the report\n\n**Important:** The Report button only appears on orders with **Delivered** status. If your order shows Pending, Processing, or Failed — do not report yet, as those are handled differently.\n\nReports are reviewed and if valid, a refund is processed to your wallet.",
+    category: "tracking",
+    relatedIds: ["order_status_meanings", "mtn_bundle_location", "owing_debt_issue", "refund_how"],
+  },
+  {
+    id: "wrong_order",
+    questions: ["wrong number", "wrong order", "sent to wrong number", "entered wrong phone", "made mistake ordering", "wrong network", "ordered wrong package", "wrong package ordered"],
+    answer: "I understand how frustrating that is — unfortunately, once an order has been submitted and processed to a phone number, **it cannot be cancelled, reversed, or redirected**. The data has already been delivered to that number by the network.\n\n**Why this cannot be changed:**\nOnce the network provider confirms delivery, the transaction is final. There is no way to retrieve data from a phone number — not even from our side.\n\n**What you should do going forward:**\n- Always double-check the phone number before confirming an order\n- For agents buying for customers, confirm the number verbally before processing\n\n**If the order is still Pending or Processing** (not yet delivered), contact support immediately through your dashboard — there may be a small window to cancel before network submission.",
+    category: "support",
   },
 
   // ───────────────────────── Store Features ─────────────────────────
@@ -375,17 +441,22 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   // ───────────────────────── Disputes / Support ─────────────────────────
   {
     id: "dispute",
-    questions: ["complaint", "wrong package", "charged twice", "double charge", "report issue"],
-    answer: "Sorry for the trouble. To submit a complaint on a delivered order:\n1. Go to your order history\n2. Find the order marked 'Delivered'\n3. Tap the Report button\n4. Answer the quick pre-check questions (owing airtime/bundle/MoMo)\n5. Upload a screenshot of your data balance\n6. Submit\n\nBefore reporting, please dial *124# (MTN) or open your network's app to verify the bundle isn't already there under 'Master Beneficiary Data Bundle'.",
+    questions: ["complaint", "wrong package", "charged twice", "double charge", "report issue", "data missing", "data not showing"],
+    answer: "Sorry to hear that — let's sort this out. Before submitting a report, please do this first:\n\n1. **Dial \\*124# on MTN** → select Data Balance → check **Master Beneficiary Data Bundle** (that is where MTN/Express bundles land, not Mashup Data)\n2. **Check if you owe** airtime, bundles, or MoMo on that number — this can hide delivered data\n3. **Wait 30 minutes** if it is under 30 minutes — delivery can occasionally be slightly delayed\n\nIf you have done all the above and still nothing:\n1. Go to **Order History**\n2. Find the order showing **Delivered**\n3. Tap the **Report** button\n4. Answer the pre-check questions and upload a screenshot of your data balance\n5. Submit — the team reviews it promptly",
     category: "support",
-    followUp: "collect_phone",
-    relatedIds: ["mtn_bundle_location", "owing_debt_issue", "refund_how"],
+    relatedIds: ["report_order", "mtn_bundle_location", "owing_debt_issue", "refund_how"],
   },
   {
     id: "help",
     questions: ["help", "support", "question", "what can you do"],
-    answer: "I'm here to help! Ask me about:\n• Data packages, buying & delivery\n• Where to find your MTN bundle (*124# → Master Beneficiary Data Bundle)\n• AFA registration\n• Becoming an Agent/Subagent\n• Dashboards, Storefronts\n• API access\n• Withdrawals & payments\n• Order tracking\n• How refunds work\n• What to do if data seems missing\n\nWhat would you like to know?",
+    answer: "Here to help! You can ask me about:\n- Data packages and buying\n- Delivery and order tracking\n- Where to find your MTN bundle (\\*124# → Master Beneficiary Data Bundle)\n- AFA registration and bundles\n- Becoming an agent or subagent\n- Dashboards and storefronts\n- Prices, commissions, and withdrawals\n- API access\n- Refunds and what to do if data seems missing\n- Login, signup, and forgotten passwords\n- What each order status means\n- How to report an undelivered order\n\nJust type your question.",
     category: "support",
+  },
+  {
+    id: "premium_subscription",
+    questions: ["premium", "premium subscription", "premium plan", "subscribe premium", "upgrade account"],
+    answer: "The **Premium Subscription** gives you access to discounted bundle prices that are not available on the standard plan.\n\n**Benefits:**\n- Lower prices on all packages\n- Priority order processing\n- Access to exclusive bundle sizes\n\nTo subscribe, go to your dashboard and look for the **Premium** or **Subscription** option. The monthly fee and current discounted prices are shown there.",
+    category: "features",
   },
 ];
 
