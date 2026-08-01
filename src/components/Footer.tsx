@@ -38,6 +38,10 @@ const Footer = () => {
             <li><Link to="/telecel-data-bundles" className="hover:text-foreground transition-colors">Telecel Data Bundles Ghana</Link></li>
             <li><Link to="/airteltigo-data-bundles" className="hover:text-foreground transition-colors">AirtelTigo Data Bundles Ghana</Link></li>
             <li><Link to="/cheap-data-bundles-ghana" className="hover:text-foreground transition-colors">Cheap Data Bundles Ghana</Link></li>
+            <li><Link to="/streaming-data-bundles-ghana" className="hover:text-foreground transition-colors">Streaming Data Bundles</Link></li>
+            <li><Link to="/student-data-bundles-ghana" className="hover:text-foreground transition-colors">Student Data Bundles</Link></li>
+            <li><Link to="/premium-subscription" className="hover:text-primary transition-colors font-medium text-primary/80">Premium Subscription</Link></li>
+            <li><Link to="/blog" className="hover:text-foreground transition-colors">DataPlug Blog</Link></li>
           </ul>
         </nav>
 

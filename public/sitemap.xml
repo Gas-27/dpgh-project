@@ -99,4 +99,122 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/data-api-ghana" />
   </url>
 
+  <!-- SEO Landing Pages — Phase 2 -->
+  <url>
+    <loc>https://dataplug.store/premium-subscription</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.92</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/premium-subscription" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/premium-subscription" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/streaming-data-bundles-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.87</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/streaming-data-bundles-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/streaming-data-bundles-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/student-data-bundles-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.87</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/student-data-bundles-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/student-data-bundles-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/airtime-top-up-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/airtime-top-up-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/airtime-top-up-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/data-agent-business-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/data-agent-business-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/data-agent-business-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/ussd-data-services-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/ussd-data-services-ghana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/ussd-data-services-ghana" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/bece-results-checker</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.82</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/bece-results-checker" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/bece-results-checker" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/wassce-results-checker</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.82</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/wassce-results-checker" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/wassce-results-checker" />
+  </url>
+
+  <!-- Blog -->
+  <url>
+    <loc>https://dataplug.store/blog</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.88</priority>
+    <xhtml:link rel="alternate" hreflang="en-gh" href="https://dataplug.store/blog" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://dataplug.store/blog" />
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/blog/cheapest-data-bundles-ghana-2026</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/blog/how-to-buy-cheap-data-bundles-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.84</priority>
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/blog/how-to-start-data-reseller-business-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.84</priority>
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/blog/best-data-bundles-for-students-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.83</priority>
+  </url>
+
+  <url>
+    <loc>https://dataplug.store/blog/how-much-data-does-streaming-use-ghana</loc>
+    <lastmod>2026-08-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.82</priority>
+  </url>
+
 </urlset>

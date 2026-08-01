@@ -70,6 +70,20 @@ const AirtelTigoDataBundles = lazyWithReload(() => import("./pages/seo/AirtelTig
 const CheapDataBundlesGhana = lazyWithReload(() => import("./pages/seo/CheapDataBundlesGhana"));
 const DataResellerAgent = lazyWithReload(() => import("./pages/seo/DataResellerAgent"));
 const DataApiGhana = lazyWithReload(() => import("./pages/seo/DataApiGhana"));
+const StreamingDataBundles = lazyWithReload(() => import("./pages/seo/StreamingDataBundles"));
+const StudentDataBundles = lazyWithReload(() => import("./pages/seo/StudentDataBundles"));
+const AirtimeTopUpGhana = lazyWithReload(() => import("./pages/seo/AirtimeTopUpGhana"));
+const PremiumSubscriptionPage = lazyWithReload(() => import("./pages/seo/PremiumSubscription"));
+const DataAgentBusiness = lazyWithReload(() => import("./pages/seo/DataAgentBusiness"));
+const UssdDataServices = lazyWithReload(() => import("./pages/seo/UssdDataServices"));
+const BeceResultsChecker = lazyWithReload(() => import("./pages/seo/BeceResultsChecker"));
+const WassceResultsChecker = lazyWithReload(() => import("./pages/seo/WassceResultsChecker"));
+const Blog = lazyWithReload(() => import("./pages/Blog"));
+const BlogCheapestData2026 = lazyWithReload(() => import("./pages/blog/CheapestDataBundlesGhana2026"));
+const BlogHowToBuyCheapData = lazyWithReload(() => import("./pages/blog/HowToBuyCheapDataBundlesGhana"));
+const BlogDataResellerBusiness = lazyWithReload(() => import("./pages/blog/HowToStartDataResellerBusiness"));
+const BlogStudentData = lazyWithReload(() => import("./pages/blog/BestDataBundlesStudentsGhana"));
+const BlogStreamingData = lazyWithReload(() => import("./pages/blog/HowMuchDataStreamingUses"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -250,6 +264,22 @@ const App = () => {
                   <Route path="/cheap-data-bundles-ghana" element={<CheapDataBundlesGhana />} />
                   <Route path="/data-reseller-agent-ghana" element={<DataResellerAgent />} />
                   <Route path="/data-api-ghana" element={<DataApiGhana />} />
+                  {/* SEO landing pages — Phase 2 */}
+                  <Route path="/streaming-data-bundles-ghana" element={<StreamingDataBundles />} />
+                  <Route path="/student-data-bundles-ghana" element={<StudentDataBundles />} />
+                  <Route path="/airtime-top-up-ghana" element={<AirtimeTopUpGhana />} />
+                  <Route path="/premium-subscription" element={<PremiumSubscriptionPage />} />
+                  <Route path="/data-agent-business-ghana" element={<DataAgentBusiness />} />
+                  <Route path="/ussd-data-services-ghana" element={<UssdDataServices />} />
+                  <Route path="/bece-results-checker" element={<BeceResultsChecker />} />
+                  <Route path="/wassce-results-checker" element={<WassceResultsChecker />} />
+                  {/* Blog */}
+                  <Route path="/blog" element={<Blog />} />
+                  <Route path="/blog/cheapest-data-bundles-ghana-2026" element={<BlogCheapestData2026 />} />
+                  <Route path="/blog/how-to-buy-cheap-data-bundles-ghana" element={<BlogHowToBuyCheapData />} />
+                  <Route path="/blog/how-to-start-data-reseller-business-ghana" element={<BlogDataResellerBusiness />} />
+                  <Route path="/blog/best-data-bundles-for-students-ghana" element={<BlogStudentData />} />
+                  <Route path="/blog/how-much-data-does-streaming-use-ghana" element={<BlogStreamingData />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               )}
