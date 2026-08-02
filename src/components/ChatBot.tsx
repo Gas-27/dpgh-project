@@ -114,10 +114,6 @@ function statusIcon(status: string) {
   return <Clock className="h-3.5 w-3.5" />;
 }
 
-function isDelivered(status: string) {
-  return status.toLowerCase() === 'delivered';
-}
-
 // ---------------------------------------------------------------------------
 // Detect if the user message is about tracking
 // ---------------------------------------------------------------------------
@@ -167,7 +163,7 @@ async function callEdgeFunction(
 // ---------------------------------------------------------------------------
 
 // Determine if an order is reportable: status must be delivered/completed
-function isDelivered(row: Record<string, unknown>): boolean {
+function isRowDelivered(row: Record<string, unknown>): boolean {
   const st = String(row.order_status ?? row.fulfillment_status ?? row.status ?? '').toLowerCase();
   return st === 'delivered' || st === 'completed';
 }
@@ -233,7 +229,7 @@ async function fetchOrdersByPhone(phone: string): Promise<TrackingResult> {
         amount: `GHS ${rawAmount.toFixed(2)}`,
         recipient: String(r.customer_number ?? normalised),
         refunded: Boolean(r.refunded_amount && Number(r.refunded_amount) > 0),
-        can_report: isDelivered(r),
+        can_report: isRowDelivered(r),
       };
     });
 
@@ -315,7 +311,7 @@ function OrderCard({
   onReport: (order: OrderRow) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const delivered = isDelivered(order.status);
+  const delivered = order.status === 'delivered';
 
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden text-xs">
@@ -404,7 +400,7 @@ function TrackingBubble({
     );
   }
 
-  const deliveredCount = data.orders.filter(o => isDelivered(o.status)).length;
+  const deliveredCount = data.orders.filter(o => o.status === 'delivered').length;
 
   return (
     <div className="space-y-2">
