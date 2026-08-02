@@ -67,6 +67,7 @@ const SUGGESTED_QUESTIONS = [
   'What data bundles do you have?',
   'How do I buy data?',
   'Track my order',
+  'Check my complaint status',
   'What does each order status mean?',
   'How do I report an order not received?',
   'How do I become an agent?',
@@ -813,6 +814,8 @@ export default function ChatBot({ page }: ChatBotProps) {
   const [isTracking, setIsTracking]                     = useState(false);
   // When user types a bare phone number, we ask them to confirm before tracking
   const [pendingTrackPhone, setPendingTrackPhone]       = useState<string | null>(null);
+  // Complaint phone lookup — separate flag to avoid colliding with tracking flow
+  const [awaitingComplaintPhone, setAwaitingComplaintPhone] = useState(false);
   // How many times user has asked for admin/contact in this session
   const [adminAskCount, setAdminAskCount]               = useState(0);
 
@@ -998,6 +1001,37 @@ export default function ChatBot({ page }: ChatBotProps) {
       setPendingTrackPhone(null);
     }
 
+    // --- Handle complaint phone input (after being asked for it) ---
+    if (awaitingComplaintPhone && looksLikePhone(trimmed)) {
+      setAwaitingComplaintPhone(false);
+      setIsLoading(true);
+      try {
+        const complaints = await fetchComplaintsByPhone(trimmed);
+        let content: string;
+        if (complaints.length === 0) {
+          content = `I could not find any complaints on file for **${trimmed}**. Make sure you are using the same number you used when submitting the report.`;
+        } else {
+          const mkIcon = (s: string) => s === 'resolved' ? '[Resolved]' : s === 'in-progress' ? '[In Progress]' : '[Pending]';
+          const lines = complaints.map(c =>
+            `• **${c.complaint_title}** — ${mkIcon(c.status)}\n  Submitted: ${new Date(c.created_at).toLocaleDateString()}`
+          ).join('\n\n');
+          content = `Here are the complaints on file for **${trimmed}**:\n\n${lines}\n\nIf the issue is unresolved please reply here or check the **Complaints** section in your dashboard.`;
+        }
+        const replyMsg: Message = { id: `cr2-${Date.now()}`, role: 'assistant', type: 'text', content, timestamp: Date.now() };
+        const final = [...withUser, replyMsg];
+        setMessages(final);
+        persist(final);
+      } catch {
+        const errMsg: Message = { id: `ce2-${Date.now()}`, role: 'assistant', type: 'text', content: 'Could not retrieve your complaint right now. Please check the Complaints section in your dashboard.', timestamp: Date.now(), error: true };
+        const final = [...withUser, errMsg];
+        setMessages(final);
+        persist(final);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     // --- Handle tracking phone number input (after being asked for it) ---
     if (awaitingPhone && looksLikePhone(trimmed)) {
       setAwaitingPhone(false);
@@ -1112,7 +1146,7 @@ export default function ChatBot({ page }: ChatBotProps) {
       const withAsk = [...withUser, askMsg];
       setMessages(withAsk);
       persist(withAsk);
-      setAwaitingPhone(true);
+      setAwaitingComplaintPhone(true);
       return;
     }
 
@@ -1168,7 +1202,7 @@ export default function ChatBot({ page }: ChatBotProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, isLoading, isTracking, awaitingPhone, pendingTrackPhone, adminAskCount, persist, runTracking]);
+  }, [messages, isLoading, isTracking, awaitingPhone, awaitingComplaintPhone, pendingTrackPhone, adminAskCount, persist, runTracking]);
 
   const handleSendMessage = () => sendMessage(input);
 
@@ -1265,6 +1299,8 @@ export default function ChatBot({ page }: ChatBotProps) {
     if (window.confirm('Clear all messages?')) {
       setMessages([]);
       setAwaitingPhone(false);
+      setAwaitingComplaintPhone(false);
+      setPendingTrackPhone(null);
       setActiveReportMsgId(null);
       setActiveReportOrder(null);
       localStorage.removeItem(`chatbot_ai_${page}`);

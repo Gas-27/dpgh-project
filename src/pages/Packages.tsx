@@ -13,6 +13,7 @@ const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
+import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentSignupPrompt from "@/components/AgentSignupPrompt";
 import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
@@ -1086,7 +1087,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
   );
 };
 
-// ──────────────────────��──────────────────────────── Packages Page (UPDATED: phone search strips spaces) ──
+// ──────────────────────���──────────────────────────── Packages Page (UPDATED: phone search strips spaces) ──
 const Packages = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -1711,7 +1712,7 @@ const Packages = () => {
             </Card>
           </div>
         ) : activeCategory === "afa" ? (
-          <div className="w-full pb-20">
+          <div className="w-full pb-20 space-y-6">
             <AFAPackagesDisplay
               onRegisterClick={(packageId, packageName, price) => {
                 setPaymentPkg({
@@ -1723,6 +1724,7 @@ const Packages = () => {
               }}
               themeColor="#3b82f6"
             />
+            <AFARegistrationTracker />
           </div>
         ) : renderComingSoon()}
       </div>

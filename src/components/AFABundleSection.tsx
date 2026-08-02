@@ -9,6 +9,7 @@ import AFAPackagesDisplay from "./AFAPackagesDisplay";
 import AFARegistrationForm from "./AFARegistrationForm";
 import AFAVideoPlayer from "./AFAVideoPlayer";
 import { getAFAMediaForRegistration, AFAMedia } from "@/services/afa-media-service";
+import AFARegistrationTracker from "./AFARegistrationTracker";
 
 interface AFABundleSectionProps {
   agentStoreId?: string | null;
@@ -250,6 +251,9 @@ export default function AFABundleSection({
           </CardContent>
         </Card>
       )}
+
+      {/* AFA Registration Tracker — always visible */}
+      <AFARegistrationTracker />
     </div>
   );
 }
