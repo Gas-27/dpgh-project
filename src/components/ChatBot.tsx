@@ -632,6 +632,8 @@ export default function ChatBot({ page }: ChatBotProps) {
 
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 150);
+    // Notify other floating buttons (e.g. WhatsApp) so they can hide themselves
+    window.dispatchEvent(new CustomEvent('chatbot-open-change', { detail: { isOpen } }));
   }, [isOpen]);
 
   const persist = useCallback((msgs: Message[]) => {

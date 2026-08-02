@@ -3,19 +3,31 @@ import DraggableFAB from "./DraggableFAB";
 
 export const WhatsAppFloatingButton = () => {
   const [showText, setShowText] = useState(true);
+  const [chatbotOpen, setChatbotOpen] = useState(false);
 
   useEffect(() => {
-    // Hide the text after 6 seconds
+    // Hide the label text after 6 seconds
     const timer = setTimeout(() => {
       setShowText(false);
     }, 6000);
 
-    return () => clearTimeout(timer);
+    // Hide this button whenever the support chatbot is open
+    const handleChatbotChange = (e: Event) => {
+      setChatbotOpen((e as CustomEvent<{ isOpen: boolean }>).detail.isOpen);
+    };
+    window.addEventListener('chatbot-open-change', handleChatbotChange);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('chatbot-open-change', handleChatbotChange);
+    };
   }, []);
 
   const handleClick = () => {
     window.open("https://whatsapp.com/channel/0029VbCBiBmCsU9XSl2ozc3R", "_blank");
   };
+
+  if (chatbotOpen) return null;
 
   return (
     <DraggableFAB
