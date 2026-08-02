@@ -181,7 +181,7 @@ function nextFallback(): string {
 // ---------------------------------------------------------------------------
 
 function handlePhoneFollowUp(phone: string): string {
-  return `Got it — I have noted **${phone}**. Please go to your **Order History** in the dashboard to see the full status of your recent orders. If an order shows **Delivered** but you have not received the data, tap the **Report** button on that order and follow the steps shown.`;
+  return `Got it — looking up orders for **${phone}** now. One moment.`;
 }
 
 // ---------------------------------------------------------------------------

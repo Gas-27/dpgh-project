@@ -70,7 +70,7 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   {
     id: "human_agent",
     questions: ["talk to human", "real person", "customer care", "contact support", "speak to someone"],
-    answer: "Sure, I can connect you. Use the **Support** link in your dashboard menu or reach out via the WhatsApp contact shown there — the team responds quickly during business hours.",
+    answer: "Sure. Use the **Support** link in your dashboard menu and the team will pick it up during business hours. For urgent order issues, try tracking and reporting directly in this chat first — it is usually the fastest route.",
     category: "support",
   },
 
@@ -322,8 +322,8 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   // ───────────────────────── Order Tracking & Status ─────────────────────────
   {
     id: "track_order",
-    questions: ["track order", "where order", "order status", "check my order", "track my order"],
-    answer: "You can track your order directly from your dashboard:\n1. Go to **Order History** or **Track Order** in your dashboard\n2. Find the order in the list\n3. The current status is shown next to it\n\nIf an order shows **Delivered** but you have not received the data, tap the **Report** button on that order. This opens a quick check — it will ask a few questions first before submitting the report.",
+    questions: ["track order", "where order", "order status", "check my order", "track my order", "where is my order", "find my order"],
+    answer: "You can track your order **right here in this chat** or from your dashboard.\n\n**Track in this chat (fastest):**\nJust send me the phone number used when placing the order and I will pull up all your recent orders with live status — right here in the conversation. If any order shows **Delivered**, a **Report** button appears directly on that order card so you can report it without leaving the chat.\n\n**Track from your dashboard:**\n1. Go to the **Track Order** tab in the menu\n2. Your orders are listed with the current status\n3. For any **Delivered** order where data has not arrived, tap the **Report** button on that row\n\nWould you like me to look up your orders now? Send me your phone number.",
     category: "tracking",
     relatedIds: ["order_status_meanings", "report_order", "dispute"],
   },
@@ -337,7 +337,7 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   {
     id: "report_order",
     questions: ["report order", "report not received", "report button", "report delivered not received", "report issue with order", "data not received how to report", "how to report"],
-    answer: "If an order shows **Delivered** in your order history but you have not received the data, here is exactly what to do:\n\n1. Go to **Order History** in your dashboard\n2. Find the order — it must show status **Delivered**\n3. Tap the **Report** button that appears on that order\n4. Answer the pre-check questions honestly:\n   - Do you owe airtime on this number?\n   - Do you owe bundle subscriptions?\n   - Do you owe Mobile Money on this number?\n5. If you answered No to all, upload a **screenshot of your data balance** (dial \\*124# for MTN, or check your network app)\n6. Submit the report\n\n**Important:** The Report button only appears on orders with **Delivered** status. If your order shows Pending, Processing, or Failed — do not report yet, as those are handled differently.\n\nReports are reviewed and if valid, a refund is processed to your wallet.",
+    answer: "If an order shows **Delivered** but the data has not arrived, you can report it **directly in this chat** — no need to leave.\n\n**How to report in this chat:**\n1. Type your phone number and I will pull up your orders\n2. Find the **Delivered** order in the list\n3. Tap the orange **Report** button that appears on that order card\n4. Answer the quick pre-check questions (checking for debts/airtime owed)\n5. Submit — the support team reviews it and processes a refund if valid\n\n**How to report from your dashboard:**\n1. Go to the **Track Order** tab\n2. Find the order with **Delivered** status\n3. Click the **Report** button on that row\n4. Complete the pre-check form and submit\n\n**Before reporting, always check:**\n- Dial **\\*124#** on MTN → Data Balance → Balance Breakdown → **Master Beneficiary Data Bundle**\n- Check if the SIM owes airtime, bundles, or MoMo — network debts can hold bundles\n\n**The Report button only shows on Delivered orders.** Pending, Processing, or Failed orders are handled differently.",
     category: "tracking",
     relatedIds: ["order_status_meanings", "mtn_bundle_location", "owing_debt_issue", "refund_how"],
   },
