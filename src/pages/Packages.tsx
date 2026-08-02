@@ -14,6 +14,7 @@ import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
+import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 import AgentSignupPrompt from "@/components/AgentSignupPrompt";
 import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
@@ -169,14 +170,16 @@ const sounds = {
 // ────────────────────────────────────────────── Order Tracking Card (UPDATED: delivered at 300 minutes) ──
 const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toast: any; onReportClick: (order: Order) => void }) => {
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
+  const [complaintId, setComplaintId] = useState<string | null>(null);
+  const [pendingNotes, setPendingNotes] = useState(0);
 
-  // Fetch complaint status for this order
+  // Fetch complaint status + ID for this order
   useEffect(() => {
     const fetchComplaintStatus = async () => {
       try {
         const { data, error } = await supabase
           .from("complaints")
-          .select("status")
+          .select("id, status")
           .eq("order_id", order.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -184,6 +187,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
 
         if (!error && data) {
           setComplaintStatus(data.status);
+          setComplaintId(data.id);
         }
       } catch (e) {
         // No complaint found, that's okay
@@ -320,23 +324,52 @@ Please investigate and assist. Thank you.`;
         </Button>
       )}
       
-      {/* Show status message if complaint submitted */}
+      {/* Show complaint status + admin messages thread if a complaint exists */}
       {complaintStatus && complaintStatus !== "resolved" && (
-        <div className="p-3 rounded-lg bg-blue-600/10 border border-blue-600/30">
-          <p className="text-sm font-medium text-blue-400">
-            ✓ Report has been sent to network providers
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. We are working on it for you.
-          </p>
+        <div className="space-y-3">
+          <div className="p-3 rounded-lg bg-blue-600/10 border border-blue-600/30 flex items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium text-blue-400">
+                Report has been sent — we are working on it
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}
+              </p>
+            </div>
+            {pendingNotes > 0 && (
+              <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5">
+                {pendingNotes} question{pendingNotes > 1 ? "s" : ""} from support
+              </span>
+            )}
+          </div>
+          {complaintId && (
+            <div className="rounded-lg border border-border bg-card/50 p-3">
+              <ComplaintNotesThread
+                complaintId={complaintId}
+                isAdmin={false}
+                onPendingCountChange={setPendingNotes}
+              />
+            </div>
+          )}
         </div>
       )}
-      
+
       {complaintStatus === "resolved" && (
-        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
-          <p className="text-sm font-medium text-green-400">
-            ✓ Your complaint has been resolved
-          </p>
+        <div className="space-y-3">
+          <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+            <p className="text-sm font-medium text-green-400">
+              Your complaint has been resolved
+            </p>
+          </div>
+          {complaintId && (
+            <div className="rounded-lg border border-border bg-card/50 p-3">
+              <ComplaintNotesThread
+                complaintId={complaintId}
+                isAdmin={false}
+                onPendingCountChange={setPendingNotes}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -602,7 +635,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     } else if (seg.type === "gb" && Number(seg.value) > 0) {
       sounds.win();
       setSuccessGb(Number(seg.value));
-      setResultMsg(`🎉 You won ${seg.value}GB!`);
+      setResultMsg(`���� You won ${seg.value}GB!`);
 
       setSpinCount(0);
       if (!paymentRequired) {
@@ -1087,7 +1120,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
   );
 };
 
-// ──────────────────────���──────────────────────────── Packages Page (UPDATED: phone search strips spaces) ──
+// ──────────────────────���──────────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
 const Packages = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();

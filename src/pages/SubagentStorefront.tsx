@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
+import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import DraggableFAB from "@/components/DraggableFAB";
 import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
@@ -169,6 +170,8 @@ const SubagentOrderTrackingCard = ({
   onReportClick: (order: Order) => void;
 }): JSX.Element => {
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
+  const [complaintId, setComplaintId] = useState<string | null>(null);
+  const [pendingNotes, setPendingNotes] = useState(0);
 
   // ── WhatsApp text auto-hide after 4 seconds ──
   useEffect(() => {
@@ -178,13 +181,13 @@ const SubagentOrderTrackingCard = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // Fetch complaint status for this order
+  // Fetch complaint status + ID for this order
   useEffect(() => {
     const fetchComplaintStatus = async () => {
       try {
         const { data, error } = await supabase
           .from("complaints")
-          .select("status")
+          .select("id, status")
           .eq("order_id", order.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -192,6 +195,7 @@ const SubagentOrderTrackingCard = ({
 
         if (!error && data) {
           setComplaintStatus(data.status);
+          setComplaintId(data.id);
         }
       } catch (e) {
         // No complaint found, that's okay
@@ -329,13 +333,49 @@ const SubagentOrderTrackingCard = ({
 
         {/* Show status message if complaint submitted */}
         {complaintStatus && complaintStatus !== "resolved" && (
-          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-            <p className="text-sm font-medium text-yellow-400 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" /> Report has been sent 
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}. Your report is being worked on 
-            </p>
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-sm flex items-start justify-between gap-2">
+              <div>
+                <p className="font-medium text-yellow-400 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" /> Report has been sent — we are working on it
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}
+                </p>
+              </div>
+              {pendingNotes > 0 && (
+                <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5">
+                  {pendingNotes} question{pendingNotes > 1 ? "s" : ""} from support
+                </span>
+              )}
+            </div>
+            {complaintId && (
+              <div className="rounded-lg border border-border bg-card/50 p-3">
+                <ComplaintNotesThread
+                  complaintId={complaintId}
+                  isAdmin={false}
+                  onPendingCountChange={setPendingNotes}
+                />
+              </div>
+            )}
+          </div>
+        )}
+        {complaintStatus === "resolved" && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30 text-sm">
+              <p className="font-medium text-green-400 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" /> Complaint resolved
+              </p>
+            </div>
+            {complaintId && (
+              <div className="rounded-lg border border-border bg-card/50 p-3">
+                <ComplaintNotesThread
+                  complaintId={complaintId}
+                  isAdmin={false}
+                  onPendingCountChange={setPendingNotes}
+                />
+              </div>
+            )}
           </div>
         )}
 
