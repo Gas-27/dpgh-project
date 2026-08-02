@@ -188,6 +188,7 @@ const OrderTrackingCard = ({
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
   const [complaintId, setComplaintId] = useState<string | null>(null);
   const [pendingNotes, setPendingNotes] = useState(0);
+  const [totalNotes, setTotalNotes] = useState(0);
 
   // Fetch complaint status + ID for this order
   useEffect(() => {
@@ -338,7 +339,7 @@ const OrderTrackingCard = ({
           </Button>
         )}
 
-        {/* Complaint status + live admin notes thread */}
+        {/* Static status box — always shown; thread only visible when admin has notes */}
         {complaintStatus && complaintStatus !== "resolved" && (
           <div className="space-y-3">
             <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-start justify-between gap-2">
@@ -357,11 +358,12 @@ const OrderTrackingCard = ({
               )}
             </div>
             {complaintId && (
-              <div className="rounded-lg border border-border bg-card/50 p-3">
+              <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
                 <ComplaintNotesThread
                   complaintId={complaintId}
                   isAdmin={false}
                   onPendingCountChange={setPendingNotes}
+                  onTotalNotesChange={setTotalNotes}
                 />
               </div>
             )}
@@ -376,11 +378,12 @@ const OrderTrackingCard = ({
               </p>
             </div>
             {complaintId && (
-              <div className="rounded-lg border border-border bg-card/50 p-3">
+              <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
                 <ComplaintNotesThread
                   complaintId={complaintId}
                   isAdmin={false}
                   onPendingCountChange={setPendingNotes}
+                  onTotalNotesChange={setTotalNotes}
                 />
               </div>
             )}
@@ -567,7 +570,7 @@ const AgentStorefront = () => {
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // ── Report complaint dialog �������
+  // ���─ Report complaint dialog �������
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
   

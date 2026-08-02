@@ -29,13 +29,20 @@ interface AFARegistration {
   customer_name: string;
   customer_phone: string;
   region: string;
+  town?: string;
   crop: string;
+  occupation?: string;
+  date_of_birth?: string;
   registration_status: string;
   afa_package_id: string;
+  afa_ref_id?: string;
+  agent_profit?: number;
+  payment_reference?: string;
   agent_store_id?: string;
   subagent_store_id?: string;
   store_name?: string;
   created_at: string;
+  updated_at?: string;
   amount_paid?: number;
 }
 
@@ -92,40 +99,44 @@ export default function AdminAFABundleRegistrations() {
   const fetchRegistrations = async () => {
     setLoading(true);
     try {
+      // Fetch all AFA registrations without FK joins (avoids PostgREST FK requirement)
       const { data, error } = await supabase
         .from('afa_registrations')
-        .select(`
-          id,
-          customer_name,
-          customer_phone,
-          region,
-          town,
-          crop,
-          occupation,
-          date_of_birth,
-          registration_status,
-          afa_package_id,
-          afa_ref_id,
-          agent_profit,
-          payment_reference,
-          agent_store_id,
-          subagent_store_id,
-          created_at,
-          updated_at,
-          amount_paid,
-          agent_stores!agent_store_id(store_name),
-          subagent_stores!subagent_store_id(store_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Flatten joined store names without overwriting direct column values
-      const flatData = (data || []).map((reg: any) => ({
+      const rows: any[] = data || [];
+
+      // Collect unique store IDs for a second lookup
+      const agentIds = [...new Set(rows.map((r) => r.agent_store_id).filter(Boolean))];
+      const subagentIds = [...new Set(rows.map((r) => r.subagent_store_id).filter(Boolean))];
+
+      const agentNameMap: Record<string, string> = {};
+      const subagentNameMap: Record<string, string> = {};
+
+      if (agentIds.length > 0) {
+        const { data: agentData } = await supabase
+          .from('agent_stores')
+          .select('id, store_name')
+          .in('id', agentIds);
+        (agentData || []).forEach((s: any) => { agentNameMap[s.id] = s.store_name; });
+      }
+
+      if (subagentIds.length > 0) {
+        const { data: subData } = await supabase
+          .from('subagent_stores')
+          .select('id, store_name')
+          .in('id', subagentIds);
+        (subData || []).forEach((s: any) => { subagentNameMap[s.id] = s.store_name; });
+      }
+
+      const flatData = rows.map((reg: any) => ({
         ...reg,
         store_name:
-          (reg.agent_stores as any)?.store_name ||
-          (reg.subagent_stores as any)?.store_name ||
+          agentNameMap[reg.agent_store_id] ||
+          subagentNameMap[reg.subagent_store_id] ||
           'N/A',
       }));
 

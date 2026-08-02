@@ -172,6 +172,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
   const [complaintId, setComplaintId] = useState<string | null>(null);
   const [pendingNotes, setPendingNotes] = useState(0);
+  const [totalNotes, setTotalNotes] = useState(0);
 
   // Fetch complaint status + ID for this order
   useEffect(() => {
@@ -324,7 +325,7 @@ Please investigate and assist. Thank you.`;
         </Button>
       )}
       
-      {/* Show complaint status + admin messages thread if a complaint exists */}
+      {/* Static status box — always shown when a complaint exists */}
       {complaintStatus && complaintStatus !== "resolved" && (
         <div className="space-y-3">
           <div className="p-3 rounded-lg bg-blue-600/10 border border-blue-600/30 flex items-start justify-between gap-2">
@@ -342,12 +343,14 @@ Please investigate and assist. Thank you.`;
               </span>
             )}
           </div>
+          {/* Thread: always mounted (to detect notes), only visible when admin has notes */}
           {complaintId && (
-            <div className="rounded-lg border border-border bg-card/50 p-3">
+            <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
               <ComplaintNotesThread
                 complaintId={complaintId}
                 isAdmin={false}
                 onPendingCountChange={setPendingNotes}
+                onTotalNotesChange={setTotalNotes}
               />
             </div>
           )}
@@ -356,17 +359,23 @@ Please investigate and assist. Thank you.`;
 
       {complaintStatus === "resolved" && (
         <div className="space-y-3">
-          <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+          <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30 flex items-start justify-between gap-2">
             <p className="text-sm font-medium text-green-400">
               Your complaint has been resolved
             </p>
+            {pendingNotes > 0 && (
+              <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5">
+                {pendingNotes} question{pendingNotes > 1 ? "s" : ""} from support
+              </span>
+            )}
           </div>
           {complaintId && (
-            <div className="rounded-lg border border-border bg-card/50 p-3">
+            <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
               <ComplaintNotesThread
                 complaintId={complaintId}
                 isAdmin={false}
                 onPendingCountChange={setPendingNotes}
+                onTotalNotesChange={setTotalNotes}
               />
             </div>
           )}

@@ -172,6 +172,7 @@ const SubagentOrderTrackingCard = ({
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
   const [complaintId, setComplaintId] = useState<string | null>(null);
   const [pendingNotes, setPendingNotes] = useState(0);
+  const [totalNotes, setTotalNotes] = useState(0);
 
   // ── WhatsApp text auto-hide after 4 seconds ──
   useEffect(() => {
@@ -350,11 +351,12 @@ const SubagentOrderTrackingCard = ({
               )}
             </div>
             {complaintId && (
-              <div className="rounded-lg border border-border bg-card/50 p-3">
+              <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
                 <ComplaintNotesThread
                   complaintId={complaintId}
                   isAdmin={false}
                   onPendingCountChange={setPendingNotes}
+                  onTotalNotesChange={setTotalNotes}
                 />
               </div>
             )}
@@ -368,11 +370,12 @@ const SubagentOrderTrackingCard = ({
               </p>
             </div>
             {complaintId && (
-              <div className="rounded-lg border border-border bg-card/50 p-3">
+              <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
                 <ComplaintNotesThread
                   complaintId={complaintId}
                   isAdmin={false}
                   onPendingCountChange={setPendingNotes}
+                  onTotalNotesChange={setTotalNotes}
                 />
               </div>
             )}

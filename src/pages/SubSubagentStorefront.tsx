@@ -171,6 +171,7 @@ const SubSubagentOrderTrackingCard = ({
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
   const [complaintId, setComplaintId] = useState<string | null>(null);
   const [pendingNotes, setPendingNotes] = useState(0);
+  const [totalNotes, setTotalNotes] = useState(0);
 
   // ── WhatsApp text auto-hide after 4 seconds ──
   useEffect(() => {
@@ -330,7 +331,7 @@ const SubSubagentOrderTrackingCard = ({
           </Button>
         )}
 
-        {/* Complaint status + live admin notes thread */}
+        {/* Static status box — always shown; thread only visible when admin has notes */}
         {complaintStatus && complaintStatus !== "resolved" && (
           <div className="space-y-3">
             <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-start justify-between gap-2">
@@ -349,11 +350,12 @@ const SubSubagentOrderTrackingCard = ({
               )}
             </div>
             {complaintId && (
-              <div className="rounded-lg border border-border bg-card/50 p-3">
+              <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
                 <ComplaintNotesThread
                   complaintId={complaintId}
                   isAdmin={false}
                   onPendingCountChange={setPendingNotes}
+                  onTotalNotesChange={setTotalNotes}
                 />
               </div>
             )}
@@ -368,11 +370,12 @@ const SubSubagentOrderTrackingCard = ({
               </p>
             </div>
             {complaintId && (
-              <div className="rounded-lg border border-border bg-card/50 p-3">
+              <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
                 <ComplaintNotesThread
                   complaintId={complaintId}
                   isAdmin={false}
                   onPendingCountChange={setPendingNotes}
+                  onTotalNotesChange={setTotalNotes}
                 />
               </div>
             )}

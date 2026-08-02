@@ -20,12 +20,15 @@ interface ComplaintNotesThreadProps {
   complaintId: string;
   isAdmin?: boolean;
   onPendingCountChange?: (count: number) => void;
+  /** Fires with total note count whenever notes load — used to show/hide the thread */
+  onTotalNotesChange?: (count: number) => void;
 }
 
 export function ComplaintNotesThread({
   complaintId,
   isAdmin = false,
   onPendingCountChange,
+  onTotalNotesChange,
 }: ComplaintNotesThreadProps) {
   const [notes, setNotes] = useState<ComplaintNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +65,9 @@ export function ComplaintNotesThread({
       setNotes(notesList);
       if (onPendingCountChange) {
         onPendingCountChange(notesList.filter((n) => n.requires_response && !n.response_text).length);
+      }
+      if (onTotalNotesChange) {
+        onTotalNotesChange(notesList.length);
       }
     } catch (e) {
       console.error("[v0] ComplaintNotesThread unexpected error:", e);

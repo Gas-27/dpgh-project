@@ -23,6 +23,7 @@ import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import AdminAFABundleManager from "@/components/AdminAFABundleManager";
+import AdminAFABundleRegistrations from "@/components/AdminAFABundleRegistrations";
 import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import AnnouncementManager from "@/components/AnnouncementManager";
@@ -4378,6 +4379,7 @@ const AdminDashboard = () => {
             {canSee("afa_bundles") && (
               <TabsContent value="afa_bundles" className="space-y-6">
                 <AdminAFABundleManager />
+                <AdminAFABundleRegistrations />
               </TabsContent>
             )}
 
