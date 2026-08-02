@@ -8,6 +8,7 @@ import WalletTopupDialog from "@/components/WalletTopupDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
+import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -2371,15 +2372,18 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   );
 
   const renderAfaRegistration = () => (
-    <AFAPackagesDisplay
-      onRegisterClick={(packageId, packageName, price) => {
-        toast({ 
-          title: "Ready to register", 
-          description: `Selected: ${packageName} - GHC ${price.toFixed(2)}` 
-        });
-        setActiveMenu("buy-data");
-      }}
-    />
+    <div className="space-y-6">
+      <AFARegistrationTracker />
+      <AFAPackagesDisplay
+        onRegisterClick={(packageId, packageName, price) => {
+          toast({ 
+            title: "Ready to register", 
+            description: `Selected: ${packageName} - GHC ${price.toFixed(2)}` 
+          });
+          setActiveMenu("buy-data");
+        }}
+      />
+    </div>
   );
 
   const renderRefunds = () => {

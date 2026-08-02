@@ -1150,6 +1150,65 @@ export default function ChatBot({ page }: ChatBotProps) {
       return;
     }
 
+    // --- Number can receive data? ---
+    const isReceiveDataIntent = /can.*number.*receive|receive.*data|number.*work|will.*number.*get|does.*number.*receive|will.*it.*receive|accept.*data|number.*accept/i.test(trimmed);
+    if (isReceiveDataIntent) {
+      const reply: Message = {
+        id: `rd-${Date.now()}`, role: 'assistant', type: 'text', timestamp: Date.now(),
+        content: `Yes, any active MTN, Telecel or AirtelTigo number can receive data bundles.\n\nYou have nothing to worry about — when you place an order, our system automatically checks whether the number can receive the bundle before processing the payment. If for any reason the delivery fails, you will get a **full refund** straight to your wallet on your account (or to the wallet of the agent store you bought from, who will then send your money back to you). So your money is always safe.`,
+      };
+      const final = [...withUser, reply];
+      setMessages(final);
+      persist(final);
+      return;
+    }
+
+    // --- API price intent — fetch live api_price from packages table ---
+    const isApiPriceIntent = /api.*price|price.*api|api.*package|api.*bundle|how much.*api|api.*cost|api.*rate|developer.*price|resell.*price/i.test(trimmed);
+    if (isApiPriceIntent) {
+      setIsLoading(true);
+      try {
+        const { data: pkgs } = await publicSupabase
+          .from('packages')
+          .select('size_gb, network, api_price, agent_price')
+          .eq('is_active', true)
+          .order('network')
+          .order('size_gb');
+        if (pkgs && pkgs.length > 0) {
+          const grouped: Record<string, string[]> = {};
+          for (const p of pkgs as any[]) {
+            const net = (p.network || 'other').toUpperCase();
+            const price = Number(p.api_price || p.agent_price || 0);
+            if (!grouped[net]) grouped[net] = [];
+            grouped[net].push(`${p.size_gb}GB — GHC ${price.toFixed(2)}`);
+          }
+          const lines = Object.entries(grouped)
+            .map(([net, items]) => `**${net}**\n${items.map(i => `  • ${i}`).join('\n')}`)
+            .join('\n\n');
+          const apiReply: Message = {
+            id: `ap-${Date.now()}`, role: 'assistant', type: 'text', timestamp: Date.now(),
+            content: `Here are the current API prices for our data packages:\n\n${lines}\n\nTo access our API, you need an API key. Contact us or check the API section in your dashboard for documentation and your key.`,
+          };
+          const final = [...withUser, apiReply];
+          setMessages(final);
+          persist(final);
+        } else {
+          throw new Error('no data');
+        }
+      } catch {
+        const fallback: Message = {
+          id: `apf-${Date.now()}`, role: 'assistant', type: 'text', timestamp: Date.now(),
+          content: 'Our API packages start from GHC 3.85 per GB and above depending on the network and size. Please check the API section in your dashboard for full pricing and your API key.',
+        };
+        const final = [...withUser, fallback];
+        setMessages(final);
+        persist(final);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     // --- Regular AI message ---
     setIsLoading(true);
 

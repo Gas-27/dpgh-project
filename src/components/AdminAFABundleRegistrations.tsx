@@ -99,24 +99,34 @@ export default function AdminAFABundleRegistrations() {
           customer_name,
           customer_phone,
           region,
+          town,
           crop,
+          occupation,
+          date_of_birth,
           registration_status,
           afa_package_id,
-          agent_store_id:agent_store_id(store_name),
-          subagent_store_id:subagent_store_id(store_name),
+          afa_ref_id,
+          agent_profit,
+          payment_reference,
+          agent_store_id,
+          subagent_store_id,
           created_at,
-          amount_paid
+          updated_at,
+          amount_paid,
+          agent_stores!agent_store_id(store_name),
+          subagent_stores!subagent_store_id(store_name)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Flatten the data structure
+      // Flatten joined store names without overwriting direct column values
       const flatData = (data || []).map((reg: any) => ({
         ...reg,
-        store_name: reg.agent_store_id?.store_name || reg.subagent_store_id?.store_name || 'Unknown',
-        agent_store_id: reg.agent_store_id?.id,
-        subagent_store_id: reg.subagent_store_id?.id,
+        store_name:
+          (reg.agent_stores as any)?.store_name ||
+          (reg.subagent_stores as any)?.store_name ||
+          'N/A',
       }));
 
       setRegistrations(flatData);
@@ -128,11 +138,15 @@ export default function AdminAFABundleRegistrations() {
     }
   };
 
+  const s = searchTerm.toLowerCase();
   const filteredRegistrations = registrations.filter((reg) =>
-    reg.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    reg.customer_phone.includes(searchTerm) ||
-    reg.region.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    reg.store_name.toLowerCase().includes(searchTerm.toLowerCase())
+    reg.customer_name?.toLowerCase().includes(s) ||
+    reg.customer_phone?.includes(searchTerm) ||
+    reg.region?.toLowerCase().includes(s) ||
+    (reg as any).town?.toLowerCase().includes(s) ||
+    (reg as any).occupation?.toLowerCase().includes(s) ||
+    (reg as any).afa_ref_id?.toLowerCase().includes(s) ||
+    reg.store_name?.toLowerCase().includes(s)
   );
 
   const exportToCSV = () => {
@@ -278,9 +292,9 @@ export default function AdminAFABundleRegistrations() {
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Customer Name</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Crop</TableHead>
+                  <TableHead>Phone / Contact</TableHead>
+                  <TableHead>Region / Town</TableHead>
+                  <TableHead>Occupation</TableHead>
                   <TableHead>Store</TableHead>
                   <TableHead>Amount Paid</TableHead>
                   <TableHead>Status</TableHead>
@@ -292,9 +306,9 @@ export default function AdminAFABundleRegistrations() {
                   <TableRow key={reg.id}>
                     <TableCell>{new Date(reg.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="font-medium">{reg.customer_name}</TableCell>
-                    <TableCell>{reg.customer_phone}</TableCell>
-                    <TableCell>{reg.region}</TableCell>
-                    <TableCell>{reg.crop}</TableCell>
+                    <TableCell className="font-mono text-sm">{reg.customer_phone || '—'}</TableCell>
+                    <TableCell className="text-sm">{reg.region}{(reg as any).town ? `, ${(reg as any).town}` : ''}</TableCell>
+                    <TableCell className="text-sm">{(reg as any).occupation || '—'}</TableCell>
                     <TableCell className="text-sm">{reg.store_name}</TableCell>
                     <TableCell>GHC{reg.amount_paid?.toFixed(2) || '0.00'}</TableCell>
                     <TableCell>{getStatusBadge(reg.registration_status)}</TableCell>
