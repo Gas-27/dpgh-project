@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play, MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -271,6 +271,10 @@ const AdminDashboard = () => {
   const [afaRegistrationFee, setAfaRegistrationFee] = useState(50);
   const [savingSettings, setSavingSettings] = useState(false);
   
+  // Chatbot on/off toggle
+  const [chatbotEnabled, setChatbotEnabled] = useState(true);
+  const [savingChatbot, setSavingChatbot] = useState(false);
+
   // Free Data Offer settings
   const [freeDataConfig, setFreeDataConfig] = useState({
     enabled: true,
@@ -657,7 +661,7 @@ const AdminDashboard = () => {
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
         supabase
           .from("app_settings")
-          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
+          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled")
           .eq("id", 1)
           .single(),
       ]);
@@ -675,6 +679,9 @@ const AdminDashboard = () => {
           reward_gb: appSettings.free_data_reward_gb ?? 1,
           telecel_enabled: appSettings.free_data_telecel_enabled ?? false,
         });
+        if (typeof appSettings.chatbot_enabled === 'boolean') {
+          setChatbotEnabled(appSettings.chatbot_enabled);
+        }
       }
     } catch (error) {
       console.error("[v0] Error in refreshData:", error);
@@ -771,6 +778,22 @@ const AdminDashboard = () => {
     setFreeDataSaving(false);
   };
   
+  // Save chatbot enabled/disabled setting
+  const saveChatbotSetting = async (enabled: boolean) => {
+    setSavingChatbot(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ id: 1, chatbot_enabled: enabled });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      setChatbotEnabled(!enabled); // revert on error
+    } else {
+      setChatbotEnabled(enabled);
+      toast({ title: enabled ? "Support Chat enabled" : "Support Chat disabled", description: enabled ? "Visitors can now open the support chat." : "Visitors will see an unavailability message." });
+    }
+    setSavingChatbot(false);
+  };
+
   // Save special MTN mashup pricing
   const saveSpecialMTNPricing = async () => {
     setSavingSpecialMTN(true);
@@ -3834,7 +3857,9 @@ const AdminDashboard = () => {
                                             await supabase.from("user_roles").insert({ user_id: u.id, role: "sub_admin" });
                                             toast({ title: "Sub-Admin role granted", description: `${u.full_name || u.id} can now access /sub-admin.` });
                                           }
-                                          fetchUsers();
+                                          // Reload users list
+                                          const refreshed = await fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 10000);
+                                          setUsers(refreshed ?? []);
                                         } catch (e: any) {
                                           toast({ title: "Error", description: e.message, variant: "destructive" });
                                         }
@@ -4410,6 +4435,38 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* AFA Registration Fee section removed - moved to dedicated AFA tab */}
+
+                    {/* Support Chat Toggle */}
+                    <Card className="border-border">
+                      <CardHeader>
+                        <CardTitle className="font-display text-lg flex items-center gap-2">
+                          <MessageCircle className="h-5 w-5 text-cyan-500" /> Support Chat
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between border p-4 rounded-lg bg-cyan-900/10 border-cyan-500/30">
+                          <div className="space-y-0.5">
+                            <Label className="text-base font-semibold">Enable Support ChatBot</Label>
+                            <p className="text-sm text-muted-foreground">
+                              {chatbotEnabled
+                                ? "Chat is live — visitors can open the support chat on all pages."
+                                : "Chat is off — visitors see \"We are currently unavailable, come back later\"."}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {savingChatbot && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                            <Switch
+                              checked={chatbotEnabled}
+                              onCheckedChange={(checked) => saveChatbotSetting(checked)}
+                              disabled={savingChatbot}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          The toggle saves instantly. When disabled, the chat icon is still visible but opens an offline message.
+                        </p>
+                      </CardContent>
+                    </Card>
 
                     {/* Free Data Offer Settings */}
                     <Card className="border-border">

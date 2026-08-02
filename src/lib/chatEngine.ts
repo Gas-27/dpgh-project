@@ -185,6 +185,14 @@ function handlePhoneFollowUp(phone: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Contact / admin email intent detection
+// ---------------------------------------------------------------------------
+
+export function isAdminContactIntent(text: string): boolean {
+  return /contact.*admin|admin.*contact|speak.*admin|admin.*email|reach.*admin|support.*email|email.*support|how.*contact/i.test(text);
+}
+
+// ---------------------------------------------------------------------------
 // Main engine entry point
 // ---------------------------------------------------------------------------
 

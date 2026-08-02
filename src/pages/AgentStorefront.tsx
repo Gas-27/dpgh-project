@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
+import ChatBot from "@/components/ChatBot";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -1739,6 +1740,9 @@ const AgentStorefront = () => {
           </div>
         </DraggableFAB>
       )}
+
+      {/* Support ChatBot */}
+      <ChatBot page="agent-storefront" />
     </div>
   );
 };

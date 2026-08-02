@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Send, X, MessageCircle, Copy, RotateCcw, Check,
   Search, AlertTriangle, Clock, CheckCircle, XCircle,
-  RefreshCcw, Flag, ChevronDown, ChevronUp, Loader2,
+  RefreshCcw, Flag, ChevronDown, ChevronUp, Loader2, Upload,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { callLocalEngine } from '@/lib/chatEngine';
@@ -146,7 +146,6 @@ async function callEdgeFunction(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
     },
     body: JSON.stringify({ message, conversation }),
   });
@@ -256,6 +255,8 @@ async function submitReport(args: {
   owes_momo: boolean;
   owes_bundles: boolean;
   notes?: string;
+  screenshot_url?: string;
+  sms_screenshot_url?: string;
 }): Promise<{ success: boolean; complaint_id?: string; message: string; blocked?: boolean; reason?: string }> {
   try {
     const basePayload: Record<string, unknown> = {
@@ -266,6 +267,9 @@ async function submitReport(args: {
       status: 'in-progress',
     };
     if (args.order_id) basePayload.order_id = args.order_id;
+
+    if (args.screenshot_url)     basePayload.screenshot_url     = args.screenshot_url;
+    if (args.sms_screenshot_url) basePayload.sms_screenshot_url = args.sms_screenshot_url;
 
     // Try tier 1: full payload with owing fields
     const tier1 = { ...basePayload, owing_airtime: args.owes_airtime, owing_bundle: args.owes_bundles, owing_momo: args.owes_momo };
@@ -437,27 +441,77 @@ function ReportForm({ order, onSubmit, onCancel }: ReportFormProps) {
   const [owesBundles, setOwesBundles] = useState<boolean | null>(null);
   const [notes, setNotes]             = useState('');
   const [blockReason, setBlockReason] = useState('');
+  // Screenshot uploads
+  const [screenshot1, setScreenshot1]       = useState<File | null>(null);
+  const [screenshot2, setScreenshot2]       = useState<File | null>(null);
+  const [screenshot1Preview, setS1Preview] = useState<string | null>(null);
+  const [screenshot2Preview, setS2Preview] = useState<string | null>(null);
+  const [uploadError, setUploadError]       = useState('');
+  const file1Ref = useRef<HTMLInputElement>(null);
+  const file2Ref = useRef<HTMLInputElement>(null);
 
-  const canSubmit =
+  const network = order.network?.toLowerCase() ?? '';
+  const isMtn   = network.includes('mtn');
+
+  const allPreChecksPassed =
     checkedMaster === true &&
     owesAirtime === false &&
     owesMomo === false &&
     owesBundles === false;
 
+  // Screenshot 1 required always; screenshot 2 required for MTN only
+  const canSubmit =
+    allPreChecksPassed &&
+    screenshot1 !== null &&
+    (!isMtn || screenshot2 !== null);
+
+  function handleFileChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (f: File | null) => void,
+    previewSetter: (s: string | null) => void,
+  ) {
+    setUploadError('');
+    const file = e.target.files?.[0] ?? null;
+    if (!file) { setter(null); previewSetter(null); return; }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setUploadError('Only JPG or PNG files are accepted.');
+      setter(null); previewSetter(null); return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('File is too large — max 5MB.');
+      setter(null); previewSetter(null); return;
+    }
+    setter(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => previewSetter(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  async function uploadScreenshot(file: File, path: string): Promise<string | null> {
+    try {
+      const { error } = await publicSupabase.storage
+        .from('complaint-screenshots')
+        .upload(path, file, { contentType: file.type, upsert: true });
+      if (error) { console.error('[ChatBot] screenshot upload:', error.message); return null; }
+      const { data } = publicSupabase.storage.from('complaint-screenshots').getPublicUrl(path);
+      return data.publicUrl ?? null;
+    } catch { return null; }
+  }
+
   async function handleSubmit() {
     if (!canSubmit) return;
 
-    // Check blocking conditions first
-    if (checkedMaster === false) {
-      setBlockReason('Please check *124# → Master Beneficiary Data Bundle first (not Mashup Data). Come back if it still does not show.');
-      return;
-    }
-    if (owesAirtime || owesMomo || owesBundles) {
-      setBlockReason('The SIM has outstanding debts. The network holds data against unpaid debts. Please clear all debts on the line, then check *124# again — the data may already be there.');
-      return;
-    }
-
     setStep('submitting');
+
+    // Upload screenshots
+    const ts = Date.now();
+    const s1Url = screenshot1
+      ? await uploadScreenshot(screenshot1, `chatbot/${order.order_id || ts}_balance.${screenshot1.name.split('.').pop()}`)
+      : null;
+    const s2Url = screenshot2
+      ? await uploadScreenshot(screenshot2, `chatbot/${order.order_id || ts}_sms.${screenshot2.name.split('.').pop()}`)
+      : null;
+
     const result = await submitReport({
       phone_number: order.recipient,
       order_id: order.order_id,
@@ -467,6 +521,8 @@ function ReportForm({ order, onSubmit, onCancel }: ReportFormProps) {
       owes_momo: false,
       owes_bundles: false,
       notes: notes.trim() || undefined,
+      screenshot_url: s1Url ?? undefined,
+      sms_screenshot_url: s2Url ?? undefined,
     });
     setStep('done');
     onSubmit(result);
@@ -587,18 +643,108 @@ function ReportForm({ order, onSubmit, onCancel }: ReportFormProps) {
             </div>
           )}
 
-          {/* Notes — only show when all pre-checks passed */}
-          {canSubmit && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-slate-400">Any extra details? (optional)</p>
-              <textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder="e.g. checked twice, waited 2 hours..."
-                rows={2}
-                className="w-full bg-slate-700 border border-slate-600 rounded text-xs text-white placeholder-slate-500 px-2 py-1.5 focus:outline-none focus:border-cyan-500 resize-none"
-              />
-            </div>
+          {/* Screenshots + notes — only show when all pre-checks passed */}
+          {allPreChecksPassed && (
+            <>
+              {/* Screenshot 1 — balance screenshot */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-white">Screenshot 1 — Data Balance <span className="text-red-400">*</span></p>
+                <div className="bg-slate-900/60 rounded px-2.5 py-2 text-[10px] text-slate-400 space-y-0.5 border border-slate-700">
+                  <p className="font-medium text-slate-300">How to get the screenshot:</p>
+                  <p>1. Dial <strong className="text-white">*124#</strong> on the MTN line</p>
+                  <p>2. Select <strong className="text-white">Data Balance</strong></p>
+                  <p>3. Take a screenshot of the full Balance Details screen</p>
+                  <p>4. Look for <strong className="text-white">Master Beneficiary Data Bundle</strong> — that is where your bundle appears</p>
+                </div>
+                <input
+                  ref={file1Ref}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={e => handleFileChange(e, setScreenshot1, setS1Preview)}
+                />
+                {screenshot1Preview ? (
+                  <div className="relative">
+                    <img src={screenshot1Preview} alt="Balance screenshot" className="w-full rounded border border-slate-600 max-h-32 object-cover" />
+                    <button
+                      onClick={() => { setScreenshot1(null); setS1Preview(null); if (file1Ref.current) file1Ref.current.value = ''; }}
+                      className="absolute top-1 right-1 bg-slate-900/80 text-slate-300 rounded-full p-0.5 hover:text-white"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => file1Ref.current?.click()}
+                    className="w-full border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded py-4 flex flex-col items-center gap-1 text-slate-400 hover:text-cyan-400 transition-colors"
+                  >
+                    <Upload className="h-5 w-5" />
+                    <span className="text-[10px]">Tap to upload screenshot</span>
+                    <span className="text-[9px] text-slate-500">JPG, PNG — max 5MB</span>
+                    {!screenshot1 && allPreChecksPassed && (
+                      <span className="text-[9px] text-red-400">A screenshot is required to submit this report</span>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Screenshot 2 — SMS confirmation (MTN only) */}
+              {isMtn && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-white">Screenshot 2 — MTN SMS Confirmation <span className="text-red-400">*</span></p>
+                  <div className="bg-slate-900/60 rounded px-2.5 py-2 text-[10px] text-slate-400 border border-slate-700">
+                    <p>Open your MTN SMS/message inbox, go to messages from MTN, and take a screenshot showing the bundle credit confirmation message.</p>
+                  </div>
+                  <input
+                    ref={file2Ref}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={e => handleFileChange(e, setScreenshot2, setS2Preview)}
+                  />
+                  {screenshot2Preview ? (
+                    <div className="relative">
+                      <img src={screenshot2Preview} alt="SMS screenshot" className="w-full rounded border border-slate-600 max-h-32 object-cover" />
+                      <button
+                        onClick={() => { setScreenshot2(null); setS2Preview(null); if (file2Ref.current) file2Ref.current.value = ''; }}
+                        className="absolute top-1 right-1 bg-slate-900/80 text-slate-300 rounded-full p-0.5 hover:text-white"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => file2Ref.current?.click()}
+                      className="w-full border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded py-4 flex flex-col items-center gap-1 text-slate-400 hover:text-cyan-400 transition-colors"
+                    >
+                      <Upload className="h-5 w-5" />
+                      <span className="text-[10px]">Tap to upload SMS screenshot</span>
+                      <span className="text-[9px] text-slate-500">JPG, PNG — max 5MB</span>
+                      {!screenshot2 && (
+                        <span className="text-[9px] text-red-400">Required for MTN complaints</span>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Upload error */}
+              {uploadError && (
+                <p className="text-[10px] text-red-400 bg-red-900/20 border border-red-700/30 rounded px-2 py-1.5">{uploadError}</p>
+              )}
+
+              {/* Notes */}
+              <div className="space-y-1.5">
+                <p className="text-xs text-slate-400">Any extra details? (optional)</p>
+                <textarea
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder="e.g. checked twice, waited 2 hours..."
+                  rows={2}
+                  className="w-full bg-slate-700 border border-slate-600 rounded text-xs text-white placeholder-slate-500 px-2 py-1.5 focus:outline-none focus:border-cyan-500 resize-none"
+                />
+              </div>
+            </>
           )}
         </div>
 
@@ -613,9 +759,10 @@ function ReportForm({ order, onSubmit, onCancel }: ReportFormProps) {
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold py-2 rounded transition-colors"
+          className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold py-2 rounded transition-colors flex items-center justify-center gap-1.5"
         >
-          Submit Report
+          <Upload className="h-3.5 w-3.5" />
+          Upload Screenshots to Submit
         </button>
 
         <p className="text-[10px] text-slate-500 text-center">
@@ -638,10 +785,16 @@ export default function ChatBot({ page }: ChatBotProps) {
   const [showLabel, setShowLabel]     = useState(true);
   const [rateLimited, setRateLimited] = useState(false);
   const [copiedId, setCopiedId]       = useState<string | null>(null);
+  // Offline mode — admin can disable chat via app_settings.chatbot_enabled
+  const [chatbotEnabled, setChatbotEnabled] = useState<boolean | null>(null); // null = loading
 
   // Tracking flow
-  const [awaitingPhone, setAwaitingPhone] = useState(false);
-  const [isTracking, setIsTracking]       = useState(false);
+  const [awaitingPhone, setAwaitingPhone]               = useState(false);
+  const [isTracking, setIsTracking]                     = useState(false);
+  // When user types a bare phone number, we ask them to confirm before tracking
+  const [pendingTrackPhone, setPendingTrackPhone]       = useState<string | null>(null);
+  // How many times user has asked for admin/contact in this session
+  const [adminAskCount, setAdminAskCount]               = useState(0);
 
   // Active report form — id of the message that has the form open
   const [activeReportMsgId, setActiveReportMsgId] = useState<string | null>(null);
@@ -660,6 +813,20 @@ export default function ChatBot({ page }: ChatBotProps) {
   useEffect(() => {
     const t = setTimeout(() => setShowLabel(false), 5000);
     return () => clearTimeout(t);
+  }, []);
+
+  // Check if admin has disabled the chatbot
+  useEffect(() => {
+    publicSupabase
+      .from('app_settings')
+      .select('chatbot_enabled')
+      .eq('id', 1)
+      .single()
+      .then(({ data }) => {
+        // If column doesn't exist yet, default to enabled
+        setChatbotEnabled(data?.chatbot_enabled !== false);
+      })
+      .catch(() => setChatbotEnabled(true));
   }, []);
 
   // Load persisted messages
@@ -719,6 +886,50 @@ export default function ChatBot({ page }: ChatBotProps) {
 
   // ---------- Send message ----------
 
+  // Helper: run tracking for a given phone number
+  const runTracking = useCallback(async (phone: string, base: Message[]) => {
+    setIsTracking(true);
+    const lookingMsg: Message = {
+      id: `l-${Date.now()}`,
+      role: 'assistant',
+      type: 'text',
+      content: `Got it — looking up orders for **${phone}** now. One moment.`,
+      timestamp: Date.now(),
+    };
+    const withLooking = [...base, lookingMsg];
+    setMessages(withLooking);
+    persist(withLooking);
+
+    try {
+      const result = await fetchOrdersByPhone(phone);
+      const trackMsg: Message = {
+        id: `t-${Date.now()}`,
+        role: 'assistant',
+        type: 'tracking',
+        content: '',
+        trackingData: result,
+        timestamp: Date.now(),
+      };
+      const final = [...withLooking, trackMsg];
+      setMessages(final);
+      persist(final);
+    } catch {
+      const errMsg: Message = {
+        id: `e-${Date.now()}`,
+        role: 'assistant',
+        type: 'text',
+        content: 'I was not able to retrieve your orders right now. Please check the Track Order tab on your dashboard.',
+        timestamp: Date.now(),
+        error: true,
+      };
+      const final = [...withLooking, errMsg];
+      setMessages(final);
+      persist(final);
+    } finally {
+      setIsTracking(false);
+    }
+  }, [persist]);
+
   const sendMessage = useCallback(async (text: string, currentMessages?: Message[]) => {
     const trimmed = text.trim();
     if (!trimmed || isLoading || isTracking) return;
@@ -738,39 +949,55 @@ export default function ChatBot({ page }: ChatBotProps) {
     persist(withUser);
     setInput('');
 
-    // --- Handle tracking phone number input ---
-    if (awaitingPhone && looksLikePhone(trimmed)) {
-      setAwaitingPhone(false);
-      setIsTracking(true);
-
-      try {
-        const result = await fetchOrdersByPhone(trimmed);
-        const trackMsg: Message = {
-          id: `t-${Date.now()}`,
-          role: 'assistant',
-          type: 'tracking',
-          content: '',
-          trackingData: result,
-          timestamp: Date.now(),
-        };
-        const final = [...withUser, trackMsg];
-        setMessages(final);
-        persist(final);
-      } catch {
-        const errMsg: Message = {
-          id: `e-${Date.now()}`,
+    // --- Handle "yes/no" response to the track-confirm prompt ---
+    if (pendingTrackPhone) {
+      const lower = trimmed.toLowerCase();
+      const isYes = /^(yes|yeah|yep|sure|ok|okay|y|track it|do it|go ahead)/.test(lower);
+      const isNo  = /^(no|nope|n|cancel|never mind|nah)/.test(lower);
+      if (isYes) {
+        const phone = pendingTrackPhone;
+        setPendingTrackPhone(null);
+        await runTracking(phone, withUser);
+        return;
+      }
+      if (isNo) {
+        setPendingTrackPhone(null);
+        const cancelMsg: Message = {
+          id: `c-${Date.now()}`,
           role: 'assistant',
           type: 'text',
-          content: 'I was not able to retrieve your orders right now. Please check the Track Order tab on your dashboard.',
+          content: 'No problem. Let me know if there is anything else I can help with.',
           timestamp: Date.now(),
-          error: true,
         };
-        const final = [...withUser, errMsg];
+        const final = [...withUser, cancelMsg];
         setMessages(final);
         persist(final);
-      } finally {
-        setIsTracking(false);
+        return;
       }
+      // They typed something else — clear the pending phone and continue normally
+      setPendingTrackPhone(null);
+    }
+
+    // --- Handle tracking phone number input (after being asked for it) ---
+    if (awaitingPhone && looksLikePhone(trimmed)) {
+      setAwaitingPhone(false);
+      await runTracking(trimmed, withUser);
+      return;
+    }
+
+    // --- Bare phone number typed — ask if they want to track ---
+    if (!awaitingPhone && looksLikePhone(trimmed)) {
+      setPendingTrackPhone(trimmed);
+      const confirmMsg: Message = {
+        id: `cf-${Date.now()}`,
+        role: 'assistant',
+        type: 'text',
+        content: `I see a phone number **${trimmed}**. Should I track orders for this number?`,
+        timestamp: Date.now(),
+      };
+      const withConfirm = [...withUser, confirmMsg];
+      setMessages(withConfirm);
+      persist(withConfirm);
       return;
     }
 
@@ -782,35 +1009,7 @@ export default function ChatBot({ page }: ChatBotProps) {
       const phoneMatch = trimmed.match(/(\+233|0)[2-9][0-9]{8}/);
       if (phoneMatch) {
         setIsLoading(false);
-        setIsTracking(true);
-        try {
-          const result = await fetchOrdersByPhone(phoneMatch[0]);
-          const trackMsg: Message = {
-            id: `t-${Date.now()}`,
-            role: 'assistant',
-            type: 'tracking',
-            content: '',
-            trackingData: result,
-            timestamp: Date.now(),
-          };
-          const final = [...withUser, trackMsg];
-          setMessages(final);
-          persist(final);
-        } catch {
-          const errMsg: Message = {
-            id: `e-${Date.now()}`,
-            role: 'assistant',
-            type: 'text',
-            content: 'Could not retrieve orders right now. Please check the Track Order tab on your dashboard.',
-            timestamp: Date.now(),
-            error: true,
-          };
-          const final = [...withUser, errMsg];
-          setMessages(final);
-          persist(final);
-        } finally {
-          setIsTracking(false);
-        }
+        await runTracking(phoneMatch[0], withUser);
         return;
       }
 
@@ -828,6 +1027,27 @@ export default function ChatBot({ page }: ChatBotProps) {
       setIsLoading(false);
       setAwaitingPhone(true);
       return;
+    }
+
+    // --- Admin/contact intent — track count, show email on 2nd ask ---
+    const isAdminIntent = /contact.*admin|admin.*contact|speak.*admin|admin.*email|reach.*admin|support.*email|email.*support|how.*contact/i.test(trimmed);
+    if (isAdminIntent) {
+      const newCount = adminAskCount + 1;
+      setAdminAskCount(newCount);
+      if (newCount >= 2) {
+        // Show email on second+ ask
+        const emailMsg: Message = {
+          id: `em-${Date.now()}`,
+          role: 'assistant',
+          type: 'text',
+          content: 'Since you need to reach the team directly, you can email **dataplugstore@gmail.com**. They respond during business hours.',
+          timestamp: Date.now(),
+        };
+        const final = [...withUser, emailMsg];
+        setMessages(final);
+        persist(final);
+        return;
+      }
     }
 
     // --- Regular AI message ---
@@ -882,7 +1102,7 @@ export default function ChatBot({ page }: ChatBotProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, isLoading, isTracking, awaitingPhone, persist]);
+  }, [messages, isLoading, isTracking, awaitingPhone, pendingTrackPhone, adminAskCount, persist, runTracking]);
 
   const handleSendMessage = () => sendMessage(input);
 
@@ -1068,7 +1288,9 @@ export default function ChatBot({ page }: ChatBotProps) {
               </div>
               <div>
                 <h2 className="font-semibold text-white text-sm">Support</h2>
-                <p className="text-[10px] text-green-400">Online</p>
+                <p className={`text-[10px] ${chatbotEnabled === false ? 'text-red-400' : 'text-green-400'}`}>
+                  {chatbotEnabled === false ? 'Unavailable' : 'Online'}
+                </p>
               </div>
             </div>
             <button
@@ -1080,7 +1302,21 @@ export default function ChatBot({ page }: ChatBotProps) {
             </button>
           </div>
 
+          {/* Offline banner — shown when admin disables chat */}
+          {chatbotEnabled === false && (
+            <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 p-8 text-center">
+              <div className="h-14 w-14 rounded-full bg-red-600/20 border border-red-500/30 flex items-center justify-center mb-4">
+                <AlertTriangle className="h-7 w-7 text-red-400" />
+              </div>
+              <h3 className="text-sm font-semibold text-white mb-2">We are currently unavailable</h3>
+              <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+                Our support team is offline at the moment. Please come back later and we will be happy to help you.
+              </p>
+            </div>
+          )}
+
           {/* Messages */}
+          {chatbotEnabled !== false && (
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900">
             {messages.length === 0 ? (
               /* Empty state */
@@ -1254,8 +1490,10 @@ export default function ChatBot({ page }: ChatBotProps) {
 
             <div ref={messagesEndRef} />
           </div>
+          )} {/* end chatbotEnabled !== false */}
 
-          {/* Input footer */}
+          {/* Input footer — hidden when offline */}
+          {chatbotEnabled !== false && (
           <div className="border-t border-slate-700 px-4 py-3 bg-slate-800 rounded-none md:rounded-b-xl space-y-2">
             {messages.length > 0 && (
               <button
@@ -1292,6 +1530,7 @@ export default function ChatBot({ page }: ChatBotProps) {
               Press Enter to send &middot; 24/7 support
             </p>
           </div>
+          )} {/* end chatbotEnabled !== false */}
         </div>
       )}
     </>

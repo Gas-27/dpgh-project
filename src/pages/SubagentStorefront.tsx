@@ -22,6 +22,7 @@ const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"
 import DraggableFAB from "@/components/DraggableFAB";
 import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
+import ChatBot from "@/components/ChatBot";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -1453,6 +1454,9 @@ export function SubagentStorefront() {
           </div>
         </DraggableFAB>
       )}
+
+      {/* Support ChatBot */}
+      <ChatBot page="subagent-storefront" />
     </div>
   );
 }
