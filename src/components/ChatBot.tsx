@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { callLocalEngine } from '@/lib/chatEngine';
+import { publicSupabase } from '@/integrations/supabase/public-client';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -15,18 +16,6 @@ import { callLocalEngine } from '@/lib/chatEngine';
 
 const EDGE_FUNCTION_URL =
   'https://api.dataplug.store/functions/v1/dataplug-chat';
-
-// Supabase direct access — used for order tracking and report submission
-// These are public/anon keys — safe to use in the browser
-const SUPABASE_URL =
-  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_URL) ||
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
-  '';
-
-const SUPABASE_ANON_KEY =
-  (typeof process !== 'undefined' && (process.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env?.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)) ||
-  (typeof import.meta !== 'undefined' && (import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY)) ||
-  '';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -174,112 +163,92 @@ async function callEdgeFunction(
 }
 
 // ---------------------------------------------------------------------------
-// Fetch orders directly from Supabase REST API (bypasses edge function / AI)
+// Fetch orders directly via publicSupabase client (correct column names)
 // ---------------------------------------------------------------------------
+
+// Determine if an order is reportable: status must be delivered/completed
+function isDelivered(row: Record<string, unknown>): boolean {
+  const st = String(row.order_status ?? row.fulfillment_status ?? row.status ?? '').toLowerCase();
+  return st === 'delivered' || st === 'completed';
+}
+
+// Derive display status from the three status columns (mirrors UserDashboard logic)
+function deriveStatus(row: Record<string, unknown>): string {
+  if (row.status === 'refunded' || row.fulfillment_status === 'refunded') return 'refunded';
+  const raw = String(row.order_status ?? row.fulfillment_status ?? row.status ?? 'pending').toLowerCase();
+  if (raw === 'completed' || raw === 'delivered') return 'delivered';
+  if (raw === 'failed') return 'failed';
+  if (raw === 'processing') return 'processing';
+  if (raw === 'pending') return 'pending';
+  return raw;
+}
 
 async function fetchOrdersByPhone(phone: string): Promise<TrackingResult> {
   const normalised = phone.replace(/^\+233/, '0').replace(/\s+/g, '').trim();
 
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return {
-      found: false,
-      error: 'Order tracking is temporarily unavailable. Please check the Track Order tab in your dashboard.',
-    };
-  }
-
   try {
-    // Query orders table — try phone_number column first, fall back to recipient_phone
-    const url = new URL(`${SUPABASE_URL}/rest/v1/orders`);
-    url.searchParams.set('select', 'id,created_at,status,network,package_name,amount,phone_number,recipient_phone,refunded');
-    url.searchParams.set('or', `(phone_number.eq.${normalised},recipient_phone.eq.${normalised})`);
-    url.searchParams.set('order', 'created_at.desc');
-    url.searchParams.set('limit', '8');
+    const { data, error } = await publicSupabase
+      .from('orders')
+      .select('id, created_at, status, fulfillment_status, order_status, network, size_gb, amount, customer_number, refunded_amount')
+      .eq('customer_number', normalised)
+      .order('created_at', { ascending: false })
+      .limit(8);
 
-    const res = await fetch(url.toString(), {
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (res.status === 400) {
-      // If `or` filter fails (column name mismatch), try simple eq filter
-      const url2 = new URL(`${SUPABASE_URL}/rest/v1/orders`);
-      url2.searchParams.set('select', 'id,created_at,status,network,package_name,amount,phone_number,refunded');
-      url2.searchParams.set('phone_number', `eq.${normalised}`);
-      url2.searchParams.set('order', 'created_at.desc');
-      url2.searchParams.set('limit', '8');
-      const res2 = await fetch(url2.toString(), {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!res2.ok) throw new Error(`supabase_${res2.status}`);
-      const rows2 = await res2.json();
-      return buildTrackingResult(rows2, normalised);
+    if (error) {
+      console.error('[ChatBot] fetchOrdersByPhone error:', error.message);
+      return {
+        found: false,
+        error: 'Could not retrieve orders right now. Please check your connection or try again shortly.',
+      };
     }
 
-    if (!res.ok) throw new Error(`supabase_${res.status}`);
+    if (!data || data.length === 0) {
+      return {
+        found: false,
+        message: `No orders found for **${normalised}**. Make sure you are using the same number that was entered when placing the order.`,
+      };
+    }
 
-    const rows = await res.json();
-    return buildTrackingResult(rows, normalised);
+    const orders: OrderRow[] = (data as Record<string, unknown>[]).map(r => {
+      const status = deriveStatus(r);
+      const sizeGb = r.size_gb ? `${r.size_gb}GB Bundle` : 'Data Bundle';
+      const rawAmount = typeof r.amount === 'number' ? r.amount : Number(r.amount ?? 0);
+      const dateStr = r.created_at
+        ? new Date(String(r.created_at)).toLocaleString('en-GH', {
+            timeZone: 'Africa/Accra',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : 'Unknown date';
+
+      return {
+        order_id: String(r.id ?? ''),
+        date: dateStr,
+        status,
+        network: String(r.network ?? 'Unknown'),
+        package: sizeGb,
+        amount: `GHS ${rawAmount.toFixed(2)}`,
+        recipient: String(r.customer_number ?? normalised),
+        refunded: Boolean(r.refunded_amount && Number(r.refunded_amount) > 0),
+        can_report: isDelivered(r),
+      };
+    });
+
+    return { found: true, count: orders.length, orders };
   } catch (err) {
-    console.error('[ChatBot] fetchOrdersByPhone error:', err);
+    console.error('[ChatBot] fetchOrdersByPhone exception:', err);
     return {
       found: false,
-      error: 'Could not retrieve orders right now. Please check your connection or use the Track Order tab in your dashboard.',
+      error: 'Could not retrieve orders right now. Please try again shortly.',
     };
   }
-}
-
-function buildTrackingResult(rows: Record<string, unknown>[], phone: string): TrackingResult {
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return {
-      found: false,
-      message: `No orders found for ${phone}. Make sure you are using the same number you used when placing the order.`,
-    };
-  }
-
-  const orders: OrderRow[] = rows.map(r => {
-    const status = String(r.status ?? 'unknown').toLowerCase();
-    const recipientPhone = String(r.phone_number ?? r.recipient_phone ?? phone);
-    const packageName = String(r.package_name ?? r.package ?? 'Data Bundle');
-    const rawAmount = r.amount ?? r.price ?? 0;
-    const amount = typeof rawAmount === 'number'
-      ? `GHS ${rawAmount.toFixed(2)}`
-      : `GHS ${rawAmount}`;
-    const dateStr = r.created_at
-      ? new Date(String(r.created_at)).toLocaleString('en-GH', {
-          timeZone: 'Africa/Accra',
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : 'Unknown date';
-
-    return {
-      order_id: String(r.id ?? ''),
-      date: dateStr,
-      status,
-      network: String(r.network ?? 'Unknown'),
-      package: packageName,
-      amount,
-      recipient: recipientPhone,
-      refunded: Boolean(r.refunded),
-      can_report: status === 'delivered',
-    };
-  });
-
-  return { found: true, count: orders.length, orders };
 }
 
 // ---------------------------------------------------------------------------
-// Submit report directly to Supabase REST API
+// Submit complaint directly via publicSupabase (correct complaints table columns)
 // ---------------------------------------------------------------------------
 
 async function submitReport(args: {
@@ -292,47 +261,34 @@ async function submitReport(args: {
   owes_bundles: boolean;
   notes?: string;
 }): Promise<{ success: boolean; complaint_id?: string; message: string; blocked?: boolean; reason?: string }> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return {
-      success: false,
-      message: 'Report submission is temporarily unavailable. Please go to the Track Order tab, find the Delivered order, and tap the Report button there.',
-    };
-  }
-
   try {
-    const payload: Record<string, unknown> = {
-      phone_number: args.phone_number,
-      notes: args.notes ?? 'Submitted via support chat',
-      status: 'open',
-      created_at: new Date().toISOString(),
+    const basePayload: Record<string, unknown> = {
+      complaint_type: 'not_received',
+      complaint_title: 'Delivered but Data Not Received',
+      complaint_details: args.notes ?? 'Customer reports data bundle was not received after delivery was confirmed. Submitted via support chat.',
+      customer_number: args.phone_number,
+      status: 'in-progress',
     };
-    if (args.order_id) payload.order_id = args.order_id;
-    if (args.network)  payload.network  = args.network;
+    if (args.order_id) basePayload.order_id = args.order_id;
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/order_complaints`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation',
-      },
-      body: JSON.stringify(payload),
-    });
+    // Try tier 1: full payload with owing fields
+    const tier1 = { ...basePayload, owing_airtime: args.owes_airtime, owing_bundle: args.owes_bundles, owing_momo: args.owes_momo };
+    let result = await publicSupabase.from('complaints').insert(tier1).select('id').single();
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      console.error('[ChatBot] submitReport error:', res.status, errText);
+    if (result.error) {
+      // Tier 2: base only (schema may not have owing columns)
+      result = await publicSupabase.from('complaints').insert(basePayload).select('id').single();
+    }
+
+    if (result.error) {
+      console.error('[ChatBot] submitReport error:', result.error.message);
       return {
         success: false,
         message: 'Could not submit the report right now. Please go to the Track Order tab, find the Delivered order, and tap the Report button there.',
       };
     }
 
-    const data = await res.json();
-    const row = Array.isArray(data) ? data[0] : data;
-    const id = row?.id ?? row?.complaint_id ?? `REF-${Date.now()}`;
-
+    const id = result.data?.id ?? `REF-${Date.now()}`;
     return {
       success: true,
       complaint_id: String(id),
