@@ -147,6 +147,8 @@ const SubagentDashboard = () => {
 
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [allRefundedOrders, setAllRefundedOrders] = useState<Order[]>([]);
+  const [refundedOrdersTotal, setRefundedOrdersTotal] = useState(0);
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
   const [sourceDialogInfo, setSourceDialogInfo] = useState<SourceInfo | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
@@ -569,6 +571,15 @@ const SubagentDashboard = () => {
 
         setOrders(ordersResult.data || []);
         setTotalOrderCount(ordersResult.count ?? (ordersResult.data?.length || 0));
+        // Fetch ALL refunded orders from DB for accurate total
+        const { data: allRef } = await supabase
+          .from("orders")
+          .select("id, amount, refunded_amount, fulfillment_status, status")
+          .eq("subagent_store_id", store.id)
+          .or("fulfillment_status.eq.refunded,status.eq.refunded");
+        const refAll = (allRef || []) as Order[];
+        setAllRefundedOrders(refAll);
+        setRefundedOrdersTotal(refAll.reduce((s, o) => s + (Number((o as any).refunded_amount || o.amount) || 0), 0));
         const payoutData = (payoutReqResult?.data ?? []).map((p: any) => {
           const recipientDetails = p.transfer_recipients || {};
           return {
@@ -2372,22 +2383,16 @@ const SubagentDashboard = () => {
                   </Badge>
                 </CardContent>
               </Card>
-              {/* Refunds Received Card */}
-              {(() => {
-                const isRef = (o: any) => o.fulfillment_status === "refunded" || o.status === "refunded" || (o.order_status || "").toLowerCase() === "refunded";
-                const refunded = [...orders].filter(isRef);
-                const total = refunded.reduce((s, o) => s + (Number((o as any).refunded_amount || o.amount) || 0), 0);
-                if (refunded.length === 0) return null;
-                return (
-                  <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-400/50 transition-all" onClick={() => setActiveTab("refunds")}>
-                    <CardContent className="p-6 text-center">
-                      <p className="text-muted-foreground text-sm">Refunds Received</p>
-                      <p className="font-display text-2xl font-bold mt-1 text-amber-400">{refunded.length}</p>
-                      <p className="text-xs text-muted-foreground mt-1">GHC {total.toFixed(2)}</p>
-                    </CardContent>
-                  </Card>
-                );
-              })()}
+              {/* Refunds Received Card — total from DB */}
+              {allRefundedOrders.length > 0 && (
+                <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-400/50 transition-all" onClick={() => setActiveTab("refunds")}>
+                  <CardContent className="p-6 text-center">
+                    <p className="text-muted-foreground text-sm">Total Refunds Received</p>
+                    <p className="font-display text-2xl font-bold mt-1 text-amber-400">{allRefundedOrders.length}</p>
+                    <p className="text-xs text-muted-foreground mt-1">GHC {refundedOrdersTotal.toFixed(2)}</p>
+                  </CardContent>
+                </Card>
+              )}
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
                   <p className="text-muted-foreground text-sm">

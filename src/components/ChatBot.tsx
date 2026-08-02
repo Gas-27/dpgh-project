@@ -115,6 +115,26 @@ function statusIcon(status: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Fetch complaints by phone number for in-chat status lookup
+// ---------------------------------------------------------------------------
+async function fetchComplaintsByPhone(phone: string) {
+  const { data, error } = await publicSupabase
+    .from('complaints')
+    .select('id, complaint_title, complaint_details, status, created_at')
+    .eq('customer_number', phone)
+    .order('created_at', { ascending: false })
+    .limit(5);
+  if (error) throw error;
+  return (data || []) as Array<{
+    id: string;
+    complaint_title: string;
+    complaint_details: string;
+    status: string;
+    created_at: string;
+  }>;
+}
+
+// ---------------------------------------------------------------------------
 // Detect if the user message is about tracking
 // ---------------------------------------------------------------------------
 
@@ -1048,6 +1068,52 @@ export default function ChatBot({ page }: ChatBotProps) {
         persist(final);
         return;
       }
+    }
+
+    // --- Complaint status lookup ---
+    const isComplaintIntent = /my.*complaint|complaint.*status|check.*complaint|complaint.*check|did.*complaint|complaint.*update|complaint.*ref|report.*status|status.*report|check.*report/i.test(trimmed);
+    if (isComplaintIntent) {
+      // Try to find phone number in the message, else ask
+      const phoneMatch = trimmed.match(/(\+233|0)[2-9][0-9]{8}/);
+      if (phoneMatch) {
+        setIsLoading(true);
+        try {
+          const complaints = await fetchComplaintsByPhone(phoneMatch[0]);
+          let content: string;
+          if (complaints.length === 0) {
+            content = `I could not find any complaints on file for **${phoneMatch[0]}**. Make sure you are using the same number you used when submitting the report.`;
+          } else {
+            const statusIcon = (s: string) => s === 'resolved' ? '[Resolved]' : s === 'in-progress' ? '[In Progress]' : '[Pending]';
+            const lines = complaints.map(c =>
+              `• **${c.complaint_title}** — ${statusIcon(c.status)}\n  Submitted: ${new Date(c.created_at).toLocaleDateString()}`
+            ).join('\n\n');
+            content = `Here are the complaints on file for **${phoneMatch[0]}**:\n\n${lines}\n\nIf you need more details or the issue is unresolved, keep checking the **Complaints** section in your dashboard or reply here.`;
+          }
+          const replyMsg: Message = { id: `cr-${Date.now()}`, role: 'assistant', type: 'text', content, timestamp: Date.now() };
+          const final = [...withUser, replyMsg];
+          setMessages(final);
+          persist(final);
+        } catch {
+          const errMsg: Message = { id: `ce-${Date.now()}`, role: 'assistant', type: 'text', content: 'I could not retrieve your complaint right now. Please check the Complaints section in your dashboard.', timestamp: Date.now(), error: true };
+          const final = [...withUser, errMsg];
+          setMessages(final);
+          persist(final);
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
+      // No phone — ask for it
+      const askMsg: Message = {
+        id: `ca-${Date.now()}`, role: 'assistant', type: 'text',
+        content: 'Sure. What phone number did you use when submitting the complaint? I will look it up for you.',
+        timestamp: Date.now(),
+      };
+      const withAsk = [...withUser, askMsg];
+      setMessages(withAsk);
+      persist(withAsk);
+      setAwaitingPhone(true);
+      return;
     }
 
     // --- Regular AI message ---

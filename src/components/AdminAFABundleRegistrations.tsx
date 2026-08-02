@@ -6,8 +6,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Loader2, Search, RotateCcw } from 'lucide-react';
+import { Download, Loader2, Search, RotateCcw, Flag, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { retryAFARegistration } from '@/services/afa-service';
+
+interface AFAReport {
+  id: string;
+  customer_phone: string;
+  customer_name?: string;
+  registration_id?: string;
+  dialed_1848: boolean;
+  notes?: string;
+  status: 'pending' | 'resolved';
+  created_at: string;
+  afa_registrations?: { customer_name: string; customer_phone: string; registration_status: string };
+}
 
 interface AFARegistration {
   id: string;
@@ -30,11 +45,49 @@ export default function AdminAFABundleRegistrations() {
   const [searching, setSearching] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [reports, setReports] = useState<AFAReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [resolvingReport, setResolvingReport] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchRegistrations();
+    fetchReports();
   }, []);
+
+  const fetchReports = async () => {
+    setReportsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('afa_registration_reports')
+        .select(`
+          id, customer_phone, customer_name, registration_id, dialed_1848, notes, status, created_at,
+          afa_registrations(customer_name, customer_phone, registration_status)
+        `)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setReports((data as AFAReport[]) || []);
+    } catch (err) {
+      console.error('[v0] AFA reports fetch error:', err);
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
+  const resolveReport = async (id: string) => {
+    setResolvingReport(id);
+    const { error } = await supabase
+      .from('afa_registration_reports')
+      .update({ status: 'resolved' })
+      .eq('id', id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      setReports(reports.map(r => r.id === id ? { ...r, status: 'resolved' } : r));
+      toast({ title: 'Marked as resolved' });
+    }
+    setResolvingReport(null);
+  };
 
   const fetchRegistrations = async () => {
     setLoading(true);
@@ -170,6 +223,8 @@ export default function AdminAFABundleRegistrations() {
     }
   };
 
+  const pendingReports = reports.filter(r => r.status === 'pending');
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -183,11 +238,25 @@ export default function AdminAFABundleRegistrations() {
         </Button>
       </div>
 
+      <Tabs defaultValue="registrations">
+        <TabsList>
+          <TabsTrigger value="registrations">Registrations</TabsTrigger>
+          <TabsTrigger value="reports" className="relative">
+            Reports
+            {pendingReports.length > 0 && (
+              <span className="ml-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {pendingReports.length}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="registrations" className="space-y-6 mt-4">
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by name, phone, region, or store..."
+          placeholder="Search by name, phone number, contact, region, or store..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
@@ -312,6 +381,78 @@ export default function AdminAFABundleRegistrations() {
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-4 mt-4">
+          <div>
+            <h4 className="text-base font-semibold">AFA Registration Reports</h4>
+            <p className="text-sm text-muted-foreground">Reports submitted by customers who say their AFA registration is not showing after approval.</p>
+          </div>
+
+          {/* Important notice */}
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="py-3 px-4">
+              <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-semibold">Before resolving a report, confirm the customer has dialed *1848#</p>
+                  <p>When a registration shows as <strong>Approved</strong>, it means MTN has confirmed it. The customer must dial <strong>*1848#</strong> to verify — if they see AFA bundles there, their registration is active and they can buy directly from that menu.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {reportsLoading ? (
+            <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : reports.length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">No AFA registration reports yet.</CardContent></Card>
+          ) : (
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Customer Phone</TableHead>
+                    <TableHead>Customer Name</TableHead>
+                    <TableHead>Dialed *1848#</TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reports.map(r => (
+                    <TableRow key={r.id}>
+                      <TableCell className="text-sm">{new Date(r.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">{r.customer_phone}</TableCell>
+                      <TableCell>{r.customer_name || r.afa_registrations?.customer_name || '—'}</TableCell>
+                      <TableCell>
+                        {r.dialed_1848
+                          ? <Badge className="bg-green-600 text-white">Yes</Badge>
+                          : <Badge variant="destructive">No</Badge>}
+                      </TableCell>
+                      <TableCell className="text-sm max-w-xs truncate">{r.notes || '—'}</TableCell>
+                      <TableCell>
+                        {r.status === 'resolved'
+                          ? <Badge className="bg-green-600 text-white"><CheckCircle className="h-3 w-3 mr-1" />Resolved</Badge>
+                          : <Badge className="bg-yellow-600 text-white"><Clock className="h-3 w-3 mr-1" />Pending</Badge>}
+                      </TableCell>
+                      <TableCell>
+                        {r.status !== 'resolved' && (
+                          <Button size="sm" variant="outline" disabled={resolvingReport === r.id} onClick={() => resolveReport(r.id)} className="gap-1">
+                            {resolvingReport === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+                            Resolve
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

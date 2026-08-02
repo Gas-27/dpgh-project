@@ -25,6 +25,7 @@ import PushNotificationManager from "@/components/PushNotificationManager";
 import AdminAFABundleManager from "@/components/AdminAFABundleManager";
 import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
+import AnnouncementManager from "@/components/AnnouncementManager";
 import { DOMAINS } from "@/config/domains";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
@@ -3838,13 +3839,6 @@ const AdminDashboard = () => {
                                 <TableCell className="space-x-2">
                                   {u.role !== "admin" ? (
                                     <div className="flex gap-2 flex-wrap">
-                                      <Button variant="outline" size="sm" onClick={() => {
-                                        setSelectedUserForAdmin(u);
-                                        setNewAdminSections(["prices", "orders", "agents", "topup", "withdrawals", "users", "customers", "notifications", "spinwheel", "complaints"]);
-                                        setMakeAdminDialogOpen(true);
-                                      }}>
-                                        <ShieldAlert className="h-4 w-4 mr-1" /> Make Admin
-                                      </Button>
                                       <Button variant="outline" size="sm" onClick={async () => {
                                         try {
                                           // Check if already a sub_admin
@@ -4435,6 +4429,17 @@ const AdminDashboard = () => {
                     </div>
 
                     {/* AFA Registration Fee section removed - moved to dedicated AFA tab */}
+
+                    {/* Announcement Video */}
+                    <Card className="border-border">
+                      <CardHeader>
+                        <CardTitle className="font-display text-lg">Announcement Video (User Dashboard)</CardTitle>
+                        <p className="text-sm text-muted-foreground">Paste a YouTube link and title. It appears as a small collapsible dropdown at the top of the Overview section in the User Dashboard.</p>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <AnnouncementManager />
+                      </CardContent>
+                    </Card>
 
                     {/* Support Chat Toggle */}
                     <Card className="border-border">

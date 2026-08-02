@@ -390,6 +390,8 @@ const AgentDashboard = () => {
   const [openManualSection, setOpenManualSection] = useState<number | null>(null);
   const [markupPercent, setMarkupPercent] = useState("");
   const [showRefundedOnly, setShowRefundedOnly] = useState(false);
+  const [allRefundedOrders, setAllRefundedOrders] = useState<Order[]>([]);
+  const [refundedOrdersTotal, setRefundedOrdersTotal] = useState(0);
 
   // Notifications to subagents
   const [subagentNotificationMsg, setSubagentNotificationMsg] = useState("");
@@ -817,6 +819,17 @@ const AgentDashboard = () => {
         return order;
       }));
       setOrders(enrichedOrders);
+
+      // Fetch ALL refunded orders from DB (not just the paginated set)
+      const { data: allRefunded } = await supabase
+        .from("orders")
+        .select("id, amount, refunded_amount, base_price, fulfillment_status, status")
+        .eq("agent_store_id", sd.id)
+        .or("fulfillment_status.eq.refunded,status.eq.refunded");
+      const refAll = (allRefunded || []) as Order[];
+      setAllRefundedOrders(refAll);
+      setRefundedOrdersTotal(refAll.reduce((s, o) => s + (Number((o as any).refunded_amount ?? (o as any).base_price ?? o.amount) || 0), 0));
+
       const payoutData = (payoutR.data ?? []).map((p: any) => {
         const recipientDetails = p.transfer_recipients || {};
         return {
@@ -2123,10 +2136,10 @@ const AgentDashboard = () => {
   // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
   const totalOrders = dateFilter === "all" ? totalOrderCount : dateFilteredOrders.length;
   const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
-  const filteredOrders = getDateFilteredOrders(orders).filter(o => {
-    const matchesSearch = o.customer_number.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase());
-    const matchesRefundFilter = showRefundedOnly ? (o.status === "refunded" || o.fulfillment_status === "refunded") : true;
-    return matchesSearch && matchesRefundFilter;
+  // When "show refunded only" is on, draw from the full allRefundedOrders list fetched from DB
+  const filteredOrders = (showRefundedOnly ? allRefundedOrders : getDateFilteredOrders(orders)).filter(o => {
+    const matchesSearch = o.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase());
+    return matchesSearch;
   });
   
   // Calculate filtered profit stats based on date filter (no useMemo to avoid hook issues)
@@ -2401,26 +2414,21 @@ const AgentDashboard = () => {
               </Card>
             )}
 
-            {/* Refunds Received card — shows agent's own refunded orders */}
-            {(() => {
-              const refundedOrders = orders.filter(o => o.status === "refunded" || o.fulfillment_status === "refunded");
-              if (refundedOrders.length === 0) return null;
-              const refundedTotal = refundedOrders.reduce((sum, o) => sum + (Number((o as any).refunded_amount ?? (o as any).base_price ?? o.amount) || 0), 0);
-              return (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-colors">
-                    <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
-                      <Wallet className="h-8 w-8 text-amber-400" />
-                      <div>
-                        <p className="font-semibold text-amber-400">{refundedOrders.length}</p>
-                        <p className="text-xs text-muted-foreground">Refunds Received</p>
-                        <p className="text-xs text-muted-foreground mt-2">GHC {refundedTotal.toFixed(2)}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              );
-            })()}
+            {/* Refunds Received card — total from DB, not just visible page */}
+            {allRefundedOrders.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-colors">
+                  <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
+                    <Wallet className="h-8 w-8 text-amber-400" />
+                    <div>
+                      <p className="font-semibold text-amber-400">{allRefundedOrders.length}</p>
+                      <p className="text-xs text-muted-foreground">Total Refunds Received</p>
+                      <p className="text-xs text-muted-foreground mt-2">GHC {refundedOrdersTotal.toFixed(2)}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <Card className="border-border">
               <CardHeader className="flex flex-col gap-3">

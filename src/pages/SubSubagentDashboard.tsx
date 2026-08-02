@@ -147,6 +147,8 @@ const SubSubagentDashboard = () => {
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [parentSubagentStoreName, setParentSubagentStoreName] = useState<string>("");
   const [orders, setOrders] = useState<Order[]>([]);
+  const [allRefundedOrders, setAllRefundedOrders] = useState<Order[]>([]);
+  const [refundedOrdersTotal, setRefundedOrdersTotal] = useState(0);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [totalOrderCount, setTotalOrderCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -501,6 +503,15 @@ const SubSubagentDashboard = () => {
         });
         setOrders(ordersResult.data || []);
         setTotalOrderCount(ordersResult.count ?? (ordersResult.data?.length || 0));
+        // Fetch ALL refunded orders from DB for accurate total
+        const { data: allRef } = await supabase
+          .from("orders")
+          .select("id, amount, refunded_amount, fulfillment_status, status")
+          .eq("sub_subagent_store_id", store.id)
+          .or("fulfillment_status.eq.refunded,status.eq.refunded");
+        const refAll = (allRef || []) as Order[];
+        setAllRefundedOrders(refAll);
+        setRefundedOrdersTotal(refAll.reduce((s, o) => s + (Number((o as any).refunded_amount || o.amount) || 0), 0));
         setWithdrawals(payoutData);
         setTransferRecipients(recipientsResult.data ?? []);
         setPackages(packagesResult.data || []);
@@ -3155,15 +3166,16 @@ const SubSubagentDashboard = () => {
                 o.status === "refunded" ||
                 (o.order_status || "").toLowerCase() === "refunded";
 
-              const refundedOrders = orders.filter(isRefunded);
+              const refundedOrders = allRefundedOrders;
 
               return (
                 <>
                   <Card className="border-orange-500/30 bg-orange-500/5">
                     <CardContent className="p-6">
                       <div>
-                        <p className="text-xs text-muted-foreground">Refunded Orders</p>
+                        <p className="text-xs text-muted-foreground">Total Refunded Orders</p>
                         <p className="font-display text-3xl font-bold text-orange-400 mt-1">{refundedOrders.length}</p>
+                        <p className="text-xs text-muted-foreground mt-1">GHC {refundedOrdersTotal.toFixed(2)}</p>
                       </div>
                     </CardContent>
                   </Card>

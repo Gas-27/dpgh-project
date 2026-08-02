@@ -429,7 +429,6 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
       "ORDER DETAILS",
       complaint.orders ? `Network: ${networkName(complaint.orders.network)}` : "",
       complaint.orders ? `Package: ${complaint.orders.size_gb}GB` : "",
-      complaint.orders ? `Amount: GHC ${Number(complaint.orders.amount).toFixed(2)}` : "",
       complaint.orders ? `Delivery Status: ${complaint.orders.fulfillment_status}` : "",
       "",
       "CHECKLIST",
@@ -454,7 +453,7 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
   };
 
   const handleShare = async () => {
-    const text = `Complaint Report\nCustomer: ${complaint.customer_number}\nOrder: ${complaint.orders ? `${networkName(complaint.orders.network)} ${complaint.orders.size_gb}GB` : complaint.order_id}\nStatus: ${complaint.status}\nDate: ${new Date(complaint.created_at).toLocaleString()}\n\n${complaint.complaint_details}`;
+    const text = `Complaint Report\nCustomer: ${complaint.customer_number}\nOrder: ${complaint.orders ? `${networkName(complaint.orders.network)} ${complaint.orders.size_gb}GB` : complaint.order_id}\nDelivery: ${complaint.orders?.fulfillment_status ?? '—'}\nStatus: ${complaint.status}\nDate: ${new Date(complaint.created_at).toLocaleString()}\n\n${complaint.complaint_details}`;
     if (navigator.share) {
       try { await navigator.share({ title: "Complaint Report", text }); } catch (_) {}
     } else {

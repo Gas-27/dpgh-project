@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
@@ -158,6 +158,10 @@ const UserDashboard = () => {
   // Orders search state
   const [orderSearch, setOrderSearch] = useState("");
 
+  // Announcement video iframe (Overview top)
+  const [announcement, setAnnouncement] = useState<{ title: string; video_url: string } | null>(null);
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
+
   // Overview date filtering and stats
   const [overviewDateFilter, setOverviewDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [customDateStart, setCustomDateStart] = useState<string>("");
@@ -214,6 +218,20 @@ const UserDashboard = () => {
       navigate("/login");
     }
   }, [authLoading, user, navigate]);
+
+  // Fetch active announcement video
+  useEffect(() => {
+    supabase
+      .from('announcements')
+      .select('title, video_url')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setAnnouncement(data);
+      });
+  }, []);
 
   // Fetch user orders and API key
   useEffect(() => {
@@ -887,8 +905,47 @@ const UserDashboard = () => {
   };
 
   const renderOverview = () => {
+    // Convert YouTube watch URL to embed URL
+    const embedUrl = announcement?.video_url
+      ? announcement.video_url
+          .replace('youtube.com/watch?v=', 'youtube.com/embed/')
+          .replace('youtu.be/', 'youtube.com/embed/')
+          .replace(/[&?]t=\d+/, '')
+      : null;
+
     return (
     <div className="space-y-6">
+      {/* Announcement Video — collapsible dropdown at very top */}
+      {announcement && embedUrl && (
+        <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
+          <button
+            onClick={() => setAnnouncementOpen(o => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-cyan-500/10 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Video className="h-4 w-4 text-cyan-400 shrink-0" />
+              <span className="text-sm font-semibold text-foreground">{announcement.title}</span>
+            </div>
+            {announcementOpen
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {announcementOpen && (
+            <div className="px-4 pb-4">
+              <div className="relative w-full" style={{ paddingTop: '42%' }}>
+                <iframe
+                  src={embedUrl}
+                  title={announcement.title}
+                  className="absolute inset-0 w-full h-full rounded-md border border-border"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Become an Agent CTA Card */}
       <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
         <CardContent className="p-6 flex items-center justify-between">
