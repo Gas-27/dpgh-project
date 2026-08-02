@@ -19,10 +19,11 @@ const HeroSection = () => {
           <h1 id="hero-heading" className="font-display text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl text-balance">
             Buy <span className="text-primary">Data Bundles</span> in Ghana — Fast &amp; Cheap
           </h1>
-          <p className="max-w-lg text-lg text-muted-foreground leading-relaxed">
-            Ghana&apos;s trusted online data bundle store. Buy MTN, Telecel &amp; AirtelTigo
-            data bundles at wholesale prices with instant delivery to any number — 24/7,
-            no queues, no USSD codes.
+          <p className="max-w-xl text-lg text-muted-foreground leading-relaxed">
+            Ghana&apos;s #1 trusted data bundle store. Buy MTN, Telecel &amp; AirtelTigo data at wholesale from
+            <span className="text-primary font-semibold"> 3.85gh</span> and above with instant delivery to any number — 24/7, no delays.
+            Plus become an agent, earn from every sale, get your own store link &amp; USSD code,
+            have subagents under you — and those subagents can also have sub-subagents under them, all earning from every sale.
           </p>
 
           {/* Network quick-links */}

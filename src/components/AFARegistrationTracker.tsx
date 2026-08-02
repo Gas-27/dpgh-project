@@ -46,7 +46,7 @@ const STAGES = [
   },
   {
     label: "Sent to Agent",
-    desc: "Your registration is being sent to your agent to forward to MTN.",
+    desc: "Your registration is being sent to an AFA agent for them to forward to MTN directly.",
     approxTime: "~30 minutes",
     icon: <Send className="h-4 w-4" />,
   },

@@ -1713,6 +1713,7 @@ const Packages = () => {
           </div>
         ) : activeCategory === "afa" ? (
           <div className="w-full pb-20 space-y-6">
+            <AFARegistrationTracker />
             <AFAPackagesDisplay
               onRegisterClick={(packageId, packageName, price) => {
                 setPaymentPkg({
@@ -1724,7 +1725,6 @@ const Packages = () => {
               }}
               themeColor="#3b82f6"
             />
-            <AFARegistrationTracker />
           </div>
         ) : renderComingSoon()}
       </div>

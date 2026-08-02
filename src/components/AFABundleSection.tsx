@@ -163,6 +163,9 @@ export default function AFABundleSection({
 
   return (
     <div className="space-y-6">
+      {/* AFA Registration Tracker — at the top so users can check status first */}
+      <AFARegistrationTracker />
+
       {/* AFA Packages Display */}
       <AFAPackagesDisplay
         agentStoreId={agentStoreId}
@@ -252,8 +255,6 @@ export default function AFABundleSection({
         </Card>
       )}
 
-      {/* AFA Registration Tracker — always visible */}
-      <AFARegistrationTracker />
     </div>
   );
 }
