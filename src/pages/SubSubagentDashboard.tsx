@@ -511,7 +511,14 @@ const SubSubagentDashboard = () => {
           .eq("sub_subagent_store_id", store.id)
           .or("fulfillment_status.eq.refunded,status.eq.refunded")
           .order("created_at", { ascending: false });
-        const refAll = (allRef || []) as Order[];
+        // Enrich mashup orders with size_gb_text
+        const refAll = (await Promise.all((allRef || []).map(async (order: any) => {
+          if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id && !order.size_gb_text) {
+            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+            return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
+          }
+          return order;
+        }))) as Order[];
         setAllRefundedOrders(refAll);
         setRefundedOrdersTotal(refAll.reduce((s, o) => s + (Number((o as any).refunded_amount || o.amount) || 0), 0));
         setWithdrawals(payoutData);
@@ -2051,10 +2058,10 @@ const SubSubagentDashboard = () => {
                             
                             return (
                               <TableRow key={order.id}>
-                                <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
-                                <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
+                                <TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
+                                <TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                                <TableCell className="font-display font-bold">{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</TableCell>
+                                <TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell>
                                 <TableCell className="font-semibold">GHC{Number(sellPrice).toFixed(2)}</TableCell>
                                 <TableCell className="text-muted-foreground">GHC{Number(baseCost).toFixed(2)}</TableCell>
                                 <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
@@ -2298,9 +2305,9 @@ const SubSubagentDashboard = () => {
                           
                           return (
                             <TableRow key={order.id}>
-                              <TableCell className="font-mono text-sm">{order.customer_number}</TableCell>
-                              <TableCell>{order.network.toUpperCase()}</TableCell>
-                              <TableCell>{order.network === "mtn_mashup" ? (order.packages as any)?.size_gb_text || order.size_gb + "GB" : order.size_gb + "GB"}</TableCell>
+                              <TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell>
+                              <TableCell>{order.network ? order.network.toUpperCase() : "—"}</TableCell>
+                              <TableCell>{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell>
                               <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
                               <TableCell className="font-semibold">GHC{Number(sellPrice).toFixed(2)}</TableCell>
                               <TableCell className="text-muted-foreground">GHC{Number(baseCost).toFixed(2)}</TableCell>
