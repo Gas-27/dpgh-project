@@ -152,19 +152,22 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
 
   const updateComplaintStatus = async (id: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from("complaints")
-        .update({ status: newStatus })
-        .eq("id", id);
-
-      if (error) throw error;
+      const res = await fetch('/api/admin/update-complaint-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: newStatus }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to update');
+      }
       setComplaints((prev) =>
         prev.map((c) => (c.id === id ? { ...c, status: newStatus as any } : c))
       );
       toast({ title: "Success", description: "Complaint status updated" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating complaint:", error);
-      toast({ title: "Error", description: "Failed to update complaint", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Failed to update complaint", variant: "destructive" });
     }
   };
 
@@ -178,12 +181,15 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
         return;
       }
 
-      const { error } = await supabase
-        .from("complaints")
-        .update({ status: newStatus })
-        .in("id", complaintIds);
-
-      if (error) throw error;
+      const res = await fetch('/api/admin/update-complaint-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: complaintIds, status: newStatus }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to update');
+      }
       
       setComplaints((prev) =>
         prev.map((c) => (selectedComplaints.has(c.id) ? { ...c, status: newStatus as any } : c))
@@ -192,9 +198,9 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       setSelectedComplaints(new Set());
       setSelectAll(false);
       toast({ title: "Success", description: `${complaintIds.length} complaint(s) marked as ${newStatus}` });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error bulk updating:", error);
-      toast({ title: "Error", description: "Failed to update complaints", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Failed to update complaints", variant: "destructive" });
     } finally {
       setBulkUpdating(false);
     }

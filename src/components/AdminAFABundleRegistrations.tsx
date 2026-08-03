@@ -66,16 +66,16 @@ export default function AdminAFABundleRegistrations() {
   const fetchReports = async () => {
     setReportsLoading(true);
     try {
-      // Use select('*') to avoid 406 errors from missing columns or undefined FK relations
-      const { data, error } = await supabase
-        .from('afa_registration_reports')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+      const res = await fetch('/api/admin/fetch-afa-reports');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to fetch reports');
+      }
+      const { data } = await res.json();
       setReports((data as AFAReport[]) || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[v0] AFA reports fetch error:', err);
-      toast({ title: 'Error loading reports', description: String(err), variant: 'destructive' });
+      toast({ title: 'Error loading reports', description: err.message || String(err), variant: 'destructive' });
     } finally {
       setReportsLoading(false);
     }
@@ -106,51 +106,17 @@ export default function AdminAFABundleRegistrations() {
   const fetchRegistrations = async () => {
     setLoading(true);
     try {
-      // Fetch all AFA registrations without FK joins (avoids PostgREST FK requirement)
-      const { data, error } = await supabase
-        .from('afa_registrations')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const rows: any[] = data || [];
-
-      // Collect unique store IDs for a second lookup
-      const agentIds = [...new Set(rows.map((r) => r.agent_store_id).filter(Boolean))];
-      const subagentIds = [...new Set(rows.map((r) => r.subagent_store_id).filter(Boolean))];
-
-      const agentNameMap: Record<string, string> = {};
-      const subagentNameMap: Record<string, string> = {};
-
-      if (agentIds.length > 0) {
-        const { data: agentData } = await supabase
-          .from('agent_stores')
-          .select('id, store_name')
-          .in('id', agentIds);
-        (agentData || []).forEach((s: any) => { agentNameMap[s.id] = s.store_name; });
+      // Use service-role API route to bypass RLS
+      const res = await fetch('/api/admin/fetch-afa-registrations');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to fetch registrations');
       }
-
-      if (subagentIds.length > 0) {
-        const { data: subData } = await supabase
-          .from('subagent_stores')
-          .select('id, store_name')
-          .in('id', subagentIds);
-        (subData || []).forEach((s: any) => { subagentNameMap[s.id] = s.store_name; });
-      }
-
-      const flatData = rows.map((reg: any) => ({
-        ...reg,
-        store_name:
-          agentNameMap[reg.agent_store_id] ||
-          subagentNameMap[reg.subagent_store_id] ||
-          'N/A',
-      }));
-
-      setRegistrations(flatData);
-    } catch (err) {
+      const { data } = await res.json();
+      setRegistrations(data || []);
+    } catch (err: any) {
       console.error('[v0] Failed to fetch registrations:', err);
-      toast({ title: 'Error', description: 'Failed to load registrations', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to load registrations', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

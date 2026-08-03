@@ -2559,7 +2559,7 @@ const SubagentDashboard = () => {
                             const subSubagentRow = isSubSubagentOrder
                               ? subSubagents.find(s => s.id === order.sub_subagent_store_id)
                               : null;
-                            const subSubagentName = subSubagentRow?.store_name || "Sub-Subagent";
+                            const subSubagentName = subSubagentRow?.store_name || "Subagent";
 
                             const handleSourceClick = () => {
                               if (!isSubSubagentOrder) return;
@@ -2858,7 +2858,7 @@ const SubagentDashboard = () => {
             <Card className="border-blue-500/30 bg-blue-500/5">
               <CardContent className="p-4 space-y-1">
                 <p className="text-sm text-blue-400">
-                  <strong>Refunds:</strong> Orders from your store appear as read-only. Orders that came from your sub-subagents can be selected to forward the refund to their wallet at the base price you gave them.
+                  <strong>Refunds:</strong> Orders from your store appear as read-only. Orders that came from your subagents can be selected to forward the refund to their wallet at the base price you gave them.
                 </p>
               </CardContent>
             </Card>
@@ -2888,7 +2888,7 @@ const SubagentDashboard = () => {
                           <p className="font-display text-2xl font-bold text-amber-400 mt-1">{allRefunded.length}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Forwardable to Sub-Subagents</p>
+                          <p className="text-xs text-muted-foreground">Forwardable to Subagents</p>
                           <p className="font-display text-2xl font-bold text-cyan-400 mt-1">{forwardable.length}</p>
                         </div>
                       </div>
@@ -2903,7 +2903,7 @@ const SubagentDashboard = () => {
                         disabled={refundingSubSubagentOrders.size > 0}
                         className="px-4 py-2 rounded bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium transition-all"
                       >
-                        {refundingSubSubagentOrders.size > 0 ? "Processing..." : "Refund to Sub-Subagent Wallets"}
+                        {refundingSubSubagentOrders.size > 0 ? "Processing..." : "Refund to Subagent Wallets"}
                       </button>
                     </div>
                   )}
@@ -4474,7 +4474,7 @@ const SubagentDashboard = () => {
                 AFA Bundle Registrations
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                All AFA registrations made through your storefront and your sub-subagents.
+                All AFA registrations made through your storefront and your subagents.
               </p>
             </div>
             {subagentStore && (
