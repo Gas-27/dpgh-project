@@ -820,26 +820,14 @@ const AgentDashboard = () => {
       }));
       setOrders(enrichedOrders);
 
-      // Fetch ALL refunded orders from DB (not just the paginated set) — select all columns needed for the orders table
-      const { data: allRefunded } = await supabase
-        .from("orders")
-        .select("*, subagent_stores(store_name, store_url, support_number, whatsapp_number), sub_subagent_stores(store_name, store_url, support_number, whatsapp_number)")
-        .eq("agent_store_id", sd.id)
-        .or("fulfillment_status.eq.refunded,status.eq.refunded,order_status.ilike.refunded")
-        .order("created_at", { ascending: false });
-      // Enrich mashup orders with size_gb_text — wrapped in try/catch so a DB error never wipes the card
-      let refAll: Order[] = (allRefunded || []) as Order[];
-      try {
-        refAll = (await Promise.all(refAll.map(async (order: any) => {
-          if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id && !order.size_gb_text) {
-            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
-            if (pkg) return { ...order, size_gb_text: pkg.size_gb_text, data_package_id: pkg.data_package_id };
-          }
-          return order;
-        }))) as Order[];
-      } catch (_) { /* enrichment failed — keep raw data */ }
+      // Derive refunded orders from the already-fetched enrichedOrders — avoids a separate DB query with fragile .or() column matching
+      const refAll = enrichedOrders.filter((o: any) =>
+        o.fulfillment_status === "refunded" ||
+        (o.order_status || "").toLowerCase() === "refunded" ||
+        (o.status || "").toLowerCase() === "refunded"
+      );
       setAllRefundedOrders(refAll);
-      setRefundedOrdersTotal(refAll.reduce((s, o) => s + (Number((o as any).refunded_amount ?? (o as any).base_price ?? o.amount) || 0), 0));
+      setRefundedOrdersTotal(refAll.reduce((s: number, o: any) => s + (Number(o.refunded_amount ?? o.base_price ?? o.amount) || 0), 0));
 
       const payoutData = (payoutR.data ?? []).map((p: any) => {
         const recipientDetails = p.transfer_recipients || {};
