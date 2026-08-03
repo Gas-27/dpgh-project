@@ -4652,6 +4652,21 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
           {/* ============================= SUBAGENT PRICES ============================= */}
           <TabsContent value="subagent-prices" className="mt-0 space-y-6">
+            {/* AFA Bundle Price for Subagents — shown first */}
+            <Card className="border-green-500/30 bg-green-900/5">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-green-600" /> AFA Bundle Price for Subagents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Set the AFA bundle registration price you charge subagents. Subagents use this as their base cost and add their own profit on top. They cannot set their price below this amount.
+                </p>
+                <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
+              </CardContent>
+            </Card>
+
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
@@ -4666,21 +4681,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                   agentPrices={agentPrices}
                   onPricesSaved={fetchAllData}
                 />
-              </CardContent>
-            </Card>
-
-            {/* AFA Bundle Price for Subagents */}
-            <Card className="border-green-500/30 bg-green-900/5">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-green-600" /> AFA Bundle Price for Subagents
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Set the AFA bundle registration price you charge subagents. Subagents use this as their base cost and add their own profit on top. They cannot set their price below this amount.
-                </p>
-                <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -4890,10 +4890,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
             )}
 
             <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>
                 <TabsTrigger value="registrations">Bundle Registrations</TabsTrigger>
-                <TabsTrigger value="reg-status">Registration Status</TabsTrigger>
               </TabsList>
 
               <TabsContent value="pricing" className="space-y-6 mt-4">
@@ -4902,23 +4901,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
               <TabsContent value="registrations" className="space-y-6 mt-4">
                 {store && <AgentAFABundleRegistrations agentStoreId={store.id} primaryColor={themeColors?.primaryColor || "#000000"} />}
-              </TabsContent>
-
-              <TabsContent value="reg-status" className="space-y-6 mt-4">
-                <Card className="border-border">
-                  <CardHeader>
-                    <CardTitle className="font-display flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-primary" />
-                      Registration Status Tracker
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Track the processing stage of any AFA bundle registration. Enter the customer&apos;s phone number or Ghana Card number to check progress.
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <AFARegistrationTracker storeLabel={store?.store_name} />
-                  </CardContent>
-                </Card>
               </TabsContent>
             </Tabs>
           </TabsContent>

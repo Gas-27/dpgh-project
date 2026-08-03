@@ -66,17 +66,16 @@ export default function AdminAFABundleRegistrations() {
   const fetchReports = async () => {
     setReportsLoading(true);
     try {
+      // Use select('*') to avoid 406 errors from missing columns or undefined FK relations
       const { data, error } = await supabase
         .from('afa_registration_reports')
-        .select(`
-          id, customer_phone, customer_name, registration_id, dialed_1848, notes, screenshot_url, status, created_at,
-          afa_registrations(customer_name, customer_phone, registration_status)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
       setReports((data as AFAReport[]) || []);
     } catch (err) {
       console.error('[v0] AFA reports fetch error:', err);
+      toast({ title: 'Error loading reports', description: String(err), variant: 'destructive' });
     } finally {
       setReportsLoading(false);
     }

@@ -23,6 +23,8 @@ const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import ChatBot from "@/components/ChatBot";
+import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
+import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -478,7 +480,9 @@ export function SubSubagentStorefront() {
 
   // Sub-Subagent Registration
   // ── AFA Packages ──
-
+  const [showAFA, setShowAFA] = useState(false);
+  const [afaPaymentPkg, setAfaPaymentPkg] = useState<{ id: string; size_gb: number; price: number; network: string } | null>(null);
+  const [afaPaymentOpen, setAfaPaymentOpen] = useState(false);
 
   const [selectedAFAPackage, setSelectedAFAPackage] = useState<{
     id: string;
@@ -1042,19 +1046,51 @@ export function SubSubagentStorefront() {
         {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
             <Button
               key={net}
-              variant={networkFilter === net ? "default" : "outline"}
+              variant={networkFilter === net && !showAFA ? "default" : "outline"}
               size="sm"
-              onClick={() => setNetworkFilter(net)}
-              style={networkFilter === net ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
+              onClick={() => { setNetworkFilter(net); setShowAFA(false); }}
+              style={networkFilter === net && !showAFA ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
               className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
               {formatNetworkName(net)}
             </Button>
           ))}
+          <div className="h-6 w-px bg-border flex-shrink-0"></div>
+          <Button
+            variant={showAFA ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowAFA(!showAFA)}
+            style={showAFA ? { background: primaryColor, color: primaryForeground } : {}}
+            className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
+          >
+            <Package className="h-4 w-4 mr-1" />
+            AFA Bundles
+          </Button>
         </div>
 
+        {/* AFA Bundles Section */}
+        {showAFA ? (
+          <div className="w-full pb-8">
+            <AFAPackagesDisplay
+              agentStoreId={store?.agent_store_id}
+              subagentStoreId={store?.subagent_store_id}
+              onRegisterClick={(packageId, packageName, price) => {
+                setAfaPaymentPkg({
+                  id: packageId,
+                  size_gb: 0,
+                  price: (store as any)?.afa_bundle_price || price,
+                  network: "mtn",
+                });
+                setAfaPaymentOpen(true);
+              }}
+              themeColor={primaryColor}
+            />
+          </div>
+        ) : null}
+
         {/* Packages Grid */}
+        {!showAFA && <>
         {/* USSD Info Banner */}
           {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
             <a href="tel:*380*455#" className="block mb-4 p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
@@ -1128,6 +1164,7 @@ export function SubSubagentStorefront() {
               })
             )}
           </div>
+        </>}
 
         {/* Support */}
         <Card style={{ background: cardBg }} className="border-border">
@@ -1185,6 +1222,20 @@ export function SubSubagentStorefront() {
       )}
 
       <PaymentVerifier storeId={store.id} isSubagent={true} />
+      <AFARegistrationSuccess />
+
+      {/* AFA Payment Dialog */}
+      {afaPaymentPkg && (
+        <PaymentDialog
+          open={afaPaymentOpen}
+          onOpenChange={(v) => { if (!v) { setAfaPaymentOpen(false); setAfaPaymentPkg(null); } }}
+          package={afaPaymentPkg}
+          price={afaPaymentPkg.price}
+          agentStoreId={store.agent_store_id}
+          subagentStoreId={store.subagent_store_id}
+          subsubagentStoreId={store.id}
+        />
+      )}
 
       {/* Report Complaint Dialog — lazy-loaded to break circular dep */}
       <Suspense fallback={null}>
