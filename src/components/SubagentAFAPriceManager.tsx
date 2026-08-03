@@ -116,10 +116,12 @@ export default function SubagentAFAPriceManager({ onPriceSaved }: SubagentAFAPri
 
   const handleSaveSubsubPrice = async () => {
     if (!storeId) return;
-    if (subsubPrice < adminMinPrice) {
+    // Sub-subagent base must be >= agent's price to this subagent (not just admin min)
+    const subsubMinimum = agentCostToSubagent > 0 ? agentCostToSubagent : adminMinPrice;
+    if (subsubPrice < subsubMinimum) {
       toast({
         title: "Price too low",
-        description: `Sub-subagent base price must be at least GHC${adminMinPrice.toFixed(2)}`,
+        description: `Sub-subagent base price must be at least GHC${subsubMinimum.toFixed(2)} (your cost from agent)`,
         variant: "destructive",
       });
       return;
@@ -239,61 +241,71 @@ export default function SubagentAFAPriceManager({ onPriceSaved }: SubagentAFAPri
           </CardTitle>
           <CardDescription>
             Set the base price your sub-subagents pay per AFA registration. They set their own
-            storefront price above this to earn their own profit. Your commission = their
-            cost &minus; your cost from agent.
+            storefront price above this to earn their own profit. Minimum is your cost from
+            agent (GHC{(agentCostToSubagent > 0 ? agentCostToSubagent : adminMinPrice).toFixed(2)}).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Admin Minimum</Label>
-              <div className="text-2xl font-bold text-muted-foreground mt-2">
-                GHC{adminMinPrice.toFixed(2)}
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="subsubPrice" className="text-sm font-medium">
-                Sub-Subagent Base Price (GHC)
-              </Label>
-              <Input
-                id="subsubPrice"
-                type="number"
-                min={adminMinPrice}
-                step="0.01"
-                value={subsubPrice || ""}
-                onChange={(e) => setSubsubPrice(Number(e.target.value) || 0)}
-                className="mt-2"
-                placeholder={`Min: GHC${adminMinPrice.toFixed(2)}`}
-              />
-            </div>
-            <div className="flex flex-col justify-end">
-              <Button
-                onClick={handleSaveSubsubPrice}
-                disabled={savingSubsub || subsubPrice < adminMinPrice}
-                className="w-full"
-              >
-                {savingSubsub ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Price"
-                )}
-              </Button>
-            </div>
-          </div>
-          {subsubPrice > 0 && subsubPrice >= adminMinPrice && (
-            <div className="text-sm text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 p-3 rounded">
-              Sub-subagents will pay GHC{subsubPrice.toFixed(2)} per AFA registration.
-              {agentCostToSubagent > 0 && subsubPrice > agentCostToSubagent && (
+            {(() => {
+              const subsubMin = agentCostToSubagent > 0 ? agentCostToSubagent : adminMinPrice;
+              return (
                 <>
-                  {" "}Your commission per sub-subagent sale: GHC
-                  {(subsubPrice - agentCostToSubagent).toFixed(2)}.
+                  <div>
+                    <Label className="text-sm font-medium">Your Cost (from Agent)</Label>
+                    <div className="text-2xl font-bold text-muted-foreground mt-2">
+                      GHC{subsubMin.toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="subsubPrice" className="text-sm font-medium">
+                      Sub-Subagent Base Price (GHC)
+                    </Label>
+                    <Input
+                      id="subsubPrice"
+                      type="number"
+                      min={subsubMin}
+                      step="0.01"
+                      value={subsubPrice || ""}
+                      onChange={(e) => setSubsubPrice(Number(e.target.value) || 0)}
+                      className="mt-2"
+                      placeholder={`Min: GHC${subsubMin.toFixed(2)}`}
+                    />
+                  </div>
+                  <div className="flex flex-col justify-end">
+                    <Button
+                      onClick={handleSaveSubsubPrice}
+                      disabled={savingSubsub || subsubPrice < subsubMin}
+                      className="w-full"
+                    >
+                      {savingSubsub ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Price"
+                      )}
+                    </Button>
+                  </div>
                 </>
-              )}
-            </div>
-          )}
+              );
+            })()}
+          </div>
+          {(() => {
+            const subsubMin = agentCostToSubagent > 0 ? agentCostToSubagent : adminMinPrice;
+            return subsubPrice > 0 && subsubPrice >= subsubMin ? (
+              <div className="text-sm text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 p-3 rounded">
+                Sub-subagents will pay GHC{subsubPrice.toFixed(2)} per AFA registration.
+                {agentCostToSubagent > 0 && subsubPrice > agentCostToSubagent && (
+                  <>
+                    {" "}Your commission per sub-subagent sale: GHC
+                    {(subsubPrice - agentCostToSubagent).toFixed(2)}.
+                  </>
+                )}
+              </div>
+            ) : null;
+          })()}
         </CardContent>
       </Card>
     </div>
