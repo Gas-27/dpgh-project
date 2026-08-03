@@ -172,7 +172,6 @@ export default function AFAPackagesDisplay({
         .order("name");
 
       if (pkgsError) throw pkgsError;
-      console.log("[v0] AFA Packages fetched:", pkgsData);
       setPackages(pkgsData || []);
 
       // Fetch admin AFA registration fee (base price)
@@ -183,53 +182,91 @@ export default function AFAPackagesDisplay({
           .select("registration_fee, registration_enabled")
           .single();
         if (afaSettings?.registration_fee) {
-          adminBundlePrice = afaSettings.registration_fee;
+          adminBundlePrice = Number(afaSettings.registration_fee);
           setBundlePrice(adminBundlePrice);
         }
         if (afaSettings?.registration_enabled !== undefined) {
           setAfaEnabled(afaSettings.registration_enabled !== false);
         }
-        console.log("[v0] AFA settings loaded:", afaSettings);
       } catch (err) {
-        console.log("[v0] AFA settings not found:", err);
+        // AFA settings not found — fall back to 0
       }
 
-      // Fetch sub-subagent's own AFA bundle price (highest priority)
+      // ── SUB-SUBAGENT STOREFRONT ──
+      // Price shown: sub-subagent's own afa_bundle_price
+      // Fallback:    parent subagent's afa_subsubagent_base_price → parent subagent's afa_bundle_price → admin price
       if (subsubagentStoreId) {
         const { data: subsubData } = await supabase
           .from("sub_subagent_stores")
-          .select("afa_bundle_price")
+          .select("afa_bundle_price, subagent_store_id")
           .eq("id", subsubagentStoreId)
           .single();
-        const subsubPrice = subsubData?.afa_bundle_price ?? null;
-        console.log("[v0] Sub-subagent AFA bundle price fetched:", { subsubagentStoreId, subsubPrice });
-        setAgentBundlePrice(subsubPrice !== null ? subsubPrice : adminBundlePrice);
-        return; // Price resolved — no further lookups needed
+
+        const ownPrice = subsubData?.afa_bundle_price ? Number(subsubData.afa_bundle_price) : 0;
+
+        if (ownPrice > 0) {
+          setAgentBundlePrice(ownPrice);
+        } else {
+          // Fallback: use parent subagent's price set for sub-subagents
+          let fallback = adminBundlePrice;
+          if (subsubData?.subagent_store_id) {
+            const { data: parentSubagent } = await supabase
+              .from("subagent_stores")
+              .select("afa_subsubagent_base_price, afa_bundle_price")
+              .eq("id", subsubData.subagent_store_id)
+              .single();
+            if (parentSubagent) {
+              fallback =
+                Number((parentSubagent as any).afa_subsubagent_base_price || 0) ||
+                Number(parentSubagent.afa_bundle_price || 0) ||
+                adminBundlePrice;
+            }
+          }
+          setAgentBundlePrice(fallback);
+        }
+        return; // Price resolved
       }
 
-      // Fetch subagent's own AFA bundle price (second priority)
+      // ── SUBAGENT STOREFRONT ──
+      // Price shown: subagent's own afa_bundle_price
+      // Fallback:    parent agent's afa_bundle_price → admin price
       if (subagentStoreId && !agentStoreId) {
         const { data: subagentData } = await supabase
           .from("subagent_stores")
-          .select("afa_bundle_price")
+          .select("afa_bundle_price, agent_store_id")
           .eq("id", subagentStoreId)
           .single();
-        const subagentPrice = subagentData?.afa_bundle_price ?? null;
-        console.log("[v0] Subagent AFA bundle price fetched:", { subagentStoreId, subagentPrice });
-        setAgentBundlePrice(subagentPrice !== null ? subagentPrice : adminBundlePrice);
+
+        const ownPrice = subagentData?.afa_bundle_price ? Number(subagentData.afa_bundle_price) : 0;
+
+        if (ownPrice > 0) {
+          setAgentBundlePrice(ownPrice);
+        } else {
+          // Fallback: use agent's price to this subagent
+          let fallback = adminBundlePrice;
+          if (subagentData?.agent_store_id) {
+            const { data: agentStore } = await supabase
+              .from("agent_stores")
+              .select("afa_bundle_price")
+              .eq("id", subagentData.agent_store_id)
+              .single();
+            fallback = Number(agentStore?.afa_bundle_price || 0) || adminBundlePrice;
+          }
+          setAgentBundlePrice(fallback);
+        }
         return;
       }
 
-      // Fetch agent's AFA bundle price (agent markup)
+      // ── AGENT STOREFRONT ──
+      // Price shown: agent's own afa_bundle_price → admin price
       if (agentStoreId) {
         const { data: agentData } = await supabase
           .from("agent_stores")
           .select("afa_bundle_price")
           .eq("id", agentStoreId)
           .single();
-        const agentPrice = agentData?.afa_bundle_price ?? null;
-        console.log("[v0] Agent AFA bundle price fetched:", { agentStoreId, agentPrice, adminBundlePrice });
-        setAgentBundlePrice(agentPrice !== null ? agentPrice : adminBundlePrice);
+        const agentPrice = agentData?.afa_bundle_price ? Number(agentData.afa_bundle_price) : 0;
+        setAgentBundlePrice(agentPrice > 0 ? agentPrice : adminBundlePrice);
 
         const { data: priceData } = await supabase
           .from("agent_afa_prices")
@@ -237,7 +274,7 @@ export default function AFAPackagesDisplay({
           .eq("agent_store_id", agentStoreId);
 
         const priceMap = (priceData || []).reduce(
-          (acc, p) => ({
+          (acc: Record<string, { sell_price: number }>, p: any) => ({
             ...acc,
             [p.afa_package_id]: { sell_price: p.sell_price },
           }),
@@ -245,14 +282,27 @@ export default function AFAPackagesDisplay({
         );
         setPricing(priceMap);
       } else if (subagentStoreId) {
+        // subagentStoreId provided alongside agentStoreId — use subagent price
         const { data: subagentData } = await supabase
           .from("subagent_stores")
-          .select("afa_bundle_price")
+          .select("afa_bundle_price, agent_store_id")
           .eq("id", subagentStoreId)
           .single();
-        const subagentPrice = subagentData?.afa_bundle_price ?? null;
-        console.log("[v0] Subagent AFA bundle price fetched:", { subagentStoreId, subagentPrice, adminBundlePrice });
-        setAgentBundlePrice(subagentPrice !== null ? subagentPrice : adminBundlePrice);
+        const ownPrice = subagentData?.afa_bundle_price ? Number(subagentData.afa_bundle_price) : 0;
+        if (ownPrice > 0) {
+          setAgentBundlePrice(ownPrice);
+        } else {
+          let fallback = adminBundlePrice;
+          if (subagentData?.agent_store_id) {
+            const { data: agentStore } = await supabase
+              .from("agent_stores")
+              .select("afa_bundle_price")
+              .eq("id", subagentData.agent_store_id)
+              .single();
+            fallback = Number(agentStore?.afa_bundle_price || 0) || adminBundlePrice;
+          }
+          setAgentBundlePrice(fallback);
+        }
 
         const { data: priceData } = await supabase
           .from("subagent_afa_prices")
@@ -260,7 +310,7 @@ export default function AFAPackagesDisplay({
           .eq("subagent_store_id", subagentStoreId);
 
         const priceMap = (priceData || []).reduce(
-          (acc, p) => ({
+          (acc: Record<string, { sell_price: number }>, p: any) => ({
             ...acc,
             [p.afa_package_id]: { sell_price: p.sell_price },
           }),
@@ -335,7 +385,11 @@ export default function AFAPackagesDisplay({
       {afaEnabled ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {packages.map((pkg) => {
-          const displayPrice = pricing[pkg.id]?.sell_price || pkg.base_price;
+          // For AFA bundles, the store-owner's set price (agentBundlePrice) takes priority over
+          // the per-package sell_price entry or the admin base_price.
+          const displayPrice = agentBundlePrice > 0
+            ? agentBundlePrice
+            : (pricing[pkg.id]?.sell_price || pkg.base_price);
           const packageStatus: PackageStatus = pkg.is_online === false ? 'offline' : (pkg.is_active ? 'available' : 'not_available');
 
           return (

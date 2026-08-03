@@ -1073,6 +1073,8 @@ export function SubSubagentStorefront() {
         {/* AFA Bundles Section */}
         {showAFA ? (
           <div className="w-full pb-8 space-y-8">
+            {/* Track AFA registration status — shown at the very top */}
+            <AFARegistrationTracker storeLabel={store?.store_name} />
             {/* Pass only subsubagentStoreId so the sub-subagent's own set price is shown */}
             <AFAPackagesDisplay
               subsubagentStoreId={store?.id}
@@ -1080,14 +1082,13 @@ export function SubSubagentStorefront() {
                 setAfaPaymentPkg({
                   id: packageId,
                   size_gb: 0,
-                  price: (store as any)?.afa_bundle_price || price,
+                  price,
                   network: "mtn",
                 });
                 setAfaPaymentOpen(true);
               }}
               themeColor={primaryColor}
             />
-            <AFARegistrationTracker storeLabel={store?.store_name} />
           </div>
         ) : null}
 

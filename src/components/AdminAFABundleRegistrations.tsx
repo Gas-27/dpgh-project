@@ -66,7 +66,7 @@ export default function AdminAFABundleRegistrations() {
   const fetchReports = async () => {
     setReportsLoading(true);
     try {
-      const res = await fetch('/api/admin/fetch-afa-reports');
+      const res = await fetch('/api/fetch-afa-reports');
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || 'Failed to fetch reports');
@@ -85,7 +85,7 @@ export default function AdminAFABundleRegistrations() {
     setResolvingReport(id);
     try {
       // Use admin API route to bypass RLS
-      const res = await fetch('/api/admin/resolve-afa-report', {
+      const res = await fetch('/api/resolve-afa-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status: 'resolved' }),
@@ -107,7 +107,7 @@ export default function AdminAFABundleRegistrations() {
     setLoading(true);
     try {
       // Use service-role API route to bypass RLS
-      const res = await fetch('/api/admin/fetch-afa-registrations');
+      const res = await fetch('/api/fetch-afa-registrations');
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || 'Failed to fetch registrations');

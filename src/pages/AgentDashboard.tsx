@@ -4652,20 +4652,8 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
           {/* ============================= SUBAGENT PRICES ============================= */}
           <TabsContent value="subagent-prices" className="mt-0 space-y-6">
-            {/* AFA Bundle Price for Subagents — shown first */}
-            <Card className="border-green-500/30 bg-green-900/5">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-green-600" /> AFA Bundle Price for Subagents
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Set the AFA bundle registration price you charge subagents. Subagents use this as their base cost and add their own profit on top. They cannot set their price below this amount.
-                </p>
-                <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
-              </CardContent>
-            </Card>
+            {/* AFA Bundle Price for Subagents — shown first, no extra wrapper */}
+            <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
 
             <Card className="border-border">
               <CardHeader>

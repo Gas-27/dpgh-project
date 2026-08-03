@@ -2946,7 +2946,7 @@ const SubagentDashboard = () => {
                             const isSubSub = !!order.sub_subagent_store_id;
                             const alreadyForwarded = !!order.subagent_refunded_sub_subagent;
                             const sourceLabel = isSubSub
-                              ? (order.sub_subagent_store_name || "Sub-Subagent")
+                              ? (order.sub_subagent_store_name || "Subagent")
                               : "Own Store";
                             const sourceBadgeClass = isSubSub
                               ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
