@@ -10,7 +10,10 @@ import { Loader2, AlertCircle, Info } from 'lucide-react';
 
 interface AFARegistrationFormProps {
   storeId: string;
-  storeType: 'agent' | 'subagent';
+  storeType: 'agent' | 'subagent' | 'subsubagent';
+  agentStoreId?: string;
+  subagentStoreId?: string;
+  subsubagentStoreId?: string;
   packageId: string;
   packageName: string;
   amount: number;
@@ -20,6 +23,9 @@ interface AFARegistrationFormProps {
 export default function AFARegistrationForm({
   storeId,
   storeType,
+  agentStoreId,
+  subagentStoreId,
+  subsubagentStoreId,
   packageId,
   packageName,
   amount,
@@ -119,6 +125,9 @@ export default function AFARegistrationForm({
           ...formData,
           package_id: packageId,
           amount: amount,
+          agent_store_id: agentStoreId,
+          subagent_store_id: subagentStoreId,
+          subsubagent_store_id: subsubagentStoreId,
         },
         storeId,
         storeType

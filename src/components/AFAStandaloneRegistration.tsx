@@ -13,12 +13,14 @@ import AFARegistrationForm from './AFARegistrationForm';
 interface AFAStandaloneRegistrationProps {
   agentStoreId?: string;
   subagentStoreId?: string;
+  subsubagentStoreId?: string;
   themeColor?: string;
 }
 
 export default function AFAStandaloneRegistration({
   agentStoreId,
   subagentStoreId,
+  subsubagentStoreId,
   themeColor = '#000000'
 }: AFAStandaloneRegistrationProps) {
   const { toast } = useToast();
@@ -29,12 +31,12 @@ export default function AFAStandaloneRegistration({
 
   useEffect(() => {
     fetchAFASettings();
-  }, [agentStoreId, subagentStoreId]);
+  }, [agentStoreId, subagentStoreId, subsubagentStoreId]);
 
   const fetchAFASettings = async () => {
     setLoading(true);
     try {
-      // Fetch admin AFA settings
+      // Fetch admin AFA settings (base price + enabled flag)
       const { data: afaSettings } = await supabase
         .from('afa_settings')
         .select('bundle_price, is_enabled')
@@ -45,15 +47,32 @@ export default function AFAStandaloneRegistration({
         setIsEnabled(afaSettings.is_enabled !== false);
       }
 
-      // Fetch agent/subagent's AFA bundle price if they have a custom price
-      if (agentStoreId) {
-        const { data: agentData } = await supabase
-          .from('agent_stores')
+      // Price priority: subsubagent > subagent > agent > admin default
+      if (subsubagentStoreId) {
+        const { data: subsubData } = await supabase
+          .from('sub_subagent_stores')
           .select('afa_bundle_price')
-          .eq('id', agentStoreId)
+          .eq('id', subsubagentStoreId)
           .single();
-        if (agentData?.afa_bundle_price) {
-          setRegistrationPrice(agentData.afa_bundle_price);
+        if ((subsubData as any)?.afa_bundle_price) {
+          setRegistrationPrice((subsubData as any).afa_bundle_price);
+          return;
+        }
+        // Fall back to parent subagent's storefront price
+        const { data: subsubStore } = await supabase
+          .from('sub_subagent_stores')
+          .select('subagent_store_id')
+          .eq('id', subsubagentStoreId)
+          .single();
+        if (subsubStore?.subagent_store_id) {
+          const { data: parentData } = await supabase
+            .from('subagent_stores')
+            .select('afa_bundle_price')
+            .eq('id', subsubStore.subagent_store_id)
+            .single();
+          if (parentData?.afa_bundle_price) {
+            setRegistrationPrice(parentData.afa_bundle_price);
+          }
         }
       } else if (subagentStoreId) {
         const { data: subagentData } = await supabase
@@ -63,6 +82,15 @@ export default function AFAStandaloneRegistration({
           .single();
         if (subagentData?.afa_bundle_price) {
           setRegistrationPrice(subagentData.afa_bundle_price);
+        }
+      } else if (agentStoreId) {
+        const { data: agentData } = await supabase
+          .from('agent_stores')
+          .select('afa_bundle_price')
+          .eq('id', agentStoreId)
+          .single();
+        if (agentData?.afa_bundle_price) {
+          setRegistrationPrice(agentData.afa_bundle_price);
         }
       }
     } catch (err) {
@@ -181,8 +209,11 @@ export default function AFAStandaloneRegistration({
             </DialogDescription>
           </DialogHeader>
           <AFARegistrationForm
-            storeId={agentStoreId || subagentStoreId || ''}
-            storeType={agentStoreId ? 'agent' : 'subagent'}
+            storeId={subsubagentStoreId || agentStoreId || subagentStoreId || ''}
+            storeType={subsubagentStoreId ? 'subsubagent' : agentStoreId ? 'agent' : 'subagent'}
+            agentStoreId={agentStoreId}
+            subagentStoreId={subagentStoreId}
+            subsubagentStoreId={subsubagentStoreId}
             packageId="afa-bundle"
             packageName="AFA Bundle Registration"
             amount={registrationPrice}

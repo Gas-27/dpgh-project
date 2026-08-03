@@ -27,6 +27,7 @@ import FlyerGenerator from "@/components/FlyerGenerator";
 // COMMENTED OUT: mashup packages deactivated
 // import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
+import SubSubagentAFAPriceManager from "@/components/SubSubagentAFAPriceManager";
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
 
@@ -1595,8 +1596,9 @@ const SubSubagentDashboard = () => {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "topup", label: "Top Up", icon: Wallet },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
+    { id: "afa-pricing", label: "AFA Pricing", icon: Zap },
     { id: "flyer", label: "Flyer Generator", icon: Image },
-    // COMMENTED OUT: mashup packages deactivated
+  // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
     { id: "refunds", label: "Refunds", icon: RotateCcw },
     { id: "appearance", label: "Appearance", icon: Palette },
@@ -3225,6 +3227,12 @@ const SubSubagentDashboard = () => {
               );
             })()}
           </TabsContent>
+
+          {/* ─────────── AFA REGISTRATION PRICING ─────────── */}
+          <TabsContent value="afa-pricing" className="mt-0 space-y-6">
+            <SubSubagentAFAPriceManager />
+          </TabsContent>
+
         </Tabs>
       </div>
       <ChatBot page="subsubagent-dashboard" />

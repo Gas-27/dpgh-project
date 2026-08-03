@@ -23,6 +23,9 @@ interface AFARegistrationRequest {
   crop?: string;
   package_id: string;
   amount: number;
+  agent_store_id?: string;
+  subagent_store_id?: string;
+  subsubagent_store_id?: string;
 }
 
 interface AFARegistrationResponse {
@@ -38,7 +41,7 @@ interface AFARegistrationResponse {
 export const registerAFA = async (
   data: AFARegistrationRequest,
   storeId: string,
-  storeType: 'agent' | 'subagent'
+  storeType: 'agent' | 'subagent' | 'subsubagent'
 ): Promise<AFARegistrationResponse> => {
   try {
     // Validate required fields
@@ -91,8 +94,9 @@ export const registerAFA = async (
             crop: data.crop,
             registration_status: 'failed',
             afa_package_id: data.package_id,
-            ...(storeType === 'agent' && { agent_store_id: storeId }),
-            ...(storeType === 'subagent' && { subagent_store_id: storeId }),
+            ...(data.agent_store_id ? { agent_store_id: data.agent_store_id } : storeType === 'agent' ? { agent_store_id: storeId } : {}),
+            ...(data.subagent_store_id ? { subagent_store_id: data.subagent_store_id } : storeType === 'subagent' ? { subagent_store_id: storeId } : {}),
+            ...(data.subsubagent_store_id ? { subsubagent_store_id: data.subsubagent_store_id } : storeType === 'subsubagent' ? { subsubagent_store_id: storeId } : {}),
           });
       } catch (dbErr) {
         console.error('[AFA] Failed to save failed registration:', dbErr);
@@ -121,8 +125,9 @@ export const registerAFA = async (
         afa_ref_id: result.ref_id,
         registration_status: 'pending',
         afa_package_id: data.package_id,
-        ...(storeType === 'agent' && { agent_store_id: storeId }),
-        ...(storeType === 'subagent' && { subagent_store_id: storeId }),
+        ...(data.agent_store_id ? { agent_store_id: data.agent_store_id } : storeType === 'agent' ? { agent_store_id: storeId } : {}),
+        ...(data.subagent_store_id ? { subagent_store_id: data.subagent_store_id } : storeType === 'subagent' ? { subagent_store_id: storeId } : {}),
+        ...(data.subsubagent_store_id ? { subsubagent_store_id: data.subsubagent_store_id } : storeType === 'subsubagent' ? { subsubagent_store_id: storeId } : {}),
       })
       .select();
 
@@ -158,8 +163,9 @@ export const registerAFA = async (
           crop: data.crop,
           registration_status: 'failed',
           afa_package_id: data.package_id,
-          ...(storeType === 'agent' && { agent_store_id: storeId }),
-          ...(storeType === 'subagent' && { subagent_store_id: storeId }),
+          ...(data.agent_store_id ? { agent_store_id: data.agent_store_id } : storeType === 'agent' ? { agent_store_id: storeId } : {}),
+          ...(data.subagent_store_id ? { subagent_store_id: data.subagent_store_id } : storeType === 'subagent' ? { subagent_store_id: storeId } : {}),
+          ...(data.subsubagent_store_id ? { subsubagent_store_id: data.subsubagent_store_id } : storeType === 'subsubagent' ? { subsubagent_store_id: storeId } : {}),
         });
     } catch (dbErr) {
       console.error('[AFA] Failed to save failed registration:', dbErr);
