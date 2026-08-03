@@ -577,16 +577,19 @@ const SubagentDashboard = () => {
           .from("orders")
           .select("*, sub_subagent_stores(store_name, store_url, support_number, whatsapp_number)")
           .eq("subagent_store_id", store.id)
-          .or("fulfillment_status.eq.refunded,status.eq.refunded")
+          .or("fulfillment_status.eq.refunded,status.eq.refunded,order_status.ilike.refunded")
           .order("created_at", { ascending: false });
-        // Enrich mashup orders with size_gb_text
-        const refAll = (await Promise.all((allRef || []).map(async (order: any) => {
-          if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id && !order.size_gb_text) {
-            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
-            return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
-          }
-          return order;
-        }))) as Order[];
+        // Enrich mashup orders with size_gb_text — try/catch so a DB error never wipes the card
+        let refAll: Order[] = (allRef || []) as Order[];
+        try {
+          refAll = (await Promise.all(refAll.map(async (order: any) => {
+            if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id && !order.size_gb_text) {
+              const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+              if (pkg) return { ...order, size_gb_text: pkg.size_gb_text, data_package_id: pkg.data_package_id };
+            }
+            return order;
+          }))) as Order[];
+        } catch (_) { /* enrichment failed — keep raw data */ }
         setAllRefundedOrders(refAll);
         setRefundedOrdersTotal(refAll.reduce((s, o) => s + (Number((o as any).refunded_amount || o.amount) || 0), 0));
         const payoutData = (payoutReqResult?.data ?? []).map((p: any) => {
