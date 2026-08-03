@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Send, X, MessageCircle, Copy, RotateCcw, Check,
   Search, AlertTriangle, Clock, CheckCircle, XCircle,
-  RefreshCcw, Flag, ChevronDown, ChevronUp, Loader2, Upload,
+  RefreshCcw, Flag, ChevronDown, ChevronUp, Loader2, Upload, Smartphone,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { callLocalEngine } from '@/lib/chatEngine';
@@ -455,7 +455,8 @@ interface ReportFormProps {
 }
 
 function ReportForm({ order, onSubmit, onCancel }: ReportFormProps) {
-  const [step, setStep] = useState<'precheck' | 'submitting' | 'done'>('precheck');
+  const [step, setStep] = useState<'phone' | 'precheck' | 'submitting' | 'done'>('phone');
+  const [phoneNumber, setPhoneNumber] = useState(order.recipient || '');
   const [checkedMaster, setCheckedMaster] = useState<boolean | null>(null);
   const [owesAirtime, setOwesAirtime] = useState<boolean | null>(null);
   const [owesMomo, setOwesMomo]       = useState<boolean | null>(null);
@@ -534,7 +535,7 @@ function ReportForm({ order, onSubmit, onCancel }: ReportFormProps) {
       : null;
 
     const result = await submitReport({
-      phone_number: order.recipient,
+      phone_number: phoneNumber,
       order_id: order.order_id,
       network: order.network,
       checked_master_beneficiary: true,
@@ -585,6 +586,46 @@ function ReportForm({ order, onSubmit, onCancel }: ReportFormProps) {
       <div className="bg-slate-800 border border-slate-700 rounded-lg px-4 py-6 text-center">
         <Loader2 className="h-6 w-6 text-cyan-400 animate-spin mx-auto mb-2" />
         <p className="text-xs text-slate-400">Submitting your report...</p>
+      </div>
+    );
+  }
+
+  // Phone entry step
+  if (step === 'phone') {
+    const isPhoneValid = looksLikePhone(phoneNumber);
+    return (
+      <div className="bg-slate-800 border border-orange-700/40 rounded-lg p-3 space-y-2">
+        <p className="text-xs font-semibold text-orange-300 flex items-center gap-1">
+          <Smartphone className="h-3.5 w-3.5" />
+          Enter Your Phone Number
+        </p>
+        <p className="text-xs text-slate-400">So we can track your order and follow up with you.</p>
+        <input
+          type="tel"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder="0XXXXXXXXX or +233XXXXXXXXX"
+          className="w-full bg-slate-700 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+        />
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-1.5 rounded text-xs font-semibold border border-slate-600 text-slate-300 hover:bg-slate-700 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => setStep('precheck')}
+            disabled={!isPhoneValid}
+            className={`flex-1 py-1.5 rounded text-xs font-semibold border transition-colors ${
+              isPhoneValid
+                ? 'bg-cyan-600 border-cyan-500 text-white hover:bg-cyan-500'
+                : 'bg-slate-700 border-slate-600 text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            Continue
+          </button>
+        </div>
       </div>
     );
   }

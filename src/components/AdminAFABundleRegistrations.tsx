@@ -19,6 +19,7 @@ interface AFAReport {
   registration_id?: string;
   dialed_1848: boolean;
   notes?: string;
+  screenshot_url?: string;
   status: 'pending' | 'resolved';
   created_at: string;
   afa_registrations?: { customer_name: string; customer_phone: string; registration_status: string };
@@ -68,7 +69,7 @@ export default function AdminAFABundleRegistrations() {
       const { data, error } = await supabase
         .from('afa_registration_reports')
         .select(`
-          id, customer_phone, customer_name, registration_id, dialed_1848, notes, status, created_at,
+          id, customer_phone, customer_name, registration_id, dialed_1848, notes, screenshot_url, status, created_at,
           afa_registrations(customer_name, customer_phone, registration_status)
         `)
         .order('created_at', { ascending: false });
@@ -414,19 +415,6 @@ export default function AdminAFABundleRegistrations() {
             <p className="text-sm text-muted-foreground">Reports submitted by customers who say their AFA registration is not showing after approval.</p>
           </div>
 
-          {/* Important notice */}
-          <Card className="border-amber-500/40 bg-amber-500/10">
-            <CardContent className="py-3 px-4">
-              <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                <div className="space-y-1">
-                  <p className="font-semibold">Before resolving a report, confirm the customer has dialed *1848#</p>
-                  <p>When a registration shows as <strong>Approved</strong>, it means MTN has confirmed it. The customer must dial <strong>*1848#</strong> to verify — if they see AFA bundles there, their registration is active and they can buy directly from that menu.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {reportsLoading ? (
             <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : reports.length === 0 ? (
@@ -441,6 +429,7 @@ export default function AdminAFABundleRegistrations() {
                     <TableHead>Customer Name</TableHead>
                     <TableHead>Dialed *1848#</TableHead>
                     <TableHead>Notes</TableHead>
+                    <TableHead>Screenshot</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Action</TableHead>
                   </TableRow>
@@ -457,6 +446,13 @@ export default function AdminAFABundleRegistrations() {
                           : <Badge variant="destructive">No</Badge>}
                       </TableCell>
                       <TableCell className="text-sm max-w-xs truncate">{r.notes || '—'}</TableCell>
+                      <TableCell>
+                        {r.screenshot_url ? (
+                          <a href={r.screenshot_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-xs">
+                            View Image
+                          </a>
+                        ) : '—'}
+                      </TableCell>
                       <TableCell>
                         {r.status === 'resolved'
                           ? <Badge className="bg-green-600 text-white"><CheckCircle className="h-3 w-3 mr-1" />Resolved</Badge>

@@ -169,14 +169,30 @@ export default function AFARegistrationTracker({ storeLabel }: AFATrackerProps) 
       const { data: urlData } = supabase.storage.from("complaint-screenshots").getPublicUrl(path);
       const screenshotUrl = urlData?.publicUrl || null;
 
-      const { error } = await supabase.from("afa_registration_reports").insert({
+      const tier1Payload = {
         customer_phone: reg.customer_phone,
         customer_name: reg.customer_name,
         registration_id: reg.id,
         dialed_1848: true,
-        notes: [reportNote.trim(), screenshotUrl ? `Screenshot: ${screenshotUrl}` : null].filter(Boolean).join('\n') || null,
+        notes: reportNote.trim() || null,
+        screenshot_url: screenshotUrl || null,
         status: "pending",
-      });
+      };
+
+      // Try with screenshot_url field first; if schema error, fall back to embedding in notes
+      let error = (await supabase.from("afa_registration_reports").insert(tier1Payload)).error;
+      if (error && (error.code === "42703" || error.message?.includes("screenshot"))) {
+        // Field doesn't exist, try without it
+        const fallbackPayload = {
+          customer_phone: reg.customer_phone,
+          customer_name: reg.customer_name,
+          registration_id: reg.id,
+          dialed_1848: true,
+          notes: [reportNote.trim(), screenshotUrl ? `Screenshot: ${screenshotUrl}` : null].filter(Boolean).join('\n') || null,
+          status: "pending",
+        };
+        ({ error } = await supabase.from("afa_registration_reports").insert(fallbackPayload));
+      }
       if (error) throw error;
       toast({ title: "Report submitted", description: "Our team will review your case shortly." });
       setReportingId(null);
