@@ -39,13 +39,39 @@ export default function SubagentAFABundleRegistrations({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegistration, setSelectedRegistration] = useState<AFARegistration | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [myBundlePrice, setMyBundlePrice] = useState(0);
+  const [myCostFromAgent, setMyCostFromAgent] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!subagentStoreId) return;
     loadRegistrations();
+    loadPriceInfo();
     const interval = setInterval(loadRegistrations, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, [subagentStoreId]);
+
+  const loadPriceInfo = async () => {
+    try {
+      const { data: store } = await supabase
+        .from('subagent_stores')
+        .select('afa_bundle_price, agent_store_id')
+        .eq('id', subagentStoreId)
+        .single();
+      if (!store) return;
+      setMyBundlePrice(Number((store as any).afa_bundle_price) || 0);
+      if (store.agent_store_id) {
+        const { data: agentStore } = await supabase
+          .from('agent_stores')
+          .select('afa_bundle_price')
+          .eq('id', store.agent_store_id)
+          .single();
+        if (agentStore) setMyCostFromAgent(Number(agentStore.afa_bundle_price) || 0);
+      }
+    } catch (err) {
+      console.error('[SubagentAFABundleRegistrations] loadPriceInfo error:', err);
+    }
+  };
 
   const loadRegistrations = async () => {
     try {
@@ -231,7 +257,9 @@ export default function SubagentAFABundleRegistrations({
                     <TableHead>Phone</TableHead>
                     <TableHead>Region</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Payment Status</TableHead>
+                    <TableHead>Your Price</TableHead>
+                    <TableHead>Profit</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -245,6 +273,14 @@ export default function SubagentAFABundleRegistrations({
                       <TableCell className="text-sm">{reg.customer_phone}</TableCell>
                       <TableCell className="text-sm">{reg.region}</TableCell>
                       <TableCell className="text-sm font-medium">GHC{reg.amount_paid.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm text-blue-600 font-medium">
+                        {myBundlePrice > 0 ? `GHC${myBundlePrice.toFixed(2)}` : '—'}
+                      </TableCell>
+                      <TableCell className="text-sm font-bold text-green-600">
+                        {myBundlePrice > 0 && myCostFromAgent > 0
+                          ? `GHC${Math.max(0, myBundlePrice - myCostFromAgent).toFixed(2)}`
+                          : '—'}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={reg.registration_status === 'completed' ? 'default' : reg.registration_status === 'pending' ? 'secondary' : 'destructive'}

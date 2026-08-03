@@ -16,7 +16,7 @@ import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
   ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw, Zap,
-  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw
+  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -29,6 +29,7 @@ import FlyerGenerator from "@/components/FlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import SubSubagentAFAPriceManager from "@/components/SubSubagentAFAPriceManager";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
+import SubSubagentAFABundleRegistrations from "@/components/SubSubagentAFABundleRegistrations";
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
 
@@ -1597,6 +1598,7 @@ const SubSubagentDashboard = () => {
     { id: "topup", label: "Top Up", icon: Wallet },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "afa-pricing", label: "AFA Pricing", icon: Zap },
+    { id: "afa-registrations", label: "AFA Registrations", icon: ClipboardList },
     { id: "afa-reg-status", label: "Registration Status", icon: Search },
     { id: "flyer", label: "Flyer Generator", icon: Image },
   // COMMENTED OUT: mashup packages deactivated
@@ -3232,6 +3234,25 @@ const SubSubagentDashboard = () => {
           {/* ─────────── AFA REGISTRATION PRICING ─────────── */}
           <TabsContent value="afa-pricing" className="mt-0 space-y-6">
             <SubSubagentAFAPriceManager />
+          </TabsContent>
+
+          {/* ─────────── AFA REGISTRATIONS (all via this sub-subagent) ─────────── */}
+          <TabsContent value="afa-registrations" className="mt-0 space-y-6">
+            <div>
+              <h2 className="text-xl font-bold font-display flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                AFA Bundle Registrations
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                All AFA registrations made through your storefront.
+              </p>
+            </div>
+            {subagentStore && (
+              <SubSubagentAFABundleRegistrations
+                subsubagentStoreId={subagentStore.id}
+                primaryColor={themeColors?.primaryColor || "#000000"}
+              />
+            )}
           </TabsContent>
 
           {/* ─────────── AFA REGISTRATION STATUS ─────────── */}
