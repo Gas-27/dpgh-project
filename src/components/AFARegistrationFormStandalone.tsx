@@ -17,15 +17,20 @@ import 'react-day-picker/dist/style.css';
 export default function AFARegistrationFormStandalone({ 
   registrationFee: registrationFeeProp = 50,
   agentStoreId,
+  subagentStoreId,
+  subsubagentStoreId,
   agentBundlePrice
 }: {
   registrationFee?: number;
   agentStoreId?: string;
+  subagentStoreId?: string;
+  subsubagentStoreId?: string;
   agentBundlePrice?: number;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  // registrationFee is a prop — we need internal state to allow the useEffect to update it
+  // Use the prop value as the fee — do NOT override it from afa_settings.
+  // The caller already resolves the correct price (agent price / subagent price / admin price).
   const [registrationFee, setRegistrationFee] = useState(registrationFeeProp);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
@@ -62,36 +67,27 @@ export default function AFARegistrationFormStandalone({
 
   const CROP_TYPES = ['Cassava', 'Maize', 'Yam', 'Plantain', 'Onion', 'Pepper', 'Tomatoes'];
 
-  // Load registration fee from settings
+  // Sync registrationFee when the prop changes (e.g. after parent resolves the price)
   useEffect(() => {
-    const loadRegistrationFee = async () => {
+    if (registrationFeeProp > 0) {
+      setRegistrationFee(registrationFeeProp);
+    }
+  }, [registrationFeeProp]);
+
+  // Check if AFA registration is enabled (only, do NOT override price)
+  useEffect(() => {
+    const checkEnabled = async () => {
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('afa_settings')
-          .select('registration_fee, registration_enabled')
+          .select('registration_enabled')
           .single();
-
-        if (error) {
-          console.error('[v0] Error loading AFA settings:', error);
-          setRegistrationFee(15);
-          return;
+        if (data && !data.registration_enabled) {
+          setError('AFA registration is currently disabled');
         }
-
-        if (data) {
-          setRegistrationFee(data.registration_fee || 15);
-          if (!data.registration_enabled) {
-            setError('AFA registration is currently disabled');
-          }
-        } else {
-          setRegistrationFee(15);
-        }
-      } catch (err) {
-        console.error('[v0] Error loading registration fee:', err);
-        setRegistrationFee(15);
-      }
+      } catch (_) {}
     };
-
-    loadRegistrationFee();
+    checkEnabled();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,7 +193,9 @@ export default function AFARegistrationFormStandalone({
           region: formData.region,
           cropProduce: formData.crop,
           agentStoreId: agentStoreId || null,
-          subagentStoreId: null,
+          subagentStoreId: subagentStoreId || null,
+          subsubagentStoreId: subsubagentStoreId || null,
+          registrationFee: registrationFee,
           callbackUrl: callbackUrl,
         },
       });

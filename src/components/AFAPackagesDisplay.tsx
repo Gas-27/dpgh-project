@@ -336,8 +336,10 @@ export default function AFAPackagesDisplay({
   if (packages.length === 0) {
     return (
       <AFABundlesInfo 
-        agentId={agentStoreId || subagentStoreId || undefined}
-        showAgentPrice={!!(agentStoreId || subagentStoreId)}
+        agentId={agentStoreId || undefined}
+        subagentId={subagentStoreId || undefined}
+        subsubagentId={subsubagentStoreId || undefined}
+        showAgentPrice={!!(agentStoreId || subagentStoreId || subsubagentStoreId)}
       />
     );
   }

@@ -11,10 +11,12 @@ import { getAFAMediaForPackagePage, AFAMedia } from '@/services/afa-media-servic
 
 interface AFABundlesInfoProps {
   agentId?: string;
+  subagentId?: string;
+  subsubagentId?: string;
   showAgentPrice?: boolean;
 }
 
-export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFABundlesInfoProps) {
+export default function AFABundlesInfo({ agentId, subagentId, subsubagentId, showAgentPrice = false }: AFABundlesInfoProps) {
   const [showForm, setShowForm] = useState(false);
   const [registrationFee, setRegistrationFee] = useState<number | null>(null);
   const [agentBundlePrice, setAgentBundlePrice] = useState<number | null>(null);
@@ -302,6 +304,8 @@ export default function AFABundlesInfo({ agentId, showAgentPrice = false }: AFAB
               key="afa-form" 
               registrationFee={agentBundlePrice || registrationFee || 50}
               agentStoreId={agentId}
+              subagentStoreId={subagentId}
+              subsubagentStoreId={subsubagentId}
               agentBundlePrice={agentBundlePrice}
             />
 

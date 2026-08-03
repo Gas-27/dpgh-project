@@ -27,6 +27,7 @@ import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
+import AFARegistrationFormStandalone from "@/components/AFARegistrationFormStandalone";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -1098,13 +1099,7 @@ export function SubagentStorefront() {
             <AFAPackagesDisplay
               subagentStoreId={store?.id}
               onRegisterClick={(packageId, packageName, price) => {
-                setAfaPaymentPkg({
-                  id: packageId,
-                  size_gb: 0,
-                  price,
-                  network: "mtn",
-                });
-                setAfaPaymentOpen(true);
+                setSelectedAFAPackage({ id: packageId, name: packageName, price });
               }}
               themeColor={primaryColor}
             />
@@ -1482,17 +1477,25 @@ export function SubagentStorefront() {
       <PaymentVerifier storeId={store.id} isSubagent={true} />
       <AFARegistrationSuccess />
 
-      {/* AFA Payment Dialog */}
-      {afaPaymentPkg && (
-        <PaymentDialog
-          open={afaPaymentOpen}
-          onOpenChange={(v) => { if (!v) { setAfaPaymentOpen(false); setAfaPaymentPkg(null); } }}
-          package={afaPaymentPkg}
-          price={afaPaymentPkg.price}
-          agentStoreId={store.agent_store_id}
-          subagentStoreId={store.id}
-        />
-      )}
+      {/* AFA Registration Dialog — uses AFA-registration edge function directly */}
+      <Dialog open={!!selectedAFAPackage} onOpenChange={(v) => { if (!v) setSelectedAFAPackage(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>AFA Registration — {selectedAFAPackage?.name}</DialogTitle>
+            <DialogDescription>
+              Complete your details below to register for AFA. Registration fee: GHC{selectedAFAPackage?.price?.toFixed(2)}.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedAFAPackage && (
+            <AFARegistrationFormStandalone
+              key={selectedAFAPackage.id}
+              registrationFee={selectedAFAPackage.price}
+              agentStoreId={store.agent_store_id}
+              subagentStoreId={store.id}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Report Complaint Dialog — lazy-loaded to break circular dep */}
       <Suspense fallback={null}>

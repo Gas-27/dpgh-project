@@ -70,16 +70,14 @@ export default function SubSubagentAFAPriceManager({ onPriceSaved }: SubSubagent
         }
       }
 
-      // Fetch admin AFA minimum — use select("*") to avoid 406 on missing columns
+      // Fetch admin AFA minimum registration fee
       const { data: afaSettings } = await supabase
         .from("afa_settings")
-        .select("*")
-        .limit(1);
+        .select("registration_fee")
+        .single();
 
-      if (afaSettings && afaSettings.length > 0) {
-        const row = afaSettings[0] as any;
-        const min = row.base_registration_price || row.bundle_price || 14;
-        setAdminMinPrice(Number(min));
+      if (afaSettings?.registration_fee) {
+        setAdminMinPrice(Number(afaSettings.registration_fee));
       }
     } catch (err) {
       console.error("[SubSubagentAFAPriceManager] fetchData error:", err);
