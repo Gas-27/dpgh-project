@@ -28,6 +28,7 @@ import FlyerGenerator from "@/components/FlyerGenerator";
 // import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import SubSubagentAFAPriceManager from "@/components/SubSubagentAFAPriceManager";
+import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
 
@@ -1596,6 +1597,7 @@ const SubSubagentDashboard = () => {
     { id: "topup", label: "Top Up", icon: Wallet },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "afa-pricing", label: "AFA Pricing", icon: Zap },
+    { id: "afa-reg-status", label: "Registration Status", icon: Search },
     { id: "flyer", label: "Flyer Generator", icon: Image },
   // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
@@ -3230,6 +3232,24 @@ const SubSubagentDashboard = () => {
           {/* ─────────── AFA REGISTRATION PRICING ─────────── */}
           <TabsContent value="afa-pricing" className="mt-0 space-y-6">
             <SubSubagentAFAPriceManager />
+          </TabsContent>
+
+          {/* ─────────── AFA REGISTRATION STATUS ─────────── */}
+          <TabsContent value="afa-reg-status" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Search className="h-5 w-5 text-primary" />
+                  Registration Status Tracker
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Track the processing stage of any AFA bundle registration from your storefront.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <AFARegistrationTracker storeLabel={subagentStore?.store_name} />
+              </CardContent>
+            </Card>
           </TabsContent>
 
         </Tabs>

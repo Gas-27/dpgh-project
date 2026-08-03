@@ -31,6 +31,7 @@ import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
 import SubSubagentPricesManager from "@/components/SubSubagentPricesManager";
 import SubSubagentsList from "@/components/SubSubagentsList";
 import SubagentAFAPriceManager from "@/components/SubagentAFAPriceManager";
+import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
 
@@ -2070,6 +2071,7 @@ const SubagentDashboard = () => {
     { id: "sub-subagents", label: "Subagents", icon: Users },
     { id: "sub-subagent-pricing", label: "Subagent Pricing", icon: DollarSign },
     { id: "afa-pricing", label: "AFA Pricing", icon: Zap },
+    { id: "afa-reg-status", label: "Registration Status", icon: Search },
     { id: "flyer", label: "Flyer Generator", icon: Image },
     // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
@@ -4460,6 +4462,24 @@ const SubagentDashboard = () => {
           {/* ─────────── AFA REGISTRATION PRICING ─────────── */}
           <TabsContent value="afa-pricing" className="mt-0 space-y-6">
             <SubagentAFAPriceManager />
+          </TabsContent>
+
+          {/* ─────────── AFA REGISTRATION STATUS ─────────── */}
+          <TabsContent value="afa-reg-status" className="mt-0 space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Search className="h-5 w-5 text-primary" />
+                  Registration Status Tracker
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Track the processing stage of any AFA bundle registration from your storefront.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <AFARegistrationTracker storeLabel={subagentStore?.store_name} />
+              </CardContent>
+            </Card>
           </TabsContent>
 
         </Tabs>

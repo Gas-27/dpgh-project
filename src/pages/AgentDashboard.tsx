@@ -4890,9 +4890,10 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
             )}
 
             <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>
                 <TabsTrigger value="registrations">Bundle Registrations</TabsTrigger>
+                <TabsTrigger value="reg-status">Registration Status</TabsTrigger>
               </TabsList>
 
               <TabsContent value="pricing" className="space-y-6 mt-4">
@@ -4901,6 +4902,23 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
               <TabsContent value="registrations" className="space-y-6 mt-4">
                 {store && <AgentAFABundleRegistrations agentStoreId={store.id} primaryColor={themeColors?.primaryColor || "#000000"} />}
+              </TabsContent>
+
+              <TabsContent value="reg-status" className="space-y-6 mt-4">
+                <Card className="border-border">
+                  <CardHeader>
+                    <CardTitle className="font-display flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-primary" />
+                      Registration Status Tracker
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Track the processing stage of any AFA bundle registration. Enter the customer&apos;s phone number or Ghana Card number to check progress.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <AFARegistrationTracker storeLabel={store?.store_name} />
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </TabsContent>
