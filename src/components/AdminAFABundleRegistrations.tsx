@@ -83,17 +83,24 @@ export default function AdminAFABundleRegistrations() {
 
   const resolveReport = async (id: string) => {
     setResolvingReport(id);
-    const { error } = await supabase
-      .from('afa_registration_reports')
-      .update({ status: 'resolved' })
-      .eq('id', id);
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      // Use admin API route to bypass RLS
+      const res = await fetch('/api/admin/resolve-afa-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'resolved' }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to resolve');
+      }
       setReports(reports.map(r => r.id === id ? { ...r, status: 'resolved' } : r));
       toast({ title: 'Marked as resolved' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setResolvingReport(null);
     }
-    setResolvingReport(null);
   };
 
   const fetchRegistrations = async () => {

@@ -23,6 +23,7 @@ interface AFAPackage {
 interface AFADisplayProps {
   agentStoreId?: string | null;
   subagentStoreId?: string | null;
+  subsubagentStoreId?: string | null;
   onRegisterClick: (packageId: string, packageName: string, price: number) => void;
   themeColor?: string;
   loading?: boolean;
@@ -31,6 +32,7 @@ interface AFADisplayProps {
 export default function AFAPackagesDisplay({
   agentStoreId,
   subagentStoreId,
+  subsubagentStoreId,
   onRegisterClick,
   themeColor = "#000000",
   loading: externalLoading = false,
@@ -44,7 +46,7 @@ export default function AFAPackagesDisplay({
 
   useEffect(() => {
     fetchAFAData();
-  }, [agentStoreId, subagentStoreId]);
+  }, [agentStoreId, subagentStoreId, subsubagentStoreId]);
 
   // Subscribe to real-time changes to afa_settings
   useEffect(() => {
@@ -190,6 +192,32 @@ export default function AFAPackagesDisplay({
         console.log("[v0] AFA settings loaded:", afaSettings);
       } catch (err) {
         console.log("[v0] AFA settings not found:", err);
+      }
+
+      // Fetch sub-subagent's own AFA bundle price (highest priority)
+      if (subsubagentStoreId) {
+        const { data: subsubData } = await supabase
+          .from("sub_subagent_stores")
+          .select("afa_bundle_price")
+          .eq("id", subsubagentStoreId)
+          .single();
+        const subsubPrice = subsubData?.afa_bundle_price ?? null;
+        console.log("[v0] Sub-subagent AFA bundle price fetched:", { subsubagentStoreId, subsubPrice });
+        setAgentBundlePrice(subsubPrice !== null ? subsubPrice : adminBundlePrice);
+        return; // Price resolved — no further lookups needed
+      }
+
+      // Fetch subagent's own AFA bundle price (second priority)
+      if (subagentStoreId && !agentStoreId) {
+        const { data: subagentData } = await supabase
+          .from("subagent_stores")
+          .select("afa_bundle_price")
+          .eq("id", subagentStoreId)
+          .single();
+        const subagentPrice = subagentData?.afa_bundle_price ?? null;
+        console.log("[v0] Subagent AFA bundle price fetched:", { subagentStoreId, subagentPrice });
+        setAgentBundlePrice(subagentPrice !== null ? subagentPrice : adminBundlePrice);
+        return;
       }
 
       // Fetch agent's AFA bundle price (agent markup)

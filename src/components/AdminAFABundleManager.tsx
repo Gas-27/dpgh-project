@@ -61,13 +61,10 @@ export default function AdminAFABundleManager() {
     try {
       setLoading(true);
       // Fetch AFA registrations
+      // Use select('*') to avoid FK join failures when relations aren't defined
       const { data: regsData, error: regsError } = await supabase
         .from('afa_registrations')
-        .select(`
-          *,
-          agent_stores:agent_store_id (store_name),
-          subagent_stores:subagent_store_id (store_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (regsError) throw regsError;
@@ -315,8 +312,8 @@ export default function AdminAFABundleManager() {
         </Card>
       </div>
 
-      {/* Registrations Table */}
-      <Card>
+      {/* Registrations are managed in AdminAFABundleRegistrations below */}
+      {false && <Card>
         <CardHeader>
           <CardTitle>AFA Registrations</CardTitle>
           <div className="flex gap-2 mt-4">
@@ -429,7 +426,7 @@ export default function AdminAFABundleManager() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }

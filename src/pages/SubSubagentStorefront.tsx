@@ -24,6 +24,7 @@ import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
+import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 
 // Utility function to update page metadata dynamically
@@ -1071,10 +1072,10 @@ export function SubSubagentStorefront() {
 
         {/* AFA Bundles Section */}
         {showAFA ? (
-          <div className="w-full pb-8">
+          <div className="w-full pb-8 space-y-8">
+            {/* Pass only subsubagentStoreId so the sub-subagent's own set price is shown */}
             <AFAPackagesDisplay
-              agentStoreId={store?.agent_store_id}
-              subagentStoreId={store?.subagent_store_id}
+              subsubagentStoreId={store?.id}
               onRegisterClick={(packageId, packageName, price) => {
                 setAfaPaymentPkg({
                   id: packageId,
@@ -1086,6 +1087,7 @@ export function SubSubagentStorefront() {
               }}
               themeColor={primaryColor}
             />
+            <AFARegistrationTracker storeLabel={store?.store_name} />
           </div>
         ) : null}
 

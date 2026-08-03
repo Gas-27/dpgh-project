@@ -87,8 +87,13 @@ export const phoneMatchesNetwork = (phone: string, expectedNetwork: string): boo
   
   const normalizedExpected = expectedNetwork.toLowerCase();
   
-  // Handle variations of network names
-  if (normalizedExpected === "at" || normalizedExpected === "airtel-tigo") {
+  // Handle variations of network names (atbigtime and atbigshare are AirtelTigo products)
+  if (
+    normalizedExpected === "at" ||
+    normalizedExpected === "airtel-tigo" ||
+    normalizedExpected === "atbigtime" ||
+    normalizedExpected === "atbigshare"
+  ) {
     return detectedNetwork === "airteltigo";
   }
   
@@ -124,7 +129,13 @@ export const getPrefixesForNetwork = (network: string): string[] => {
   
   if (normalizedNetwork === "mtn" || normalizedNetwork === "mtn_express") return MTN_PREFIXES;
   if (normalizedNetwork === "telecel") return TELECEL_PREFIXES;
-  if (normalizedNetwork === "airteltigo" || normalizedNetwork === "at" || normalizedNetwork === "airtel-tigo") {
+  if (
+    normalizedNetwork === "airteltigo" ||
+    normalizedNetwork === "at" ||
+    normalizedNetwork === "airtel-tigo" ||
+    normalizedNetwork === "atbigtime" ||
+    normalizedNetwork === "atbigshare"
+  ) {
     return AIRTELTIGO_PREFIXES;
   }
   
