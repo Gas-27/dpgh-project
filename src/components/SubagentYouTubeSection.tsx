@@ -41,41 +41,46 @@ export default function SubagentYouTubeSection() {
   const fetchYouTubeSettings = async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('afa_settings')
-        .select(`
-          subagent_video_1_title, subagent_video_1_url,
-          subagent_video_2_title, subagent_video_2_url,
-          subagent_video_3_title, subagent_video_3_url
-        `)
+        .select('*')
+        .limit(1)
         .single();
+
+      // Silently swallow 406 / column-not-found errors — the table row may not
+      // exist yet or the video columns may not have been migrated.
+      if (error || !data) {
+        setLoading(false);
+        return;
+      }
 
       if (data) {
         const fetchedVideos: Video[] = [];
         
-        if (data.subagent_video_1_url) {
+        const d = data as any;
+        if (d.subagent_video_1_url) {
           fetchedVideos.push({
             id: '1',
-            title: data.subagent_video_1_title || 'Video 1',
-            url: data.subagent_video_1_url,
+            title: d.subagent_video_1_title || 'Video 1',
+            url: d.subagent_video_1_url,
             type: 'subagent',
           });
         }
         
-        if (data.subagent_video_2_url) {
+        if (d.subagent_video_2_url) {
           fetchedVideos.push({
             id: '2',
-            title: data.subagent_video_2_title || 'Video 2',
-            url: data.subagent_video_2_url,
+            title: d.subagent_video_2_title || 'Video 2',
+            url: d.subagent_video_2_url,
             type: 'subagent',
           });
         }
         
-        if (data.subagent_video_3_url) {
+        if (d.subagent_video_3_url) {
           fetchedVideos.push({
             id: '3',
-            title: data.subagent_video_3_title || 'Video 3',
-            url: data.subagent_video_3_url,
+            title: d.subagent_video_3_title || 'Video 3',
+            url: d.subagent_video_3_url,
             type: 'subagent',
           });
         }

@@ -39,6 +39,7 @@ import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
+import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import {
@@ -100,6 +101,7 @@ const menuItems = [
   { id: "store", label: "Store Prices", icon: Store },
   { id: "subagents", label: "Subagents", icon: Users },
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
+  { id: "sub-subagents", label: "Sub-Subagents", icon: Users },
   { id: "afa", label: "AFA Bundles", icon: Zap },
   { id: "flyer", label: "Flyer Generator", icon: Image },
   // COMMENTED OUT: mashup packages deactivated
@@ -322,6 +324,11 @@ const AgentDashboard = () => {
   const [subagentOrdersCount, setSubagentOrdersCount] = useState(0);
   const [subagentOrders, setSubagentOrdersState] = useState<any[]>([]);
   const [subagents, setSubagents] = useState<any[]>([]);
+  const [subSubagents, setSubSubagents] = useState<any[]>([]);
+  const [loadingSubSubagents, setLoadingSubSubagents] = useState(false);
+  const [selectedSubSubagent, setSelectedSubSubagent] = useState<any | null>(null);
+  const [subSubagentOrders, setSubSubagentOrders] = useState<any[]>([]);
+  const [loadingSubSubagentOrders, setLoadingSubSubagentOrders] = useState(false);
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [totalOrderCount, setTotalOrderCount] = useState(0);
   const [subagentProfitForAgent, setSubagentProfitForAgent] = useState(0);
@@ -482,6 +489,13 @@ const AgentDashboard = () => {
     return () => { clearTimeout(t); window.removeEventListener("resize", recalcScale); };
   }, [activeTab, recalcScale]);
 
+  // Load sub-subagents when that tab is first opened
+  useEffect(() => {
+    if (activeTab === "sub-subagents" && store?.id && subSubagents.length === 0 && !loadingSubSubagents) {
+      fetchSubSubagents(store.id);
+    }
+  }, [activeTab, store?.id]);
+
   // ─── total profit from ALL DB orders (including subagent orders) ────────────────────────────────────
   const fetchTotalProfit = async () => {
     if (!store?.id) return;
@@ -603,6 +617,62 @@ const AgentDashboard = () => {
       }
     } catch (err) {
       console.error("[v0] Exception refetching store:", err);
+    }
+  };
+
+  // Fetch all sub-subagents belonging to this agent's subagents
+  const fetchSubSubagents = async (agentStoreId: string) => {
+    setLoadingSubSubagents(true);
+    try {
+      // Get all subagent IDs for this agent
+      const { data: subagentRows } = await supabase
+        .from("subagent_stores")
+        .select("id, store_name")
+        .eq("agent_store_id", agentStoreId);
+
+      if (!subagentRows || subagentRows.length === 0) {
+        setSubSubagents([]);
+        setLoadingSubSubagents(false);
+        return;
+      }
+
+      const subagentIds = subagentRows.map((s: any) => s.id);
+
+      // Get all sub-subagents for those subagents
+      const { data: ssaRows } = await supabase
+        .from("sub_subagent_stores")
+        .select("*")
+        .in("subagent_store_id", subagentIds);
+
+      // Enrich with parent subagent name
+      const enriched = (ssaRows || []).map((ssa: any) => {
+        const parent = subagentRows.find((s: any) => s.id === ssa.subagent_store_id);
+        return { ...ssa, parent_subagent_name: parent?.store_name || "Unknown Subagent" };
+      });
+
+      setSubSubagents(enriched);
+    } catch (err) {
+      console.error("[v0] fetchSubSubagents error:", err);
+    } finally {
+      setLoadingSubSubagents(false);
+    }
+  };
+
+  // Fetch orders for a selected sub-subagent
+  const fetchSubSubagentOrders = async (subSubagentStoreId: string) => {
+    setLoadingSubSubagentOrders(true);
+    try {
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("sub_subagent_store_id", subSubagentStoreId)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      setSubSubagentOrders(data || []);
+    } catch (err) {
+      console.error("[v0] fetchSubSubagentOrders error:", err);
+    } finally {
+      setLoadingSubSubagentOrders(false);
     }
   };
 
@@ -4598,6 +4668,180 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 />
               </CardContent>
             </Card>
+
+            {/* AFA Bundle Price for Subagents */}
+            <Card className="border-green-500/30 bg-green-900/5">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-green-600" /> AFA Bundle Price for Subagents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Set the AFA bundle registration price you charge subagents. Subagents use this as their base cost and add their own profit on top. They cannot set their price below this amount.
+                </p>
+                <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ============================= SUB-SUBAGENTS ============================= */}
+          <TabsContent value="sub-subagents" className="mt-0 space-y-6">
+            {selectedSubSubagent ? (
+              /* ── Detail view for a single sub-subagent ── */
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" size="sm" onClick={() => { setSelectedSubSubagent(null); setSubSubagentOrders([]); }}>
+                    ← Back
+                  </Button>
+                  <div>
+                    <h2 className="text-xl font-bold">{selectedSubSubagent.store_name}</h2>
+                    <p className="text-sm text-muted-foreground">Sub-subagent under {selectedSubSubagent.parent_subagent_name}</p>
+                  </div>
+                </div>
+
+                {/* Balance + Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="border-border">
+                    <CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground mb-2">Wallet Balance</p>
+                      <p className="text-3xl font-bold text-green-400">GHC{Number(selectedSubSubagent.wallet_balance || 0).toFixed(2)}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-border">
+                    <CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground mb-2">Total Orders</p>
+                      <p className="text-3xl font-bold text-blue-400">{subSubagentOrders.length}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-border">
+                    <CardContent className="pt-6">
+                      <p className="text-sm text-muted-foreground mb-2">AFA Bundle Price</p>
+                      <p className="text-3xl font-bold text-primary">GHC{Number(selectedSubSubagent.afa_bundle_price || 0).toFixed(2)}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Contact Info */}
+                <Card className="border-border">
+                  <CardHeader><CardTitle className="font-display text-base">Store Info</CardTitle></CardHeader>
+                  <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div><p className="text-xs text-muted-foreground">WhatsApp</p><p className="font-medium">{selectedSubSubagent.whatsapp_number || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Support</p><p className="font-medium">{selectedSubSubagent.support_number || "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Registered</p><p className="font-medium">{selectedSubSubagent.created_at ? new Date(selectedSubSubagent.created_at).toLocaleDateString() : "—"}</p></div>
+                  </CardContent>
+                </Card>
+
+                {/* Orders */}
+                <Card className="border-border">
+                  <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Orders</CardTitle></CardHeader>
+                  <CardContent>
+                    {loadingSubSubagentOrders ? (
+                      <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                    ) : subSubagentOrders.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">No orders found.</p>
+                    ) : (
+                      <div className="border rounded-lg overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Number</TableHead>
+                              <TableHead>Network</TableHead>
+                              <TableHead>Size</TableHead>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {subSubagentOrders.map((o: any) => (
+                              <TableRow key={o.id}>
+                                <TableCell className="text-xs whitespace-nowrap">{o.created_at ? new Date(o.created_at).toLocaleString() : "—"}</TableCell>
+                                <TableCell className="font-mono text-sm">{o.customer_number || "—"}</TableCell>
+                                <TableCell className="uppercase text-sm">{o.network || "—"}</TableCell>
+                                <TableCell className="font-bold">{o.size_gb != null ? o.size_gb + "GB" : "—"}</TableCell>
+                                <TableCell>GHC {Number(o.selling_price || o.amount || 0).toFixed(2)}</TableCell>
+                                <TableCell><OrderStatusBadge status={o.order_status || o.fulfillment_status || o.status} /></TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              /* ── List view of all sub-subagents ── */
+              <div className="space-y-4">
+                <Card className="border-border">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="font-display flex items-center gap-2">
+                      <Users className="h-5 w-5" /> All Sub-Subagents
+                    </CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => store?.id && fetchSubSubagents(store.id)} disabled={loadingSubSubagents}>
+                      {loadingSubSubagents ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {!store?.id ? (
+                      <p className="text-muted-foreground text-sm py-4">Store not loaded.</p>
+                    ) : loadingSubSubagents ? (
+                      <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                    ) : subSubagents.length === 0 ? (
+                      <div className="text-center py-8 space-y-2">
+                        <Users className="h-10 w-10 mx-auto text-muted-foreground opacity-40" />
+                        <p className="text-muted-foreground">No sub-subagents found. Sub-subagents are registered under your subagents.</p>
+                      </div>
+                    ) : (
+                      <div className="border rounded-lg overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Store Name</TableHead>
+                              <TableHead>Under Subagent</TableHead>
+                              <TableHead>Balance</TableHead>
+                              <TableHead>AFA Price</TableHead>
+                              <TableHead>WhatsApp</TableHead>
+                              <TableHead>Registered</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {subSubagents.map((ssa: any) => (
+                              <TableRow key={ssa.id}>
+                                <TableCell className="font-medium">{ssa.store_name || "—"}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30">
+                                    {ssa.parent_subagent_name}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-green-400 font-semibold">GHC{Number(ssa.wallet_balance || 0).toFixed(2)}</TableCell>
+                                <TableCell className="text-primary font-semibold">GHC{Number(ssa.afa_bundle_price || 0).toFixed(2)}</TableCell>
+                                <TableCell className="text-sm">{ssa.whatsapp_number || "—"}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">{ssa.created_at ? new Date(ssa.created_at).toLocaleDateString() : "—"}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSubSubagent(ssa);
+                                      fetchSubSubagentOrders(ssa.id);
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" /> View
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
 
           {/* ============================= NOTIFICATIONS ============================= */}
@@ -4645,70 +4889,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </Card>
             )}
 
-            {/* ============================= API KEY ============================= */}
-            <Card className="border-border mt-6">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <Zap className="h-5 w-5" />
-                  API Key
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Use your API key to integrate with external applications and automate data purchases.
-                </p>
-                
-                {loadingApiKey ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  </div>
-                ) : apiKey ? (
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <div className="flex-1 relative">
-                        <Input 
-                          value={apiKey} 
-                          readOnly 
-                          className="font-mono text-xs pr-10"
-                        />
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleCopyApiKey}
-                        className="gap-2"
-                      >
-                        <Copy className="h-4 w-4" />
-                        Copy
-                      </Button>
-                    </div>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
-                      ⚠��� Keep this key secret. Never share it publicly.
-                    </p>
-                  </div>
-                ) : (
-                  <Button 
-                    variant="hero" 
-                    onClick={handleGenerateApiKey}
-                    disabled={generatingApiKey}
-                    className="w-full gap-2"
-                  >
-                    {generatingApiKey ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="h-4 w-4" />
-                        Generate API Key
-                      </>
-                    )}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-            
             <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>
