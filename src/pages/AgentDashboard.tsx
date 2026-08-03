@@ -820,12 +820,13 @@ const AgentDashboard = () => {
       }));
       setOrders(enrichedOrders);
 
-      // Fetch ALL refunded orders from DB (not just the paginated set)
+      // Fetch ALL refunded orders from DB (not just the paginated set) — select all columns needed for the orders table
       const { data: allRefunded } = await supabase
         .from("orders")
-        .select("id, amount, refunded_amount, base_price, fulfillment_status, status")
+        .select("*, subagent_stores(store_name, store_url, support_number, whatsapp_number), sub_subagent_stores(store_name, store_url, support_number, whatsapp_number)")
         .eq("agent_store_id", sd.id)
-        .or("fulfillment_status.eq.refunded,status.eq.refunded");
+        .or("fulfillment_status.eq.refunded,status.eq.refunded")
+        .order("created_at", { ascending: false });
       const refAll = (allRefunded || []) as Order[];
       setAllRefundedOrders(refAll);
       setRefundedOrdersTotal(refAll.reduce((s, o) => s + (Number((o as any).refunded_amount ?? (o as any).base_price ?? o.amount) || 0), 0));

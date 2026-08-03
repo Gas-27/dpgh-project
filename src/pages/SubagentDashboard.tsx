@@ -572,12 +572,13 @@ const SubagentDashboard = () => {
 
         setOrders(ordersResult.data || []);
         setTotalOrderCount(ordersResult.count ?? (ordersResult.data?.length || 0));
-        // Fetch ALL refunded orders from DB for accurate total
+        // Fetch ALL refunded orders from DB for accurate total — select all columns needed for the orders table
         const { data: allRef } = await supabase
           .from("orders")
-          .select("id, amount, refunded_amount, fulfillment_status, status")
+          .select("*, sub_subagent_stores(store_name, store_url, support_number, whatsapp_number)")
           .eq("subagent_store_id", store.id)
-          .or("fulfillment_status.eq.refunded,status.eq.refunded");
+          .or("fulfillment_status.eq.refunded,status.eq.refunded")
+          .order("created_at", { ascending: false });
         const refAll = (allRef || []) as Order[];
         setAllRefundedOrders(refAll);
         setRefundedOrdersTotal(refAll.reduce((s, o) => s + (Number((o as any).refunded_amount || o.amount) || 0), 0));
