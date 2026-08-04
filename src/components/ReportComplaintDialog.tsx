@@ -161,36 +161,37 @@ export default function ReportComplaintDialog({
         throw new Error("An MTN SMS confirmation screenshot is also required for MTN complaints.");
       }
 
+      // Helper: upload a file via the server-side API route so RLS on the
+      // complaints storage bucket does not block unauthenticated storefront users.
+      const uploadViaApi = async (file: File, prefix: string): Promise<string> => {
+        const ext = file.name.split(".").pop();
+        const fileName = `${prefix}-${order.id}-${Date.now()}.${ext}`;
+        const reader = new FileReader();
+        const base64: string = await new Promise((resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const res = await fetch("/api/upload-complaint-screenshot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName, fileBase64: base64, mimeType: file.type }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || "Screenshot upload failed");
+        }
+        const { publicUrl } = await res.json();
+        return publicUrl || "";
+      };
+
       // Upload screenshot 1: data balance
-      let screenshotUrl = "";
-      const fileExt = screenshotFile.name.split(".").pop();
-      const fileName = `complaint-${order.id}-${Date.now()}.${fileExt}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("complaints")
-        .upload(fileName, screenshotFile, { upsert: true });
-      if (uploadError) {
-        throw new Error(`Data balance screenshot upload failed: ${uploadError.message}`);
-      }
-      if (uploadData) {
-        const { data: urlData } = supabase.storage.from("complaints").getPublicUrl(uploadData.path);
-        screenshotUrl = urlData?.publicUrl || "";
-      }
+      const screenshotUrl = await uploadViaApi(screenshotFile, "complaint");
 
       // Upload screenshot 2: SMS confirmation (MTN only)
       let smsScreenshotUrl = "";
       if (requiresTwoScreenshots && smsScreenshotFile) {
-        const smsExt = smsScreenshotFile.name.split(".").pop();
-        const smsFileName = `complaint-sms-${order.id}-${Date.now()}.${smsExt}`;
-        const { data: smsUploadData, error: smsUploadError } = await supabase.storage
-          .from("complaints")
-          .upload(smsFileName, smsScreenshotFile, { upsert: true });
-        if (smsUploadError) {
-          throw new Error(`SMS screenshot upload failed: ${smsUploadError.message}`);
-        }
-        if (smsUploadData) {
-          const { data: smsUrlData } = supabase.storage.from("complaints").getPublicUrl(smsUploadData.path);
-          smsScreenshotUrl = smsUrlData?.publicUrl || "";
-        }
+        smsScreenshotUrl = await uploadViaApi(smsScreenshotFile, "complaint-sms");
       }
 
       const checklistSummary = `
