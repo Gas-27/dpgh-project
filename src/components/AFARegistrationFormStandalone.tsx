@@ -81,7 +81,8 @@ export default function AFARegistrationFormStandalone({
         const { data } = await supabase
           .from('afa_settings')
           .select('registration_enabled')
-          .single();
+          .limit(1)
+          .maybeSingle();
         if (data && !data.registration_enabled) {
           setError('AFA registration is currently disabled');
         }

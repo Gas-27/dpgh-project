@@ -79,7 +79,8 @@ export default function SubagentAFAPriceManager({ onPriceSaved }: SubagentAFAPri
       const { data: afaSettings } = await supabase
         .from("afa_settings")
         .select("registration_fee")
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (afaSettings?.registration_fee) {
         setAdminMinPrice(Number(afaSettings.registration_fee));

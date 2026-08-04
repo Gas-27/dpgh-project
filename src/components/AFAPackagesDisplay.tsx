@@ -56,7 +56,8 @@ export default function AFAPackagesDisplay({
         const { data } = await supabase
           .from('afa_settings')
           .select('registration_enabled, registration_fee')
-          .single();
+          .limit(1)
+          .maybeSingle();
         
         if (data) {
           setAfaEnabled(data.registration_enabled !== false);
@@ -186,7 +187,8 @@ export default function AFAPackagesDisplay({
         const { data: afaSettings } = await supabase
           .from("afa_settings")
           .select("registration_fee, registration_enabled")
-          .single();
+          .limit(1)
+          .maybeSingle();
         if (afaSettings?.registration_fee) {
           adminBundlePrice = Number(afaSettings.registration_fee);
           setBundlePrice(adminBundlePrice);

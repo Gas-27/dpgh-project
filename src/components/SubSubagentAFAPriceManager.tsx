@@ -38,14 +38,22 @@ export default function SubSubagentAFAPriceManager({ onPriceSaved }: SubSubagent
       if (!authData.user) return;
 
       // Fetch this sub-subagent's store
+      // Use maybeSingle() so 0 rows returns null instead of a 406 error
       const { data: store, error: storeErr } = await supabase
         .from("sub_subagent_stores")
         .select("id, afa_bundle_price, subagent_store_id")
         .eq("user_id", authData.user.id)
-        .single();
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (storeErr || !store) {
-        toast({ title: "Error", description: "Sub-subagent store not found", variant: "destructive" });
+      if (storeErr) {
+        console.error("[SubSubagentAFAPriceManager] store error:", storeErr.message);
+        toast({ title: "Error", description: "Failed to load store data", variant: "destructive" });
+        return;
+      }
+      if (!store) {
+        // Store not found — component should stay hidden/empty, not flash an error
         return;
       }
 
@@ -74,7 +82,8 @@ export default function SubSubagentAFAPriceManager({ onPriceSaved }: SubSubagent
       const { data: afaSettings } = await supabase
         .from("afa_settings")
         .select("registration_fee")
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (afaSettings?.registration_fee) {
         setAdminMinPrice(Number(afaSettings.registration_fee));

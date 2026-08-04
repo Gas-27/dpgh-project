@@ -28,10 +28,12 @@ export default function AFABundlesInfo({ agentId, subagentId, subsubagentId, sho
     const loadFee = async () => {
       try {
         // Get admin settings including registration enabled status
+        // Use limit(1).maybeSingle() to avoid 406 when table has multiple or zero rows
         const { data, error } = await supabase
           .from('afa_settings')
           .select('registration_fee, registration_enabled')
-          .single();
+          .limit(1)
+          .maybeSingle();
         
         if (error) {
           console.log("[v0] AFABundlesInfo error:", error.message);

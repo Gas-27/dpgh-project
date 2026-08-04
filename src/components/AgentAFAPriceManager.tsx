@@ -138,7 +138,8 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
       const { data: afaSettings } = await supabase
         .from("afa_settings")
         .select("registration_fee")
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (afaSettings?.registration_fee) {
         setMinBundlePrice(Number(afaSettings.registration_fee));
