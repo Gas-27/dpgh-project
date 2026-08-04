@@ -2954,7 +2954,14 @@ const SubagentDashboard = () => {
                             return (
                               <TableRow key={order.id} className={selectedSubSubagentRefundIds.has(order.id) ? "bg-amber-500/10" : ""}>
                                 <TableCell style={{ width: "40px" }} className="text-center">
-                                  {isSubSub && !alreadyForwarded ? (
+                                  {alreadyForwarded ? (
+                                    <span
+                                      title="Already forwarded to sub-subagent — cannot refund again"
+                                      className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500/20 text-green-400 text-xs font-bold"
+                                    >
+                                      ✓
+                                    </span>
+                                  ) : isSubSub ? (
                                     <input
                                       type="checkbox"
                                       checked={selectedSubSubagentRefundIds.has(order.id)}
@@ -2965,7 +2972,7 @@ const SubagentDashboard = () => {
                                       className="rounded border-border"
                                     />
                                   ) : (
-                                    <span className="text-muted-foreground/40 text-xs" title={alreadyForwarded ? "Already forwarded" : "Own-store order"}>—</span>
+                                    <span className="text-muted-foreground/40 text-xs" title="Own-store order">—</span>
                                   )}
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">

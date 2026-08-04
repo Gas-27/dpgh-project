@@ -470,7 +470,7 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
 
   return (
     <Dialog open={!!complaint} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle className="text-base">Complaint Details</DialogTitle>
@@ -500,7 +500,7 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
                 <span className="text-muted-foreground">Order Date</span>
                 <span className="font-medium">{complaint.orders.created_at ? new Date(complaint.orders.created_at).toLocaleString() : "—"}</span>
                 <span className="text-muted-foreground">Network</span><span className="font-medium">{networkName(complaint.orders.network)}</span>
-                <span className="text-muted-foreground">Package</span><span className="font-medium">{complaint.orders.size_gb}GB — GHC {Number(complaint.orders.amount).toFixed(2)}</span>
+                <span className="text-muted-foreground">Package</span><span className="font-medium">{complaint.orders.size_gb}GB</span>
                 <span className="text-muted-foreground">Delivery</span><span className="font-medium">{complaint.orders.fulfillment_status}</span>
                 <span className="text-muted-foreground">Order Source</span>
                 <span className="font-medium">
@@ -749,6 +749,50 @@ function ComplaintsTable({
               Resolve Selected ({selectedComplaints.size})
             </button>
             <button
+              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border bg-background hover:bg-muted"
+              onClick={() => {
+                const selected = complaints.filter(c => selectedComplaints.has(c.id));
+                const lines = selected.map(c =>
+                  [
+                    `ID: ${c.id}`,
+                    `Status: ${c.status}`,
+                    `Customer: ${c.customer_number}`,
+                    `Order: ${c.orders ? `${c.orders.network?.toUpperCase()} ${c.orders.size_gb}GB` : c.order_id}`,
+                    `Title: ${c.complaint_title}`,
+                    `Details: ${c.complaint_details}`,
+                    `Date: ${new Date(c.created_at).toLocaleString()}`,
+                    "---",
+                  ].join("\n")
+                ).join("\n");
+                const blob = new Blob([lines], { type: "text/plain" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `complaints-export-${Date.now()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download className="h-3.5 w-3.5" /> Download ({selectedComplaints.size})
+            </button>
+            <button
+              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border bg-background hover:bg-muted"
+              onClick={async () => {
+                const selected = complaints.filter(c => selectedComplaints.has(c.id));
+                const text = selected.map(c =>
+                  `[${c.status.toUpperCase()}] ${c.customer_number} — ${c.orders ? `${c.orders.network?.toUpperCase()} ${c.orders.size_gb}GB` : c.order_id}: ${c.complaint_title}`
+                ).join("\n");
+                if (navigator.share) {
+                  try { await navigator.share({ title: `${selected.length} Complaints`, text }); } catch (_) {}
+                } else {
+                  await navigator.clipboard.writeText(text);
+                  alert("Copied to clipboard!");
+                }
+              }}
+            >
+              <Share2 className="h-3.5 w-3.5" /> Share ({selectedComplaints.size})
+            </button>
+            <button
               className="text-xs px-3 py-1.5 rounded border border-border bg-background hover:bg-muted"
               onClick={() => { setSelectedComplaints(new Set()); setSelectAll(false); }}
             >
@@ -811,7 +855,6 @@ function ComplaintsTable({
                       {c.orders ? (
                         <div className="space-y-0.5">
                           <p className="font-medium">{c.orders.network?.toUpperCase()} {c.orders.size_gb}GB</p>
-                          <p className="text-muted-foreground">GHC {Number(c.orders.amount).toFixed(2)}</p>
                           <p className="text-muted-foreground">{c.orders.fulfillment_status}</p>
                         </div>
                       ) : <span className="text-muted-foreground text-xs">{c.order_id?.slice(0,8)}…</span>}

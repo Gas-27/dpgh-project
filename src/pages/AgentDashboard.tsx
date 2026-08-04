@@ -2819,7 +2819,14 @@ const AgentDashboard = () => {
                               }
                             >
                               <TableCell style={{ width: "40px" }} className="text-center">
-                                {isSelectable ? (
+                                {alreadyAgentRefunded ? (
+                                  <span
+                                    title="Already refunded to subagent — cannot refund again"
+                                    className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500/20 text-green-400 text-xs font-bold"
+                                  >
+                                    ✓
+                                  </span>
+                                ) : isSelectable ? (
                                   <input
                                     type="checkbox"
                                     checked={selectedSubagentOrderIds.has(order.id)}
@@ -2836,10 +2843,10 @@ const AgentDashboard = () => {
                                   />
                                 ) : (
                                   <span
-                                    title={alreadyAgentRefunded ? "Already refunded to subagent" : "Direct orders cannot be refunded here"}
+                                    title="Direct orders cannot be refunded here"
                                     className="text-muted-foreground/40 text-xs"
                                   >
-                                    {alreadyAgentRefunded ? "✓" : "—"}
+                                    —
                                   </span>
                                 )}
                               </TableCell>

@@ -146,7 +146,6 @@ export function UserComplaintsView({ userId }: UserComplaintsViewProps) {
                           {complaint.orders && (
                             <span className="text-xs text-muted-foreground">
                               {networkName(complaint.orders.network)} {complaint.orders.size_gb}GB
-                              &nbsp;&mdash;&nbsp;GHC {Number(complaint.orders.amount).toFixed(2)}
                             </span>
                           )}
                           <span className="text-xs text-muted-foreground">
