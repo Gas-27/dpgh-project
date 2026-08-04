@@ -56,15 +56,22 @@ export default function SubagentAFAPriceManager({ onPriceSaved }: SubagentAFAPri
       setStorefrontPrice((store as any).afa_bundle_price || 0);
       setSubsubPrice((store as any).afa_subsubagent_base_price || 0);
 
-      // Fetch the agent's AFA price for this subagent (agent's afa_bundle_price is what they charge subagents)
+      // Fetch the agent's dedicated subagent AFA base price (afa_subagent_base_price).
+      // This is the price the agent set specifically for what subagents pay — NOT afa_bundle_price
+      // (which is what the agent charges their direct customers).
+      // Falls back to afa_bundle_price if afa_subagent_base_price has not been set yet.
       if (store.agent_store_id) {
         const { data: agentStore } = await supabase
           .from("agent_stores")
-          .select("afa_bundle_price")
+          .select("afa_subagent_base_price, afa_bundle_price")
           .eq("id", store.agent_store_id)
           .single();
-        if (agentStore?.afa_bundle_price) {
-          setAgentCostToSubagent(Number(agentStore.afa_bundle_price));
+        if (agentStore) {
+          const cost =
+            Number((agentStore as any).afa_subagent_base_price || 0) ||
+            Number(agentStore.afa_bundle_price || 0) ||
+            0;
+          setAgentCostToSubagent(cost);
         }
       }
 

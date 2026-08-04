@@ -1178,7 +1178,12 @@ const UserDashboard = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} />
+                        {/* Refunded takes priority over any other status field */}
+                        <OrderStatusBadge status={
+                          (order.status === "refunded" || order.fulfillment_status === "refunded")
+                            ? "refunded"
+                            : (order.order_status || order.fulfillment_status || order.status)
+                        } />
                       </TableCell>
                     </TableRow>
                   ))}

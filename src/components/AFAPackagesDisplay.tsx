@@ -229,7 +229,7 @@ export default function AFAPackagesDisplay({
 
       // ── SUBAGENT STOREFRONT ──
       // Price shown: subagent's own afa_bundle_price
-      // Fallback:    parent agent's afa_bundle_price → admin price
+      // Fallback:    agent's afa_subagent_base_price → agent's afa_bundle_price → admin price
       if (subagentStoreId && !agentStoreId) {
         const { data: subagentData } = await supabase
           .from("subagent_stores")
@@ -242,15 +242,20 @@ export default function AFAPackagesDisplay({
         if (ownPrice > 0) {
           setAgentBundlePrice(ownPrice);
         } else {
-          // Fallback: use agent's price to this subagent
+          // Fallback: agent's dedicated subagent base price → agent's customer price → admin price
           let fallback = adminBundlePrice;
           if (subagentData?.agent_store_id) {
             const { data: agentStore } = await supabase
               .from("agent_stores")
-              .select("afa_bundle_price")
+              .select("afa_subagent_base_price, afa_bundle_price")
               .eq("id", subagentData.agent_store_id)
               .single();
-            fallback = Number(agentStore?.afa_bundle_price || 0) || adminBundlePrice;
+            if (agentStore) {
+              fallback =
+                Number((agentStore as any).afa_subagent_base_price || 0) ||
+                Number(agentStore.afa_bundle_price || 0) ||
+                adminBundlePrice;
+            }
           }
           setAgentBundlePrice(fallback);
         }
@@ -282,7 +287,7 @@ export default function AFAPackagesDisplay({
         );
         setPricing(priceMap);
       } else if (subagentStoreId) {
-        // subagentStoreId provided alongside agentStoreId — use subagent price
+        // subagentStoreId provided alongside agentStoreId — use subagent price with correct fallback
         const { data: subagentData } = await supabase
           .from("subagent_stores")
           .select("afa_bundle_price, agent_store_id")
@@ -296,10 +301,15 @@ export default function AFAPackagesDisplay({
           if (subagentData?.agent_store_id) {
             const { data: agentStore } = await supabase
               .from("agent_stores")
-              .select("afa_bundle_price")
+              .select("afa_subagent_base_price, afa_bundle_price")
               .eq("id", subagentData.agent_store_id)
               .single();
-            fallback = Number(agentStore?.afa_bundle_price || 0) || adminBundlePrice;
+            if (agentStore) {
+              fallback =
+                Number((agentStore as any).afa_subagent_base_price || 0) ||
+                Number(agentStore.afa_bundle_price || 0) ||
+                adminBundlePrice;
+            }
           }
           setAgentBundlePrice(fallback);
         }

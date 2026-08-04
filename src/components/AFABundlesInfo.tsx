@@ -41,22 +41,68 @@ export default function AFABundlesInfo({ agentId, subagentId, subsubagentId, sho
           setRegistrationEnabled(data?.registration_enabled !== false);
         }
 
-        // Get agent's custom price if agent ID provided
-        if (agentId && showAgentPrice) {
+        // Resolve the display price using the same priority chain as AFAPackagesDisplay:
+        // sub-subagent own price → subagent own price → agent's customer price → admin fee
+        const adminFee = data?.registration_fee || 15;
+
+        if (subsubagentId && showAgentPrice) {
+          // Sub-subagent storefront: own price → parent subagent's subsubagent base → admin
+          const { data: subsubStore } = await supabase
+            .from('sub_subagent_stores')
+            .select('afa_bundle_price, subagent_store_id')
+            .eq('id', subsubagentId)
+            .single();
+          const ownPrice = Number(subsubStore?.afa_bundle_price || 0);
+          if (ownPrice > 0) {
+            setAgentBundlePrice(ownPrice);
+          } else if (subsubStore?.subagent_store_id) {
+            const { data: parentSubagent } = await supabase
+              .from('subagent_stores')
+              .select('afa_subsubagent_base_price, afa_bundle_price')
+              .eq('id', subsubStore.subagent_store_id)
+              .single();
+            const fallback =
+              Number((parentSubagent as any)?.afa_subsubagent_base_price || 0) ||
+              Number(parentSubagent?.afa_bundle_price || 0) ||
+              adminFee;
+            setAgentBundlePrice(fallback);
+          } else {
+            setAgentBundlePrice(adminFee);
+          }
+        } else if (subagentId && showAgentPrice) {
+          // Subagent storefront: own price → agent's subagent base → agent's customer price → admin
+          const { data: subagentStore } = await supabase
+            .from('subagent_stores')
+            .select('afa_bundle_price, agent_store_id')
+            .eq('id', subagentId)
+            .single();
+          const ownPrice = Number(subagentStore?.afa_bundle_price || 0);
+          if (ownPrice > 0) {
+            setAgentBundlePrice(ownPrice);
+          } else if (subagentStore?.agent_store_id) {
+            const { data: agentStore } = await supabase
+              .from('agent_stores')
+              .select('afa_subagent_base_price, afa_bundle_price')
+              .eq('id', subagentStore.agent_store_id)
+              .single();
+            const fallback =
+              Number((agentStore as any)?.afa_subagent_base_price || 0) ||
+              Number(agentStore?.afa_bundle_price || 0) ||
+              adminFee;
+            setAgentBundlePrice(fallback);
+          } else {
+            setAgentBundlePrice(adminFee);
+          }
+        } else if (agentId && showAgentPrice) {
+          // Agent storefront: own price → admin fee
           const { data: agentStore } = await supabase
             .from('agent_stores')
             .select('afa_bundle_price')
             .eq('id', agentId)
             .single();
-          
-          console.log("[v0] Agent AFA bundle price:", agentStore);
-          // If agent has set a custom price, use it; otherwise leave as null to fall back to admin fee
-          if (agentStore?.afa_bundle_price !== null && agentStore?.afa_bundle_price !== undefined) {
-            setAgentBundlePrice(agentStore.afa_bundle_price);
-          } else {
-            // Agent hasn't set a price, so use null to trigger fallback to admin registration fee
-            setAgentBundlePrice(null);
-          }
+          setAgentBundlePrice(
+            agentStore?.afa_bundle_price != null ? Number(agentStore.afa_bundle_price) : null
+          );
         }
 
         // Load AFA media
@@ -302,7 +348,7 @@ export default function AFABundlesInfo({ agentId, subagentId, subsubagentId, sho
           <CardContent className="p-4 md:p-6 space-y-4">
             <AFARegistrationFormStandalone 
               key="afa-form" 
-              registrationFee={agentBundlePrice || registrationFee || 50}
+              registrationFee={agentBundlePrice ?? registrationFee ?? 50}
               agentStoreId={agentId}
               subagentStoreId={subagentId}
               subsubagentStoreId={subsubagentId}

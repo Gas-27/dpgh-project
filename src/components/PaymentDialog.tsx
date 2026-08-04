@@ -67,7 +67,7 @@ const PaymentDialog = ({
   phoneNumber,
   onPhoneNumberChange,
 }: PaymentDialogProps) => {
-  const { user, hasPendingAgentStore } = useAuth();
+  const { user, hasPendingAgentStore, isAgent } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState<"phone" | "confirm">("phone");
@@ -335,13 +335,16 @@ const PaymentDialog = ({
       const userEmail = `${digitsOnlyPhone}@dataplug.store`;
       const accountEmail = user?.email?.trim() || "";
 
-      // If buying from a storefront (agent/subagent) stay on that page.
-      // If a logged-in user buys from the public /packages page, redirect back
-      // to /user-dashboard so <PaymentVerifier> can process the order exactly
-      // like the UserDashboard buy-data Paystack flow does.
-      // Guest (no user) stays on /packages where its own verifier handles it.
-      const returnPath = actualStoreId
+      // If buying from a storefront URL stay on that page.
+      // If an agent buys from /packages, send them to /agent so their dashboard
+      // processes the order and any eventual refund hits their agent wallet.
+      // If a regular logged-in user buys from /packages, send to /user-dashboard.
+      // Guest stays on /packages where its own verifier handles it.
+      const isStorefrontPage = !!(subagentStoreId || subsubagentStoreId) || window.location.pathname.includes("/store");
+      const returnPath = isStorefrontPage
         ? window.location.pathname
+        : isAgent && actualStoreId
+        ? "/agent"
         : user
         ? "/user-dashboard"
         : "/packages";

@@ -29,6 +29,7 @@ interface AgentStore {
   id: string;
   store_name: string;
   afa_bundle_price?: number;
+  afa_subagent_base_price?: number;
 }
 
 interface AgentAFAPrice {
@@ -45,6 +46,9 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
   const [agentStore, setAgentStore] = useState<AgentStore | null>(null);
   const [minBundlePrice, setMinBundlePrice] = useState<number | null>(null);
   const [agentBundlePrice, setAgentBundlePrice] = useState(0);
+  // Price the agent sets as the base cost for subagents (afa_subagent_base_price)
+  const [subagentBasePrice, setSubagentBasePrice] = useState(0);
+  const [savingSubagentBase, setSavingSubagentBase] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingBundle, setSavingBundle] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -114,10 +118,10 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
         return;
       }
 
-      // Get agent store with afa_bundle_price - scoped to current user only
+      // Get agent store with AFA pricing columns
       const { data: store } = await supabase
         .from("agent_stores")
-        .select("id, store_name, afa_bundle_price, user_id")
+        .select("id, store_name, afa_bundle_price, afa_subagent_base_price, user_id")
         .eq("user_id", authData.user.id)
         .single();
 
@@ -127,20 +131,19 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
       }
 
       setAgentStore(store as AgentStore);
-      const bundlePrice = store.afa_bundle_price || 0;
-      setAgentBundlePrice(bundlePrice);
+      setAgentBundlePrice(Number(store.afa_bundle_price) || 0);
+      setSubagentBasePrice(Number((store as any).afa_subagent_base_price) || 0);
 
-      // Get AFA settings - fetch first row with base_registration_price
+      // Get AFA settings — the actual column is registration_fee
       const { data: afaSettings } = await supabase
         .from("afa_settings")
-        .select("base_registration_price")
-        .order("created_at", { ascending: true })
-        .limit(1);
-      
-      if (afaSettings && afaSettings.length > 0 && afaSettings[0].base_registration_price) {
-        setMinBundlePrice(afaSettings[0].base_registration_price);
+        .select("registration_fee")
+        .single();
+
+      if (afaSettings?.registration_fee) {
+        setMinBundlePrice(Number(afaSettings.registration_fee));
       } else {
-        setMinBundlePrice(14.00);
+        setMinBundlePrice(15);
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);
@@ -202,6 +205,35 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
       });
     } finally {
       setSavingBundle(false);
+    }
+  };
+
+  const handleSaveSubagentBasePrice = async () => {
+    if (!agentStore) return;
+    const minimum = minBundlePrice !== null ? minBundlePrice : 15;
+    if (subagentBasePrice < minimum) {
+      toast({
+        title: "Price too low",
+        description: `Subagent base price must be at least GHC${minimum.toFixed(2)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setSavingSubagentBase(true);
+    try {
+      const { error } = await supabase
+        .from("agent_stores")
+        .update({ afa_subagent_base_price: subagentBasePrice } as any)
+        .eq("id", agentStore.id);
+      if (error) throw error;
+      setAgentStore(prev => prev ? { ...prev, afa_subagent_base_price: subagentBasePrice } : null);
+      toast({ title: "Saved", description: `Subagent AFA base price set to GHC${subagentBasePrice.toFixed(2)}` });
+      if (onPriceSaved) onPriceSaved();
+    } catch (err) {
+      console.error("[AgentAFAPriceManager] save subagent base error:", err);
+      toast({ title: "Error", description: "Failed to save subagent base price", variant: "destructive" });
+    } finally {
+      setSavingSubagentBase(false);
     }
   };
 
@@ -283,9 +315,67 @@ export default function AgentAFAPriceManager({ onPriceSaved }: AgentAFAPriceMana
               </Button>
             </div>
           </div>
-          {agentBundlePrice > 0 && agentBundlePrice >= (minBundlePrice !== null ? minBundlePrice : 14) && (
-            <div className="text-sm text-green-700 bg-green-50 p-3 rounded">
+          {agentBundlePrice > 0 && agentBundlePrice >= (minBundlePrice !== null ? minBundlePrice : 15) && (
+            <div className="text-sm text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 p-3 rounded">
               Your customers will pay GHC{agentBundlePrice.toFixed(2)} to register for AFA
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Subagent Base Price — what the agent charges subagents */}
+      <Card className="border-blue-500/30 bg-blue-900/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-blue-600" />
+            AFA Bundle Price for Subagents
+          </CardTitle>
+          <CardDescription>
+            Set the price your subagents pay per AFA registration (their cost). Subagents then add their own markup to earn profit. Minimum is the admin base price: GHC{(minBundlePrice ?? 15).toFixed(2)}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-sm font-medium">Admin Minimum</Label>
+              <div className="text-2xl font-bold text-muted-foreground mt-2">GHC{(minBundlePrice ?? 15).toFixed(2)}</div>
+            </div>
+            <div>
+              <Label htmlFor="subagentBasePrice" className="text-sm font-medium">Subagent Base Price (GHC)</Label>
+              <Input
+                id="subagentBasePrice"
+                type="number"
+                min={minBundlePrice ?? 15}
+                step="0.01"
+                value={subagentBasePrice || ""}
+                onChange={(e) => setSubagentBasePrice(Number(e.target.value) || 0)}
+                className="mt-2"
+                placeholder={`Min: GHC${(minBundlePrice ?? 15).toFixed(2)}`}
+              />
+            </div>
+            <div className="flex flex-col justify-end">
+              <Button
+                onClick={handleSaveSubagentBasePrice}
+                disabled={savingSubagentBase || subagentBasePrice < (minBundlePrice ?? 15)}
+                className="w-full"
+              >
+                {savingSubagentBase ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Price"
+                )}
+              </Button>
+            </div>
+          </div>
+          {subagentBasePrice > 0 && subagentBasePrice >= (minBundlePrice ?? 15) && (
+            <div className="text-sm text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 p-3 rounded">
+              Subagents will pay GHC{subagentBasePrice.toFixed(2)} as their cost per AFA registration.
+              {agentBundlePrice > 0 && subagentBasePrice > 0 && (
+                <> Your commission per subagent sale: GHC{Math.max(0, subagentBasePrice - (minBundlePrice ?? 15)).toFixed(2)}.</>
+              )}
             </div>
           )}
         </CardContent>

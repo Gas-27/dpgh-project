@@ -107,14 +107,12 @@ const Login = () => {
         return;
       }
       
-      // Non-admin user routing
-      let redirectTo = "/";
+      // Non-admin user routing — every role lands on its own dashboard
+      let redirectTo = "/user-dashboard"; // default for customers and any unrecognised role
       if (roles.includes("agent")) {
         redirectTo = "/agent";
       } else if (roles.includes("subagent")) {
         redirectTo = "/subagent-dashboard";
-      } else if (roles.includes("customer")) {
-        redirectTo = "/user-dashboard";
       }
 
       toast({ title: "Welcome back!", description: "Redirecting..." });
