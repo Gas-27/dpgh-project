@@ -445,17 +445,7 @@ const OrderTrackingCard = ({
 
       </div>
 
-      {showSupportButton && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => copyToClipboard(contactMessage, toast)}
-        >
-          <Copy className="h-4 w-4 mr-2" />
-          Contact Support ({store.support_number})
-        </Button>
-      )}
+
     </div>
   );
 };

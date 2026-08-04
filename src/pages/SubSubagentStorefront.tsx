@@ -211,7 +211,7 @@ const SubSubagentOrderTrackingCard = ({
     return () => clearInterval(interval);
   }, [order.id]);
 
-  // ── Status-based step logic (no time dependency) ──
+  // ── Status-based step logic (no time dependency) ─��
   // Check both order_status and status fields — refunded may be set on either
   const rawOrderStatus = order.order_status?.toLowerCase().trim() || "";
   const rawStatus = (order as any).status?.toLowerCase().trim() || "";
@@ -261,7 +261,7 @@ const SubSubagentOrderTrackingCard = ({
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  const contactMessage = `Order from ${orderDate}\nNetwork: ${order.network?.toUpperCase()}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GHC ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
+
 
   const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
@@ -269,8 +269,6 @@ const SubSubagentOrderTrackingCard = ({
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
-  // Support button: show whenever order is not yet delivered
-  const showSupportButton = currentStep !== 4;
   // Report button: show only when order status is "delivered"
   const showReportButton = orderStatus === "delivered";
 

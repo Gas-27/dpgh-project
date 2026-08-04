@@ -161,8 +161,8 @@ export default function ReportComplaintDialog({
         throw new Error("An MTN SMS confirmation screenshot is also required for MTN complaints.");
       }
 
-      // Helper: upload a file via the server-side API route so RLS on the
-      // complaints storage bucket does not block unauthenticated storefront users.
+      // Helper: upload via the upload-complaint-screenshot edge function which uses
+      // the service role key to bypass RLS — storefront customers are unauthenticated.
       const uploadViaApi = async (file: File, prefix: string): Promise<string> => {
         const ext = file.name.split(".").pop();
         const fileName = `${prefix}-${order.id}-${Date.now()}.${ext}`;
@@ -172,17 +172,12 @@ export default function ReportComplaintDialog({
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        const res = await fetch("/api/upload-complaint-screenshot", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName, fileBase64: base64, mimeType: file.type }),
+        const { data, error } = await supabase.functions.invoke("upload-complaint-screenshot", {
+          body: { fileName, fileBase64: base64, mimeType: file.type },
         });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || "Screenshot upload failed");
-        }
-        const { publicUrl } = await res.json();
-        return publicUrl || "";
+        if (error) throw new Error(error.message || "Screenshot upload failed");
+        if (!data?.publicUrl) throw new Error("Screenshot upload failed");
+        return data.publicUrl as string;
       };
 
       // Upload screenshot 1: data balance
