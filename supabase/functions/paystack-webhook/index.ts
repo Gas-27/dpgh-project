@@ -417,6 +417,7 @@ Deno.serve(async (req) => {
         fullName, phoneNumber, idNumber, dateOfBirth,
         town, occupation, region, cropProduce,
         agent_store_id, subagent_store_id,
+        subsubagent_store_id,
       } = metadata;
 
       const baseAmount = Number(metadata.base_amount) || (Number(amount) / 100);
@@ -429,15 +430,20 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Duplicate guard — check registration_status column
       const { data: existingReg } = await supabaseClient
-        .from("afa_registrations").select("id, status").eq("paystack_reference", reference).maybeSingle();
+        .from("afa_registrations")
+        .select("id, registration_status")
+        .eq("paystack_reference", reference)
+        .maybeSingle();
 
-      if (existingReg?.status === "completed" || existingReg?.status === "failed") {
+      if (existingReg?.registration_status === "completed" || existingReg?.registration_status === "failed") {
         return new Response(JSON.stringify({ message: "AFA registration already processed" }), {
           status: 200, headers: corsHeaders,
         });
       }
 
+      // Upsert the registration record
       const { data: afaReg, error: updateError } = await supabaseClient
         .from("afa_registrations")
         .update({ registration_status: "processing", amount_paid: baseAmount, updated_at: new Date().toISOString() })
@@ -453,7 +459,9 @@ Deno.serve(async (req) => {
           .insert({
             customer_name: fullName, customer_phone: phoneNumber, customer_id: idNumber,
             date_of_birth: dateOfBirth, town, occupation, region, crop: cropProduce,
-            agent_store_id: agent_store_id || null, subagent_store_id: subagent_store_id || null,
+            agent_store_id: agent_store_id || null,
+            subagent_store_id: subagent_store_id || null,
+            subsubagent_store_id: subsubagent_store_id || null,
             paystack_reference: reference, amount_paid: baseAmount,
             registration_status: "processing", updated_at: new Date().toISOString(),
           })
@@ -468,40 +476,182 @@ Deno.serve(async (req) => {
         registrationToUse = newReg;
       }
 
-      let profitAmount = 0;
-      const DEFAULT_AFA_PRICE = parseFloat(Deno.env.get("DEFAULT_AFA_PRICE") || "0");
-
-      if (subagent_store_id) {
-        const { data: sub } = await supabaseClient
-          .from("subagent_stores").select("afa_bundle_price").eq("id", subagent_store_id).single();
-        if (sub?.afa_bundle_price) profitAmount = baseAmount - sub.afa_bundle_price;
-      } else if (agent_store_id) {
-        const { data: ag } = await supabaseClient
-          .from("agent_stores").select("afa_bundle_price").eq("id", agent_store_id).single();
-        if (ag?.afa_bundle_price) profitAmount = ag.afa_bundle_price - DEFAULT_AFA_PRICE;
+      // ── ADMIN FLOOR PRICE ──
+      // Prefer the live afa_settings value; fall back to env var (which should also be set).
+      let adminFloorPrice = parseFloat(Deno.env.get("DEFAULT_AFA_PRICE") || "0");
+      const { data: afaSettings } = await supabaseClient
+        .from("afa_settings")
+        .select("registration_fee")
+        .maybeSingle();
+      if (afaSettings?.registration_fee) {
+        adminFloorPrice = Number(afaSettings.registration_fee);
       }
 
-      if (profitAmount > 0 && agent_store_id) {
-        const { data: ag } = await supabaseClient
-          .from("agent_stores").select("wallet_balance").eq("id", agent_store_id).single();
-        if (ag) {
+      // ── 3-TIER PROFIT SPLIT ──
+      if (subsubagent_store_id) {
+        // ── SUB-SUBAGENT SALE ──
+        // Fetch sub-subagent store to get parent IDs
+        const { data: subsubStore } = await supabaseClient
+          .from("sub_subagent_stores")
+          .select("subagent_store_id, agent_store_id, wallet_balance")
+          .eq("id", subsubagent_store_id)
+          .single();
+
+        if (subsubStore) {
+          const parentSubagentId = subsubStore.subagent_store_id;
+          const agentId = subsubStore.agent_store_id;
+
+          // What the subagent charged the sub-subagent (afa_subsubagent_base_price on subagent_stores)
+          let subagentCostToSubsub = adminFloorPrice;
+          if (parentSubagentId) {
+            const { data: parentSub } = await supabaseClient
+              .from("subagent_stores")
+              .select("afa_subsubagent_base_price, afa_bundle_price")
+              .eq("id", parentSubagentId)
+              .single();
+            subagentCostToSubsub =
+              Number(parentSub?.afa_subsubagent_base_price) ||
+              Number(parentSub?.afa_bundle_price) ||
+              adminFloorPrice;
+          }
+
+          // What the agent charged the subagent (afa_subagent_base_price on agent_stores)
+          let agentCostToSubagent = adminFloorPrice;
+          if (agentId) {
+            const { data: agentStore } = await supabaseClient
+              .from("agent_stores")
+              .select("afa_subagent_base_price, afa_bundle_price")
+              .eq("id", agentId)
+              .single();
+            agentCostToSubagent =
+              Number(agentStore?.afa_subagent_base_price) ||
+              Number(agentStore?.afa_bundle_price) ||
+              adminFloorPrice;
+          }
+
+          const subsubProfit       = baseAmount - subagentCostToSubsub;           // sub-subagent keeps this
+          const subagentCommission = subagentCostToSubsub - agentCostToSubagent;  // subagent keeps this
+          const agentCommission    = agentCostToSubagent - adminFloorPrice;        // agent keeps this
+
+          // Credit sub-subagent profit
+          if (subsubProfit > 0) {
+            const newBal = (Number(subsubStore.wallet_balance) || 0) + subsubProfit;
+            await supabaseClient
+              .from("sub_subagent_stores")
+              .update({ wallet_balance: newBal })
+              .eq("id", subsubagent_store_id);
+          }
+
+          // Credit parent subagent commission
+          if (parentSubagentId && subagentCommission > 0) {
+            const { data: parentSubData } = await supabaseClient
+              .from("subagent_stores").select("wallet_balance").eq("id", parentSubagentId).single();
+            if (parentSubData) {
+              await supabaseClient
+                .from("subagent_stores")
+                .update({ wallet_balance: (Number(parentSubData.wallet_balance) || 0) + subagentCommission })
+                .eq("id", parentSubagentId);
+            }
+          }
+
+          // Credit agent commission
+          if (agentId && agentCommission > 0) {
+            const { data: agentData } = await supabaseClient
+              .from("agent_stores").select("wallet_balance").eq("id", agentId).single();
+            if (agentData) {
+              await supabaseClient
+                .from("agent_stores")
+                .update({ wallet_balance: (Number(agentData.wallet_balance) || 0) + agentCommission })
+                .eq("id", agentId);
+            }
+          }
+
           await supabaseClient
+            .from("afa_registrations")
+            .update({ agent_profit: subsubProfit })
+            .eq("id", registrationToUse.id);
+        }
+
+      } else if (subagent_store_id) {
+        // ── SUBAGENT SALE ──
+        const { data: sub } = await supabaseClient
+          .from("subagent_stores")
+          .select("afa_bundle_price, agent_store_id")
+          .eq("id", subagent_store_id)
+          .single();
+
+        const subagentSellPrice = Number(sub?.afa_bundle_price) || adminFloorPrice;
+        const subagentProfit    = baseAmount - subagentSellPrice;
+
+        // Credit subagent their profit (what customer paid minus what subagent's storefront price is)
+        if (subagentProfit > 0) {
+          const { data: subData } = await supabaseClient
+            .from("subagent_stores").select("wallet_balance").eq("id", subagent_store_id).single();
+          if (subData) {
+            await supabaseClient
+              .from("subagent_stores")
+              .update({ wallet_balance: (Number(subData.wallet_balance) || 0) + subagentProfit })
+              .eq("id", subagent_store_id);
+          }
+        }
+
+        // Credit agent their commission (afa_subagent_base_price minus admin floor)
+        if (sub?.agent_store_id) {
+          const { data: ag } = await supabaseClient
             .from("agent_stores")
-            .update({ wallet_balance: (Number(ag.wallet_balance) || 0) + profitAmount })
-            .eq("id", agent_store_id);
+            .select("afa_subagent_base_price, afa_bundle_price, wallet_balance")
+            .eq("id", sub.agent_store_id)
+            .single();
+          if (ag) {
+            const agentBaseForSubagents =
+              Number(ag.afa_subagent_base_price) ||
+              Number(ag.afa_bundle_price) ||
+              adminFloorPrice;
+            const agentCommission = agentBaseForSubagents - adminFloorPrice;
+            if (agentCommission > 0) {
+              await supabaseClient
+                .from("agent_stores")
+                .update({ wallet_balance: (Number(ag.wallet_balance) || 0) + agentCommission })
+                .eq("id", sub.agent_store_id);
+            }
+          }
+        }
+
+        await supabaseClient
+          .from("afa_registrations")
+          .update({ agent_profit: subagentProfit })
+          .eq("id", registrationToUse.id);
+
+      } else if (agent_store_id) {
+        // ── AGENT DIRECT SALE ──
+        const { data: ag } = await supabaseClient
+          .from("agent_stores")
+          .select("afa_bundle_price, wallet_balance")
+          .eq("id", agent_store_id)
+          .single();
+        if (ag) {
+          const agentProfit = (Number(ag.afa_bundle_price) || adminFloorPrice) - adminFloorPrice;
+          if (agentProfit > 0) {
+            await supabaseClient
+              .from("agent_stores")
+              .update({ wallet_balance: (Number(ag.wallet_balance) || 0) + agentProfit })
+              .eq("id", agent_store_id);
+          }
+          await supabaseClient
+            .from("afa_registrations")
+            .update({ agent_profit: agentProfit })
+            .eq("id", registrationToUse.id);
         }
       }
 
-      let externalApiResponse: any;
+      // ── Call external AFA API ──
       let externalApiSuccess = false;
-
       try {
         const res = await fetch("https://backend.mycledanet.com/api/afa-registration", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-api-key": afaApiKey || "" },
           body: JSON.stringify({ fullName, phoneNumber, idNumber, dateOfBirth, town, occupation, region, cropProduce, callback: callbackUrl }),
         });
-        externalApiResponse = await res.json();
         externalApiSuccess = res.ok;
       } catch (err) {
         console.error("AFA external API failed:", err);
@@ -516,7 +666,6 @@ Deno.serve(async (req) => {
         message: externalApiSuccess ? "AFA registration successful" : "AFA registration failed",
         afa_registration_id: registrationToUse.id,
         registration_status: externalApiSuccess ? "completed" : "failed",
-        profit: profitAmount,
       }), { status: 200, headers: corsHeaders });
     }
 
@@ -606,7 +755,6 @@ Deno.serve(async (req) => {
       const { data: store } = await supabaseClient.from("sub_subagent_stores").select("wallet_balance").eq("id", subsubagentStoreId).single();
       if (store) {
         await supabaseClient.from("sub_subagent_stores").update({ wallet_balance: (Number(store.wallet_balance) || 0) + baseAmount }).eq("id", subsubagentStoreId);
-        // FIX: was inserting into sub_subagent_stores by mistake — must insert into sub_subagent_wallet_topups
         await supabaseClient.from("sub_subagent_wallet_topups").insert({ sub_subagent_store_id: subsubagentStoreId, amount: baseAmount, paystack_reference: reference });
       }
       return new Response(JSON.stringify({ message: "Subsubagent wallet topup processed" }), { status: 200, headers: corsHeaders });

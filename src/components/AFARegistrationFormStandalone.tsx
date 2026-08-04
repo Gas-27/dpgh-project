@@ -177,30 +177,33 @@ export default function AFARegistrationFormStandalone({
         return;
       }
 
-      // Call the Supabase edge function to initialize payment
-      console.log('[v0] Calling AFA registration edge function...');
-      
+      // Initialize AFA registration payment via initialize-payment edge function
       const callbackUrl = typeof window !== 'undefined' ? window.location.href : '';
-      
-      const response = await supabase.functions.invoke('AFA-registration', {
+
+      const response = await supabase.functions.invoke('initialize-payment', {
         body: {
-          fullName: formData.customer_name,
-          phoneNumber: formData.customer_phone,
-          idNumber: formData.ghana_card,
-          dateOfBirth: formData.date_of_birth,
-          town: formData.town,
-          occupation: 'Farmer',
-          region: formData.region,
-          cropProduce: formData.crop,
-          agentStoreId: agentStoreId || null,
-          subagentStoreId: subagentStoreId || null,
-          subsubagentStoreId: subsubagentStoreId || null,
-          registrationFee: registrationFee,
-          callbackUrl: callbackUrl,
+          email: formData.customer_phone + '@afa.dpgh.app',
+          phone: formData.customer_phone,
+          amount: registrationFee,
+          callback_url: callbackUrl,
+          metadata: {
+            type: 'afa_registration',
+            fullName: formData.customer_name,
+            phoneNumber: formData.customer_phone,
+            idNumber: formData.ghana_card,
+            dateOfBirth: formData.date_of_birth,
+            town: formData.town,
+            occupation: 'Farmer',
+            region: formData.region,
+            cropProduce: formData.crop,
+            base_amount: registrationFee,
+            callback_url: callbackUrl,
+            ...(agentStoreId       ? { agent_store_id: agentStoreId }             : {}),
+            ...(subagentStoreId    ? { subagent_store_id: subagentStoreId }        : {}),
+            ...(subsubagentStoreId ? { subsubagent_store_id: subsubagentStoreId }  : {}),
+          },
         },
       });
-
-      console.log('[v0] Edge function response:', response);
 
       if (response.error) {
         throw new Error(response.error.message || 'Failed to initialize payment');
@@ -209,8 +212,6 @@ export default function AFARegistrationFormStandalone({
       const data = response.data;
 
       if (data.success && data.data?.authorization_url) {
-        console.log('[v0] Redirecting to Paystack:', data.data.authorization_url);
-        // Redirect to Paystack checkout
         window.location.href = data.data.authorization_url;
       } else {
         throw new Error(data.message || 'Failed to initialize payment');

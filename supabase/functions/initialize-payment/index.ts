@@ -65,6 +65,9 @@ Deno.serve(async (req) => {
       if (metadata.subagent_store_id) {
         afaMetadata.subagent_store_id = metadata.subagent_store_id;
       }
+      if (metadata.subsubagent_store_id) {
+        afaMetadata.subsubagent_store_id = metadata.subsubagent_store_id;
+      }
 
       const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
@@ -94,6 +97,78 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         authorization_url: result.data.authorization_url,
         reference: result.data.reference,
+        amount: totalWithFee,
+        base_amount: baseAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ==========================
+    // AFA REGISTRATION PAYMENT
+    // ==========================
+    if (metadata?.type === "afa_registration") {
+      const {
+        fullName, phoneNumber, idNumber, dateOfBirth,
+        town, occupation, region, cropProduce,
+        agent_store_id, subagent_store_id, subsubagent_store_id,
+        base_amount, callback_url: cbUrl,
+      } = metadata;
+
+      if (!fullName || !phoneNumber || !idNumber || !dateOfBirth || !town || !occupation || !region || !cropProduce || !requestedAmount || !email) {
+        return new Response(JSON.stringify({ error: "Missing required fields for AFA registration" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const baseAmount = Number(base_amount) || Number(requestedAmount);
+      const feeAmount = baseAmount * (PAYSTACK_FEE_PERCENT / 100);
+      const totalWithFee = Math.round((baseAmount + feeAmount) * 100) / 100;
+      const amountInPesewas = Math.round(totalWithFee * 100);
+
+      const afaRegMetadata: Record<string, unknown> = {
+        type: "afa_registration",
+        fullName, phoneNumber, idNumber, dateOfBirth,
+        town, occupation, region, cropProduce,
+        base_amount: baseAmount,
+        callback_url: cbUrl || "",
+      };
+      if (agent_store_id)       afaRegMetadata.agent_store_id       = agent_store_id;
+      if (subagent_store_id)    afaRegMetadata.subagent_store_id    = subagent_store_id;
+      if (subsubagent_store_id) afaRegMetadata.subsubagent_store_id = subsubagent_store_id;
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url: cbUrl || callback_url,
+          metadata: afaRegMetadata,
+        }),
+      });
+
+      const result = await paystackRes.json();
+
+      if (!result.status) {
+        console.error("Paystack AFA registration error:", result);
+        return new Response(JSON.stringify({ error: result.message || "AFA registration payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          authorization_url: result.data.authorization_url,
+          reference: result.data.reference,
+        },
         amount: totalWithFee,
         base_amount: baseAmount,
       }), {
