@@ -203,53 +203,55 @@ export default function SubSubagentRegistrationForm({
         .select("*", { count: "exact", head: true });
       const topupReference = `Agt${(subSubagentCount || 0) + 1}`;
 
-      // Check if a store already exists for this user (avoids 409 unique constraint on user_id)
-      const { data: existingStore } = await supabase
+      // A Supabase DB trigger on auth.users may auto-create a skeleton row in
+      // sub_subagent_stores the moment signUp completes. To avoid a 409 unique
+      // constraint conflict on user_id, we use upsert (onConflict: "user_id").
+      // This also handles any prior orphaned rows. topup_reference is set via a
+      // follow-up update to avoid the broken BEFORE INSERT trigger that references
+      // NEW.top_reference (a column that does not exist).
+      const storePayload = {
+        subagent_store_id: subagentStoreId,
+        user_id: authData.user.id,
+        store_name: formData.storeName,
+        whatsapp_number: formData.whatsappNumber || null,
+        support_number: formData.supportNumber || null,
+        whatsapp_group: null,
+        momo_name: formData.momoName || null,
+        momo_number: formData.momoNumber || null,
+        momo_network: formData.momoNetwork || null,
+        wallet_balance: 0,
+        approved: true,
+      };
+
+      const { data: upsertedStore, error: storeError } = await supabase
         .from("sub_subagent_stores")
-        .select("id")
-        .eq("user_id", authData.user.id)
+        .upsert(storePayload, { onConflict: "user_id" })
+        .select()
         .maybeSingle();
 
-      let storeData: any;
-
-      if (existingStore) {
-        // Store already exists for this user — reuse it
-        storeData = existingStore;
-      } else {
-        // Insert the store row WITHOUT topup_reference first. The DB trigger on
-        // sub_subagent_stores has a typo (references NEW.top_reference which does
-        // not exist) and will error if topup_reference is included in the INSERT
-        // payload. By omitting it we let the trigger run on a null value, then
-        // immediately update the row with the correct reference value after insert.
-        const { data: insertedStore, error: storeError } = await supabase
-          .from("sub_subagent_stores")
-          .insert({
-            subagent_store_id: subagentStoreId,
-            user_id: authData.user.id,
-            store_name: formData.storeName,
-            whatsapp_number: formData.whatsappNumber || null,
-            support_number: formData.supportNumber || null,
-            whatsapp_group: null,
-            momo_name: formData.momoName || null,
-            momo_number: formData.momoNumber || null,
-            momo_network: formData.momoNetwork || null,
-            wallet_balance: 0,
-            approved: true,
-          })
-          .select()
-          .single();
-
-        if (storeError) {
-          throw storeError;
-        }
-        storeData = insertedStore;
+      if (storeError) {
+        throw storeError;
       }
 
-      // Now set the topup_reference via update (avoids the broken BEFORE INSERT trigger)
-      await supabase
-        .from("sub_subagent_stores")
-        .update({ topup_reference: topupReference })
-        .eq("id", storeData.id);
+      // Determine the store id — upsert may return null on conflict with no
+      // changes, so fall back to a direct lookup by user_id.
+      let storeId: string | null = upsertedStore?.id ?? null;
+      if (!storeId) {
+        const { data: found } = await supabase
+          .from("sub_subagent_stores")
+          .select("id")
+          .eq("user_id", authData.user.id)
+          .maybeSingle();
+        storeId = found?.id ?? null;
+      }
+
+      // Set topup_reference via update to bypass the broken BEFORE INSERT trigger
+      if (storeId) {
+        await supabase
+          .from("sub_subagent_stores")
+          .update({ topup_reference: topupReference })
+          .eq("id", storeId);
+      }
 
       // Auto sign-in the newly created user
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -271,7 +273,7 @@ export default function SubSubagentRegistrationForm({
       // Use window.location.href to do a full page reload so the page loads with
       // session already established and roles already cached from database
       setTimeout(() => {
-        window.location.href = `/sub-subagent-dashboard?store_id=${storeData.id}`;
+        window.location.href = `/sub-subagent-dashboard?store_id=${storeId}`;
       }, 500);
     } catch (error: any) {
       const isUserAlreadyExists = error?.status === 422 || error?.message?.toLowerCase().includes("already registered") || error?.message?.toLowerCase().includes("already been registered");
