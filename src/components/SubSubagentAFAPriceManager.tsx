@@ -43,7 +43,6 @@ export default function SubSubagentAFAPriceManager({ onPriceSaved }: SubSubagent
         .from("sub_subagent_stores")
         .select("id, afa_bundle_price, subagent_store_id")
         .eq("user_id", authData.user.id)
-        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -66,7 +65,7 @@ export default function SubSubagentAFAPriceManager({ onPriceSaved }: SubSubagent
           .from("subagent_stores")
           .select("afa_subsubagent_base_price, afa_bundle_price")
           .eq("id", store.subagent_store_id)
-          .single();
+          .maybeSingle();
 
         if (parentSubagent) {
           // Prefer afa_subsubagent_base_price; fall back to afa_bundle_price

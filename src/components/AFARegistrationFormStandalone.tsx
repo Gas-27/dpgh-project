@@ -212,10 +212,13 @@ export default function AFARegistrationFormStandalone({
 
       const data = response.data;
 
-      if (data.success && data.data?.authorization_url) {
-        window.location.href = data.data.authorization_url;
+      // Edge function returns { authorization_url, reference, amount } at top level
+      // (no success/data nesting for afa_registration type)
+      const authUrl = data?.authorization_url || data?.data?.authorization_url;
+      if (authUrl) {
+        window.location.href = authUrl;
       } else {
-        throw new Error(data.message || 'Failed to initialize payment');
+        throw new Error(data?.error || data?.message || 'Failed to initialize payment');
       }
     } catch (err: any) {
       const message = err instanceof Error ? err.message : 'Payment initialization failed';

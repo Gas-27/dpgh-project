@@ -208,7 +208,7 @@ export default function AFAPackagesDisplay({
           .from("sub_subagent_stores")
           .select("afa_bundle_price, subagent_store_id")
           .eq("id", subsubagentStoreId)
-          .single();
+          .maybeSingle();
 
         const ownPrice = subsubData?.afa_bundle_price ? Number(subsubData.afa_bundle_price) : 0;
 
@@ -222,7 +222,7 @@ export default function AFAPackagesDisplay({
               .from("subagent_stores")
               .select("afa_subsubagent_base_price, afa_bundle_price")
               .eq("id", subsubData.subagent_store_id)
-              .single();
+              .maybeSingle();
             if (parentSubagent) {
               fallback =
                 Number((parentSubagent as any).afa_subsubagent_base_price || 0) ||
@@ -243,7 +243,7 @@ export default function AFAPackagesDisplay({
           .from("subagent_stores")
           .select("afa_bundle_price, agent_store_id")
           .eq("id", subagentStoreId)
-          .single();
+          .maybeSingle();
 
         const ownPrice = subagentData?.afa_bundle_price ? Number(subagentData.afa_bundle_price) : 0;
 
@@ -257,7 +257,7 @@ export default function AFAPackagesDisplay({
               .from("agent_stores")
               .select("afa_subagent_base_price, afa_bundle_price")
               .eq("id", subagentData.agent_store_id)
-              .single();
+              .maybeSingle();
             if (agentStore) {
               fallback =
                 Number((agentStore as any).afa_subagent_base_price || 0) ||
@@ -277,7 +277,7 @@ export default function AFAPackagesDisplay({
           .from("agent_stores")
           .select("afa_bundle_price")
           .eq("id", agentStoreId)
-          .single();
+          .maybeSingle();
         const agentPrice = agentData?.afa_bundle_price ? Number(agentData.afa_bundle_price) : 0;
         setAgentBundlePrice(agentPrice > 0 ? agentPrice : adminBundlePrice);
 
@@ -300,7 +300,7 @@ export default function AFAPackagesDisplay({
           .from("subagent_stores")
           .select("afa_bundle_price, agent_store_id")
           .eq("id", subagentStoreId)
-          .single();
+          .maybeSingle();
         const ownPrice = subagentData?.afa_bundle_price ? Number(subagentData.afa_bundle_price) : 0;
         if (ownPrice > 0) {
           setAgentBundlePrice(ownPrice);
@@ -311,7 +311,7 @@ export default function AFAPackagesDisplay({
               .from("agent_stores")
               .select("afa_subagent_base_price, afa_bundle_price")
               .eq("id", subagentData.agent_store_id)
-              .single();
+              .maybeSingle();
             if (agentStore) {
               fallback =
                 Number((agentStore as any).afa_subagent_base_price || 0) ||

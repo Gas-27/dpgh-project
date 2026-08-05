@@ -100,7 +100,6 @@ export default function SubSubagentRegistrationForm({
 
         if (error) throw error;
         setSubagentStore(data);
-        console.log("[v0] Subagent store loaded:", data);
       } catch (error) {
         console.error("[v0] Error fetching subagent store:", error);
       } finally {
@@ -204,35 +203,46 @@ export default function SubSubagentRegistrationForm({
         .select("*", { count: "exact", head: true });
       const topupReference = `Agt${(subSubagentCount || 0) + 1}`;
 
-      // Insert the store row WITHOUT topup_reference first. The DB trigger on
-      // sub_subagent_stores has a typo (references NEW.top_reference which does
-      // not exist) and will error if topup_reference is included in the INSERT
-      // payload. By omitting it we let the trigger run on a null value, then
-      // immediately update the row with the correct reference value after insert.
-      const { data: storeData, error: storeError } = await supabase
+      // Check if a store already exists for this user (avoids 409 unique constraint on user_id)
+      const { data: existingStore } = await supabase
         .from("sub_subagent_stores")
-        .insert({
-          subagent_store_id: subagentStoreId,
-          user_id: authData.user.id,
-          store_name: formData.storeName,
-          whatsapp_number: formData.whatsappNumber || null,
-          support_number: formData.supportNumber || null,
-          whatsapp_group: null,
-          momo_name: formData.momoName || null,
-          momo_number: formData.momoNumber || null,
-          momo_network: formData.momoNetwork || null,
-          wallet_balance: 0,
-          approved: true,
-        })
-        .select()
-        .single();
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .maybeSingle();
 
-      if (storeError) {
-        // If the trigger error fires, clean up the auth user we just created
-        // so the email can be retried without "user already registered".
-        // We can't delete auth users from the client SDK, so we sign them in
-        // first then call a no-op to mark the account — handled by the catch block.
-        throw storeError;
+      let storeData: any;
+
+      if (existingStore) {
+        // Store already exists for this user — reuse it
+        storeData = existingStore;
+      } else {
+        // Insert the store row WITHOUT topup_reference first. The DB trigger on
+        // sub_subagent_stores has a typo (references NEW.top_reference which does
+        // not exist) and will error if topup_reference is included in the INSERT
+        // payload. By omitting it we let the trigger run on a null value, then
+        // immediately update the row with the correct reference value after insert.
+        const { data: insertedStore, error: storeError } = await supabase
+          .from("sub_subagent_stores")
+          .insert({
+            subagent_store_id: subagentStoreId,
+            user_id: authData.user.id,
+            store_name: formData.storeName,
+            whatsapp_number: formData.whatsappNumber || null,
+            support_number: formData.supportNumber || null,
+            whatsapp_group: null,
+            momo_name: formData.momoName || null,
+            momo_number: formData.momoNumber || null,
+            momo_network: formData.momoNetwork || null,
+            wallet_balance: 0,
+            approved: true,
+          })
+          .select()
+          .single();
+
+        if (storeError) {
+          throw storeError;
+        }
+        storeData = insertedStore;
       }
 
       // Now set the topup_reference via update (avoids the broken BEFORE INSERT trigger)
@@ -266,13 +276,16 @@ export default function SubSubagentRegistrationForm({
     } catch (error: any) {
       const isUserAlreadyExists = error?.status === 422 || error?.message?.toLowerCase().includes("already registered") || error?.message?.toLowerCase().includes("already been registered");
       const isTriggerError = error?.message?.includes("top_reference") || error?.message?.includes("record \"new\"");
+      const isConflict = error?.code === "23505" || error?.status === 409;
       toast({
         title: "Registration Failed",
         description: isUserAlreadyExists
           ? "This email is already registered. Please use a different email address."
-          : isTriggerError
-            ? "A database configuration error is preventing registration. Please contact the administrator to fix the sub_subagent_stores trigger."
-            : error.message || "Failed to create account",
+          : isConflict
+            ? "An account already exists with these details. Please try signing in instead."
+            : isTriggerError
+              ? "There was a database issue. Please try again or contact support."
+              : error.message || "Failed to create account",
         variant: "destructive",
       });
     } finally {
@@ -290,7 +303,7 @@ export default function SubSubagentRegistrationForm({
             <div>
               <p className="font-semibold text-green-400 mb-1">No Registration Fee</p>
               <p className="text-sm text-muted-foreground">
-                Your sub-subagent account will be created instantly with no registration fee. Start selling immediately after sign up!
+                Your agent account will be created instantly with no registration fee. Start selling immediately after sign up!
               </p>
             </div>
           </div>
@@ -437,12 +450,12 @@ export default function SubSubagentRegistrationForm({
                 Creating Account...
               </>
             ) : (
-              "Create Sub-Subagent Account"
+              "Create Agent Account"
             )}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
-            By signing up, you agree to become a sub-subagent under {subagentStoreName} and follow our terms and conditions.
+            By signing up, you agree to become an agent under {subagentStoreName} and follow our terms and conditions.
           </p>
 
           <div className="text-center pt-4 border-t border-border">
