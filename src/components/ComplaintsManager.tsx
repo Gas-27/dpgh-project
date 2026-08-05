@@ -54,9 +54,6 @@ interface Complaint {
     store_name: string;
     whatsapp_number: string;
   };
-  sub_subagent_stores?: {
-    store_name: string;
-  };
 }
 
 export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = false }: { isAgent?: boolean; agentStoreId?: string; readOnly?: boolean } = {}) => {
@@ -64,7 +61,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [networkFilter, setNetworkFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<"all" | "storefront" | "agent" | "subagent" | "sub_subagent">(isAgent ? "agent" : "all");
+  const [activeTab, setActiveTab] = useState<"all" | "storefront" | "agent" | "subagent">(isAgent ? "agent" : "all");
   const [tableError, setTableError] = useState(false);
   const [columnsMissing, setColumnsMissing] = useState(false);
   const [selectedComplaints, setSelectedComplaints] = useState<Set<string>>(new Set());
@@ -90,7 +87,10 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       // Tier 2: screenshot_url only (may exist without the owing_* columns)
       // Tier 3: base columns only (always works)
       const ORDER_JOIN = "orders(network, size_gb, amount, fulfillment_status, created_at, agent_store_id, subagent_store_id, customer_id, customer_number)";
-      const STORE_JOIN = "agent_stores(store_name, phone_number), subagent_stores(store_name, whatsapp_number), sub_subagent_stores(store_name)";
+      // Note: sub_subagent_stores is NOT joined here because there is no FK from
+      // complaints to sub_subagent_stores in PostgREST, causing a 400 on all tiers.
+      // Sub-subagent info is shown via the complaint_type === "subagent" path for now.
+      const STORE_JOIN = "agent_stores(store_name, phone_number), subagent_stores(store_name, whatsapp_number)";
       // TIER1: all columns including sms_screenshot_url (requires that column to exist)
       // TIER2: drops sms_screenshot_url but keeps owing_* and screenshot_url
       // TIER3: drops owing_* and screenshot_url (absolute minimum — always works)
@@ -143,9 +143,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
   };
 
   const filteredComplaints = complaints.filter((c) => {
-    const typeMatch =
-      activeTab === "all" ||
-      (activeTab === "sub_subagent" ? !!c.sub_subagent_stores?.store_name : c.complaint_type === activeTab);
+    const typeMatch = activeTab === "all" || c.complaint_type === activeTab;
     const networkMatch =
       networkFilter === "all" ||
       (c.orders?.network || "").toLowerCase() === networkFilter.toLowerCase();
@@ -155,7 +153,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       c.customer_number.includes(searchTerm) ||
       (c.agent_stores?.store_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.subagent_stores?.store_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.sub_subagent_stores?.store_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+
       (c.order_id || "").toLowerCase().includes(searchTerm.toLowerCase());
     return typeMatch && networkMatch && searchMatch;
   });
@@ -342,7 +340,7 @@ ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'sub_admin';`}
                 <TabsTrigger value="storefront">Storefront ({complaints.filter(c => c.complaint_type === "storefront").length})</TabsTrigger>
                 <TabsTrigger value="agent">Agent ({complaints.filter(c => c.complaint_type === "agent").length})</TabsTrigger>
                 <TabsTrigger value="subagent">Subagent ({complaints.filter(c => c.complaint_type === "subagent").length})</TabsTrigger>
-                <TabsTrigger value="sub_subagent">Sub-Subagent ({complaints.filter(c => !!c.sub_subagent_stores?.store_name).length})</TabsTrigger>
+
               </TabsList>
 
               <TabsContent value={activeTab} className="space-y-4 mt-4">
@@ -752,7 +750,6 @@ function ComplaintsTable({
   const totalPages = Math.ceil(complaints.length / PAGE_SIZE);
 
   const typeLabel = (c: Complaint) => {
-    if (c.sub_subagent_stores?.store_name) return <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-xs">Sub-Subagent</Badge>;
     if (c.complaint_type === "agent") return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">Agent</Badge>;
     if (c.complaint_type === "subagent") return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">Subagent</Badge>;
     return <Badge className="bg-muted text-muted-foreground text-xs">Storefront</Badge>;
@@ -922,9 +919,7 @@ function ComplaintsTable({
                       {c.orders?.created_at ? new Date(c.orders.created_at).toLocaleString() : "—"}
                     </TableCell>
                     <TableCell className="text-xs">
-                      {c.sub_subagent_stores?.store_name ? (
-                        <p className="font-medium text-cyan-400">{c.sub_subagent_stores.store_name}</p>
-                      ) : c.agent_stores?.store_name ? (
+                      {c.agent_stores?.store_name ? (
                         <div>
                           <p className="font-medium text-blue-400">{c.agent_stores.store_name}</p>
                           {(c.agent_stores as any).store_url && (

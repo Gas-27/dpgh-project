@@ -278,6 +278,16 @@ export default function SubSubagentRegistrationForm({
         // Still redirect even if auto-signin fails - user can sign in manually
       }
 
+      // Final guaranteed storeId lookup — ensures we never redirect with store_id=null
+      if (!storeId) {
+        const { data: finalLookup } = await supabase
+          .from("sub_subagent_stores")
+          .select("id")
+          .eq("user_id", authData.user.id)
+          .maybeSingle();
+        storeId = finalLookup?.id ?? null;
+      }
+
       // Sub-subagents don't need payment, so skip to dashboard
       toast({
         title: "Success!",
@@ -288,7 +298,12 @@ export default function SubSubagentRegistrationForm({
       // Use window.location.href to do a full page reload so the page loads with
       // session already established and roles already cached from database
       setTimeout(() => {
-        window.location.href = `/sub-subagent-dashboard?store_id=${storeId}`;
+        if (storeId) {
+          window.location.href = `/sub-subagent-dashboard?store_id=${storeId}`;
+        } else {
+          // storeId still null — redirect to home so the user can sign in and be routed correctly
+          window.location.href = `/`;
+        }
       }, 500);
     } catch (error: any) {
       const isUserAlreadyExists = error?.status === 422 || error?.message?.toLowerCase().includes("already registered") || error?.message?.toLowerCase().includes("already been registered");

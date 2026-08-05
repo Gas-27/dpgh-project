@@ -11,9 +11,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 
 // ── Stage thresholds ──────────────────────────────────────────────────────────
-const STAGE_SENT_TO_AGENT_HOURS = 2 / 60;  // 2 minutes
-const STAGE_SENT_TO_MTN_HOURS   = 0.5;     // 30 minutes
-const STAGE_APPROVED_HOURS      = 88;      // ~1–4 days
+const STAGE_SENT_TO_AGENT_MINS = 10;   // 10 minutes after registration
+const STAGE_SENT_TO_MTN_MINS   = 40;   // 40 minutes after registration (10 + 30)
+// Stage 3 (MTN Approved) is ONLY set by admin via registration_status = "completed"
+// Time alone never advances to stage 3 — the "4 days" is just an estimate shown to users
 
 interface AFATrackerProps {
   storeLabel?: string;
@@ -30,18 +31,20 @@ interface Registration {
 }
 
 function getStage(registration: Registration): 0 | 1 | 2 | 3 {
-  const hoursAgo = (Date.now() - new Date(registration.created_at).getTime()) / (1000 * 3600);
-  if (registration.registration_status === "completed" || hoursAgo >= STAGE_APPROVED_HOURS) return 3;
-  if (hoursAgo >= STAGE_SENT_TO_MTN_HOURS) return 2;
-  if (hoursAgo >= STAGE_SENT_TO_AGENT_HOURS) return 1;
-  return 0;
+  // Stage 3 (MTN Approved) is ONLY triggered by admin marking status as "completed"
+  // — time alone never jumps to approved, so customers are not falsely shown as done
+  if (registration.registration_status === "completed") return 3;
+  const minsAgo = (Date.now() - new Date(registration.created_at).getTime()) / (1000 * 60);
+  if (minsAgo >= STAGE_SENT_TO_MTN_MINS) return 2;   // 40 min: Sent to MTN
+  if (minsAgo >= STAGE_SENT_TO_AGENT_MINS) return 1; // 10 min: Sent to Agent
+  return 0; // still in "Registration Placed"
 }
 
 const STAGES = [
   {
     label: "AFA Registration Placed",
     desc: "Your registration has been received and is being processed.",
-    approxTime: "~2 minutes",
+    approxTime: "~10 minutes",
     icon: <CheckCircle className="h-4 w-4" />,
   },
   {
@@ -309,19 +312,27 @@ export default function AFARegistrationTracker({ storeLabel }: AFATrackerProps) 
                 })}
               </ol>
 
-              {/* Report button — shown only when approved */}
-              {isApproved && !isReporting && (
+              {/* Report button — only available once MTN has approved */}
+              {!isReporting && (
                 <div className="pt-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    If you dialed <strong>*1848#</strong> and still cannot see AFA bundles on the menu, click below to report it.
-                  </p>
-                  <Button
-                    size="sm" variant="outline"
-                    className="gap-1.5 border-red-500/40 text-red-500 hover:bg-red-500/10"
-                    onClick={() => setReportingId(reg.id)}
-                  >
-                    <Flag className="h-3.5 w-3.5" /> Report Issue
-                  </Button>
+                  {isApproved ? (
+                    <>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        If you dialed <strong>*1848#</strong> and still cannot see AFA bundles on the menu, click below to report it.
+                      </p>
+                      <Button
+                        size="sm" variant="outline"
+                        className="gap-1.5 border-red-500/40 text-red-500 hover:bg-red-500/10"
+                        onClick={() => setReportingId(reg.id)}
+                      >
+                        <Flag className="h-3.5 w-3.5" /> Report Issue
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground/70 italic">
+                      Reporting is only available once your registration reaches the <strong>MTN Approved</strong> stage. Please check back after MTN has reviewed your application (1–4 days).
+                    </p>
+                  )}
                 </div>
               )}
 
