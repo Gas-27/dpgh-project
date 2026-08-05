@@ -172,7 +172,7 @@ Deno.serve(async (req: Request) => {
     if (data) { order = data; matchMethod = `provider_reference = order_code(${order_code})`; }
   }
 
-  // ── MATCH 5: provider_reference = reference ───────────────────────────────
+  // ── MATCH 5: provider_reference = reference ─────────���─────────────────────
   if (!order && reference) {
     const { data } = await supabase
       .from("orders")
@@ -229,23 +229,14 @@ Deno.serve(async (req: Request) => {
   }
 
   // ─── Update order status ───────────────────────────────────────────────────
-  // Also store Dakazina's order_code in provider_order_id for future reference
-  const updatePayload: Record<string, any> = {
-    order_status:       mappedOrderStatus,
-    fulfillment_status: mappedFulfillment,
-    status:             mappedFulfillment,
-  };
-
-  if (order_code && !order.provider_order_id) {
-    updatePayload.provider_order_id = order_code;
-  }
-  if (order_code && !order.provider_reference) {
-    updatePayload.provider_reference = order_code;
-  }
-
+  // Step 1: minimal update — only core status fields that definitely exist
   const { error: updateErr } = await supabase
     .from("orders")
-    .update(updatePayload)
+    .update({
+      order_status:       mappedOrderStatus,
+      fulfillment_status: mappedFulfillment,
+      status:             mappedFulfillment,
+    })
     .eq("id", order.id);
 
   if (updateErr) {
@@ -257,6 +248,12 @@ Deno.serve(async (req: Request) => {
   }
 
   console.log(`[dakazina-webhook] UPDATED order ${order.id}: order_status=${mappedOrderStatus}, fulfillment_status=${mappedFulfillment} (via ${matchMethod})`);
+
+  // Step 2: try to backfill provider columns if they exist (non-blocking)
+  if (order_code) {
+    await supabase.from("orders").update({ provider_order_id: order_code }).eq("id", order.id).then(() => null).catch(() => null);
+    await supabase.from("orders").update({ provider_reference: order_code }).eq("id", order.id).then(() => null).catch(() => null);
+  }
 
   return new Response(
     JSON.stringify({
