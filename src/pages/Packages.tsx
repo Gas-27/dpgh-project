@@ -216,9 +216,16 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
       : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
         : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
   } else if (orderStatus === "waiting") {
+    const net = (order.network || "").toLowerCase();
+    const isNonMtn = net === "telecel" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
     step = 2;
-    msg = "Your number is being added to our beneficiary list.";
-    note = "MTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.";
+    if (isNonMtn) {
+      msg = "Your order is in the queue.";
+      note = `Your ${formatNetworkName(order.network)} order has been received and is currently queued for processing. It will be picked up and sent to the network shortly. No action is needed on your part — please check back in a few minutes.`;
+    } else {
+      msg = "Your number is being added to our beneficiary list.";
+      note = "MTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.";
+    }
   } else if (orderStatus === "processing") {
     step = 3;
     msg = `Order sent to ${formatNetworkName(order.network)} for delivery.`;

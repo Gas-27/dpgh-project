@@ -1,7 +1,36 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
-// IMPORTANT: Deploy with --no-verify-jwt  OR  set verify_jwt = false in supabase/config.toml
-// Dakazina sends no JWT — without this flag every request is silently rejected with 401.
+// ---------------------------------------------------------------------------
+// Dakazina Webhook Receiver  —  supabase/functions/dakazina-webhook/index.ts
+// ---------------------------------------------------------------------------
+// IMPORTANT: Deploy with --no-verify-jwt OR set verify_jwt = false in
+// supabase/config.toml. Dakazina sends no JWT; without this flag every
+// incoming request is rejected with 401 before it reaches this code.
+//
+// Dakazina webhook payload example (from their dashboard):
+// {
+//   "id": 7988,
+//   "type": "test_event",
+//   "status": "DELIVERED",
+//   "previous_status": "PROCESSING",
+//   "order_code": "DKZ-TEST-RQ5WKR",     ← Dakazina's internal code
+//   "reference": "REF-HETWWVUOTM",       ← the reference WE passed when ordering
+//   "amount": 10,
+//   "user_id": 4,
+//   "occurred_at": "2026-04-10T21:15:44+00:00",
+//   "test": true,
+//   "metadata": { "message": "This is a test webhook from Dakazina" }
+// }
+//
+// HOW ORDER MATCHING WORKS
+// ─────────────────────────
+// When fulfill-order submits a purchase to Dakazina it passes our order UUID
+// as the "incoming_api_ref" (the reference we control). Dakazina echoes it
+// back as the "reference" field in this webhook. That is the primary match.
+//
+// All other tiers are fallbacks for historical orders or edge cases where
+// Dakazina returns the identifier in a different field.
+// ---------------------------------------------------------------------------
 
 Deno.serve(async (req: Request) => {
   // CORS preflight

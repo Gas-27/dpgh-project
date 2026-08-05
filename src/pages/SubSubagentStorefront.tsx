@@ -211,7 +211,7 @@ const SubSubagentOrderTrackingCard = ({
     return () => clearInterval(interval);
   }, [order.id]);
 
-  // ── Status-based step logic (no time dependency) ─��
+  // ── Status-based step logic (no time dependency) ─���
   // Check both order_status and status fields — refunded may be set on either
   const rawOrderStatus = order.order_status?.toLowerCase().trim() || "";
   const rawStatus = (order as any).status?.toLowerCase().trim() || "";
@@ -234,9 +234,16 @@ const SubSubagentOrderTrackingCard = ({
     else
       extraNote = "Please check your messages for delivery confirmation.";
   } else if (orderStatus === "waiting") {
+    const net = (order.network || "").toLowerCase();
+    const isNonMtn = net === "telecel" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
     currentStep = 2;
-    statusMessage = "Your number is being added to our beneficiary list.";
-    extraNote = "MTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.";
+    if (isNonMtn) {
+      statusMessage = "Your order is in the queue.";
+      extraNote = `Your ${formatNetworkName(order.network)} order has been received and is currently queued for processing. It will be picked up and sent to the network shortly. No action is needed on your part — please check back in a few minutes.`;
+    } else {
+      statusMessage = "Your number is being added to our beneficiary list.";
+      extraNote = "MTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.";
+    }
   } else if (orderStatus === "processing") {
     currentStep = 3;
     statusMessage = `Order sent to ${order.network?.toUpperCase()} for delivery.`;
