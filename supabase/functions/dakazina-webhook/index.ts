@@ -65,12 +65,6 @@ Deno.serve(async (req: Request) => {
     payload = JSON.parse(rawBody);
   } catch {
     console.log(`[dakazina-webhook] Invalid JSON: ${rawBody.slice(0, 300)}`);
-    await supabase.from("webhook_logs").insert({
-      provider: "dakazina",
-      payload:  { raw: rawBody.slice(0, 500) },
-      matched:  false,
-      is_test:  false,
-    }).catch(() => null);
     return new Response(JSON.stringify({ success: false, error: "Invalid JSON body" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
@@ -221,26 +215,13 @@ Deno.serve(async (req: Request) => {
 
   console.log(`[dakazina-webhook] Final match: ${order ? `order ${order.id} via ${matchMethod}` : "UNMATCHED"}`);
 
-  // ─── Always log the webhook hit ────────────────────────────────────────────
-  await supabase.from("webhook_logs").insert({
-    provider:    "dakazina",
-    payload:     payload,
-    reference:   reference   ?? null,
-    order_code:  order_code  ?? null,
-    order_id:    order?.id   ?? null,
-    status:      status      ?? null,
-    matched:     !!order,
-    occurred_at: occurred_at ?? null,
-    is_test:     test        ?? false,
-  }).catch((e: any) => console.log(`[dakazina-webhook] webhook_logs insert failed: ${e.message}`));
-
   // ─── If unmatched: return 200 so Dakazina does not retry endlessly ─────────
   if (!order) {
     console.log(`[dakazina-webhook] UNMATCHED — reference=${reference}, order_code=${order_code}`);
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Order not found. Check webhook_logs for details.",
+        message: "Order not found",
         tried:   { reference, order_code },
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
