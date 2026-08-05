@@ -11,10 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 
 // ── Stage thresholds ──────────────────────────────────────────────────────────
-const STAGE_SENT_TO_AGENT_MINS = 10;   // 10 minutes after registration
-const STAGE_SENT_TO_MTN_MINS   = 40;   // 40 minutes after registration (10 + 30)
-// Stage 3 (MTN Approved) is ONLY set by admin via registration_status = "completed"
-// Time alone never advances to stage 3 — the "4 days" is just an estimate shown to users
+const STAGE_SENT_TO_AGENT_MINS  = 10;       // 10 minutes after registration
+const STAGE_SENT_TO_MTN_MINS    = 40;       // 40 minutes after registration (10 + 30)
+const STAGE_MTN_APPROVED_HOURS  = 96;       // 96 hours (4 days) after registration
 
 interface AFATrackerProps {
   storeLabel?: string;
@@ -31,12 +30,13 @@ interface Registration {
 }
 
 function getStage(registration: Registration): 0 | 1 | 2 | 3 {
-  // Stage 3 (MTN Approved) is ONLY triggered by admin marking status as "completed"
-  // — time alone never jumps to approved, so customers are not falsely shown as done
+  // Admin can mark as completed early — always show approved if status is set
   if (registration.registration_status === "completed") return 3;
-  const minsAgo = (Date.now() - new Date(registration.created_at).getTime()) / (1000 * 60);
-  if (minsAgo >= STAGE_SENT_TO_MTN_MINS) return 2;   // 40 min: Sent to MTN
-  if (minsAgo >= STAGE_SENT_TO_AGENT_MINS) return 1; // 10 min: Sent to Agent
+  const minsAgo  = (Date.now() - new Date(registration.created_at).getTime()) / (1000 * 60);
+  const hoursAgo = minsAgo / 60;
+  if (hoursAgo >= STAGE_MTN_APPROVED_HOURS) return 3;  // 96 h: MTN Approved
+  if (minsAgo  >= STAGE_SENT_TO_MTN_MINS)   return 2;  // 40 min: Sent to MTN
+  if (minsAgo  >= STAGE_SENT_TO_AGENT_MINS) return 1;  // 10 min: Sent to Agent
   return 0; // still in "Registration Placed"
 }
 

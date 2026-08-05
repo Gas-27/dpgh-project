@@ -299,10 +299,13 @@ export default function SubSubagentRegistrationForm({
       // session already established and roles already cached from database
       setTimeout(() => {
         if (storeId) {
-          window.location.href = `/sub-subagent-dashboard?store_id=${storeId}`;
+          // Always use the full agentsstore.shop URL so the redirect works whether
+          // the form is shown on dataplug.store or agentsstore.shop
+          window.location.href = `https://agentsstore.shop/sub-subagent-dashboard?store_id=${storeId}`;
         } else {
-          // storeId still null — redirect to home so the user can sign in and be routed correctly
-          window.location.href = `/`;
+          // storeId still null — send to the sub-subagent login page where the
+          // user can sign in and be routed to their dashboard automatically
+          window.location.href = `https://agentsstore.shop/sub-subagent-login`;
         }
       }, 500);
     } catch (error: any) {
