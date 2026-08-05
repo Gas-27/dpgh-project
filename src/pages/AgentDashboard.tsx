@@ -2877,9 +2877,9 @@ const AgentDashboard = () => {
                               </TableCell>
                               <TableCell>
                                 {alreadyAgentRefunded ? (
-                                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Refunded to Subagent</Badge>
+                                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs whitespace-nowrap">Refunded to Subagent</Badge>
                                 ) : (
-                                  <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Refunded by Admin</Badge>
+                                  <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Pending Refund</Badge>
                                 )}
                               </TableCell>
                             </TableRow>

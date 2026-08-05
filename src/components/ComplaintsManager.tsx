@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, AlertCircle, CheckCircle, Clock, Image, Download, Share2 } from "lucide-react";
+import { Search, AlertCircle, CheckCircle, Clock, Image, Download, Share2, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -54,13 +54,17 @@ interface Complaint {
     store_name: string;
     whatsapp_number: string;
   };
+  sub_subagent_stores?: {
+    store_name: string;
+  };
 }
 
 export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = false }: { isAgent?: boolean; agentStoreId?: string; readOnly?: boolean } = {}) => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "storefront" | "agent" | "subagent">(isAgent ? "agent" : "all");
+  const [networkFilter, setNetworkFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<"all" | "storefront" | "agent" | "subagent" | "sub_subagent">(isAgent ? "agent" : "all");
   const [tableError, setTableError] = useState(false);
   const [columnsMissing, setColumnsMissing] = useState(false);
   const [selectedComplaints, setSelectedComplaints] = useState<Set<string>>(new Set());
@@ -86,7 +90,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       // Tier 2: screenshot_url only (may exist without the owing_* columns)
       // Tier 3: base columns only (always works)
       const ORDER_JOIN = "orders(network, size_gb, amount, fulfillment_status, created_at, agent_store_id, subagent_store_id, customer_id, customer_number)";
-      const STORE_JOIN = "agent_stores(store_name, phone_number), subagent_stores(store_name, whatsapp_number)";
+      const STORE_JOIN = "agent_stores(store_name, phone_number), subagent_stores(store_name, whatsapp_number), sub_subagent_stores(store_name)";
       // TIER1: all columns including sms_screenshot_url (requires that column to exist)
       // TIER2: drops sms_screenshot_url but keeps owing_* and screenshot_url
       // TIER3: drops owing_* and screenshot_url (absolute minimum — always works)
@@ -139,15 +143,21 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
   };
 
   const filteredComplaints = complaints.filter((c) => {
-    const typeMatch = activeTab === "all" || c.complaint_type === activeTab;
+    const typeMatch =
+      activeTab === "all" ||
+      (activeTab === "sub_subagent" ? !!c.sub_subagent_stores?.store_name : c.complaint_type === activeTab);
+    const networkMatch =
+      networkFilter === "all" ||
+      (c.orders?.network || "").toLowerCase() === networkFilter.toLowerCase();
     const searchMatch =
       !searchTerm ||
       c.complaint_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.customer_number.includes(searchTerm) ||
       (c.agent_stores?.store_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.subagent_stores?.store_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.sub_subagent_stores?.store_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.order_id || "").toLowerCase().includes(searchTerm.toLowerCase());
-    return typeMatch && searchMatch;
+    return typeMatch && networkMatch && searchMatch;
   });
 
   const updateComplaintStatus = async (id: string, newStatus: string) => {
@@ -332,6 +342,7 @@ ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'sub_admin';`}
                 <TabsTrigger value="storefront">Storefront ({complaints.filter(c => c.complaint_type === "storefront").length})</TabsTrigger>
                 <TabsTrigger value="agent">Agent ({complaints.filter(c => c.complaint_type === "agent").length})</TabsTrigger>
                 <TabsTrigger value="subagent">Subagent ({complaints.filter(c => c.complaint_type === "subagent").length})</TabsTrigger>
+                <TabsTrigger value="sub_subagent">Sub-Subagent ({complaints.filter(c => !!c.sub_subagent_stores?.store_name).length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value={activeTab} className="space-y-4 mt-4">
@@ -339,6 +350,8 @@ ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'sub_admin';`}
                   complaints={filteredComplaints}
                   searchTerm={searchTerm}
                   setSearchTerm={(v) => { setSearchTerm(v); setPage(1); }}
+                  networkFilter={networkFilter}
+                  setNetworkFilter={(v) => { setNetworkFilter(v); setPage(1); }}
                   selectedComplaints={selectedComplaints}
                   setSelectedComplaints={setSelectedComplaints}
                   selectAll={selectAll}
@@ -372,6 +385,8 @@ ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'sub_admin';`}
                 complaints={filteredComplaints}
                 searchTerm={searchTerm}
                 setSearchTerm={(v) => { setSearchTerm(v); setPage(1); }}
+                networkFilter={networkFilter}
+                setNetworkFilter={(v) => { setNetworkFilter(v); setPage(1); }}
                 selectedComplaints={selectedComplaints}
                 setSelectedComplaints={setSelectedComplaints}
                 selectAll={selectAll}
@@ -459,11 +474,23 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
   };
 
   const handleShare = async () => {
-    const text = `Complaint Report\nCustomer: ${complaint.customer_number}\nOrder: ${complaint.orders ? `${networkName(complaint.orders.network)} ${complaint.orders.size_gb}GB` : complaint.order_id}\nDelivery: ${complaint.orders?.fulfillment_status ?? '—'}\nStatus: ${complaint.status}\nDate: ${new Date(complaint.created_at).toLocaleString()}\n\n${complaint.complaint_details}`;
+    const orderDate = complaint.orders?.created_at
+      ? new Date(complaint.orders.created_at).toLocaleString()
+      : "—";
+    const network = complaint.orders ? networkName(complaint.orders.network) : "—";
+    const bundle = complaint.orders ? `${complaint.orders.size_gb}GB` : "—";
+    const lines = [
+      `Order Date: ${orderDate}`,
+      `Customer Number: ${complaint.customer_number}`,
+      `Network: ${network} ${bundle}`,
+      `Message Delivered But Not Received`,
+      ``,
+      complaint.complaint_details,
+    ].join("\n");
     if (navigator.share) {
-      try { await navigator.share({ title: "Complaint Report", text }); } catch (_) {}
+      try { await navigator.share({ title: "Complaint", text: lines }); } catch (_) {}
     } else {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(lines);
       alert("Report copied to clipboard!");
     }
   };
@@ -678,6 +705,8 @@ interface ComplaintsTableProps {
   complaints: Complaint[];
   searchTerm: string;
   setSearchTerm: (v: string) => void;
+  networkFilter: string;
+  setNetworkFilter: (v: string) => void;
   selectedComplaints: Set<string>;
   setSelectedComplaints: (s: Set<string>) => void;
   selectAll: boolean;
@@ -696,6 +725,7 @@ interface ComplaintsTableProps {
 
 function ComplaintsTable({
   complaints, searchTerm, setSearchTerm,
+  networkFilter, setNetworkFilter,
   selectedComplaints, setSelectedComplaints,
   selectAll, setSelectAll,
   bulkUpdating, bulkUpdateStatus, updateComplaintStatus,
@@ -721,9 +751,10 @@ function ComplaintsTable({
   const paginated = complaints.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const totalPages = Math.ceil(complaints.length / PAGE_SIZE);
 
-  const typeLabel = (t: string) => {
-    if (t === "agent") return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">Agent</Badge>;
-    if (t === "subagent") return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">Subagent</Badge>;
+  const typeLabel = (c: Complaint) => {
+    if (c.sub_subagent_stores?.store_name) return <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-xs">Sub-Subagent</Badge>;
+    if (c.complaint_type === "agent") return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">Agent</Badge>;
+    if (c.complaint_type === "subagent") return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">Subagent</Badge>;
     return <Badge className="bg-muted text-muted-foreground text-xs">Storefront</Badge>;
   };
 
@@ -738,6 +769,22 @@ function ComplaintsTable({
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
+        </div>
+        {/* Network filter */}
+        <div className="flex items-center gap-1.5">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <select
+            value={networkFilter}
+            onChange={e => setNetworkFilter(e.target.value)}
+            className="text-sm border border-border rounded-md bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="all">All Networks</option>
+            <option value="mtn">MTN</option>
+            <option value="mtn_express">MTN Express</option>
+            <option value="telecel">Telecel</option>
+            <option value="airteltigo">AirtelTigo</option>
+            <option value="atbigtime">AT BigTime</option>
+          </select>
         </div>
         {!readOnly && selectedComplaints.size > 0 && (
           <>
@@ -779,11 +826,23 @@ function ComplaintsTable({
               className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border bg-background hover:bg-muted"
               onClick={async () => {
                 const selected = complaints.filter(c => selectedComplaints.has(c.id));
-                const text = selected.map(c =>
-                  `[${c.status.toUpperCase()}] ${c.customer_number} — ${c.orders ? `${c.orders.network?.toUpperCase()} ${c.orders.size_gb}GB` : c.order_id}: ${c.complaint_title}`
-                ).join("\n");
+                const networkName = (n: string) =>
+                  n === "mtn" ? "MTN" : n === "mtn_express" ? "MTN Express" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : (n || "").toUpperCase();
+                const text = selected.map(c => {
+                  const orderDate = c.orders?.created_at ? new Date(c.orders.created_at).toLocaleString() : "—";
+                  const network = c.orders ? `${networkName(c.orders.network)} ${c.orders.size_gb}GB` : "—";
+                  return [
+                    `Order Date: ${orderDate}`,
+                    `Customer Number: ${c.customer_number}`,
+                    `Network: ${network}`,
+                    `Message Delivered But Not Received`,
+                    ``,
+                    c.complaint_details,
+                    "---",
+                  ].join("\n");
+                }).join("\n");
                 if (navigator.share) {
-                  try { await navigator.share({ title: `${selected.length} Complaints`, text }); } catch (_) {}
+                  try { await navigator.share({ title: `${selected.length} Complaint(s)`, text }); } catch (_) {}
                 } else {
                   await navigator.clipboard.writeText(text);
                   alert("Copied to clipboard!");
@@ -844,7 +903,7 @@ function ComplaintsTable({
                         />
                       </TableCell>
                     )}
-                    <TableCell>{typeLabel(c.complaint_type)}</TableCell>
+                    <TableCell>{typeLabel(c)}</TableCell>
                     <TableCell className="text-sm">
                       <div>
                         <p className="font-medium">{c.customer_number}</p>
@@ -863,18 +922,20 @@ function ComplaintsTable({
                       {c.orders?.created_at ? new Date(c.orders.created_at).toLocaleString() : "—"}
                     </TableCell>
                     <TableCell className="text-xs">
-                      {c.agent_stores?.store_name ? (
+                      {c.sub_subagent_stores?.store_name ? (
+                        <p className="font-medium text-cyan-400">{c.sub_subagent_stores.store_name}</p>
+                      ) : c.agent_stores?.store_name ? (
                         <div>
                           <p className="font-medium text-blue-400">{c.agent_stores.store_name}</p>
-                          {c.agent_stores.store_url && (
-                            <a href={c.agent_stores.store_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline" onClick={e => e.stopPropagation()}>Visit</a>
+                          {(c.agent_stores as any).store_url && (
+                            <a href={(c.agent_stores as any).store_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline" onClick={e => e.stopPropagation()}>Visit</a>
                           )}
                         </div>
                       ) : c.subagent_stores?.store_name ? (
                         <div>
                           <p className="font-medium text-purple-400">{c.subagent_stores.store_name}</p>
-                          {c.subagent_stores.store_url && (
-                            <a href={c.subagent_stores.store_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline" onClick={e => e.stopPropagation()}>Visit</a>
+                          {(c.subagent_stores as any).store_url && (
+                            <a href={(c.subagent_stores as any).store_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline" onClick={e => e.stopPropagation()}>Visit</a>
                           )}
                         </div>
                       ) : (

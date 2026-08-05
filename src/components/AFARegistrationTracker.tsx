@@ -72,16 +72,11 @@ function ApprovedScreenshot() {
         <Phone className="h-3.5 w-3.5 text-green-500" />
         <span className="text-xs font-semibold text-green-500">What you should see after dialing *1848#</span>
       </div>
-      <div className="p-3 space-y-1 font-mono text-xs text-foreground bg-black/30 rounded-b-lg">
-        <p className="text-green-400 font-bold">MTN AFA MENU</p>
-        <p className="text-muted-foreground">─────────────────</p>
-        <p>1. Buy AFA Bundle</p>
-        <p>2. Check Balance</p>
-        <p>3. Share Bundle</p>
-        <p>4. My Account</p>
-        <p className="text-muted-foreground">─────────────────</p>
-        <p className="text-amber-400 text-[11px] mt-2">If you see a menu like this — your AFA registration is ACTIVE. Go ahead and buy your bundles from option 1.</p>
-      </div>
+      <img
+        src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-4r9qM0zOFL0dxfZeyfNRKUZzr9inbE.png"
+        alt="AFA menu showing: Welcome to AFA, 1. Buy AFA Bundle, 2. Claims, 3. Notifications, 4. Contact Support"
+        className="w-full object-contain"
+      />
       <div className="px-3 py-2 bg-green-500/10 border-t border-green-500/30">
         <p className="text-xs text-green-600 dark:text-green-400 font-medium">
           Seeing this menu means you are fully approved. You can now buy AFA data bundles at discounted wholesale prices directly from *1848#.

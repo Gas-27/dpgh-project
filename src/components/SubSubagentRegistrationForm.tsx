@@ -203,15 +203,16 @@ export default function SubSubagentRegistrationForm({
         .select("*", { count: "exact", head: true });
       const topupReference = `Agt${(subSubagentCount || 0) + 1}`;
 
-      // A Supabase DB trigger on auth.users may auto-create a skeleton row in
-      // sub_subagent_stores the moment signUp completes. To avoid a 409 unique
-      // constraint conflict on user_id, we use upsert (onConflict: "user_id").
-      // This also handles any prior orphaned rows. topup_reference is set via a
-      // follow-up update to avoid the broken BEFORE INSERT trigger that references
-      // NEW.top_reference (a column that does not exist).
-      const storePayload = {
+      // A DB trigger on auth.users may auto-create a skeleton row in
+      // sub_subagent_stores the moment signUp completes. Strategy:
+      //  1. Try a clean INSERT.
+      //  2. If it returns 409 / 23505 (unique violation on user_id), the
+      //     trigger-created row already exists — UPDATE it instead.
+      //  3. Look up the id by user_id so we always have it.
+      // topup_reference is set in a separate UPDATE to bypass the broken
+      // BEFORE INSERT trigger that references NEW.top_reference.
+      const storeFields = {
         subagent_store_id: subagentStoreId,
-        user_id: authData.user.id,
         store_name: formData.storeName,
         whatsapp_number: formData.whatsappNumber || null,
         support_number: formData.supportNumber || null,
@@ -223,20 +224,34 @@ export default function SubSubagentRegistrationForm({
         approved: true,
       };
 
-      const { data: upsertedStore, error: storeError } = await supabase
+      let storeId: string | null = null;
+
+      // Step 1: attempt INSERT
+      const { data: insertedStore, error: insertError } = await supabase
         .from("sub_subagent_stores")
-        .upsert(storePayload, { onConflict: "user_id" })
-        .select()
+        .insert({ ...storeFields, user_id: authData.user.id })
+        .select("id")
         .maybeSingle();
 
-      if (storeError) {
-        throw storeError;
+      const isConflictErr = (e: any) =>
+        e?.code === "23505" || e?.status === 409 ||
+        (e?.message || "").includes("duplicate") ||
+        (e?.message || "").includes("unique");
+
+      if (insertError && !isConflictErr(insertError)) {
+        throw insertError;
       }
 
-      // Determine the store id — upsert may return null on conflict with no
-      // changes, so fall back to a direct lookup by user_id.
-      let storeId: string | null = upsertedStore?.id ?? null;
-      if (!storeId) {
+      if (insertedStore?.id) {
+        storeId = insertedStore.id;
+      } else {
+        // Step 2: row already exists (trigger-created) — UPDATE it
+        await supabase
+          .from("sub_subagent_stores")
+          .update(storeFields)
+          .eq("user_id", authData.user.id);
+
+        // Step 3: fetch the id
         const { data: found } = await supabase
           .from("sub_subagent_stores")
           .select("id")

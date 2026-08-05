@@ -2987,9 +2987,9 @@ const SubagentDashboard = () => {
                                 </TableCell>
                                 <TableCell>
                                   {alreadyForwarded ? (
-                                    <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-xs">Forwarded</Badge>
+                                    <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-xs whitespace-nowrap">Refunded to Sub-Subagent</Badge>
                                   ) : (
-                                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Refunded by Agent</Badge>
+                                    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Pending Refund</Badge>
                                   )}
                                 </TableCell>
                               </TableRow>
