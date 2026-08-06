@@ -539,7 +539,7 @@ const UserDashboard = () => {
       order.customer_number?.includes(apiOrdersSearch) ||
       order.network?.toLowerCase().includes(apiOrdersSearch.toLowerCase());
     
-    const effectiveStatus = (order.order_status || order.fulfillment_status || order.status || "").toLowerCase();
+    const effectiveStatus = normalizeOrderStatus(order);
     const matchStatus = apiOrdersStatusFilter === "" || 
       effectiveStatus === apiOrdersStatusFilter.toLowerCase();
 
@@ -2329,7 +2329,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     </thead>
                     <tbody>
                       {filteredApiOrders.map(order => {
-                        const fs = order.order_status || order.fulfillment_status || order.status || 'pending';
+                        const fs = normalizeOrderStatus(order);
                         return (
                           <tr key={order.id} className={`border-t border-border hover:bg-muted/30 transition-colors ${fs === 'refunded' ? 'bg-amber-500/5' : ''}`}>
                             <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">

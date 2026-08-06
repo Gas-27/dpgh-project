@@ -28,6 +28,7 @@ import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import AnnouncementManager from "@/components/AnnouncementManager";
 import { DOMAINS } from "@/config/domains";
+import { normalizeOrderStatus } from "@/utils/orderStatus";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -2509,12 +2510,7 @@ const AdminDashboard = () => {
 
     // Delivery status filter
     if (orderDeliveryFilter !== "all") {
-      const deliveryStatus = (
-        (order as any).order_status ||
-        order.fulfillment_status ||
-        order.status ||
-        ""
-      ).toLowerCase();
+  const deliveryStatus = normalizeOrderStatus(order);
       if (deliveryStatus !== orderDeliveryFilter) return false;
     }
 
@@ -3674,7 +3670,7 @@ const AdminDashboard = () => {
                   <p className="text-sm text-foreground"><span className="font-bold text-yellow-400">{pendingWithdrawals.length} pending</span> withdrawal request(s) awaiting processing.</p>
                 </div>
               )}
-              <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by agent store name..." value={withdrawalSearchTerm} onChange={(e) => setWithdrawalSearchTerm(e.target.value)} className="pl-10" /></div>
+              <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by agent store name..." value={withdrawalSearchTerm} onChange={(e) => { setWithdrawalSearchTerm(e.target.value); setWithdrawalPage(1); }} className="pl-10" /></div>
               {(() => {
                 const paginated = filteredWithdrawals.slice((withdrawalPage - 1) * PAGE_SIZE, withdrawalPage * PAGE_SIZE);
                 const totalPages = Math.ceil(filteredWithdrawals.length / PAGE_SIZE);
@@ -3776,7 +3772,7 @@ const AdminDashboard = () => {
                                             onClick={() => {
                                               if (loginRole === "agent") {
                                                 localStorage.setItem("admin_impersonate_agent", loginUserId);
-                                                window.open("/agent-dashboard", "_blank");
+                                                window.open("/agent", "_blank");
                                               } else if (loginRole === "subagent") {
                                                 localStorage.setItem("admin_impersonate_subagent", loginUserId);
                                                 window.open("/subagent-dashboard", "_blank");

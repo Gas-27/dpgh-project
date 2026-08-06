@@ -1247,7 +1247,7 @@ const AgentDashboard = () => {
       order.network?.toLowerCase().includes(apiOrdersSearch.toLowerCase());
     
     // Check all status fields (order_status, fulfillment_status, status) for the filter value
-    const effectiveStatus = (order.order_status || order.fulfillment_status || order.status || "").toLowerCase();
+    const effectiveStatus = normalizeOrderStatus(order);
     const matchStatus = apiOrdersStatusFilter === "" || 
       effectiveStatus === apiOrdersStatusFilter.toLowerCase();
 
@@ -4152,7 +4152,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       </TableHeader>
                       <TableBody>
                         {filteredApiOrders.map((order) => {
-                          const fs = order.order_status || order.fulfillment_status || order.status || 'pending';
+                          const fs = normalizeOrderStatus(order);
                           return (
                           <TableRow key={order.id} className={`hover:bg-muted/50 transition-colors ${fs === 'refunded' ? 'bg-amber-500/5' : ''}`}>
                             <TableCell className="text-xs whitespace-nowrap">
