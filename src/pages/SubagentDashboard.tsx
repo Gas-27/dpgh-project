@@ -35,6 +35,7 @@ import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import SubagentAFABundleRegistrations from "@/components/SubagentAFABundleRegistrations";
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
+import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Helper function to get current order stage
 function getOrderStatusLabel(status: string): string {
@@ -2596,7 +2597,7 @@ const SubagentDashboard = () => {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  <OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} />
+                                  <OrderStatusBadge status={normalizeOrderStatus(order)} />
                                 </TableCell>
                                 <TableCell>
                                   {(order.status === "refunded" || order.fulfillment_status === "refunded")

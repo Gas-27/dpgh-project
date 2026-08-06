@@ -60,8 +60,9 @@ interface Order {
   agent_price?: number | null; refunded_amount?: number | null;
 }
   interface WithdrawalRequest {
-    id: string; agent_store_id: string | null; subagent_store_id?: string | null; amount: number; status: string;
-    created_at: string; processed_at: string | null; withdrawal_source?: string;
+    id: string; agent_store_id: string | null; subagent_store_id?: string | null; sub_subagent_store_id?: string | null; amount: number; status: string;
+    created_at: string; processed_at: string | null; withdrawal_source?: string; request_type?: string | null;
+    transfer_code?: string | null; paystack_reference?: string | null; agent_store?: any; subagent_store?: any;
   }
 interface TopupRecord {
   id: string; agent_store_id: string; amount: number; created_at: string;
@@ -2522,17 +2523,23 @@ const AdminDashboard = () => {
   
   const filteredWithdrawals = withdrawals
     .filter((withdrawal) => {
-      // If no search term, show all
-      if (!withdrawalSearchTerm) return true;
-      
-      // Check if it's a subagent withdrawal
-      if (withdrawal.subagent_store_id) {
-        const subagent = subagents.find((s) => s.id === withdrawal.subagent_store_id);
-        return subagent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
-      }
-      // Otherwise, check agent store
-      const agent = agents.find((a) => a.id === withdrawal.agent_store_id);
-      return agent?.store_name.toLowerCase().includes(withdrawalSearchTerm.toLowerCase()) ?? false;
+      const term = withdrawalSearchTerm.trim().toLowerCase();
+      if (!term) return true;
+
+      const agent = withdrawal.agent_store || agents.find((a) => a.id === withdrawal.agent_store_id);
+      const subagent = withdrawal.subagent_store || subagents.find((s) => s.id === withdrawal.subagent_store_id);
+      const searchableValues = [
+        withdrawal.id,
+        withdrawal.agent_store_id,
+        withdrawal.subagent_store_id,
+        withdrawal.sub_subagent_store_id,
+        withdrawal.transfer_code,
+        withdrawal.paystack_reference,
+        withdrawal.request_type,
+        agent?.store_name,
+        subagent?.store_name,
+      ];
+      return searchableValues.some((value) => String(value || "").toLowerCase().includes(term));
     })
     // Sort: pending first, then by date descending
     .sort((a, b) => {

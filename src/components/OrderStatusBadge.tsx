@@ -33,6 +33,11 @@ const STATUS_CONFIG: Record<
     description:
       "Order is placed and sent to the portal and now waiting for the portal to pick it up for processing.\nYour order has been received and is in the queue. It will be picked up by the portal for processing shortly.",
   },
+  "in-queue": {
+    label: "In Queue",
+    className: "bg-yellow-600/20 text-yellow-400 border border-yellow-600/30",
+    description: "Payment is complete and the order is waiting for fulfillment.",
+  },
   waiting: {
     label: "Number Verifying",
     className: "bg-cyan-600/20 text-cyan-400 border border-cyan-600/30",

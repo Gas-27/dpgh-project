@@ -2065,7 +2065,7 @@ const SubSubagentDashboard = () => {
                                 </TableCell>
                                 <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
                                 <TableCell>
-                                  <OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} />
+                                  <OrderStatusBadge status={normalizeOrderStatus(order)} />
                                 </TableCell>
                                 <TableCell>
                                   {(order.status === "refunded" || order.fulfillment_status === "refunded")

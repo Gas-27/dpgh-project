@@ -5,18 +5,23 @@ export type OrderStatusSource = {
 };
 
 export function normalizeOrderStatus(order: OrderStatusSource): string {
-  const values = [order.status, order.order_status, order.fulfillment_status]
+  const deliveryValues = [order.order_status, order.fulfillment_status]
     .map((value) => String(value || "").trim().toLowerCase().replace(/_/g, "-"))
-    .filter(Boolean);
+    .filter((value) => value && value !== "unknown" && value !== "null" && value !== "undefined");
+  const paymentStatus = String(order.status || "").trim().toLowerCase().replace(/_/g, "-");
 
-  if (values.includes("refunded")) return "refunded";
-  if (values.includes("failed")) return "failed";
-  if (values.includes("delivered") || values.includes("completed")) return "delivered";
-  if (values.includes("in-queue") || values.includes("queued") || values.includes("queue")) return "in-queue";
-  if (values.includes("processing")) return "processing";
-  if (values.includes("waiting")) return "waiting";
-  if (values.includes("paid")) return "processing";
-  return values[0] || "pending";
+  if (deliveryValues.includes("refunded") || paymentStatus === "refunded") return "refunded";
+  if (deliveryValues.includes("failed") || paymentStatus === "failed") return "failed";
+  if (deliveryValues.includes("delivered") || deliveryValues.includes("completed")) return "delivered";
+  if (deliveryValues.includes("in-queue") || deliveryValues.includes("queued") || deliveryValues.includes("queue")) return "in-queue";
+  if (deliveryValues.includes("processing")) return "processing";
+  if (deliveryValues.includes("waiting")) return "waiting";
+  if (deliveryValues.includes("pending")) return "pending";
+  if (paymentStatus === "paid" || paymentStatus === "processing") return "processing";
+  // A completed payment with no usable delivery status is received but waiting
+  // for the fulfillment worker; never expose the internal "unknown" value.
+  if (paymentStatus === "completed" || paymentStatus === "success") return "in-queue";
+  return "pending";
 }
 
 export function orderStatusLabel(order: OrderStatusSource): string {

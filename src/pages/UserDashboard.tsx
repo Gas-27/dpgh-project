@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { normalizeOrderStatus } from "@/utils/orderStatus";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -50,15 +51,8 @@ interface Order {
   api_user?: string | number;
 }
 
-// Delivery status shown to the user (mirrors the Agent dashboard).
-// Prefer order_status; fall back to fulfillment_status.
-const getDeliveryStatus = (order: Order) => {
-  // A refunded order takes priority regardless of the other status fields.
-  if (order.status === "refunded" || order.fulfillment_status === "refunded") return "refunded";
-  const raw = (order.order_status || order.fulfillment_status || "pending").toLowerCase();
-  if (raw === "paid") return "processing";
-  return raw;
-};
+// Delivery status shown to the user (mirrors every agent dashboard).
+const getDeliveryStatus = (order: Order) => normalizeOrderStatus(order);
 
 const getOrderStatusLabel = (status: string): string => {
   switch ((status || "").toLowerCase().trim()) {
@@ -1179,11 +1173,7 @@ const UserDashboard = () => {
                       </TableCell>
                       <TableCell>
                         {/* Refunded takes priority over any other status field */}
-                        <OrderStatusBadge status={
-                          (order.status === "refunded" || order.fulfillment_status === "refunded")
-                            ? "refunded"
-                            : (order.order_status || order.fulfillment_status || order.status)
-                        } />
+<OrderStatusBadge status={normalizeOrderStatus(order)} />
                       </TableCell>
                     </TableRow>
                   ))}

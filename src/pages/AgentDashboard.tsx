@@ -48,13 +48,15 @@ import {
 import { toPng } from "html-to-image";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
+import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
-// Helper function to get current order stage
+// Helper function to get current order stage from all status columns.
 function getOrderStatusLabel(status: string): string {
   switch ((status || "").toLowerCase().trim()) {
     case "pending":    return "Waiting for Portal";
     case "processing": return "Processing";
     case "waiting":    return "Waiting";
+    case "in-queue":   return "In Queue";
     case "delivered":  return "Delivered";
     case "failed":     return "Failed";
     case "refunded":   return "Refunded";
@@ -63,8 +65,7 @@ function getOrderStatusLabel(status: string): string {
 }
 
 function getOrderStage(order: any): string {
-  const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  return getOrderStatusLabel(orderStatus);
+  return orderStatusLabel(order);
 }
 
 // ==================== INTERFACES ====================
@@ -2583,7 +2584,7 @@ const AgentDashboard = () => {
                           setSourceDialogOpen(true);
                         };
 
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell><TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell><TableCell className="uppercase text-sm">{order.network || "—"}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={order.order_status || order.fulfillment_status || order.status} /></TableCell><TableCell>{(order.status === "refunded" || order.fulfillment_status === "refunded") ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge> : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}</TableCell></TableRow>); })}</TableBody></Table></div>
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell><TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell><TableCell className="uppercase text-sm">{order.network || "—"}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={normalizeOrderStatus(order)} /></TableCell><TableCell>{(order.status === "refunded" || order.fulfillment_status === "refunded") ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge> : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}</TableCell></TableRow>); })}</TableBody></Table></div>
                     {/* Pagination */}
                     {filteredOrders.length > ordersPerPage && (() => {
                       const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
