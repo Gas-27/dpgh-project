@@ -87,6 +87,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerSearchTerm, setCustomerSearchTerm] = useState("");
+  const [customerExactMatch, setCustomerExactMatch] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrdersFromDB, setFilteredOrdersFromDB] = useState<Order[]>([]);
   const [isFilteringOrders, setIsFilteringOrders] = useState(false);
@@ -2268,12 +2269,23 @@ const AdminDashboard = () => {
 
 
   // Fetch customers from database
-  const fetchCustomers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("*")
-        .order("customer_since", { ascending: false });
+  const fetchCustomers = async (searchTerm = "", exactMatch = false) => {
+  try {
+  let query = supabase
+  .from("customers")
+  .select("*")
+  .order("customer_since", { ascending: false });
+
+  const term = searchTerm.trim();
+  if (term) {
+    const escaped = term.replace(/[%(),]/g, "");
+    query = exactMatch
+      ? query.or(`first_name.eq.${escaped},last_name.eq.${escaped},email.eq.${escaped},topup_reference.eq.${escaped},phone_number.eq.${escaped}`)
+      : query.or(`first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%,email.ilike.%${escaped}%,topup_reference.ilike.%${escaped}%,phone_number.ilike.%${escaped}%`);
+  }
+
+  const { data, error } = await query;
+
 
       if (error) {
         console.error("[v0] Error fetching customers:", error.message);
@@ -3902,16 +3914,32 @@ const AdminDashboard = () => {
           {/* CUSTOMERS TAB */}
           {canSee("customers") && (
             <TabsContent value="customers" className="space-y-4">
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-3 flex-wrap items-center">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search by name or email..." 
-                    className="pl-10" 
+                  <Input
+                    placeholder="Search name, email, phone, or top-up ref..."
+                    className="pl-10"
                     value={customerSearchTerm}
-                    onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCustomerSearchTerm(value);
+                      fetchCustomers(value, customerExactMatch);
+                    }}
                   />
                 </div>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={customerExactMatch}
+                    onChange={(e) => {
+                      setCustomerExactMatch(e.target.checked);
+                      fetchCustomers(customerSearchTerm, e.target.checked);
+                    }}
+                    className="rounded border-border"
+                  />
+                  Exact match
+                </label>
               </div>
               
               {customers.length === 0 ? (

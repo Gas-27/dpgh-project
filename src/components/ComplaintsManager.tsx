@@ -21,7 +21,7 @@ import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 
 interface Complaint {
   id: string;
-  complaint_type: "storefront" | "agent" | "subagent";
+  complaint_type: "storefront" | "agent" | "subagent" | "sub-subagent";
   order_id: string;
   agent_store_id: string;
   subagent_store_id: string;
@@ -86,18 +86,12 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       // Tier 1: all new columns (requires migration)
       // Tier 2: screenshot_url only (may exist without the owing_* columns)
       // Tier 3: base columns only (always works)
-      const ORDER_JOIN = "orders(network, size_gb, amount, fulfillment_status, created_at, agent_store_id, subagent_store_id, customer_id, customer_number)";
-      // Note: sub_subagent_stores is NOT joined here because there is no FK from
-      // complaints to sub_subagent_stores in PostgREST, causing a 400 on all tiers.
-      // Sub-subagent info is shown via the complaint_type === "subagent" path for now.
-      const STORE_JOIN = "agent_stores(store_name, phone_number), subagent_stores(store_name, whatsapp_number)";
-      // TIER1: all columns including sms_screenshot_url (requires that column to exist)
-      // TIER2: drops sms_screenshot_url but keeps owing_* and screenshot_url
-      // TIER3: drops owing_* and screenshot_url (absolute minimum — always works)
-      const TIER1 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, sms_screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
-      const TIER2 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
-      const TIER3 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
-      const TIER4 = `id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at, ${ORDER_JOIN}, ${STORE_JOIN}`;
+      // Keep the complaints query flat. The previous nested PostgREST joins could
+      // fail the entire request when an optional relationship/column was missing.
+      const TIER1 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, sms_screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at";
+      const TIER2 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, owing_airtime, owing_bundle, owing_momo, status, created_at";
+      const TIER3 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, screenshot_url, status, created_at";
+      const TIER4 = "id, complaint_type, order_id, agent_store_id, subagent_store_id, customer_number, complaint_title, complaint_details, status, created_at";
 
       const buildQuery = (select: string) => {
         let q = supabase.from("complaints").select(select).order("created_at", { ascending: false });
@@ -133,7 +127,26 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
         throw error;
       }
 
-      setComplaints((data as Complaint[]) || []);
+      const baseComplaints = (data as Complaint[]) || [];
+      const orderIds = [...new Set(baseComplaints.map((c) => c.order_id).filter(Boolean))];
+      const agentIds = [...new Set(baseComplaints.map((c) => c.agent_store_id).filter(Boolean))];
+      const subagentIds = [...new Set(baseComplaints.map((c) => c.subagent_store_id).filter(Boolean))];
+
+      const [ordersResult, agentsResult, subagentsResult] = await Promise.all([
+        orderIds.length ? supabase.from("orders").select("*").in("id", orderIds) : Promise.resolve({ data: [], error: null }),
+        agentIds.length ? supabase.from("agent_stores").select("*").in("id", agentIds) : Promise.resolve({ data: [], error: null }),
+        subagentIds.length ? supabase.from("subagent_stores").select("*").in("id", subagentIds) : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      const orderById = new Map((ordersResult.data || []).map((row: any) => [row.id, row]));
+      const agentById = new Map((agentsResult.data || []).map((row: any) => [row.id, row]));
+      const subagentById = new Map((subagentsResult.data || []).map((row: any) => [row.id, row]));
+      setComplaints(baseComplaints.map((complaint) => ({
+        ...complaint,
+        orders: orderById.get(complaint.order_id),
+        agent_stores: agentById.get(complaint.agent_store_id),
+        subagent_stores: subagentById.get(complaint.subagent_store_id),
+      })));
     } catch (error) {
       console.error("Error fetching complaints:", error);
       toast({ title: "Error", description: "Failed to load complaints", variant: "destructive" });
@@ -340,6 +353,7 @@ ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'sub_admin';`}
                 <TabsTrigger value="storefront">Storefront ({complaints.filter(c => c.complaint_type === "storefront").length})</TabsTrigger>
                 <TabsTrigger value="agent">Agent ({complaints.filter(c => c.complaint_type === "agent").length})</TabsTrigger>
                 <TabsTrigger value="subagent">Subagent ({complaints.filter(c => c.complaint_type === "subagent").length})</TabsTrigger>
+                <TabsTrigger value="sub-subagent">Sub-Subagent ({complaints.filter(c => c.complaint_type === "sub-subagent").length})</TabsTrigger>
 
               </TabsList>
 
