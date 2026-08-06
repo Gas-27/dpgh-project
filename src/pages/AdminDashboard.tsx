@@ -1803,12 +1803,12 @@ const AdminDashboard = () => {
           }
         } else if (order.customer_id) {
           // Check first: did an agent buy this from the Packages page? (agent_store_id was null
-          // at the time of order but the customer_id maps to an active agent store)
+          // at the time of order but the customer_id maps to an approved agent store)
           const { data: agentByUser } = await supabase
             .from("agent_stores")
             .select("id, wallet_balance")
             .eq("user_id", order.customer_id)
-            .eq("is_active", true)
+            .eq("approved", true)
             .maybeSingle();
 
           if (agentByUser) {
@@ -2057,7 +2057,7 @@ const AdminDashboard = () => {
           .from("agent_stores")
           .select("id, wallet_balance")
           .eq("user_id", order.customer_id)
-          .eq("is_active", true)
+          .eq("approved", true)
           .maybeSingle();
 
         if (agentByUser) {
