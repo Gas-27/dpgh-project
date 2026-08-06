@@ -32,6 +32,7 @@ import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import SubSubagentAFABundleRegistrations from "@/components/SubSubagentAFABundleRegistrations";
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
+import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Helper function to get current order stage
 function getOrderStatusLabel(status: string): string {
@@ -39,6 +40,7 @@ function getOrderStatusLabel(status: string): string {
     case "pending":    return "Waiting for Portal";
     case "processing": return "Processing";
     case "waiting":    return "Waiting";
+    case "in-queue":   return "In Queue";
     case "delivered":  return "Delivered";
     case "failed":     return "Failed";
     case "refunded":   return "Refunded";
@@ -47,8 +49,7 @@ function getOrderStatusLabel(status: string): string {
 }
 
 function getOrderStage(order: any): string {
-  const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  return getOrderStatusLabel(orderStatus);
+  return orderStatusLabel(order);
 }
 
 interface SubagentStore {

@@ -1155,7 +1155,7 @@ const Packages = () => {
       .from("agent_stores")
       .select("id")
       .eq("user_id", authUser.id)
-      .eq("is_active", true)
+      .eq("approved", true)
       .maybeSingle()
       .then(({ data }) => {
         setAgentStoreIdForPayment(data?.id ?? null);

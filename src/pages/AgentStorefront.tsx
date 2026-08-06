@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import ChatBot from "@/components/ChatBot";
+import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -217,12 +218,8 @@ const OrderTrackingCard = ({
   }, [order.id]);
 
   // ── Status-based step logic (no time dependency) ──
-  // Check both order_status and status fields — refunded may be set on either
-  const rawOrderStatus = order.order_status?.toLowerCase().trim() || "";
-  const rawStatus = (order as any).status?.toLowerCase().trim() || "";
-  const orderStatus = rawOrderStatus === "refunded" || rawStatus === "refunded"
-    ? "refunded"
-    : rawOrderStatus || rawStatus;
+  // Use the same status precedence as the order table, including fulfillment_status.
+  const orderStatus = normalizeOrderStatus(order);
   let currentStep = 1;
   let statusMessage = "";
   let extraNote: string | null = null;
@@ -1236,20 +1233,27 @@ const AgentStorefront = () => {
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
-                                {getStatusIcon(order.status === "refunded" || order.fulfillment_status === "refunded" ? "refunded" : order.status)}
-                                <Badge
-                                  className={
-                                    order.status === "refunded" || order.fulfillment_status === "refunded"
-                                      ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                                      : order.status === "completed" || order.status === "paid"
-                                        ? "bg-green-600/20 text-green-400 border-green-600/30"
-                                        : order.status === "pending"
-                                          ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                          : "bg-red-600/20 text-red-400 border-red-600/30"
-                                  }
-                                >
-                                  {getStatusText(order.status === "refunded" || order.fulfillment_status === "refunded" ? "refunded" : order.status)}
-                                </Badge>
+                                {(() => {
+                                  const displayStatus = normalizeOrderStatus(order);
+                                  return (
+                                    <>
+                                      {getStatusIcon(displayStatus)}
+                                      <Badge
+                                        className={
+                                          displayStatus === "refunded"
+                                            ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                                            : displayStatus === "delivered"
+                                              ? "bg-green-600/20 text-green-400 border-green-600/30"
+                                              : displayStatus === "pending" || displayStatus === "in-queue" || displayStatus === "waiting"
+                                                ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                                                : "bg-blue-600/20 text-blue-400 border-blue-600/30"
+                                        }
+                                      >
+                                        {displayStatus === "delivered" ? "Delivered" : orderStatusLabel(order)}
+                                      </Badge>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <div className="pt-3">

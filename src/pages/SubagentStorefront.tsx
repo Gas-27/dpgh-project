@@ -28,6 +28,7 @@ import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 import AFARegistrationFormStandalone from "@/components/AFARegistrationFormStandalone";
+import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -213,12 +214,8 @@ const SubagentOrderTrackingCard = ({
   }, [order.id]);
 
   // ── Status-based step logic (no time dependency) ──
-  // Check both order_status and status fields — refunded may be set on either
-  const rawOrderStatus = order.order_status?.toLowerCase().trim() || "";
-  const rawStatus = (order as any).status?.toLowerCase().trim() || "";
-  const orderStatus = rawOrderStatus === "refunded" || rawStatus === "refunded"
-    ? "refunded"
-    : rawOrderStatus || rawStatus;
+  // Include fulfillment_status so sourced orders never fall back to Unknown.
+  const orderStatus = normalizeOrderStatus(order);
   let currentStep = 1;
   let statusMessage = "";
   let extraNote: string | null = null;
@@ -1019,10 +1016,12 @@ export function SubagentStorefront() {
                             <p className="font-mono text-sm">{order.customer_number}</p>
                             <p className="text-xs text-muted-foreground">{(order as any).size_gb_text || order.size_gb + "GB"} {formatNetworkName(order.network)} - GHC{Number(order.amount).toFixed(2)}</p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(order.status)}
-                            <span className="text-xs">{getStatusText(order.status)}</span>
-                          </div>
+  <div className="flex items-center gap-2">
+  {(() => {
+    const displayStatus = normalizeOrderStatus(order);
+    return <><span>{getStatusIcon(displayStatus)}</span><span className="text-xs">{orderStatusLabel(order)}</span></>;
+  })()}
+  </div>
                         </div>
                         {/* Order Tracking Card */}
                         <SubagentOrderTrackingCard
