@@ -193,77 +193,31 @@ export default function SubSubagentRegistrationForm({
       // The signup trigger assigns sub_subagent in user_roles. The migration also
       // repairs any older accounts that were created with the wrong role.
 
-      // Generate a sequential top-up reference (used as the USSD access code).
-      // Sub-subagents use the "Agt" prefix followed by their creation number.
+      // Generate a sequential top-up reference and create the store atomically
+      // through the database function. Direct browser inserts were being
+      // rejected by RLS, leaving only the auth user behind.
       const { count: subSubagentCount } = await supabase
         .from("sub_subagent_stores")
-        .select("*", { count: "exact", head: true });
+        .select("id", { count: "exact", head: true });
       const topupReference = `Agt${(subSubagentCount || 0) + 1}`;
 
-      // A DB trigger on auth.users may auto-create a skeleton row in
-      // sub_subagent_stores the moment signUp completes. Strategy:
-      //  1. Try a clean INSERT.
-      //  2. If it returns 409 / 23505 (unique violation on user_id), the
-      //     trigger-created row already exists — UPDATE it instead.
-      //  3. Look up the id by user_id so we always have it.
-      // topup_reference is set in a separate UPDATE to bypass the broken
-      // BEFORE INSERT trigger that references NEW.top_reference.
-      const storeFields = {
-        subagent_store_id: subagentStoreId,
-        store_name: formData.storeName,
-        whatsapp_number: formData.whatsappNumber || null,
-        support_number: formData.supportNumber || null,
-        whatsapp_group: null,
-        momo_name: formData.momoName || null,
-        momo_number: formData.momoNumber || null,
-        momo_network: formData.momoNetwork || null,
-        wallet_balance: 0,
-        approved: true,
-      };
+      const { data: storeId, error: storeError } = await supabase.rpc(
+        "register_sub_subagent",
+        {
+          p_user_id: authData.user.id,
+          p_subagent_store_id: subagentStoreId,
+          p_store_name: formData.storeName,
+          p_whatsapp_number: formData.whatsappNumber || null,
+          p_support_number: formData.supportNumber || null,
+          p_momo_number: formData.momoNumber || null,
+          p_momo_name: formData.momoName || null,
+          p_momo_network: formData.momoNetwork || null,
+          p_topup_reference: topupReference,
+        },
+      );
 
-      let storeId: string | null = null;
-
-      // Step 1: attempt INSERT
-      const { data: insertedStore, error: insertError } = await supabase
-        .from("sub_subagent_stores")
-        .insert({ ...storeFields, user_id: authData.user.id })
-        .select("id")
-        .maybeSingle();
-
-      const isConflictErr = (e: any) =>
-        e?.code === "23505" || e?.status === 409 ||
-        (e?.message || "").includes("duplicate") ||
-        (e?.message || "").includes("unique");
-
-      if (insertError && !isConflictErr(insertError)) {
-        throw insertError;
-      }
-
-      if (insertedStore?.id) {
-        storeId = insertedStore.id;
-      } else {
-        // Step 2: row already exists (trigger-created) — UPDATE it
-        const { error: updateError } = await supabase
-          .from("sub_subagent_stores")
-          .update(storeFields)
-          .eq("user_id", authData.user.id);
-        if (updateError) throw updateError;
-
-        // Step 3: fetch the id
-        const { data: found } = await supabase
-          .from("sub_subagent_stores")
-          .select("id")
-          .eq("user_id", authData.user.id)
-          .maybeSingle();
-        storeId = found?.id ?? null;
-      }
-
-      // Set topup_reference via update to bypass the broken BEFORE INSERT trigger
-      if (storeId) {
-        await supabase
-          .from("sub_subagent_stores")
-          .update({ topup_reference: topupReference })
-          .eq("id", storeId);
+      if (storeError || !storeId) {
+        throw storeError || new Error("Sub-subagent store could not be created");
       }
 
       // Auto sign-in the newly created user
@@ -273,20 +227,11 @@ export default function SubSubagentRegistrationForm({
       });
 
       if (signInError) {
-        // Still redirect even if auto-signin fails - user can sign in manually
+        throw new Error(`Account created, but automatic sign-in failed: ${signInError.message}`);
       }
 
-      // Final guaranteed storeId lookup — ensures we never redirect with store_id=null
-      if (!storeId) {
-        const { data: finalLookup } = await supabase
-          .from("sub_subagent_stores")
-          .select("id")
-          .eq("user_id", authData.user.id)
-          .maybeSingle();
-        storeId = finalLookup?.id ?? null;
-      }
-
-      // Sub-subagents don't need payment, so skip to dashboard
+      // The RPC returns the store id only after the store is committed.
+      // Sub-subagents do not need payment, so continue directly to dashboard.
       toast({
         title: "Success!",
         description: "Your sub-subagent account has been created. Redirecting to your dashboard...",

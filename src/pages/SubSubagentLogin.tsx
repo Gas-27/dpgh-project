@@ -52,22 +52,24 @@ const SubSubagentLogin = () => {
       return;
     }
 
-    // Sub-subagents are identified by membership in sub_subagent_stores.
-    // Their app_role is intentionally "user" because sub_subagent is not a valid enum value.
-    const { data: subSubagentStore, error: storeError } = await supabase
-      .from("sub_subagent_stores")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
+    // The role table is authoritative. Store membership is checked as a
+    // second safeguard, but it must not be the only role check because older
+    // registrations may have the role before their store row is repaired.
+    const [{ data: roleRows, error: roleError }, { data: subSubagentStore, error: storeError }] = await Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.from("sub_subagent_stores").select("id").eq("user_id", userId).maybeSingle(),
+    ]);
 
-    if (storeError) {
+    if (roleError || storeError) {
       toast({ title: "Error", description: "Could not verify account type", variant: "destructive" });
       setLoading(false);
       return;
     }
 
+    const isSubSubagent = roleRows?.some((row) => row.role === "sub_subagent");
+
     // Only allow sub-subagent login on this page
-    if (!subSubagentStore) {
+    if (!isSubSubagent && !subSubagentStore) {
       toast({
         title: "Access Denied",
         description: "This login page is only for sub-subagents. Please use the correct login page.",
@@ -116,13 +118,12 @@ const SubSubagentLogin = () => {
     const checkAndRedirect = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data: subSubagentStore } = await supabase
-          .from("sub_subagent_stores")
-          .select("id")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
+        const [{ data: roleRows }, { data: subSubagentStore }] = await Promise.all([
+          supabase.from("user_roles").select("role").eq("user_id", session.user.id),
+          supabase.from("sub_subagent_stores").select("id").eq("user_id", session.user.id).maybeSingle(),
+        ]);
 
-        if (subSubagentStore) {
+        if (roleRows?.some((row) => row.role === "sub_subagent") || subSubagentStore) {
           window.location.href = "/sub-subagent-dashboard";
         }
       }

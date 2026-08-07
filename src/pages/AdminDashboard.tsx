@@ -2270,9 +2270,16 @@ const AdminDashboard = () => {
 
 
 
-  // Fetch customers from database
+  // Fetch customers from database. A user can have a historical customer row,
+  // but sub-subagent role is authoritative and must exclude them here.
   const fetchCustomers = async (searchTerm = "", exactMatch = false) => {
   try {
+  const { data: subSubagentRoles } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "sub_subagent");
+  const subSubagentIds = new Set((subSubagentRoles || []).map((row) => row.user_id));
+
   let query = supabase
   .from("customers")
   .select("*")
@@ -2297,9 +2304,10 @@ const AdminDashboard = () => {
         return [];
       }
 
-      console.log("[v0] Fetched customers:", data?.length || 0);
-      setCustomers(data || []);
-      return data || [];
+      const visibleCustomers = (data || []).filter((customer: any) => !customer.user_id || !subSubagentIds.has(customer.user_id));
+      console.log("[v0] Fetched customers:", visibleCustomers.length);
+      setCustomers(visibleCustomers);
+      return visibleCustomers;
     } catch (err) {
       console.error("[v0] Exception fetching customers:", err);
       return [];
