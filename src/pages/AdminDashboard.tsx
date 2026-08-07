@@ -3966,8 +3966,7 @@ const AdminDashboard = () => {
                   {customers
                     .filter(c => 
               !customerSearchTerm ||
-              `${c.first_name} ${c.last_name}`.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-              c.email?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+        (c.email || c.phone_number || c.topup_reference || "").toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
               c.topup_reference?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
               c.phone_number?.includes(customerSearchTerm)
                     )
@@ -3977,7 +3976,7 @@ const AdminDashboard = () => {
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
                           <div className="flex-1 space-y-2 md:space-y-3 min-w-0">
                             <div className="flex items-center gap-2">
-                              <h3 className="font-display font-bold text-base md:text-lg text-foreground truncate">{customer.first_name || 'Customer'} {customer.last_name || ''}</h3>
+                              <h3 className="font-display font-bold text-base md:text-lg text-foreground truncate">{customer.email || customer.phone_number || 'Customer'}</h3>
                               <Badge variant={customer.status === 'active' ? 'default' : customer.status === 'inactive' ? 'secondary' : 'destructive'}>
                                 {customer.status || 'active'}
                               </Badge>
@@ -4020,7 +4019,7 @@ const AdminDashboard = () => {
                               className="text-xs"
                               onClick={() => {
                                 localStorage.setItem("admin_impersonate_customer", customer.user_id || customer.id);
-                                localStorage.setItem("admin_impersonate_customer_name", `${customer.first_name} ${customer.last_name}`);
+                                localStorage.setItem("admin_impersonate_customer_name", customer.email || customer.phone_number || "Customer");
                                 window.location.href = "/user-dashboard";
                               }}
                             >
@@ -4031,7 +4030,7 @@ const AdminDashboard = () => {
                               variant="outline"
                               size="sm"
                               className="text-xs"
-                              onClick={() => toast({ title: "Customer", description: `Viewing ${customer.first_name} ${customer.last_name}'s profile` })}
+                              onClick={() => toast({ title: "Customer", description: `Viewing ${customer.email || customer.phone_number || "Customer"}'s profile` })}
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View Profile

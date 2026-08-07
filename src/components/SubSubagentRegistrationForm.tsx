@@ -175,17 +175,14 @@ export default function SubSubagentRegistrationForm({
     try {
       setLoading(true);
 
-      // Sign up the user.
-      // NOTE: "sub_subagent" is NOT in the app_role enum so passing it as role
-      // in metadata causes the handle_new_user trigger to fail with a 500.
-      // We pass "user" (a valid enum value) and rely on sub_subagent_stores
-      // membership to identify this user as a sub-subagent.
+      // sub_subagent is a valid app_role in this project. Passing user here
+      // was the reason these registrations were classified as normal users.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
-            role: "user",
+            role: "sub_subagent",
           },
         },
       });
@@ -193,8 +190,8 @@ export default function SubSubagentRegistrationForm({
       if (authError) throw authError;
       if (!authData.user?.id) throw new Error("Failed to create user account");
 
-      // user_roles also uses the app_role enum — skip inserting "sub_subagent"
-      // (not a valid enum value). Role is determined by sub_subagent_stores membership.
+      // The signup trigger assigns sub_subagent in user_roles. The migration also
+      // repairs any older accounts that were created with the wrong role.
 
       // Generate a sequential top-up reference (used as the USSD access code).
       // Sub-subagents use the "Agt" prefix followed by their creation number.

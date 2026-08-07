@@ -132,13 +132,26 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       const agentIds = [...new Set(baseComplaints.map((c) => c.agent_store_id).filter(Boolean))];
       const subagentIds = [...new Set(baseComplaints.map((c) => c.subagent_store_id).filter(Boolean))];
 
+      // Orders are protected by RLS, so the admin complaint view loads the
+      // minimal order fields through the server-side admin endpoint.
+      const ordersPromise = orderIds.length
+        ? fetch("/api/fetch-complaint-orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderIds }),
+          }).then(async (response) => {
+            if (!response.ok) throw new Error("Unable to load complaint orders");
+            return response.json();
+          })
+        : Promise.resolve({ orders: [] });
+
       const [ordersResult, agentsResult, subagentsResult] = await Promise.all([
-        orderIds.length ? supabase.from("orders").select("*").in("id", orderIds) : Promise.resolve({ data: [], error: null }),
+        ordersPromise,
         agentIds.length ? supabase.from("agent_stores").select("*").in("id", agentIds) : Promise.resolve({ data: [], error: null }),
         subagentIds.length ? supabase.from("subagent_stores").select("*").in("id", subagentIds) : Promise.resolve({ data: [], error: null }),
       ]);
 
-      const orderById = new Map((ordersResult.data || []).map((row: any) => [row.id, row]));
+      const orderById = new Map((ordersResult.orders || []).map((row: any) => [row.id, row]));
       const agentById = new Map((agentsResult.data || []).map((row: any) => [row.id, row]));
       const subagentById = new Map((subagentsResult.data || []).map((row: any) => [row.id, row]));
       setComplaints(baseComplaints.map((complaint) => ({
