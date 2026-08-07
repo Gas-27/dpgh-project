@@ -52,6 +52,34 @@ const SubSubagentLogin = () => {
       return;
     }
 
+    // Complete store creation after authentication. This also repairs a
+    // confirmed account that was created before the signup fix was deployed.
+    const metadata = data.user.user_metadata ?? {};
+    if (metadata.role === "sub_subagent" && metadata.subagent_store_id) {
+      const { error: registrationError } = await supabase.rpc("register_sub_subagent", {
+        p_user_id: userId,
+        p_subagent_store_id: metadata.subagent_store_id,
+        p_store_name: metadata.store_name || data.user.email || "Sub-subagent store",
+        p_whatsapp_number: metadata.whatsapp_number || null,
+        p_support_number: metadata.support_number || null,
+        p_momo_number: metadata.momo_number || null,
+        p_momo_name: metadata.momo_name || null,
+        p_momo_network: metadata.momo_network || "mtn",
+      });
+
+      if (registrationError) {
+        console.error("[v0] Could not complete sub-subagent registration", registrationError);
+        await supabase.auth.signOut();
+        toast({
+          title: "Registration incomplete",
+          description: "Your parent agent store could not be verified. Please contact your parent agent.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+    }
+
     // The role table is authoritative. Store membership is checked as a
     // second safeguard, but it must not be the only role check because older
     // registrations may have the role before their store row is repaired.

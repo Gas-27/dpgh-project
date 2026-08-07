@@ -172,6 +172,15 @@ export default function SubSubagentRegistrationForm({
 
     if (!(await validateForm())) return;
 
+    if (!subagentStoreId || !subagentStore) {
+      toast({
+        title: "Registration unavailable",
+        description: "This sub-agent store could not be verified. Please use the registration link from a valid parent agent store.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -181,6 +190,9 @@ export default function SubSubagentRegistrationForm({
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo:
+            import.meta.env.VITE_SUPABASE_REDIRECT_URL ??
+            `${window.location.origin}/auth/callback`,
           data: {
             role: "sub_subagent",
             subagent_store_id: subagentStoreId,
@@ -209,14 +221,22 @@ export default function SubSubagentRegistrationForm({
         return;
       }
 
-      // Supabase already returned a session when email confirmation is disabled,
-      // so the user is already signed in and can go straight to the dashboard.
-      const { data: store } = await supabase
-        .from("sub_subagent_stores")
-        .select("id")
-        .eq("user_id", authData.user.id)
-        .maybeSingle();
-      const storeId = store?.id;
+      // The store is created only after Supabase gives us an authenticated
+      // session. This avoids RLS failures when email confirmation is enabled.
+      const { data: storeId, error: storeError } = await supabase.rpc(
+        "register_sub_subagent",
+        {
+          p_user_id: authData.user.id,
+          p_subagent_store_id: subagentStoreId,
+          p_store_name: formData.storeName,
+          p_whatsapp_number: formData.whatsappNumber || null,
+          p_support_number: formData.supportNumber || null,
+          p_momo_number: formData.momoNumber || null,
+          p_momo_name: formData.momoName || null,
+          p_momo_network: formData.momoNetwork || null,
+        },
+      );
+      if (storeError || !storeId) throw storeError || new Error("Could not create sub-subagent store");
       toast({
         title: "Success!",
         description: "Your sub-subagent account has been created. Redirecting to your dashboard...",
