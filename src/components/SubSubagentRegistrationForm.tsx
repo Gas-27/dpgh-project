@@ -183,6 +183,13 @@ export default function SubSubagentRegistrationForm({
         options: {
           data: {
             role: "sub_subagent",
+            subagent_store_id: subagentStoreId,
+            store_name: formData.storeName,
+            whatsapp_number: formData.whatsappNumber,
+            support_number: formData.supportNumber,
+            momo_name: formData.momoName,
+            momo_number: formData.momoNumber,
+            momo_network: formData.momoNetwork,
           },
         },
       });
@@ -190,48 +197,26 @@ export default function SubSubagentRegistrationForm({
       if (authError) throw authError;
       if (!authData.user?.id) throw new Error("Failed to create user account");
 
-      // The signup trigger assigns sub_subagent in user_roles. The migration also
-      // repairs any older accounts that were created with the wrong role.
+      // The database trigger creates the role and store from this metadata in
+      // the same auth transaction. This also works when email confirmation is
+      // enabled, because no authenticated browser session is required.
+      if (!authData.session) {
+        toast({
+          title: "Account created",
+          description: "Please confirm your email, then sign in from the sub-subagent login page.",
+          duration: 6000,
+        });
+        return;
+      }
 
-      // Generate a sequential top-up reference and create the store atomically
-      // through the database function. Direct browser inserts were being
-      // rejected by RLS, leaving only the auth user behind.
-      const { count: subSubagentCount } = await supabase
+      // Supabase already returned a session when email confirmation is disabled,
+      // so the user is already signed in and can go straight to the dashboard.
+      const { data: store } = await supabase
         .from("sub_subagent_stores")
-        .select("id", { count: "exact", head: true });
-      const topupReference = `Agt${(subSubagentCount || 0) + 1}`;
-
-      const { data: storeId, error: storeError } = await supabase.rpc(
-        "register_sub_subagent",
-        {
-          p_user_id: authData.user.id,
-          p_subagent_store_id: subagentStoreId,
-          p_store_name: formData.storeName,
-          p_whatsapp_number: formData.whatsappNumber || null,
-          p_support_number: formData.supportNumber || null,
-          p_momo_number: formData.momoNumber || null,
-          p_momo_name: formData.momoName || null,
-          p_momo_network: formData.momoNetwork || null,
-          p_topup_reference: topupReference,
-        },
-      );
-
-      if (storeError || !storeId) {
-        throw storeError || new Error("Sub-subagent store could not be created");
-      }
-
-      // Auto sign-in the newly created user
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (signInError) {
-        throw new Error(`Account created, but automatic sign-in failed: ${signInError.message}`);
-      }
-
-      // The RPC returns the store id only after the store is committed.
-      // Sub-subagents do not need payment, so continue directly to dashboard.
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .maybeSingle();
+      const storeId = store?.id;
       toast({
         title: "Success!",
         description: "Your sub-subagent account has been created. Redirecting to your dashboard...",
@@ -242,13 +227,11 @@ export default function SubSubagentRegistrationForm({
       // session already established and roles already cached from database
       setTimeout(() => {
         if (storeId) {
-          // Always use the full agentsstore.shop URL so the redirect works whether
-          // the form is shown on dataplug.store or agentsstore.shop
-          window.location.href = `https://agentsstore.shop/sub-subagent-dashboard?store_id=${storeId}`;
+          // Keep the redirect on the current origin so the Supabase session
+          // cookie remains available on every supported storefront domain.
+          window.location.href = `/sub-subagent-dashboard?store_id=${storeId}`;
         } else {
-          // storeId still null — send to the sub-subagent login page where the
-          // user can sign in and be routed to their dashboard automatically
-          window.location.href = `https://agentsstore.shop/sub-subagent-login`;
+          window.location.href = `/sub-subagent-login`;
         }
       }, 500);
     } catch (error: any) {
