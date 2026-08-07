@@ -2281,9 +2281,11 @@ const AdminDashboard = () => {
   const term = searchTerm.trim();
   if (term) {
     const escaped = term.replace(/[%(),]/g, "");
+    // The deployed customers schema does not guarantee first_name/last_name columns.
+    // Search only the stable customer identifiers to avoid PostgREST 42703 errors.
     query = exactMatch
-      ? query.or(`first_name.eq.${escaped},last_name.eq.${escaped},email.eq.${escaped},topup_reference.eq.${escaped},phone_number.eq.${escaped}`)
-      : query.or(`first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%,email.ilike.%${escaped}%,topup_reference.ilike.%${escaped}%,phone_number.ilike.%${escaped}%`);
+      ? query.or(`email.eq.${escaped},topup_reference.eq.${escaped},phone_number.eq.${escaped}`)
+      : query.or(`email.ilike.%${escaped}%,topup_reference.ilike.%${escaped}%,phone_number.ilike.%${escaped}%`);
   }
 
   const { data, error } = await query;

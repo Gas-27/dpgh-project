@@ -52,22 +52,22 @@ const SubSubagentLogin = () => {
       return;
     }
 
-    // Fetch roles from user_roles table
-    const { data: rolesData, error: rolesError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
+    // Sub-subagents are identified by membership in sub_subagent_stores.
+    // Their app_role is intentionally "user" because sub_subagent is not a valid enum value.
+    const { data: subSubagentStore, error: storeError } = await supabase
+      .from("sub_subagent_stores")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    if (rolesError || !rolesData) {
+    if (storeError) {
       toast({ title: "Error", description: "Could not verify account type", variant: "destructive" });
       setLoading(false);
       return;
     }
 
-    const roles = rolesData.map(r => r.role);
-    
     // Only allow sub-subagent login on this page
-    if (!roles.includes("sub_subagent")) {
+    if (!subSubagentStore) {
       toast({
         title: "Access Denied",
         description: "This login page is only for sub-subagents. Please use the correct login page.",
@@ -116,16 +116,14 @@ const SubSubagentLogin = () => {
     const checkAndRedirect = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data: rolesData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id);
-        
-        if (rolesData) {
-          const roles = rolesData.map(r => r.role);
-          if (roles.includes("sub_subagent")) {
-            window.location.href = "/sub-subagent-dashboard";
-          }
+        const { data: subSubagentStore } = await supabase
+          .from("sub_subagent_stores")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+
+        if (subSubagentStore) {
+          window.location.href = "/sub-subagent-dashboard";
         }
       }
     };

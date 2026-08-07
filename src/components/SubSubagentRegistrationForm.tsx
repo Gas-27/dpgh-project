@@ -246,10 +246,11 @@ export default function SubSubagentRegistrationForm({
         storeId = insertedStore.id;
       } else {
         // Step 2: row already exists (trigger-created) — UPDATE it
-        await supabase
+        const { error: updateError } = await supabase
           .from("sub_subagent_stores")
           .update(storeFields)
           .eq("user_id", authData.user.id);
+        if (updateError) throw updateError;
 
         // Step 3: fetch the id
         const { data: found } = await supabase

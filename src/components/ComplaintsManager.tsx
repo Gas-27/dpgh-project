@@ -490,14 +490,12 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
       ? new Date(complaint.orders.created_at).toLocaleString()
       : "—";
     const network = complaint.orders ? networkName(complaint.orders.network) : "—";
-    const bundle = complaint.orders ? `${complaint.orders.size_gb}GB` : "—";
+    // Keep the shared report intentionally limited to the four approved fields.
     const lines = [
+      `Network: ${network}`,
       `Order Date: ${orderDate}`,
       `Customer Number: ${complaint.customer_number}`,
-      `Network: ${network} ${bundle}`,
-      `Message Delivered But Not Received`,
-      ``,
-      complaint.complaint_details,
+      "Message Delivered But Not Received",
     ].join("\n");
     if (navigator.share) {
       try { await navigator.share({ title: "Complaint", text: lines }); } catch (_) {}
@@ -841,17 +839,14 @@ function ComplaintsTable({
                   n === "mtn" ? "MTN" : n === "mtn_express" ? "MTN Express" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : (n || "").toUpperCase();
                 const text = selected.map(c => {
                   const orderDate = c.orders?.created_at ? new Date(c.orders.created_at).toLocaleString() : "—";
-                  const network = c.orders ? `${networkName(c.orders.network)} ${c.orders.size_gb}GB` : "—";
+                  const network = c.orders ? networkName(c.orders.network) : "—";
                   return [
+                    `Network: ${network}`,
                     `Order Date: ${orderDate}`,
                     `Customer Number: ${c.customer_number}`,
-                    `Network: ${network}`,
-                    `Message Delivered But Not Received`,
-                    ``,
-                    c.complaint_details,
-                    "---",
+                    "Message Delivered But Not Received",
                   ].join("\n");
-                }).join("\n");
+                }).join("\n\n");
                 if (navigator.share) {
                   try { await navigator.share({ title: `${selected.length} Complaint(s)`, text }); } catch (_) {}
                 } else {
