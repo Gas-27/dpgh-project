@@ -20,22 +20,6 @@
     <priority>0.95</priority>
   </url>
 
-  <!-- Sign Up -->
-  <url>
-    <loc>https://dataplug.store/signup</loc>
-    <lastmod>2026-08-01</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-
-  <!-- Login -->
-  <url>
-    <loc>https://dataplug.store/login</loc>
-    <lastmod>2026-08-01</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
   <!-- Become an Agent -->
   <url>
     <loc>https://dataplug.store/become-agent</loc>

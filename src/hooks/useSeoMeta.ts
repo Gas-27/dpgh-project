@@ -29,7 +29,9 @@ export function useSeoMeta({
 }: SeoMeta) {
   useEffect(() => {
     const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
-    const canonicalUrl = `${BASE_URL}${canonicalPath}`;
+    const pathname = window.location.pathname;
+    const hasQueryParameters = window.location.search.length > 0;
+    const canonicalUrl = `${BASE_URL}${canonicalPath || pathname}`;
 
     // --- <title> ---
     document.title = fullTitle;
@@ -58,7 +60,12 @@ export function useSeoMeta({
 
     // --- Standard meta ---
     setMeta('meta[name="description"]', "name", "description", description);
-    setMeta('meta[name="robots"]', "name", "robots", noIndex ? "noindex, nofollow" : "index, follow");
+    setMeta(
+      'meta[name="robots"]',
+      "name",
+      "robots",
+      noIndex || hasQueryParameters ? "noindex, follow" : "index, follow",
+    );
 
     // --- Canonical ---
     setLink("canonical", canonicalUrl);
