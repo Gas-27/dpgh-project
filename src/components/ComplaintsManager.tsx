@@ -932,8 +932,8 @@ function ComplaintsTable({
                     <TableCell className="text-xs">
                       {c.orders ? (
                         <div className="space-y-0.5">
-                          <p className="font-medium">{c.orders.network?.toUpperCase()} {c.orders.size_gb}GB</p>
-                          <p className="text-muted-foreground">{c.orders.fulfillment_status}</p>
+                          <p className="font-medium">{networkName(c.orders.network)} {c.orders.size_gb}GB</p>
+                          <p className="text-muted-foreground">{c.orders.fulfillment_status || "—"}</p>
                         </div>
                       ) : <span className="text-muted-foreground text-xs">{c.order_id?.slice(0,8)}…</span>}
                     </TableCell>

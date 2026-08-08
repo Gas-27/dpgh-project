@@ -3221,13 +3221,6 @@ const AdminDashboard = () => {
                         </CardContent>
                       </Card>
                     ))}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-center gap-2 pt-4">
-                        <Button variant="outline" size="sm" disabled={agentPage === 1} onClick={() => setAgentPage(p => p - 1)}>Previous</Button>
-                        <span className="text-sm text-muted-foreground">Page {agentPage} of {totalPages}</span>
-                        <Button variant="outline" size="sm" disabled={agentPage === totalPages} onClick={() => setAgentPage(p => p + 1)}>Next</Button>
-                      </div>
-                    )}
                   </>
                 );
               })()}
@@ -4599,8 +4592,8 @@ const AdminDashboard = () => {
                   </CardContent>
               </Card>
 
-              {/* Special MTN Mashup Pricing */}
-              <Card className="border-amber-500/30 bg-amber-50/5">
+              {/* Special MTN Mashup Pricing removed from admin settings. */}
+              {false && <Card className="border-amber-500/30 bg-amber-50/5">
                 <CardHeader>
                   <CardTitle className="font-display text-lg flex items-center gap-2">
                     <span className="text-xl">⚡</span> Special MTN Mashup Pricing
@@ -4749,7 +4742,7 @@ const AdminDashboard = () => {
                     </Button>
                   </div>
                 </CardContent>
-              </Card>
+              </Card>}
             </TabsContent>
             )}
 

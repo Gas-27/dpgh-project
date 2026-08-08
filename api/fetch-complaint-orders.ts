@@ -13,7 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data, error } = await adminSupabase
     .from('orders')
-    .select('id, network, size_gb, amount, fulfillment_status, created_at, agent_store_id, subagent_store_id, customer_id, customer_number')
+    .select('id, network, size_gb, amount, status, order_status, fulfillment_status, created_at, updated_at, agent_store_id, subagent_store_id, customer_id, customer_number')
     .in('id', orderIds.slice(0, 500));
 
   if (error) {
