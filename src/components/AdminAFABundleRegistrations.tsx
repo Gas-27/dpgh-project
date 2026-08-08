@@ -66,15 +66,12 @@ export default function AdminAFABundleRegistrations() {
   const fetchReports = async () => {
     setReportsLoading(true);
     try {
-      const res = await fetch('/api/fetch-afa-reports');
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'Failed to fetch reports');
-      }
-      const raw = await res.text();
-      let body: { data?: AFAReport[] };
-      try { body = JSON.parse(raw); } catch { throw new Error('AFA reports endpoint returned invalid JSON. Check the API route deployment.'); }
-      setReports(body.data || []);
+      const { data, error } = await supabase
+        .from('afa_registration_reports')
+        .select('*, afa_registrations(customer_name, customer_phone, registration_status)')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setReports((data || []) as AFAReport[]);
     } catch (err: any) {
       console.error('[v0] AFA reports fetch error:', err);
       toast({ title: 'Error loading reports', description: err.message || String(err), variant: 'destructive' });
@@ -86,16 +83,11 @@ export default function AdminAFABundleRegistrations() {
   const resolveReport = async (id: string) => {
     setResolvingReport(id);
     try {
-      // Use admin API route to bypass RLS
-      const res = await fetch('/api/resolve-afa-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: 'resolved' }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'Failed to resolve');
-      }
+      const { error } = await supabase
+        .from('afa_registration_reports')
+        .update({ status: 'resolved' })
+        .eq('id', id);
+      if (error) throw error;
       setReports(reports.map(r => r.id === id ? { ...r, status: 'resolved' } : r));
       toast({ title: 'Marked as resolved' });
     } catch (err: any) {
@@ -108,14 +100,12 @@ export default function AdminAFABundleRegistrations() {
   const fetchRegistrations = async () => {
     setLoading(true);
     try {
-      // Use service-role API route to bypass RLS
-      const res = await fetch('/api/fetch-afa-registrations');
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'Failed to fetch registrations');
-      }
-      const { data } = await res.json();
-      setRegistrations(data || []);
+      const { data, error } = await supabase
+        .from('afa_registrations')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setRegistrations((data || []) as AFARegistration[]);
     } catch (err: any) {
       console.error('[v0] Failed to fetch registrations:', err);
       toast({ title: 'Error', description: err.message || 'Failed to load registrations', variant: 'destructive' });
