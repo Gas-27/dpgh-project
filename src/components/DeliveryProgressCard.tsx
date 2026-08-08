@@ -19,10 +19,18 @@ const defaults: DeliverySetting[] = [
 ];
 
 const labels: Record<Network, string> = { mtn: "MTN", mtn_express: "MTN Express", telecel: "Telecel", airteltigo: "AirtelTigo" };
+const normalizeNetwork = (value?: string | null): Network | null => {
+  const normalized = (value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["mtn_express", "mtnexpress", "express_mtn"].includes(normalized)) return "mtn_express";
+  if (["mtn", "mtn_4g", "mtn_data"].includes(normalized)) return "mtn";
+  if (["telecel", "vodafone"].includes(normalized)) return "telecel";
+  if (["airteltigo", "airtel_tigo", "airtel", "tigo"].includes(normalized)) return "airteltigo";
+  return null;
+};
 const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat("en-GH", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "—";
 const duration = (start?: string | null, end?: string | null) => {
   if (!start || !end) return "—";
-  const total = Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000));
+  const total = Math.max(2, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000));
   return total < 60 ? `${total} minutes` : `${Math.floor(total / 60)}h ${total % 60 ? `${total % 60}m` : ""}`.trim();
 };
 const minutes = (value: number) => value < 60 ? `${value} minutes` : `${Math.floor(value / 60)}${value % 60 ? `h ${value % 60}m` : " hours"}`;
@@ -49,10 +57,10 @@ export default function DeliveryProgressCard() {
   }, []);
 
   const item = useMemo(() => settings.find((setting) => setting.network === network && setting.enabled), [network, settings]);
-  const latestDelivered = useMemo(() => orders.filter((order) => order.network?.toLowerCase() === network && normalizeOrderStatus(order) === "delivered").sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())[0], [network, orders]);
+  const latestDelivered = useMemo(() => orders.filter((order) => normalizeNetwork(order.network) === network && normalizeOrderStatus(order) === "delivered").sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())[0], [network, orders]);
   if (!item) return null;
 
-  const activeCount = orders.filter((order) => order.network?.toLowerCase() === network && !["delivered", "refunded", "failed"].includes(normalizeOrderStatus(order))).length;
+  const activeCount = orders.filter((order) => normalizeNetwork(order.network) === network && !["delivered", "refunded", "failed"].includes(normalizeOrderStatus(order))).length;
   const extra = item.source === "orders" ? Math.min(240, Math.floor(activeCount / 100) * 15) : 0;
   const deliveredAt = latestDelivered?.updated_at;
   const orderLabel = latestDelivered?.id || "—";

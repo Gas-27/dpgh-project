@@ -12,13 +12,19 @@ import { useToast } from "@/hooks/use-toast";
 
 type Setting = { network: string; enabled: boolean; source: "manual" | "orders"; min_minutes: number; max_minutes: number; message: string };
 const networks = ["mtn", "mtn_express", "telecel", "airteltigo"];
+const defaults: Setting[] = [
+  { network: "mtn", enabled: true, source: "manual", min_minutes: 60, max_minutes: 240, message: "There may be a validation issue on the MTN portal. Orders are still being processed and will be delivered." },
+  { network: "mtn_express", enabled: true, source: "manual", min_minutes: 15, max_minutes: 90, message: "MTN Express orders are usually delivered quickly, but delivery can vary by order volume." },
+  { network: "telecel", enabled: true, source: "manual", min_minutes: 30, max_minutes: 180, message: "Telecel orders are being processed. Please allow the estimated delivery window." },
+  { network: "airteltigo", enabled: true, source: "manual", min_minutes: 30, max_minutes: 180, message: "AirtelTigo orders are being processed. Please allow the estimated delivery window." },
+];
 const labels: Record<string, string> = { mtn: "MTN", mtn_express: "MTN Express", telecel: "Telecel", airteltigo: "AirtelTigo" };
 
 export default function DeliveryProgressAdmin() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<Setting[]>([]);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { supabase.from("delivery_progress_settings").select("network, enabled, source, min_minutes, max_minutes, message").order("network").then(({ data }) => setSettings((data as Setting[]) ?? [])); }, []);
+  useEffect(() => { supabase.from("delivery_progress_settings").select("network, enabled, source, min_minutes, max_minutes, message").order("network").then(({ data }) => { const saved = (data as Setting[]) ?? []; setSettings(networks.map((network) => saved.find((item) => item.network === network) ?? defaults.find((item) => item.network === network)!)); }); }, []);
   const update = (network: string, patch: Partial<Setting>) => setSettings((items) => items.map((item) => item.network === network ? { ...item, ...patch } : item));
   const save = async () => {
     setSaving(true);
