@@ -319,7 +319,8 @@ const AdminDashboard = () => {
       const { data: afaSettings } = await supabase
         .from("afa_settings")
         .select("base_registration_price")
-        .single();
+        .limit(1)
+        .maybeSingle();
       if (afaSettings?.base_registration_price) {
         setAfaRegistrationFee(afaSettings.base_registration_price);
       }
