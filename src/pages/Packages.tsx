@@ -19,6 +19,7 @@ import AgentSignupPrompt from "@/components/AgentSignupPrompt";
 import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
+import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1396,6 +1397,7 @@ const Packages = () => {
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
+        <DeliveryProgressCard />
 
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {(["data", "afa", "vouchers", "services", "bulk"] as const).map((cat) => (

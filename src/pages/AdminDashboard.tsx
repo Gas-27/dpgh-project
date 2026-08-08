@@ -27,6 +27,7 @@ import AdminAFABundleRegistrations from "@/components/AdminAFABundleRegistration
 import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import AnnouncementManager from "@/components/AnnouncementManager";
+import DeliveryProgressAdmin from "@/components/DeliveryProgressAdmin";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import {
@@ -4437,6 +4438,7 @@ const AdminDashboard = () => {
 
             {canSee("settings") && (
               <TabsContent value="settings" className="space-y-6">
+                <DeliveryProgressAdmin />
                 <Card className="border-border">
                   <CardHeader>
                     <CardTitle className="font-display flex items-center gap-2">
