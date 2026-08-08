@@ -8,87 +8,24 @@ import { Badge } from "@/components/ui/badge";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 
 type Network = "mtn" | "mtn_express" | "telecel" | "airteltigo";
-type DeliverySetting = { network: Network; enabled: boolean; source: "manual" | "orders"; min_minutes: number; max_minutes: number; message: string };
-type DeliveryOrder = { id?: string | number; network: string; status: string; fulfillment_status: string; order_status: string; created_at?: string | null; updated_at?: string | null };
-
-const defaults: DeliverySetting[] = [
-  { network: "mtn", enabled: true, source: "manual", min_minutes: 60, max_minutes: 240, message: "There may be a validation issue on the MTN portal. Orders are still being processed and will be delivered." },
-  { network: "mtn_express", enabled: true, source: "manual", min_minutes: 15, max_minutes: 90, message: "MTN Express orders are usually delivered quickly, but delivery can vary by order volume." },
-  { network: "telecel", enabled: true, source: "manual", min_minutes: 30, max_minutes: 180, message: "Telecel orders are being processed. Please allow the estimated delivery window." },
-  { network: "airteltigo", enabled: true, source: "manual", min_minutes: 30, max_minutes: 180, message: "AirtelTigo orders are being processed. Please allow the estimated delivery window." },
-];
-
+type Setting = { network: Network; enabled: boolean; source: "manual" | "orders" | "fake"; min_minutes: number; max_minutes: number; rotation_minutes: number; fake_enabled: boolean; fake_prefix: string; fake_count: number; message: string };
+type Order = { id?: string | number; network: string; status: string; fulfillment_status: string; order_status: string; created_at?: string | null; updated_at?: string | null };
 const labels: Record<Network, string> = { mtn: "MTN", mtn_express: "MTN Express", telecel: "Telecel", airteltigo: "AirtelTigo" };
-const normalizeNetwork = (value?: string | null): Network | null => {
-  const normalized = (value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-  if (["mtn_express", "mtnexpress", "express_mtn"].includes(normalized)) return "mtn_express";
-  if (["mtn", "mtn_4g", "mtn_data"].includes(normalized)) return "mtn";
-  if (["telecel", "vodafone"].includes(normalized)) return "telecel";
-  if (["airteltigo", "airtel_tigo", "airtel", "tigo"].includes(normalized)) return "airteltigo";
-  return null;
-};
-const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat("en-GH", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "—";
-const duration = (start?: string | null, end?: string | null) => {
-  if (!start || !end) return "—";
-  const total = Math.max(2, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000));
-  return total < 60 ? `${total} minutes` : `${Math.floor(total / 60)}h ${total % 60 ? `${total % 60}m` : ""}`.trim();
-};
-const minutes = (value: number) => value < 60 ? `${value} minutes` : `${Math.floor(value / 60)}${value % 60 ? `h ${value % 60}m` : " hours"}`;
+const defaults: Setting[] = ["mtn", "mtn_express", "telecel", "airteltigo"].map((network) => ({ network: network as Network, enabled: true, source: network === "mtn_express" ? "fake" : "manual", min_minutes: 30, max_minutes: 240, rotation_minutes: 30, fake_enabled: network === "mtn_express", fake_prefix: network === "telecel" ? "020" : network === "airteltigo" ? "026" : "024", fake_count: 10, message: `${labels[network as Network]} orders are being processed. Please allow the estimated delivery window.` }));
+const normalize = (value?: string | null): Network | null => { const n = (value ?? "").toLowerCase().trim().replace(/[\s-]+/g, "_"); if (["mtn_express", "mtnexpress", "express_mtn"].includes(n)) return "mtn_express"; if (["mtn", "mtn_4g", "mtn_data"].includes(n)) return "mtn"; if (["telecel", "vodafone"].includes(n)) return "telecel"; if (["airteltigo", "airtel_tigo", "airtel", "tigo"].includes(n)) return "airteltigo"; return null; };
+const date = (v?: string | null) => v ? new Intl.DateTimeFormat("en-GH", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(v)) : "—";
+const duration = (a?: string | null, b?: string | null) => { if (!a || !b) return "—"; const m = Math.max(2, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000)); return m < 60 ? `${m} minutes` : `${Math.floor(m / 60)}h ${m % 60 ? `${m % 60}m` : ""}`.trim(); };
+const windowText = (m: number) => m < 60 ? `${m} minutes` : `${Math.floor(m / 60)}${m % 60 ? `h ${m % 60}m` : " hours"}`;
+const masked = (id?: string | number) => { const s = String(id ?? "0000000000"); return s.length >= 5 ? `${s.slice(0, 3)}****${s.slice(-2)}` : "024****57"; };
+const fakeId = (prefix: string, index: number) => `${(prefix || "024").padEnd(3, "0").slice(0, 3)}${String(1000000 + index * 7919).slice(0, 5)}${String(index).padStart(2, "0")}`;
 
 export default function DeliveryProgressCard() {
-  const [network, setNetwork] = useState<Network>("mtn_express");
-  const [settings, setSettings] = useState<DeliverySetting[]>(defaults);
-  const [orders, setOrders] = useState<DeliveryOrder[]>([]);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      const [{ data: rows }, { data: recentOrders }] = await Promise.all([
-        supabase.from("delivery_progress_settings").select("network, enabled, source, min_minutes, max_minutes, message"),
-        supabase.from("orders").select("id, network, status, fulfillment_status, order_status, created_at, updated_at").order("created_at", { ascending: false }).limit(500),
-      ]);
-      if (!active) return;
-      if (rows?.length) setSettings(rows as DeliverySetting[]);
-      setOrders((recentOrders ?? []) as DeliveryOrder[]);
-    };
-    load();
-    return () => { active = false; };
-  }, []);
-
-  const item = useMemo(() => settings.find((setting) => setting.network === network && setting.enabled), [network, settings]);
-  const latestDelivered = useMemo(() => orders.filter((order) => normalizeNetwork(order.network) === network && normalizeOrderStatus(order) === "delivered").sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())[0], [network, orders]);
-  if (!item) return null;
-
-  const activeCount = orders.filter((order) => normalizeNetwork(order.network) === network && !["delivered", "refunded", "failed"].includes(normalizeOrderStatus(order))).length;
-  const extra = item.source === "orders" ? Math.min(240, Math.floor(activeCount / 100) * 15) : 0;
-  const deliveredAt = latestDelivered?.updated_at;
-  const orderLabel = latestDelivered?.id || "—";
-
-  return (
-    <Card className="mx-auto mb-8 w-full max-w-3xl overflow-hidden border-primary/30 bg-primary/5 shadow-sm">
-      <CardHeader className="px-5 pb-3 pt-4 sm:px-6">
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl"><Truck className="size-5 text-primary" />Delivery Progress</CardTitle>
-          <Select value={network} onValueChange={(value) => setNetwork(value as Network)}>
-            <SelectTrigger className="h-9 w-36 sm:w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>{Object.entries(labels).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 px-5 pb-5 sm:px-6">
-        <div className="flex gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-          <span className="mt-1 size-3 shrink-0 rounded-full bg-destructive" />
-          <div><p className="text-sm font-medium leading-5">{item.message}</p><p className="mt-1 text-xs text-muted-foreground">Estimated delivery: <strong className="text-foreground">{minutes(item.min_minutes + extra)} – {minutes(item.max_minutes + extra)}</strong></p></div>
-        </div>
-        <div className="flex gap-3 rounded-lg border border-border bg-background/70 p-3">
-          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
-          <div className="min-w-0 text-sm"><p><strong className="text-emerald-700">Last delivered:</strong> <span className="font-medium">#{orderLabel}</span></p><p className="text-muted-foreground">Placed {formatDate(latestDelivered?.created_at)} · Delivered {formatDate(deliveredAt)} · Took <strong className="text-foreground">{duration(latestDelivered?.created_at, deliveredAt)}</strong></p></div>
-          <Badge variant="outline" className="ml-auto hidden h-fit shrink-0 gap-1 sm:flex"><Clock3 className="size-3" />{labels[network]}</Badge>
-        </div>
-        <Button variant="ghost" size="sm" className="w-fit gap-2 px-0 text-xs text-muted-foreground" onClick={() => setDetailsOpen((open) => !open)}><Info className="size-4" />What should you know?<ChevronDown className={`size-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`} /></Button>
-        {detailsOpen && <p className="text-xs leading-5 text-muted-foreground">This is an estimated delivery window, not a guarantee. Delivery speed can differ by phone number, network validation, and order volume. For your actual order status, use the Track Order bar. Some orders may be delivered faster while others remain processing or waiting.</p>}
-      </CardContent>
-    </Card>
-  );
+  const [network, setNetwork] = useState<Network>("mtn_express"); const [settings, setSettings] = useState<Setting[]>(defaults); const [orders, setOrders] = useState<Order[]>([]); const [open, setOpen] = useState(false);
+  useEffect(() => { Promise.all([supabase.from("delivery_progress_settings").select("network, enabled, source, min_minutes, max_minutes, rotation_minutes, fake_enabled, fake_prefix, fake_count, message"), supabase.from("orders").select("id, network, status, fulfillment_status, order_status, created_at, updated_at").order("created_at", { ascending: false }).limit(500)]).then(([settingsResult, ordersResult]) => { const saved = (settingsResult.data as Setting[]) ?? []; setSettings(defaults.map((d) => ({ ...d, ...(saved.find((s) => s.network === d.network) ?? {}) }))); setOrders((ordersResult.data ?? []) as Order[]); }); }, []);
+  const item = settings.find((s) => s.network === network && s.enabled); if (!item) return null;
+  const real = useMemo(() => orders.filter((o) => normalize(o.network) === network && normalizeOrderStatus(o) === "delivered").sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())[0], [orders, network]);
+  const active = orders.filter((o) => normalize(o.network) === network && !["delivered", "refunded", "failed"].includes(normalizeOrderStatus(o))).length;
+  const fake = item.source === "fake" ? { id: fakeId(item.fake_prefix, Math.floor(Date.now() / Math.max(1, item.rotation_minutes * 60000)) % Math.max(1, item.fake_count)), created_at: new Date(Date.now() - Math.max(2, item.min_minutes) * 60000).toISOString(), updated_at: new Date().toISOString() } : null;
+  const shown = fake ?? real; const extra = item.source === "orders" ? Math.min(240, Math.floor(active / 100) * 15) : 0;
+  return <Card className="mx-auto mb-8 w-full max-w-2xl overflow-hidden border-primary/30 bg-primary/5 shadow-sm"><CardHeader className="px-5 pb-3 pt-4 sm:px-6"><div className="flex items-center justify-between gap-3"><CardTitle className="flex items-center gap-2 text-lg sm:text-xl"><Truck className="size-5 text-primary" />Delivery Progress</CardTitle><Select value={network} onValueChange={(v) => setNetwork(v as Network)}><SelectTrigger className="h-9 w-36 sm:w-44"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(labels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div></CardHeader><CardContent className="flex flex-col gap-3 px-5 pb-5 sm:px-6"><div className="flex gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3"><span className="mt-1 size-3 shrink-0 rounded-full bg-emerald-500" /><div><p className="text-sm font-medium leading-5">{item.message}</p><p className="mt-1 text-xs text-muted-foreground">Estimated delivery: <strong className="text-foreground">{windowText(item.min_minutes + extra)} – {windowText(item.max_minutes + extra)}</strong></p></div></div><div className="flex gap-3 rounded-lg border border-border bg-background/70 p-3"><CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" /><div className="min-w-0 text-sm"><p><strong className="text-emerald-700">Last delivered:</strong> <span className="font-medium">{masked(shown?.id)}</span></p><p className="text-muted-foreground">Placed {date(shown?.created_at)} · Delivered {date(shown?.updated_at)} · Took <strong className="text-foreground">{duration(shown?.created_at, shown?.updated_at)}</strong></p></div><Badge variant="outline" className="ml-auto hidden h-fit shrink-0 gap-1 sm:flex"><Clock3 className="size-3" />{labels[network]}</Badge></div><Button variant="ghost" size="sm" className="w-fit gap-2 px-0 text-xs text-muted-foreground" onClick={() => setOpen(!open)}><Info className="size-4" />What should you know?<ChevronDown className={`size-4 ${open ? "rotate-180" : ""}`} /></Button>{open && <p className="text-xs leading-5 text-muted-foreground">This is an estimated delivery window, not a guarantee. Track your own order from the Track Order bar for its actual status.</p>}</CardContent></Card>;
 }

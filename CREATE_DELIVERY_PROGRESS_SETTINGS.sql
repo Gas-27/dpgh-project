@@ -1,37 +1,52 @@
--- Run once in Supabase SQL Editor.
+-- Run this entire script in Supabase SQL Editor.
 create table if not exists public.delivery_progress_settings (
   network text primary key,
   enabled boolean not null default true,
-  source text not null default 'manual' check (source in ('manual', 'orders')),
-  min_minutes integer not null default 30 check (min_minutes >= 0),
+  source text not null default 'manual' check (source in ('manual','orders','fake')),
+  min_minutes integer not null default 30 check (min_minutes >= 2),
   max_minutes integer not null default 240 check (max_minutes >= min_minutes),
-  message text not null default 'Orders are being processed. Delivery times can vary by network and order volume.',
+  rotation_minutes integer not null default 30 check (rotation_minutes >= 1),
+  fake_enabled boolean not null default false,
+  fake_prefix text not null default '024',
+  fake_count integer not null default 10 check (fake_count between 1 and 100),
+  message text not null default 'Orders are being processed. Please allow the estimated delivery window.',
   updated_at timestamptz not null default now()
 );
 
-insert into public.delivery_progress_settings (network, min_minutes, max_minutes, message)
+alter table public.delivery_progress_settings add column if not exists rotation_minutes integer not null default 30;
+alter table public.delivery_progress_settings add column if not exists fake_enabled boolean not null default false;
+alter table public.delivery_progress_settings add column if not exists fake_prefix text not null default '024';
+alter table public.delivery_progress_settings add column if not exists fake_count integer not null default 10;
+alter table public.delivery_progress_settings drop constraint if exists delivery_progress_settings_source_check;
+alter table public.delivery_progress_settings add constraint delivery_progress_settings_source_check check (source in ('manual','orders','fake'));
+
+insert into public.delivery_progress_settings (network, source, min_minutes, max_minutes, rotation_minutes, fake_enabled, fake_prefix, fake_count, message)
 values
-  ('mtn', 60, 240, 'There may be a validation issue on the MTN portal. Orders are still being processed and will be delivered.'),
-  ('mtn_express', 15, 90, 'MTN Express orders are usually delivered quickly, but delivery can vary by order volume.'),
-  ('telecel', 30, 180, 'Telecel orders are being processed. Please allow the estimated delivery window.'),
-  ('airteltigo', 30, 180, 'AirtelTigo orders are being processed. Please allow the estimated delivery window.')
+('mtn','manual',60,240,30,false,'024',10,'There may be a validation issue on the MTN portal. Orders are still being processed and will be delivered.'),
+('mtn_express','fake',15,90,30,true,'024',10,'MTN Express orders are usually delivered quickly, but delivery can vary by order volume.'),
+('telecel','manual',30,180,30,false,'020',10,'Telecel orders are being processed. Please allow the estimated delivery window.'),
+('airteltigo','manual',30,180,30,false,'026',10,'AirtelTigo orders are being processed. Please allow the estimated delivery window.')
 on conflict (network) do nothing;
 
 alter table public.delivery_progress_settings enable row level security;
 drop policy if exists "Public can view delivery progress" on public.delivery_progress_settings;
-create policy "Public can view delivery progress"
-  on public.delivery_progress_settings for select using (true);
+create policy "Public can view delivery progress" on public.delivery_progress_settings for select using (true);
 
--- Optional admin write policy. This uses the existing admin_users table shown in your schema.
--- Run this only if admin_users.user_id identifies your administrators.
-drop policy if exists "Admins can manage delivery progress" on public.delivery_progress_settings;
-create policy "Admins can manage delivery progress"
-  on public.delivery_progress_settings for all
-  to authenticated
-  using (exists (select 1 from public.admin_users a where a.user_id = auth.uid()))
-  with check (exists (select 1 from public.admin_users a where a.user_id = auth.uid()));
+-- This RPC avoids client-side RLS insert/upsert failures while checking the signed-in admin.
+create or replace function public.save_delivery_progress_settings(payload jsonb)
+returns void language plpgsql security definer set search_path = public
+as $$
+begin
+  if not exists (select 1 from public.admin_users where user_id = auth.uid()) then
+    raise exception 'admin access required';
+  end if;
+  insert into public.delivery_progress_settings
+  select * from jsonb_to_recordset(payload) as x(network text, enabled boolean, source text, min_minutes integer, max_minutes integer, rotation_minutes integer, fake_enabled boolean, fake_prefix text, fake_count integer, message text, updated_at timestamptz)
+  on conflict (network) do update set enabled=excluded.enabled, source=excluded.source, min_minutes=excluded.min_minutes, max_minutes=excluded.max_minutes, rotation_minutes=excluded.rotation_minutes, fake_enabled=excluded.fake_enabled, fake_prefix=excluded.fake_prefix, fake_count=excluded.fake_count, message=excluded.message, updated_at=excluded.updated_at;
+end;
+$$;
+grant execute on function public.save_delivery_progress_settings(jsonb) to authenticated;
 
--- Normalize legacy order network values for accurate reporting.
-update public.orders set network = 'mtn_express' where lower(replace(replace(network, '-', '_'), ' ', '_')) in ('mtnexpress', 'express_mtn');
-update public.orders set network = 'airteltigo' where lower(replace(replace(network, '-', '_'), ' ', '_')) in ('airtel_tigo', 'airtel', 'tigo');
-update public.orders set network = 'telecel' where lower(network) = 'vodafone';
+update public.orders set network='mtn_express' where lower(replace(replace(network,'-','_'),' ','_')) in ('mtnexpress','express_mtn');
+update public.orders set network='airteltigo' where lower(replace(replace(network,'-','_'),' ','_')) in ('airtel_tigo','airtel','tigo');
+update public.orders set network='telecel' where lower(network)='vodafone';
