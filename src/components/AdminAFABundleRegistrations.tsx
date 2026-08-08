@@ -71,8 +71,10 @@ export default function AdminAFABundleRegistrations() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || 'Failed to fetch reports');
       }
-      const { data } = await res.json();
-      setReports((data as AFAReport[]) || []);
+      const raw = await res.text();
+      let body: { data?: AFAReport[] };
+      try { body = JSON.parse(raw); } catch { throw new Error('AFA reports endpoint returned invalid JSON. Check the API route deployment.'); }
+      setReports(body.data || []);
     } catch (err: any) {
       console.error('[v0] AFA reports fetch error:', err);
       toast({ title: 'Error loading reports', description: err.message || String(err), variant: 'destructive' });

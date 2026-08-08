@@ -3686,7 +3686,7 @@ const AdminDashboard = () => {
                     </p>
                     <Card className="border-border">
                       <Table>
-                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Agent/Subagent</TableHead><TableHead>Type</TableHead><TableHead>Source</TableHead><TableHead>Amount</TableHead><TableHead>Before</TableHead><TableHead>After</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Transfer Code</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Date & Time</TableHead><TableHead>Agent/Subagent</TableHead><TableHead>Type</TableHead><TableHead>Source</TableHead><TableHead>Amount</TableHead><TableHead>Before</TableHead><TableHead>After</TableHead><TableHead>MoMo Name</TableHead><TableHead>MoMo Number</TableHead><TableHead>Network</TableHead><TableHead>Paystack Reference</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
                           {paginated.length === 0 ? <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">No withdrawals match your search.</TableCell></TableRow> :
                             paginated.map((w) => {

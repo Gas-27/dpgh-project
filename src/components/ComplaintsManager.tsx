@@ -41,6 +41,8 @@ interface Complaint {
     amount: number;
     fulfillment_status: string;
     created_at: string;
+    updated_at?: string;
+    order_status?: string;
     agent_store_id?: string;
     subagent_store_id?: string;
     customer_id?: string;
@@ -135,14 +137,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       // Orders are protected by RLS, so the admin complaint view loads the
       // minimal order fields through the server-side admin endpoint.
       const ordersPromise = orderIds.length
-        ? fetch("/api/fetch-complaint-orders", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderIds }),
-          }).then(async (response) => {
-            if (!response.ok) return { orders: [] };
-            return response.json();
-          })
+        ? supabase.from("orders").select("id, network, size_gb, amount, status, order_status, fulfillment_status, created_at, updated_at, agent_store_id, subagent_store_id, customer_id, customer_number").in("id", orderIds.slice(0, 500)).then(({ data }) => ({ orders: data ?? [] }))
         : Promise.resolve({ orders: [] });
 
       const [ordersResult, agentsResult, subagentsResult] = await Promise.all([
