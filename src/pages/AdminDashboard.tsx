@@ -28,6 +28,7 @@ import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import AnnouncementManager from "@/components/AnnouncementManager";
 import DeliveryProgressAdmin from "@/components/DeliveryProgressAdmin";
+import AdminOrderStatusUpdater from "@/components/AdminOrderStatusUpdater";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import {
@@ -4432,8 +4433,9 @@ const AdminDashboard = () => {
 
             {canSee("settings") && (
               <TabsContent value="settings" className="space-y-6">
-                <DeliveryProgressAdmin />
-                <Card className="border-border">
+<DeliveryProgressAdmin />
+  <AdminOrderStatusUpdater />
+  <Card className="border-border">
                   <CardHeader>
                     <CardTitle className="font-display flex items-center gap-2">
                       <Settings2 className="h-5 w-5 text-primary" /> App Settings
