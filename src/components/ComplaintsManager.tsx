@@ -140,7 +140,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ orderIds }),
           }).then(async (response) => {
-            if (!response.ok) throw new Error("Unable to load complaint orders");
+            if (!response.ok) return { orders: [] };
             return response.json();
           })
         : Promise.resolve({ orders: [] });
