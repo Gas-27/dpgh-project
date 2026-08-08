@@ -58,6 +58,16 @@ interface Complaint {
   };
 }
 
+const networkName = (network?: string) => {
+  switch ((network || "").toLowerCase()) {
+    case "mtn": return "MTN";
+    case "mtn_express": return "MTN Express";
+    case "telecel": return "Telecel";
+    case "airteltigo": return "AirtelTigo";
+    default: return network ? network.toUpperCase() : "—";
+  }
+};
+
 export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = false }: { isAgent?: boolean; agentStoreId?: string; readOnly?: boolean } = {}) => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
