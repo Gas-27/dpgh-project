@@ -77,7 +77,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -2624,7 +2624,8 @@ const AdminDashboard = () => {
             <TabsTrigger value="afa" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> AFA</TabsTrigger>
             <TabsTrigger value="afa_bundles" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> AFA Bundles</TabsTrigger>
             <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
+            <TabsTrigger value="delivery_status" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Check className="h-3 w-3 md:h-4 md:w-4" /> Delivery status</TabsTrigger>
+  <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
           <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
 
@@ -4431,10 +4432,15 @@ const AdminDashboard = () => {
               </TabsContent>
             )}
 
+            {canSee("delivery_status") && (
+              <TabsContent value="delivery_status" className="space-y-6">
+                <AdminOrderStatusUpdater />
+              </TabsContent>
+            )}
+
             {canSee("settings") && (
               <TabsContent value="settings" className="space-y-6">
-<DeliveryProgressAdmin />
-  <AdminOrderStatusUpdater />
+  <DeliveryProgressAdmin />
   <Card className="border-border">
                   <CardHeader>
                     <CardTitle className="font-display flex items-center gap-2">
