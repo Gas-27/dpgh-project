@@ -9,7 +9,7 @@ const AuthCallback = () => {
   useEffect(() => {
     let settled = false;
 
-    const routeUser = async (userId: string) => {
+    const routeUser = async (userId: string, sessionProvider?: string) => {
       if (settled) return;
       settled = true;
 
@@ -18,9 +18,18 @@ const AuthCallback = () => {
         .select("role")
         .eq("user_id", userId);
 
-      const roles = (rolesData ?? []).map((r: { role: string }) => r.role);
+      const roles = (rolesData ?? []).map((r: { role: string }) => String(r.role).trim().toLowerCase());
+      const provider = String(sessionProvider ?? "").toLowerCase();
 
       if (roles.includes("admin")) {
+        if (provider === "google") {
+          await supabase.auth.signOut();
+          navigate("/login", {
+            replace: true,
+            state: { authError: "Admin accounts must use email and password. Google sign-in is not allowed for admin access." },
+          });
+          return;
+        }
         navigate("/only-admin/log.in", { replace: true });
       } else if (roles.includes("agent")) {
         navigate("/agent", { replace: true });
@@ -36,7 +45,10 @@ const AuthCallback = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === "SIGNED_IN" && session?.user) {
-          routeUser(session.user.id);
+          routeUser(
+            session.user.id,
+            session.user.app_metadata?.provider ?? session.user.identities?.[0]?.provider,
+          );
         }
       }
     );
@@ -45,7 +57,10 @@ const AuthCallback = () => {
     // the client processed the token before our listener was registered).
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        routeUser(session.user.id);
+        routeUser(
+            session.user.id,
+            session.user.app_metadata?.provider ?? session.user.identities?.[0]?.provider,
+          );
       }
     });
 

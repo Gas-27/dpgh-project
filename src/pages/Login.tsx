@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ import {
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,6 +37,14 @@ const Login = () => {
   const [resetEmail, setResetEmail] = useState("");
   const [sendingReset, setSendingReset] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    const authError = (location.state as { authError?: string } | null)?.authError;
+    if (authError) {
+      toast({ title: "Google sign-in failed", description: authError, variant: "destructive" });
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location, navigate, toast]);
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
