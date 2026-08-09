@@ -25,7 +25,7 @@ using (
   or has_role(auth.uid(), 'admin'::app_role)
 );
 
-create or replace function public.admin_run_delivery_automation()
+create or replace function public.run_delivery_automation_job()
 returns integer
 language plpgsql
 security definer
@@ -34,10 +34,6 @@ as $$
 declare
   changed_count integer;
 begin
-  if not public.has_role(auth.uid(), 'admin'::public.app_role) then
-    raise exception 'admin access required';
-  end if;
-
   update public.orders o
   set order_status = 'delivered', updated_at = now()
   from public.delivery_progress_settings s
@@ -52,14 +48,11 @@ begin
     )
     and o.order_status = 'processing'
     and o.created_at <= now() - make_interval(mins => greatest(s.auto_min_minutes, 0))
-    and o.created_at >= now() - make_interval(mins => greatest(
-      s.auto_max_minutes,
-      s.auto_min_minutes
-    ))
+    and o.created_at >= now() - make_interval(mins => greatest(s.auto_max_minutes, s.auto_min_minutes))
     and (
       s.auto_max_minutes = s.auto_min_minutes
-      or extract(epoch from (now() - o.created_at)) / 60 >= s.auto_min_minutes
-        + mod(abs(hashtext(o.id::text)), greatest(s.auto_max_minutes - s.auto_min_minutes + 1, 1))
+      or extract(epoch from (now() - o.created_at)) / 60 >=
+        s.auto_min_minutes + mod(abs(hashtext(o.id::text)), s.auto_max_minutes - s.auto_min_minutes + 1)
     );
 
   get diagnostics changed_count = row_count;
@@ -67,9 +60,58 @@ begin
 end;
 $$;
 
+create or replace function public.admin_run_delivery_automation()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.has_role(auth.uid(), 'admin'::public.app_role) then
+    raise exception 'admin access required';
+  end if;
+
+  return public.run_delivery_automation_job();
+end;
+$$;
+
+create or replace function public.run_delivery_automation_job_body()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform public.run_delivery_automation_job();
+end;
+$$;
+
+/* Keep the existing automation update logic in the worker function. */
+/* The admin RPC below remains protected for the dashboard Run now button. */
+
+/*
+  The following block is intentionally separate so it can be rerun safely.
+  Supabase projects with pg_cron enabled will run the worker every minute.
+*/
+do $$
+begin
+  if exists (select 1 from pg_namespace where nspname = 'cron') then
+    perform cron.unschedule(jobid)
+    from cron.job
+    where jobname = 'delivery-automation-every-minute';
+
+    perform cron.schedule(
+      'delivery-automation-every-minute',
+      '* * * * *',
+      'select public.run_delivery_automation_job_body();'
+    );
+  end if;
+end;
+$$;
+
+revoke all on function public.run_delivery_automation_job() from public;
+revoke all on function public.run_delivery_automation_job_body() from public;
 revoke all on function public.admin_run_delivery_automation() from public;
 grant execute on function public.admin_run_delivery_automation() to authenticated;
 
--- Unattended execution requires Supabase Cron/pg_cron or an external scheduler.
--- Example scheduler call should invoke this function using a protected server credential,
--- never from an unauthenticated browser.
+notify pgrst, 'reload schema';
