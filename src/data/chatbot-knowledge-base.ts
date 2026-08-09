@@ -337,7 +337,26 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
   {
     id: "report_order",
     questions: ["report order", "report not received", "report button", "report delivered not received", "report issue with order", "data not received how to report", "how to report"],
-    answer: "You can only report an order when its delivery status shows as **Delivered**. Here's how:\n\n**To report in this chat:**\n1. Enter your phone number (so we can track your case)\n2. I'll pull up your orders\n3. Find the **Delivered** order\n4. Tap the orange **Report** button\n5. Answer pre-check questions and upload screenshots\n6. Submit — we'll follow up with you directly\n\n**To report from your dashboard:**\n1. Go to **Track Order** tab\n2. Find the order with **Delivered** status\n3. Click **Report** — you'll be asked for your phone number to track the case\n4. Complete the form and submit\n\n**Important before reporting:**\n- Dial **\\*124#** on MTN (or check your app on other networks)\n- Look for **Master Beneficiary Data Bundle** — that's where our bundle shows\n- Check if your SIM owes airtime, bundles, or MoMo — network debts can hold bundles\n\n**Report button rules:** Only appears on orders with **Delivered** status. Other statuses (Pending, Processing, Failed) are handled by our system automatically.",
+        answer: `To report an order that shows **Delivered** but you did not receive the data, follow these steps.
+
+**First, enter the phone number used for the order in this chat** so I can check the order for you.
+
+**From the Track Order tab:**
+1. Go to the **Track Order** tab.
+2. Find the order in the table.
+3. If it shows **Delivered**, a **Report** button will appear on that row.
+4. Click **Report**.
+5. Answer the pre-check questions:
+   - Have you checked **Master Beneficiary Data Bundle** (not Mashup Data)?
+   - Does the SIM owe airtime?
+   - Does the SIM owe Mobile Money?
+6. Upload a screenshot of your data balance (dial star 124 hash on MTN, then check the balance screen).
+7. Submit the report.
+
+The team will review your report and follow up. The Report button only appears on Delivered orders.
+
+Please send the phone number now, including the leading 0, for example: 0241234567.`,
+    followUp: "collect_phone",
     category: "tracking",
     relatedIds: ["order_status_meanings", "mtn_bundle_location", "owing_debt_issue", "refund_how"],
   },
