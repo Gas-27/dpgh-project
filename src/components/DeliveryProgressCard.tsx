@@ -18,7 +18,7 @@ const duration = (a?: string | null, b?: string | null) => { if (!a || !b) retur
 const windowText = (m: number) => m < 60 ? `${m} minutes` : `${Math.floor(m / 60)}${m % 60 ? `h ${m % 60}m` : " hours"}`;
 const masked = (number?: string | number | null) => { const s = String(number ?? "").replace(/\D/g, ""); return s.length >= 6 ? `${s.slice(0, 3)}****${s.slice(-3)}` : "—"; };
 const PREFIXES: Record<Network, string[]> = { mtn: ["024", "054", "055", "059"], mtn_express: ["024", "054", "055", "059"], telecel: ["020", "050"], airteltigo: ["026", "056", "027", "057"] };
-const fakeId = (prefix: string, index: number) => `${(prefix || "024").padEnd(3, "0").slice(0, 3)}${String(1000000 + index * 7919).slice(0, 5)}${String(index).padStart(2, "0")}`;
+const fakeId = (prefixes: string, slot: number) => { const list = prefixes.split(",").map((p) => p.replace(/\D/g, "").slice(0, 3)).filter((p) => p.length === 3); const prefix = list[slot % Math.max(1, list.length)] || "024"; const suffix = String(Math.floor(Math.random() * 1000000)).padStart(6, "0"); return `${prefix}${suffix}`; };
 
 export default function DeliveryProgressCard() {
   const [network, setNetwork] = useState<Network>("mtn_express"); const [settings, setSettings] = useState<Setting[]>(defaults); const [globalEnabled, setGlobalEnabled] = useState(true); const [orders, setOrders] = useState<Order[]>([]); const [open, setOpen] = useState(false);
@@ -32,7 +32,7 @@ export default function DeliveryProgressCard() {
   const realMin = realDurations.length ? Math.min(...realDurations) : 0;
   const realMax = realDurations.length ? Math.max(...realDurations) : 0;
   const fakeMode = Boolean(item?.fake_enabled) || item?.source === "fake";
-  const fake = fakeMode && item ? { id: fakeId(item.fake_prefix, Math.floor(Date.now() / Math.max(1, item.rotation_minutes * 60000)) % Math.max(1, item.fake_count)), customer_number: `${(item.fake_prefix || PREFIXES[network][Math.floor(Date.now() / 60000) % PREFIXES[network].length])}${String(100000 + Math.floor(Date.now() / 60000) % 899999).padStart(6, "0").slice(-6)}`, network, status: "delivered", fulfillment_status: "delivered", order_status: "delivered", created_at: new Date(Date.now() - Math.max(0, item.min_minutes) * 60000).toISOString(), updated_at: new Date().toISOString() } : null;
+  const fake = fakeMode && item ? { id: fakeId(item.fake_prefix, Math.floor(Date.now() / Math.max(1, item.rotation_minutes * 60000)) % Math.max(1, item.fake_count)), customer_number: fakeId(item.fake_prefix || PREFIXES[network].join(","), Math.floor(Date.now() / Math.max(1, Number(item.rotation_minutes) * 60000))), network, status: "delivered", fulfillment_status: "delivered", order_status: "delivered", created_at: (() => { const min = Math.max(2, Number(item.min_minutes) || 2); const max = Math.max(min, Number(item.max_minutes) || min); const slot = Math.floor(Date.now() / Math.max(1, Number(item.rotation_minutes) || 1) / 60000); const took = min + (Math.abs(slot * 7919) % (max - min + 1)); return new Date(Date.now() - took * 60000).toISOString(); })(), updated_at: new Date().toISOString() } : null;
   if (!globalEnabled || !item || !item.enabled) return null;
   const shown = fake ?? real; const extra = item.source === "orders" ? Math.min(240, Math.floor(active / 100) * 15) : 0;
   const estimateMin = item.source === "orders" && realDurations.length ? realMin : item.min_minutes + extra;
