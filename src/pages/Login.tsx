@@ -91,7 +91,7 @@ const Login = () => {
       .eq("user_id", userId);
 
     if (!rolesError && rolesData) {
-      const roles = rolesData.map(r => r.role);
+      const roles = rolesData.map(r => String(r.role).trim().toLowerCase());
       
       // Check if user is admin - admins cannot login from here
       if (roles.includes("admin")) {
@@ -167,7 +167,7 @@ const Login = () => {
           .eq("user_id", session.user.id);
         let route = "/";
         if (rolesData) {
-          const roles = rolesData.map(r => r.role);
+          const roles = rolesData.map(r => String(r.role).trim().toLowerCase());
           if (roles.includes("admin")) route = "/admin";
           else if (roles.includes("agent")) route = "/agent";
           else if (roles.includes("sub_subagent")) route = "/sub-subagent-dashboard";

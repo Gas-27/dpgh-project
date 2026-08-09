@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return rolesCache.current[userId] ?? [];
     }
 
-    const result = (data ?? []).map((roleRow) => roleRow.role as AppRole);
+    const result = (data ?? []).map((roleRow) => String(roleRow.role).trim().toLowerCase() as AppRole);
     rolesCache.current[userId] = result;
     return result;
   }, []);

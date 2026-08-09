@@ -12,10 +12,18 @@ alter table public.delivery_progress_settings
   not valid;
 
 alter table public.user_roles enable row level security;
+
+-- Users may read only their own role so login routing can work.
+-- This does not allow inserting, updating, or deleting roles.
 drop policy if exists "Users can view own role" on public.user_roles;
 create policy "Users can view own role"
-on public.user_roles for select to authenticated
-using (auth.uid() = user_id or has_role(auth.uid(), 'admin'::app_role));
+on public.user_roles
+for select
+to authenticated
+using (
+  auth.uid() = user_id
+  or has_role(auth.uid(), 'admin'::app_role)
+);
 
 create or replace function public.admin_run_delivery_automation()
 returns integer
