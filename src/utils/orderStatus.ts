@@ -27,6 +27,6 @@ export function normalizeOrderStatus(order: OrderStatusSource): string {
 export function orderStatusLabel(order: OrderStatusSource): string {
   const status = normalizeOrderStatus(order);
   return status === "in-queue"
-    ? "In Queue"
+    ? "Number Verifying"
     : status.charAt(0).toUpperCase() + status.slice(1);
 }

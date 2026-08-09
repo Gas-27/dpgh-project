@@ -211,7 +211,7 @@ const SubSubagentOrderTrackingCard = ({
     return () => clearInterval(interval);
   }, [order.id]);
 
-  // ── Status-based step logic (no time dependency) ─���
+  // ── Status-based step logic (no time dependency) ─����
   // Check both order_status and status fields — refunded may be set on either
   const rawOrderStatus = order.order_status?.toLowerCase().trim() || "";
   const rawStatus = (order as any).status?.toLowerCase().trim() || "";
@@ -233,7 +233,7 @@ const SubSubagentOrderTrackingCard = ({
       extraNote = "Please check your Telecel messages for delivery confirmation.";
     else
       extraNote = "Please check your messages for delivery confirmation.";
-  } else if (orderStatus === "waiting") {
+  } else if ((orderStatus === "waiting" || orderStatus === "in-queue")) {
     const net = (order.network || "").toLowerCase();
     const isNonMtn = net === "telecel" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
     currentStep = 2;

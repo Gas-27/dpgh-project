@@ -235,7 +235,7 @@ const OrderTrackingCard = ({
       extraNote = "Please check your Telecel messages for delivery confirmation.";
     else
       extraNote = "Please check your messages for delivery confirmation.";
-  } else if (orderStatus === "waiting") {
+  } else if ((orderStatus === "waiting" || orderStatus === "in-queue")) {
     const net = (order.network || "").toLowerCase();
     const isNonMtn = net === "telecel" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
     currentStep = 2;

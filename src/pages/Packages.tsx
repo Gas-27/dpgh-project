@@ -216,7 +216,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
       : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
         : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
-  } else if (orderStatus === "waiting") {
+  } else if ((orderStatus === "waiting" || orderStatus === "in-queue")) {
     const net = (order.network || "").toLowerCase();
     const isNonMtn = net === "telecel" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
     step = 2;

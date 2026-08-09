@@ -44,9 +44,23 @@ begin
   where s.network = lower(trim(o.network))
     and s.enabled = true
     and s.auto_enabled = true
+    and exists (
+      select 1
+      from public.delivery_progress_settings g
+      where g.network = '__global__'
+        and g.enabled = true
+    )
     and o.order_status = 'processing'
-    and o.created_at <= now() - make_interval(mins => s.auto_min_minutes)
-    and o.created_at >= now() - make_interval(mins => s.auto_max_minutes);
+    and o.created_at <= now() - make_interval(mins => greatest(s.auto_min_minutes, 0))
+    and o.created_at >= now() - make_interval(mins => greatest(
+      s.auto_max_minutes,
+      s.auto_min_minutes
+    ))
+    and (
+      s.auto_max_minutes = s.auto_min_minutes
+      or extract(epoch from (now() - o.created_at)) / 60 >= s.auto_min_minutes
+        + mod(abs(hashtext(o.id::text)), greatest(s.auto_max_minutes - s.auto_min_minutes + 1, 1))
+    );
 
   get diagnostics changed_count = row_count;
   return changed_count;
