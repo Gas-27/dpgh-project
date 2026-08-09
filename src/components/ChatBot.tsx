@@ -1191,6 +1191,36 @@ export default function ChatBot({ page }: ChatBotProps) {
       return;
     }
 
+    // --- Report Not Received intent ---
+    // This must run before the generic "can receive data" matcher so a
+    // missing-delivery complaint can never receive the unrelated network reply.
+    const isReportNotReceivedIntent = /report.*(not|did not|didn['’]t).*receiv|order.*(delivered|complete).*not.*receiv|delivered.*(but|and).*not.*receiv|data.*not.*receiv|not.*receiv.*(data|order)|how.*report.*order/i.test(trimmed);
+    if (isReportNotReceivedIntent) {
+      const phoneMatch = trimmed.match(/(\\+233|0)[2-9][0-9]{8}/);
+      if (phoneMatch) {
+        setIsLoading(true);
+        try {
+          await runTracking(phoneMatch[0], withUser);
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      const reportGuide: Message = {
+        id: `report-guide-${Date.now()}`,
+        role: 'assistant',
+        type: 'text',
+        timestamp: Date.now(),
+        content: `To report an order that shows **Delivered** but you did not receive the data:\n\n1. Go to the **Track Order** tab.\n2. Find the order in the table.\n3. If the status is **Delivered**, a **Report** button will appear on that row.\n4. Click **Report**.\n5. Answer the pre-check questions:\n   - Have you checked **Master Beneficiary Data Bundle** and not Mashup Data?\n   - Does the SIM owe airtime?\n   - Does the SIM owe Mobile Money?\n6. Upload a screenshot of your data balance. On MTN, dial *124# and open the balance screen.\n7. Submit the report. The team will review it and follow up.\n\nThe **Report** button only appears on **Delivered** orders.\n\nTo let me check your orders here, enter the phone number used for the order, including the leading 0. Example: **0241234567**.`,
+      };
+      const final = [...withUser, reportGuide];
+      setMessages(final);
+      persist(final);
+      setAwaitingPhone(true);
+      return;
+    }
+
     // --- Number can receive data? ---
     const isReceiveDataIntent = /can.*number.*receive|receive.*data|number.*work|will.*number.*get|does.*number.*receive|will.*it.*receive|accept.*data|number.*accept/i.test(trimmed);
     if (isReceiveDataIntent) {
