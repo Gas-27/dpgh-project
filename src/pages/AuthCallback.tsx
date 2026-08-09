@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     let settled = false;
@@ -20,9 +21,14 @@ const AuthCallback = () => {
 
       const roles = (rolesData ?? []).map((r: { role: string }) => String(r.role).trim().toLowerCase());
       const provider = String(sessionProvider ?? "").toLowerCase();
+      const isGoogleAuth = provider === "google"
+        || roles.includes("admin") && (
+          new URLSearchParams(location.search).get("auth") === "google"
+          || window.location.hash.includes("access_token=") && sessionProvider == null
+        );
 
       if (roles.includes("admin")) {
-        if (provider === "google") {
+        if (isGoogleAuth) {
           await supabase.auth.signOut();
           navigate("/login", {
             replace: true,
@@ -76,7 +82,7 @@ const AuthCallback = () => {
       subscription.unsubscribe();
       clearTimeout(fallback);
     };
-  }, [navigate]);
+  }, [location.search, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
