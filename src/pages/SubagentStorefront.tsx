@@ -23,6 +23,7 @@ const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"
 import DraggableFAB from "@/components/DraggableFAB";
 import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
+import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
@@ -344,7 +345,7 @@ const SubagentOrderTrackingCard = ({
             <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-sm flex items-start justify-between gap-2">
               <div>
                 <p className="font-medium text-yellow-400 flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4" /> Report has been sent — we are working on it
+                  <CheckCircle className="h-4 w-4" /> Report has been sent �� we are working on it
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}
@@ -868,6 +869,8 @@ export function SubagentStorefront() {
           </div>
         </div>
       )}
+
+      <div className="container pt-6"><DeliveryProgressCard /></div>
 
       {/* Suspended Store Banner */}
       {store.suspended && (

@@ -22,6 +22,7 @@ import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
+import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
@@ -211,7 +212,7 @@ const SubSubagentOrderTrackingCard = ({
     return () => clearInterval(interval);
   }, [order.id]);
 
-  // ── Status-based step logic (no time dependency) ─����
+  // ── Status-based step logic (no time dependency) ─�����
   // Check both order_status and status fields — refunded may be set on either
   const rawOrderStatus = order.order_status?.toLowerCase().trim() || "";
   const rawStatus = (order as any).status?.toLowerCase().trim() || "";
@@ -875,6 +876,8 @@ export function SubSubagentStorefront() {
           </div>
         </div>
       )}
+
+      <div className="container pt-6"><DeliveryProgressCard /></div>
 
       {/* Suspended Store Banner */}
       {store.suspended && (

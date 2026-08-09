@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
+import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import ChatBot from "@/components/ChatBot";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
@@ -995,6 +996,8 @@ const AgentStorefront = () => {
           primaryColor={primaryColor}
         />
       )}
+
+      <div className="container pt-6"><DeliveryProgressCard /></div>
 
       {/* Header */}
       <header className="border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50">
