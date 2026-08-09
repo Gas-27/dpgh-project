@@ -27,7 +27,7 @@ import AdminAFABundleRegistrations from "@/components/AdminAFABundleRegistration
 import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import AnnouncementManager from "@/components/AnnouncementManager";
-import DeliveryProgressAdmin from "@/components/DeliveryProgressAdmin";
+import DeliveryAutomationAdmin from "@/components/DeliveryAutomationAdmin";
 import AdminOrderStatusUpdater from "@/components/AdminOrderStatusUpdater";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
@@ -77,7 +77,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -1046,7 +1046,7 @@ const AdminDashboard = () => {
 
   // ======================== Admin permissions ========================
   const fetchCurrentUserPermissions = async (userId: string) => {
-    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "settings"];
+    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "settings"];
     
     const { data, error } = await supabase
       .from("admin_permissions")
@@ -2624,7 +2624,8 @@ const AdminDashboard = () => {
             <TabsTrigger value="afa" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> AFA</TabsTrigger>
             <TabsTrigger value="afa_bundles" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> AFA Bundles</TabsTrigger>
             <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>
-            <TabsTrigger value="delivery_status" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Check className="h-3 w-3 md:h-4 md:w-4" /> Delivery status</TabsTrigger>
+            <TabsTrigger value="delivery_status" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Check className="h-3 w-3 md:h-4 md:w-4" /> Delivery progress</TabsTrigger>
+  <TabsTrigger value="delivery_automation" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Play className="h-3 w-3 md:h-4 md:w-4" /> Delivery automation</TabsTrigger>
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
           <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
@@ -4438,9 +4439,14 @@ const AdminDashboard = () => {
               </TabsContent>
             )}
 
+            {canSee("delivery_automation") && (
+              <TabsContent value="delivery_automation" className="space-y-6">
+                <DeliveryAutomationAdmin />
+              </TabsContent>
+            )}
+
             {canSee("settings") && (
               <TabsContent value="settings" className="space-y-6">
-  <DeliveryProgressAdmin />
   <Card className="border-border">
                   <CardHeader>
                     <CardTitle className="font-display flex items-center gap-2">
