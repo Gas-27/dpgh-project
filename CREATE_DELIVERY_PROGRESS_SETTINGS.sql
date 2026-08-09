@@ -44,7 +44,12 @@ create or replace function public.save_delivery_progress_settings(payload jsonb)
 returns void language plpgsql security definer set search_path = public
 as $$
 begin
-  if not exists (select 1 from public.admin_users where user_id = auth.uid()) then
+  if not exists (
+    select 1
+    from public.user_roles
+    where user_id = auth.uid()
+      and lower(trim(role::text)) = 'admin'
+  ) then
     raise exception 'admin access required';
   end if;
   insert into public.delivery_progress_settings (network, enabled, is_default, source, min_minutes, max_minutes, rotation_minutes, fake_enabled, fake_prefix, fake_count, status_color, message, auto_enabled, auto_min_minutes, auto_max_minutes, updated_at)

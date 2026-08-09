@@ -67,7 +67,12 @@ security definer
 set search_path = ''
 as $$
 begin
-  if not public.has_role(auth.uid(), 'admin'::public.app_role) then
+  if not exists (
+    select 1
+    from public.user_roles
+    where user_id = auth.uid()
+      and lower(trim(role::text)) = 'admin'
+  ) then
     raise exception 'admin access required';
   end if;
 
