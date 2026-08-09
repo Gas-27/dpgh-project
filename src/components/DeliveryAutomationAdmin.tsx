@@ -42,9 +42,13 @@ export default function DeliveryAutomationAdmin() {
 
   const save = async () => {
     setSaving(true);
-    const { error } = await supabase.rpc("save_delivery_progress_settings", { payload: settings.map((setting) => ({ ...setting, auto_min_minutes: Number(setting.auto_min_minutes) || 0, auto_max_minutes: Number(setting.auto_max_minutes) || 0 })).concat([{ network: "__global__", enabled: globalEnabled }]) });
+    const { error } = await supabase.rpc("save_delivery_progress_settings", { payload: settings.map((setting) => ({ ...setting, auto_min_minutes: Number(setting.auto_min_minutes), auto_max_minutes: Number(setting.auto_max_minutes) })).concat([{ network: "__global__", enabled: globalEnabled }]) });
     setSaving(false);
-    toast(error ? { title: "Could not save automation", description: "Apply the delivery automation SQL migration first.", variant: "destructive" } : { title: "Delivery automation saved" });
+    if (error) {
+      toast({ title: "Could not save automation", description: `${error.message}. Run the updated CREATE_DELIVERY_PROGRESS_SETTINGS.sql migration, then retry.`, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Delivery automation saved", description: "These values are now stored and will remain after refresh." });
   };
 
   const runAutomation = async () => {
