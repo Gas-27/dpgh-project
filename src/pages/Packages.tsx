@@ -35,6 +35,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // ──────────────────────────────────────────────────────────── Types ─────
 type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel";
@@ -203,11 +204,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
 
   // ── Status-based step logic (no time dependency) ──
   // Check both order_status and status fields — refunded may be set on either
-  const rawOrderStatus = order.order_status?.toLowerCase().trim() || "";
-  const rawStatus = order.status?.toLowerCase().trim() || "";
-  const orderStatus = rawOrderStatus === "refunded" || rawStatus === "refunded"
-    ? "refunded"
-    : rawOrderStatus || rawStatus;
+  const orderStatus = normalizeOrderStatus(order);
   let step = 1, msg = "", note: string | null = null;
 
   if (orderStatus === "delivered") {
@@ -1476,9 +1473,9 @@ const Packages = () => {
                                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {getStatusIcon(order.status)}
-                                    <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : order.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
-                                      {getStatusText(order.status)}
+{getStatusIcon(normalizeOrderStatus(order))}
+ <Badge className={normalizeOrderStatus(order) === "delivered" ? "bg-green-600/20 text-green-400 border-green-600/30" : normalizeOrderStatus(order) === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
+ {orderStatusLabel(order)}
                                     </Badge>
                                   </div>
                                 </div>
