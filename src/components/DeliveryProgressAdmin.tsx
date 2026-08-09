@@ -1,18 +1,59 @@
 import { useEffect, useState } from "react";
-import { Save, Truck } from "lucide-react";
+import { Play, Save, Truck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-type Source = "manual" | "orders" | "fake";
-type Setting = { network: string; enabled: boolean; is_default?: boolean; source: Source; min_minutes: number | string; max_minutes: number | string; rotation_minutes: number | string; fake_enabled: boolean; fake_prefix: string; fake_count: number | string; status_color: "green" | "red" | "yellow"; message: string };
+type Setting = {
+  network: string;
+  enabled: boolean;
+  auto_enabled: boolean;
+  auto_min_minutes: number | string;
+  auto_max_minutes: number | string;
+};
+
 const networks = ["mtn", "mtn_express", "telecel", "airteltigo"];
 const labels: Record<string, string> = { mtn: "MTN", mtn_express: "MTN Express", telecel: "Telecel", airteltigo: "AirtelTigo" };
-const defaults = networks.map((network) => ({ network, enabled: true, source: network === "mtn_express" ? "fake" as Source : "manual" as Source, min_minutes: network === "mtn_express" ? 15 : 30, max_minutes: network === "mtn_express" ? 90 : 240, rotation_minutes: 30, fake_enabled: network === "mtn_express", fake_prefix: network === "telecel" ? "020" : network === "airteltigo" ? "026" : "024", fake_count: 10, status_color: "green" as const, message: `${labels[network]} orders are being processed. Please allow the estimated delivery window.` }));
-export default function DeliveryProgressAdmin() { const { toast } = useToast(); const [settings, setSettings] = useState<Setting[]>([]); const [globalEnabled, setGlobalEnabled] = useState(true); const [defaultNetwork, setDefaultNetwork] = useState("mtn_express"); const [saving, setSaving] = useState(false); useEffect(() => { supabase.from("delivery_progress_settings").select("network, enabled, is_default, source, min_minutes, max_minutes, rotation_minutes, fake_enabled, fake_prefix, fake_count, status_color, message").order("network").then(({ data }) => { setGlobalEnabled((data ?? []).find((s: any) => s.network === "__global__")?.enabled ?? true); setDefaultNetwork((data ?? []).find((s: any) => s.is_default)?.network ?? "mtn_express"); setSettings(networks.map((n) => ({ ...defaults.find((d) => d.network === n)!, ...((data ?? []).find((s: any) => s.network === n) ?? {}) }))); }); }, []); const update = (network: string, patch: Partial<Setting>) => setSettings((items) => items.map((i) => i.network === network ? { ...i, ...patch } : i)); const save = async () => { const normalized = settings.map((s) => ({ ...s, min_minutes: Number(s.min_minutes) || 0, max_minutes: Number(s.max_minutes) || 0, rotation_minutes: Number(s.rotation_minutes) || 0, fake_count: Number(s.fake_count) || 0, is_default: s.network === defaultNetwork })); setSaving(true); const { error } = await supabase.rpc("save_delivery_progress_settings", { payload: [...normalized, { network: "__global__", enabled: globalEnabled, source: "manual", min_minutes: 0, max_minutes: 0, rotation_minutes: 1, fake_enabled: false, fake_prefix: "", fake_count: 1, status_color: "green", message: "" }] }); setSaving(false); toast(error ? { title: "Could not save delivery settings", description: "Run the SQL provided in chat, then sign in again as admin.", variant: "destructive" } : { title: "Delivery settings saved" }); }; return <Card><CardHeader><CardTitle className="flex items-center gap-2"><Truck className="size-5 text-primary" />Delivery Progress Controls</CardTitle><p className="text-sm text-muted-foreground">Configure visibility, live orders, fake progress, timing, and indicator color per network.</p></CardHeader><CardContent className="flex flex-col gap-4"><div className="flex items-center justify-between rounded-lg border border-border p-4"><div><Label>Default network</Label><p className="text-sm text-muted-foreground">Shown first in the customer delivery progress card.</p></div><Select value={defaultNetwork} onValueChange={setDefaultNetwork}><SelectTrigger className="w-44"><SelectValue /></SelectTrigger><SelectContent>{networks.map((n) => <SelectItem key={n} value={n}>{labels[n]}</SelectItem>)}</SelectContent></Select></div><div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 p-4"><div><p className="font-semibold">Show delivery progress card</p><p className="text-sm text-muted-foreground">Turn the entire customer-facing card on or off.</p></div><div className="flex items-center gap-2"><Switch checked={globalEnabled} onCheckedChange={setGlobalEnabled} /><Label>{globalEnabled ? "Visible" : "Hidden"}</Label></div></div>{settings.map((item) => <div key={item.network} className="flex flex-col gap-4 rounded-lg border border-border p-4"><div className="flex items-center justify-between"><h3 className="font-semibold">{labels[item.network]}</h3><div className="flex items-center gap-2 text-sm"><Switch checked={item.enabled} onCheckedChange={(enabled) => update(item.network, { enabled })} /><Label>Show card</Label></div></div><div className="grid gap-4 sm:grid-cols-3"><div className="flex flex-col gap-2"><Label>Progress source</Label><Select value={item.source} onValueChange={(source: Source) => update(item.network, { source, fake_enabled: source === "fake" })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="manual">Manual window</SelectItem><SelectItem value="orders">Real delivered orders</SelectItem><SelectItem value="fake">Fake rotating orders</SelectItem></SelectContent></Select></div><div className="flex flex-col gap-2"><Label>Indicator color</Label><Select value={item.status_color} onValueChange={(status_color: Setting["status_color"]) => update(item.network, { status_color })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="green">Green</SelectItem><SelectItem value="red">Red</SelectItem><SelectItem value="yellow">Yellow</SelectItem></SelectContent></Select></div><div className="flex flex-col gap-2"><Label>Rotate after minutes</Label><Input type="number" min="1" value={item.rotation_minutes} onChange={(e) => update(item.network, { rotation_minutes: Math.max(1, (e.target.value === "" ? "" : Number(e.target.value))) })} /></div></div><div className="grid gap-4 sm:grid-cols-3"><div><Label>Minimum minutes</Label><Input type="number" min="0" value={item.min_minutes} onChange={(e) => update(item.network, { min_minutes: Math.max(0, (e.target.value === "" ? "" : Number(e.target.value))) })} /></div><div><Label>Maximum minutes</Label><Input type="number" min={item.min_minutes} value={item.max_minutes} onChange={(e) => update(item.network, { max_minutes: Math.max(item.min_minutes, (e.target.value === "" ? "" : Number(e.target.value))) })} /></div><div><Label>Fake prefix</Label><Input value={item.fake_prefix} onChange={(e) => update(item.network, { fake_prefix: e.target.value.replace(/\D/g, "").slice(0, 3) })} /></div></div><div><Label>Customer-facing message</Label><Textarea value={item.message} onChange={(e) => update(item.network, { message: e.target.value })} /></div></div>)}<Button onClick={save} disabled={saving} className="w-full gap-2"><Save className="size-4" />{saving ? "Saving…" : "Save delivery settings"}</Button></CardContent></Card>; }
+
+export default function DeliveryProgressAdmin() {
+  const { toast } = useToast();
+  const [settings, setSettings] = useState<Setting[]>([]);
+  const [globalEnabled, setGlobalEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [lastRun, setLastRun] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from("delivery_progress_settings").select("network, enabled, auto_enabled, auto_min_minutes, auto_max_minutes").order("network").then(({ data }) => {
+      const rows = data ?? [];
+      setGlobalEnabled((rows.find((row: any) => row.network === "__global__") as any)?.enabled ?? true);
+      setSettings(networks.map((network) => {
+        const row = rows.find((item: any) => item.network === network) as any;
+        return { network, enabled: row?.enabled ?? true, auto_enabled: row?.auto_enabled ?? false, auto_min_minutes: row?.auto_min_minutes ?? 30, auto_max_minutes: row?.auto_max_minutes ?? 180 };
+      }));
+    });
+  }, []);
+
+  const update = (network: string, patch: Partial<Setting>) => setSettings((items) => items.map((item) => item.network === network ? { ...item, ...patch } : item));
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase.rpc("save_delivery_progress_settings", { payload: settings.map((setting) => ({ ...setting, auto_min_minutes: Number(setting.auto_min_minutes) || 0, auto_max_minutes: Number(setting.auto_max_minutes) || 0 })).concat([{ network: "__global__", enabled: globalEnabled }]) });
+    setSaving(false);
+    toast(error ? { title: "Could not save automation", description: "Apply the delivery automation SQL migration first.", variant: "destructive" } : { title: "Delivery automation saved" });
+  };
+
+  const runAutomation = async () => {
+    setRunning(true);
+    const { data, error } = await supabase.rpc("admin_run_delivery_automation");
+    setRunning(false);
+    if (error) toast({ title: "Automation could not run", description: "Apply the SQL migration and confirm your admin session.", variant: "destructive" });
+    else { setLastRun(new Date().toLocaleString()); toast({ title: "Automation completed", description: `${Number(data ?? 0)} processing orders updated.` }); }
+  };
+
+  return <Card><CardHeader><CardTitle className="flex items-center gap-2"><Truck className="size-5 text-primary" /> Delivery automation</CardTitle><p className="text-sm text-muted-foreground">Choose networks and the processing window that moves eligible orders to delivered.</p></CardHeader><CardContent className="space-y-5"><div className="flex items-center justify-between rounded-lg border p-4"><div><Label className="text-base">Automation enabled</Label><p className="text-sm text-muted-foreground">Only orders still marked processing are changed.</p></div><Switch checked={globalEnabled} onCheckedChange={setGlobalEnabled} /></div>{settings.map((setting) => <div key={setting.network} className="grid gap-4 rounded-lg border p-4 md:grid-cols-[1fr_auto_1fr_1fr]"><div><Label className="text-base">{labels[setting.network]}</Label><p className="text-sm text-muted-foreground">Network automation</p></div><div className="flex items-center gap-2"><Switch checked={setting.auto_enabled} onCheckedChange={(checked) => update(setting.network, { auto_enabled: checked })} /><span className="text-sm">Auto</span></div><div className="space-y-2"><Label htmlFor={`${setting.network}-min`}>From minutes</Label><Input id={`${setting.network}-min`} type="number" min="0" value={setting.auto_min_minutes} onChange={(event) => update(setting.network, { auto_min_minutes: event.target.value })} /></div><div className="space-y-2"><Label htmlFor={`${setting.network}-max`}>To minutes</Label><Input id={`${setting.network}-max`} type="number" min="1" value={setting.auto_max_minutes} onChange={(event) => update(setting.network, { auto_max_minutes: event.target.value })} /></div></div>)}<div className="flex flex-wrap items-center gap-3"><Button onClick={save} disabled={saving}><Save className="mr-2 size-4" />{saving ? "Saving..." : "Save automation"}</Button><Button variant="outline" onClick={runAutomation} disabled={running || !globalEnabled}><Play className="mr-2 size-4" />{running ? "Running..." : "Run now"}</Button>{lastRun && <span className="text-sm text-muted-foreground">Last run: {lastRun}</span>}</div><p className="text-xs text-muted-foreground">Run now is an admin action. For unattended processing, configure Supabase Cron or an external scheduler to call the protected function.</p></CardContent></Card>;
+}

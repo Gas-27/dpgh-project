@@ -111,6 +111,8 @@ const Login = () => {
       let redirectTo = "/user-dashboard"; // default for customers and any unrecognised role
       if (roles.includes("agent")) {
         redirectTo = "/agent";
+      } else if (roles.includes("sub_subagent")) {
+        redirectTo = "/sub-subagent-dashboard";
       } else if (roles.includes("subagent")) {
         redirectTo = "/subagent-dashboard";
       }
@@ -168,6 +170,7 @@ const Login = () => {
           const roles = rolesData.map(r => r.role);
           if (roles.includes("admin")) route = "/admin";
           else if (roles.includes("agent")) route = "/agent";
+          else if (roles.includes("sub_subagent")) route = "/sub-subagent-dashboard";
           else if (roles.includes("subagent")) route = "/subagent-dashboard";
         }
         navigate(route, { replace: true });
