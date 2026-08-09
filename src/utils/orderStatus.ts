@@ -5,18 +5,28 @@ export type OrderStatusSource = {
 };
 
 export function normalizeOrderStatus(order: OrderStatusSource): string {
-  const deliveryValues = [order.order_status, order.fulfillment_status]
-    .map((value) => String(value || "").trim().toLowerCase().replace(/_/g, "-"))
-    .filter((value) => value && value !== "unknown" && value !== "null" && value !== "undefined");
-  const paymentStatus = String(order.status || "").trim().toLowerCase().replace(/_/g, "-");
+  const normalize = (value?: string | null) => String(value || "").trim().toLowerCase().replace(/_/g, "-");
+  const orderStatus = normalize(order.order_status);
+  const fulfillmentStatus = normalize(order.fulfillment_status);
+  const paymentStatus = normalize(order.status);
+  const validDeliveryStatuses = new Set(["refunded", "failed", "delivered", "completed", "in-queue", "queued", "queue", "processing", "waiting", "pending"]);
 
-  if (deliveryValues.includes("refunded") || paymentStatus === "refunded") return "refunded";
-  if (deliveryValues.includes("failed") || paymentStatus === "failed") return "failed";
-  if (deliveryValues.includes("delivered") || deliveryValues.includes("completed")) return "delivered";
-  if (deliveryValues.includes("in-queue") || deliveryValues.includes("queued") || deliveryValues.includes("queue")) return "in-queue";
-  if (deliveryValues.includes("processing")) return "processing";
-  if (deliveryValues.includes("waiting")) return "waiting";
-  if (deliveryValues.includes("pending")) return "pending";
+  // order_status is the canonical status used by Package tracking. Only fall back
+  // to fulfillment_status when order_status is absent or unusable, preventing a
+  // stale fulfillment value from making dashboards disagree with Package tracking.
+  const deliveryStatus = validDeliveryStatuses.has(orderStatus)
+    ? orderStatus
+    : validDeliveryStatuses.has(fulfillmentStatus)
+      ? fulfillmentStatus
+      : "";
+
+  if (deliveryStatus === "refunded" || paymentStatus === "refunded") return "refunded";
+  if (deliveryStatus === "failed" || paymentStatus === "failed") return "failed";
+  if (deliveryStatus === "delivered" || deliveryStatus === "completed") return "delivered";
+  if (deliveryStatus === "in-queue" || deliveryStatus === "queued" || deliveryStatus === "queue") return "in-queue";
+  if (deliveryStatus === "processing") return "processing";
+  if (deliveryStatus === "waiting") return "waiting";
+  if (deliveryStatus === "pending") return "pending";
   if (paymentStatus === "paid" || paymentStatus === "processing") return "processing";
   // A completed payment with no usable delivery status is received but waiting
   // for the fulfillment worker; never expose the internal "unknown" value.

@@ -51,8 +51,7 @@ function getOrderStatusLabel(status: string): string {
 }
 
 function getOrderStage(order: any): string {
-  const orderStatus = order.order_status?.toLowerCase().trim() || "";
-  return getOrderStatusLabel(orderStatus);
+  return orderStatusLabel(order);
 }
 
 interface SubagentStore {
@@ -4493,7 +4492,7 @@ const SubagentDashboard = () => {
             )}
           </TabsContent>
 
-          {/* ─────────── AFA REGISTRATION STATUS ─────────── */}
+          {/* ─────────── AFA REGISTRATION STATUS ────���────── */}
           <TabsContent value="afa-reg-status" className="mt-0 space-y-6">
             <Card className="border-border">
               <CardHeader>
