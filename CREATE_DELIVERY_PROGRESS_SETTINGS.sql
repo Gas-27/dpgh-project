@@ -21,6 +21,9 @@ alter table public.delivery_progress_settings add column if not exists fake_enab
 alter table public.delivery_progress_settings add column if not exists fake_prefix text not null default '024';
 alter table public.delivery_progress_settings add column if not exists fake_count integer not null default 10;
 alter table public.delivery_progress_settings add column if not exists status_color text not null default 'green';
+alter table public.delivery_progress_settings add column if not exists auto_enabled boolean not null default false;
+alter table public.delivery_progress_settings add column if not exists auto_min_minutes integer not null default 30;
+alter table public.delivery_progress_settings add column if not exists auto_max_minutes integer not null default 240;
 alter table public.delivery_progress_settings drop constraint if exists delivery_progress_settings_source_check;
 alter table public.delivery_progress_settings add constraint delivery_progress_settings_source_check check (source in ('manual','orders','fake'));
 
