@@ -203,28 +203,8 @@ export default function SubagentRegistrationForm({
       //   .select()
       //   .single();
 
-      // Assign subagent role
-      const { data: existingRole } = await supabase
-        .from("user_roles")
-        .select("id")
-        .eq("user_id", authData.user.id)
-        .eq("role", "subagent")
-        .single();
-
-      if (!existingRole) {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: authData.user.id,
-            role: "subagent",
-          });
-
-        if (roleError && roleError.code !== "PGRST116") {
-          throw new Error("Failed to create user role");
-        }
-      }
-
-      console.log("[v0] User role assigned");
+      // The database signup trigger assigns the fixed `subagent` role from
+      // trusted signup metadata. Never insert roles from the browser.
 
       // Step 2: Check if fees are required
       if (agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0) {
