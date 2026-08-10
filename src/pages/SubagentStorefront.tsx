@@ -573,12 +573,13 @@ export function SubagentStorefront() {
       // Don't override show_whatsapp_group_icon - use database value directly
       setStore(matched);
 
-      // Fetch packages and prices
-      // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
-      const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
+      // Fetch packages and the two distinct subagent price levels.
+      // The Agent's Subagent Prices tab is the subagent base price (base_price).
+      // The Subagent's own storefront price is its sell_price.
+      const [pkgRes, subagentOwnPriceRes, agentSubagentBasePriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
-        supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
-        supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
+        supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id).order("created_at", { ascending: false }),
+        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
         supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
       ]);
@@ -586,17 +587,15 @@ export function SubagentStorefront() {
       setPackages(pkgRes.data || []);
       if (agentInfoRes.data) setAgentInfo(agentInfoRes.data);
 
-      // Build price map with fallback: subagent's own prices -> agent's sell prices -> admin's base
+      // Build price map: Subagent storefront sell price -> Agent's configured
+      // Subagent base price -> admin package price.
       const priceMap: Record<string, number> = {};
-      // First set admin base prices
-      (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
-      // Then override with agent's sell prices if set
-      (agentSellPriceRes.data || []).forEach((p: any) => { 
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+      (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = Number(p.price); });
+      (agentSubagentBasePriceRes.data || []).forEach((p: any) => {
+        if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price);
       });
-      // Finally override with subagent's own prices if set
-      (subagentOwnPriceRes.data || []).forEach((p: any) => { 
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+      (subagentOwnPriceRes.data || []).forEach((p: any) => {
+        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price);
       });
       
       setSubagentPrices(priceMap);

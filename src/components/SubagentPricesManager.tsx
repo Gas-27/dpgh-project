@@ -32,12 +32,16 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       const { data, error } = await supabase
         .from("subagent_package_prices")
         .select("package_id, base_price")
-        .eq("agent_store_id", agentStoreId);
+        .eq("agent_store_id", agentStoreId)
+        .is("subagent_store_id", null)
+        .order("created_at", { ascending: false });
       
       if (!error && data) {
         const priceMap: Record<string, number> = {};
         data.forEach((p: any) => {
-          if (p.base_price) priceMap[p.package_id] = p.base_price;
+          if (p.base_price !== null && p.base_price !== undefined) {
+            priceMap[p.package_id] = Number(p.base_price);
+          }
         });
         setSavedBasePrices(priceMap);
       }
@@ -129,6 +133,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
           .from("subagent_package_prices")
           .delete()
           .eq("agent_store_id", agentStoreId)
+          .is("subagent_store_id", null)
           .eq("package_id", packageId);
         
         // Then insert new price
@@ -136,6 +141,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
           .from("subagent_package_prices")
           .insert({
             agent_store_id: agentStoreId,
+            subagent_store_id: null,
             package_id: packageId,
             base_price: price
           });

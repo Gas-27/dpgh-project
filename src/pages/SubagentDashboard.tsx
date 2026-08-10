@@ -562,7 +562,7 @@ const SubagentDashboard = () => {
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
-          supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
+          supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
@@ -738,7 +738,7 @@ const SubagentDashboard = () => {
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
-          supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id),
+          supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
@@ -2959,7 +2959,7 @@ const SubagentDashboard = () => {
                                       title="Already forwarded to sub-subagent — cannot refund again"
                                       className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500/20 text-green-400 text-xs font-bold"
                                     >
-                                      ✓
+                                      ���
                                     </span>
                                   ) : isSubSub ? (
                                     <input
