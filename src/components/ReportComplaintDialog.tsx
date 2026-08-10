@@ -201,6 +201,7 @@ ${smsScreenshotUrl ? `\nSMS Confirmation Screenshot: ${smsScreenshotUrl}` : ""}`
 ━━━━━━━━━━━━━━━━━━━━━━━━
 Order Date: ${new Date(order.created_at).toLocaleString()}
 Network: ${networkLabel}
+Package Size: ${order.size_gb}GB
 Data: ${order.size_gb}GB
 Amount: GHC ${Number(order.amount).toFixed(2)}
 Customer: ${order.customer_number}
