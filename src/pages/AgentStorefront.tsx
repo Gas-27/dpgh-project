@@ -114,6 +114,7 @@ interface Order {
   fulfillment_status: string;
   order_status: string;
   created_at: string;
+  provider_reference?: string | null;
 }
 
 interface Notification {
@@ -553,7 +554,7 @@ const AgentStorefront = () => {
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
 
-  // ���─ Order tracking ──
+  // �����─ Order tracking ──
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -887,7 +888,7 @@ const searchOrders = useCallback(async () => {
   const refreshedData = data && !error ? await Promise.all(data.map(async (order: any) => {
     const network = String(order.network ?? "").toLowerCase();
     if (network !== "mtn_express" && network !== "atbigtime") return order;
-    const { data: checked, error: checkError } = await supabase.functions.invoke("ghdataconnect-check-order", { body: { order_id: order.id } });
+    const { data: checked, error: checkError } = await supabase.functions.invoke("ghdataconnect-check-order", { body: { provider_reference: order.provider_reference } });
     if (checkError) console.error("[v0] GHDataConnect Track Order check failed:", checkError);
     return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
   })) : data;

@@ -62,6 +62,7 @@ interface Order {
   fulfillment_status: string;
   order_status: string;
   created_at: string;
+  provider_reference?: string | null;
   agent_store_id?: string | null;
   subagent_store_id?: string | null;
   sub_subagent_store_id?: string | null;
@@ -1354,7 +1355,7 @@ const searchOrders = async () => {
     const refreshedData = await Promise.all(data.map(async (order: any) => {
       const network = String(order.network ?? "").toLowerCase();
       if (network !== "mtn_express" && network !== "atbigtime") return order;
-      const { data: checked, error: checkError } = await supabase.functions.invoke("ghdataconnect-check-order", { body: { order_id: order.id } });
+      const { data: checked, error: checkError } = await supabase.functions.invoke("ghdataconnect-check-order", { body: { provider_reference: order.provider_reference } });
       if (checkError) console.error("[v0] GHDataConnect Track Order check failed:", checkError);
       return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
     }));
