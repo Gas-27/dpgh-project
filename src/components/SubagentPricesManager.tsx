@@ -32,15 +32,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       const { data, error } = await supabase
         .from("subagent_package_prices")
         .select("package_id, base_price")
-        .eq("agent_store_id", agentStoreId)
-        .is("subagent_store_id", null);
+        .eq("agent_store_id", agentStoreId);
       
       if (!error && data) {
         const priceMap: Record<string, number> = {};
         data.forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
-            priceMap[p.package_id] = Number(p.base_price);
-          }
+          if (p.base_price) priceMap[p.package_id] = p.base_price;
         });
         setSavedBasePrices(priceMap);
       }
@@ -127,24 +124,22 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       // This is the base price agents set for their subagents
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        // Replace only this Agent's Subagent Prices-tab row. Never write to
-        // agent_package_prices, which is the Agent storefront price table.
-        const { error: deleteError } = await supabase
+        // First delete existing entry for this agent + package
+        await supabase
           .from("subagent_package_prices")
           .delete()
           .eq("agent_store_id", agentStoreId)
-          .is("subagent_store_id", null)
           .eq("package_id", packageId);
-        if (deleteError) throw deleteError;
-
+        
+        // Then insert new price
         const { error } = await supabase
           .from("subagent_package_prices")
           .insert({
             agent_store_id: agentStoreId,
-            subagent_store_id: null,
             package_id: packageId,
-            base_price: price,
+            base_price: price
           });
+
         if (error) throw error;
       }
 
