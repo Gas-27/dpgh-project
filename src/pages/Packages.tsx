@@ -1336,8 +1336,11 @@ const Packages = () => {
 
 const searchOrders = async () => {
   if (!searchQuery.trim()) return;
-  // Refresh provider statuses in the background before reading the Track Order results.
-  void supabase.functions.invoke("sync-order-status", { body: { offset: 0 } }).catch(() => undefined);
+  // Start the provider sync and report its result without blocking the Track Order search.
+  void supabase.functions.invoke("sync-order-status", { body: { offset: 0 } }).then(({ data, error }) => {
+    if (error) console.error("[v0] Track Order sync failed:", error);
+    else console.log("[v0] Track Order sync started:", data);
+  });
     setSearching(true); setSearchPerformed(true);
     let q = searchQuery.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
