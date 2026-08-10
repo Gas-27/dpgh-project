@@ -10,6 +10,25 @@ const TERMINAL_STATUSES = new Set(["delivered", "refunded", "failed"]);
 
 // Networks fulfilled by Dakazina
 const DAKAZINA_NETWORKS = new Set(["mtn", "telecel", "airteltigo", "mtn_mashup"]);
+const GHDATACONNECT_NETWORKS = new Set(["mtn_express", "atbigtime"]);
+
+function mapGhDataConnectStatus(s: string): string {
+  switch ((s ?? "").toUpperCase().trim()) {
+    case "DELIVERED": case "COMPLETED": case "SUCCESS": return "delivered";
+    case "PROCESSING": case "PENDING": case "WAITING": case "QUEUED": case "IN_QUEUE": return "processing";
+    case "FAILED": case "CANCELLED": return "failed";
+    default: return (s ?? "").toLowerCase().trim().replace(/_/g, "-");
+  }
+}
+
+async function checkGhDataConnectStatus(providerReference: string, apiKey: string): Promise<{ status: string | null; raw: string }> {
+  const url = `https://ghdataconnect.com/api/v1/order-status?reference=${encodeURIComponent(providerReference)}`;
+  const res = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${apiKey}` } }, 8000);
+  const raw = await res.text();
+  let parsed: any;
+  try { parsed = JSON.parse(raw); } catch { return { status: null, raw }; }
+  return { status: parsed?.data?.status ?? parsed?.status ?? parsed?.data?.order_status ?? parsed?.order_status ?? parsed?.data?.delivery_status ?? null, raw };
+}
 
 function mapDakazinaStatus(s: string): string {
   switch ((s ?? "").toUpperCase().trim()) {
@@ -132,8 +151,9 @@ Deno.serve(async (req: Request) => {
 
     const dakazinaApiKey = Deno.env.get("DAKAZINA_API_KEY");
     const orisjayApiKey  = Deno.env.get("ORISJAY_API_KEY");
+    const ghDataConnectApiKey = Deno.env.get("GHDATACONNECT_API_KEY");
 
-    if (!dakazinaApiKey && !orisjayApiKey) {
+    if (!dakazinaApiKey && !orisjayApiKey && !ghDataConnectApiKey) {
       return new Response(
         JSON.stringify({ success: false, error: "No provider API keys set" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -197,14 +217,15 @@ Deno.serve(async (req: Request) => {
 
       const network = (order.network ?? "").toLowerCase().trim();
       const isDakazina = DAKAZINA_NETWORKS.has(network);
+      const isGhDataConnect = GHDATACONNECT_NETWORKS.has(network);
 
       try {
         let rawStatus: string | null = null;
         let rawResponse = "";
 
-        if (isDakazina && dakazinaApiKey) {
-          console.log(`[sync] Checking Dakazina — order=${order.id} ref=${order.provider_reference} network=${network}`);
-          const result = await checkDakazinaStatus(order.provider_reference, dakazinaApiKey);
+        if (isGhDataConnect && ghDataConnectApiKey) {
+          console.log(`[sync] Checking GHDataConnect — order=${order.id} ref=${order.provider_reference} network=${network}`);
+          const result = await checkGhDataConnectStatus(order.provider_reference, ghDataConnectApiKey);
           rawStatus   = result.status;
           rawResponse = result.raw;
 
@@ -214,7 +235,7 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          const mappedStatus = mapDakazinaStatus(rawStatus);
+          const mappedStatus = isGhDataConnect ? mapGhDataConnectStatus(rawStatus) : mapDakazinaStatus(rawStatus);
           console.log(`[sync] Dakazina status for ${order.id}: "${rawStatus}" → "${mappedStatus}"`);
 
           if (order.order_status === mappedStatus) {

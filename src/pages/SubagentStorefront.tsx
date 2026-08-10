@@ -749,11 +749,9 @@ export function SubagentStorefront() {
   // Order search - searches both subagent orders and parent agent orders
 const searchOrders = useCallback(async () => {
   if (!searchQuery.trim()) return;
-  // Start the provider sync and report its result without blocking the Track Order search.
-  void supabase.functions.invoke("sync-order-status", { body: { offset: 0 } }).then(({ data, error }) => {
-    if (error) console.error("[v0] Track Order sync failed:", error);
-    else console.log("[v0] Track Order sync started:", data);
-  });
+  const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-order-status", { body: { offset: 0 } });
+  if (syncError) console.error("[v0] Track Order sync failed:", syncError);
+  else console.log("[v0] Track Order sync completed:", syncData);
     setSearching(true);
     setSearchPerformed(true);
 
