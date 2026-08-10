@@ -1546,15 +1546,14 @@ const AdminDashboard = () => {
   };
 
   // ======================== Orders ========================
-  const queryOrdersFromDB = async (network: string, fulfillment: string, paymentStatus: string, delivery: string = orderDeliveryFilter) => {
+  const queryOrdersFromDB = async (network: string, fulfillment: string, paymentStatus: string, delivery: string = orderDeliveryFilter, source: string = orderSourceFilter) => {
     setIsFilteringOrders(true);
     try {
       // Build query with DB-side filters — do NOT filter in memory
       let query = supabase
         .from("orders")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(5000);
+        .order("created_at", { ascending: false });
 
       // Apply network filter directly on DB
       if (network !== "all") {
@@ -1578,6 +1577,14 @@ const AdminDashboard = () => {
       // Apply normalized delivery status directly on DB. Some historical orders
       // store delivery state in order_status while others use fulfillment_status,
       // so query both columns and include their legacy aliases.
+      if (source !== "all") {
+        if (source === "api") query = query.not("api_user", "is", null);
+        if (source === "direct") query = query.is("agent_store_id", null).is("subagent_store_id", null).is("sub_subagent_store_id", null).is("api_user", null);
+        if (source === "agent") query = query.not("agent_store_id", "is", null).is("subagent_store_id", null).is("sub_subagent_store_id", null).is("api_user", null);
+        if (source === "subagent") query = query.not("subagent_store_id", "is", null).is("sub_subagent_store_id", null);
+        if (source === "sub-subagent") query = query.not("sub_subagent_store_id", "is", null);
+      }
+
       if (delivery !== "all") {
         const deliveryValues: Record<string, string[]> = {
           pending: ["pending"],
@@ -1593,15 +1600,23 @@ const AdminDashboard = () => {
         query = query.or(`order_status.in.(${values.join(",")}),fulfillment_status.in.(${values.join(",")})`);
       }
 
-      const { data: filtered, error } = await query;
-
-      if (error) {
-        console.error("[v0] Error querying orders from DB:", error);
-        toast({ title: "Error", description: "Failed to filter orders", variant: "destructive" });
-        return;
+      // Supabase REST responses are paginated. Keep fetching until the database
+      // returns a short page so filters apply to every matching order, not only
+      // the first 1,000/5,000 rows.
+      const pageSize = 1000;
+      const filtered: Order[] = [];
+      for (let page = 0; ; page += 1) {
+        const { data, error } = await query.range(page * pageSize, page * pageSize + pageSize - 1);
+        if (error) {
+          console.error("[v0] Error querying orders from DB:", error);
+          toast({ title: "Error", description: "Failed to filter orders", variant: "destructive" });
+          return;
+        }
+        filtered.push(...((data || []) as Order[]));
+        if (!data || data.length < pageSize) break;
       }
 
-      setFilteredOrdersFromDB(filtered || []);
+      setFilteredOrdersFromDB(filtered);
     } catch (error) {
       console.error("[v0] Error querying orders from DB:", error);
       toast({ title: "Error", description: "Failed to filter orders", variant: "destructive" });
@@ -2482,7 +2497,7 @@ const AdminDashboard = () => {
   const filteredUsers = userSearchTerm.length > 0 ? profileSearch.results : users;
   
   // Use database filtered results if filters are active, otherwise use search results
-  let baseOrders = (orderNetworkFilter !== "all" || orderFulfillmentFilter !== "all" || orderPaymentStatusFilter !== "all" || orderDeliveryFilter !== "all")
+  let baseOrders = (orderNetworkFilter !== "all" || orderFulfillmentFilter !== "all" || orderPaymentStatusFilter !== "all" || orderSourceFilter !== "all" || orderDeliveryFilter !== "all")
     ? filteredOrdersFromDB
     : (orderSearchTerm.length > 0 ? orderSearch.results : orders);
 
@@ -2815,7 +2830,7 @@ const AdminDashboard = () => {
                   if (value === "all" && orderFulfillmentFilter === "all" && orderPaymentStatusFilter === "all" && orderDeliveryFilter === "all") {
                     setFilteredOrdersFromDB([]);
                   } else {
-                    queryOrdersFromDB(value, orderFulfillmentFilter, orderPaymentStatusFilter);
+                    queryOrdersFromDB(value, orderFulfillmentFilter, orderPaymentStatusFilter, orderDeliveryFilter);
                   }
                 }}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Network" /></SelectTrigger>
@@ -2833,7 +2848,7 @@ const AdminDashboard = () => {
                   if (orderNetworkFilter === "all" && value === "all" && orderPaymentStatusFilter === "all" && orderDeliveryFilter === "all") {
                     setFilteredOrdersFromDB([]);
                   } else {
-                    queryOrdersFromDB(orderNetworkFilter, value, orderPaymentStatusFilter);
+                    queryOrdersFromDB(orderNetworkFilter, value, orderPaymentStatusFilter, orderDeliveryFilter);
                   }
                 }}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Fulfillment" /></SelectTrigger>
@@ -2851,7 +2866,7 @@ const AdminDashboard = () => {
                   if (orderNetworkFilter === "all" && orderFulfillmentFilter === "all" && value === "all" && orderDeliveryFilter === "all") {
                     setFilteredOrdersFromDB([]);
                   } else {
-                    queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, value);
+                    queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, value, orderDeliveryFilter);
                   }
                 }}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Filter by Payment" /></SelectTrigger>
@@ -2864,7 +2879,14 @@ const AdminDashboard = () => {
                   </SelectContent>
                 </Select>
 
-                <Select value={orderSourceFilter} onValueChange={setOrderSourceFilter}>
+                <Select value={orderSourceFilter} onValueChange={(value) => {
+                  setOrderSourceFilter(value);
+                  if (orderNetworkFilter === "all" && orderFulfillmentFilter === "all" && orderPaymentStatusFilter === "all" && value === "all" && orderDeliveryFilter === "all") {
+                    setFilteredOrdersFromDB([]);
+                  } else {
+                    queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, orderPaymentStatusFilter, orderDeliveryFilter, value);
+                  }
+                }}>
                   <SelectTrigger className="w-44"><SelectValue placeholder="Filter by Source" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Sources</SelectItem>
