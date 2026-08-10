@@ -10,11 +10,10 @@ ON public.subagent_package_prices
 FOR SELECT
 TO anon, authenticated
 USING (
-  agent_store_id IS NOT NULL
-  AND EXISTS (
+  EXISTS (
     SELECT 1
     FROM public.subagent_stores s
-    WHERE s.agent_store_id = subagent_package_prices.agent_store_id
+    WHERE s.id = subagent_package_prices.subagent_store_id
       AND s.approved = true
       AND s.suspended IS NOT TRUE
   )
