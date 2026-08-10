@@ -455,6 +455,7 @@ interface ComplaintDetailDialogProps {
 function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateComplaintStatus, getStatusBadge, readOnly = false }: ComplaintDetailDialogProps) {
   // Screenshot tab state must live at component level (hooks cannot be called inside IIFE/callbacks)
   const [activeScreenshotTab, setActiveScreenshotTab] = useState<"data" | "sms">("data");
+  const [includeScreenshotLink, setIncludeScreenshotLink] = useState(false);
 
   if (!complaint) return null;
 
@@ -515,6 +516,7 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
       `Order Date: ${orderDate}`,
       `Customer Number: ${complaint.customer_number}`,
       "Message Delivered But Not Received",
+      ...(includeScreenshotLink && complaint.screenshot_url ? [`Screenshot: ${complaint.screenshot_url}`] : []),
     ].join("\n");
     if (navigator.share) {
       try { await navigator.share({ title: "Complaint", text: lines }); } catch (_) {}
@@ -530,7 +532,18 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle className="text-base">Complaint Details</DialogTitle>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {complaint.screenshot_url && (
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer" title="Include the screenshot link in the shared complaint">
+                  <input
+                    type="checkbox"
+                    checked={includeScreenshotLink}
+                    onChange={(e) => setIncludeScreenshotLink(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  Include screenshot
+                </label>
+              )}
               <button onClick={handleShare} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors">
                 <Share2 className="h-3.5 w-3.5" /> Share
               </button>
@@ -761,6 +774,8 @@ function ComplaintsTable({
   getStatusBadge, page, setPage, PAGE_SIZE, onPreviewImage, onSelectComplaint,
   readOnly = false,
 }: ComplaintsTableProps) {
+  const [includeScreenshotsInBulkShare, setIncludeScreenshotsInBulkShare] = useState(false);
+
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
     if (checked) {
@@ -850,6 +865,15 @@ function ComplaintsTable({
             >
               <Download className="h-3.5 w-3.5" /> Download ({selectedComplaints.size})
             </button>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer" title="Include screenshot links for complaints that have screenshots">
+              <input
+                type="checkbox"
+                checked={includeScreenshotsInBulkShare}
+                onChange={(e) => setIncludeScreenshotsInBulkShare(e.target.checked)}
+                className="rounded border-border"
+              />
+              Include screenshots
+            </label>
             <button
               className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border bg-background hover:bg-muted"
               onClick={async () => {
@@ -865,6 +889,7 @@ function ComplaintsTable({
                     `Order Date: ${orderDate}`,
                     `Customer Number: ${c.customer_number}`,
                     "Message Delivered But Not Received",
+                    ...(includeScreenshotsInBulkShare && c.screenshot_url ? [`Screenshot: ${c.screenshot_url}`] : []),
                   ].join("\n");
                 }).join("\n\n");
                 if (navigator.share) {
