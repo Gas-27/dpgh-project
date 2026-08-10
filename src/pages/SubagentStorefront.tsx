@@ -627,30 +627,56 @@ export function SubagentStorefront() {
       )
       .subscribe();
     
+    // Rebuild the FULL merged price map (admin default -> agent base price -> subagent's
+    // own sell price) on any change, instead of replacing it with only the subagent's own
+    // sell_price rows. Replacing it with just sell_price rows would drop the agent's base
+    // price fallback for every package the subagent hasn't overridden, making the storefront
+    // revert to the raw admin default price whenever a price row changes.
+    const refetchMergedPrices = async () => {
+      const [subagentOwnPriceRes, agentSubagentBasePriceRes] = await Promise.all([
+        supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
+      ]);
+
+      const priceMap: Record<string, number> = {};
+      packages.forEach((p: any) => { priceMap[p.id] = Number(p.price); });
+      (agentSubagentBasePriceRes.data || []).forEach((p: any) => {
+        if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price);
+      });
+      (subagentOwnPriceRes.data || []).forEach((p: any) => {
+        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price);
+      });
+      setSubagentPrices(priceMap);
+    };
+
     const priceChannel = supabase
       .channel(`subagent-prices-${store.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "subagent_package_prices", filter: `subagent_store_id=eq.${store.id}` },
-        async () => {
-          const { data } = await supabase
-            .from("subagent_package_prices")
-            .select("package_id, sell_price")
-            .eq("subagent_store_id", store.id);
-          if (data) {
-            const priceMap: Record<string, number> = {};
-            data.forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
-            setSubagentPrices(priceMap);
-          }
-        }
+        refetchMergedPrices
       )
       .subscribe();
-    
+
+    // Also listen for the agent updating their default (base) price for this subagent's
+    // store, so the storefront reflects the new base price live, not just on next full reload.
+    const agentPriceChannel = store.agent_store_id
+      ? supabase
+          .channel(`subagent-agent-base-prices-${store.id}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "subagent_package_prices", filter: `agent_store_id=eq.${store.agent_store_id}` },
+            refetchMergedPrices
+          )
+          .subscribe()
+      : null;
+
     return () => { 
       supabase.removeChannel(storeChannel);
       supabase.removeChannel(priceChannel);
+      if (agentPriceChannel) supabase.removeChannel(agentPriceChannel);
     };
-  }, [store?.id]);
+  }, [store?.id, store?.agent_store_id, packages]);
 
   // ── Real-time order status updates — filtered to this store only ──
   useEffect(() => {

@@ -1198,30 +1198,6 @@ const SubagentDashboard = () => {
     }
   };
 
-  const handleSavePrices = async () => {
-    try {
-      setSavingPrices(true);
-      const updates = Object.entries(subagentPrices).map(([packageId, price]) => ({
-        agent_store_id: subagentStore?.agent_store_id,
-        package_id: packageId,
-        sell_price: price,
-      }));
-
-      for (const update of updates) {
-        await supabase
-          .from("agent_package_prices")
-          .upsert(update, { onConflict: "agent_store_id,package_id" });
-      }
-
-      toast({ title: "Success", description: "Prices saved successfully" });
-    } catch (error) {
-      console.error("Error saving prices:", error);
-      toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
-    } finally {
-      setSavingPrices(false);
-    }
-  };
-
   const handleSaveStore = async () => {
     try {
       setSaving(true);

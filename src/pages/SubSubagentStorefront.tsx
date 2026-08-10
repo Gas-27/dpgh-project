@@ -616,48 +616,77 @@ export function SubSubagentStorefront() {
       )
       .subscribe();
     
+    // Rebuild price exactly like the dashboard: sell_price if set, else cost-from-agent
+    // (admin → parent's agent cost → parent's sub-subagent template).
+    const refetchMergedPrices = async () => {
+      const [ownSell, agentCost, templatePrices, pkgs] = await Promise.all([
+        supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
+        store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null }),
+        store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null }),
+        supabase.from("data_packages").select("id, price").eq("active", true),
+      ]);
+      
+      const baseCostMap: Record<string, number> = {};
+      // 1. admin prices
+      (pkgs.data || []).forEach((p: any) => { baseCostMap[p.id] = p.price; });
+      // 2. parent subagent's own cost from their agent
+      (agentCost.data || []).forEach((p: any) => { 
+        if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
+      });
+      // 3. parent subagent's sub-subagent template price
+      (templatePrices.data || []).forEach((p: any) => { 
+        if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
+      });
+      // Final: sub-subagent's own sell_price if set, else cost-from-agent
+      const priceMap: Record<string, number> = { ...baseCostMap };
+      (ownSell.data || []).forEach((p: any) => { 
+        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+      });
+      
+      setSubagentPrices(priceMap);
+    };
+
     const priceChannel = supabase
       .channel(`subagent-prices-${store.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "sub_subagent_package_prices", filter: `sub_subagent_store_id=eq.${store.id}` },
-        async () => {
-          // Rebuild price exactly like the dashboard: sell_price if set, else cost-from-agent
-          // (admin → parent's agent cost → parent's sub-subagent template).
-          const [ownSell, agentCost, templatePrices, pkgs] = await Promise.all([
-            supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
-            store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null }),
-            store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null }),
-            supabase.from("data_packages").select("id, price").eq("active", true),
-          ]);
-          
-          const baseCostMap: Record<string, number> = {};
-          // 1. admin prices
-          (pkgs.data || []).forEach((p: any) => { baseCostMap[p.id] = p.price; });
-          // 2. parent subagent's own cost from their agent
-          (agentCost.data || []).forEach((p: any) => { 
-            if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
-          });
-          // 3. parent subagent's sub-subagent template price
-          (templatePrices.data || []).forEach((p: any) => { 
-            if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
-          });
-          // Final: sub-subagent's own sell_price if set, else cost-from-agent
-          const priceMap: Record<string, number> = { ...baseCostMap };
-          (ownSell.data || []).forEach((p: any) => { 
-            if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
-          });
-          
-          setSubagentPrices(priceMap);
-        }
+        refetchMergedPrices
       )
       .subscribe();
+
+    // Also react live when the parent subagent updates their sub-subagent template price,
+    // or when the agent updates the base price they charge the parent subagent — both feed
+    // into this sub-subagent's "cost from agent" fallback.
+    const templatePriceChannel = store.subagent_store_id
+      ? supabase
+          .channel(`sub-subagent-template-prices-${store.id}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "sub_subagent_package_prices", filter: `subagent_store_id=eq.${store.subagent_store_id}` },
+            refetchMergedPrices
+          )
+          .subscribe()
+      : null;
+
+    const agentPriceChannel = store.agent_store_id
+      ? supabase
+          .channel(`sub-subagent-agent-base-prices-${store.id}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "subagent_package_prices", filter: `agent_store_id=eq.${store.agent_store_id}` },
+            refetchMergedPrices
+          )
+          .subscribe()
+      : null;
     
     return () => { 
       supabase.removeChannel(storeChannel);
       supabase.removeChannel(priceChannel);
+      if (templatePriceChannel) supabase.removeChannel(templatePriceChannel);
+      if (agentPriceChannel) supabase.removeChannel(agentPriceChannel);
     };
-  }, [store?.id]);
+  }, [store?.id, store?.subagent_store_id, store?.agent_store_id]);
 
   // ── Real-time order status updates — filtered to this store only ──
   useEffect(() => {
