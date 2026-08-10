@@ -32,7 +32,8 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       const { data, error } = await supabase
         .from("subagent_package_prices")
         .select("package_id, base_price")
-        .eq("agent_store_id", agentStoreId);
+        .eq("agent_store_id", agentStoreId)
+        .is("subagent_store_id", null);
       
       if (!error && data) {
         const priceMap: Record<string, number> = {};
@@ -132,6 +133,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
           .from("subagent_package_prices")
           .delete()
           .eq("agent_store_id", agentStoreId)
+          .is("subagent_store_id", null)
           .eq("package_id", packageId);
         if (deleteError) throw deleteError;
 
@@ -139,6 +141,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
           .from("subagent_package_prices")
           .insert({
             agent_store_id: agentStoreId,
+            subagent_store_id: null,
             package_id: packageId,
             base_price: price,
           });

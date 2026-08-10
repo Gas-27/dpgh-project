@@ -577,7 +577,8 @@ export function SubagentStorefront() {
       // Priority: Agent-configured Subagent base price, then admin package price.
       const [pkgRes, subagentBasePriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
-        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id),
+        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id)
+        .is("subagent_store_id", null),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
         supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
       ]);
@@ -631,7 +632,8 @@ export function SubagentStorefront() {
           const { data } = await supabase
             .from("subagent_package_prices")
             .select("package_id, base_price")
-            .eq("agent_store_id", store.agent_store_id);
+            .eq("agent_store_id", store.agent_store_id)
+        .is("subagent_store_id", null);
           if (data) {
             setSubagentPrices(prev => {
               const next = { ...prev };
