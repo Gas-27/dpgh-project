@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
+import { useGhDataOrderStatusRefresh } from "@/hooks/useGhDataOrderStatusRefresh";
 
 // ──────────────────────────────────────────────────────────── Types ─────
 type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel";
@@ -1186,6 +1187,7 @@ const Packages = () => {
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const checkingOrderIds = useGhDataOrderStatusRefresh(orders, setOrders);
   const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services" | "bulk">("data");
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
@@ -1485,6 +1487,7 @@ const searchOrders = async () => {
  <Badge className={normalizeOrderStatus(order) === "delivered" ? "bg-green-600/20 text-green-400 border-green-600/30" : normalizeOrderStatus(order) === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
  {orderStatusLabel(order)}
                                     </Badge>
+                                    {checkingOrderIds.has(order.id) && <span className="text-[11px] text-muted-foreground whitespace-nowrap">checking latest status…</span>}
                                   </div>
                                 </div>
                                 <div className="pt-3">

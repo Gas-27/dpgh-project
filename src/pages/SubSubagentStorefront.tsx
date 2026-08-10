@@ -22,7 +22,8 @@ import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
-import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+  import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+  import { useGhDataOrderStatusRefresh } from "@/hooks/useGhDataOrderStatusRefresh";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
@@ -473,6 +474,7 @@ export function SubSubagentStorefront() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const checkingOrderIds = useGhDataOrderStatusRefresh(orders, setOrders);
   
   // Notifications
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -1067,7 +1069,7 @@ const searchOrders = useCallback(async () => {
                           </div>
                           <div className="flex items-center gap-2">
                             {getStatusIcon(order.status)}
-                            <span className="text-xs">{getStatusText(order.status)}</span>
+                            <span className="text-xs">{getStatusText(order.status)}</span>{checkingOrderIds.has(order.id) && <span className="text-[11px] text-muted-foreground whitespace-nowrap">checking latest status…</span>}
                           </div>
                         </div>
                         {/* Order Tracking Card */}

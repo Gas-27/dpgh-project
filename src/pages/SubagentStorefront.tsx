@@ -30,6 +30,7 @@ import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 import AFARegistrationFormStandalone from "@/components/AFARegistrationFormStandalone";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
+import { useGhDataOrderStatusRefresh } from "@/hooks/useGhDataOrderStatusRefresh";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -478,6 +479,7 @@ export function SubagentStorefront() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const checkingOrderIds = useGhDataOrderStatusRefresh(orders, setOrders);
   
   // Notifications
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -1055,7 +1057,7 @@ const searchOrders = useCallback(async () => {
   <div className="flex items-center gap-2">
   {(() => {
     const displayStatus = normalizeOrderStatus(order);
-    return <><span>{getStatusIcon(displayStatus)}</span><span className="text-xs">{orderStatusLabel(order)}</span></>;
+    return <><span>{getStatusIcon(displayStatus)}</span><span className="text-xs">{orderStatusLabel(order)}</span>{checkingOrderIds.has(order.id) && <span className="text-[11px] text-muted-foreground whitespace-nowrap">checking latest status…</span>}</>;
   })()}
   </div>
                         </div>

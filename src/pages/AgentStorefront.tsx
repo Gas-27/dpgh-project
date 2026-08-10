@@ -26,6 +26,7 @@ import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatu
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import ChatBot from "@/components/ChatBot";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
+import { useGhDataOrderStatusRefresh } from "@/hooks/useGhDataOrderStatusRefresh";
 
 // Utility function to update page metadata dynamically
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
@@ -559,6 +560,7 @@ const AgentStorefront = () => {
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const checkingOrderIds = useGhDataOrderStatusRefresh(orders, setOrders);
 
   // ─��� Notifications ──
 
@@ -1262,6 +1264,7 @@ const searchOrders = useCallback(async () => {
                                       >
                                         {displayStatus === "delivered" ? "Delivered" : orderStatusLabel(order)}
                                       </Badge>
+                                      {checkingOrderIds.has(order.id) && <span className="text-[11px] text-muted-foreground whitespace-nowrap">checking latest status…</span>}
                                     </>
                                   );
                                 })()}
