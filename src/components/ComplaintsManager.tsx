@@ -511,6 +511,7 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
     // Keep the shared report intentionally limited to the four approved fields.
     const lines = [
       `Network: ${network}`,
+      `Data Package: ${complaint.orders?.size_gb != null ? `${complaint.orders.size_gb}GB` : "—"}`,
       `Order Date: ${orderDate}`,
       `Customer Number: ${complaint.customer_number}`,
       "Message Delivered But Not Received",
@@ -860,6 +861,7 @@ function ComplaintsTable({
                   const network = c.orders ? networkName(c.orders.network) : "—";
                   return [
                     `Network: ${network}`,
+                    `Data Package: ${c.orders?.size_gb != null ? `${c.orders.size_gb}GB` : "—"}`,
                     `Order Date: ${orderDate}`,
                     `Customer Number: ${c.customer_number}`,
                     "Message Delivered But Not Received",
