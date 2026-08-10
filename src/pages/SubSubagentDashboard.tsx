@@ -1204,33 +1204,62 @@ const SubSubagentDashboard = () => {
         }
       }
       
-      // Save each price - use delete + insert to avoid upsert issues
+      // Save each price. NOTE: there is no DELETE RLS policy allowing a sub-subagent
+      // to delete their OWN price row (only the parent subagent can delete rows here),
+      // so a delete-then-insert here silently fails to delete and leaves the old row
+      // behind — the price then appears to "revert" on refresh because the stale row
+      // is read back. Instead, update the existing row if one exists, otherwise insert.
+      const costFromAgentBase = (packageId: string, price: number) => basePrices[packageId] ?? price;
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        // First try to delete existing
-        await supabase
-          .from("sub_subagent_package_prices")
-          .delete()
-          .eq("sub_subagent_store_id", subagentStore.id)
-          .eq("package_id", packageId);
-        
-        // Insert sell_price (what this sub-subagent charges customers).
-        // base_price and subagent_minimum_price = their cost from the parent subagent.
-        const costFromAgent = basePrices[packageId] ?? price;
-        const { error } = await supabase
-          .from("sub_subagent_package_prices")
-          .insert({
-            sub_subagent_store_id: subagentStore.id,
-            subagent_store_id: subagentStore.subagent_store_id,
-            package_id: packageId,
-            base_price: costFromAgent,
-            subagent_minimum_price: costFromAgent,
-            sell_price: price
-          });
+        const costFromAgent = costFromAgentBase(packageId, price);
 
-        if (error) {
-          console.error("Error saving price:", error);
-          throw error;
+        const { data: existingRows, error: fetchExistingError } = await supabase
+          .from("sub_subagent_package_prices")
+          .select("id")
+          .eq("sub_subagent_store_id", subagentStore.id)
+          .eq("package_id", packageId)
+          .order("created_at", { ascending: false });
+
+        if (fetchExistingError) {
+          console.error("Error checking existing price:", fetchExistingError);
+          throw fetchExistingError;
+        }
+
+        if (existingRows && existingRows.length > 0) {
+          // Update the most recent row (if duplicates exist from before this fix,
+          // they'll be cleaned up separately; updating the newest keeps reads correct).
+          const { error } = await supabase
+            .from("sub_subagent_package_prices")
+            .update({
+              base_price: costFromAgent,
+              subagent_minimum_price: costFromAgent,
+              sell_price: price
+            })
+            .eq("id", existingRows[0].id);
+
+          if (error) {
+            console.error("Error saving price:", error);
+            throw error;
+          }
+        } else {
+          // Insert sell_price (what this sub-subagent charges customers).
+          // base_price and subagent_minimum_price = their cost from the parent subagent.
+          const { error } = await supabase
+            .from("sub_subagent_package_prices")
+            .insert({
+              sub_subagent_store_id: subagentStore.id,
+              subagent_store_id: subagentStore.subagent_store_id,
+              package_id: packageId,
+              base_price: costFromAgent,
+              subagent_minimum_price: costFromAgent,
+              sell_price: price
+            });
+
+          if (error) {
+            console.error("Error saving price:", error);
+            throw error;
+          }
         }
       }
 
@@ -1324,27 +1353,52 @@ const SubSubagentDashboard = () => {
           throw new Error("Missing required store or package information");
         }
         
-        await supabase
+        // NOTE: there is no DELETE RLS policy allowing a sub-subagent to delete their
+        // OWN price row (only the parent subagent can delete rows here), so a
+        // delete-then-insert here silently fails to delete and leaves the old row
+        // behind — the price then appears to "revert" on refresh because the stale
+        // row is read back. Instead, update the existing row if one exists, otherwise
+        // insert. Only sell_price is touched — base_price is the cost FROM the
+        // subagent, set by the subagent's template row, and must NOT be overwritten
+        // by the sub-subagent's save.
+        const { data: existingRows, error: fetchExistingError } = await supabase
           .from("sub_subagent_package_prices")
-          .delete()
+          .select("id")
           .eq("sub_subagent_store_id", subagentStore.id)
-          .eq("package_id", packageId);
+          .eq("package_id", packageId)
+          .order("created_at", { ascending: false });
 
-        // Only save sell_price (what the sub-subagent charges their customers).
-        // base_price is the cost FROM the subagent — it is set by the subagent's
-        // template row and must NOT be overwritten by the sub-subagent's save.
-        const { error } = await supabase
-          .from("sub_subagent_package_prices")
-          .insert({
-            sub_subagent_store_id: subagentStore.id,
-            subagent_store_id: subagentStore.subagent_store_id,
-            package_id: packageId,
-            sell_price: price
-          });
+        if (fetchExistingError) {
+          console.error("[v0] Error checking existing price:", fetchExistingError);
+          throw fetchExistingError;
+        }
 
-        if (error) {
-          console.error("[v0] Error inserting price:", error);
-          throw error;
+        if (existingRows && existingRows.length > 0) {
+          // Update the most recent row (if duplicates exist from before this fix,
+          // they'll be cleaned up separately; updating the newest keeps reads correct).
+          const { error } = await supabase
+            .from("sub_subagent_package_prices")
+            .update({ sell_price: price })
+            .eq("id", existingRows[0].id);
+
+          if (error) {
+            console.error("[v0] Error updating price:", error);
+            throw error;
+          }
+        } else {
+          const { error } = await supabase
+            .from("sub_subagent_package_prices")
+            .insert({
+              sub_subagent_store_id: subagentStore.id,
+              subagent_store_id: subagentStore.subagent_store_id,
+              package_id: packageId,
+              sell_price: price
+            });
+
+          if (error) {
+            console.error("[v0] Error inserting price:", error);
+            throw error;
+          }
         }
       }
 
