@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 type TrackableOrder = {
   id: string;
@@ -9,8 +10,6 @@ type TrackableOrder = {
 };
 
 const CHECKABLE_STATUSES = new Set(["processing", "pending", "waiting"]);
-const FUNCTION_URL = "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/ghdataconnect-check-order";
-
 export function useGhDataOrderStatusRefresh<T extends TrackableOrder>(
   orders: T[],
   setOrders: Dispatch<SetStateAction<T[]>>,
@@ -26,8 +25,6 @@ export function useGhDataOrderStatusRefresh<T extends TrackableOrder>(
     });
 
     if (candidates.length === 0) return;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 8000);
     const references = candidates.map((order) => order.provider_reference!.trim());
     references.forEach((reference) => checkedReferences.current.add(reference));
     setCheckingIds((current) => new Set([...current, ...candidates.map((order) => order.id)]));
@@ -35,15 +32,15 @@ export function useGhDataOrderStatusRefresh<T extends TrackableOrder>(
     void Promise.all(candidates.map(async (order) => {
       const reference = order.provider_reference!.trim();
       try {
-        const response = await fetch(`${FUNCTION_URL}?reference=${encodeURIComponent(reference)}`, {
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""}`,
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
-          },
-          signal: controller.signal,
+        const request = supabase.functions.invoke("ghdataconnect-check-order", {
+          body: { reference },
         });
-        const result = await response.json().catch(() => null);
-        if (response.ok && result?.success === true && result?.checked === true && result.order_status) {
+        const { data: result, error } = await Promise.race([
+          request,
+          new Promise<{ data: null; error: Error }>((_, reject) => window.setTimeout(() => reject(new Error("status check timeout")), 8000)),
+        ]);
+        if (error) return;
+        if (result?.success === true && result?.checked === true && result.order_status) {
           const nextStatus = String(result.order_status).toLowerCase();
           setOrders((current) => current.map((item) => item.id === order.id
             ? { ...item, status: nextStatus, order_status: nextStatus, fulfillment_status: nextStatus }
@@ -60,10 +57,7 @@ export function useGhDataOrderStatusRefresh<T extends TrackableOrder>(
       }
     }));
 
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
+    return undefined;
   }, [orders, setOrders]);
 
   return checkingIds;
