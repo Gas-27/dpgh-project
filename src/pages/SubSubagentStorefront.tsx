@@ -759,9 +759,6 @@ export function SubSubagentStorefront() {
   // Order search - searches both subagent orders and parent agent orders
 const searchOrders = useCallback(async () => {
   if (!searchQuery.trim()) return;
-  const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-order-status", { body: { offset: 0 } });
-  if (syncError) console.error("[v0] Track Order sync failed:", syncError);
-  else console.log("[v0] Track Order sync completed:", syncData);
     setSearching(true);
     setSearchPerformed(true);
 
@@ -810,7 +807,14 @@ const searchOrders = useCallback(async () => {
     // Sort all orders by date descending
     allOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
-    const enrichedOrders = allOrders.map((order) => {
+    const refreshedOrders = await Promise.all(allOrders.map(async (order: any) => {
+    const network = String(order.network ?? "").toLowerCase();
+    if (network !== "mtn_express" && network !== "atbigtime") return order;
+    const { data: checked, error: checkError } = await supabase.functions.invoke("ghdataconnect-check-order", { body: { order_id: order.id } });
+    if (checkError) console.error("[v0] GHDataConnect Track Order check failed:", checkError);
+    return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
+  }));
+  const enrichedOrders = refreshedOrders.map((order) => {
       // COMMENTED OUT: mashup packages deactivated
       // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
       // This enriches the order with package details

@@ -1336,9 +1336,7 @@ const Packages = () => {
 
 const searchOrders = async () => {
   if (!searchQuery.trim()) return;
-  const { data: syncData, error: syncError } = await supabase.functions.invoke("sync-order-status", { body: { offset: 0 } });
-  if (syncError) console.error("[v0] Track Order sync failed:", syncError);
-  else console.log("[v0] Track Order sync completed:", syncData);
+
     setSearching(true); setSearchPerformed(true);
     let q = searchQuery.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
@@ -1353,9 +1351,15 @@ const searchOrders = async () => {
     }
     const { data, error } = await query.order("created_at", { ascending: false });
     if (error || !data) { setOrders([]); setSearching(false); return; }
-    
+    const refreshedData = await Promise.all(data.map(async (order: any) => {
+      const network = String(order.network ?? "").toLowerCase();
+      if (network !== "mtn_express" && network !== "atbigtime") return order;
+      const { data: checked, error: checkError } = await supabase.functions.invoke("ghdataconnect-check-order", { body: { order_id: order.id } });
+      if (checkError) console.error("[v0] GHDataConnect Track Order check failed:", checkError);
+      return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
+    }));
     // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
-    const enrichedOrders = await Promise.all(data.map(async (order: any) => {
+    const enrichedOrders = await Promise.all(refreshedData.map(async (order: any) => {
       if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
         const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
         return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
