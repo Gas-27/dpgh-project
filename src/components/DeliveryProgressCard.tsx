@@ -22,12 +22,19 @@ const fakeId = (prefixes: string, slot: number) => { const list = prefixes.split
 
 export default function DeliveryProgressCard() {
   const [network, setNetwork] = useState<Network>("mtn_express"); const [settings, setSettings] = useState<Setting[]>(defaults); const [globalEnabled, setGlobalEnabled] = useState(true); const [orders, setOrders] = useState<Order[]>([]); const [open, setOpen] = useState(false);
-  const load = async () => { const [settingsResult, ordersResult] = await Promise.all([supabase.from("delivery_progress_settings").select("network, enabled, is_default, source, min_minutes, max_minutes, rotation_minutes, fake_enabled, fake_prefix, fake_count, status_color, message"), supabase.from("orders").select("id, customer_number, network, status, fulfillment_status, order_status, created_at, updated_at").order("updated_at", { ascending: false }).limit(1000)]); const saved = (settingsResult.data as Setting[]) ?? []; const configuredDefault = saved.find((s: any) => s.is_default)?.network; if (configuredDefault && configuredDefault !== "__global__") setNetwork(configuredDefault as Network); setGlobalEnabled((saved.find((s: any) => s.network === "__global__") as any)?.enabled ?? true); setSettings(defaults.map((d) => ({ ...d, ...(saved.find((s) => s.network === d.network) ?? {}) }))); setOrders((ordersResult.data ?? []) as Order[]); };
+  const load = async () => {
+    const [settingsResult, ordersResult] = await Promise.all([supabase.from("delivery_progress_settings").select("network, enabled, is_default, source, min_minutes, max_minutes, rotation_minutes, fake_enabled, fake_prefix, fake_count, status_color, message"), supabase.from("orders").select("id, customer_number, network, status, fulfillment_status, order_status, created_at, updated_at").order("updated_at", { ascending: false }).limit(1000)]); const saved = (settingsResult.data as Setting[]) ?? []; const configuredDefault = saved.find((s: any) => s.is_default)?.network; if (configuredDefault && configuredDefault !== "__global__") setNetwork(configuredDefault as Network); setGlobalEnabled((saved.find((s: any) => s.network === "__global__") as any)?.enabled ?? true); setSettings(defaults.map((d) => ({ ...d, ...(saved.find((s) => s.network === d.network) ?? {}) }))); setOrders((ordersResult.data ?? []) as Order[]); };
   useEffect(() => {
     load();
     const refresh = window.setInterval(load, 15000);
+    const sync = window.setInterval(async () => {
+      await supabase.functions.invoke("sync-order-status", { body: { offset: 0 } }).catch((error) => {
+        console.warn("[v0] Background order status sync failed:", error);
+      });
+      await load();
+    }, 60000);
     const channel = supabase.channel("delivery-progress-live").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, load).on("postgres_changes", { event: "*", schema: "public", table: "delivery_progress_settings" }, load).subscribe();
-    return () => { window.clearInterval(refresh); supabase.removeChannel(channel); };
+    return () => { window.clearInterval(refresh); window.clearInterval(sync); supabase.removeChannel(channel); };
   }, []);
   const item = settings.find((s) => s.network === network);
   const deliveredOrders = useMemo(() => orders.filter((o) => normalize(o.network) === network && String(o.order_status || "").trim().toLowerCase().replace(/[\s_]+/g, "-") === "delivered" && o.created_at && o.updated_at && new Date(o.updated_at).getTime() >= new Date(o.created_at).getTime()).sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()), [orders, network]);
