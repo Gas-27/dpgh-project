@@ -556,7 +556,7 @@ export function SubSubagentStorefront() {
       const [pkgRes, ownSellRes, agentCostRes, templatePricesRes, appSettingsRes, parentSubagentInfoRes] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
         // This sub-subagent's own selling price (what they saved in their dashboard)
-        supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", matched.id),
+        supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("sub_subagent_store_id", matched.id),
         // Parent subagent's own cost from their agent (base_price keyed by agent_store_id)
         matched.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id) : Promise.resolve({ data: null, error: null }),
         // Parent subagent's sub-subagent template price (sub_subagent_store_id IS NULL)
@@ -584,7 +584,8 @@ export function SubSubagentStorefront() {
       // Final customer price = sub-subagent's own sell_price if set, else the cost-from-agent
       const priceMap: Record<string, number> = { ...baseCostMap };
       (ownSellRes.data || []).forEach((p: any) => { 
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price);
+            else if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price);
       });
       
       setSubagentPrices(priceMap);
@@ -625,7 +626,7 @@ export function SubSubagentStorefront() {
           // Rebuild price exactly like the dashboard: sell_price if set, else cost-from-agent
           // (admin → parent's agent cost → parent's sub-subagent template).
           const [ownSell, agentCost, templatePrices, pkgs] = await Promise.all([
-            supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
+            supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("sub_subagent_store_id", store.id),
             store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null }),
             store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null }),
             supabase.from("data_packages").select("id, price").eq("active", true),
@@ -645,7 +646,8 @@ export function SubSubagentStorefront() {
           // Final: sub-subagent's own sell_price if set, else cost-from-agent
           const priceMap: Record<string, number> = { ...baseCostMap };
           (ownSell.data || []).forEach((p: any) => { 
-            if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price);
+        else if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price);
           });
           
           setSubagentPrices(priceMap);

@@ -577,7 +577,7 @@ export function SubagentStorefront() {
       // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
       const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
-        supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id),
+        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
         supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
@@ -592,11 +592,11 @@ export function SubagentStorefront() {
       (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
       // Then override with agent's sell prices if set
       (agentSellPriceRes.data || []).forEach((p: any) => { 
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price);
       });
-      // Finally override with subagent's own prices if set
+      // Finally apply the agent-configured subagent cost
       (subagentOwnPriceRes.data || []).forEach((p: any) => { 
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+        if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price);
       });
       
       setSubagentPrices(priceMap);
@@ -632,15 +632,15 @@ export function SubagentStorefront() {
       .channel(`subagent-prices-${store.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "subagent_package_prices", filter: `subagent_store_id=eq.${store.id}` },
+        { event: "*", schema: "public", table: "subagent_package_prices", filter: `agent_store_id=eq.${store.agent_store_id}` },
         async () => {
           const { data } = await supabase
             .from("subagent_package_prices")
-            .select("package_id, sell_price")
-            .eq("subagent_store_id", store.id);
+.select("package_id, base_price")
+          .eq("agent_store_id", store.agent_store_id);
           if (data) {
             const priceMap: Record<string, number> = {};
-            data.forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+            data.forEach((p: any) => { priceMap[p.package_id] = Number(p.base_price); });
             setSubagentPrices(priceMap);
           }
         }
