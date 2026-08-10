@@ -10,7 +10,7 @@ const TERMINAL_STATUSES = new Set(["delivered", "refunded", "failed"]);
 
 // Networks fulfilled by Dakazina
 const DAKAZINA_NETWORKS = new Set(["mtn", "telecel", "airteltigo", "mtn_mashup"]);
-const GHDATACONNECT_NETWORKS = new Set(["atbigtime"]);
+const GHDATACONNECT_NETWORKS = new Set(["atbigtime", "mtn_express"]);
 
 function mapGhDataConnectStatus(s: string): string {
   switch ((s ?? "").toUpperCase().trim()) {
