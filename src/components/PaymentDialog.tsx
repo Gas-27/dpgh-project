@@ -509,7 +509,7 @@ const PaymentDialog = ({
           <div className="px-6 py-5 space-y-4">
             {/* What this means */}
             <p className="text-sm text-foreground leading-relaxed">
-              This number has not made a purchase on DataPlug before. Because of this, your order may take <span className="font-semibold">longer than usual to be delivered</span>.
+              This number has not made a purchase on this site before. Because of this, Because of this, your order may take <span className="font-semibold">longer than usual to be delivered</span>.
             </p>
 
             {/* Step-by-step explanation */}

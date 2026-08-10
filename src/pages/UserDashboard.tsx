@@ -3051,7 +3051,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
             </div>
           </div>
           <div className="px-6 py-5 space-y-4">
-            <p className="text-sm text-foreground leading-relaxed">This number has not made a purchase on DataPlug before. Your order may take <span className="font-semibold">longer than usual to be delivered</span>.</p>
+            <p className="text-sm text-foreground leading-relaxed">This number has not made a purchase on this site before. Because of this, Your order may take <span className="font-semibold">longer than usual to be delivered</span>.</p>
             <div className="rounded-lg border border-border bg-secondary/40 divide-y divide-border">
               <div className="flex items-start gap-3 p-3"><div className="flex-shrink-0 mt-0.5 rounded-full bg-primary/10 p-1.5"><UserCheck className="h-4 w-4 text-primary" /></div><div><p className="text-xs font-semibold text-foreground">MTN Beneficiary Verification Required</p><p className="text-xs text-muted-foreground mt-0.5">MTN now requires that new numbers be registered and verified on each sender&apos;s portal before data can be delivered.</p></div></div>
               <div className="flex items-start gap-3 p-3"><div className="flex-shrink-0 mt-0.5 rounded-full bg-amber-500/10 p-1.5"><Clock className="h-4 w-4 text-amber-500" /></div><div><p className="text-xs font-semibold text-foreground">Order Stays Pending During Verification</p><p className="text-xs text-muted-foreground mt-0.5">Your order will remain in <span className="font-medium text-amber-600">Pending</span> status while MTN verifies the number. Once verified, data is delivered automatically.</p></div></div>

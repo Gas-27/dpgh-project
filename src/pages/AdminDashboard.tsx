@@ -1546,7 +1546,7 @@ const AdminDashboard = () => {
   };
 
   // ======================== Orders ========================
-  const queryOrdersFromDB = async (network: string, fulfillment: string, paymentStatus: string) => {
+  const queryOrdersFromDB = async (network: string, fulfillment: string, paymentStatus: string, delivery: string = orderDeliveryFilter) => {
     setIsFilteringOrders(true);
     try {
       // Build query with DB-side filters — do NOT filter in memory
@@ -1573,6 +1573,24 @@ const AdminDashboard = () => {
       // Apply payment/status filter directly on DB
       if (paymentStatus !== "all") {
         query = query.eq("status", paymentStatus);
+      }
+
+      // Apply normalized delivery status directly on DB. Some historical orders
+      // store delivery state in order_status while others use fulfillment_status,
+      // so query both columns and include their legacy aliases.
+      if (delivery !== "all") {
+        const deliveryValues: Record<string, string[]> = {
+          pending: ["pending"],
+          processing: ["processing"],
+          waiting: ["waiting"],
+          "in-queue": ["in-queue", "queued", "queue"],
+          completed: ["completed", "delivered"],
+          delivered: ["delivered", "completed"],
+          failed: ["failed"],
+          refunded: ["refunded"],
+        };
+        const values = deliveryValues[delivery] || [delivery];
+        query = query.or(`order_status.in.(${values.join(",")}),fulfillment_status.in.(${values.join(",")})`);
       }
 
       const { data: filtered, error } = await query;
@@ -2464,7 +2482,7 @@ const AdminDashboard = () => {
   const filteredUsers = userSearchTerm.length > 0 ? profileSearch.results : users;
   
   // Use database filtered results if filters are active, otherwise use search results
-  let baseOrders = (orderNetworkFilter !== "all" || orderFulfillmentFilter !== "all" || orderPaymentStatusFilter !== "all")
+  let baseOrders = (orderNetworkFilter !== "all" || orderFulfillmentFilter !== "all" || orderPaymentStatusFilter !== "all" || orderDeliveryFilter !== "all")
     ? filteredOrdersFromDB
     : (orderSearchTerm.length > 0 ? orderSearch.results : orders);
 
@@ -2794,7 +2812,7 @@ const AdminDashboard = () => {
               <div className="flex gap-2 flex-wrap">
                 <Select value={orderNetworkFilter} onValueChange={(value) => {
                   setOrderNetworkFilter(value);
-                  if (value === "all" && orderFulfillmentFilter === "all" && orderPaymentStatusFilter === "all") {
+                  if (value === "all" && orderFulfillmentFilter === "all" && orderPaymentStatusFilter === "all" && orderDeliveryFilter === "all") {
                     setFilteredOrdersFromDB([]);
                   } else {
                     queryOrdersFromDB(value, orderFulfillmentFilter, orderPaymentStatusFilter);
@@ -2812,7 +2830,7 @@ const AdminDashboard = () => {
 
                 <Select value={orderFulfillmentFilter} onValueChange={(value) => {
                   setOrderFulfillmentFilter(value);
-                  if (orderNetworkFilter === "all" && value === "all" && orderPaymentStatusFilter === "all") {
+                  if (orderNetworkFilter === "all" && value === "all" && orderPaymentStatusFilter === "all" && orderDeliveryFilter === "all") {
                     setFilteredOrdersFromDB([]);
                   } else {
                     queryOrdersFromDB(orderNetworkFilter, value, orderPaymentStatusFilter);
@@ -2830,7 +2848,7 @@ const AdminDashboard = () => {
 
                 <Select value={orderPaymentStatusFilter} onValueChange={(value) => {
                   setOrderPaymentStatusFilter(value);
-                  if (orderNetworkFilter === "all" && orderFulfillmentFilter === "all" && value === "all") {
+                  if (orderNetworkFilter === "all" && orderFulfillmentFilter === "all" && value === "all" && orderDeliveryFilter === "all") {
                     setFilteredOrdersFromDB([]);
                   } else {
                     queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, value);
@@ -2858,11 +2876,20 @@ const AdminDashboard = () => {
                   </SelectContent>
                 </Select>
 
-                <Select value={orderDeliveryFilter} onValueChange={setOrderDeliveryFilter}>
+                <Select value={orderDeliveryFilter} onValueChange={(value) => {
+                  setOrderDeliveryFilter(value);
+                  if (orderNetworkFilter === "all" && orderFulfillmentFilter === "all" && orderPaymentStatusFilter === "all" && value === "all") {
+                    setFilteredOrdersFromDB([]);
+                  } else {
+                    queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, orderPaymentStatusFilter, value);
+                  }
+                }}>
                   <SelectTrigger className="w-44"><SelectValue placeholder="Filter by Delivery" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Delivery Status</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in-queue">In Queue</SelectItem>
+                    <SelectItem value="waiting">Waiting</SelectItem>
                     <SelectItem value="processing">Processing</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="delivered">Delivered</SelectItem>
