@@ -573,12 +573,11 @@ export function SubagentStorefront() {
       // Don't override show_whatsapp_group_icon - use database value directly
       setStore(matched);
 
-      // Fetch packages and prices
-      // Priority: 1. Subagent's own sell_price, 2. Agent's sell_price, 3. Admin's base prices
-      const [pkgRes, subagentOwnPriceRes, agentSellPriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
+      // Fetch packages and the prices saved in the Agent's Subagent Prices tab.
+      // Priority: Agent-configured Subagent base price, then admin package price.
+      const [pkgRes, subagentBasePriceRes, appSettingsRes, agentInfoRes] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
-        supabase.from("subagent_package_prices").select("package_id, agent_minimum_price, sell_price").eq("subagent_store_id", matched.id),
-        supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.agent_store_id),
+        supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
         supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
       ]);
@@ -586,17 +585,12 @@ export function SubagentStorefront() {
       setPackages(pkgRes.data || []);
       if (agentInfoRes.data) setAgentInfo(agentInfoRes.data);
 
-      // Build price map with fallback: subagent's own prices -> agent's sell prices -> admin's base
+      // The Subagent Prices tab stores the Agent's selected base price in base_price.
+      // Do not substitute agent storefront sell prices here.
       const priceMap: Record<string, number> = {};
-      // First set admin base prices
-      (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = p.price; });
-      // Then override with agent's sell prices if set
-      (agentSellPriceRes.data || []).forEach((p: any) => { 
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price);
-      });
-      // Finally apply the agent-configured subagent cost
-      (subagentOwnPriceRes.data || []).forEach((p: any) => { 
-        if (p.agent_minimum_price != null) priceMap[p.package_id] = Number(p.agent_minimum_price);
+      (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = Number(p.price); });
+      (subagentBasePriceRes.data || []).forEach((p: any) => {
+        if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price);
       });
       
       setSubagentPrices(priceMap);
@@ -632,16 +626,20 @@ export function SubagentStorefront() {
       .channel(`subagent-prices-${store.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "subagent_package_prices", filter: `subagent_store_id=eq.${store.id}` },
+        { event: "*", schema: "public", table: "subagent_package_prices", filter: `agent_store_id=eq.${store.agent_store_id}` },
         async () => {
           const { data } = await supabase
             .from("subagent_package_prices")
-.select("package_id, agent_minimum_price, sell_price")
-          .eq("subagent_store_id", store.id);
+            .select("package_id, base_price")
+            .eq("agent_store_id", store.agent_store_id);
           if (data) {
-            const priceMap: Record<string, number> = {};
-            data.forEach((p: any) => { priceMap[p.package_id] = Number(p.agent_minimum_price); });
-            setSubagentPrices(priceMap);
+            setSubagentPrices(prev => {
+              const next = { ...prev };
+              data.forEach((p: any) => {
+                if (p.base_price != null) next[p.package_id] = Number(p.base_price);
+              });
+              return next;
+            });
           }
         }
       )
