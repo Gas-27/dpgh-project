@@ -27,14 +27,8 @@ export default function DeliveryProgressCard() {
   useEffect(() => {
     load();
     const refresh = window.setInterval(load, 15000);
-    const sync = window.setInterval(async () => {
-      await supabase.functions.invoke("sync-order-status", { body: { offset: 0 } }).catch((error) => {
-        console.warn("[v0] Background order status sync failed:", error);
-      });
-      await load();
-    }, 60000);
     const channel = supabase.channel("delivery-progress-live").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, load).on("postgres_changes", { event: "*", schema: "public", table: "delivery_progress_settings" }, load).subscribe();
-    return () => { window.clearInterval(refresh); window.clearInterval(sync); supabase.removeChannel(channel); };
+    return () => { window.clearInterval(refresh); supabase.removeChannel(channel); };
   }, []);
   const item = settings.find((s) => s.network === network);
   const deliveredOrders = useMemo(() => orders.filter((o) => normalize(o.network) === network && String(o.order_status || "").trim().toLowerCase().replace(/[\s_]+/g, "-") === "delivered" && o.created_at && o.updated_at && new Date(o.updated_at).getTime() >= new Date(o.created_at).getTime()).sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()), [orders, network]);

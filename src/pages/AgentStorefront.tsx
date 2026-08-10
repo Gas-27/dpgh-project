@@ -553,7 +553,7 @@ const AgentStorefront = () => {
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
 
-  // ── Order tracking ──
+  // ���─ Order tracking ──
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -861,8 +861,10 @@ const AgentStorefront = () => {
   // ── Order search ──
   // Phone numbers are stripped of ALL spaces before comparing so
   // "059 944 9202", "05 99 44 92 02", "0599449202" all match the same record.
-  const searchOrders = useCallback(async () => {
-    if (!searchQuery.trim()) return;
+const searchOrders = useCallback(async () => {
+  if (!searchQuery.trim()) return;
+  // Refresh provider statuses in the background before reading the Track Order results.
+  void supabase.functions.invoke("sync-order-status", { body: { offset: 0 } }).catch(() => undefined);
     setSearching(true);
     setSearchPerformed(true);
 

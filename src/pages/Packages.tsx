@@ -1334,8 +1334,10 @@ const Packages = () => {
     return p.network === selectedNetwork;
   }), [packages, selectedNetwork]);
 
-  const searchOrders = async () => {
-    if (!searchQuery.trim()) return;
+const searchOrders = async () => {
+  if (!searchQuery.trim()) return;
+  // Refresh provider statuses in the background before reading the Track Order results.
+  void supabase.functions.invoke("sync-order-status", { body: { offset: 0 } }).catch(() => undefined);
     setSearching(true); setSearchPerformed(true);
     let q = searchQuery.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"

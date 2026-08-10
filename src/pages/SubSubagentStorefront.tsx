@@ -757,8 +757,10 @@ export function SubSubagentStorefront() {
   const undismissedNotifications = notifications.filter((n) => !dismissedIds.includes(n.id));
 
   // Order search - searches both subagent orders and parent agent orders
-  const searchOrders = useCallback(async () => {
-    if (!searchQuery.trim()) return;
+const searchOrders = useCallback(async () => {
+  if (!searchQuery.trim()) return;
+  // Refresh provider statuses in the background before reading the Track Order results.
+  void supabase.functions.invoke("sync-order-status", { body: { offset: 0 } }).catch(() => undefined);
     setSearching(true);
     setSearchPerformed(true);
 
