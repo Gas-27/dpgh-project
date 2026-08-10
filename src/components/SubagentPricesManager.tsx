@@ -38,8 +38,11 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       
       if (!error && data) {
         const priceMap: Record<string, number> = {};
+        // Query is ordered newest-first; if stale duplicate rows exist for the same
+        // package (e.g. from a previous delete+insert race), keep only the first
+        // (newest) value seen instead of letting later, older rows overwrite it.
         data.forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
+          if (p.base_price !== null && p.base_price !== undefined && priceMap[p.package_id] === undefined) {
             priceMap[p.package_id] = Number(p.base_price);
           }
         });
@@ -125,28 +128,45 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       }
       
       // Save to subagent_package_prices table (NOT agent_package_prices)
-      // This is the base price agents set for their subagents
+      // This is the base price agents set for their subagents.
+      // NOTE: this table has no DELETE policy for agents, so a delete-then-insert
+      // here silently fails to delete and leaves the old row behind (the price then
+      // appears to "revert" on refresh because a stale row wins the lookup). Instead,
+      // update the existing row if one exists, otherwise insert.
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        // First delete existing entry for this agent + package
-        await supabase
+
+        const { data: existingRows, error: fetchExistingError } = await supabase
           .from("subagent_package_prices")
-          .delete()
+          .select("id")
           .eq("agent_store_id", agentStoreId)
           .is("subagent_store_id", null)
-          .eq("package_id", packageId);
-        
-        // Then insert new price
-        const { error } = await supabase
-          .from("subagent_package_prices")
-          .insert({
-            agent_store_id: agentStoreId,
-            subagent_store_id: null,
-            package_id: packageId,
-            base_price: price
-          });
+          .eq("package_id", packageId)
+          .order("created_at", { ascending: false });
 
-        if (error) throw error;
+        if (fetchExistingError) throw fetchExistingError;
+
+        if (existingRows && existingRows.length > 0) {
+          // Update the most recent row (if duplicates exist from before this fix,
+          // they'll be cleaned up separately; updating the newest keeps reads correct).
+          const { error } = await supabase
+            .from("subagent_package_prices")
+            .update({ base_price: price })
+            .eq("id", existingRows[0].id);
+
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("subagent_package_prices")
+            .insert({
+              agent_store_id: agentStoreId,
+              subagent_store_id: null,
+              package_id: packageId,
+              base_price: price
+            });
+
+          if (error) throw error;
+        }
       }
 
       // Update local saved prices state with the new values (convert to numbers)

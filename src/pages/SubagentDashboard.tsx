@@ -564,7 +564,7 @@ const SubagentDashboard = () => {
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
+          supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
           supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -642,8 +642,11 @@ const SubagentDashboard = () => {
         
         // Build agent's subagent base prices map (what agent charges subagent - THIS IS THE CORRECT ONE)
         const agentSubagentPriceMap: Record<string, number> = {};
+        // Query is ordered newest-first; if stale duplicate rows exist for the same
+        // package (e.g. from a previous delete+insert race), keep only the first
+        // (newest) value seen instead of letting later, older rows overwrite it.
         (agentSubagentPricesResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
+          if (p.base_price !== null && p.base_price !== undefined && agentSubagentPriceMap[p.package_id] === undefined) {
             agentSubagentPriceMap[p.package_id] = Number(p.base_price);
           }
         });
@@ -669,8 +672,11 @@ const SubagentDashboard = () => {
         
         if (subagentPricesResult.data) {
           const subagentPriceMap: Record<string, number> = {};
+          // Same newest-first-wins guard as above, in case of stale duplicate rows.
           subagentPricesResult.data.forEach((p: any) => {
-            subagentPriceMap[p.package_id] = p.sell_price;
+            if (subagentPriceMap[p.package_id] === undefined) {
+              subagentPriceMap[p.package_id] = p.sell_price;
+            }
           });
           setSubagentPrices(subagentPriceMap);
         }
@@ -740,7 +746,7 @@ const SubagentDashboard = () => {
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
-          supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id),
+          supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
           supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -824,8 +830,11 @@ const SubagentDashboard = () => {
         
         // Build agent's subagent base prices map (what agent charges subagent - THIS IS THE CORRECT ONE)
         const agentSubagentPriceMap: Record<string, number> = {};
+        // Query is ordered newest-first; if stale duplicate rows exist for the same
+        // package (e.g. from a previous delete+insert race), keep only the first
+        // (newest) value seen instead of letting later, older rows overwrite it.
         (agentSubagentPricesResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
+          if (p.base_price !== null && p.base_price !== undefined && agentSubagentPriceMap[p.package_id] === undefined) {
             agentSubagentPriceMap[p.package_id] = Number(p.base_price);
           }
         });
@@ -851,8 +860,11 @@ const SubagentDashboard = () => {
         
         if (subagentPricesResult.data) {
           const subagentPriceMap: Record<string, number> = {};
+          // Same newest-first-wins guard as above, in case of stale duplicate rows.
           subagentPricesResult.data.forEach((p: any) => {
-            subagentPriceMap[p.package_id] = p.sell_price;
+            if (subagentPriceMap[p.package_id] === undefined) {
+              subagentPriceMap[p.package_id] = p.sell_price;
+            }
           });
           setSubagentPrices(subagentPriceMap);
         }
@@ -1633,28 +1645,50 @@ const SubagentDashboard = () => {
         }
       }
       
-      // Save each price - use delete + insert to avoid upsert issues
+      // Save each price. NOTE: this table has no DELETE policy for subagents, so a
+      // delete-then-insert here silently fails to delete and leaves the old row behind
+      // (the price then appears to "revert" on refresh because a stale row wins the
+      // lookup). Instead, update the existing row if one exists, otherwise insert.
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        // First try to delete existing
-        await supabase
-          .from("subagent_package_prices")
-          .delete()
-          .eq("subagent_store_id", subagentStore.id)
-          .eq("package_id", packageId);
-        
-        // Then insert new
-        const { error } = await supabase
-          .from("subagent_package_prices")
-          .insert({
-            subagent_store_id: subagentStore.id,
-            package_id: packageId,
-            sell_price: price
-          });
 
-        if (error) {
-          console.error("Error saving price:", error);
-          throw error;
+        const { data: existingRows, error: fetchExistingError } = await supabase
+          .from("subagent_package_prices")
+          .select("id")
+          .eq("subagent_store_id", subagentStore.id)
+          .eq("package_id", packageId)
+          .order("created_at", { ascending: false });
+
+        if (fetchExistingError) {
+          console.error("Error checking existing price:", fetchExistingError);
+          throw fetchExistingError;
+        }
+
+        if (existingRows && existingRows.length > 0) {
+          // Update the most recent row (if duplicates exist from before this fix,
+          // they'll be cleaned up separately; updating the newest keeps reads correct).
+          const { error } = await supabase
+            .from("subagent_package_prices")
+            .update({ sell_price: price })
+            .eq("id", existingRows[0].id);
+
+          if (error) {
+            console.error("Error saving price:", error);
+            throw error;
+          }
+        } else {
+          const { error } = await supabase
+            .from("subagent_package_prices")
+            .insert({
+              subagent_store_id: subagentStore.id,
+              package_id: packageId,
+              sell_price: price
+            });
+
+          if (error) {
+            console.error("Error saving price:", error);
+            throw error;
+          }
         }
       }
 
