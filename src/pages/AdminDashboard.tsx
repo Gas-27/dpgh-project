@@ -2900,10 +2900,10 @@ const AdminDashboard = () => {
 
                 <Select value={orderDeliveryFilter} onValueChange={(value) => {
                   setOrderDeliveryFilter(value);
-                  if (orderNetworkFilter === "all" && orderFulfillmentFilter === "all" && orderPaymentStatusFilter === "all" && value === "all") {
+                  if (orderNetworkFilter === "all" && orderFulfillmentFilter === "all" && orderPaymentStatusFilter === "all" && orderSourceFilter === "all" && value === "all") {
                     setFilteredOrdersFromDB([]);
                   } else {
-                    queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, orderPaymentStatusFilter, value);
+                    queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, orderPaymentStatusFilter, value, orderSourceFilter);
                   }
                 }}>
                   <SelectTrigger className="w-44"><SelectValue placeholder="Filter by Delivery" /></SelectTrigger>
