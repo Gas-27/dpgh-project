@@ -875,7 +875,7 @@ const searchOrders = useCallback(async () => {
 
     let query = supabase
       .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id");
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id, provider_reference, provider_order_id");
 
     // If it looks like a UUID, search by ID directly
     if (noSpaces.length === 36 && raw.includes("-")) {
@@ -890,7 +890,11 @@ const searchOrders = useCallback(async () => {
   const refreshedData = data && !error ? await Promise.all(data.map(async (order: any) => {
     const network = String(order.network ?? "").toLowerCase();
     if (network !== "mtn_express" && network !== "atbigtime") return order;
-    const { data: checked, error: checkError } = await supabase.functions.invoke("check-order", { body: { reference: order.provider_reference } });
+    const reference = order.provider_reference ?? (order as any).provider_order_id;
+    if (!reference) return order;
+    const { data: checked, error: checkError } = await supabase.functions.invoke("check-order", {
+      body: { reference },
+    });
     if (checkError) console.error("[v0] Order status check failed:", checkError);
     return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
   })) : data;

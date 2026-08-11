@@ -763,7 +763,7 @@ const searchOrders = useCallback(async () => {
     // Search subagent orders first
     let subagentQuery = supabase
       .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id")
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id, provider_reference, provider_order_id")
       .eq("subagent_store_id", store?.id);
 
     if (noSpaces.length === 36 && raw.includes("-")) {
@@ -781,7 +781,7 @@ const searchOrders = useCallback(async () => {
     if (store?.agent_store_id) {
       let agentQuery = supabase
         .from("orders")
-        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id")
+        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id, provider_reference, provider_order_id")
         .eq("agent_store_id", store.agent_store_id)
         .is("subagent_store_id", null); // Only direct agent orders
 
@@ -803,7 +803,11 @@ const searchOrders = useCallback(async () => {
     const refreshedOrders = await Promise.all(allOrders.map(async (order: any) => {
     const network = String(order.network ?? "").toLowerCase();
     if (network !== "mtn_express" && network !== "atbigtime") return order;
-    const { data: checked, error: checkError } = await supabase.functions.invoke("check-order", { body: { reference: order.provider_reference } });
+    const reference = order.provider_reference ?? (order as any).provider_order_id;
+    if (!reference) return order;
+    const { data: checked, error: checkError } = await supabase.functions.invoke("check-order", {
+      body: { reference },
+    });
     if (checkError) console.error("[v0] Order status check failed:", checkError);
     return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
   }));
