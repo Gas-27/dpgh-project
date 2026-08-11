@@ -1357,6 +1357,7 @@ const searchOrders = async () => {
     const refreshedData = await Promise.all(data.map(async (order: any) => {
     const existingStatuses = [order.order_status, order.status, order.fulfillment_status].map((value) => String(value ?? "").toLowerCase());
     if (existingStatuses.includes("refunded")) return { ...order, order_status: "refunded", status: "refunded", fulfillment_status: "refunded" };
+    if (existingStatuses.some((status) => ["delivered", "completed", "failed", "failure", "cancelled", "canceled"].includes(status))) return order;
     const network = String(order.network ?? "").toLowerCase();
     if (network !== "mtn_express" && network !== "atbigtime") return order;
       const reference = order.provider_reference ?? order.provider_order_id;
