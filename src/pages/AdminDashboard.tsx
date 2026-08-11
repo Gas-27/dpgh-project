@@ -1959,6 +1959,7 @@ const AdminDashboard = () => {
             .update({
               fulfillment_status: "refunded",
               status: "refunded",
+              order_status: "refunded",
               refunded_amount: refundAmount,
               refunded_at: new Date().toISOString(),
             })
@@ -1966,7 +1967,7 @@ const AdminDashboard = () => {
           if (richUpdate.error) {
             const basicUpdate = await supabase
               .from("orders")
-              .update({ fulfillment_status: "refunded", status: "refunded" })
+              .update({ fulfillment_status: "refunded", status: "refunded", order_status: "refunded" })
               .eq("id", orderId);
             refundErr = basicUpdate.error;
           }
@@ -1976,7 +1977,7 @@ const AdminDashboard = () => {
             setOrders((prev) =>
               prev.map((o) =>
                 o.id === orderId
-                  ? { ...o, fulfillment_status: "refunded", status: "refunded", refunded_amount: refundAmount }
+                  ? { ...o, fulfillment_status: "refunded", status: "refunded", order_status: "refunded", refunded_amount: refundAmount }
                   : o
               )
             );
@@ -2150,6 +2151,7 @@ const AdminDashboard = () => {
           .update({
             fulfillment_status: "completed",
             status: "completed",
+            order_status: "completed",
             refunded_amount: null,
             refunded_at: null,
           })

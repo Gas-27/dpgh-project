@@ -814,6 +814,8 @@ const searchOrders = useCallback(async () => {
     allOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
     const refreshedOrders = await Promise.all(allOrders.map(async (order: any) => {
+    const existingStatuses = [order.order_status, order.status, order.fulfillment_status].map((value) => String(value ?? "").toLowerCase());
+    if (existingStatuses.includes("refunded")) return { ...order, order_status: "refunded", status: "refunded", fulfillment_status: "refunded" };
     const network = String(order.network ?? "").toLowerCase();
     if (network !== "mtn_express" && network !== "atbigtime") return order;
     const reference = order.provider_reference ?? (order as any).provider_order_id;

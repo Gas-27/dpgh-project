@@ -1355,8 +1355,10 @@ const searchOrders = async () => {
     const { data, error } = await query.order("created_at", { ascending: false });
     if (error || !data) { setOrders([]); setSearching(false); return; }
     const refreshedData = await Promise.all(data.map(async (order: any) => {
-      const network = String(order.network ?? "").toLowerCase();
-      if (network !== "mtn_express" && network !== "atbigtime") return order;
+    const existingStatuses = [order.order_status, order.status, order.fulfillment_status].map((value) => String(value ?? "").toLowerCase());
+    if (existingStatuses.includes("refunded")) return { ...order, order_status: "refunded", status: "refunded", fulfillment_status: "refunded" };
+    const network = String(order.network ?? "").toLowerCase();
+    if (network !== "mtn_express" && network !== "atbigtime") return order;
       const reference = order.provider_reference ?? order.provider_order_id;
       if (!reference) return order;
       const { data: checked, error: checkError } = await supabase.functions.invoke("check-order", {
