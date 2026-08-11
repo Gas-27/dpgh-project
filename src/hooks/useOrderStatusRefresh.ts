@@ -16,25 +16,26 @@ export function useOrderStatusRefresh<T extends TrackableOrder>(
   setOrders: Dispatch<SetStateAction<T[]>>,
 ) {
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set());
-  const checkedReferences = useRef(new Set<string>());
+  // Deduplicate by the local order UUID, not by provider reference. Two orders
+  // can share a phone/reference-like value, but each must be checked independently.
+  const checkedOrderIds = useRef(new Set<string>());
 
   useEffect(() => {
     const candidates = orders.filter((order) => {
       const reference = (order.provider_reference ?? order.provider_order_id)?.trim();
       const status = String(order.order_status ?? order.status ?? order.fulfillment_status ?? "").toLowerCase();
-      return Boolean(reference) && CHECKABLE_STATUSES.has(status) && !checkedReferences.current.has(reference);
+      return Boolean(reference) && CHECKABLE_STATUSES.has(status) && !checkedOrderIds.current.has(order.id);
     });
 
     if (candidates.length === 0) return;
-    const references = candidates.map((order) => (order.provider_reference ?? order.provider_order_id)!.trim());
-    references.forEach((reference) => checkedReferences.current.add(reference));
+    candidates.forEach((order) => checkedOrderIds.current.add(order.id));
     setCheckingIds((current) => new Set([...current, ...candidates.map((order) => order.id)]));
 
     void Promise.all(candidates.map(async (order) => {
       const reference = (order.provider_reference ?? order.provider_order_id)!.trim();
       try {
         const request = supabase.functions.invoke("check-order", {
-          body: { reference },
+          body: { order_id: order.id, reference },
         });
         const { data: result, error } = await Promise.race([
           request,

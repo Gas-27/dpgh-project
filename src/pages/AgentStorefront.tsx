@@ -893,7 +893,7 @@ const searchOrders = useCallback(async () => {
     const reference = order.provider_reference ?? (order as any).provider_order_id;
     if (!reference) return order;
     const { data: checked, error: checkError } = await supabase.functions.invoke("check-order", {
-      body: { reference },
+      body: { order_id: order.id, reference },
     });
     if (checkError) console.error("[v0] Order status check failed:", checkError);
     return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
