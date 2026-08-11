@@ -2523,7 +2523,7 @@ const SubSubagentDashboard = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {transferRecipients.map((r) => (
-                          <SelectItem key={r.recipient_code} value={r.recipient_code}>
+                          <SelectItem key={r.id} value={r.id}>
                             {r.account_holder_name} • {r.mobile_money_network?.toUpperCase()}: {r.mobile_money_number}
                           </SelectItem>
                         ))}
