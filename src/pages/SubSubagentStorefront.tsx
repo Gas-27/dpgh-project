@@ -587,10 +587,10 @@ export function SubSubagentStorefront() {
         if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
       });
 
-      // Final customer price = sub-subagent's own sell_price if set, else the cost-from-agent
+      // Final customer price = sub-subagent's own customer_sell_price if set, else the cost-from-agent
       const priceMap: Record<string, number> = { ...baseCostMap };
       (ownSellRes.data || []).forEach((p: any) => { 
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+        if (p.customer_sell_price != null) priceMap[p.package_id] = Number(p.customer_sell_price); 
       });
       
       setSubagentPrices(priceMap);
@@ -622,11 +622,11 @@ export function SubSubagentStorefront() {
       )
       .subscribe();
     
-    // Rebuild price exactly like the dashboard: sell_price if set, else cost-from-agent
+    // Rebuild price exactly like the dashboard: customer_sell_price if set, else cost-from-agent
     // (admin → parent's agent cost → parent's sub-subagent template).
     const refetchMergedPrices = async () => {
       const [ownSell, agentCost, templatePrices, pkgs] = await Promise.all([
-        supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
+        supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", store.id),
         store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null }),
         store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null }),
         supabase.from("data_packages").select("id, price").eq("active", true),
@@ -643,10 +643,10 @@ export function SubSubagentStorefront() {
       (templatePrices.data || []).forEach((p: any) => { 
         if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
       });
-      // Final: sub-subagent's own sell_price if set, else cost-from-agent
+      // Final: sub-subagent's own customer_sell_price if set, else cost-from-agent
       const priceMap: Record<string, number> = { ...baseCostMap };
       (ownSell.data || []).forEach((p: any) => { 
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price); 
+        if (p.customer_sell_price != null) priceMap[p.package_id] = Number(p.customer_sell_price); 
       });
       
       setSubagentPrices(priceMap);
