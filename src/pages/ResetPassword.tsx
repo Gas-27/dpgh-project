@@ -19,10 +19,19 @@ const ResetPassword = () => {
     const { toast } = useToast();
 
     useEffect(() => {
-        // If this page receives a SIGNED_IN event (e.g. Google OAuth landed
-        // here because of a misconfigured Supabase Site URL), route the user
-        // to their correct dashboard immediately.
-        // Only activate the reset form on PASSWORD_RECOVERY.
+        // Supabase recovery links normally arrive in the URL hash as:
+        // #access_token=...&refresh_token=...&type=recovery
+        // Supabase may emit SIGNED_IN before PASSWORD_RECOVERY while it
+        // exchanges that hash. Treat the URL as a recovery flow immediately
+        // so the initial getSession check cannot redirect to /login or a dashboard.
+        const url = new URL(window.location.href);
+        const isRecoveryLink =
+            url.searchParams.get("type") === "recovery" ||
+            new URLSearchParams(url.hash.replace(/^#/, "")).get("type") === "recovery";
+        const recoveryFlow = { current: isRecoveryLink };
+
+        // If this page receives a normal SIGNED_IN event (not a recovery link),
+        // route the user to their correct dashboard.
         const routeToDashboard = async (userId: string) => {
             const { data: rolesData } = await supabase
                 .from("user_roles")
@@ -43,24 +52,28 @@ const ResetPassword = () => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, session) => {
                 if (event === "PASSWORD_RECOVERY") {
+                    recoveryFlow.current = true;
                     setValidSession(true);
                 } else if (event === "SIGNED_IN" && session?.user) {
-                    routeToDashboard(session.user.id);
+                    if (recoveryFlow.current) {
+                        setValidSession(true);
+                    } else {
+                        routeToDashboard(session.user.id);
+                    }
                 }
             }
         );
 
-        // Also check for any error params in URL (bad_oauth_state etc.)
-        const url = new URL(window.location.href);
-        if (url.searchParams.get("error_code")) {
+        // Error parameters indicate an invalid or expired reset link.
+        if (url.searchParams.get("error_code") || url.searchParams.get("error")) {
             navigate("/login", { replace: true });
-            return;
+            return () => subscription.unsubscribe();
         }
 
-        // If there is already an active session but no PASSWORD_RECOVERY event
-        // (meaning the user navigated here directly while logged in), route away.
+        // Do not redirect a recovery session. The recovery token may already
+        // have been consumed from the URL by Supabase before getSession runs.
         supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user && !url.hash.includes("type=recovery") && !url.searchParams.get("type")) {
+            if (session?.user && !recoveryFlow.current) {
                 routeToDashboard(session.user.id);
             }
         });
