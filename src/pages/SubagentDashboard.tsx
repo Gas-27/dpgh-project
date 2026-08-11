@@ -1459,7 +1459,7 @@ const SubagentDashboard = () => {
       const payload: any = {
         requester_type: "subagent",
         requester_id: subagentStore.id,
-        amount: amountAfterFee, // Send fee-deducted amount to edge function
+        amount: amount, // Server calculates the fee and sends only the net amount
         original_amount: amount, // Track original amount for records
         fee_percentage: feePercentage * 100, // Store fee percentage for records
         withdrawal_source: "wallet_balance",

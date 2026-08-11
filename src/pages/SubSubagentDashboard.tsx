@@ -1057,7 +1057,9 @@ const SubSubagentDashboard = () => {
       const payload: any = {
         requester_type: "sub_subagent",
         requester_id: subagentStore.id,
-        amount: amountAfterFee,
+        amount: amount,
+        original_amount: amount,
+        fee_percentage: feePercentage * 100,
         withdrawal_source: "wallet_balance",
       };
       if (createNewRecipient) {
