@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
-import { useGhDataOrderStatusRefresh } from "@/hooks/useGhDataOrderStatusRefresh";
+import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 
 // ──────────────────────────────────────────────────────────── Types ─────
 type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel";
@@ -1187,7 +1187,7 @@ const Packages = () => {
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
-  const checkingOrderIds = useGhDataOrderStatusRefresh(orders, setOrders);
+  const checkingOrderIds = useOrderStatusRefresh(orders, setOrders);
   const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services" | "bulk">("data");
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
@@ -1358,7 +1358,7 @@ const searchOrders = async () => {
       const network = String(order.network ?? "").toLowerCase();
       if (network !== "mtn_express" && network !== "atbigtime") return order;
       const { data: checked, error: checkError } = await supabase.functions.invoke("check-order", { body: { reference: order.provider_reference } });
-      if (checkError) console.error("[v0] GHDataConnect Track Order check failed:", checkError);
+      if (checkError) console.error("[v0] Order status check failed:", checkError);
       return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
     }));
     // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages

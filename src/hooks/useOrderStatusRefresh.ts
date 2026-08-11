@@ -10,7 +10,7 @@ type TrackableOrder = {
 };
 
 const CHECKABLE_STATUSES = new Set(["processing", "pending", "waiting"]);
-export function useGhDataOrderStatusRefresh<T extends TrackableOrder>(
+export function useOrderStatusRefresh<T extends TrackableOrder>(
   orders: T[],
   setOrders: Dispatch<SetStateAction<T[]>>,
 ) {
