@@ -1749,22 +1749,36 @@ const AgentDashboard = () => {
       // exactly what the deployed edge function expects.
       payload.requester_id = store.id;
 
-      const response = await fetch(
-        "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
-        {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 30_000);
+      let response: Response;
+      try {
+        response = await fetch(
+          "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          }
+        );
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
-      const data = await response.json();
+      const raw = await response.text();
+      let data: any = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { error: raw || `Withdrawal failed (${response.status})` };
+      }
 
-      if (!response.ok) {
-        throw new Error(data.error || "Withdrawal failed");
+      if (!response.ok || data.success === false) {
+        throw new Error(data.error || data.message || `Withdrawal failed (${response.status})`);
       }
 
       toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent successfully (after fee)` });

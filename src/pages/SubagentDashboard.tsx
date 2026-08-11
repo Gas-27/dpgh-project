@@ -1484,22 +1484,30 @@ const SubagentDashboard = () => {
         throw new Error("Authentication failed. Please log in again.");
       }
 
-      const response = await fetch(
-        "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
-        {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Withdrawal failed");
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 30_000);
+      let response: Response;
+      try {
+        response = await fetch(
+          "https://uloaiqmknsrknqikbmtb.supabase.co/functions/v1/create-payout-request",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          }
+        );
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+      const raw = await response.text();
+      let data: any = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch { data = { error: raw || `Withdrawal failed (${response.status})` }; }
+      if (!response.ok || data.success === false) {
+        throw new Error(data.error || data.message || `Withdrawal failed (${response.status})`);
       }
 
       toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent (after ${(feePercentage * 100).toFixed(1)}% fee). Wallet updated.` });
