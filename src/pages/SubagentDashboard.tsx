@@ -1484,14 +1484,17 @@ const SubagentDashboard = () => {
         throw new Error("Authentication failed. Please log in again.");
       }
 
-      const { data, error } = await supabase.functions.invoke("create-payout-request", {
-        body: payload,
+      const response = await fetch("https://api.dataplug.store/functions/v1/create-payout-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(payload),
       });
-      if (error) {
-        throw new Error(error.message || "Withdrawal failed");
-      }
-      if (!data || data.success === false) {
-        throw new Error(data?.error || data?.message || "Withdrawal failed");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.success === false) {
+        throw new Error(data?.error || data?.message || `Withdrawal failed (${response.status})`);
       }
 
       toast({ title: "Transfer Sent!", description: `GHC ${amountAfterFee.toFixed(2)} sent (after ${(feePercentage * 100).toFixed(1)}% fee). Wallet updated.` });
