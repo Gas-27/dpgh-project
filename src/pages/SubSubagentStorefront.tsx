@@ -558,8 +558,11 @@ export function SubSubagentStorefront() {
       //      sub_subagent_package_prices.base_price WHERE subagent_store_id = parent AND sub_subagent_store_id IS NULL
       const [pkgRes, ownSellRes, agentCostRes, templatePricesRes, appSettingsRes, parentSubagentInfoRes] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
-        // This sub-subagent's own selling price (what they saved in their dashboard)
-        supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", matched.id),
+        // This sub-subagent's own selling price (what they saved in their dashboard).
+        // customer_sell_price is a dedicated column, separate from sell_price (which is
+        // the parent subagent's cost price to this sub-subagent) so the two never overwrite
+        // each other.
+        supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", matched.id),
         // Parent subagent's own cost from their agent (base_price keyed by agent_store_id)
         matched.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id) : Promise.resolve({ data: null, error: null }),
         // Parent subagent's sub-subagent template price (sub_subagent_store_id IS NULL)

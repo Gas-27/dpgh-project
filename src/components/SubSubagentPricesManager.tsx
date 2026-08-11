@@ -127,37 +127,66 @@ export default function SubSubagentPricesManager({
         }
       }
       
-      // Save to sub_subagent_package_prices table
-      // This saves prices this subagent charges their sub-subagent
+      // Save to sub_subagent_package_prices table.
+      // This saves the price THIS subagent charges their sub-subagent (their cost),
+      // stored in base_price/subagent_minimum_price/sell_price.
+      //
+      // IMPORTANT: this must NEVER delete-then-insert. The sub-subagent's own storefront
+      // selling price lives on the SAME row in a separate `customer_sell_price` column
+      // (set from the sub-subagent's own dashboard). Deleting the row here would silently
+      // wipe out that price and make it look like the sub-subagent's saved price
+      // "disappeared" from their storefront. Update in place if a row exists, otherwise
+      // insert without touching customer_sell_price.
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        
-        // First delete existing entry for this subagent + sub-subagent + package
-        await supabase
-          .from("sub_subagent_package_prices")
-          .delete()
-          .eq("subagent_store_id", subagentStoreId)
-          .eq("sub_subagent_store_id", selectedSubSubagentId)
-          .eq("package_id", packageId);
-        
-        // Then insert new price with all required fields
+
         // base_price = what this subagent pays their parent (from subagentPrices prop)
         // sell_price = what this subagent charges their sub-subagent (the entered price)
         const costToSubagent = subagentPrices?.[packageId] ?? price;
-        const { error } = await supabase
-          .from("sub_subagent_package_prices")
-          .insert({
-            subagent_store_id: subagentStoreId,
-            sub_subagent_store_id: selectedSubSubagentId,
-            package_id: packageId,
-            base_price: costToSubagent,
-            subagent_minimum_price: costToSubagent,
-            sell_price: price
-          });
 
-        if (error) {
-          console.error("[v0] Error inserting sub-subagent price:", error);
-          throw error;
+        const { data: existingRows, error: fetchExistingError } = await supabase
+          .from("sub_subagent_package_prices")
+          .select("id")
+          .eq("subagent_store_id", subagentStoreId)
+          .eq("sub_subagent_store_id", selectedSubSubagentId)
+          .eq("package_id", packageId)
+          .order("created_at", { ascending: false });
+
+        if (fetchExistingError) {
+          console.error("[v0] Error checking existing sub-subagent price:", fetchExistingError);
+          throw fetchExistingError;
+        }
+
+        if (existingRows && existingRows.length > 0) {
+          const { error } = await supabase
+            .from("sub_subagent_package_prices")
+            .update({
+              base_price: costToSubagent,
+              subagent_minimum_price: costToSubagent,
+              sell_price: price
+            })
+            .eq("id", existingRows[0].id);
+
+          if (error) {
+            console.error("[v0] Error updating sub-subagent price:", error);
+            throw error;
+          }
+        } else {
+          const { error } = await supabase
+            .from("sub_subagent_package_prices")
+            .insert({
+              subagent_store_id: subagentStoreId,
+              sub_subagent_store_id: selectedSubSubagentId,
+              package_id: packageId,
+              base_price: costToSubagent,
+              subagent_minimum_price: costToSubagent,
+              sell_price: price
+            });
+
+          if (error) {
+            console.error("[v0] Error inserting sub-subagent price:", error);
+            throw error;
+          }
         }
       }
 

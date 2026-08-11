@@ -494,7 +494,8 @@ const SubSubagentDashboard = () => {
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
           supabase.from("transfer_recipients").select("*").eq("user_id", user?.id ?? "").eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
+          // This sub-subagent's OWN customer-facing selling price (set on their own dashboard).
+          supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
           store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null, error: null })
@@ -553,11 +554,13 @@ const SubSubagentDashboard = () => {
         });
         setBasePrices(basePriceMap);
         
-        // Build subagent prices
+        // Build subagent prices — this is the sub-subagent's OWN customer-facing price,
+        // stored in customer_sell_price (kept separate from sell_price, which the parent
+        // subagent owns for their cost pricing to this sub-subagent).
         const subagentPriceMap: Record<string, number> = {};
         (subagentPricesResult.data || []).forEach((p: any) => {
-          if (p.sell_price !== null && p.sell_price !== undefined) {
-            subagentPriceMap[p.package_id] = Number(p.sell_price);
+          if (p.customer_sell_price !== null && p.customer_sell_price !== undefined) {
+            subagentPriceMap[p.package_id] = Number(p.customer_sell_price);
           }
         });
         setSubagentPrices(subagentPriceMap);
@@ -620,7 +623,8 @@ const SubSubagentDashboard = () => {
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
           supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
-          supabase.from("sub_subagent_package_prices").select("package_id, sell_price").eq("sub_subagent_store_id", store.id),
+          // This sub-subagent's OWN customer-facing selling price (set on their own dashboard).
+          supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
@@ -664,16 +668,17 @@ const SubSubagentDashboard = () => {
             basePriceMap[p.package_id] = Number(p.base_price);
           }
         });
-        setBasePrices(basePriceMap);
-        
-        const subagentPriceMap: Record<string, number> = {};
-        (subagentPricesResult.data || []).forEach((p: any) => {
-          if (p.sell_price !== null && p.sell_price !== undefined) {
-            subagentPriceMap[p.package_id] = Number(p.sell_price);
-          }
-        });
-        setSubagentPrices(subagentPriceMap);
-      }
+  setBasePrices(basePriceMap);
+  
+  // This sub-subagent's OWN customer-facing price, stored in customer_sell_price.
+  const subagentPriceMap: Record<string, number> = {};
+  (subagentPricesResult.data || []).forEach((p: any) => {
+  if (p.customer_sell_price !== null && p.customer_sell_price !== undefined) {
+  subagentPriceMap[p.package_id] = Number(p.customer_sell_price);
+  }
+  });
+  setSubagentPrices(subagentPriceMap);
+  }
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ title: "Error", description: "Failed to load dashboard", variant: "destructive" });
@@ -1209,6 +1214,14 @@ const SubSubagentDashboard = () => {
       // so a delete-then-insert here silently fails to delete and leaves the old row
       // behind — the price then appears to "revert" on refresh because the stale row
       // is read back. Instead, update the existing row if one exists, otherwise insert.
+      //
+      // IMPORTANT: this writes to `customer_sell_price`, NOT `sell_price`. The `sell_price`
+      // column on this table means "the price the parent SUBAGENT charges THIS sub-subagent"
+      // (their cost) and is written by the subagent's own price manager — see
+      // SubSubagentPricesManager.tsx and SubagentDashboard.tsx's refund logic. Writing the
+      // sub-subagent's own customer-facing price into that same column used to let a
+      // subagent-side price edit silently wipe out the sub-subagent's storefront price
+      // (and vice versa), which is why the two are now kept in separate columns.
       const costFromAgentBase = (packageId: string, price: number) => basePrices[packageId] ?? price;
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
@@ -1229,12 +1242,12 @@ const SubSubagentDashboard = () => {
         if (existingRows && existingRows.length > 0) {
           // Update the most recent row (if duplicates exist from before this fix,
           // they'll be cleaned up separately; updating the newest keeps reads correct).
+          // Only touch customer_sell_price here — leave base_price/subagent_minimum_price/
+          // sell_price alone since those belong to the subagent's cost-side price manager.
           const { error } = await supabase
             .from("sub_subagent_package_prices")
             .update({
-              base_price: costFromAgent,
-              subagent_minimum_price: costFromAgent,
-              sell_price: price
+              customer_sell_price: price
             })
             .eq("id", existingRows[0].id);
 
@@ -1243,8 +1256,10 @@ const SubSubagentDashboard = () => {
             throw error;
           }
         } else {
-          // Insert sell_price (what this sub-subagent charges customers).
-          // base_price and subagent_minimum_price = their cost from the parent subagent.
+          // Insert customer_sell_price (what this sub-subagent charges customers).
+          // base_price and subagent_minimum_price = their cost from the parent subagent,
+          // recorded for reference only (sell_price is left unset here on purpose — it is
+          // owned by the subagent's price manager).
           const { error } = await supabase
             .from("sub_subagent_package_prices")
             .insert({
@@ -1253,7 +1268,8 @@ const SubSubagentDashboard = () => {
               package_id: packageId,
               base_price: costFromAgent,
               subagent_minimum_price: costFromAgent,
-              sell_price: price
+              sell_price: costFromAgent,
+              customer_sell_price: price
             });
 
           if (error) {
