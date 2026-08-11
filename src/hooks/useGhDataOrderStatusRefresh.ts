@@ -32,7 +32,7 @@ export function useGhDataOrderStatusRefresh<T extends TrackableOrder>(
     void Promise.all(candidates.map(async (order) => {
       const reference = order.provider_reference!.trim();
       try {
-        const request = supabase.functions.invoke("ghdataconnect-check-order", {
+        const request = supabase.functions.invoke("check-order", {
           body: { reference },
         });
         const { data: result, error } = await Promise.race([
