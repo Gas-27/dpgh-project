@@ -146,22 +146,45 @@ export async function createPayoutRequest(
     };
   }
 ) {
-  const response = await fetch(PAYOUT_API, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 30_000);
 
-  const result = await response.json();
+  try {
+    const response = await fetch(PAYOUT_API, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    throw new Error(result.error || "Payout request failed");
+    const raw = await response.text();
+    let result: any = {};
+    try {
+      result = raw ? JSON.parse(raw) : {};
+    } catch {
+      result = { error: raw || `Payout request failed (${response.status})` };
+    }
+
+    if (!response.ok) {
+      throw new Error(result.error || result.message || `Payout request failed (${response.status})`);
+    }
+
+    if (result.success === false) {
+      throw new Error(result.error || result.message || "Payout request failed");
+    }
+
+    return result;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("The transfer request timed out. Please check payout history before trying again.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-
-  return result;
 }
 
 // Deactivate recipient
