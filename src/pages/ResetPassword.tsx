@@ -30,36 +30,14 @@ const ResetPassword = () => {
             new URLSearchParams(url.hash.replace(/^#/, "")).get("type") === "recovery";
         const recoveryFlow = { current: isRecoveryLink };
 
-        // If this page receives a normal SIGNED_IN event (not a recovery link),
-        // route the user to their correct dashboard.
-        const routeToDashboard = async (userId: string) => {
-            const { data: rolesData } = await supabase
-                .from("user_roles")
-                .select("role")
-                .eq("user_id", userId);
-            const roles = (rolesData ?? []).map((r: any) => r.role);
-            if (roles.includes("admin")) {
-                navigate("/only-admin/log.in", { replace: true });
-            } else if (roles.includes("agent")) {
-                navigate("/agent", { replace: true });
-            } else if (roles.includes("subagent")) {
-                navigate("/subagent-dashboard", { replace: true });
-            } else {
-                navigate("/user-dashboard", { replace: true });
-            }
-        };
-
+        // A recovery page must never route to a dashboard while the reset
+        // session is being established. The recovery token can be exchanged
+        // asynchronously, and Supabase may emit SIGNED_IN before PASSWORD_RECOVERY.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, session) => {
-                if (event === "PASSWORD_RECOVERY") {
+                if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session?.user) {
                     recoveryFlow.current = true;
                     setValidSession(true);
-                } else if (event === "SIGNED_IN" && session?.user) {
-                    if (recoveryFlow.current) {
-                        setValidSession(true);
-                    } else {
-                        routeToDashboard(session.user.id);
-                    }
                 }
             }
         );
@@ -73,8 +51,10 @@ const ResetPassword = () => {
         // Do not redirect a recovery session. The recovery token may already
         // have been consumed from the URL by Supabase before getSession runs.
         supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user && !recoveryFlow.current) {
-                routeToDashboard(session.user.id);
+            // Keep the user on this page so they can enter the new password.
+            if (session?.user) {
+                recoveryFlow.current = true;
+                setValidSession(true);
             }
         });
 
