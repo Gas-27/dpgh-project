@@ -72,9 +72,12 @@ export default async function handler(
         size_gb: sizeGb,
         size_gb_text: packageData.name || null,
         amount: amount,
-        status: 'pending',
+        // API requests are authorized against the agent's prepaid balance,
+        // so the order is paid at creation just like a wallet order.
+        status: 'paid',
         fulfillment_status: 'pending',
         payment_method: 'api',
+        source: 'api',
         agent_store_id: agentStore.id,
         selling_price: amount,
         base_price: amount,
