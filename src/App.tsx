@@ -8,6 +8,8 @@ import AuthGuard from "@/components/AuthGuard";
 import { AuthProvider } from "@/hooks/useAuth";
 import { DOMAINS } from "@/config/domains";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import NotificationPrompt from "@/components/NotificationPrompt";
 import ChatBot from "@/components/ChatBot";
@@ -119,6 +121,34 @@ const RouteLoader = () => (
   </div>
 );
 
+// Password-reset emails always link to the Supabase project's configured
+// Site URL, which may not match the exact domain/path (e.g. "www" vs bare
+// domain, or missing "/reset-password") the user actually requested the
+// reset from. When that happens Supabase lands the recovery tokens on
+// whatever page the Site URL points to instead of "/reset-password", so the
+// reset form never mounts. This catcher runs on every page and forwards a
+// recovery session to "/reset-password" regardless of where it landed.
+const PasswordRecoveryRedirect = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (window.location.pathname !== "/reset-password" && window.location.hash.includes("type=recovery")) {
+      navigate(`/reset-password${window.location.hash}`, { replace: true });
+      return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" && window.location.pathname !== "/reset-password") {
+        navigate("/reset-password", { replace: true });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  return null;
+};
+
 // Quick redirect from old /store/:storeName to the subdomain
 const RedirectToStoreSubdomain = () => {
   const { storeName } = useParams<{ storeName: string }>();
@@ -158,6 +188,7 @@ const App = () => {
         <NotificationPrompt />
         <BrowserRouter>
           <AuthProvider>
+            <PasswordRecoveryRedirect />
             <Suspense fallback={<RouteLoader />}>
               {isSubagentDomain ? (
                 // agentsstore.shop - Subagent domain with separate routing
