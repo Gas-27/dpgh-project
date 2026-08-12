@@ -75,6 +75,7 @@ export default async function handler(
         // API requests are authorized against the agent's prepaid balance,
         // so the order is paid at creation just like a wallet order.
         status: 'paid',
+        order_status: 'processing',
         fulfillment_status: 'pending',
         payment_method: 'api',
         source: 'api',
