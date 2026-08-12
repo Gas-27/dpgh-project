@@ -66,12 +66,22 @@ const SubagentLogin = () => {
     }
 
     const roles = rolesData.map(r => r.role);
-    
-    // Only allow subagent login on this page
-    if (!roles.includes("subagent")) {
+
+    // This login page serves agents, subagents, and sub-subagents.
+    // Route each to their own dashboard based on their verified role.
+    let redirectTo: string | null = null;
+    if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) {
+      redirectTo = "/sub-subagent-dashboard";
+    } else if (roles.includes("subagent")) {
+      redirectTo = "/dashboard";
+    } else if (roles.includes("agent")) {
+      redirectTo = "/agent";
+    }
+
+    if (!redirectTo) {
       toast({
         title: "Access Denied",
-        description: "This login page is only for agents. Please use the main site to login.",
+        description: "This account does not have agent, subagent, or sub-subagent access.",
         variant: "destructive",
       });
       await supabase.auth.signOut();
@@ -80,7 +90,7 @@ const SubagentLogin = () => {
     }
 
     toast({ title: "Welcome back!", description: "Redirecting to your dashboard..." });
-    navigate("/dashboard", { replace: true });
+    navigate(redirectTo, { replace: true });
     setLoading(false);
   };
 
@@ -120,8 +130,12 @@ const SubagentLogin = () => {
         
         if (rolesData) {
           const roles = rolesData.map(r => r.role);
-          if (roles.includes("subagent")) {
+          if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) {
+            navigate("/sub-subagent-dashboard", { replace: true });
+          } else if (roles.includes("subagent")) {
             navigate("/dashboard", { replace: true });
+          } else if (roles.includes("agent")) {
+            navigate("/agent", { replace: true });
           }
         }
       }

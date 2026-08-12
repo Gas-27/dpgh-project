@@ -184,6 +184,14 @@ const App = () => {
                       </AuthGuard>
                     }
                   />
+                  <Route
+                    path="/agent"
+                    element={
+                      <AuthGuard requiredRole="agent">
+                        <AgentDashboard />
+                      </AuthGuard>
+                    }
+                  />
                   {/* Catch-all routes for storefronts */}
                   <Route path="/:subagentStoreName/store/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/:storeName" element={<SubagentStorefront />} />
