@@ -65,17 +65,16 @@ const SubagentLogin = () => {
       return;
     }
 
-    const roles = rolesData.map(r => r.role);
+    const roles = rolesData.map(r => String(r.role).trim().toLowerCase());
 
-    // This login page serves agents, subagents, and sub-subagents.
-    // Route each to their own dashboard based on their verified role.
+    // Route each verified role to its canonical dashboard domain.
     let redirectTo: string | null = null;
     if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) {
-      redirectTo = "/sub-subagent-dashboard";
+      redirectTo = "https://agentsstore.shop/sub-subagent-dashboard";
     } else if (roles.includes("subagent")) {
-      redirectTo = "/dashboard";
+      redirectTo = "https://agentsstore.shop/dashboard";
     } else if (roles.includes("agent")) {
-      redirectTo = "/agent";
+      redirectTo = "https://dataplug.store/agent";
     }
 
     if (!redirectTo) {
@@ -90,7 +89,7 @@ const SubagentLogin = () => {
     }
 
     toast({ title: "Welcome back!", description: "Redirecting to your dashboard..." });
-    navigate(redirectTo, { replace: true });
+    window.location.replace(redirectTo);
     setLoading(false);
   };
 
@@ -129,13 +128,13 @@ const SubagentLogin = () => {
           .eq("user_id", session.user.id);
         
         if (rolesData) {
-          const roles = rolesData.map(r => r.role);
+          const roles = rolesData.map(r => String(r.role).trim().toLowerCase());
           if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) {
-            navigate("/sub-subagent-dashboard", { replace: true });
+            window.location.replace("https://agentsstore.shop/sub-subagent-dashboard");
           } else if (roles.includes("subagent")) {
-            navigate("/dashboard", { replace: true });
+            window.location.replace("https://agentsstore.shop/dashboard");
           } else if (roles.includes("agent")) {
-            navigate("/agent", { replace: true });
+            window.location.replace("https://dataplug.store/agent");
           }
         }
       }

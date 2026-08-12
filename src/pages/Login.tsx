@@ -116,18 +116,18 @@ const Login = () => {
         return;
       }
       
-      // Non-admin user routing — every role lands on its own dashboard
-      let redirectTo = "/user-dashboard"; // default for customers and any unrecognised role
+      // Route each verified role to its canonical dashboard domain.
+      let redirectTo = "https://dataplug.store/user-dashboard";
       if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) {
-        redirectTo = "/sub-subagent-dashboard";
+        redirectTo = "https://agentsstore.shop/sub-subagent-dashboard";
       } else if (roles.includes("subagent")) {
-        redirectTo = "/subagent-dashboard";
+        redirectTo = "https://agentsstore.shop/dashboard";
       } else if (roles.includes("agent")) {
-        redirectTo = "/agent";
+        redirectTo = "https://dataplug.store/agent";
       }
 
       toast({ title: "Welcome back!", description: "Redirecting..." });
-      navigate(redirectTo, { replace: true });
+      window.location.replace(redirectTo);
     } else {
       toast({
         title: "Error",
@@ -174,15 +174,15 @@ const Login = () => {
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id);
-        let route = "/";
+        let route = "https://dataplug.store/";
         if (rolesData) {
           const roles = rolesData.map(r => String(r.role).trim().toLowerCase());
-          if (roles.includes("admin")) route = "/admin";
-          else if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) route = "/sub-subagent-dashboard";
-          else if (roles.includes("subagent")) route = "/subagent-dashboard";
-          else if (roles.includes("agent")) route = "/agent";
+          if (roles.includes("admin")) route = "https://dataplug.store/admin";
+          else if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) route = "https://agentsstore.shop/sub-subagent-dashboard";
+          else if (roles.includes("subagent")) route = "https://agentsstore.shop/dashboard";
+          else if (roles.includes("agent")) route = "https://dataplug.store/agent";
         }
-        navigate(route, { replace: true });
+        window.location.replace(route);
       }
     };
     checkAndRedirect();
