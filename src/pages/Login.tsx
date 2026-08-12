@@ -39,13 +39,6 @@ const Login = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
-    if (["agentsstore.shop", "www.agentsstore.shop"].includes(window.location.hostname)) {
-      const destination = new URL("https://dataplug.store/login");
-      destination.search = window.location.search;
-      window.location.replace(destination.toString());
-      return;
-    }
-
     const authError = (location.state as { authError?: string } | null)?.authError;
     if (authError) {
       toast({ title: "Google sign-in failed", description: authError, variant: "destructive" });
@@ -57,7 +50,7 @@ const Login = () => {
     setGoogleLoading(true);
     // Use the exact domain in Supabase's Site URL (no www) so Supabase
     // honours the redirectTo instead of falling back to the Site URL root.
-    const appUrl = "https://dataplug.store";
+    const appUrl = window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -154,7 +147,7 @@ const Login = () => {
 
     setSendingReset(true);
     // Must match exactly the Site URL domain in Supabase URL Configuration
-    const appUrl = "https://dataplug.store";
+    const appUrl = window.location.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
       redirectTo: `${appUrl}/reset-password`,
     });
@@ -185,9 +178,9 @@ const Login = () => {
         if (rolesData) {
           const roles = rolesData.map(r => String(r.role).trim().toLowerCase());
           if (roles.includes("admin")) route = "/admin";
-          else if (roles.includes("agent")) route = "/agent";
-          else if (roles.includes("sub_subagent")) route = "/sub-subagent-dashboard";
+          else if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) route = "/sub-subagent-dashboard";
           else if (roles.includes("subagent")) route = "/subagent-dashboard";
+          else if (roles.includes("agent")) route = "/agent";
         }
         navigate(route, { replace: true });
       }
