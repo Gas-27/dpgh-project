@@ -39,6 +39,13 @@ const Login = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
+    if (["agentsstore.shop", "www.agentsstore.shop"].includes(window.location.hostname)) {
+      const destination = new URL("https://dataplug.store/login");
+      destination.search = window.location.search;
+      window.location.replace(destination.toString());
+      return;
+    }
+
     const authError = (location.state as { authError?: string } | null)?.authError;
     if (authError) {
       toast({ title: "Google sign-in failed", description: authError, variant: "destructive" });
@@ -118,12 +125,12 @@ const Login = () => {
       
       // Non-admin user routing — every role lands on its own dashboard
       let redirectTo = "/user-dashboard"; // default for customers and any unrecognised role
-      if (roles.includes("agent")) {
-        redirectTo = "/agent";
-      } else if (roles.includes("sub_subagent")) {
+      if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) {
         redirectTo = "/sub-subagent-dashboard";
       } else if (roles.includes("subagent")) {
         redirectTo = "/subagent-dashboard";
+      } else if (roles.includes("agent")) {
+        redirectTo = "/agent";
       }
 
       toast({ title: "Welcome back!", description: "Redirecting..." });
