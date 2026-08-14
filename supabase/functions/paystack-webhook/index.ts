@@ -768,6 +768,7 @@ Deno.serve(async (req) => {
       const recipientsJson = metadata.recipients;
       const agentStoreId = metadata.agent_store_id || null;
       const subagentStoreId = metadata.subagent_store_id || null;
+      const customerId = metadata.customer_id || null;
 
       if (!recipientsJson || !network) return new Response(JSON.stringify({ error: "Missing bulk order data" }), { status: 400, headers: corsHeaders });
 
@@ -818,6 +819,7 @@ Deno.serve(async (req) => {
             paystack_reference: `${reference}_${i + 1}`, payment_method: "paystack",
             selling_price: r.price, base_price: base, profit,
           };
+          if (customerId) od.customer_id = customerId;
           if (agentStoreId) od.agent_store_id = agentStoreId;
           if (subagentStoreId) od.subagent_store_id = subagentStoreId;
 
@@ -1041,6 +1043,7 @@ Deno.serve(async (req) => {
       paystack_reference: reference, payment_method: "paystack",
       selling_price: roundedBaseAmount, base_price: basePriceForOrder, profit: profitForOrder,
     };
+    if (metadata?.customer_id) orderData.customer_id = metadata.customer_id;
     if (agent_store_id) orderData.agent_store_id = agent_store_id;
     if (subagent_store_id) orderData.subagent_store_id = subagent_store_id;
     if (subsubagent_store_id) orderData.sub_subagent_store_id = subsubagent_store_id;

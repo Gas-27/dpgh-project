@@ -376,6 +376,14 @@ const PaymentDialog = ({
         datahubnetId = mashupMapping[sizeGbText];
       }
 
+      // Refresh the auth session at the moment of checkout. The auth context
+      // can still be loading for a small number of users, which previously
+      // caused customer_id to be sent as null even when the buyer had an account.
+      const { data: authData } = await supabase.auth.getUser();
+      const checkoutUser = authData.user ?? user;
+      const checkoutUserId = checkoutUser?.id ?? null;
+      const checkoutUserEmail = checkoutUser?.email?.trim() || accountEmail;
+
       // Mirror exactly how UserDashboard initializes payment:
       // amount = total including 1.98% Paystack fee, phone always in metadata
       const paystackTotal = Math.round((price + (price * PAYSTACK_CHARGE_PERCENT) / 100) * 100) / 100;
@@ -391,10 +399,10 @@ const PaymentDialog = ({
           network,
           package_name: displayPackageName,
           size_gb: packageInfo?.size_gb ?? null,
-          customer_id: user?.id || null,
+          customer_id: checkoutUserId,
           // Preserve the account's real email for records/receipts even though the
           // Paystack `email` field uses the guaranteed-valid phone-based address.
-          ...(accountEmail && { user_email: accountEmail }),
+          ...(checkoutUserEmail && { user_email: checkoutUserEmail }),
           // Pending agents (store not yet approved) must be treated as regular users —
           // send null so the edge function takes the direct data_packages path.
           agent_store_id: hasPendingAgentStore ? null : (actualStoreId || null),
