@@ -1772,6 +1772,14 @@ const AdminDashboard = () => {
           console.log("[v0] Order fetched from Supabase:", orderId);
         }
 
+        // A failed Paystack authorization with no transaction reference never
+        // captured money, so there is nothing to refund. Do not send it through
+        // wallet-refund routing or report it as a failed refund.
+        if (order.payment_method === "paystack" && order.status === "failed" && !order.paystack_reference) {
+          console.log("[v0] Skipping refund: Paystack payment was never captured", order.id);
+          continue;
+        }
+
         // Skip orders that are already refunded — check status, fulfillment_status,
         // and refunded_amount so no order can ever be refunded twice.
         // NOTE: order_status is intentionally NOT checked here because it is
@@ -1841,7 +1849,25 @@ const AdminDashboard = () => {
               .eq("id", subagent.id);
             if (!updateErr) targetWalletUpdated = true;
           }
-        } else if (order.customer_id) {
+        } else if ((order as any).sub_subagent_store_id) {
+          // Sub-subagent order: return the base price to the sub-subagent wallet.
+          refundAmount = await resolveAgentBasePrice(order, order.agent_store_id ?? null);
+          const { data: subSubagent } = await supabase
+            .from("sub_subagent_stores")
+            .select("id, wallet_balance")
+            .eq("id", (order as any).sub_subagent_store_id)
+            .maybeSingle();
+
+          if (subSubagent) {
+            const newBalance = (Number(subSubagent.wallet_balance) || 0) + refundAmount;
+            const { error: updateErr } = await supabase
+              .from("sub_subagent_stores")
+              .update({ wallet_balance: newBalance })
+              .eq("id", subSubagent.id);
+            if (!updateErr) targetWalletUpdated = true;
+            else console.log("[v0] sub-subagent wallet update failed:", updateErr.message);
+          }
+        } else if (order.customer_id && !order.api_user) {
           // Check first: did an agent buy this from the Packages page? (agent_store_id was null
           // at the time of order but the customer_id maps to an approved agent store)
           const { data: agentByUser } = await supabase

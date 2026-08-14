@@ -372,7 +372,9 @@ Deno.serve(async (req) => {
       // provider_order_id = also store order code for webhook matching
       // order_status stays "processing" — Dakazina webhook will update to "delivered"
       const updatePayload: Record<string, any> = {
-        fulfillment_status: "completed",
+        // Provider acceptance is not delivery. Keep the order active until
+        // the provider webhook/status sync confirms delivery.
+        fulfillment_status: "processing",
         api_response:       rawText,
         order_status:       "processing",
       };
