@@ -1493,28 +1493,14 @@ const AdminDashboard = () => {
     setSavingAgentPrices(true);
     
     try {
-      // Delete existing custom prices for this agent
-      await supabase
-        .from("agent_custom_base_prices")
-        .delete()
-        .eq("agent_store_id", selectedAgentForPricing.id);
-      
-      // Insert new custom prices
       const insertData = Object.entries(agentCustomPrices)
         .filter(([_, price]) => price > 0)
-        .map(([packageId, price]) => ({
-          agent_store_id: selectedAgentForPricing.id,
-          package_id: packageId,
-          custom_base_price: price
-        }));
-      
-      if (insertData.length > 0) {
-        const { error } = await supabase
-          .from("agent_custom_base_prices")
-          .insert(insertData);
-        
-        if (error) throw error;
-      }
+        .map(([packageId, price]) => ({ package_id: packageId, custom_base_price: price }));
+      const { error } = await supabase.rpc("save_agent_custom_prices", {
+        p_agent_store_id: selectedAgentForPricing.id,
+        p_prices: insertData,
+      });
+      if (error) throw error;
       
       toast({ title: "Success", description: `Custom prices saved for ${selectedAgentForPricing.store_name}` });
       setAgentPriceDialogOpen(false);
@@ -1532,10 +1518,11 @@ const AdminDashboard = () => {
     
     setSavingAgentPrices(true);
     try {
-      await supabase
-        .from("agent_custom_base_prices")
-        .delete()
-        .eq("agent_store_id", selectedAgentForPricing.id);
+      const { error } = await supabase.rpc("save_agent_custom_prices", {
+        p_agent_store_id: selectedAgentForPricing.id,
+        p_prices: [],
+      });
+      if (error) throw error;
       
       setAgentCustomPrices({});
       toast({ title: "Success", description: "Agent reset to default prices" });
