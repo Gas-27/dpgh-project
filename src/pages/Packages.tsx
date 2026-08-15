@@ -1240,7 +1240,11 @@ const Packages = () => {
   useEffect(() => {
     // Fetch packages with caching - include size_gb_text for mtn_mashup packages
     supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price,active").order("size_gb", { ascending: true })
-      .then(({ data }) => { setPackages(data ?? []); setLoading(false); });
+      .then(({ data, error }) => {
+        if (error) console.error("[v0] Failed to fetch data packages:", error);
+        setPackages(data ?? []);
+        setLoading(false);
+      });
   }, []);
 
   // Use cached data for packages with 30-second revalidation
@@ -1519,33 +1523,49 @@ const searchOrders = async () => {
                 </CardContent>
               </Card>
             </div>
-            <section aria-labelledby="data-bundles-heading" className="max-w-5xl mx-auto pb-12">
-              <div className="flex items-center justify-between gap-4 mb-4">
-                <div>
-                  <h2 id="data-bundles-heading" className="font-display text-xl font-bold text-foreground">Data Bundles</h2>
-                  <p className="text-sm text-muted-foreground">Choose a bundle for {selectedNetwork === "airteltigo" ? "AirtelTigo" : selectedNetwork.replace("_", " ").toUpperCase()}.</p>
-                </div>
-                {loading && <Loader2 className="h-5 w-5 animate-spin text-primary" aria-label="Loading data bundles" />}
+            <section aria-labelledby="data-bundles-heading" className="mx-auto w-full max-w-md pb-12">
+              <h2 id="data-bundles-heading" className="sr-only">Data Bundles</h2>
+              <div className="mb-6 flex flex-wrap justify-center gap-3">
+                {(["mtn", "mtn_express", "airteltigo", "telecel"] as Network[]).map((network) => (
+                  <Button
+                    key={network}
+                    type="button"
+                    variant={selectedNetwork === network ? "hero" : "outline"}
+                    onClick={() => setSelectedNetwork(network)}
+                    className="h-10 rounded-xl px-4 text-sm font-bold"
+                  >
+                    {networkConfig[network].label}
+                  </Button>
+                ))}
               </div>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <div className="flex justify-center py-10" aria-label="Loading data bundles"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+              ) : filtered.length === 0 ? (
                 <Card><CardContent className="p-8 text-center text-muted-foreground">No data bundles are available for this network right now.</CardContent></Card>
               ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                  {filtered.filter((pkg) => pkg.active !== false).map((pkg) => (
-                    <Card key={pkg.id} className="border-border transition-colors hover:border-primary/60">
-                      <CardContent className="flex h-full flex-col gap-3 p-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-lg font-bold text-foreground">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
-                            <p className="text-xs text-muted-foreground">{pkg.network.replace("_", " ").toUpperCase()}</p>
-                          </div>
-                          <Wifi className="h-4 w-4 text-primary" aria-hidden="true" />
-                        </div>
-                        <p className="text-base font-semibold text-primary">GHC {Number(pkg.price).toFixed(2)}</p>
-                        <Button className="mt-auto w-full" onClick={() => setPaymentPkg(pkg)}>Buy now</Button>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="flex flex-col gap-4">
+                  {filtered.map((pkg) => {
+                    const packageName = pkg.size_gb_text || `${pkg.size_gb}GB`;
+                    const available = pkg.active !== false;
+                    return (
+                      <Card key={pkg.id} className={`border-0 bg-[#2f176d] shadow-none ${available ? "" : "opacity-45"}`}>
+                        <CardContent className="flex flex-col items-center gap-2 px-4 py-4 text-center">
+                          <p className="font-display text-3xl font-extrabold leading-none text-white">{packageName}</p>
+                          <p className="text-xs font-bold uppercase text-yellow-300">{networkConfig[selectedNetwork].label}</p>
+                          <p className="text-lg font-extrabold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!available}
+                            onClick={() => setPaymentPkg(pkg)}
+                            className="h-8 w-full rounded-lg border-white/25 bg-white/10 text-xs font-bold text-white hover:bg-white/20 hover:text-white"
+                          >
+                            {available ? "Buy Now" : "Not Available"}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </section>
