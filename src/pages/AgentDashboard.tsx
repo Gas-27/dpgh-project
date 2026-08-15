@@ -43,6 +43,7 @@ import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import ReportCenter from "@/components/ReportCenter";
+import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
 } from "@/components/ui/sheet";
@@ -2290,8 +2291,9 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     </div>
   );
 
-  return (
-    <div className="min-h-screen bg-background">
+return (
+  <div className="min-h-screen bg-background">
+  <ReportNotificationBadge />
       {/* Admin Impersonation Banner */}
       {isImpersonating && (
         <div className="bg-blue-500/20 border-b border-blue-500/30 px-4 py-3">

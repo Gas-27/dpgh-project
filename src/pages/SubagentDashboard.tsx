@@ -36,6 +36,7 @@ import SubagentAFABundleRegistrations from "@/components/SubagentAFABundleRegist
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
 import ReportCenter from "@/components/ReportCenter";
+import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Helper function to get current order stage
@@ -2226,8 +2227,9 @@ const SubagentDashboard = () => {
     toast({ title: "Store link copied!" });
   };
 
-  return (
-    <div className="min-h-screen bg-background">
+return (
+  <div className="min-h-screen bg-background">
+  <ReportNotificationBadge />
       {/* Agent Notification Popup Dialog */}
       {agentNotifications.length > 0 && showAgentNotificationPopup && (
         <Dialog open={showAgentNotificationPopup} onOpenChange={setShowAgentNotificationPopup}>

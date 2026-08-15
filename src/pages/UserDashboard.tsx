@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 import { UserComplaintsView } from "@/components/UserComplaintsView";
 import ReportCenter from "@/components/ReportCenter";
+import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 
 interface DataPackage {
   id: string;
@@ -2734,8 +2735,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
     </div>
   );
 
-  return (
-    <div className="min-h-screen bg-background">
+return (
+  <div className="min-h-screen bg-background">
+  <ReportNotificationBadge />
       <Navbar />
 
       {isImpersonating && (

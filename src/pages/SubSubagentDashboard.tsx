@@ -33,6 +33,7 @@ import SubSubagentAFABundleRegistrations from "@/components/SubSubagentAFABundle
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
 import ReportCenter from "@/components/ReportCenter";
+import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Helper function to get current order stage
@@ -1810,8 +1811,9 @@ const SubSubagentDashboard = () => {
     return <Navigate to="/pending-approval" replace />;
   }
 
-  return (
-    <div className="min-h-screen bg-background">
+return (
+  <div className="min-h-screen bg-background">
+  <ReportNotificationBadge />
       {/* Notification from parent subagent (shown to sub-subagent as "Admin") */}
       {subSubagentNotifications.length > 0 && showSubagentNotificationPopup && (
         <Dialog open={showSubagentNotificationPopup} onOpenChange={setShowSubagentNotificationPopup}>
