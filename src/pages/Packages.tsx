@@ -8,6 +8,7 @@ import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import DigitalServicesCatalog, { Service } from "@/components/DigitalServicesCatalog";
+import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 // Lazy-loaded to break circular dependency (ReferenceError: Cannot access 'J' before initialization)
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
@@ -1225,6 +1226,17 @@ const Packages = () => {
   }, [toast]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference");
+    if (params.get("service_payment") !== "verifying" || !reference) return;
+    supabase.functions.invoke("verify-payment", { body: { reference } }).then(({ data, error }) => {
+      if (error || !data?.success) toast({ title: "Service payment could not be verified", description: "Please contact support with your payment reference.", variant: "destructive" });
+      else toast({ title: "Service payment confirmed", description: "Your service access has been assigned. Use Activate on the service to continue." });
+      window.history.replaceState({}, "", window.location.pathname);
+    });
+  }, [toast]);
+
+  useEffect(() => {
     supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders").single()
       .then(({ data, error }) => {
         setSpinConfig(error || !data
@@ -1800,6 +1812,8 @@ const searchOrders = async () => {
           </div>
         ) : renderComingSoon()}
       </div>
+
+      <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => { if (!open) setSelectedService(null); }} />
 
       {paymentPkg && (
         <PaymentDialog
