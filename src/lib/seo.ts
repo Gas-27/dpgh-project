@@ -1,4 +1,5 @@
 import { canonicalUrl, SITE_ORIGIN } from "@/config/seoRoutes";
+import { defaultSeoKeywords } from "@/data/seoKeywords";
 
 export const DEFAULT_DESCRIPTION = "Buy affordable MTN, Telecel and AirtelTigo data bundles in Ghana with DataPlug. Compare packages, pay securely and get fast delivery.";
 export const DEFAULT_IMAGE = `${SITE_ORIGIN}/icons/icon-512x512.png`;
@@ -18,7 +19,7 @@ export function generatePageMetadata(input: {
   return {
     title,
     description,
-    keywords: input.keywords || ["data", "cheap data", "buy data", "affordable bundles", "Ghana data bundles"],
+    keywords: input.keywords?.length ? Array.from(new Set([...input.keywords, ...defaultSeoKeywords])) : defaultSeoKeywords,
     canonical: url,
     robots: input.noIndex ? "noindex, nofollow" : "index, follow",
     openGraph: { type: "website", siteName: "DataPlug Store", locale: "en_GH", url, title, description, image },
