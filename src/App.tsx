@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import NotificationPrompt from "@/components/NotificationPrompt";
 import ChatBot from "@/components/ChatBot";
+import RouteSeoGuard from "@/components/RouteSeoGuard";
 
 // Wraps React.lazy so that a stale-deploy chunk failure (old bundle requesting
 // chunk filenames that no longer exist -> server returns index.html with a
@@ -188,6 +189,7 @@ const App = () => {
         <PWAInstallPrompt />
         <NotificationPrompt />
         <BrowserRouter>
+          <RouteSeoGuard />
           <AuthProvider>
             <PasswordRecoveryRedirect />
             <Suspense fallback={<RouteLoader />}>
