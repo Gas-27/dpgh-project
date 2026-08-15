@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import ChatBot from "@/components/ChatBot";
 import PremiumSubscriptionBanner from "@/components/PremiumSubscriptionBanner";
+import JsonLd from "@/components/JsonLd";
 
 const Index = () => {
   const location = useLocation();
@@ -29,6 +30,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <JsonLd data={[{"@context":"https://schema.org","@type":"Organization","name":"DataPlug Ghana","url":"https://dataplug.store","logo":"https://dataplug.store/icons/icon-512x512.png","areaServed":"GH"},{"@context":"https://schema.org","@type":"WebSite","name":"DataPlug Store","url":"https://dataplug.store","inLanguage":"en-GH","potentialAction":{"@type":"SearchAction","target":"https://dataplug.store/packages?q={search_term_string}","query-input":"required name=search_term_string"}}]} />
       <NotificationPopup />
       <Navbar />
       <main id="main-content">

@@ -7,9 +7,12 @@ export interface SeoMeta {
   ogImage?: string;
   ogType?: "website" | "article";
   noIndex?: boolean;
+  keywords?: string[];
+  ogImageAlt?: string;
+  ogSiteName?: string;
 }
 
-const SITE_NAME = "DataPlug Ghana";
+const SITE_NAME = "DataPlug Store";
 const BASE_URL = "https://dataplug.store";
 const DEFAULT_OG_IMAGE = "https://dataplug.store/og-default.png";
 
@@ -26,12 +29,16 @@ export function useSeoMeta({
   ogImage = DEFAULT_OG_IMAGE,
   ogType = "website",
   noIndex = false,
+  keywords,
+  ogImageAlt = "DataPlug Ghana data bundle store",
+  ogSiteName = "DataPlug Store",
 }: SeoMeta) {
   useEffect(() => {
     const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
     const pathname = window.location.pathname;
     const hasQueryParameters = window.location.search.length > 0;
-    const canonicalUrl = `${BASE_URL}${canonicalPath || pathname}`;
+    const cleanPath = (canonicalPath || pathname || "/").split("?")[0].replace(/\/+$/, "") || "/";
+    const canonicalUrl = `${BASE_URL}${cleanPath === "/" ? "/" : cleanPath}`;
 
     // --- <title> ---
     document.title = fullTitle;
@@ -60,6 +67,8 @@ export function useSeoMeta({
 
     // --- Standard meta ---
     setMeta('meta[name="description"]', "name", "description", description);
+    if (keywords?.length) setMeta('meta[name="keywords"]', "name", "keywords", keywords.join(", "));
+    setMeta('meta[name="theme-color"]', "name", "theme-color", "#00d4ff");
     setMeta(
       'meta[name="robots"]',
       "name",
@@ -76,7 +85,8 @@ export function useSeoMeta({
     setMeta('meta[property="og:url"]', "property", "og:url", canonicalUrl);
     setMeta('meta[property="og:type"]', "property", "og:type", ogType);
     setMeta('meta[property="og:image"]', "property", "og:image", ogImage);
-    setMeta('meta[property="og:site_name"]', "property", "og:site_name", SITE_NAME);
+    setMeta('meta[property="og:site_name"]', "property", "og:site_name", ogSiteName);
+    setMeta('meta[property="og:image:alt"]', "property", "og:image:alt", ogImageAlt);
     setMeta('meta[property="og:locale"]', "property", "og:locale", "en_GH");
 
     // --- Twitter Card ---
@@ -84,5 +94,5 @@ export function useSeoMeta({
     setMeta('meta[name="twitter:title"]', "name", "twitter:title", fullTitle);
     setMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
     setMeta('meta[name="twitter:image"]', "name", "twitter:image", ogImage);
-  }, [title, description, canonicalPath, ogImage, ogType, noIndex]);
+  }, [title, description, canonicalPath, ogImage, ogType, noIndex, keywords, ogImageAlt, ogSiteName]);
 }
