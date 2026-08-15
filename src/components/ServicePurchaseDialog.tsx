@@ -29,7 +29,7 @@ export default function ServicePurchaseDialog({ service, onOpenChange }: { servi
     const { data, error } = await supabase.functions.invoke("activate-service", { body: { service_id: service.id, phone, pin, free_service: service.is_free === true } });
     setActivationLoading(false);
     if (error || !data?.credential) {
-      toast({ title: "Access not found", description: data?.error || "No verified access was found.", variant: "destructive" });
+      console.error("[v0] Service activation failed:", error || data); toast({ title: "Access unavailable", description: data?.error || error?.message || "We could not create or find access for this service. Please try again.", variant: "destructive" });
       return;
     }
     setCredential(data.credential);
