@@ -16,7 +16,7 @@ export default function ServicePurchaseDialog({ service, onOpenChange }: { servi
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [activationLoading, setActivationLoading] = useState(false);
-  const [showPin, setShowPin] = useState(false);
+  const [showPin, setShowPin] = useState(true);
   const [credential, setCredential] = useState<{ email: string | null; password: string | null; instructions: string | null } | null>(null);
   const total = Math.round((Number(service?.price || 0) * (1 + FEE / 100)) * 100) / 100;
 
