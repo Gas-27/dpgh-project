@@ -1551,7 +1551,7 @@ const searchOrders = async () => {
                       <Card key={pkg.id} className={`border-0 bg-[#2f176d] shadow-none ${available ? "" : "opacity-45"}`}>
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-4 text-center">
                           <p className="font-display text-3xl font-extrabold leading-none text-white">{packageName}</p>
-                          <p className="text-xs font-bold uppercase text-yellow-300">{networkConfig[selectedNetwork].label}</p>
+                          <p className={`text-xs font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
                           <p className="text-lg font-extrabold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
                           <Button
                             type="button"
