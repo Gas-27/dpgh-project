@@ -1519,6 +1519,36 @@ const searchOrders = async () => {
                 </CardContent>
               </Card>
             </div>
+            <section aria-labelledby="data-bundles-heading" className="max-w-5xl mx-auto pb-12">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div>
+                  <h2 id="data-bundles-heading" className="font-display text-xl font-bold text-foreground">Data Bundles</h2>
+                  <p className="text-sm text-muted-foreground">Choose a bundle for {selectedNetwork === "airteltigo" ? "AirtelTigo" : selectedNetwork.replace("_", " ").toUpperCase()}.</p>
+                </div>
+                {loading && <Loader2 className="h-5 w-5 animate-spin text-primary" aria-label="Loading data bundles" />}
+              </div>
+              {filtered.length === 0 ? (
+                <Card><CardContent className="p-8 text-center text-muted-foreground">No data bundles are available for this network right now.</CardContent></Card>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {filtered.filter((pkg) => pkg.active !== false).map((pkg) => (
+                    <Card key={pkg.id} className="border-border transition-colors hover:border-primary/60">
+                      <CardContent className="flex h-full flex-col gap-3 p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-lg font-bold text-foreground">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
+                            <p className="text-xs text-muted-foreground">{pkg.network.replace("_", " ").toUpperCase()}</p>
+                          </div>
+                          <Wifi className="h-4 w-4 text-primary" aria-hidden="true" />
+                        </div>
+                        <p className="text-base font-semibold text-primary">GHC {Number(pkg.price).toFixed(2)}</p>
+                        <Button className="mt-auto w-full" onClick={() => setPaymentPkg(pkg)}>Buy now</Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </section>
           </>
         ) : activeCategory === "services" ? (
           <DigitalServicesCatalog onBuy={(service) => {
