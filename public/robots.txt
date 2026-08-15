@@ -8,8 +8,6 @@ Disallow: /dashboard
 Disallow: /admin
 Disallow: /admin-only
 Disallow: /sub-admin
-Disallow: /login
-Disallow: /signup
 Disallow: /reset-password
 Disallow: /verify-email
 Disallow: /auth/

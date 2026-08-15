@@ -8,6 +8,21 @@ const editorial = fs.readFileSync(path.join(root, "src/data/ghana-editorial-libr
 const published = [...editorial.matchAll(/slug: "(\/blog\/[^\"]+)"[\s\S]*?status: "published"/g)].map((m) => m[1]);
 const unique = [...new Set([...routes, ...published])];
 const priority = (route) => route === "/" ? "1.0" : ["/packages", "/blog"].includes(route) ? "0.9" : route.startsWith("/blog/") ? "0.7" : route.includes("privacy") || route.includes("terms") || route.includes("cookie") ? "0.3" : "0.8";
-const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${unique.map((route) => `  <url><loc>${origin}${route === "/" ? "/" : route.replace(/\/$/, "")}</loc><changefreq>${route.startsWith("/blog/") ? "monthly" : "weekly"}</changefreq><priority>${priority(route)}</priority></url>`).join("\n")}\n</urlset>\n`;
+const lastmod = new Date().toISOString().slice(0, 10);
+const escapeXml = (value) => value.replace(/[<>&'\"]/g, (character) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '\"': "&quot;" })[character]);
+const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${unique.map((route) => {
+  const loc = `${origin}${route === "/" ? "/" : route.replace(/\/$/, "")}`;
+  const changefreq = route.startsWith("/blog/") ? "monthly" : route.includes("privacy") || route.includes("terms") || route.includes("cookie") ? "yearly" : "weekly";
+  return `  <url>
+    <loc>${escapeXml(loc)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority(route)}</priority>
+  </url>`;
+}).join("\n")}
+</urlset>
+`;
 fs.writeFileSync(path.join(root, "public/sitemap.xml"), xml);
 console.log(`Generated ${unique.length} canonical URLs.`);
