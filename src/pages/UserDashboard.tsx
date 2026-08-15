@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from "@/components/ui/label";
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 import { UserComplaintsView } from "@/components/UserComplaintsView";
+import ReportCenter from "@/components/ReportCenter";
 
 interface DataPackage {
   id: string;
@@ -180,6 +181,7 @@ const UserDashboard = () => {
     { id: "orders", label: "Orders", icon: BarChart3 },
     { id: "refunds", label: "Refunds", icon: Wallet },
     { id: "my-complaints", label: "My Complaints", icon: MessageCircle },
+  { id: "reports", label: "Report an Issue", icon: AlertTriangle },
     { id: "rewards", label: "Rewards & Benefits", icon: ImageIcon },
     { id: "api-key", label: "API Key", icon: Zap },
     { id: "api-docs", label: "API Docs", icon: BookOpen },
@@ -876,8 +878,10 @@ const UserDashboard = () => {
         return renderOrders();
       case "refunds":
         return renderRefunds();
-      case "my-complaints":
-        return renderMyComplaints();
+  case "my-complaints":
+  return renderMyComplaints();
+  case "reports":
+  return <ReportCenter reporterRole={isImpersonating ? "user" : "user"} />;
       case "rewards":
         return renderFlyerGenerator();
       case "api-key":

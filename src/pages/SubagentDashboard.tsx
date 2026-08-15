@@ -35,6 +35,7 @@ import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import SubagentAFABundleRegistrations from "@/components/SubagentAFABundleRegistrations";
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
+import ReportCenter from "@/components/ReportCenter";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Helper function to get current order stage
@@ -2084,6 +2085,7 @@ const SubagentDashboard = () => {
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "reports", label: "Report an Issue", icon: AlertTriangle },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -4302,7 +4304,11 @@ const SubagentDashboard = () => {
         </TabsContent>
 
           {/* SETTINGS */}
-        <TabsContent value="settings" className="mt-0 space-y-6">
+        <TabsContent value="reports" className="mt-0 space-y-6">
+  <ReportCenter reporterRole="subagent" />
+  </TabsContent>
+
+  <TabsContent value="settings" className="mt-0 space-y-6">
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Store Information</CardTitle>

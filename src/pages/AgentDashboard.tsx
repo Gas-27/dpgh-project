@@ -42,6 +42,7 @@ import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistration
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import ComplaintsManager from "@/components/ComplaintsManager";
+import ReportCenter from "@/components/ReportCenter";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
 } from "@/components/ui/sheet";
@@ -115,6 +116,7 @@ const menuItems = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "complaints", label: "Complaints", icon: AlertCircle },
+  { id: "reports", label: "Report an Issue", icon: AlertTriangle },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -4842,9 +4844,12 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           </TabsContent>
 
           {/* ============================= COMPLAINTS ============================= */}
-          <TabsContent value="complaints" className="mt-0 space-y-6">
-            <ComplaintsManager isAgent={true} agentStoreId={store?.id} />
-          </TabsContent>
+  <TabsContent value="complaints" className="mt-0 space-y-6">
+  <ComplaintsManager isAgent={true} agentStoreId={store?.id} />
+  </TabsContent>
+  <TabsContent value="reports" className="mt-0 space-y-6">
+  <ReportCenter reporterRole="agent" />
+  </TabsContent>
 
           {/* ============================= AFA BUNDLES ============================= */}
           <TabsContent value="afa" className="mt-0 space-y-6">
