@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play, MessageCircle,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play, MessageCircle, KeyRound,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -79,7 +79,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -1048,7 +1048,7 @@ const AdminDashboard = () => {
 
   // ======================== Admin permissions ========================
   const fetchCurrentUserPermissions = async (userId: string) => {
-    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "settings"];
+    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "digital_services", "settings"];
     
     const { data, error } = await supabase
       .from("admin_permissions")
@@ -2689,6 +2689,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="complaints" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><AlertCircle className="h-3 w-3 md:h-4 md:w-4" /> Complaints</TabsTrigger>
             <TabsTrigger value="delivery_status" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Check className="h-3 w-3 md:h-4 md:w-4" /> Delivery progress</TabsTrigger>
   <TabsTrigger value="delivery_automation" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Play className="h-3 w-3 md:h-4 md:w-4" /> Delivery automation</TabsTrigger>
+  <TabsTrigger value="digital_services" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><KeyRound className="h-3 w-3 md:h-4 md:w-4" /> Digital Services</TabsTrigger>
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
           <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
@@ -4524,10 +4525,15 @@ const AdminDashboard = () => {
               </TabsContent>
             )}
 
+            {canSee("digital_services") && (
+              <TabsContent value="digital_services" className="space-y-6">
+                <AdminDigitalServicesManager />
+              </TabsContent>
+            )}
+
             {canSee("settings") && (
               <TabsContent value="settings" className="space-y-6">
   <DeliveryProgressAdmin />
-  <AdminDigitalServicesManager />
   <Card className="border-border">
 
                   <CardHeader>
