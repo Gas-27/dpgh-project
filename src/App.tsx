@@ -86,6 +86,7 @@ const BlogHowToBuyCheapData = lazyWithReload(() => import("./pages/blog/HowToBuy
 const BlogDataResellerBusiness = lazyWithReload(() => import("./pages/blog/HowToStartDataResellerBusiness"));
 const BlogStudentData = lazyWithReload(() => import("./pages/blog/BestDataBundlesStudentsGhana"));
 const BlogStreamingData = lazyWithReload(() => import("./pages/blog/HowMuchDataStreamingUses"));
+const EditorialArticle = lazyWithReload(() => import("./pages/EditorialArticle"));
 // SEO landing pages — Phase 3
 const BuyDataOnlineGhana = lazyWithReload(() => import("./pages/seo/BuyDataOnlineGhana"));
 const WholesaleDataBundlesGhana = lazyWithReload(() => import("./pages/seo/WholesaleDataBundlesGhana"));
@@ -333,6 +334,7 @@ const App = () => {
                   <Route path="/blog/how-to-start-data-reseller-business-ghana" element={<BlogDataResellerBusiness />} />
                   <Route path="/blog/best-data-bundles-for-students-ghana" element={<BlogStudentData />} />
                   <Route path="/blog/how-much-data-does-streaming-use-ghana" element={<BlogStreamingData />} />
+  <Route path="/blog/:slug" element={<EditorialArticle />} />
                   {/* SEO landing pages — Phase 3 */}
                   <Route path="/buy-data-online-ghana" element={<BuyDataOnlineGhana />} />
                   <Route path="/wholesale-data-bundles-ghana" element={<WholesaleDataBundlesGhana />} />

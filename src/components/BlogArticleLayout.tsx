@@ -15,8 +15,12 @@ interface BlogArticleLayoutProps {
   canonicalPath: string;
   category: string;
   datePublished: string;
+  updatedAt?: string;
+  lastVerifiedAt?: string;
   readTime: string;
   headline: string;
+  coverImage?: string;
+  coverAlt?: string;
   children: React.ReactNode;
   relatedPosts?: RelatedPost[];
 }
@@ -27,12 +31,16 @@ export default function BlogArticleLayout({
   canonicalPath,
   category,
   datePublished,
+  updatedAt,
+  lastVerifiedAt,
   readTime,
   headline,
+  coverImage,
+  coverAlt,
   children,
   relatedPosts = [],
 }: BlogArticleLayoutProps) {
-  useSeoMeta({ title, description, canonicalPath, ogType: "article" });
+  useSeoMeta({ title, description, canonicalPath, ogType: "article", ogImage: coverImage ? `https://dataplug.store${coverImage}` : undefined });
 
   const articleSchema = {
     "@context": "https://schema.org",
@@ -40,6 +48,8 @@ export default function BlogArticleLayout({
     "headline": headline,
     "description": description,
     "datePublished": datePublished,
+    ...(updatedAt ? { "dateModified": updatedAt } : {}),
+    ...(coverImage ? { "image": `https://dataplug.store${coverImage}` } : {}),
     "author": { "@type": "Organization", "name": "DataPlug Ghana" },
     "publisher": { "@type": "Organization", "name": "DataPlug Ghana", "url": "https://dataplug.store" },
     "url": `https://dataplug.store${canonicalPath}`,
@@ -99,9 +109,9 @@ export default function BlogArticleLayout({
                   {readTime}
                 </span>
               </div>
-              <h1 className="font-display text-2xl md:text-4xl font-bold text-foreground text-balance leading-tight">
-                {headline}
-              </h1>
+              <h1 className="font-display text-2xl md:text-4xl font-bold text-foreground text-balance leading-tight">{headline}</h1>
+              {coverImage && <figure className="mt-8 overflow-hidden rounded-xl border border-border bg-secondary/20"><img src={coverImage} alt={coverAlt || headline} width="1280" height="720" loading="eager" className="aspect-video w-full object-cover" /><figcaption className="px-3 py-2 text-xs text-muted-foreground">Topic image for this Ghana-focused guide.</figcaption></figure>}
+              <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground"><span>Published {new Date(datePublished).toLocaleDateString("en-GH")}</span>{updatedAt && <span>Updated {new Date(updatedAt).toLocaleDateString("en-GH")}</span>}{lastVerifiedAt && <span>Last verified {new Date(lastVerifiedAt).toLocaleDateString("en-GH")}</span>}</div>
             </div>
           </header>
 
