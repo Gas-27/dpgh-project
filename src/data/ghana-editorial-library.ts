@@ -6,6 +6,7 @@ export interface EditorialTopic {
   id: string; title: string; primaryKeyword: string; secondaryKeywords: string[]; searchIntent: string; cluster: EditorialCluster; searcherProblem: string; uniqueAngle: string; slug: string; parentPage: string; relatedArticleIds: string[]; recommendedInternalLinks: string[]; contentType: EditorialIntent; priority: "high" | "medium" | "low"; suggestedUpdateFrequency: string; sourceRequirements: string[]; officialSources: string[]; lastVerifiedAt: string | null; metaTitle: string; metaDescription: string; coverImage: string; coverAlt: string; coverPrompt: string; publicationDate: string | null; updatedAt: string | null; status: EditorialStatus; body: ArticleBody
 }
 export interface ArticleBody { directAnswer: string; sections: Array<{ heading: string; paragraphs: string[]; bullets?: string[] }>; faqs: Array<{ question: string; answer: string }>; searchPhrases: string[] }
+import { additionalEditorialTopics } from "./ghana-additional-articles"
 
 const source = { mtn: "https://mtn.com.gh/", telecel: "https://telecel.com.gh/", nca: "https://nca.org.gh/", pay: "https://www.paystack.com/" }
 const covers = {
@@ -51,6 +52,8 @@ export const editorialTopics: EditorialTopic[] = [
    { heading: "Choosing data in Ghana", paragraphs: ["Use the current MTN, Telecel or AT offer that matches your location and routine. Compare validity as well as price. A cheap data offer that expires before your planned viewing may be less useful than a slightly larger or longer-valid option."] }
  ], faqs: [{ question: "Does Netflix always use the same data per hour?", answer: "No. Quality, device, settings and downloads affect consumption." }, { question: "Can I calculate Netflix data exactly before watching?", answer: "You can estimate, but the most reliable number is a measured session on your own phone and quality setting." }] } }),
 ]
+
+editorialTopics.push(...additionalEditorialTopics)
 
 const plannedTitles = ["How to Choose a Data Bundle in Ghana", "How Much Mobile Data Do You Need Each Month?", "Why Mobile Data Finishes Quickly", "What Is a Data Bundle?", "4G vs 5G in Ghana: What Users Should Compare", "Spotify in Ghana: Plans, Payments, and Data Use", "MTN Data for Ghanaian Students: A Planning Guide", "Telecel Data for Students and Campus Life", "AirtelTigo to AT: A Ghana Telecom Brand Timeline", "MTN vs Telecel for Internet: Which Criteria Matter?"]
 for (const [index, title] of plannedTitles.entries()) {
