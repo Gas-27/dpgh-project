@@ -7,6 +7,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+import DigitalServicesCatalog, { Service } from "@/components/DigitalServicesCatalog";
 // Lazy-loaded to break circular dependency (ReferenceError: Cannot access 'J' before initialization)
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
@@ -1183,6 +1184,7 @@ const Packages = () => {
   });
   const [loading, setLoading] = useState(true);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -1517,60 +1519,14 @@ const searchOrders = async () => {
                 </CardContent>
               </Card>
             </div>
-
-            <div className="flex justify-center gap-3 mb-8 flex-wrap">
-              {(Object.keys(networkConfig) as Network[]).map((net) => (
-                <Button key={net} variant={selectedNetwork === net ? "hero" : "outline"} onClick={() => setSelectedNetwork(net)} className="font-semibold">{networkConfig[net].label}</Button>
-              ))}
-            </div>
-
-            {loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (
-              <div className="flex flex-col items-center w-full max-w-2xl mx-auto gap-4">
-                {filtered.map((pkg) => {
-                  // COMMENTED OUT: mashup packages deactivated
-                  const isMTNMashup = false; // selectedNetwork === "mtn_mashup";
-                  const isInactive = pkg.active === false;
-                  const isOffline = pkg.is_online === false;
-                  const packageStatus: PackageStatus = isOffline ? 'offline' : (isInactive ? 'not_available' : 'available');
-                  const networkColor = networkConfig[selectedNetwork as keyof typeof networkConfig]?.color || "text-cyan-400";
-                  return (
-                    <Card key={pkg.id} className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 w-full sm:max-w-md ${isInactive || isOffline ? "opacity-50 grayscale" : "hover:shadow-xl"}`} style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
-                      <CardContent className="p-4 text-center space-y-3">
-                        {(isInactive || isOffline) && (
-                          <PackageStatusIndicator status={packageStatus} />
-                        )}
-                        {isMTNMashup ? (
-                          <>
-                            <div className="relative bg-white/20 rounded-lg p-2 mb-2">
-                              {/* COMMENTED OUT: mashup packages deactivated
-      {pkg.network === "mtn_mashup" && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-0.5 rounded text-xs font-bold">Express</div>}
-      */}
-                              <p className="font-semibold text-sm text-white">Special MTN Mashup</p>
-                              <p className="text-xs opacity-90 text-white">Data Bundle</p>
-                            </div>
-                            <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb_text}</p>
-                            <p className="text-sm font-medium text-white">GHC {Number(pkg.price).toFixed(2)} - Valid forever</p>
-                            <div className="space-y-1 text-xs text-white">
-                              <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
-                            </div>
-                            <Button variant="secondary" size="sm" disabled={isInactive || isOffline} className="w-full font-medium bg-orange-700 hover:bg-orange-800 text-white border-0 disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:border disabled:border-white/20" onClick={() => { if (isInactive || isOffline) return; if (!currentUser) { setShowLoginRequired(true); return; } setPaymentPkg(pkg); }}>{isOffline ? "Currently Offline" : isInactive ? "Not Available" : "Buy Now"}</Button>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
-                            <p className={`text-sm font-semibold uppercase tracking-wide ${networkColor}`}>{networkConfig[selectedNetwork as keyof typeof networkConfig]?.label || "Bundle"}</p>
-                            <p className="text-xl font-bold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
-                            <Button variant="secondary" size="sm" disabled={isInactive || isOffline} className="w-full mt-2 font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => { if (isInactive || isOffline) return; if (!currentUser) { setShowLoginRequired(true); return; } setPaymentPkg(pkg); }}>{isOffline ? "Currently Offline" : isInactive ? "Not Available" : "Buy Now"}</Button>
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
           </>
+        ) : activeCategory === "services" ? (
+          <DigitalServicesCatalog onBuy={(service) => {
+            setSelectedService(service);
+            toast({ title: "Service selected", description: `${service.name} is ready for secure activation.` });
+          }} />
         ) : activeCategory === "bulk" ? (
+
           <div className="max-w-3xl mx-auto">
             <Card className="border-yellow-500/30 bg-yellow-500/5">
               <CardContent className="p-6 space-y-6">

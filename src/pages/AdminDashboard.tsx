@@ -21,6 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
+import AdminDigitalServicesManager from "@/components/AdminDigitalServicesManager";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import AdminAFABundleManager from "@/components/AdminAFABundleManager";
 import AdminAFABundleRegistrations from "@/components/AdminAFABundleRegistrations";
@@ -4525,8 +4526,10 @@ const AdminDashboard = () => {
 
             {canSee("settings") && (
               <TabsContent value="settings" className="space-y-6">
-                <DeliveryProgressAdmin />
-                <Card className="border-border">
+  <DeliveryProgressAdmin />
+  <AdminDigitalServicesManager />
+  <Card className="border-border">
+
                   <CardHeader>
                     <CardTitle className="font-display flex items-center gap-2">
                       <Settings2 className="h-5 w-5 text-primary" /> App Settings
