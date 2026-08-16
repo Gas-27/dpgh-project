@@ -1,7 +1,7 @@
-import { canonicalUrl, SITE_ORIGIN } from "@/config/seoRoutes";
+import { canonicalUrl, getStorefrontSeo, SITE_ORIGIN } from "@/config/seoRoutes";
 import { defaultSeoKeywords } from "@/data/seoKeywords";
 
-export const DEFAULT_DESCRIPTION = "Buy affordable MTN, Telecel and AirtelTigo data bundles in Ghana with DataPlug. Compare packages, pay securely and get fast delivery.";
+export const DEFAULT_DESCRIPTION = getStorefrontSeo().description;
 export const DEFAULT_IMAGE = `${SITE_ORIGIN}/icons/icon-512x512.png`;
 
 export function generatePageMetadata(input: {
