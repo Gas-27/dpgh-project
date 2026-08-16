@@ -32,7 +32,10 @@ Deno.serve(async (request) => {
     const { data: setting } = await supabase.from("sms_settings").select("unit_price").eq("id", true).maybeSingle();
     const unitPrice = Number(setting?.unit_price ?? 0.05);
     const totalCharge = unitPrice * recipients.length;
+    const { data: charged, error: chargeError } = await supabase.rpc("charge_sms_wallet", { p_user_id: user.id, p_amount: totalCharge });
+    if (chargeError || !charged) return json({ error: "Insufficient wallet balance for this SMS campaign" }, 402);
     const { data: record, error: insertError } = await supabase.from("sms_messages").insert({ user_id: user.id, owner_type: body.owner_type === "agent" ? "agent" : "customer", owner_id: body.owner_id || user.id, recipients, sender_id: senderId, message, total_charge: totalCharge, unit_price: unitPrice }).select("id").single();
+    if (insertError) { await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: totalCharge }); return json({ error: "Could not create the SMS record" }, 500); }
     if (insertError) return json({ error: insertError.message }, 400);
     const results = await Promise.all(recipients.map(async (to: string) => { const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ to, from: senderId, unicode: "regular", sms: message }) }); return { to, status: response.status, body: await response.json().catch(() => ({})) }; }));
     const failed = results.filter((result) => result.status < 200 || result.status >= 300 || result.body?.data?.status_code && result.body.data.status_code !== "000");
