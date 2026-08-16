@@ -25,6 +25,7 @@ import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 import { UserComplaintsView } from "@/components/UserComplaintsView";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
+import SmsComposer from "@/components/SmsComposer";
 
 interface DataPackage {
   id: string;
@@ -188,6 +189,7 @@ const UserDashboard = () => {
     { id: "api-docs", label: "API Docs", icon: BookOpen },
     { id: "api-orders", label: "API Orders", icon: BarChart3 },
     { id: "afa-registration", label: "AFA Registration", icon: Package },
+    { id: "sms", label: "Send SMS", icon: Send },
     { id: "topup", label: "Top Up", icon: Coins },
     { id: "become-agent", label: "Become an Agent", icon: Users },
     { id: "settings", label: "Settings", icon: Settings },
@@ -893,6 +895,8 @@ const UserDashboard = () => {
         return renderApiOrders();
       case "afa-registration":
         return renderAfaRegistration();
+      case "sms":
+        return <SmsComposer ownerType="customer" ownerId={effectiveUserId} />;
       case "topup":
         return renderTopup();
       case "become-agent":

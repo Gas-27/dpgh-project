@@ -41,6 +41,7 @@ import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
+import SmsComposer from "@/components/SmsComposer";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
@@ -110,6 +111,7 @@ const menuItems = [
   // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
+  { id: "sms", label: "Send SMS", icon: Send },
   { id: "topup", label: "Top Up", icon: Coins },
   { id: "api-key", label: "API Key", icon: Zap },
   { id: "api-docs", label: "API Docs", icon: BookOpen },
@@ -3304,6 +3306,11 @@ return (
                 isSubagent={false}
               />
             )}
+          </TabsContent>
+
+          {/* ============================= SMS ============================= */}
+          <TabsContent value="sms" className="space-y-6 mt-0">
+            <SmsComposer ownerType="agent" ownerId={store?.id} />
           </TabsContent>
 
           {/* ============================= TOP UP ============================= */}
