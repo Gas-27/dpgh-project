@@ -13,6 +13,7 @@ type RouteRow = { id: string; network_key: string; flow: Flow; provider_key: str
 const networks = [
   { key: "mtn", label: "MTN" },
   { key: "mtn_express", label: "MTN Express" },
+  { key: "mtn_xpress", label: "MTN Xpress" },
   { key: "telecel", label: "Telecel" },
   { key: "airteltigo", label: "AirtelTigo" },
   { key: "mtn_mashup", label: "MTN Mashup" },
@@ -40,7 +41,7 @@ const providerCatalog = [
 ];
 const providersByFlow: Record<Flow, typeof providerCatalog> = {
   purchase: providerCatalog,
-  fulfillment: providerCatalog.filter(({ key }) => ["dakazina", "ghdataconnect", "orisjay", "datahubnet"].includes(key)),
+  fulfillment: providerCatalog,
 };
 
 export default function NetworkProviderRoutingAdmin() {

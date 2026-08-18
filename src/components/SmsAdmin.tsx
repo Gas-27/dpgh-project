@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +36,8 @@ export default function SmsAdmin() {
   const [adding, setAdding] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
   const [savingVideo, setSavingVideo] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState("pending");
 
   const load = async () => {
     setLoading(true);
@@ -59,6 +63,23 @@ export default function SmsAdmin() {
     }
     setSenders((current) => current.map((item) => (item.id === row.id ? { ...item, status } : item)));
     toast({ title: `Sender ${status}`, description: `${row.sender_id} is now ${status}.` });
+  };
+
+  const bulkAction = async (action: "approved" | "rejected" | "delete") => {
+    const rows = senders.filter((row) => selectedIds.includes(row.id));
+    if (!rows.length) return;
+    setBusy("bulk");
+    const results = await Promise.all(rows.map((row) => action === "delete"
+      ? supabase.rpc("admin_delete_sms_sender", { p_id: row.id })
+      : supabase.rpc("admin_set_sms_sender_status", { p_id: row.id, p_status: action })));
+    const failed = results.filter((result) => result.error);
+    setBusy(null);
+    if (failed.length) {
+      toast({ title: "Some updates failed", description: failed[0].error?.message, variant: "destructive" });
+    }
+    setSelectedIds([]);
+    await load();
+    toast({ title: "Bulk action complete", description: `${rows.length - failed.length} sender ID(s) updated.` });
   };
 
   const remove = async (row: SenderRow) => {
@@ -164,19 +185,33 @@ export default function SmsAdmin() {
         </CardContent>
       </Card>
 
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="pending">Pending Approval ({pending.length})</TabsTrigger>
+          <TabsTrigger value="all">All Sender IDs ({senders.length})</TabsTrigger>
+        </TabsList>
+        <TabsContent value="pending" className="mt-0">
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-amber-500" /> Pending Approval ({pending.length})
           </CardTitle>
-          <CardDescription>Copy the sender ID and send it to TxtConnect. Approve it here once the network confirms.</CardDescription>
+          <CardDescription>Copy sender IDs to TxtConnect, then approve, reject, or delete one or more submissions.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          {pending.length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">
+            <Checkbox checked={pending.every((row) => selectedIds.includes(row.id))} onCheckedChange={(checked) => setSelectedIds(checked ? pending.map((row) => row.id) : [])} aria-label="Select all pending sender IDs" />
+            <span className="mr-auto text-sm">{selectedIds.length} selected</span>
+            <Button size="sm" onClick={() => void bulkAction("approved")} disabled={!selectedIds.length || busy === "bulk"}><Check className="mr-1 h-4 w-4" />Approve selected</Button>
+            <Button size="sm" variant="outline" onClick={() => void bulkAction("rejected")} disabled={!selectedIds.length || busy === "bulk"}><X className="mr-1 h-4 w-4" />Reject selected</Button>
+            <Button size="sm" variant="destructive" onClick={() => void bulkAction("delete")} disabled={!selectedIds.length || busy === "bulk"}><Trash2 className="mr-1 h-4 w-4" />Delete selected</Button>
+          </div>}
           {loading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
           {!loading && pending.length === 0 && <p className="text-sm text-muted-foreground">No sender IDs awaiting approval.</p>}
           {pending.map((row) => (
             <div key={row.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-start gap-3">
+                <Checkbox checked={selectedIds.includes(row.id)} onCheckedChange={(checked) => setSelectedIds((current) => checked ? [...new Set([...current, row.id])] : current.filter((id) => id !== row.id))} aria-label={`Select ${row.sender_id}`} />
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-semibold">{row.sender_id}</span>
                   <Badge variant="outline" className={statusStyles[row.status]}>{row.status}</Badge>
@@ -201,6 +236,8 @@ export default function SmsAdmin() {
         </CardContent>
       </Card>
 
+        </TabsContent>
+        <TabsContent value="all" className="mt-0">
       <Card className="border-border">
         <CardHeader>
           <CardTitle>All Sender IDs ({others.length})</CardTitle>
@@ -242,6 +279,8 @@ export default function SmsAdmin() {
           ))}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

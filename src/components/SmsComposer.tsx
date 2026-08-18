@@ -27,6 +27,8 @@ type Sender = {
 };
 
 const PAGE_SIZE = 160;
+const CONTACT_PRICE = 0.09;
+const PAGE_PRICE = 2.00;
 
 /**
  * Smart Ghana phone number normalizer.
@@ -53,7 +55,9 @@ const normalizeGh = (raw: string): string | null => {
 
 /** Extract every valid Ghana number from a free-form blob of text / OCR output. */
 const extractNumbers = (text: string): string[] => {
-  const chunks = text.match(/(?:\+?233|00233|0)?[\s.\-()]*(?:\d[\s.\-()]*){8,13}/g) || [];
+  // Keep each candidate bounded to a Ghana local number or country-code number;
+  // this prevents OCR from joining adjacent WhatsApp numbers into one value.
+  const chunks = text.match(/(?:\+?233|00233|0)?(?:[\s.\-()]*\d){9,10}/g) || [];
   const out = new Set<string>();
   for (const chunk of chunks) {
     const n = normalizeGh(chunk);
@@ -63,6 +67,28 @@ const extractNumbers = (text: string): string[] => {
 };
 
 /** Convert common video links (YouTube/Vimeo) into an embeddable URL. */
+const preprocessScreenshot = async (file: File): Promise<HTMLCanvasElement> => {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(3, Math.max(1.5, 1800 / bitmap.width));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return canvas;
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const image = context.getImageData(0, 0, canvas.width, canvas.height);
+  for (let index = 0; index < image.data.length; index += 4) {
+    const gray = (image.data[index] * 0.299) + (image.data[index + 1] * 0.587) + (image.data[index + 2] * 0.114);
+    const contrast = Math.max(0, Math.min(255, ((gray - 128) * 1.45) + 128));
+    image.data[index] = contrast;
+    image.data[index + 1] = contrast;
+    image.data[index + 2] = contrast;
+  }
+  context.putImageData(image, 0, 0);
+  bitmap.close();
+  return canvas;
+};
+
 const toEmbedUrl = (url: string): string => {
   const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{6,})/);
   if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
@@ -89,11 +115,11 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const numbers = useMemo(() => extractNumbers(recipients), [recipients]);
-  const pages = useMemo(() => Math.max(1, Math.ceil(message.length / PAGE_SIZE)), [message.length]);
-  const charsOnPage = message.length % PAGE_SIZE === 0 && message.length > 0 ? PAGE_SIZE : message.length % PAGE_SIZE;
+  const messageUnits = useMemo(() => Array.from(message).reduce((total, character) => total + (character.codePointAt(0)! > 0xffff ? 2 : 1), 0), [message]);
+  const pages = useMemo(() => Math.max(1, Math.ceil(messageUnits / PAGE_SIZE)), [messageUnits]);
+  const charsOnPage = messageUnits % PAGE_SIZE === 0 && messageUnits > 0 ? PAGE_SIZE : messageUnits % PAGE_SIZE;
   const remaining = PAGE_SIZE - charsOnPage;
-  const perRecipient = unitPrice * pages;
-  const totalCost = perRecipient * numbers.length;
+  const totalCost = CONTACT_PRICE * numbers.length + PAGE_PRICE * pages;
 
   const loadSenders = async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -162,7 +188,8 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
       let found = 0;
       let combined = recipients;
       for (const file of Array.from(files)) {
-        const result = await worker.recognize(file);
+        const prepared = await preprocessScreenshot(file);
+        const result = await worker.recognize(prepared);
         const extracted = extractNumbers(result.data.text);
         found += extracted.length;
         combined = extractNumbers(`${combined}\n${extracted.join("\n")}`).join("\n");
@@ -359,7 +386,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
             />
             <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 text-center sm:grid-cols-4">
               <div>
-                <p className="text-lg font-semibold text-foreground">{message.length}</p>
+                <p className="text-lg font-semibold text-foreground">{messageUnits}</p>
                 <p className="text-xs text-muted-foreground">Characters</p>
               </div>
               <div>
@@ -377,8 +404,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
             </div>
             {pages > 1 && (
               <p className="text-xs text-amber-600">
-                Messages over {PAGE_SIZE} characters are billed as multiple pages ({pages} pages x GHS {unitPrice.toFixed(2)} per
-                recipient).
+                Billing: GHS {CONTACT_PRICE.toFixed(2)} per contact plus GHS {PAGE_PRICE.toFixed(2)} per page. Emoji characters count as 2 units.
               </p>
             )}
           </div>
