@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, RefreshCw, Route } from "lucide-react";
 
@@ -13,13 +12,24 @@ type RouteRow = { id: string; network_key: string; flow: Flow; provider_key: str
 
 const networks = [
   { key: "mtn", label: "MTN" },
+  { key: "mtn_express", label: "MTN Express" },
   { key: "telecel", label: "Telecel" },
   { key: "airteltigo", label: "AirtelTigo" },
   { key: "mtn_mashup", label: "MTN Mashup" },
   { key: "mashup", label: "Mashup" },
   { key: "atbigtime", label: "AT BigTime" },
 ];
-const providers = [
+const fallbackRoutes: Record<string, Record<Flow, string>> = {
+  mtn: { purchase: "dakazina", fulfillment: "dakazina" },
+  mtn_express: { purchase: "ghdataconnect", fulfillment: "ghdataconnect" },
+  telecel: { purchase: "ghdataconnect", fulfillment: "dakazina" },
+  airteltigo: { purchase: "ghdataconnect", fulfillment: "dakazina" },
+  mtn_mashup: { purchase: "dakazina", fulfillment: "dakazina" },
+  mashup: { purchase: "datahubnet", fulfillment: "datahubnet" },
+  atbigtime: { purchase: "ghdataconnect", fulfillment: "ghdataconnect" },
+};
+
+const providerCatalog = [
   { key: "dakazina", label: "Dakazina" },
   { key: "ghdataconnect", label: "GH Data Connect" },
   { key: "bossudata", label: "BossuData" },
@@ -27,12 +37,11 @@ const providers = [
   { key: "spendless", label: "Spendless" },
   { key: "orisjay", label: "Orisjay" },
   { key: "datahubnet", label: "Datahubnet" },
-  { key: "refer2bundle", label: "Refer2Bundle" },
-  { key: "datamart", label: "Datamart" },
-  { key: "datahubgh", label: "DataHubGH" },
-  { key: "hubnet", label: "Hubnet" },
-  { key: "bundlezonegh", label: "BundleZoneGH" },
 ];
+const providersByFlow: Record<Flow, typeof providerCatalog> = {
+  purchase: providerCatalog,
+  fulfillment: providerCatalog.filter(({ key }) => ["dakazina", "ghdataconnect", "orisjay", "datahubnet"].includes(key)),
+};
 
 export default function NetworkProviderRoutingAdmin() {
   const { toast } = useToast();
@@ -57,11 +66,30 @@ export default function NetworkProviderRoutingAdmin() {
     setSaving(key);
     const { data, error } = await supabase.rpc("admin_upsert_network_provider_route", { p_network_key: row.network_key, p_flow: row.flow, p_provider_key: providerKey, p_enabled: enabled });
     if (error) toast({ title: "Route not saved", description: error.message, variant: "destructive" });
-    else if (data) { setRoutes((current) => current.map((item) => item.id === row.id ? { ...item, provider_key: data.provider_key, enabled: data.enabled, updated_at: data.updated_at } : item)); toast({ title: "Route saved", description: `${row.network_key} ${row.flow} now uses ${providerKey}.` }); }
+    else if (data) {
+      const saved = data as RouteRow;
+      setRoutes((current) => {
+        const exists = current.some((item) => item.network_key === row.network_key && item.flow === row.flow);
+        return exists
+          ? current.map((item) => item.network_key === row.network_key && item.flow === row.flow ? saved : item)
+          : [...current, saved];
+      });
+      toast({ title: "Route saved", description: `${row.network_key} ${row.flow} now uses ${providerKey}.` });
+    }
     setSaving(null);
   };
 
-  const routeFor = (networkKey: string, flow: Flow) => routes.find((row) => row.network_key === networkKey && row.flow === flow);
+  const routeFor = (networkKey: string, flow: Flow): RouteRow => {
+    const existing = routes.find((row) => row.network_key === networkKey && row.flow === flow);
+    return existing ?? {
+      id: `fallback-${networkKey}-${flow}`,
+      network_key: networkKey,
+      flow,
+      provider_key: fallbackRoutes[networkKey]?.[flow] ?? providersByFlow[flow][0].key,
+      enabled: true,
+      updated_at: "",
+    };
+  };
 
   return (
     <Card>
@@ -80,7 +108,7 @@ export default function NetworkProviderRoutingAdmin() {
               <tbody>
                 {networks.map((network) => <tr key={network.key} className="border-t">
                   <td className="p-3 font-medium">{network.label}</td>
-                  {(["purchase", "fulfillment"] as Flow[]).map((flow) => { const row = routeFor(network.key, flow); const key = `${network.key}-${flow}`; return <td className="p-3" key={flow}>{row ? <div className="flex min-w-52 items-center gap-2"><Select value={row.provider_key} onValueChange={(value) => void updateRoute(row, { provider_key: value })} disabled={saving === key}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{providers.map((provider) => <SelectItem key={provider.key} value={provider.key}>{provider.label}</SelectItem>)}</SelectContent></Select><Switch checked={row.enabled} onCheckedChange={(checked) => void updateRoute(row, { enabled: checked })} disabled={saving === key} aria-label={`${network.label} ${flow} enabled`} />{saving === key && <Loader2 className="size-4 animate-spin text-muted-foreground" />}</div> : <Badge variant="outline">Not configured</Badge>}</td>; })}
+                  {(["purchase", "fulfillment"] as Flow[]).map((flow) => { const row = routeFor(network.key, flow); const key = `${network.key}-${flow}`; return <td className="p-3" key={flow}><div className="flex min-w-52 items-center gap-2"><Select value={row.provider_key} onValueChange={(value) => void updateRoute(row, { provider_key: value })} disabled={saving === key}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{providersByFlow[flow].map((provider) => <SelectItem key={provider.key} value={provider.key}>{provider.label}</SelectItem>)}</SelectContent></Select><Switch checked={row.enabled} onCheckedChange={(checked) => void updateRoute(row, { enabled: checked })} disabled={saving === key} aria-label={`${network.label} ${flow} enabled`} />{saving === key && <Loader2 className="size-4 animate-spin text-muted-foreground" />}</div></td>; })}
                 </tr>)}
               </tbody>
             </table>
