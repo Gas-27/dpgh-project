@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play, MessageCircle, KeyRound,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play, MessageCircle, KeyRound, Route,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -32,6 +32,7 @@ import AnnouncementManager from "@/components/AnnouncementManager";
 import DeliveryAutomationAdmin from "@/components/DeliveryAutomationAdmin";
 import DeliveryProgressAdmin from "@/components/DeliveryProgressAdmin";
 import AdminOrderStatusUpdater from "@/components/AdminOrderStatusUpdater";
+import NetworkProviderRoutingAdmin from "@/components/NetworkProviderRoutingAdmin";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import {
@@ -80,7 +81,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -1049,7 +1050,7 @@ const AdminDashboard = () => {
 
   // ======================== Admin permissions ========================
   const fetchCurrentUserPermissions = async (userId: string) => {
-    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "digital_services", "settings"];
+    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "digital_services", "network_routing", "settings"];
     
     const { data, error } = await supabase
       .from("admin_permissions")
@@ -2679,6 +2680,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="delivery_status" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Check className="h-3 w-3 md:h-4 md:w-4" /> Delivery progress</TabsTrigger>
   <TabsTrigger value="delivery_automation" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Play className="h-3 w-3 md:h-4 md:w-4" /> Delivery automation</TabsTrigger>
   <TabsTrigger value="digital_services" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><KeyRound className="h-3 w-3 md:h-4 md:w-4" /> Digital Services</TabsTrigger>
+  <TabsTrigger value="network_routing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Route className="h-3 w-3 md:h-4 md:w-4" /> Network Routing</TabsTrigger>
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
           <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
@@ -4525,8 +4527,14 @@ const AdminDashboard = () => {
               </TabsContent>
             )}
 
-            {canSee("settings") && (
-              <TabsContent value="settings" className="space-y-6">
+  {canSee("network_routing") && (
+  <TabsContent value="network_routing" className="space-y-6">
+  <NetworkProviderRoutingAdmin />
+  </TabsContent>
+  )}
+
+  {canSee("settings") && (
+  <TabsContent value="settings" className="space-y-6">
   <DeliveryProgressAdmin />
   <Card className="border-border">
 
