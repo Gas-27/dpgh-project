@@ -26,6 +26,8 @@ import { UserComplaintsView } from "@/components/UserComplaintsView";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
+import SmsHistory from "@/components/SmsHistory";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DataPackage {
   id: string;
@@ -896,7 +898,7 @@ const UserDashboard = () => {
       case "afa-registration":
         return renderAfaRegistration();
       case "sms":
-        return <SmsComposer ownerType="customer" ownerId={effectiveUserId} />;
+        return <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="customer" ownerId={effectiveUserId} /></TabsContent><TabsContent value="history"><SmsHistory ownerType="customer" ownerId={effectiveUserId} /></TabsContent></Tabs>;
       case "topup":
         return renderTopup();
       case "become-agent":

@@ -402,11 +402,11 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
                 <p className="text-xs text-muted-foreground">Total cost</p>
               </div>
             </div>
-            {pages > 1 && (
-              <p className="text-xs text-amber-600">
-                Billing: GHS {CONTACT_PRICE.toFixed(2)} per contact plus GHS {PAGE_PRICE.toFixed(2)} per page. Emoji characters count as 2 units.
-              </p>
-            )}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
+              <p className="font-semibold text-foreground">How SMS pricing works</p>
+              <p>We charge GHS {CONTACT_PRICE.toFixed(2)} for each contact, plus GHS {PAGE_PRICE.toFixed(2)} for each SMS page. One page contains up to {PAGE_SIZE} character units.</p>
+              <p>Example: 2 contacts and 1 page = GHS {(CONTACT_PRICE * 2 + PAGE_PRICE).toFixed(2)}. Emoji characters count as 2 units and may create an additional page.</p>
+            </div>
           </div>
 
           <Button type="button" className="w-full" size="lg" onClick={() => void send()} disabled={loading}>

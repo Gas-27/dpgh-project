@@ -42,6 +42,7 @@ import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistration
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import SmsComposer from "@/components/SmsComposer";
+import SmsHistory from "@/components/SmsHistory";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
@@ -3310,7 +3311,7 @@ return (
 
           {/* ============================= SMS ============================= */}
           <TabsContent value="sms" className="space-y-6 mt-0">
-            <SmsComposer ownerType="agent" ownerId={store?.id} />
+            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="agent" ownerId={store?.id} /></TabsContent><TabsContent value="history"><SmsHistory ownerType="agent" ownerId={store?.id} /></TabsContent></Tabs>
           </TabsContent>
 
           {/* ============================= TOP UP ============================= */}
