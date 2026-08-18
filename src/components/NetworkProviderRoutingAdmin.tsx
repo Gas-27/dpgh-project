@@ -17,15 +17,21 @@ const networks = [
   { key: "airteltigo", label: "AirtelTigo" },
   { key: "mtn_mashup", label: "MTN Mashup" },
   { key: "mashup", label: "Mashup" },
+  { key: "atbigtime", label: "AT BigTime" },
 ];
 const providers = [
-  { key: "ghdataconnect", label: "GH Data Connect" },
   { key: "dakazina", label: "Dakazina" },
+  { key: "ghdataconnect", label: "GH Data Connect" },
   { key: "bossudata", label: "BossuData" },
   { key: "cledanet", label: "Cledanet" },
   { key: "spendless", label: "Spendless" },
   { key: "orisjay", label: "Orisjay" },
   { key: "datahubnet", label: "Datahubnet" },
+  { key: "refer2bundle", label: "Refer2Bundle" },
+  { key: "datamart", label: "Datamart" },
+  { key: "datahubgh", label: "DataHubGH" },
+  { key: "hubnet", label: "Hubnet" },
+  { key: "bundlezonegh", label: "BundleZoneGH" },
 ];
 
 export default function NetworkProviderRoutingAdmin() {
