@@ -36,7 +36,11 @@ export default function SmsHistory({ ownerType, ownerId }: SmsHistoryProps) {
           return result.data;
         }));
         const delivered = statuses.some((status: any) => String(status?.msg || status?.message || "").toLowerCase().includes("delivered"));
-        return delivered ? { ...row, status: "delivered" } : row;
+        const nextStatus = delivered ? "delivered" : row.status;
+        if (nextStatus !== row.status) {
+          await supabase.from("sms_messages").update({ status: nextStatus, completed_at: new Date().toISOString() }).eq("id", row.id);
+        }
+        return delivered ? { ...row, status: nextStatus, completed_at: new Date().toISOString() } : row;
       }));
     }
     setRows(next);
