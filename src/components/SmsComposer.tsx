@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createWorker } from "tesseract.js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,23 +6,443 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Check, ChevronDown, Loader2, Send, Upload } from "lucide-react";
+import { Check, ChevronDown, Clock, Loader2, Send, Upload, UserPlus, Video } from "lucide-react";
 
 type SmsComposerProps = { ownerType: "customer" | "agent"; ownerId?: string };
-type Sender = { id: string; sender_id: string; status: "pending" | "approved" | "rejected" };
-const readySenders = ["DATAFORALL", "CHEAPDATA", "GETDATA", "DATASTORE"];
-const parseNumbers = (value: string) => Array.from(new Set(value.split(/[\n,;\s]+/).map((item) => item.replace(/[^\d+]/g, "")).filter((item) => /^\+?[0-9]{8,15}$/.test(item))));
+type Sender = {
+  id: string;
+  sender_id: string;
+  status: "pending" | "approved" | "rejected";
+  is_global?: boolean;
+};
+
+const PAGE_SIZE = 160;
+
+/**
+ * Smart Ghana phone number normalizer.
+ * Handles +233 / 233 / 00233 country codes, spaces, dashes, brackets, and
+ * missing leading zero. Returns a clean 10-digit local number (0XXXXXXXXX) or null.
+ */
+const normalizeGh = (raw: string): string | null => {
+  let d = (raw || "").replace(/\D/g, "");
+  if (!d) return null;
+  // Strip country code variants -> local leading zero
+  if (d.startsWith("00233")) d = "0" + d.slice(5);
+  else if (d.startsWith("233") && d.length >= 12) d = "0" + d.slice(3);
+  // A 9-digit number missing its leading zero (e.g. 241234567)
+  if (d.length === 9 && /^[2-5]/.test(d)) d = "0" + d;
+  // If OCR glued extra leading digits, try to recover a trailing valid number
+  if (d.length > 10) {
+    const tail10 = d.slice(-10);
+    const tail9 = d.slice(-9);
+    if (/^0[2-5]\d{8}$/.test(tail10)) d = tail10;
+    else if (/^[2-5]\d{8}$/.test(tail9)) d = "0" + tail9;
+  }
+  return /^0[2-5]\d{8}$/.test(d) ? d : null;
+};
+
+/** Extract every valid Ghana number from a free-form blob of text / OCR output. */
+const extractNumbers = (text: string): string[] => {
+  const chunks = text.match(/(?:\+?233|00233|0)?[\s.\-()]*(?:\d[\s.\-()]*){8,13}/g) || [];
+  const out = new Set<string>();
+  for (const chunk of chunks) {
+    const n = normalizeGh(chunk);
+    if (n) out.add(n);
+  }
+  return Array.from(out);
+};
+
+/** Convert common video links (YouTube/Vimeo) into an embeddable URL. */
+const toEmbedUrl = (url: string): string => {
+  const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{6,})/);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  return url;
+};
 
 export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [recipients, setRecipients] = useState(""); const [senderId, setSenderId] = useState(""); const [message, setMessage] = useState(""); const [senders, setSenders] = useState<Sender[]>([]); const [senderOpen, setSenderOpen] = useState(false); const [custom, setCustom] = useState(""); const [ocrLoading, setOcrLoading] = useState(false); const [loading, setLoading] = useState(false);
-  const numbers = useMemo(() => parseNumbers(recipients), [recipients]);
-  const loadSenders = async () => { const { data } = await supabase.from("sms_sender_ids").select("id,sender_id,status").order("created_at", { ascending: false }); setSenders((data || []) as Sender[]); };
-  const submitSender = async () => { const value = custom.trim().toUpperCase(); if (!/^[A-Z0-9 ]{3,11}$/.test(value)) { toast({ title: "Invalid sender ID", description: "Use 3–11 letters, numbers, or spaces.", variant: "destructive" }); return; } const { data: auth } = await supabase.auth.getUser(); if (!auth.user) { toast({ title: "Sign in required", description: "Please sign in before submitting a sender ID.", variant: "destructive" }); return; } const { error } = await supabase.from("sms_sender_ids").insert({ user_id: auth.user.id, sender_id: value }); if (error) { toast({ title: "Could not submit sender ID", description: error.message, variant: "destructive" }); return; } setCustom(""); await loadSenders(); toast({ title: "Submitted for approval", description: `${value} is now pending review.` }); };
-  const extractScreenshot = async (file: File) => { setOcrLoading(true); try { const worker = await createWorker("eng"); const result = await worker.recognize(file); await worker.terminate(); const extracted = parseNumbers(result.data.text); if (!extracted.length) toast({ title: "No phone numbers found", description: "Try a clearer screenshot with the numbers visible." }); else { setRecipients((current) => parseNumbers(`${current}\n${extracted.join("\n")}`).join("\n")); toast({ title: "Contacts extracted", description: `${extracted.length} unique number(s) added.` }); } } catch { toast({ title: "Screenshot extraction failed", description: "Please try another image.", variant: "destructive" }); } finally { setOcrLoading(false); } };
-  const send = async () => { if (!senderId || !message.trim() || !numbers.length) { toast({ title: "Complete the SMS form", description: "Choose an approved sender, add recipients, and write a message.", variant: "destructive" }); return; } setLoading(true); const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "send", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: message.trim() } }); setLoading(false); if (error || data?.error) { toast({ title: "SMS was not sent", description: data?.error || error?.message || "Please try again.", variant: "destructive" }); return; } toast({ title: "SMS sent", description: `${data.sent || numbers.length} recipient(s) processed.` }); setRecipients(""); setMessage(""); };
-  const approved = [...readySenders.map((value) => ({ id: value, sender_id: value, status: "approved" as const })), ...senders.filter((item) => item.status === "approved")];
-  return <Card className="border-primary/20"><CardHeader><CardTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-primary" />Send SMS</CardTitle><p className="text-sm text-muted-foreground">Send to one or many contacts. SMS charges are deducted per recipient.</p></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><Label>Sender ID</Label><div className="relative"><Button type="button" variant="outline" className="w-full justify-between" onClick={() => { setSenderOpen(!senderOpen); if (!senderOpen) void loadSenders(); }}>{senderId || "Choose an approved sender ID"}<ChevronDown className="h-4 w-4" /></Button>{senderOpen && <div className="absolute z-20 mt-1 w-[calc(100%-2rem)] rounded-lg border bg-background p-2 shadow-lg">{approved.map((sender) => <button type="button" key={sender.id} className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted" onClick={() => { setSenderId(sender.sender_id); setSenderOpen(false); }}>{sender.sender_id}<Check className="h-4 w-4 text-primary" /></button>)}<div className="mt-2 border-t pt-2"><Input value={custom} onChange={(event) => setCustom(event.target.value)} placeholder="Custom sender ID" maxLength={11} /><Button type="button" size="sm" className="mt-2 w-full" onClick={() => void submitSender()}>Submit custom ID for approval</Button></div></div>}</div></div><div className="space-y-2"><Label>Recipients ({numbers.length})</Label><div className="flex gap-2"><Textarea value={recipients} onChange={(event) => setRecipients(event.target.value)} placeholder="Paste numbers, one per line or comma-separated" rows={4} /><Button type="button" variant="outline" className="h-10 shrink-0" onClick={() => fileRef.current?.click()} disabled={ocrLoading}>{ocrLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}<span className="sr-only">Extract contacts from screenshot</span></Button><input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void extractScreenshot(file); event.currentTarget.value = ""; }} /></div><p className="text-xs text-muted-foreground">Upload a WhatsApp group screenshot to extract numbers. You can repeat this as often as needed.</p></div><div className="space-y-2"><Label htmlFor={`${ownerType}-sms-message`}>Message</Label><Textarea id={`${ownerType}-sms-message`} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Write your message..." maxLength={1000} rows={5} /><p className="text-right text-xs text-muted-foreground">{message.length}/1000</p></div><Button onClick={() => void send()} disabled={loading} className="w-full">{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Send to {numbers.length || "recipients"}</Button></CardContent></Card>;
+
+  const [recipients, setRecipients] = useState("");
+  const [senderId, setSenderId] = useState("");
+  const [message, setMessage] = useState("");
+  const [senders, setSenders] = useState<Sender[]>([]);
+  const [senderOpen, setSenderOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [custom, setCustom] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [unitPrice, setUnitPrice] = useState(0.05);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
+  const numbers = useMemo(() => extractNumbers(recipients), [recipients]);
+  const pages = useMemo(() => Math.max(1, Math.ceil(message.length / PAGE_SIZE)), [message.length]);
+  const charsOnPage = message.length % PAGE_SIZE === 0 && message.length > 0 ? PAGE_SIZE : message.length % PAGE_SIZE;
+  const remaining = PAGE_SIZE - charsOnPage;
+  const perRecipient = unitPrice * pages;
+  const totalCost = perRecipient * numbers.length;
+
+  const loadSenders = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth.user?.id;
+    const { data } = await supabase
+      .from("sms_sender_ids")
+      .select("id,sender_id,status,is_global,user_id")
+      .or(`is_global.eq.true${uid ? `,user_id.eq.${uid}` : ""}`)
+      .order("created_at", { ascending: false });
+    // De-duplicate by sender_id keeping the most relevant record
+    const seen = new Set<string>();
+    const list: Sender[] = [];
+    for (const row of (data || []) as Sender[]) {
+      const key = row.sender_id.toUpperCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push(row);
+    }
+    setSenders(list);
+  };
+
+  const loadSettings = async () => {
+    const { data } = await supabase.from("sms_settings").select("unit_price,video_url").eq("id", true).maybeSingle();
+    if (data) {
+      setUnitPrice(Number(data.unit_price ?? 0.05));
+      setVideoUrl((data as { video_url?: string | null }).video_url ?? null);
+    }
+  };
+
+  useEffect(() => {
+    void loadSenders();
+    void loadSettings();
+  }, []);
+
+  const submitSender = async () => {
+    const value = custom.trim().toUpperCase();
+    if (!/^[A-Z0-9 ]{3,11}$/.test(value)) {
+      toast({ title: "Invalid sender ID", description: "Use 3-11 letters, numbers, or spaces.", variant: "destructive" });
+      return;
+    }
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      toast({ title: "Sign in required", description: "Please sign in before submitting a sender ID.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    const { error } = await supabase.from("sms_sender_ids").insert({ user_id: auth.user.id, sender_id: value });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Could not submit sender ID", description: error.message, variant: "destructive" });
+      return;
+    }
+    setCustom("");
+    setModalOpen(false);
+    await loadSenders();
+    toast({
+      title: "Submitted for approval",
+      description: `${value} is now pending approval from the network provider.`,
+    });
+  };
+
+  const extractScreenshots = async (files: FileList) => {
+    setOcrLoading(true);
+    try {
+      const worker = await createWorker("eng");
+      let found = 0;
+      let combined = recipients;
+      for (const file of Array.from(files)) {
+        const result = await worker.recognize(file);
+        const extracted = extractNumbers(result.data.text);
+        found += extracted.length;
+        combined = extractNumbers(`${combined}\n${extracted.join("\n")}`).join("\n");
+      }
+      await worker.terminate();
+      if (!found) {
+        toast({ title: "No phone numbers found", description: "Try clearer screenshots with the numbers visible." });
+      } else {
+        setRecipients(combined);
+        toast({ title: "Contacts extracted", description: `${extractNumbers(combined).length} unique number(s) ready.` });
+      }
+    } catch {
+      toast({ title: "Screenshot extraction failed", description: "Please try another image.", variant: "destructive" });
+    } finally {
+      setOcrLoading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const send = async () => {
+    if (!senderId || !message.trim() || !numbers.length) {
+      toast({ title: "Complete the SMS form", description: "Choose an approved sender, add recipients, and write a message.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await supabase.functions.invoke("txtconnect-sms", {
+      body: { action: "send", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: message.trim() },
+    });
+    setLoading(false);
+    if (error || data?.error) {
+      toast({ title: "SMS was not sent", description: data?.error || error?.message || "Please try again.", variant: "destructive" });
+      return;
+    }
+    toast({ title: "SMS sent", description: `${data.sent || numbers.length} recipient(s) processed - ${data.pages || pages} page(s) each.` });
+    setRecipients("");
+    setMessage("");
+  };
+
+  const approved = senders.filter((item) => item.status === "approved");
+  const pending = senders.filter((item) => item.status === "pending");
+
+  return (
+    <div className="space-y-6">
+      {videoUrl && (
+        <Card className="border-primary/20 overflow-hidden">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Video className="h-5 w-5 text-primary" />
+              How to send SMS
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative w-full overflow-hidden rounded-lg border bg-muted" style={{ paddingTop: "56.25%" }}>
+              <iframe
+                src={toEmbedUrl(videoUrl)}
+                title="SMS tutorial video"
+                className="absolute inset-0 h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5 text-primary" />
+            Send SMS
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Send to one or many contacts. SMS charges are deducted per recipient, per page.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Sender ID */}
+          <div className="space-y-2">
+            <Label>Sender ID</Label>
+            <div className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-between"
+                onClick={() => {
+                  setSenderOpen(!senderOpen);
+                  if (!senderOpen) void loadSenders();
+                }}
+              >
+                {senderId || "Choose an approved sender ID"}
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+              {senderOpen && (
+                <div className="absolute z-20 mt-1 w-full rounded-lg border bg-background p-2 shadow-lg">
+                  {approved.length === 0 && (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">No approved sender IDs yet.</p>
+                  )}
+                  {approved.map((sender) => (
+                    <button
+                      type="button"
+                      key={sender.id}
+                      className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => {
+                        setSenderId(sender.sender_id);
+                        setSenderOpen(false);
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        {sender.sender_id}
+                        {sender.is_global && <Badge variant="secondary" className="text-[10px]">Official</Badge>}
+                      </span>
+                      {senderId === sender.sender_id && <Check className="h-4 w-4 text-primary" />}
+                    </button>
+                  ))}
+                  {pending.map((sender) => (
+                    <div
+                      key={sender.id}
+                      className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-muted-foreground"
+                    >
+                      {sender.sender_id}
+                      <span className="flex items-center gap-1 text-xs text-amber-600">
+                        <Clock className="h-3 w-3" />
+                        Pending approval
+                      </span>
+                    </div>
+                  ))}
+                  <div className="mt-2 border-t pt-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => {
+                        setSenderOpen(false);
+                        setModalOpen(true);
+                      }}
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Add new sender ID
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recipients */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Recipients ({numbers.length})</Label>
+            </div>
+            <Textarea
+              value={recipients}
+              onChange={(event) => setRecipients(event.target.value)}
+              placeholder="Paste numbers, one per line or comma-separated. +233 numbers are auto-converted to 0..."
+              rows={4}
+            />
+            <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => fileRef.current?.click()}
+                disabled={ocrLoading}
+              >
+                {ocrLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                Upload screenshot(s)
+              </Button>
+              <p className="text-center text-xs text-muted-foreground text-pretty">
+                Upload a WhatsApp group screenshot to extract numbers. Or even upload multiple screenshots, or if you have your
+                contacts saved you can repeat this as often as needed.
+              </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  if (event.target.files?.length) void extractScreenshots(event.target.files);
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Message */}
+          <div className="space-y-2">
+            <Label>Message</Label>
+            <Textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Type your message here..."
+              rows={5}
+            />
+            <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 text-center sm:grid-cols-4">
+              <div>
+                <p className="text-lg font-semibold text-foreground">{message.length}</p>
+                <p className="text-xs text-muted-foreground">Characters</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-foreground">{pages}</p>
+                <p className="text-xs text-muted-foreground">SMS Page{pages > 1 ? "s" : ""}</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-foreground">{remaining}</p>
+                <p className="text-xs text-muted-foreground">Left on page</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-primary">GHS {totalCost.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">Total cost</p>
+              </div>
+            </div>
+            {pages > 1 && (
+              <p className="text-xs text-amber-600">
+                Messages over {PAGE_SIZE} characters are billed as multiple pages ({pages} pages x GHS {unitPrice.toFixed(2)} per
+                recipient).
+              </p>
+            )}
+          </div>
+
+          <Button type="button" className="w-full" size="lg" onClick={() => void send()} disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+            Send Now ({numbers.length} recipient{numbers.length === 1 ? "" : "s"})
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Add New Sender ID modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Sender ID</DialogTitle>
+            <DialogDescription>Create a custom sender identity for your messages</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="sender-name">Sender ID Name *</Label>
+                <span className="text-xs text-muted-foreground">{custom.length}/11</span>
+              </div>
+              <Input
+                id="sender-name"
+                value={custom}
+                maxLength={11}
+                onChange={(event) => setCustom(event.target.value.toUpperCase())}
+                placeholder="e.g. DATA4ALL"
+              />
+              <p className="text-xs text-muted-foreground">Letters, numbers, and spaces allowed (max 11 characters)</p>
+            </div>
+
+            <div className="rounded-lg border p-3">
+              <p className="mb-2 text-xs text-muted-foreground">How it will appear to recipients:</p>
+              <div className="rounded-md bg-primary p-3 text-primary-foreground">
+                <p className="text-xs opacity-80">From: {custom || "SENDER ID"}</p>
+                <p className="text-sm font-medium">Your message will appear here...</p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-amber-700">
+                <Clock className="h-4 w-4" />
+                Approval Required
+              </p>
+              <p className="mt-1 text-xs text-amber-700/90">
+                Custom sender IDs require approval from the network provider and may take 24-48 hours to activate. Once you submit,
+                it will show as pending approval until an admin approves it.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void submitSender()} disabled={submitting}>
+              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Submit for Approval
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

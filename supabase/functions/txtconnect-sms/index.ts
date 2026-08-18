@@ -28,22 +28,30 @@ Deno.serve(async (request) => {
     const recipients = Array.from(new Set((Array.isArray(body.recipients) ? body.recipients : []).map(normalize).filter((value: string) => /^\+?[0-9]{8,15}$/.test(value))));
     const senderId = String(body.sender_id || "").trim();
     const message = String(body.message || "").trim();
-    const readySenders = ["DATAFORALL", "CHEAPDATA", "GETDATA", "DATASTORE"];
-    const { data: senderRecord } = await supabase.from("sms_sender_ids").select("status").eq("user_id", user.id).eq("sender_id", senderId.toUpperCase()).maybeSingle();
-    if (!recipients.length || !senderId || !message || senderId.length > 11 || message.length > 1000) return json({ error: "Valid recipients, sender ID, and message are required" }, 400);
-    if (!readySenders.includes(senderId.toUpperCase()) && senderRecord?.status !== "approved") return json({ error: "This sender ID is not approved yet" }, 403);
+    // A sender ID is usable if the user owns an approved copy OR it is a global approved sender.
+    const { data: senderRecords } = await supabase
+      .from("sms_sender_ids")
+      .select("status,user_id,is_global")
+      .eq("sender_id", senderId.toUpperCase())
+      .eq("status", "approved");
+    const senderApproved = (senderRecords || []).some((r: { user_id: string | null; is_global: boolean }) => r.is_global || r.user_id === user.id);
+    if (!recipients.length || !senderId || !message || senderId.length > 11 || message.length > 1600) return json({ error: "Valid recipients, sender ID, and message are required" }, 400);
+    if (!senderApproved) return json({ error: "This sender ID is not approved yet" }, 403);
     const { data: setting } = await supabase.from("sms_settings").select("unit_price").eq("id", true).maybeSingle();
     const unitPrice = Number(setting?.unit_price ?? 0.05);
-    const totalCharge = unitPrice * recipients.length;
+    // Messages are billed per 160-character page. Anything past 160 chars adds another page.
+    const pages = Math.max(1, Math.ceil(message.length / 160));
+    const chargePerRecipient = unitPrice * pages;
+    const totalCharge = chargePerRecipient * recipients.length;
     const { data: charged, error: chargeError } = await supabase.rpc("charge_sms_wallet", { p_user_id: user.id, p_amount: totalCharge });
     if (chargeError || !charged) return json({ error: "Insufficient wallet balance for this SMS campaign" }, 402);
     const { data: record, error: insertError } = await supabase.from("sms_messages").insert({ user_id: user.id, owner_type: body.owner_type === "agent" ? "agent" : "customer", owner_id: body.owner_id || user.id, recipients, sender_id: senderId, message, total_charge: totalCharge, unit_price: unitPrice }).select("id").single();
     if (insertError) { await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: totalCharge }); return json({ error: "Could not create the SMS record" }, 500); }
     const results = await Promise.all(recipients.map(async (to: string) => { try { const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ to, from: senderId, unicode: "regular", sms: message }) }); return { to, status: response.status, body: await response.json().catch(() => ({})) }; } catch (error) { return { to, status: 599, body: { error: error instanceof Error ? error.message : "Provider request failed" } }; } }));
     const failed = results.filter((result) => result.status < 200 || result.status >= 300 || (result.body?.data?.status_code && result.body.data.status_code !== "000"));
-    if (failed.length) await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: unitPrice * failed.length });
+    if (failed.length) await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: chargePerRecipient * failed.length });
     await supabase.from("sms_messages").update({ status: failed.length ? (failed.length === results.length ? "failed" : "partial") : "sent", provider_response: results, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("id", record.id);
-    if (failed.length) return json({ error: `${failed.length} message(s) failed`, sent: results.length - failed.length, refunded: unitPrice * failed.length, total: results.length }, 502);
-    return json({ success: true, sent: results.length, charge: totalCharge, id: record.id });
+    if (failed.length) return json({ error: `${failed.length} message(s) failed`, sent: results.length - failed.length, refunded: chargePerRecipient * failed.length, total: results.length, pages }, 502);
+    return json({ success: true, sent: results.length, charge: totalCharge, pages, id: record.id });
   } catch (error) { console.error("[v0] TxtConnect SMS error", error); return json({ error: "SMS service request failed" }, 500); }
 });

@@ -33,6 +33,7 @@ import DeliveryAutomationAdmin from "@/components/DeliveryAutomationAdmin";
 import DeliveryProgressAdmin from "@/components/DeliveryProgressAdmin";
 import AdminOrderStatusUpdater from "@/components/AdminOrderStatusUpdater";
 import NetworkProviderRoutingAdmin from "@/components/NetworkProviderRoutingAdmin";
+import SmsAdmin from "@/components/SmsAdmin";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import {
@@ -81,7 +82,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "sms" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -1050,7 +1051,7 @@ const AdminDashboard = () => {
 
   // ======================== Admin permissions ========================
   const fetchCurrentUserPermissions = async (userId: string) => {
-    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "digital_services", "network_routing", "settings"];
+    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "digital_services", "network_routing", "sms", "settings"];
     
     const { data, error } = await supabase
       .from("admin_permissions")
@@ -2681,6 +2682,7 @@ const AdminDashboard = () => {
   <TabsTrigger value="delivery_automation" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Play className="h-3 w-3 md:h-4 md:w-4" /> Delivery automation</TabsTrigger>
   <TabsTrigger value="digital_services" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><KeyRound className="h-3 w-3 md:h-4 md:w-4" /> Digital Services</TabsTrigger>
   <TabsTrigger value="network_routing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Route className="h-3 w-3 md:h-4 md:w-4" /> Network Routing</TabsTrigger>
+                <TabsTrigger value="sms" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><MessageCircle className="h-3 w-3 md:h-4 md:w-4" /> SMS</TabsTrigger>
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
           <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
@@ -4530,6 +4532,12 @@ const AdminDashboard = () => {
   {canSee("network_routing") && (
   <TabsContent value="network_routing" className="space-y-6">
   <NetworkProviderRoutingAdmin />
+  </TabsContent>
+  )}
+
+  {canSee("sms") && (
+  <TabsContent value="sms" className="space-y-6">
+  <SmsAdmin />
   </TabsContent>
   )}
 
