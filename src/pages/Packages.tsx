@@ -22,6 +22,7 @@ import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import SmsComposer from "@/components/SmsComposer";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1430,6 +1431,16 @@ const searchOrders = async () => {
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
         <DeliveryProgressCard />
+
+        {authUser && (
+          <section className="mx-auto mb-10 max-w-4xl" aria-labelledby="packages-sms-heading">
+            <div className="mb-4 text-center">
+              <h2 id="packages-sms-heading" className="font-display text-2xl font-bold text-foreground">Send SMS</h2>
+              <p className="text-sm text-muted-foreground">Send a promotional message to your contacts directly from the Packages page.</p>
+            </div>
+            <SmsComposer ownerType="customer" ownerId={authUser.id} />
+          </section>
+        )}
 
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {(["data", "afa", "vouchers", "services", "bulk"] as const).map((cat) => (
