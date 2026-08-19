@@ -118,6 +118,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
   const [storeLink, setStoreLink] = useState("");
   const [includeStoreLink, setIncludeStoreLink] = useState(true);
   const [generationType, setGenerationType] = useState("promotion");
+  const [aiBrief, setAiBrief] = useState("");
   const [generating, setGenerating] = useState(false);
 
   const numbers = useMemo(() => extractNumbers(recipients), [recipients]);
@@ -135,10 +136,12 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
       .select("id,sender_id,status,is_global,user_id")
       .or(`is_global.eq.true${uid ? `,user_id.eq.${uid}` : ""}`)
       .order("created_at", { ascending: false });
-    // De-duplicate by sender_id keeping the most relevant record
+    // Only official (global) sender IDs are shared with everyone; a personal
+    // sender ID is only visible to the user who requested it.
     const seen = new Set<string>();
     const list: Sender[] = [];
     for (const row of (data || []) as Sender[]) {
+      if (!row.is_global && row.user_id !== uid) continue;
       const key = row.sender_id.toUpperCase();
       if (seen.has(key)) continue;
       seen.add(key);
@@ -149,14 +152,13 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
 
   const loadWalletAndStore = async () => {
     const { data: auth } = await supabase.auth.getUser();
-    const uid = ownerId || auth.user?.id;
+    const uid = auth.user?.id;
     if (!uid) return;
+    const { data: bal } = await supabase.rpc("get_sms_wallet", { p_user_id: uid });
+    setWalletBalance(Number(bal ?? 0));
     if (ownerType === "agent") {
-      const { data } = await supabase.from("agent_stores").select("wallet_balance,store_name,store_slug,id").eq("id", uid).maybeSingle();
-      if (data) { setWalletBalance(Number(data.wallet_balance || 0)); setStoreLink(`https://dataplug.store/store/${data.store_slug || data.id}`); }
-    } else {
-      const { data } = await supabase.from("customers").select("wallet_balance").eq("user_id", uid).maybeSingle();
-      if (data) setWalletBalance(Number(data.wallet_balance || 0));
+      const { data } = await supabase.from("agent_stores").select("store_slug,id").eq("user_id", uid).maybeSingle();
+      if (data) setStoreLink(`https://dataplug.store/store/${data.store_slug || data.id}`);
     }
   };
 
@@ -238,7 +240,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
   const generateMessage = async () => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, store_link: includeStoreLink ? storeLink : "", max_units: 160 } });
+      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: includeStoreLink ? storeLink : "", max_units: 160 } });
       if (error || data?.error) throw new Error(data?.error || error?.message || "Could not generate message");
       setMessage(String(data.message || "").slice(0, 640));
       toast({ title: "Message generated", description: "Review the message before sending." });
@@ -429,6 +431,10 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
               <Button type="button" size="sm" variant="outline" onClick={() => void generateMessage()} disabled={generating}><Sparkles className="mr-2 h-4 w-4" />{generating ? "Generating…" : "Generate with AI"}</Button>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Switch checked={includeStoreLink} onCheckedChange={setIncludeStoreLink} id="include-store-link" /><label htmlFor="include-store-link">Include my store link by default</label></div>
+            <div className="space-y-1">
+              <Label htmlFor="ai-brief" className="text-xs text-muted-foreground">Describe what the AI should write (optional)</Label>
+              <Textarea id="ai-brief" value={aiBrief} onChange={(event) => setAiBrief(event.target.value)} placeholder="e.g. Flash sale on MTN 5GB bundle at GHS 20, ends Friday" rows={2} />
+            </div>
             <Textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
