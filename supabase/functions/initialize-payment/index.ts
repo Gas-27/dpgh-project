@@ -29,15 +29,22 @@ Deno.serve(async (req) => {
     // PUBLIC SMS PAYMENT
     // ==========================
     if (metadata?.type === "sms_campaign") {
-      const baseAmount = Number(requestedAmount);
-      if (!email || !Number.isFinite(baseAmount) || baseAmount <= 0 || !metadata.sender_id || !metadata.message || !Array.isArray(metadata.recipients) || metadata.recipients.length === 0) {
-        return new Response(JSON.stringify({ error: "Missing required fields for SMS payment" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const recipients = Array.isArray(metadata.recipients) ? metadata.recipients : [];
+      const normalizedPhone = String(phone || recipients[0] || "").replace(/\D/g, "");
+      const guestEmail = String(email || `guest-${normalizedPhone}@dataplug.store`).trim().toLowerCase();
+      const baseAmount = Math.round(Number(requestedAmount) * 100) / 100;
+      const requestedRedirect = typeof callback_url === "string" ? callback_url.trim() : "";
+      const redirectUrl = /^https:\/\/(?!localhost|127\.0\.0\.1)[^\s]+$/i.test(requestedRedirect) ? requestedRedirect : "https://dataplug.store/packages";
+      if (!normalizedPhone || !/^\d{9,15}$/.test(normalizedPhone) || !/^\S+@\S+\.\S+$/.test(guestEmail) || !Number.isFinite(baseAmount) || baseAmount <= 0 || !metadata.sender_id || !metadata.message || recipients.length === 0) {
+        return new Response(JSON.stringify({ error: "Enter a valid phone number and complete the SMS details before payment." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const feeAmount = Math.round(baseAmount * (PAYSTACK_FEE_PERCENT / 100) * 100) / 100;
       const totalWithFee = Math.round((baseAmount + feeAmount) * 100) / 100;
-      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", { method: "POST", headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ email, amount: Math.round(totalWithFee * 100), currency: "GHS", callback_url, metadata: { ...metadata, type: "sms_campaign", base_amount: baseAmount, fee_amount: feeAmount } }) });
-      const result = await paystackRes.json();
-      if (!result.status) return new Response(JSON.stringify({ error: result.message || "SMS payment initialization failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", { method: "POST", headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ email: guestEmail, amount: Math.round(totalWithFee * 100), currency: "GHS", callback_url: redirectUrl, metadata: { ...metadata, type: "sms_campaign", phone: normalizedPhone, base_amount: baseAmount, fee_amount: feeAmount } }) });
+      const raw = await paystackRes.text();
+      let result: any = {};
+      try { result = JSON.parse(raw); } catch { result = { message: raw }; }
+      if (!paystackRes.ok || !result.status || !result.data?.authorization_url) return new Response(JSON.stringify({ error: result.message || "Paystack could not initialize this SMS payment." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       return new Response(JSON.stringify({ authorization_url: result.data.authorization_url, reference: result.data.reference, amount: totalWithFee, base_amount: baseAmount }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

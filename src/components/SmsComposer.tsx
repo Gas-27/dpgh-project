@@ -284,9 +284,11 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       : cleanMessage;
     if (publicMode) {
       const email = `sms-${numbers[0]}@dataplug.store`;
-      const { data: payment, error: paymentError } = await supabase.functions.invoke("initialize-payment", { body: { email, phone: numbers[0], amount: totalCost, callback_url: window.location.href, metadata: { type: "sms_campaign", recipients: numbers, sender_id: senderId, message: outgoingMessage, owner_type: "customer", owner_id: null } } });
+      const { data: payment, error: paymentError } = await supabase.functions.invoke("initialize-payment", { body: { phone: numbers[0], amount: totalCost, callback_url: window.location.href, metadata: { type: "sms_campaign", recipients: numbers, sender_id: senderId, message: outgoingMessage, owner_type: "customer", owner_id: null } } });
       setLoading(false);
-      if (paymentError || payment?.error || !payment?.authorization_url) { toast({ title: "Payment unavailable", description: payment?.error || paymentError?.message || "Could not start Paystack payment.", variant: "destructive" }); return; }
+      let paymentDetails = payment?.error || paymentError?.message || "Could not start Paystack payment.";
+      if (paymentError?.context) { try { const body = await paymentError.context.clone().json(); paymentDetails = body?.error || paymentDetails; } catch { /* keep the generic message */ } }
+      if (paymentError || payment?.error || !payment?.authorization_url) { toast({ title: "Payment unavailable", description: paymentDetails, variant: "destructive" }); return; }
       window.location.assign(payment.authorization_url);
       return;
     }
