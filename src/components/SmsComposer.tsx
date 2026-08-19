@@ -16,7 +16,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Check, ChevronDown, Clock, Loader2, Send, Upload, UserPlus, Video } from "lucide-react";
+import { Check, ChevronDown, Clock, Loader2, Send, Sparkles, Upload, UserPlus, Video, Wallet } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 type SmsComposerProps = { ownerType: "customer" | "agent"; ownerId?: string };
 type Sender = {
@@ -113,6 +114,11 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
   const [loading, setLoading] = useState(false);
   const [unitPrice, setUnitPrice] = useState(0.05);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [storeLink, setStoreLink] = useState("");
+  const [includeStoreLink, setIncludeStoreLink] = useState(true);
+  const [generationType, setGenerationType] = useState("promotion");
+  const [generating, setGenerating] = useState(false);
 
   const numbers = useMemo(() => extractNumbers(recipients), [recipients]);
   const messageUnits = useMemo(() => Array.from(message).reduce((total, character) => total + (character.codePointAt(0)! > 0xffff ? 2 : 1), 0), [message]);
@@ -141,6 +147,19 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     setSenders(list);
   };
 
+  const loadWalletAndStore = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = ownerId || auth.user?.id;
+    if (!uid) return;
+    if (ownerType === "agent") {
+      const { data } = await supabase.from("agent_stores").select("wallet_balance,store_name,store_slug,id").eq("id", uid).maybeSingle();
+      if (data) { setWalletBalance(Number(data.wallet_balance || 0)); setStoreLink(`https://dataplug.store/store/${data.store_slug || data.id}`); }
+    } else {
+      const { data } = await supabase.from("customers").select("wallet_balance").eq("user_id", uid).maybeSingle();
+      if (data) setWalletBalance(Number(data.wallet_balance || 0));
+    }
+  };
+
   const loadSettings = async () => {
     const { data } = await supabase.from("sms_settings").select("unit_price,video_url").eq("id", true).maybeSingle();
     if (data) {
@@ -152,6 +171,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
   useEffect(() => {
     void loadSenders();
     void loadSettings();
+    void loadWalletAndStore();
   }, []);
 
   const submitSender = async () => {
@@ -188,11 +208,17 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
       let found = 0;
       let combined = recipients;
       for (const file of Array.from(files)) {
-        const prepared = await preprocessScreenshot(file);
-        const result = await worker.recognize(prepared);
-        const extracted = extractNumbers(result.data.text);
+        let text = "";
+        if (file.type.startsWith("image/")) {
+          const prepared = await preprocessScreenshot(file);
+          const result = await worker.recognize(prepared);
+          text = result.data.text;
+        } else if (/\.(txt|csv|tsv)$/i.test(file.name) || file.type.includes("text") || file.type.includes("csv")) {
+          text = await file.text();
+        }
+        const extracted = extractNumbers(text);
         found += extracted.length;
-        combined = extractNumbers(`${combined}\n${extracted.join("\n")}`).join("\n");
+        combined = extractNumbers(`${combined},${extracted.join(",")}`).join(",");
       }
       await worker.terminate();
       if (!found) {
@@ -209,6 +235,18 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     }
   };
 
+  const generateMessage = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, store_link: includeStoreLink ? storeLink : "", max_units: 160 } });
+      if (error || data?.error) throw new Error(data?.error || error?.message || "Could not generate message");
+      setMessage(String(data.message || "").slice(0, 640));
+      toast({ title: "Message generated", description: "Review the message before sending." });
+    } catch (error) {
+      toast({ title: "Could not generate message", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+    } finally { setGenerating(false); }
+  };
+
   const send = async () => {
     if (!senderId || !message.trim() || !numbers.length) {
       toast({ title: "Complete the SMS form", description: "Choose an approved sender, add recipients, and write a message.", variant: "destructive" });
@@ -220,8 +258,12 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     });
     setLoading(false);
   if (error || data?.error) {
+    let contextDetails = "";
+    try { contextDetails = error?.context ? await error.context.clone().text() : ""; } catch { /* provider response may not be readable */ }
+    let parsedContext: any = null;
+    try { parsedContext = contextDetails ? JSON.parse(contextDetails) : null; } catch { /* keep raw context */ }
     const providerDetails = data?.provider_response?.map?.((item: any) => item?.body?.msg || item?.body?.message || item?.body?.error).filter(Boolean).join("; ");
-    toast({ title: "SMS was not sent", description: data?.error || providerDetails || error?.message || "Please try again.", variant: "destructive" });
+    toast({ title: "SMS was not sent", description: data?.error || parsedContext?.error || providerDetails || contextDetails || error?.message || "Please try again.", variant: "destructive" });
       return;
     }
     toast({ title: "SMS sent", description: `${data.sent || numbers.length} recipient(s) processed - ${data.pages || pages} page(s) each.` });
@@ -265,6 +307,10 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
           <p className="text-sm text-muted-foreground">
             Send to one or many contacts. SMS charges are deducted per recipient, per page.
           </p>
+          <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+            <Wallet className="h-5 w-5 text-primary" />
+            <div><p className="text-xs text-muted-foreground">Wallet balance</p><p className="font-semibold">GHS {walletBalance === null ? "—" : walletBalance.toFixed(2)}</p></div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Sender ID */}
@@ -357,7 +403,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
                 disabled={ocrLoading}
               >
                 {ocrLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                Upload screenshot(s)
+                Upload screenshots or TXT/CSV files
               </Button>
               <p className="text-center text-xs text-muted-foreground text-pretty">
                 Upload a WhatsApp group screenshot to extract numbers. Or even upload multiple screenshots, or if you have your
@@ -366,7 +412,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,.txt,.csv,.tsv,text/plain,text/csv"
                 multiple
                 className="hidden"
                 onChange={(event) => {
@@ -377,8 +423,12 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
           </div>
 
           {/* Message */}
-          <div className="space-y-2">
-            <Label>Message</Label>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Label>Message</Label><select value={generationType} onChange={(event) => setGenerationType(event.target.value)} className="ml-auto rounded-md border bg-background px-2 py-1 text-sm"><option value="promotion">Promotion</option><option value="marketing">Marketing</option><option value="greeting">Greeting</option><option value="announcement">Announcement</option><option value="reminder">Reminder</option></select>
+              <Button type="button" size="sm" variant="outline" onClick={() => void generateMessage()} disabled={generating}><Sparkles className="mr-2 h-4 w-4" />{generating ? "Generating…" : "Generate with AI"}</Button>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Switch checked={includeStoreLink} onCheckedChange={setIncludeStoreLink} id="include-store-link" /><label htmlFor="include-store-link">Include my store link by default</label></div>
             <Textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
@@ -406,7 +456,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
               <p className="font-semibold text-foreground">How SMS pricing works</p>
               <p>We charge GHS {CONTACT_PRICE.toFixed(2)} for each contact, plus GHS {PAGE_PRICE.toFixed(2)} for each SMS page. One page contains up to {PAGE_SIZE} character units.</p>
-              <p>Example: 2 contacts and 1 page = GHS {(CONTACT_PRICE * 2 + PAGE_PRICE).toFixed(2)}. Emoji characters count as 2 units and may create an additional page.</p>
+              <p>Example: 5 contacts and 1 page = GHS {(CONTACT_PRICE * 5 + PAGE_PRICE).toFixed(2)}. Emoji characters count as 2 units and may create an additional page.</p>
             </div>
           </div>
 

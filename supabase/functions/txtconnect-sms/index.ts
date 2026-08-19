@@ -28,6 +28,21 @@ Deno.serve(async (request) => {
     const body = await request.json();
     const action = body.action || "send";
     const apiKey = Deno.env.get("TXT_CONNECT_API");
+    if (action === "generate") {
+      const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY");
+      if (!gatewayKey) return json({ error: "AI Gateway is not configured" }, 503);
+      const type = String(body.type || "promotion");
+      const link = String(body.store_link || "").trim();
+      const maxUnits = Number(body.max_units || 160);
+      const prompt = `Write one polished SMS for a Ghanaian data store. Purpose: ${type}. ${link ? `Include this store link exactly once: ${link}` : "Do not include a link."} Keep it within ${maxUnits} character units. Return only the message text, no quotes, no title, no explanation.`;
+      const response = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${gatewayKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "google/gemini-3.5-flash", messages: [{ role: "user", content: prompt }], temperature: 0.7, max_tokens: 120 }) });
+      const raw = await response.text();
+      let payload: Record<string, unknown> = {};
+      try { payload = JSON.parse(raw) as Record<string, unknown>; } catch { return json({ error: raw || "AI generation failed" }, response.status); }
+      if (!response.ok) return json({ error: String(payload.error || "AI generation failed") }, response.status);
+      const choices = payload.choices as Array<{ message?: { content?: string } }> | undefined;
+      return json({ message: choices?.[0]?.message?.content?.trim() || "" });
+    }
     if (!apiKey) return json({ error: "TxtConnect is not configured" }, 503);
     if (action === "balance") {
       const response = await fetch("https://api.txtconnect.net/dev/api/sms/checkbalance", { headers: { Authorization: `Bearer ${apiKey}` } });
