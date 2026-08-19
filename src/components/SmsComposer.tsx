@@ -162,10 +162,10 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     }
     const table = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
     const query = ownerId
-      ? supabase.from(table).select("store_slug,id").eq("id", ownerId).maybeSingle()
-      : supabase.from(table).select("store_slug,id").eq("user_id", uid).maybeSingle();
+      ? supabase.from(table).select("store_name_slug,id").eq("id", ownerId).maybeSingle()
+      : supabase.from(table).select("store_name_slug,id").eq("user_id", uid).maybeSingle();
     const { data } = await query;
-    if (data) setStoreLink(`https://dataplug.store/store/${data.store_slug || data.id}`);
+    if (data) setStoreLink(`https://dataplug.store/store/${data.store_name_slug || data.id}`);
   };
 
   const loadSettings = async () => {
@@ -248,8 +248,11 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     try {
       const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: includeStoreLink ? storeLink : "", max_units: 160 } });
       if (error || data?.error) throw new Error(data?.error || error?.message || "Could not generate message");
-  const generated = String(data.message || "").trim();
-  const generatedWithLink = includeStoreLink && storeLink && !generated.includes(storeLink)
+  const generated = String(data.message || "").trim()
+    .replace(/\[store\s*name\]|\[your\s*store\s*name\]|\[store\s*link\]/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  const generatedWithLink = includeStoreLink && storeLink
     ? `${generated} ${storeLink}`.trim()
     : generated;
   setMessage(generatedWithLink.slice(0, 640));
