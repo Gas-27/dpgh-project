@@ -607,9 +607,9 @@ Deno.serve(async (req) => {
         .eq("package_id", metadata.package_id)
         .maybeSingle();
 
-      if (subsubagentPrice?.sell_price != null) {
-        baseAmount = Number(subsubagentPrice.sell_price);
-        priceType = "subsubagent_sell_price";
+      if (subsubagentPrice?.customer_sell_price != null) {
+        baseAmount = Number(subsubagentPrice.customer_sell_price);
+        priceType = "subsubagent_customer_sell_price";
       } else {
         // No custom price: charge the "Cost from Agent" exactly like the dashboard/storefront.
         // Priority (lowest → highest): admin price → parent subagent's own agent cost
@@ -675,7 +675,7 @@ Deno.serve(async (req) => {
         if (subagentStore?.agent_store_id) {
           const { data: agentPrice } = await supabaseClient
             .from("agent_package_prices")
-            .select("sell_price")
+.select("customer_sell_price")
             .eq("agent_store_id", subagentStore.agent_store_id)
             .eq("package_id", metadata.package_id)
             .maybeSingle();

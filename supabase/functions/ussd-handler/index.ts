@@ -229,6 +229,7 @@ Deno.serve(async (req) => {
           console.log(`[USSD] Processing agent code: "${agentCode}"`);
           let agentStoreId: string | null = null;
           let subagentStoreId: string | null = null;
+          let subsubagentStoreId: string | null = null;
           let supportContact: string | null = null;
 
           if (agentCode !== "0") {
@@ -259,6 +260,19 @@ Deno.serve(async (req) => {
                 supportContact = subagent.support_number;
                 console.log(`[USSD] Found subagent store: ${subagentStoreId}, parent agent: ${agentStoreId}`);
               } else {
+                const { data: subsubagent, error: subsubagentError } = await supabase
+                  .from("sub_subagent_stores")
+                  .select("id, subagent_store_id, agent_store_id, support_number")
+                  .eq("topup_reference", agentCode)
+                  .eq("approved", true)
+                  .single();
+                if (!subsubagentError && subsubagent) {
+                  subsubagentStoreId = subsubagent.id;
+                  subagentStoreId = subsubagent.subagent_store_id;
+                  agentStoreId = subsubagent.agent_store_id;
+                  supportContact = subsubagent.support_number;
+                  console.log(`[USSD] Found sub-subagent store: ${subsubagentStoreId}`);
+                } else {
                 msg = "Invalid code.\nEnter a valid code:";
                 responseOp = "2";
                 await updateSession({ step: "enter_access_code" });
@@ -271,6 +285,7 @@ Deno.serve(async (req) => {
             step: "select_network",
             agent_store_id: agentStoreId,
             subagent_store_id: subagentStoreId,
+            subsubagent_store_id: subsubagentStoreId,
             support_contact: supportContact,
           });
 
@@ -316,7 +331,12 @@ Deno.serve(async (req) => {
             let packages: any[] = [];
 
             // If subagent code was used, get packages with subagent's custom prices (fallback to agent prices, then default)
-            if (session.subagent_store_id) {
+            if (session.subsubagent_store_id) {
+              const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
+            } else if (session.subagent_store_id) {
               // First get all active packages for this network
               const { data: allPackages, error: pkgError } = await supabase
                 .from("data_packages")
@@ -448,7 +468,12 @@ Deno.serve(async (req) => {
             // Fetch support contact from agent or subagent
             let supportContact = "";
             
-            if (session.subagent_store_id) {
+            if (session.subsubagent_store_id) {
+              const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
+            } else if (session.subagent_store_id) {
               // Get support contact from subagent
               const { data: subagent } = await supabase
                 .from("subagent_stores")
@@ -1094,7 +1119,12 @@ Deno.serve(async (req) => {
             let packages: any[] = [];
 
             // If subagent code was used, get packages with subagent's custom prices (fallback to agent prices, then default)
-            if (session.subagent_store_id) {
+            if (session.subsubagent_store_id) {
+              const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
+            } else if (session.subagent_store_id) {
               // First get all active packages for this network
               const { data: allPackages, error: pkgError } = await supabase
                 .from("data_packages")
@@ -1215,7 +1245,12 @@ Deno.serve(async (req) => {
             // Fetch support contact from agent or subagent
             let supportContact = "";
             
-            if (session.subagent_store_id) {
+            if (session.subsubagent_store_id) {
+              const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
+            } else if (session.subagent_store_id) {
               // Get support contact from subagent
               const { data: subagent } = await supabase
                 .from("subagent_stores")
@@ -1544,7 +1579,12 @@ Deno.serve(async (req) => {
               metadata.agent_store_id = session.agent_store_id;
             }
             
-            if (session.subagent_store_id) {
+            if (session.subsubagent_store_id) {
+              const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
+            } else if (session.subagent_store_id) {
               metadata.subagent_store_id = session.subagent_store_id;
             }
 

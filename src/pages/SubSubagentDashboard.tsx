@@ -1943,7 +1943,7 @@ return (
   <TabsList className="hidden" />
 
   <TabsContent value="sms" className="mt-0 space-y-6">
-    <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="subsubagent" ownerId={subagentStore?.id} /></TabsContent><TabsContent value="history"><SmsHistory ownerType="subsubagent" ownerId={subagentStore?.id} /></TabsContent></Tabs>
+    <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="subsubagent" ownerId={subagentStore?.id} storeUrl={storeUrl} /></TabsContent><TabsContent value="history"><SmsHistory ownerType="subsubagent" ownerId={subagentStore?.id} /></TabsContent></Tabs>
   </TabsContent>
   
   {/* OVERVIEW */}

@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, ChevronDown, Clock, Loader2, Send, Sparkles, Upload, UserPlus, Video, Wallet } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
-type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string };
+type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string };
 type Sender = {
   id: string;
   sender_id: string;
@@ -98,7 +98,7 @@ const toEmbedUrl = (url: string): string => {
   return url;
 };
 
-export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
+export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStoreUrl }: SmsComposerProps) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -115,7 +115,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
   const [unitPrice, setUnitPrice] = useState(0.05);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [storeLink, setStoreLink] = useState("");
+  const [storeLink, setStoreLink] = useState(providedStoreUrl || "");
   const [includeStoreLink, setIncludeStoreLink] = useState(true);
   const [generationType, setGenerationType] = useState("promotion");
   const [aiBrief, setAiBrief] = useState("");
@@ -156,6 +156,10 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     if (!uid) return;
     const { data: bal } = await supabase.rpc("get_sms_wallet", { p_user_id: uid, p_owner_type: ownerType === "customer" ? "customer" : ownerType });
     setWalletBalance(Number(bal ?? 0));
+    if (providedStoreUrl) {
+      setStoreLink(providedStoreUrl);
+      return;
+    }
     if (ownerType === "customer") {
       setStoreLink("https://dataplug.store/packages");
       return;
@@ -180,7 +184,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     void loadSenders();
     void loadSettings();
     void loadWalletAndStore();
-  }, [ownerType, ownerId]);
+  }, [ownerType, ownerId, providedStoreUrl]);
 
   const submitSender = async () => {
     const value = custom.trim().toUpperCase();
@@ -246,7 +250,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
   const generateMessage = async () => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: includeStoreLink ? storeLink : "", max_units: 160 } });
+      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: "", max_units: 160 } });
       if (error || data?.error) throw new Error(data?.error || error?.message || "Could not generate message");
   const generated = String(data.message || "").trim()
     .replace(/\[store\s*name\]|\[your\s*store\s*name\]|\[store\s*link\]/gi, "")
