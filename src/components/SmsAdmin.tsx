@@ -35,6 +35,10 @@ export default function SmsAdmin() {
   const [newSender, setNewSender] = useState("");
   const [adding, setAdding] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
+  const [dashboardVideoUrl, setDashboardVideoUrl] = useState("");
+  const [packagesVideoUrl, setPackagesVideoUrl] = useState("");
+  const [dashboardLinkUrl, setDashboardLinkUrl] = useState("");
+  const [packagesLinkUrl, setPackagesLinkUrl] = useState("");
   const [savingVideo, setSavingVideo] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("pending");
@@ -44,8 +48,13 @@ export default function SmsAdmin() {
     const { data, error } = await supabase.rpc("admin_list_sms_sender_ids");
     if (error) toast({ title: "Could not load sender IDs", description: error.message, variant: "destructive" });
     setSenders((data || []) as SenderRow[]);
-    const { data: settings } = await supabase.from("sms_settings").select("video_url").eq("id", true).maybeSingle();
-    setVideoUrl(((settings as { video_url?: string | null })?.video_url) ?? "");
+    const { data: settings } = await supabase.from("sms_settings").select("video_url,dashboard_video_url,packages_video_url,dashboard_link_url,packages_link_url").eq("id", true).maybeSingle();
+    const current = settings as { video_url?: string | null; dashboard_video_url?: string | null; packages_video_url?: string | null; dashboard_link_url?: string | null; packages_link_url?: string | null } | null;
+    setVideoUrl(current?.video_url ?? "");
+    setDashboardVideoUrl(current?.dashboard_video_url ?? "");
+    setPackagesVideoUrl(current?.packages_video_url ?? "");
+    setDashboardLinkUrl(current?.dashboard_link_url ?? "");
+    setPackagesLinkUrl(current?.packages_link_url ?? "");
     setLoading(false);
   };
 
@@ -114,7 +123,7 @@ export default function SmsAdmin() {
 
   const saveVideo = async () => {
     setSavingVideo(true);
-    const { error } = await supabase.rpc("admin_set_sms_video_url", { p_url: videoUrl });
+    const { error } = await supabase.from("sms_settings").update({ video_url: videoUrl || null, dashboard_video_url: dashboardVideoUrl || null, packages_video_url: packagesVideoUrl || null, dashboard_link_url: dashboardLinkUrl || null, packages_link_url: packagesLinkUrl || null }).eq("id", true);
     setSavingVideo(false);
     if (error) {
       toast({ title: "Could not save video", description: error.message, variant: "destructive" });
@@ -175,8 +184,12 @@ export default function SmsAdmin() {
           <CardDescription>Paste a YouTube/Vimeo/MP4 URL. It appears as a video inside the Send SMS section for all users.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..." />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2"><Label>Dashboard video</Label><Input value={dashboardVideoUrl} onChange={(e) => setDashboardVideoUrl(e.target.value)} placeholder="Dashboard tutorial URL" /><Label>Dashboard link</Label><Input value={dashboardLinkUrl} onChange={(e) => setDashboardLinkUrl(e.target.value)} placeholder="Dashboard help link" /></div>
+            <div className="space-y-2"><Label>Packages video</Label><Input value={packagesVideoUrl} onChange={(e) => setPackagesVideoUrl(e.target.value)} placeholder="Packages tutorial URL" /><Label>Packages link</Label><Input value={packagesLinkUrl} onChange={(e) => setPackagesLinkUrl(e.target.value)} placeholder="Packages help link" /></div>
+          </div>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="Legacy/default video URL" />
             <Button onClick={() => void saveVideo()} disabled={savingVideo} className="shrink-0">
               {savingVideo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save video

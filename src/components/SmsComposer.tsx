@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, ChevronDown, Clock, Loader2, Send, Sparkles, Upload, UserPlus, Video, Wallet } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
-type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string };
+type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string; publicMode?: boolean };
 type Sender = {
   id: string;
   sender_id: string;
@@ -98,7 +98,7 @@ const toEmbedUrl = (url: string): string => {
   return url;
 };
 
-export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStoreUrl }: SmsComposerProps) {
+export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStoreUrl, publicMode = false }: SmsComposerProps) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -153,7 +153,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const loadWalletAndStore = async () => {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
-    if (!uid) return;
+    if (!uid) { setWalletBalance(null); return; }
     const { data: bal } = await supabase.rpc("get_sms_wallet", { p_user_id: uid, p_owner_type: ownerType === "customer" ? "customer" : ownerType });
     setWalletBalance(Number(bal ?? 0));
     if (providedStoreUrl) {
@@ -334,10 +334,10 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
           <p className="text-sm text-muted-foreground">
             Send to one or many contacts. SMS charges are deducted per recipient, per page.
           </p>
-          <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+          {!publicMode && <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
             <Wallet className="h-5 w-5 text-primary" />
             <div><p className="text-xs text-muted-foreground">Wallet balance</p><p className="font-semibold">GHS {walletBalance === null ? "—" : walletBalance.toFixed(2)}</p></div>
-          </div>
+          </div>}
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Sender ID */}

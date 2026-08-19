@@ -1192,7 +1192,7 @@ const Packages = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const checkingOrderIds = useOrderStatusRefresh(orders, setOrders);
-  const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services" | "bulk">("data");
+  const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services" | "bulk" | "sms">("data");
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
@@ -1421,7 +1421,7 @@ const searchOrders = async () => {
     data: <Wifi className="h-4 w-4 mr-2" />, afa: <Package className="h-4 w-4 mr-2" />,
     vouchers: <CheckCircle className="h-4 w-4 mr-2" />, services: <Wifi className="h-4 w-4 mr-2" />,
   };
-  const catLabels: Record<string, string> = { data: "Data Bundles", afa: "AFA Bundles", vouchers: "Instant Data", services: "Services", bulk: "Bulk Orders" };
+  const catLabels: Record<string, string> = { data: "Data Bundles", afa: "AFA Bundles", vouchers: "Instant Data", services: "Services", bulk: "Bulk Orders", sms: "Bulk SMS" };
 
   return (
     <div className="min-h-screen bg-background">
@@ -1432,18 +1432,8 @@ const searchOrders = async () => {
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
         <DeliveryProgressCard />
 
-        {authUser && (
-          <section className="mx-auto mb-10 max-w-4xl" aria-labelledby="packages-sms-heading">
-            <div className="mb-4 text-center">
-              <h2 id="packages-sms-heading" className="font-display text-2xl font-bold text-foreground">Send SMS</h2>
-              <p className="text-sm text-muted-foreground">Send a promotional message to your contacts directly from the Packages page.</p>
-            </div>
-            <SmsComposer ownerType="customer" ownerId={authUser.id} />
-          </section>
-        )}
-
         <div className="flex flex-wrap justify-center gap-3 mb-12">
-          {(["data", "afa", "vouchers", "services", "bulk"] as const).map((cat) => (
+          {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => (
             <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => setActiveCategory(cat)} className={`font-semibold ${cat === "bulk" && activeCategory !== "bulk" ? "border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10" : ""}`}>
               {cat === "bulk" ? <Layers className="h-4 w-4 mr-2" /> : catIcons[cat]}{catLabels[cat]}
             </Button>
@@ -1598,9 +1588,19 @@ const searchOrders = async () => {
             setSelectedService(service);
             toast({ title: "Service selected", description: `${service.name} is ready for secure activation.` });
           }} />
-        ) : activeCategory === "bulk" ? (
-
-          <div className="max-w-3xl mx-auto">
+  ) : activeCategory === "sms" ? (
+  <section className="mx-auto w-full max-w-4xl" aria-labelledby="packages-sms-heading">
+    <Card className="border-primary/30 bg-primary/5">
+      <CardContent className="p-4 sm:p-6">
+        <h2 id="packages-sms-heading" className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2>
+        <p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p>
+        <SmsComposer ownerType="customer" publicMode />
+      </CardContent>
+    </Card>
+  </section>
+  ) : activeCategory === "bulk" ? (
+  
+  <div className="max-w-3xl mx-auto">
             <Card className="border-yellow-500/30 bg-yellow-500/5">
               <CardContent className="p-6 space-y-6">
                 <div className="text-center mb-4">
