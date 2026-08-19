@@ -219,8 +219,9 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
       body: { action: "send", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: message.trim() },
     });
     setLoading(false);
-    if (error || data?.error) {
-      toast({ title: "SMS was not sent", description: data?.error || error?.message || "Please try again.", variant: "destructive" });
+  if (error || data?.error) {
+    const providerDetails = data?.provider_response?.map?.((item: any) => item?.body?.msg || item?.body?.message || item?.body?.error).filter(Boolean).join("; ");
+    toast({ title: "SMS was not sent", description: data?.error || providerDetails || error?.message || "Please try again.", variant: "destructive" });
       return;
     }
     toast({ title: "SMS sent", description: `${data.sent || numbers.length} recipient(s) processed - ${data.pages || pages} page(s) each.` });

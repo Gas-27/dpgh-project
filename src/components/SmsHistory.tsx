@@ -7,7 +7,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type SmsHistoryProps = { ownerType: "customer" | "agent"; ownerId?: string };
-type SmsRow = { id: string; sender_id: string; recipients: string[] | null; message: string; status: string; total_charge: number | null; created_at: string; completed_at?: string | null; provider_response?: unknown };
+type SmsRow = { id: string; sender_id: string; recipients: string[] | null; message: string; status: string; total_charge: number | null; created_at: string; completed_at?: string | null; provider_response?: unknown; provider_message_ids?: string[] | null; last_delivery_check_at?: string | null };
 
 const getMessageIds = (response: unknown) => {
   if (!Array.isArray(response)) return [];
@@ -23,13 +23,13 @@ export default function SmsHistory({ ownerType, ownerId }: SmsHistoryProps) {
   const load = useCallback(async (checkDelivery = false) => {
     if (!ownerId) return;
     setRefreshing(checkDelivery);
-    let query = supabase.from("sms_messages").select("id,sender_id,recipients,message,status,total_charge,created_at,completed_at,provider_response").eq("owner_type", ownerType).eq("owner_id", ownerId).order("created_at", { ascending: false }).limit(50);
+    let query = supabase.from("sms_messages").select("id,sender_id,recipients,message,status,total_charge,created_at,completed_at,provider_response,provider_message_ids,last_delivery_check_at").eq("owner_type", ownerType).eq("owner_id", ownerId).order("created_at", { ascending: false }).limit(50);
     const { data, error } = await query;
     if (error) toast({ title: "Could not load SMS history", description: error.message, variant: "destructive" });
     let next = (data || []) as SmsRow[];
     if (checkDelivery) {
       next = await Promise.all(next.map(async (row) => {
-        const ids = getMessageIds(row.provider_response);
+        const ids = row.provider_message_ids?.length ? row.provider_message_ids : getMessageIds(row.provider_response);
         if (!ids.length) return row;
         const statuses = await Promise.all(ids.map(async (message_id) => {
           const result = await supabase.functions.invoke("txtconnect-sms", { body: { action: "status", message_id } });
@@ -37,10 +37,9 @@ export default function SmsHistory({ ownerType, ownerId }: SmsHistoryProps) {
         }));
         const delivered = statuses.some((status: any) => String(status?.msg || status?.message || "").toLowerCase().includes("delivered"));
         const nextStatus = delivered ? "delivered" : row.status;
-        if (nextStatus !== row.status) {
-          await supabase.from("sms_messages").update({ status: nextStatus, completed_at: new Date().toISOString() }).eq("id", row.id);
-        }
-        return delivered ? { ...row, status: nextStatus, completed_at: new Date().toISOString() } : row;
+        const checkedAt = new Date().toISOString();
+        await supabase.from("sms_messages").update({ status: nextStatus, last_delivery_check_at: checkedAt, ...(nextStatus !== row.status ? { completed_at: checkedAt } : {}) }).eq("id", row.id);
+        return delivered ? { ...row, status: nextStatus, completed_at: checkedAt, last_delivery_check_at: checkedAt } : { ...row, last_delivery_check_at: checkedAt };
       }));
     }
     setRows(next);

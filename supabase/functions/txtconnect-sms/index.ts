@@ -84,7 +84,8 @@ Deno.serve(async (request) => {
     }));
     const failed = results.filter((result) => result.status < 200 || result.status >= 300 || ((result.body.data as Record<string, unknown> | undefined)?.status_code && (result.body.data as Record<string, unknown>).status_code !== "000"));
     if (failed.length) await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: chargePerRecipient * failed.length });
-    await supabase.from("sms_messages").update({ status: failed.length ? (failed.length === results.length ? "failed" : "partial") : "sent", provider_response: results, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("id", record.id);
+    const providerMessageIds = results.map((result) => result.message_id).filter(Boolean);
+    await supabase.from("sms_messages").update({ status: failed.length ? (failed.length === results.length ? "failed" : "partial") : "sent", provider_response: results, provider_message_ids: providerMessageIds, last_delivery_check_at: null, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("id", record.id);
     if (failed.length) return json({ error: `${failed.length} message(s) failed`, sent: results.length - failed.length, refunded: chargePerRecipient * failed.length, total: results.length, pages }, 502);
     return json({ success: true, sent: results.length, charge: totalCharge, pages, id: record.id });
   } catch (error) { console.error("[v0] TxtConnect SMS error", error); return json({ error: "SMS service request failed" }, 500); }
