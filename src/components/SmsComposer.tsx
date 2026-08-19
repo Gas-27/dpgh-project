@@ -248,8 +248,12 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     try {
       const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: includeStoreLink ? storeLink : "", max_units: 160 } });
       if (error || data?.error) throw new Error(data?.error || error?.message || "Could not generate message");
-      setMessage(String(data.message || "").slice(0, 640));
-      toast({ title: "Message generated", description: "Review the message before sending." });
+  const generated = String(data.message || "").trim();
+  const generatedWithLink = includeStoreLink && storeLink && !generated.includes(storeLink)
+    ? `${generated} ${storeLink}`.trim()
+    : generated;
+  setMessage(generatedWithLink.slice(0, 640));
+  toast({ title: "Message generated", description: includeStoreLink && storeLink ? "Your store link was added after the message." : "Review the message before sending." });
     } catch (error) {
       toast({ title: "Could not generate message", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
     } finally { setGenerating(false); }
@@ -450,6 +454,9 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
               placeholder="Type your message here..."
               rows={5}
             />
+            {includeStoreLink && storeLink && (
+              <p className="text-xs text-muted-foreground">Store link will be added immediately after your message: <span className="font-medium text-primary">{storeLink}</span></p>
+            )}
             <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 text-center sm:grid-cols-4">
               <div>
                 <p className="text-lg font-semibold text-foreground">{messageUnits}</p>
