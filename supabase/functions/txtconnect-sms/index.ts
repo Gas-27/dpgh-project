@@ -21,10 +21,6 @@ Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const auth = request.headers.get("Authorization");
-    if (!auth) return json({ error: "Authentication required" }, 401);
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return json({ error: "Authentication required" }, 401);
     const body = await request.json();
     const action = body.action || "send";
     const apiKey = Deno.env.get("TXT_CONNECT_API");
@@ -44,6 +40,10 @@ Deno.serve(async (request) => {
       const choices = payload.choices as Array<{ message?: { content?: string } }> | undefined;
       return json({ message: choices?.[0]?.message?.content?.trim() || "" });
     }
+    if (!auth) return json({ error: "Authentication required" }, 401);
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return json({ error: "Authentication required" }, 401);
     if (!apiKey) return json({ error: "TxtConnect is not configured" }, 503);
     if (action === "balance") {
       const response = await fetch("https://api.txtconnect.net/dev/api/sms/checkbalance", { headers: { Authorization: `Bearer ${apiKey}` } });

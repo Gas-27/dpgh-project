@@ -461,6 +461,7 @@ export function SubSubagentStorefront() {
   const [store, setStore] = useState<SubagentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
+  const [tutorialUrls, setTutorialUrls] = useState<Record<string, string>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -562,7 +563,7 @@ export function SubSubagentStorefront() {
         // customer_sell_price is a dedicated column, separate from sell_price (which is
         // the parent subagent's cost price to this sub-subagent) so the two never overwrite
         // each other.
-        supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", matched.id),
+        supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, tutorial_url").eq("sub_subagent_store_id", matched.id),
         // Parent subagent's own cost from their agent (base_price keyed by agent_store_id)
         matched.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id) : Promise.resolve({ data: null, error: null }),
         // Parent subagent's sub-subagent template price (sub_subagent_store_id IS NULL)
@@ -594,6 +595,9 @@ export function SubSubagentStorefront() {
       });
       
       setSubagentPrices(priceMap);
+      const tutorialMap: Record<string, string> = {};
+      (ownSellRes.data || []).forEach((p: any) => { if (p.tutorial_url) tutorialMap[p.package_id] = p.tutorial_url; });
+      setTutorialUrls(tutorialMap);
       if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
       
       setLoading(false);
@@ -626,7 +630,7 @@ export function SubSubagentStorefront() {
     // (admin → parent's agent cost → parent's sub-subagent template).
     const refetchMergedPrices = async () => {
       const [ownSell, agentCost, templatePrices, pkgs] = await Promise.all([
-        supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", store.id),
+        supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, tutorial_url").eq("sub_subagent_store_id", store.id),
         store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null }),
         store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null }),
         supabase.from("data_packages").select("id, price").eq("active", true),
@@ -1210,6 +1214,7 @@ const searchOrders = useCallback(async () => {
                           <Badge style={{ background: getNetworkColor(pkg.network), color: "#000" }}>{formatNetworkName(pkg.network)}</Badge>
                           <p className="text-3xl font-bold" style={{ color: primaryColor }}>{pkg.size_gb}<span className="text-lg text-muted-foreground">GB</span></p>
                           <p className="text-xl font-semibold text-green-400">GHC {Number(price).toFixed(2)}</p>
+                          {tutorialUrls[pkg.id] && <a href={tutorialUrls[pkg.id]} target="_blank" rel="noreferrer" className="text-sm text-primary underline" onClick={(event) => event.stopPropagation()}>Watch tutorial</a>}
                           <Button size="lg" disabled={isInactive} className="w-full font-semibold disabled:opacity-100 disabled:cursor-not-allowed" style={isInactive ? { background: "transparent", color: "inherit", border: "1px solid var(--border)" } : { background: primaryColor, color: primaryForeground }}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                         </>
                       )}

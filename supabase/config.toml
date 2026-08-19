@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.dakazina-sync]
 verify_jwt = false
+
+[functions.txtconnect-sms]
+verify_jwt = false
