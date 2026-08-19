@@ -714,7 +714,7 @@ Deno.serve(async (req) => {
       // First check if sub-subagent has set their own customer price
       const { data: subsubagentPrice } = await supabaseClient
         .from("sub_subagent_package_prices")
-        .select("sell_price")
+        .select("customer_sell_price")
         .eq("sub_subagent_store_id", metadata.subsubagent_store_id)
         .eq("package_id", metadata.package_id)
         .maybeSingle();
@@ -768,8 +768,8 @@ Deno.serve(async (req) => {
       }
     } else if (metadata.subagent_store_id) {
       const { data: subagentPrice } = await supabaseClient
-        .from("subagent_package_prices")
-        .select("sell_price")
+.from("subagent_package_prices")
+        .select("customer_sell_price")
         .eq("subagent_store_id", metadata.subagent_store_id)
         .eq("package_id", metadata.package_id)
         .maybeSingle();
@@ -786,14 +786,14 @@ Deno.serve(async (req) => {
 
         if (subagentStore?.agent_store_id) {
           const { data: agentPrice } = await supabaseClient
-            .from("agent_package_prices")
-.select("customer_sell_price")
+.from("agent_package_prices")
+            .select("customer_sell_price")
             .eq("agent_store_id", subagentStore.agent_store_id)
             .eq("package_id", metadata.package_id)
             .maybeSingle();
 
-          if (agentPrice?.sell_price != null) {
-            baseAmount = Number(agentPrice.sell_price);
+if (agentPrice?.customer_sell_price != null) {
+            baseAmount = Number(agentPrice.customer_sell_price);
             priceType = "agent_sell_price_fallback";
           } else {
             baseAmount = Number(packageData.price);
