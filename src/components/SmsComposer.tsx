@@ -372,6 +372,19 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
               </Button>
               {senderOpen && (
                 <div className="absolute z-20 mt-1 w-full rounded-lg border bg-background p-2 shadow-lg">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="mb-2 w-full"
+                    onClick={() => {
+                      setSenderOpen(false);
+                      setModalOpen(true);
+                    }}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Add new sender ID
+                  </Button>
                   <Input value={senderSearch} onChange={(event) => setSenderSearch(event.target.value)} placeholder="Search approved sender IDs..." aria-label="Search approved sender IDs" className="mb-2" />
                   <p className="px-3 pb-2 text-xs text-muted-foreground">Official sender IDs appear first. Public approved IDs are visible to everyone.</p>
                   {approved.length === 0 && (
@@ -406,21 +419,6 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
                       </span>
                     </div>
                   ))}
-                  <div className="mt-2 border-t pt-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() => {
-                        setSenderOpen(false);
-                        setModalOpen(true);
-                      }}
-                    >
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Add new sender ID
-                    </Button>
-                  </div>
                 </div>
               )}
             </div>
