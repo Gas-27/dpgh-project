@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
 
   try {
     const { email, phone, metadata, callback_url, amount: requestedAmount } = await req.json();
-    console.log(`metadata: ${metadata?.data_package_id}`)
+    console.log("[v0] Payment type:", metadata?.type);
     const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!PAYSTACK_SECRET_KEY) {
       console.error("PAYSTACK_SECRET_KEY not set");
@@ -576,6 +576,95 @@ Deno.serve(async (req) => {
         authorization_url: result.data.authorization_url,
         reference: result.data.reference,
         amount: requestedAmount,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ==========================
+    // DIGITAL SERVICE SUBSCRIPTION PAYMENT
+    // ==========================
+    // This branch must run before regular package validation because service
+    // purchases use service_id, customer_phone, and access_pin instead of package_id.
+    if (metadata?.type === "service_payment" || metadata?.service_payment === true || metadata?.service_payment === "true") {
+      const serviceId = String(metadata.service_id || "").trim();
+      const customerPhone = String(metadata.customer_phone || phone || "").replace(/\D/g, "");
+      const accessPin = String(metadata.access_pin || "").trim();
+      const baseAmount = Number(requestedAmount);
+      const paymentEmail = String(email || `${customerPhone}@dataplug.store`).trim().toLowerCase();
+
+      if (
+        !serviceId ||
+        !/^\d{10}$/.test(customerPhone) ||
+        !/^\d{4}$/.test(accessPin) ||
+        !/^\S+@\S+\.\S+$/.test(paymentEmail) ||
+        !Number.isFinite(baseAmount) ||
+        baseAmount <= 0
+      ) {
+        console.error("[SERVICE PAYMENT] Invalid metadata", {
+          hasServiceId: Boolean(serviceId),
+          phone: customerPhone,
+          hasAccessPin: Boolean(accessPin),
+          amount: baseAmount,
+        });
+        return new Response(JSON.stringify({ error: "Missing required fields for service payment" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const feeAmount = Math.round(baseAmount * (PAYSTACK_FEE_PERCENT / 100) * 100) / 100;
+      const totalWithFee = Math.round((baseAmount + feeAmount) * 100) / 100;
+      const serviceMetadata = {
+        ...metadata,
+        type: "service_payment",
+        service_payment: true,
+        service_id: serviceId,
+        service_name: metadata.service_name || "",
+        service_type: metadata.service_type || "",
+        customer_phone: customerPhone,
+        access_pin: accessPin,
+        customer_id: metadata.customer_id || null,
+        base_amount: baseAmount,
+        fee_amount: feeAmount,
+      };
+
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: paymentEmail,
+          amount: Math.round(totalWithFee * 100),
+          currency: "GHS",
+          callback_url: callback_url || "https://dataplug.store/packages?service_payment=verifying",
+          metadata: serviceMetadata,
+        }),
+      });
+
+      const raw = await paystackRes.text();
+      let result: any = {};
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        result = { message: raw };
+      }
+
+      if (!paystackRes.ok || !result.status || !result.data?.authorization_url) {
+        console.error("[SERVICE PAYMENT] Paystack initialization failed", result);
+        return new Response(JSON.stringify({ error: result.message || "Service payment initialization failed" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        authorization_url: result.data.authorization_url,
+        reference: result.data.reference,
+        amount: totalWithFee,
+        base_amount: baseAmount,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
