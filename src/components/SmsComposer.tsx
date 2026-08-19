@@ -250,6 +250,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
       if (error || data?.error) throw new Error(data?.error || error?.message || "Could not generate message");
   const generated = String(data.message || "").trim()
     .replace(/\[store\s*name\]|\[your\s*store\s*name\]|\[store\s*link\]/gi, "")
+    .replace(/https?:\/\/\S+/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
   const generatedWithLink = includeStoreLink && storeLink
@@ -268,9 +269,13 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
       return;
     }
     setLoading(true);
-    const outgoingMessage = includeStoreLink && storeLink && !message.includes(storeLink)
-      ? `${message.trim()} ${storeLink}`.trim()
-      : message.trim();
+    const cleanMessage = message.trim()
+      .replace(/https?:\/\/\S+/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    const outgoingMessage = includeStoreLink && storeLink
+      ? `${cleanMessage} ${storeLink}`.trim()
+      : cleanMessage;
     const { data, error } = await supabase.functions.invoke("txtconnect-sms", {
       body: { action: "send", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: outgoingMessage },
     });
