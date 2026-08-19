@@ -321,17 +321,19 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
               <ChevronDown className={`h-5 w-5 transition-transform ${videoOpen ? "rotate-180" : ""}`} />
             </Button>
           </CardHeader>
-          {videoOpen && <CardContent>
-            <div className="relative w-full overflow-hidden rounded-lg border bg-muted" style={{ paddingTop: "56.25%" }}>
-              <iframe
-                src={toEmbedUrl(videoUrl)}
-                title="SMS tutorial video"
-                className="absolute inset-0 h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          </CardContent>
+          {videoOpen && (
+            <CardContent>
+              <div className="relative w-full overflow-hidden rounded-lg border bg-muted" style={{ paddingTop: "56.25%" }}>
+                <iframe
+                  src={toEmbedUrl(videoUrl)}
+                  title="SMS tutorial video"
+                  className="absolute inset-0 h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </CardContent>
+          )}
         </Card>
       )}
 

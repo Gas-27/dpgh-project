@@ -1434,8 +1434,8 @@ const searchOrders = async () => {
 
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => (
-            <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => setActiveCategory(cat)} className={`font-semibold ${cat === "bulk" && activeCategory !== "bulk" ? "border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10" : ""}`}>
-              {cat === "bulk" ? <Layers className="h-4 w-4 mr-2" /> : catIcons[cat]}{catLabels[cat]}
+            <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => setActiveCategory(cat)} className={`font-semibold ${["bulk", "sms"].includes(cat) && activeCategory !== cat ? "border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10" : ""}`}>
+              {cat === "bulk" ? <Layers className="h-4 w-4 mr-2" /> : cat === "sms" ? <MessageCircle className="h-4 w-4 mr-2" /> : catIcons[cat]}{catLabels[cat]}
             </Button>
           ))}
           <Button variant="outline" onClick={() => setShowBecomeAgent(true)} className="font-semibold border-green-600/50 text-green-600 hover:bg-green-600/10 hover:text-green-600">
