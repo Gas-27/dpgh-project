@@ -1179,6 +1179,24 @@ const Packages = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Paystack returns guests here after a digital-service payment. Verify the reference
+  // server-side and keep the confirmation visible instead of leaving the visitor unsure.
+  useEffect(() => {
+    if (searchParams.get("service_payment") !== "verifying") return;
+    const reference = sessionStorage.getItem("pending_service_payment");
+    if (!reference) return;
+    supabase.functions.invoke("verify-payment", { body: { reference } }).then(async ({ data, error }) => {
+      if (error || data?.error) {
+        let detail = data?.error || error?.message || "The payment could not be verified yet.";
+        try { const body = error?.context ? await error.context.clone().json() : null; detail = body?.error || detail; } catch { /* keep fallback */ }
+        toast({ title: "Service payment needs attention", description: detail, variant: "destructive" });
+        return;
+      }
+      sessionStorage.removeItem("pending_service_payment");
+      toast({ title: "Service payment successful", description: "Your access has been assigned. Enter your phone and access code to open it." });
+    });
+  }, [searchParams, toast]);
+
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
     const n = searchParams.get("network");

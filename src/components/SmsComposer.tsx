@@ -183,10 +183,18 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   };
 
   useEffect(() => {
-    void loadSenders();
-    void loadSettings();
-    void loadWalletAndStore();
+  void loadSenders();
+  void loadSettings();
+  void loadWalletAndStore();
   }, [ownerType, ownerId, providedStoreUrl]);
+
+  useEffect(() => {
+    if (!publicMode || !new URLSearchParams(window.location.search).has("sms_payment")) return;
+    const reference = sessionStorage.getItem("pending_sms_payment");
+    if (!reference) return;
+    sessionStorage.removeItem("pending_sms_payment");
+    toast({ title: "SMS payment successful", description: "Your SMS will be delivered shortly, usually within 2 minutes to 1 hour." });
+  }, [publicMode, toast]);
 
   const submitSender = async () => {
     const value = custom.trim().toUpperCase();
@@ -284,11 +292,12 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       : cleanMessage;
     if (publicMode) {
       const email = `sms-${numbers[0]}@dataplug.store`;
-      const { data: payment, error: paymentError } = await supabase.functions.invoke("initialize-payment", { body: { phone: numbers[0], amount: totalCost, callback_url: window.location.href, metadata: { type: "sms_campaign", recipients: numbers, sender_id: senderId, message: outgoingMessage, owner_type: "customer", owner_id: null } } });
+      const { data: payment, error: paymentError } = await supabase.functions.invoke("initialize-payment", { body: { phone: numbers[0], amount: totalCost, callback_url: `${window.location.origin}${window.location.pathname}?sms_payment=success`, metadata: { type: "sms_campaign", recipients: numbers, sender_id: senderId, message: outgoingMessage, owner_type: "customer", owner_id: null } } });
       setLoading(false);
       let paymentDetails = payment?.error || paymentError?.message || "Could not start Paystack payment.";
       if (paymentError?.context) { try { const body = await paymentError.context.clone().json(); paymentDetails = body?.error || paymentDetails; } catch { /* keep the generic message */ } }
       if (paymentError || payment?.error || !payment?.authorization_url) { toast({ title: "Payment unavailable", description: paymentDetails, variant: "destructive" }); return; }
+      sessionStorage.setItem("pending_sms_payment", payment.reference);
       window.location.assign(payment.authorization_url);
       return;
     }
