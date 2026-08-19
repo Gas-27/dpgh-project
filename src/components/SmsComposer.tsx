@@ -114,7 +114,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const [loading, setLoading] = useState(false);
   const [unitPrice, setUnitPrice] = useState(0.05);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [videoOpen, setVideoOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(true);
   const [senderSearch, setSenderSearch] = useState("");
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [storeLink, setStoreLink] = useState(providedStoreUrl || "");
