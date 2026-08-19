@@ -77,6 +77,22 @@ Deno.serve(async (req) => {
     );
 
     // =====================================
+    // PUBLIC SMS PAYMENT HANDLER
+    // =====================================
+    if (paymentType === "sms_campaign") {
+      const recipients = Array.isArray(metadata?.recipients) ? metadata.recipients : [];
+      const senderId = String(metadata?.sender_id || "").trim();
+      const message = String(metadata?.message || "").trim();
+      const apiKey = Deno.env.get("TXT_CONNECT_API");
+      if (!recipients.length || !senderId || !message || !apiKey) return new Response(JSON.stringify({ error: "SMS payment metadata is incomplete" }), { status: 400, headers: corsHeaders });
+      const cleanRecipients = recipients.map((value: string) => { const digits = String(value).replace(/\\D/g, ""); return digits.startsWith("0") ? `233${digits.slice(1)}` : digits.startsWith("233") ? digits : ""; }).filter(Boolean);
+      const results = await Promise.all(cleanRecipients.map(async (to: string) => { const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ to, from: senderId, unicode: /[^\\x00-\\x7F]/.test(message) ? "unicode" : "regular", sms: message }) }); const raw = await response.text(); let body: unknown = {}; try { body = JSON.parse(raw); } catch { body = { raw }; } return { to, status: response.status, body }; }));
+      const failed = results.filter((item) => item.status < 200 || item.status >= 300);
+      await supabaseClient.from("sms_messages").insert({ user_id: metadata?.user_id || null, owner_type: "customer", owner_id: metadata?.owner_id || null, recipients: cleanRecipients, sender_id: senderId, message, total_charge: Number(metadata?.base_amount || 0), unit_price: 0.09, status: failed.length === results.length ? "failed" : failed.length ? "partial" : "sent", provider_response: results, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null });
+      return new Response(JSON.stringify({ success: !failed.length, sent: results.length - failed.length, failed: failed.length }), { status: failed.length ? 502 : 200, headers: corsHeaders });
+    }
+
+    // =====================================
     // SUBAGENT REGISTRATION PAYMENT HANDLER
     // =====================================
     const isSubagentRegistration =

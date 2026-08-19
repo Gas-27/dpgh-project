@@ -114,6 +114,8 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const [loading, setLoading] = useState(false);
   const [unitPrice, setUnitPrice] = useState(0.05);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoOpen, setVideoOpen] = useState(false);
+  const [senderSearch, setSenderSearch] = useState("");
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [storeLink, setStoreLink] = useState(providedStoreUrl || "");
   const [includeStoreLink, setIncludeStoreLink] = useState(true);
@@ -280,6 +282,14 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     const outgoingMessage = includeStoreLink && storeLink
       ? `${cleanMessage} ${storeLink}`.trim()
       : cleanMessage;
+    if (publicMode) {
+      const email = `sms-${numbers[0]}@dataplug.store`;
+      const { data: payment, error: paymentError } = await supabase.functions.invoke("initialize-payment", { body: { email, phone: numbers[0], amount: totalCost, callback_url: window.location.href, metadata: { type: "sms_campaign", recipients: numbers, sender_id: senderId, message: outgoingMessage, owner_type: "customer", owner_id: null } } });
+      setLoading(false);
+      if (paymentError || payment?.error || !payment?.authorization_url) { toast({ title: "Payment unavailable", description: payment?.error || paymentError?.message || "Could not start Paystack payment.", variant: "destructive" }); return; }
+      window.location.assign(payment.authorization_url);
+      return;
+    }
     const { data, error } = await supabase.functions.invoke("txtconnect-sms", {
       body: { action: "send", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: outgoingMessage },
     });
@@ -298,7 +308,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     setMessage("");
   };
 
-  const approved = senders.filter((item) => item.status === "approved");
+  const approved = senders.filter((item) => item.status === "approved" && item.sender_id.toLowerCase().includes(senderSearch.toLowerCase())).sort((a, b) => Number(Boolean(b.is_global)) - Number(Boolean(a.is_global)));
   const pending = senders.filter((item) => item.status === "pending");
 
   return (
@@ -306,12 +316,12 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       {videoUrl && (
         <Card className="border-primary/20 overflow-hidden">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Video className="h-5 w-5 text-primary" />
-              How to send SMS
-            </CardTitle>
+            <Button type="button" variant="ghost" className="w-full justify-between px-0" onClick={() => setVideoOpen((open) => !open)} aria-expanded={videoOpen}>
+              <span className="flex items-center gap-2"><Video className="h-5 w-5 text-primary" />How to send SMS</span>
+              <ChevronDown className={`h-5 w-5 transition-transform ${videoOpen ? "rotate-180" : ""}`} />
+            </Button>
           </CardHeader>
-          <CardContent>
+          {videoOpen && <CardContent>
             <div className="relative w-full overflow-hidden rounded-lg border bg-muted" style={{ paddingTop: "56.25%" }}>
               <iframe
                 src={toEmbedUrl(videoUrl)}
@@ -358,6 +368,8 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
               </Button>
               {senderOpen && (
                 <div className="absolute z-20 mt-1 w-full rounded-lg border bg-background p-2 shadow-lg">
+                  <Input value={senderSearch} onChange={(event) => setSenderSearch(event.target.value)} placeholder="Search approved sender IDs..." aria-label="Search approved sender IDs" className="mb-2" />
+                  <p className="px-3 pb-2 text-xs text-muted-foreground">Official sender IDs appear first. Public approved IDs are visible to everyone.</p>
                   {approved.length === 0 && (
                     <p className="px-3 py-2 text-sm text-muted-foreground">No approved sender IDs yet.</p>
                   )}
@@ -506,7 +518,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Sender ID</DialogTitle>
-            <DialogDescription>Create a custom sender identity for your messages</DialogDescription>
+              <DialogDescription>Submit a sender ID for approval. Check back after a few hours to a few days to see whether it has been approved. Approved public sender IDs can be seen by everyone.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
