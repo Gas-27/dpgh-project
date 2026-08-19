@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, ChevronDown, Clock, Loader2, Send, Sparkles, Upload, UserPlus, Video, Wallet } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
-type SmsComposerProps = { ownerType: "customer" | "agent"; ownerId?: string };
+type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string };
 type Sender = {
   id: string;
   sender_id: string;
@@ -154,12 +154,18 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
     if (!uid) return;
-    const { data: bal } = await supabase.rpc("get_sms_wallet", { p_user_id: uid });
+    const { data: bal } = await supabase.rpc("get_sms_wallet", { p_user_id: uid, p_owner_type: ownerType === "customer" ? "customer" : ownerType });
     setWalletBalance(Number(bal ?? 0));
-    if (ownerType === "agent") {
-      const { data } = await supabase.from("agent_stores").select("store_slug,id").eq("user_id", uid).maybeSingle();
-      if (data) setStoreLink(`https://dataplug.store/store/${data.store_slug || data.id}`);
+    if (ownerType === "customer") {
+      setStoreLink("https://dataplug.store/packages");
+      return;
     }
+    const table = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+    const query = ownerId
+      ? supabase.from(table).select("store_slug,id").eq("id", ownerId).maybeSingle()
+      : supabase.from(table).select("store_slug,id").eq("user_id", uid).maybeSingle();
+    const { data } = await query;
+    if (data) setStoreLink(`https://dataplug.store/store/${data.store_slug || data.id}`);
   };
 
   const loadSettings = async () => {
@@ -174,7 +180,7 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
     void loadSenders();
     void loadSettings();
     void loadWalletAndStore();
-  }, []);
+  }, [ownerType, ownerId]);
 
   const submitSender = async () => {
     const value = custom.trim().toUpperCase();
@@ -255,8 +261,11 @@ export default function SmsComposer({ ownerType, ownerId }: SmsComposerProps) {
       return;
     }
     setLoading(true);
+    const outgoingMessage = includeStoreLink && storeLink && !message.includes(storeLink)
+      ? `${message.trim()} ${storeLink}`.trim()
+      : message.trim();
     const { data, error } = await supabase.functions.invoke("txtconnect-sms", {
-      body: { action: "send", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: message.trim() },
+      body: { action: "send", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: outgoingMessage },
     });
     setLoading(false);
   if (error || data?.error) {

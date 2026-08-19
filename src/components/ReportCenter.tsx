@@ -16,7 +16,7 @@ const roleLabels: Record<Role, string> = { user: "User dashboard", agent: "Agent
 const waLink = (phone?: string | null) => { if (!phone) return null; let d = phone.replace(/\D/g, ""); if (d.startsWith("0")) d = `233${d.slice(1)}`; else if (!d.startsWith("233") && d.length === 9) d = `233${d}`; return d.length >= 11 ? `https://wa.me/${d}` : null; };
 
 const db = supabase as any;
-const notice = "This page is for issues, misunderstandings, suggestions, and general support feedback. It is not an order-report page. Report order issues from the storefront or chatbot; order numbers submitted here will not be attended to.";
+const notice = "Support replies may take 12–72 hours because our team is working through a high volume of requests. For non-urgent questions, please use the chatbot first—it contains answers to many common questions on the site. Use this report form for issues, misunderstandings, suggestions, and general support feedback.";
 type Role = "user" | "agent" | "subagent" | "subsubagent";
 type Report = { id: string; reporter_id: string; reporter_role: Role; reporter_email?: string | null; reporter_phone?: string | null; store_name?: string | null; store_id?: string | null; topup_reference?: string | null; category: string; subject: string; message: string; status: string; priority: string; created_at: string; updated_at: string; unread_for_reporter?: boolean | number };
 type Message = { id: string; report_id: string; author_id: string; body: string; attachment_url?: string | null; attachment_type?: "image" | "video" | null; created_at: string };

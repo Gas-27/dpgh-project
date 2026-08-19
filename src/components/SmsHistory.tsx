@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type SmsHistoryProps = { ownerType: "customer" | "agent"; ownerId?: string };
+type SmsHistoryProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string };
 type SmsRow = { id: string; sender_id: string; recipients: string[] | null; message: string; status: string; total_charge: number | null; created_at: string; completed_at?: string | null; provider_response?: unknown; provider_message_ids?: string[] | null; last_delivery_check_at?: string | null };
 
 const getMessageIds = (response: unknown) => {

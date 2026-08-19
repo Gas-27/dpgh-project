@@ -34,6 +34,8 @@ import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
+import SmsComposer from "@/components/SmsComposer";
+import SmsHistory from "@/components/SmsHistory";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Helper function to get current order stage
@@ -1675,8 +1677,9 @@ const SubSubagentDashboard = () => {
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
     { id: "store", label: "Store Prices", icon: Store },
     { id: "orders", label: "Orders", icon: ShoppingCart },
-    { id: "topup", label: "Top Up", icon: Wallet },
-    { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
+  { id: "topup", label: "Top Up", icon: Wallet },
+  { id: "sms", label: "Send SMS", icon: Send },
+  { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
     { id: "afa-pricing", label: "AFA Pricing", icon: Zap },
     { id: "afa-registrations", label: "AFA Registrations", icon: ClipboardList },
     { id: "afa-reg-status", label: "Registration Status", icon: Search },
@@ -1937,9 +1940,13 @@ return (
         </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="hidden" />
+  <TabsList className="hidden" />
 
-          {/* OVERVIEW */}
+  <TabsContent value="sms" className="mt-0 space-y-6">
+    <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="subsubagent" ownerId={subagentStore?.id} /></TabsContent><TabsContent value="history"><SmsHistory ownerType="subsubagent" ownerId={subagentStore?.id} /></TabsContent></Tabs>
+  </TabsContent>
+  
+  {/* OVERVIEW */}
           <TabsContent value="overview" className="mt-0 space-y-6">
             {/* Instruction Manual Dropdown */}
             <Card className="border-primary/30 bg-primary/5">

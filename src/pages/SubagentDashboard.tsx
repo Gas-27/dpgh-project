@@ -37,6 +37,8 @@ import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
+import SmsComposer from "@/components/SmsComposer";
+import SmsHistory from "@/components/SmsHistory";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Helper function to get current order stage
@@ -2075,8 +2077,9 @@ const SubagentDashboard = () => {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "refunds", label: "Refunds", icon: RotateCcw },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
-    { id: "topup", label: "Top Up", icon: Wallet },
-    { id: "sub-subagents", label: "Subagents", icon: Users },
+  { id: "topup", label: "Top Up", icon: Wallet },
+  { id: "sms", label: "Send SMS", icon: Send },
+  { id: "sub-subagents", label: "Subagents", icon: Users },
     { id: "sub-subagent-pricing", label: "Subagent Pricing", icon: DollarSign },
     { id: "afa-pricing", label: "AFA Pricing", icon: Zap },
     { id: "afa-registrations", label: "AFA Registrations", icon: ClipboardList },
@@ -2334,6 +2337,10 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
+
+          <TabsContent value="sms" className="mt-0 space-y-6">
+            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="subagent" ownerId={subagentStore?.id} /></TabsContent><TabsContent value="history"><SmsHistory ownerType="subagent" ownerId={subagentStore?.id} /></TabsContent></Tabs>
+          </TabsContent>
 
           {/* OVERVIEW */}
           <TabsContent value="overview" className="mt-0 space-y-6">
