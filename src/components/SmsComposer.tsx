@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Check, ChevronDown, Clock, Loader2, Send, Sparkles, Upload, UserPlus, Video, Wallet } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import OrderContactPicker from "@/components/OrderContactPicker";
 
 type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string; publicMode?: boolean };
 type Sender = {
@@ -444,6 +445,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
           </div>
 
           {/* Recipients */}
+          {!publicMode && (ownerType === "agent" || ownerType === "subagent" || ownerType === "subsubagent") && <OrderContactPicker ownerType={ownerType} ownerId={ownerId} onContacts={setRecipients} />}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Recipients ({numbers.length})</Label>

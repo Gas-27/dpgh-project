@@ -42,14 +42,22 @@ export default function AdminOrderStatusUpdater() {
     if (!canSearch) { toast({ title: "Complete the filters", description: "Choose a valid start and end date.", variant: "destructive" }); return; }
     setLoading(true);
     let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, created_at, customer_number").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
-    if (network !== "all") query = query.in("network", network === "airteltigo" ? ["airteltigo", "airtel_tigo", "airtel-tigo", "airtel", "tigo"] : [network]);
+    if (network !== "all") {
+      const networkValues = network === "mtn_express"
+        ? ["mtn_express", "mtn-express", "mtnexpress"]
+        : network === "airteltigo"
+          ? ["airteltigo", "airtel_tigo", "airtel-tigo", "airtel", "tigo"]
+          : [network];
+      query = query.in("network", networkValues);
+    }
     const { data, error } = await query;
     setLoading(false);
     if (error) { toast({ title: "Could not preview orders", description: error.message, variant: "destructive" }); return; }
     const include = parseContacts(includeContacts);
     const exclude = parseContacts(excludeContacts);
     const filtered = (data || []).filter((row) => {
-      if (normalize(row.fulfillment_status || row.order_status) !== normalize(fromStatus)) return false;
+      // order_status is the canonical tracking field; fulfillment_status is only a fallback for older rows.
+      if (normalize(row.order_status || row.fulfillment_status) !== normalize(fromStatus)) return false;
       const contact = normalizeContact(String((row as any).customer_number || ""));
       if (exclude.has(contact)) return false;
       if (include.size > 0 && !include.has(contact)) return false;
@@ -69,7 +77,7 @@ export default function AdminOrderStatusUpdater() {
       const batch = ids.slice(index, index + batchSize);
       const { error } = await supabase
         .from("orders")
-        .update({ fulfillment_status: toStatus, updated_at: updatedAt })
+        .update({ fulfillment_status: toStatus, order_status: toStatus, updated_at: updatedAt })
         .in("id", batch);
       if (error) {
         setUpdating(false);
