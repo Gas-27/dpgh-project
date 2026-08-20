@@ -334,7 +334,11 @@ Deno.serve(async (req) => {
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
               const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
-              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              // customPrices is ordered newest-first; keep only the first (newest) row per package_id.
+              const priceMap = new Map<string, number>();
+              for (const p of customPrices || []) {
+                if (p.customer_sell_price != null && !priceMap.has(p.package_id)) priceMap.set(p.package_id, Number(p.customer_sell_price));
+              }
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
               // First get all active packages for this network
@@ -471,7 +475,11 @@ Deno.serve(async (req) => {
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
               const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
-              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              // customPrices is ordered newest-first; keep only the first (newest) row per package_id.
+              const priceMap = new Map<string, number>();
+              for (const p of customPrices || []) {
+                if (p.customer_sell_price != null && !priceMap.has(p.package_id)) priceMap.set(p.package_id, Number(p.customer_sell_price));
+              }
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
               // Get support contact from subagent
@@ -1122,7 +1130,11 @@ Deno.serve(async (req) => {
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
               const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
-              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              // customPrices is ordered newest-first; keep only the first (newest) row per package_id.
+              const priceMap = new Map<string, number>();
+              for (const p of customPrices || []) {
+                if (p.customer_sell_price != null && !priceMap.has(p.package_id)) priceMap.set(p.package_id, Number(p.customer_sell_price));
+              }
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
               // First get all active packages for this network
@@ -1248,7 +1260,11 @@ Deno.serve(async (req) => {
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
               const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
-              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              // customPrices is ordered newest-first; keep only the first (newest) row per package_id.
+              const priceMap = new Map<string, number>();
+              for (const p of customPrices || []) {
+                if (p.customer_sell_price != null && !priceMap.has(p.package_id)) priceMap.set(p.package_id, Number(p.customer_sell_price));
+              }
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
               // Get support contact from subagent
@@ -1582,7 +1598,11 @@ Deno.serve(async (req) => {
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
               const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
-              const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
+              // customPrices is ordered newest-first; keep only the first (newest) row per package_id.
+              const priceMap = new Map<string, number>();
+              for (const p of customPrices || []) {
+                if (p.customer_sell_price != null && !priceMap.has(p.package_id)) priceMap.set(p.package_id, Number(p.customer_sell_price));
+              }
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
               metadata.subagent_store_id = session.subagent_store_id;

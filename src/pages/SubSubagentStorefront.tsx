@@ -589,10 +589,16 @@ export function SubSubagentStorefront() {
         if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
       });
 
-      // Final customer price = sub-subagent's own customer_sell_price if set, else the cost-from-agent
+      // Final customer price = sub-subagent's own customer_sell_price if set, else the cost-from-agent.
+      // ownSellRes.data is ordered newest-first, so take only the FIRST (newest) row per package —
+      // otherwise an older duplicate row later in the array would silently overwrite the current price.
       const priceMap: Record<string, number> = { ...baseCostMap };
-      (ownSellRes.data || []).forEach((p: any) => { 
-        if (p.customer_sell_price != null) priceMap[p.package_id] = Number(p.customer_sell_price); 
+      const seenOwnSell = new Set<string>();
+      (ownSellRes.data || []).forEach((p: any) => {
+        if (p.customer_sell_price != null && !seenOwnSell.has(p.package_id)) {
+          priceMap[p.package_id] = Number(p.customer_sell_price);
+          seenOwnSell.add(p.package_id);
+        }
       });
       
   setSubagentPrices(priceMap);
@@ -645,10 +651,15 @@ export function SubSubagentStorefront() {
       (templatePrices.data || []).forEach((p: any) => { 
         if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
       });
-      // Final: sub-subagent's own customer_sell_price if set, else cost-from-agent
+      // Final: sub-subagent's own customer_sell_price if set, else cost-from-agent.
+      // Take only the first (newest) row per package so an older duplicate row can't overwrite it.
       const priceMap: Record<string, number> = { ...baseCostMap };
-      (ownSell.data || []).forEach((p: any) => { 
-        if (p.customer_sell_price != null) priceMap[p.package_id] = Number(p.customer_sell_price); 
+      const seenOwnSell = new Set<string>();
+      (ownSell.data || []).forEach((p: any) => {
+        if (p.customer_sell_price != null && !seenOwnSell.has(p.package_id)) {
+          priceMap[p.package_id] = Number(p.customer_sell_price);
+          seenOwnSell.add(p.package_id);
+        }
       });
       
       setSubagentPrices(priceMap);
