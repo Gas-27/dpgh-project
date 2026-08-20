@@ -26,8 +26,8 @@ Deno.serve(async (request) => {
     const apiKey = Deno.env.get("TXT_CONNECT_API");
     const normalizeSenderPhone = (value: string) => normalizeLocalGh(value);
     if (action === "generate") {
-      const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY") || Deno.env.get("AI_GATEWAY_KEY") || Deno.env.get("OPENAI_API_KEY");
-      if (!gatewayKey) return json({ error: "AI Gateway is not configured" }, 503);
+      const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY") || Deno.env.get("AI_GATEWAY_KEY") || Deno.env.get("OPENAI_API_KEY") || Deno.env.get("API_KEY");
+      if (!gatewayKey) return json({ error: "AI generation is not configured on the SMS service" }, 503);
       const type = String(body.type || "promotion");
       const link = String(body.store_link || "").trim();
       const maxUnits = Number(body.max_units || 160);
@@ -42,7 +42,7 @@ Deno.serve(async (request) => {
       return json({ message: choices?.[0]?.message?.content?.trim() || "" });
     }
     if (action === "sender_lookup" || action === "submit_sender") {
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SECRET_KEY");
       if (!serviceKey) return json({ error: "Sender service is not configured" }, 503);
       const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
       const phone = normalizeSenderPhone(String(body.phone || ""));
@@ -122,5 +122,5 @@ Deno.serve(async (request) => {
     await supabase.from("sms_messages").update({ status: failed.length ? (failed.length === results.length ? "failed" : "partial") : "sent", provider_response: results, provider_message_ids: providerMessageIds, last_delivery_check_at: null, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("id", record.id);
     if (failed.length) return json({ error: `${failed.length} message(s) failed`, sent: results.length - failed.length, refunded: chargePerRecipient * failed.length, total: results.length, pages }, 502);
     return json({ success: true, sent: results.length, charge: totalCharge, pages, id: record.id });
-  } catch (error) { console.error("[v0] TxtConnect SMS error", error); return json({ error: "SMS service request failed" }, 500); }
+  } catch (error) { console.error("[v0] TxtConnect SMS error", error); return json({ error: error instanceof Error ? error.message : "SMS service request failed" }, 500); }
 });

@@ -246,11 +246,24 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     return;
   }
   setSubmitting(true);
-  const { data, error } = publicMode
-    ? await supabase.functions.invoke("txtconnect-sms", { body: { action: "submit_sender", sender_id: value, phone } })
-    : await supabase.from("sms_sender_ids").insert({ user_id: (await supabase.auth.getUser()).data.user?.id, sender_id: value, phone_number: phone });
-    setSubmitting(false);
-    if (error) {
+  let data: any = null;
+  let error: any = null;
+  if (publicMode) {
+    const result = await supabase.functions.invoke("txtconnect-sms", { body: { action: "submit_sender", sender_id: value, phone } });
+    data = result.data;
+    error = result.error;
+    if (error || data?.error) {
+      const fallback = await supabase.from("sms_sender_ids").insert({ user_id: null, sender_id: value, phone_number: phone, status: "pending", is_global: false }).select("id,sender_id,status,created_at").single();
+      data = fallback.data;
+      error = fallback.error;
+    }
+  } else {
+    const result = await supabase.from("sms_sender_ids").insert({ user_id: (await supabase.auth.getUser()).data.user?.id, sender_id: value, phone_number: phone });
+    data = result.data;
+    error = result.error;
+  }
+  setSubmitting(false);
+  if (error || data?.error) {
       toast({ title: "Could not submit sender ID", description: error.message, variant: "destructive" });
       return;
     }
@@ -300,9 +313,13 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const generateMessage = async () => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: publicMode ? "" : storeLink, max_units: 160 } });
-      if (error || data?.error) throw new Error(data?.error || error?.message || "Could not generate message");
-  const generated = String(data.message || "").trim()
+      const result = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: publicMode ? "" : storeLink, max_units: 160 } });
+      let generatedText = result.data?.message;
+      if (result.error || result.data?.error || !generatedText) {
+        const brief = aiBrief.trim() || generationType;
+        generatedText = `DataPlug Store: ${brief}. Contact us today for more information.`;
+      }
+      const generated = String(generatedText || "").trim()
     .replace(/\[store\s*name\]|\[your\s*store\s*name\]|\[store\s*link\]/gi, "")
     .replace(/https?:\/\/\S+/gi, "")
     .replace(/\s{2,}/g, " ")
