@@ -249,13 +249,13 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   let data: any = null;
   let error: any = null;
   if (publicMode) {
-    const result = await supabase.functions.invoke("txtconnect-sms", { body: { action: "submit_sender", sender_id: value, phone } });
-    data = result.data;
-    error = result.error;
-    if (error || data?.error) {
-      const fallback = await supabase.from("sms_sender_ids").insert({ user_id: null, sender_id: value, phone_number: phone, status: "pending", is_global: false }).select("id,sender_id,status,created_at").single();
-      data = fallback.data;
-      error = fallback.error;
+    const direct = await supabase.from("sms_sender_ids").insert({ user_id: null, sender_id: value, phone_number: phone, status: "pending", is_global: false }).select("id,sender_id,status,created_at").single();
+    data = direct.data;
+    error = direct.error;
+    if (error) {
+      const result = await supabase.functions.invoke("txtconnect-sms", { body: { action: "submit_sender", sender_id: value, phone } });
+      data = result.data?.sender;
+      error = result.error || (result.data?.error ? new Error(result.data.error) : null);
     }
   } else {
     const result = await supabase.from("sms_sender_ids").insert({ user_id: (await supabase.auth.getUser()).data.user?.id, sender_id: value, phone_number: phone });
@@ -313,12 +313,18 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const generateMessage = async () => {
     setGenerating(true);
     try {
-      const result = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: publicMode ? "" : storeLink, max_units: 160 } });
-      let generatedText = result.data?.message;
-      if (result.error || result.data?.error || !generatedText) {
-        const brief = aiBrief.trim() || generationType;
-        generatedText = `DataPlug Store: ${brief}. Contact us today for more information.`;
-      }
+      const brief = aiBrief.trim() || generationType;
+      const aiResponse = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `Write one polished SMS for ${generationType}. User brief: ${brief}. Keep it under 160 characters. Return only the SMS text, without quotes or explanation.${publicMode || !storeLink ? " Do not include a link." : ` Include this link exactly once: ${storeLink}`}`,
+          conversation: [],
+        }),
+      });
+      const aiData = await aiResponse.json().catch(() => ({}));
+      if (!aiResponse.ok || !aiData.reply) throw new Error(aiData.error || "The main AI service could not generate a message");
+      const generatedText = aiData.reply;
       const generated = String(generatedText || "").trim()
     .replace(/\[store\s*name\]|\[your\s*store\s*name\]|\[store\s*link\]/gi, "")
     .replace(/https?:\/\/\S+/gi, "")
