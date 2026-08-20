@@ -16,6 +16,18 @@ const toTxtConnectNumber = (value: string) => {
 };
 const hasUnicode = (value: string) => /[^\x00-\x7F]/.test(value);
 const smsUnits = (value: string) => Array.from(value).reduce((total, character) => total + (character.codePointAt(0)! > 0xffff ? 2 : 1), 0);
+const providerReason = (value: unknown): string | null => {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (Array.isArray(value)) return value.map(providerReason).filter(Boolean).join("; ") || null;
+  if (value && typeof value === "object") {
+    const object = value as Record<string, unknown>;
+    for (const key of ["reason", "message", "error", "detail", "msg", "description", "status_message"]) {
+      const reason = providerReason(object[key]);
+      if (reason) return reason;
+    }
+  }
+  return null;
+};
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -110,7 +122,7 @@ Deno.serve(async (request) => {
         try { body = JSON.parse(raw) as Record<string, unknown>; } catch { body = { raw }; }
         const data = (body.data || {}) as Record<string, unknown>;
         const messageId = body.messageId || body.message_id || data.messageId || data.message_id || null;
-        const reason = body.reason || body.message || data.reason || data.message || null;
+        const reason = providerReason(body) || providerReason(data) || `HTTP ${response.status}`;
         console.log(`[v0] TxtConnect response: to=${to}, http=${response.status}, messageId=${String(messageId)}, statusCode=${String(data.status_code ?? "")}, reason=${String(reason)}, raw=${raw}`);
         return { to, status: response.status, body, message_id: messageId, reason };
       } catch (error) {
