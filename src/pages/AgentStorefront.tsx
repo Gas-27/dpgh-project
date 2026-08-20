@@ -18,7 +18,7 @@ import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
-  Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2, Users,
+  Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2, Users, MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
@@ -178,7 +178,7 @@ const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 // ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
-// ───�����─────────────────────────���─────���─────��──����───────────���────────────────────
+// ───�����─────────────────────────�����─────���─────��──����───────────���────────────────────
 const OrderTrackingCard = ({
   order,
   store,
