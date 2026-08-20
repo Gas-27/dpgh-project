@@ -1015,7 +1015,7 @@ const searchOrders = useCallback(async () => {
         />
       )}
 
-      <div className="container pt-6 space-y-6"><DeliveryProgressCard /><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></div>
+      <div className="container pt-6 space-y-6"><div className="flex w-fit gap-1 rounded-lg border border-border bg-muted/30 p-1"><a href="#packages" className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-background">Packages</a><a href="#sms" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">SMS</a></div><div id="sms"><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></div><div id="packages"><DeliveryProgressCard /></div></div>
 
       {/* Header */}
       <header className="border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50">
