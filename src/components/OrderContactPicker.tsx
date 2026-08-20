@@ -68,7 +68,7 @@ export default function OrderContactPicker({ ownerType, ownerId, onContacts }: P
   };
 
   return <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-    <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /><Label>Find customers who ordered</Label></div>
+    <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /><Label>Find customer numbers by time or date of orders and send SMS to them (optional)</Label></div>
     <div className="flex flex-col gap-2 sm:flex-row">
       <Select value={range} onValueChange={setRange}><SelectTrigger className="sm:max-w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="today">Today</SelectItem><SelectItem value="yesterday">Yesterday</SelectItem><SelectItem value="this_week">This week</SelectItem><SelectItem value="last_week">Last week</SelectItem><SelectItem value="custom">Custom range</SelectItem></SelectContent></Select>
       <Button type="button" onClick={() => void fetchContacts()} disabled={loading || !ownerId} className="sm:ml-auto"><Search className="mr-2 h-4 w-4" />{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Show contacts"}</Button>

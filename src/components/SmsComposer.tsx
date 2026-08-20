@@ -28,6 +28,7 @@ type Sender = {
   is_global?: boolean;
   created_at?: string;
   reviewed_at?: string | null;
+  phone_number?: string | null;
 };
 
 const PAGE_SIZE = 160;
@@ -112,6 +113,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const [senderOpen, setSenderOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [custom, setCustom] = useState("");
+  const [senderPhone, setSenderPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -167,17 +169,10 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     setLookupLoading(true);
     setLookupResults([]);
     try {
-      const tables = ["agent_stores", "subagent_stores", "sub_subagent_stores"] as const;
-      const ownerIds = new Set<string>();
-      for (const table of tables) {
-        const { data } = await supabase.from(table).select("user_id,phone_number,support_number,whatsapp_number").or(`phone_number.eq.${phone},support_number.eq.${phone},whatsapp_number.eq.${phone}`);
-        for (const row of data || []) if (row.user_id) ownerIds.add(row.user_id);
-      }
-      if (ownerIds.size) {
-        const { data } = await supabase.from("sms_sender_ids").select("id,sender_id,status,is_global,user_id,created_at,reviewed_at").in("user_id", Array.from(ownerIds)).order("created_at", { ascending: false });
-        setLookupResults((data || []) as Sender[]);
-      }
-      if (!ownerIds.size) toast({ title: "No sender IDs found", description: "No store account matches that phone number." });
+      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "sender_lookup", phone } });
+      if (error || data?.error) throw new Error(data?.error || error?.message || "Lookup failed");
+      setLookupResults((data?.senders || []) as Sender[]);
+      if (!data?.senders?.length) toast({ title: "No sender IDs found", description: "No sender IDs match that phone number." });
     } catch {
       toast({ title: "Lookup failed", description: "Please try again.", variant: "destructive" });
     } finally {
@@ -245,13 +240,15 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       toast({ title: "Invalid sender ID", description: "Use 3-11 letters, numbers, or spaces.", variant: "destructive" });
       return;
     }
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) {
-      toast({ title: "Sign in required", description: "Please sign in before submitting a sender ID.", variant: "destructive" });
-      return;
-    }
-    setSubmitting(true);
-    const { error } = await supabase.from("sms_sender_ids").insert({ user_id: auth.user.id, sender_id: value });
+  const phone = normalizeGh(senderPhone);
+  if (!phone) {
+    toast({ title: "Phone number required", description: "Enter the Ghana number that should own this sender ID.", variant: "destructive" });
+    return;
+  }
+  setSubmitting(true);
+  const { data, error } = publicMode
+    ? await supabase.functions.invoke("txtconnect-sms", { body: { action: "submit_sender", sender_id: value, phone } })
+    : await supabase.from("sms_sender_ids").insert({ user_id: (await supabase.auth.getUser()).data.user?.id, sender_id: value, phone_number: phone });
     setSubmitting(false);
     if (error) {
       toast({ title: "Could not submit sender ID", description: error.message, variant: "destructive" });
@@ -303,7 +300,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const generateMessage = async () => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: "", max_units: 160 } });
+      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "generate", type: generationType, brief: aiBrief.trim(), store_link: publicMode ? "" : storeLink, max_units: 160 } });
       if (error || data?.error) throw new Error(data?.error || error?.message || "Could not generate message");
   const generated = String(data.message || "").trim()
     .replace(/\[store\s*name\]|\[your\s*store\s*name\]|\[store\s*link\]/gi, "")
@@ -581,7 +578,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Sender ID</DialogTitle>
-              <DialogDescription>Submit a sender ID for approval. Check back after a few hours to a few days to see whether it has been approved. Approved public sender IDs can be seen by everyone.</DialogDescription>
+              <DialogDescription>Submit a sender ID with your phone number for approval. Use that number later to check its status and select it once approved.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -597,6 +594,12 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
                 placeholder="e.g. DATA4ALL"
               />
               <p className="text-xs text-muted-foreground">Letters, numbers, and spaces allowed (max 11 characters)</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sender-phone">Phone number *</Label>
+              <Input id="sender-phone" value={senderPhone} onChange={(event) => setSenderPhone(event.target.value)} placeholder="0241234567 or +233241234567" inputMode="tel" />
+              <p className="text-xs text-muted-foreground">Use this same number later to search for the sender ID and check approval.</p>
             </div>
 
             <div className="rounded-lg border p-3">

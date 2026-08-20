@@ -24,21 +24,39 @@ Deno.serve(async (request) => {
     const body = await request.json();
     const action = body.action || "send";
     const apiKey = Deno.env.get("TXT_CONNECT_API");
+    const normalizeSenderPhone = (value: string) => normalizeLocalGh(value);
     if (action === "generate") {
-      const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY");
+      const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY") || Deno.env.get("AI_GATEWAY_KEY") || Deno.env.get("OPENAI_API_KEY");
       if (!gatewayKey) return json({ error: "AI Gateway is not configured" }, 503);
       const type = String(body.type || "promotion");
       const link = String(body.store_link || "").trim();
       const maxUnits = Number(body.max_units || 160);
       const brief = String(body.brief || "").trim();
       const prompt = `Write one polished SMS message. The business is DataPlug Store in Ghana. The user wants: ${brief || type}. Follow the user's request exactly, whether it is about data, a service, an announcement, a reminder, or anything else. ${link ? `Include this store link exactly once: ${link}` : "Do not invent or include a link."} Keep it within ${maxUnits} character units. Return only the message text, no quotes, no title, no explanation.`;
-      const response = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${gatewayKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "google/gemini-3.5-flash", messages: [{ role: "user", content: prompt }], temperature: 0.7, max_tokens: 120 }) });
+      const response = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${gatewayKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "google/gemini-2.5-flash", messages: [{ role: "user", content: prompt }], temperature: 0.7, max_tokens: 120 }) });
       const raw = await response.text();
       let payload: Record<string, unknown> = {};
       try { payload = JSON.parse(raw) as Record<string, unknown>; } catch { return json({ error: raw || "AI generation failed" }, response.status); }
       if (!response.ok) return json({ error: String(payload.error || "AI generation failed") }, response.status);
       const choices = payload.choices as Array<{ message?: { content?: string } }> | undefined;
       return json({ message: choices?.[0]?.message?.content?.trim() || "" });
+    }
+    if (action === "sender_lookup" || action === "submit_sender") {
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (!serviceKey) return json({ error: "Sender service is not configured" }, 503);
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
+      const phone = normalizeSenderPhone(String(body.phone || ""));
+      if (!phone) return json({ error: "A valid Ghana phone number is required" }, 400);
+      if (action === "sender_lookup") {
+        const { data, error } = await admin.from("sms_sender_ids").select("id,sender_id,status,is_global,created_at,reviewed_at").eq("phone_number", phone).order("created_at", { ascending: false });
+        if (error) return json({ error: "Could not look up sender IDs" }, 500);
+        return json({ senders: data || [] });
+      }
+      const sender = String(body.sender_id || "").trim().toUpperCase();
+      if (!/^[A-Z0-9 ]{3,11}$/.test(sender)) return json({ error: "Use 3-11 letters, numbers, or spaces for the sender ID" }, 400);
+      const { data, error } = await admin.from("sms_sender_ids").insert({ user_id: null, sender_id: sender, phone_number: phone, status: "pending", is_global: false }).select("id,sender_id,status,is_global,created_at,reviewed_at").single();
+      if (error) return json({ error: error.code === "23505" ? "This sender ID is already pending or registered for that number" : "Could not submit sender ID" }, error.code === "23505" ? 409 : 500);
+      return json({ sender: data });
     }
     if (!auth) return json({ error: "Authentication required" }, 401);
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
