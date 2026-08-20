@@ -257,14 +257,9 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   let data: any = null;
   let error: any = null;
   if (publicMode) {
-    const direct = await supabase.from("sms_sender_ids").insert({ user_id: null, sender_id: value, phone_number: phone, status: "pending", is_global: false }).select("id,sender_id,status,created_at").single();
-    data = direct.data;
-    error = direct.error;
-    if (error) {
-      const result = await supabase.functions.invoke("txtconnect-sms", { body: { action: "submit_sender", sender_id: value, phone } });
-      data = result.data?.sender;
-      error = result.error || (result.data?.error ? new Error(result.data.error) : null);
-    }
+    const result = await supabase.functions.invoke("txtconnect-sms", { body: { action: "submit_sender", sender_id: value, phone } });
+    data = result.data?.sender;
+    error = result.error || (result.data?.error ? new Error(result.data.error) : null);
   } else {
     const result = await supabase.from("sms_sender_ids").insert({ user_id: (await supabase.auth.getUser()).data.user?.id, sender_id: value, phone_number: phone });
     data = result.data;

@@ -71,6 +71,14 @@ Deno.serve(async (request) => {
       if (error) return json({ error: error.code === "23505" ? "This sender ID is already pending or registered for that number" : "Could not submit sender ID" }, error.code === "23505" ? 409 : 500);
       return json({ sender: data });
     }
+    if (action === "public_sender_lookup") {
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SECRET_KEY");
+      if (!serviceKey) return json({ error: "Sender service is not configured" }, 503);
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
+      const { data, error } = await admin.from("sms_sender_ids").select("id,sender_id,status,is_global,created_at,reviewed_at").eq("status", "approved").or("is_global.eq.true,user_id.is.null").order("sender_id");
+      if (error) return json({ error: "Could not load approved sender IDs" }, 500);
+      return json({ senders: data || [] });
+    }
     if (!auth) return json({ error: "Authentication required" }, 401);
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
     const { data: { user } } = await supabase.auth.getUser();
@@ -100,7 +108,7 @@ Deno.serve(async (request) => {
       .select("status,user_id,is_global")
       .eq("sender_id", senderId.toUpperCase())
       .eq("status", "approved");
-    const senderApproved = (senderRecords || []).some((r: { user_id: string | null; is_global: boolean }) => r.is_global || r.user_id === user.id);
+    const senderApproved = (senderRecords || []).some((r: { user_id: string | null; is_global: boolean }) => r.is_global || r.user_id === user.id || r.user_id === null);
     const messageUnits = smsUnits(message);
     if (!recipients.length || !senderId || !message || senderId.length > 11 || messageUnits > 1600) return json({ error: "Valid recipients, sender ID, and message are required" }, 400);
     if (!senderApproved) return json({ error: "This sender ID is not approved yet" }, 403);
