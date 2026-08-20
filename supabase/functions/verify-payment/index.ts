@@ -59,12 +59,13 @@ Deno.serve(async (req) => {
       const recipients = Array.isArray(metadata.recipients) ? metadata.recipients : [];
       const senderId = String(metadata.sender_id || "").trim();
       const message = String(metadata.message || "").trim();
-      const apiKey = Deno.env.get("TXT_CONNECT_API") || Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("API_KEY");
-      if (!recipients.length || !senderId || !message || !apiKey) {
+      const providerAuth = Deno.env.get("CURL_AUTH_HEADER_12") || Deno.env.get("CURL_AUTH_HEADER") || Deno.env.get("TXT_CONNECT_API") || Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("API_KEY");
+      const providerHeaders = { Authorization: providerAuth?.startsWith("Bearer ") ? providerAuth : `Bearer ${providerAuth || ""}`, "Content-Type": "application/json" };
+      if (!recipients.length || !senderId || !message || !providerAuth) {
         return new Response(JSON.stringify({ error: "SMS payment metadata or provider configuration is incomplete" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const cleanRecipients = recipients.map((value: string) => { const digits = String(value).replace(/\\D/g, ""); return digits.startsWith("0") ? `233${digits.slice(1)}` : digits.startsWith("233") ? digits : ""; }).filter(Boolean);
-      const results = await Promise.all(cleanRecipients.map(async (to: string) => { const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ to, from: senderId, unicode: /[^\\x00-\\x7F]/.test(message) ? "unicode" : "regular", sms: message }) }); const raw = await response.text(); let body: unknown = {}; try { body = JSON.parse(raw); } catch { body = { raw }; } return { to, status: response.status, body }; }));
+      const cleanRecipients = recipients.map((value: string) => { let digits = String(value).replace(/\\D/g, ""); if (digits.startsWith("00233")) digits = digits.slice(5); else if (digits.startsWith("233") && digits.length >= 12) digits = `0${digits.slice(3)}`; if (!digits.startsWith("0")) digits = `0${digits}`; return /^0[2-5]\\d{8}$/.test(digits) ? digits : ""; }).filter(Boolean);
+      const results = await Promise.all(cleanRecipients.map(async (to: string) => { const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: providerHeaders, body: JSON.stringify({ to, from: senderId, unicode: /[^\\x00-\\x7F]/.test(message), sms: message }) }); const raw = await response.text(); let body: unknown = {}; try { body = JSON.parse(raw); } catch { body = { raw }; } return { to, status: response.status, body }; }));
       const failed = results.filter((item) => item.status < 200 || item.status >= 300);
       const status = failed.length === results.length ? "failed" : failed.length ? "partial" : "sent";
       await supabase.from("sms_messages").insert({ user_id: metadata.user_id || null, owner_type: metadata.owner_type || "customer", owner_id: metadata.owner_id || null, recipients: cleanRecipients, sender_id: senderId, message, total_charge: Number(metadata.base_amount || txData.amount / 100), unit_price: 0.09, status, provider_response: results, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null });
