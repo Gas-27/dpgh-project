@@ -717,6 +717,8 @@ Deno.serve(async (req) => {
         .select("customer_sell_price")
         .eq("sub_subagent_store_id", metadata.subsubagent_store_id)
         .eq("package_id", metadata.package_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (subsubagentPrice?.customer_sell_price != null) {
@@ -771,11 +773,13 @@ Deno.serve(async (req) => {
 .from("subagent_package_prices")
         .select("customer_sell_price")
         .eq("subagent_store_id", metadata.subagent_store_id)
-        .eq("package_id", metadata.package_id)
+.eq("package_id", metadata.package_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (subagentPrice?.sell_price != null) {
-        baseAmount = Number(subagentPrice.sell_price);
+      if (subagentPrice?.customer_sell_price != null) {
+        baseAmount = Number(subagentPrice.customer_sell_price);
         priceType = "subagent_sell_price";
       } else {
         const { data: subagentStore } = await supabaseClient

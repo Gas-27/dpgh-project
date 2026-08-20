@@ -118,7 +118,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const [senderSearch, setSenderSearch] = useState("");
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [storeLink, setStoreLink] = useState(providedStoreUrl || "");
-  const [includeStoreLink, setIncludeStoreLink] = useState(true);
+  const [includeStoreLink, setIncludeStoreLink] = useState(false);
   const [generationType, setGenerationType] = useState("promotion");
   const [aiBrief, setAiBrief] = useState("");
   const [generating, setGenerating] = useState(false);

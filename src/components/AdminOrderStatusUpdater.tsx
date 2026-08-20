@@ -32,7 +32,7 @@ export default function AdminOrderStatusUpdater() {
   const [toStatus, setToStatus] = useState("delivered");
   const [includeContacts, setIncludeContacts] = useState("");
   const [excludeContacts, setExcludeContacts] = useState("");
-  const [matches, setMatches] = useState<{ id: string; network: string; order_status: string; created_at: string; customer_number?: string }[]>([]);
+  const [matches, setMatches] = useState<{ id: string; network: string; fulfillment_status: string; order_status?: string; created_at: string; customer_number?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const canSearch = Boolean(from && to && fromStatus && toStatus && from <= to && fromTime && toTime && (from < to || fromTime <= toTime));
@@ -41,7 +41,7 @@ export default function AdminOrderStatusUpdater() {
   const preview = async () => {
     if (!canSearch) { toast({ title: "Complete the filters", description: "Choose a valid start and end date.", variant: "destructive" }); return; }
     setLoading(true);
-    let query = supabase.from("orders").select("id, network, order_status, created_at, customer_number").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
+    let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, created_at, customer_number").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
     if (network !== "all") query = query.in("network", network === "airteltigo" ? ["airteltigo", "airtel_tigo", "airtel-tigo", "airtel", "tigo"] : [network]);
     const { data, error } = await query;
     setLoading(false);
@@ -49,7 +49,7 @@ export default function AdminOrderStatusUpdater() {
     const include = parseContacts(includeContacts);
     const exclude = parseContacts(excludeContacts);
     const filtered = (data || []).filter((row) => {
-      if (normalize(row.order_status) !== normalize(fromStatus)) return false;
+      if (normalize(row.fulfillment_status || row.order_status) !== normalize(fromStatus)) return false;
       const contact = normalizeContact(String((row as any).customer_number || ""));
       if (exclude.has(contact)) return false;
       if (include.size > 0 && !include.has(contact)) return false;
@@ -63,10 +63,23 @@ export default function AdminOrderStatusUpdater() {
     if (!matches.length || fromStatus === toStatus) return;
     setUpdating(true);
     const ids = matches.map((row) => row.id);
-    const { error } = await supabase.from("orders").update({ order_status: toStatus, updated_at: new Date().toISOString() }).in("id", ids);
+    const updatedAt = new Date().toISOString();
+    const batchSize = 100;
+    for (let index = 0; index < ids.length; index += batchSize) {
+      const batch = ids.slice(index, index + batchSize);
+      const { error } = await supabase
+        .from("orders")
+        .update({ fulfillment_status: toStatus, updated_at: updatedAt })
+        .in("id", batch);
+      if (error) {
+        setUpdating(false);
+        toast({ title: "Update failed", description: error.message, variant: "destructive" });
+        return;
+      }
+      completed += batch.length;
+    }
     setUpdating(false);
-    if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
-    setMatches((rows) => rows.map((row) => ({ ...row, order_status: toStatus })));
+    setMatches((rows) => rows.map((row) => ({ ...row, fulfillment_status: toStatus, order_status: row.order_status })));
     toast({ title: "Orders updated", description: `${ids.length} order${ids.length === 1 ? "" : "s"} marked ${toStatus}.` });
   };
 
