@@ -364,8 +364,15 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       window.location.assign(payment.authorization_url);
       return;
     }
+    const { data: sessionData, error: sessionError } = await supabase.auth.refreshSession();
+    if (sessionError || !sessionData.session?.access_token) {
+      setLoading(false);
+      toast({ title: "Sign-in session expired", description: "Please sign in again before sending SMS.", variant: "destructive" });
+      return;
+    }
     const { data, error } = await supabase.functions.invoke("txtconnect-sms", {
       body: { action: "send", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: outgoingMessage },
+      headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
     });
     setLoading(false);
   if (error || data?.error) {
@@ -374,7 +381,8 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     let parsedContext: any = null;
     try { parsedContext = contextDetails ? JSON.parse(contextDetails) : null; } catch { /* keep raw context */ }
     const providerDetails = data?.provider_response?.map?.((item: any) => item?.body?.msg || item?.body?.message || item?.body?.error).filter(Boolean).join("; ");
-    toast({ title: "SMS was not sent", description: data?.error || parsedContext?.error || providerDetails || contextDetails || error?.message || "Please try again.", variant: "destructive" });
+    const authFailure = data?.error === "Authentication required" || parsedContext?.error === "Authentication required";
+    toast({ title: authFailure ? "Sign-in session expired" : "SMS was not sent", description: authFailure ? "Please sign out and sign in again before sending SMS." : data?.error || parsedContext?.error || providerDetails || contextDetails || error?.message || "Please try again.", variant: "destructive" });
       return;
     }
     toast({ title: "SMS sent", description: `${data.sent || numbers.length} recipient(s) processed - ${data.pages || pages} page(s) each.` });
