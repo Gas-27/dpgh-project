@@ -23,7 +23,7 @@ Deno.serve(async (request) => {
     const auth = request.headers.get("Authorization");
     const body = await request.json();
     const action = body.action || "send";
-    const apiKey = Deno.env.get("TXT_CONNECT_API");
+    const apiKey = Deno.env.get("TXT_CONNECT_API") || Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("API_KEY");
     const normalizeSenderPhone = (value: string) => normalizeLocalGh(value);
     if (action === "generate") {
       const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY") || Deno.env.get("AI_GATEWAY_KEY") || Deno.env.get("OPENAI_API_KEY") || Deno.env.get("API_KEY");
