@@ -33,6 +33,12 @@ export default function AdminYouTubeUrlManager() {
     { title: '', url: '' },
   ]);
 
+  const [subsubagentVideos, setSubsubagentVideos] = useState<VideoSettings[]>([
+    { title: '', url: '' },
+    { title: '', url: '' },
+    { title: '', url: '' },
+  ]);
+
   const [previewingAgent, setPreviewingAgent] = useState<number | null>(null);
   const [previewingSubagent, setPreviewingSubagent] = useState<number | null>(null);
 
@@ -52,7 +58,10 @@ export default function AdminYouTubeUrlManager() {
           agent_video_3_title, agent_video_3_url,
           subagent_video_1_title, subagent_video_1_url,
           subagent_video_2_title, subagent_video_2_url,
-          subagent_video_3_title, subagent_video_3_url
+          subagent_video_3_title, subagent_video_3_url,
+          subsubagent_video_1_title, subsubagent_video_1_url,
+          subsubagent_video_2_title, subsubagent_video_2_url,
+          subsubagent_video_3_title, subsubagent_video_3_url
         `)
         .limit(1);
 
@@ -75,6 +84,11 @@ export default function AdminYouTubeUrlManager() {
           { title: record.subagent_video_1_title || '', url: record.subagent_video_1_url || '' },
           { title: record.subagent_video_2_title || '', url: record.subagent_video_2_url || '' },
           { title: record.subagent_video_3_title || '', url: record.subagent_video_3_url || '' },
+        ]);
+        setSubsubagentVideos([
+          { title: record.subsubagent_video_1_title || '', url: record.subsubagent_video_1_url || '' },
+          { title: record.subsubagent_video_2_title || '', url: record.subsubagent_video_2_url || '' },
+          { title: record.subsubagent_video_3_title || '', url: record.subsubagent_video_3_url || '' },
         ]);
       } else {
         console.log('[v0] No afa_settings records found');
@@ -116,6 +130,12 @@ export default function AdminYouTubeUrlManager() {
         subagent_video_2_url: subagentVideos[1]?.url || null,
         subagent_video_3_title: subagentVideos[2]?.title || null,
         subagent_video_3_url: subagentVideos[2]?.url || null,
+        subsubagent_video_1_title: subsubagentVideos[0]?.title || null,
+        subsubagent_video_1_url: subsubagentVideos[0]?.url || null,
+        subsubagent_video_2_title: subsubagentVideos[1]?.title || null,
+        subsubagent_video_2_url: subsubagentVideos[1]?.url || null,
+        subsubagent_video_3_title: subsubagentVideos[2]?.title || null,
+        subsubagent_video_3_url: subsubagentVideos[2]?.url || null,
       };
 
       const { error } = await supabase
@@ -239,8 +259,9 @@ export default function AdminYouTubeUrlManager() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <VideoInput videos={agentVideos} setVideos={setAgentVideos} title="Agent Training Videos" isAgent={true} />
-        <VideoInput videos={subagentVideos} setVideos={setSubagentVideos} title="Subagent Training Videos" isAgent={false} />
-      </div>
+  <VideoInput videos={subagentVideos} setVideos={setSubagentVideos} title="Subagent Training Videos" isAgent={false} />
+  <VideoInput videos={subsubagentVideos} setVideos={setSubsubagentVideos} title="Sub-subagent Training Videos" isAgent={false} />
+  </div>
 
       <Button
         onClick={handleSave}

@@ -26,7 +26,6 @@ import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
 // COMMENTED OUT: mashup packages deactivated
 // import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
-import SubSubagentTrainingVideoSection from "@/components/SubSubagentTrainingVideoSection";
 import SubSubagentAFAPriceManager from "@/components/SubSubagentAFAPriceManager";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import SubSubagentAFABundleRegistrations from "@/components/SubSubagentAFABundleRegistrations";
@@ -1980,8 +1979,6 @@ return (
               )}
             </Card>
 
-            {/* TRAINING VIDEOS */}
-            <SubSubagentTrainingVideoSection storeId={subagentStore?.id} />
 
             {/* Date Filter for Stats */}
             <div className="flex flex-wrap items-center gap-2 bg-card p-3 rounded-lg border border-border">

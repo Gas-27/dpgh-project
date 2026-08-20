@@ -4543,6 +4543,7 @@ const AdminDashboard = () => {
 
   {canSee("settings") && (
   <TabsContent value="settings" className="space-y-6">
+  <DeliveryProgressAdmin />
   <Card className="border-border">
 
                   <CardHeader>

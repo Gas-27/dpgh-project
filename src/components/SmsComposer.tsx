@@ -156,8 +156,18 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
     if (!uid) { setWalletBalance(null); return; }
-    const { data: bal } = await supabase.rpc("get_sms_wallet", { p_user_id: uid, p_owner_type: ownerType === "customer" ? "customer" : ownerType });
-    setWalletBalance(Number(bal ?? 0));
+    const normalizedOwnerType = ownerType === "customer" ? "customer" : ownerType;
+    const table = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : normalizedOwnerType === "subsubagent" ? "sub_subagent_stores" : "customers";
+    let balance: number | null = null;
+    if (ownerId && normalizedOwnerType !== "customer") {
+      const { data: ownerStore } = await supabase.from(table).select("wallet_balance").eq("id", ownerId).maybeSingle();
+      if (ownerStore) balance = Number(ownerStore.wallet_balance ?? 0);
+    }
+    if (balance === null) {
+      const { data: bal } = await supabase.rpc("get_sms_wallet", { p_user_id: uid, p_owner_type: normalizedOwnerType });
+      balance = Number(bal ?? 0);
+    }
+    setWalletBalance(balance);
     if (providedStoreUrl) {
       setStoreLink(providedStoreUrl);
       return;
@@ -166,10 +176,10 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       setStoreLink("https://dataplug.store/packages");
       return;
     }
-    const table = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+    const ownerTable = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
     const query = ownerId
-      ? supabase.from(table).select("store_name_slug,id").eq("id", ownerId).maybeSingle()
-      : supabase.from(table).select("store_name_slug,id").eq("user_id", uid).maybeSingle();
+      ? supabase.from(ownerTable).select("store_name_slug,id").eq("id", ownerId).maybeSingle()
+      : supabase.from(ownerTable).select("store_name_slug,id").eq("user_id", uid).maybeSingle();
     const { data } = await query;
     if (data) setStoreLink(`https://dataplug.store/store/${data.store_name_slug || data.id}`);
   };
