@@ -492,8 +492,7 @@ export function SubSubagentStorefront() {
 
   // Sub-Subagent Registration
   // ── AFA Packages ──
-  const [showAFA, setShowAFA] = useState(false);
-  const [showSms, setShowSms] = useState(false);
+  const [activeSection, setActiveSection] = useState<"data" | "afa" | "sms">("data");
   const [afaPaymentPkg, setAfaPaymentPkg] = useState<{ id: string; size_gb: number; price: number; network: string } | null>(null);
   const [afaPaymentOpen, setAfaPaymentOpen] = useState(false);
 
@@ -1117,10 +1116,10 @@ const searchOrders = useCallback(async () => {
         {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
             <Button
               key={net}
-              variant={networkFilter === net && !showAFA ? "default" : "outline"}
+              variant={activeSection === "data" && networkFilter === net ? "default" : "outline"}
               size="sm"
-              onClick={() => { setNetworkFilter(net); setShowAFA(false); }}
-              style={networkFilter === net && !showAFA ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
+              onClick={() => { setNetworkFilter(net); setActiveSection("data"); }}
+              style={activeSection === "data" && networkFilter === net ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
               className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
@@ -1129,23 +1128,23 @@ const searchOrders = useCallback(async () => {
           ))}
           <div className="h-6 w-px bg-border flex-shrink-0"></div>
           <Button
-            variant={showAFA ? "default" : "outline"}
+            variant={activeSection === "afa" ? "default" : "outline"}
             size="sm"
-            onClick={() => { setShowAFA(!showAFA); setShowSms(false); }}
-            style={showAFA ? { background: primaryColor, color: primaryForeground } : {}}
+            onClick={() => setActiveSection(activeSection === "afa" ? "data" : "afa")}
+            style={activeSection === "afa" ? { background: primaryColor, color: primaryForeground } : {}}
             className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
           >
             <Package className="h-4 w-4 mr-1" />
             AFA Bundles
   </Button>
   <div className="h-6 w-px bg-border flex-shrink-0"></div>
-  <Button variant={showSms ? "default" : "outline"} size="sm" onClick={() => { setShowSms(!showSms); setShowAFA(false); }} style={showSms ? { background: primaryColor, color: primaryForeground } : {}} className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"><MessageCircle className="h-4 w-4 mr-1" />SMS</Button>
+  <Button variant={activeSection === "sms" ? "default" : "outline"} size="sm" onClick={() => setActiveSection(activeSection === "sms" ? "data" : "sms")} style={activeSection === "sms" ? { background: primaryColor, color: primaryForeground } : {}} className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"><MessageCircle className="h-4 w-4 mr-1" />SMS</Button>
   </div>
   
-  {showSms && <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subsubagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
+  {activeSection === "sms" && <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subsubagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
   
   {/* AFA Bundles Section */}
-        {showAFA ? (
+        {activeSection === "afa" ? (
           <div className="w-full pb-8 space-y-8">
             {/* Track AFA registration status — shown at the very top */}
             <AFARegistrationTracker storeLabel={store?.store_name} />
@@ -1161,7 +1160,7 @@ const searchOrders = useCallback(async () => {
         ) : null}
 
         {/* Packages Grid */}
-        {!showAFA && !showSms && <>
+        {activeSection === "data" && <>
         {/* USSD Info Banner */}
           {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
             <a href="tel:*380*455#" className="block mb-4 p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">

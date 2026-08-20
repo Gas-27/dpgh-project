@@ -26,6 +26,8 @@ type Sender = {
   sender_id: string;
   status: "pending" | "approved" | "rejected";
   is_global?: boolean;
+  created_at?: string;
+  reviewed_at?: string | null;
 };
 
 const PAGE_SIZE = 160;
@@ -117,6 +119,9 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoOpen, setVideoOpen] = useState(true);
   const [senderSearch, setSenderSearch] = useState("");
+  const [lookupPhone, setLookupPhone] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupResults, setLookupResults] = useState<Sender[]>([]);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [storeLink, setStoreLink] = useState(providedStoreUrl || "");
   const [includeStoreLink, setIncludeStoreLink] = useState(false);
@@ -151,6 +156,33 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       list.push(row);
     }
     setSenders(list);
+  };
+
+  const lookupSenderIds = async () => {
+    const phone = normalizeGh(lookupPhone);
+    if (!phone) {
+      toast({ title: "Enter a valid phone number", description: "Use a Ghana number such as 0241234567 or +233241234567.", variant: "destructive" });
+      return;
+    }
+    setLookupLoading(true);
+    setLookupResults([]);
+    try {
+      const tables = ["agent_stores", "subagent_stores", "sub_subagent_stores"] as const;
+      const ownerIds = new Set<string>();
+      for (const table of tables) {
+        const { data } = await supabase.from(table).select("user_id,phone_number,support_number,whatsapp_number").or(`phone_number.eq.${phone},support_number.eq.${phone},whatsapp_number.eq.${phone}`);
+        for (const row of data || []) if (row.user_id) ownerIds.add(row.user_id);
+      }
+      if (ownerIds.size) {
+        const { data } = await supabase.from("sms_sender_ids").select("id,sender_id,status,is_global,user_id,created_at,reviewed_at").in("user_id", Array.from(ownerIds)).order("created_at", { ascending: false });
+        setLookupResults((data || []) as Sender[]);
+      }
+      if (!ownerIds.size) toast({ title: "No sender IDs found", description: "No store account matches that phone number." });
+    } catch {
+      toast({ title: "Lookup failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setLookupLoading(false);
+    }
   };
 
   const loadWalletAndStore = async () => {
@@ -375,8 +407,16 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Sender ID */}
-          <div className="space-y-2">
-            <Label>Sender ID</Label>
+  <div className="space-y-2">
+  {publicMode && <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+    <Label htmlFor="sender-phone-lookup">Find your sender ID by phone number</Label>
+    <div className="flex gap-2">
+      <Input id="sender-phone-lookup" value={lookupPhone} onChange={(event) => setLookupPhone(event.target.value)} placeholder="0241234567 or +233241234567" inputMode="tel" />
+      <Button type="button" variant="secondary" onClick={lookupSenderIds} disabled={lookupLoading}>{lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}</Button>
+    </div>
+    {lookupResults.length > 0 && <div className="space-y-2 pt-1">{lookupResults.map((sender) => <div key={sender.id} className="flex items-center justify-between rounded-md border bg-background px-3 py-2 text-sm"><div><span className="font-semibold">{sender.sender_id}</span><p className="text-xs text-muted-foreground">Started {sender.created_at ? new Date(sender.created_at).toLocaleDateString() : "—"}</p></div><div className="flex items-center gap-2"><Badge variant={sender.status === "approved" ? "default" : "outline"}>{sender.status}</Badge>{sender.status === "approved" && <Button type="button" size="sm" onClick={() => { setSenderId(sender.sender_id); setSenderOpen(false); }}>Use</Button>}</div></div>)}</div>}
+  </div>}
+  <Label>Sender ID</Label>
             <div className="relative">
               <Button
                 type="button"

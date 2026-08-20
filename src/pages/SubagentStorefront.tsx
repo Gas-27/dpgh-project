@@ -496,8 +496,7 @@ export function SubagentStorefront() {
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
   
   // Bulk Orders
-  const [showBulkOrders, setShowBulkOrders] = useState(false);
-  const [showSms, setShowSms] = useState(false);
+  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms">("data");
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
@@ -508,7 +507,6 @@ export function SubagentStorefront() {
   const [showSubSubagentForm, setShowSubSubagentForm] = useState(false);
 
   // ── AFA Packages ──
-  const [showAFA, setShowAFA] = useState(false);
   const [afaPaymentPkg, setAfaPaymentPkg] = useState<{ id: string; size_gb: number; price: number; network: string } | null>(null);
   const [afaPaymentOpen, setAfaPaymentOpen] = useState(false);
 
@@ -1092,10 +1090,10 @@ const searchOrders = useCallback(async () => {
         {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
             <Button
               key={net}
-              variant={networkFilter === net && !showBulkOrders && !showAFA ? "default" : "outline"}
+              variant={activeSection === "data" && networkFilter === net ? "default" : "outline"}
               size="sm"
-              onClick={() => { setNetworkFilter(net); setShowBulkOrders(false); setShowAFA(false); }}
-              style={networkFilter === net && !showBulkOrders && !showAFA ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
+              onClick={() => { setNetworkFilter(net); setActiveSection("data"); }}
+              style={activeSection === "data" && networkFilter === net ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
               className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
@@ -1104,10 +1102,10 @@ const searchOrders = useCallback(async () => {
           ))}
           <div className="h-6 w-px bg-border flex-shrink-0"></div>
           <Button
-            variant={showAFA ? "default" : "outline"}
+            variant={activeSection === "afa" ? "default" : "outline"}
             size="sm"
-            onClick={() => { setShowAFA(!showAFA); setShowBulkOrders(false); }}
-            style={showAFA ? { background: primaryColor, color: primaryForeground } : {}}
+            onClick={() => setActiveSection(activeSection === "afa" ? "data" : "afa")}
+            style={activeSection === "afa" ? { background: primaryColor, color: primaryForeground } : {}}
             className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
           >
             <Package className="h-4 w-4 mr-1" />
@@ -1115,17 +1113,17 @@ const searchOrders = useCallback(async () => {
           </Button>
           <div className="h-6 w-px bg-border flex-shrink-0"></div>
           <Button
-            variant={showBulkOrders ? "default" : "outline"}
+            variant={activeSection === "bulk" ? "default" : "outline"}
             size="sm"
-            onClick={() => { setShowBulkOrders(!showBulkOrders); setShowAFA(false); setShowSms(false); }}
-            style={showBulkOrders ? { background: primaryColor, color: primaryForeground } : {}}
+            onClick={() => setActiveSection(activeSection === "bulk" ? "data" : "bulk")}
+            style={activeSection === "bulk" ? { background: primaryColor, color: primaryForeground } : {}}
             className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
           >
             <Layers className="h-4 w-4 mr-1" />
             Bulk Orders
           </Button>
           <div className="h-6 w-px bg-border flex-shrink-0"></div>
-          <Button variant={showSms ? "default" : "outline"} size="sm" onClick={() => { setShowSms(!showSms); setShowAFA(false); setShowBulkOrders(false); }} style={showSms ? { background: primaryColor, color: primaryForeground } : {}} className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"><MessageCircle className="h-4 w-4 mr-1" />SMS</Button>
+          <Button variant={activeSection === "sms" ? "default" : "outline"} size="sm" onClick={() => setActiveSection(activeSection === "sms" ? "data" : "sms")} style={activeSection === "sms" ? { background: primaryColor, color: primaryForeground } : {}} className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"><MessageCircle className="h-4 w-4 mr-1" />SMS</Button>
           {store?.allow_sub_subagent_registration !== false && (
             <>
               <div className="h-6 w-px bg-border flex-shrink-0"></div>
@@ -1142,10 +1140,10 @@ const searchOrders = useCallback(async () => {
           )}
         </div>
 
-        {showSms && <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
+        {activeSection === "sms" && <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
 
         {/* AFA Bundles Section */}
-        {showAFA ? (
+        {activeSection === "afa" ? (
           <div className="w-full pb-8 space-y-8">
             {/* Track AFA registration status — shown at the very top */}
             <AFARegistrationTracker storeLabel={store?.store_name} />
@@ -1161,7 +1159,7 @@ const searchOrders = useCallback(async () => {
         ) : null}
 
         {/* Bulk Orders Section */}
-        {showBulkOrders ? (
+        {activeSection === "bulk" ? (
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-6 space-y-6">
               <div className="text-center mb-4">
@@ -1369,7 +1367,7 @@ const searchOrders = useCallback(async () => {
               </div>
             </CardContent>
           </Card>
-        ) : !showAFA && !showSms ? (
+        ) : activeSection === "data" ? (
           /* Packages Grid */
           <>
           {/* USSD Info Banner */}

@@ -72,22 +72,20 @@ export default function AdminOrderStatusUpdater() {
     setUpdating(true);
     const ids = matches.map((row) => row.id);
     const updatedAt = new Date().toISOString();
-    const batchSize = 100;
-    for (let index = 0; index < ids.length; index += batchSize) {
-      const batch = ids.slice(index, index + batchSize);
-      const { error } = await supabase
-        .from("orders")
-        .update({ fulfillment_status: toStatus, order_status: toStatus, updated_at: updatedAt })
-        .in("id", batch);
-      if (error) {
-        setUpdating(false);
-        toast({ title: "Update failed", description: error.message, variant: "destructive" });
-        return;
-      }
-      completed += batch.length;
+    const batchSize = 500;
+    const batches = Array.from({ length: Math.ceil(ids.length / batchSize) }, (_, index) => ids.slice(index * batchSize, (index + 1) * batchSize));
+    const results = await Promise.all(batches.map((batch) => supabase
+      .from("orders")
+      .update({ fulfillment_status: toStatus, order_status: toStatus, updated_at: updatedAt })
+      .in("id", batch)));
+    const failed = results.find((result) => result.error);
+    if (failed?.error) {
+      setUpdating(false);
+      toast({ title: "Update failed", description: failed.error.message, variant: "destructive" });
+      return;
     }
     setUpdating(false);
-    setMatches((rows) => rows.map((row) => ({ ...row, fulfillment_status: toStatus, order_status: row.order_status })));
+    setMatches((rows) => rows.map((row) => ({ ...row, fulfillment_status: toStatus, order_status: toStatus })));
     toast({ title: "Orders updated", description: `${ids.length} order${ids.length === 1 ? "" : "s"} marked ${toStatus}.` });
   };
 
