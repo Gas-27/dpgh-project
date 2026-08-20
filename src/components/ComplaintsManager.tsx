@@ -159,7 +159,10 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       const orderById = new Map((ordersResult.orders || []).map((row: any) => [row.id, row]));
       const agentById = new Map((agentsResult.data || []).map((row: any) => [row.id, row]));
       const subagentById = new Map((subagentsResult.data || []).map((row: any) => [row.id, row]));
-      setComplaints(baseComplaints.map((complaint) => ({
+      const isRefundedOrder = (order: any) => [order?.status, order?.order_status, order?.fulfillment_status, order?.payment_status, order?.refund_status]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().replace(/[ _-]/g, "") === "refunded");
+      setComplaints(baseComplaints.filter((complaint) => !isRefundedOrder(orderById.get(complaint.order_id))).map((complaint) => ({
         ...complaint,
         orders: orderById.get(complaint.order_id),
         agent_stores: agentById.get(complaint.agent_store_id),
