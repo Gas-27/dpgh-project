@@ -592,7 +592,7 @@ export function SubSubagentStorefront() {
       // Final customer price = sub-subagent's own customer_sell_price if set, else the cost-from-agent
       const priceMap: Record<string, number> = { ...baseCostMap };
       (ownSellRes.data || []).forEach((p: any) => { 
-        if (p.customer_sell_price != null && priceMap[p.package_id] == null) priceMap[p.package_id] = Number(p.customer_sell_price); 
+        if (p.customer_sell_price != null) priceMap[p.package_id] = Number(p.customer_sell_price); 
       });
       
   setSubagentPrices(priceMap);
@@ -648,7 +648,7 @@ export function SubSubagentStorefront() {
       // Final: sub-subagent's own customer_sell_price if set, else cost-from-agent
       const priceMap: Record<string, number> = { ...baseCostMap };
       (ownSell.data || []).forEach((p: any) => { 
-        if (p.customer_sell_price != null && priceMap[p.package_id] == null) priceMap[p.package_id] = Number(p.customer_sell_price); 
+        if (p.customer_sell_price != null) priceMap[p.package_id] = Number(p.customer_sell_price); 
       });
       
       setSubagentPrices(priceMap);
