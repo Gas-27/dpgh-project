@@ -333,7 +333,7 @@ Deno.serve(async (req) => {
             // If subagent code was used, get packages with subagent's custom prices (fallback to agent prices, then default)
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
-              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
               const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
@@ -470,7 +470,7 @@ Deno.serve(async (req) => {
             
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
-              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
               const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
@@ -1121,7 +1121,7 @@ Deno.serve(async (req) => {
             // If subagent code was used, get packages with subagent's custom prices (fallback to agent prices, then default)
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
-              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
               const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
@@ -1247,7 +1247,7 @@ Deno.serve(async (req) => {
             
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
-              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
               const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
@@ -1581,7 +1581,7 @@ Deno.serve(async (req) => {
             
             if (session.subsubagent_store_id) {
               const { data: allPackages, error: pkgError } = await supabase.from("data_packages").select("id, size_gb, network, agent_price").eq("active", true).eq("network", selectedNetwork);
-              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", session.subsubagent_store_id);
+              const { data: customPrices } = await supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, created_at").eq("sub_subagent_store_id", session.subsubagent_store_id).order("created_at", { ascending: false });
               const priceMap = new Map((customPrices || []).map((p: any) => [p.package_id, p.customer_sell_price]));
               if (!pkgError && allPackages) packages = allPackages.map((pkg: any) => ({ id: pkg.id, size_gb: pkg.size_gb, price: priceMap.get(pkg.id) ?? pkg.agent_price }));
             } else if (session.subagent_store_id) {
