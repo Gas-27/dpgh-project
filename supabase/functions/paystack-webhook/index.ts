@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       const recipients = Array.isArray(metadata?.recipients) ? metadata.recipients : [];
       const senderId = String(metadata?.sender_id || "").trim();
       const message = String(metadata?.message || "").trim();
-      const apiKey = Deno.env.get("TXT_CONNECT_API");
+      const apiKey = Deno.env.get("TXT_CONNECT_API") || Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("API_KEY");
       if (!recipients.length || !senderId || !message || !apiKey) return new Response(JSON.stringify({ error: "SMS payment metadata is incomplete" }), { status: 400, headers: corsHeaders });
       const cleanRecipients = recipients.map((value: string) => { const digits = String(value).replace(/\\D/g, ""); return digits.startsWith("0") ? `233${digits.slice(1)}` : digits.startsWith("233") ? digits : ""; }).filter(Boolean);
       const results = await Promise.all(cleanRecipients.map(async (to: string) => { const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ to, from: senderId, unicode: /[^\\x00-\\x7F]/.test(message) ? "unicode" : "regular", sms: message }) }); const raw = await response.text(); let body: unknown = {}; try { body = JSON.parse(raw); } catch { body = { raw }; } return { to, status: response.status, body }; }));
