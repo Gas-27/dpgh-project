@@ -110,8 +110,9 @@ Deno.serve(async (request) => {
         try { body = JSON.parse(raw) as Record<string, unknown>; } catch { body = { raw }; }
         const data = (body.data || {}) as Record<string, unknown>;
         const messageId = body.messageId || body.message_id || data.messageId || data.message_id || null;
-        console.log(`[v0] TxtConnect response: to=${to}, http=${response.status}, messageId=${String(messageId)}, statusCode=${String(data.status_code ?? "")}`);
-        return { to, status: response.status, body, message_id: messageId };
+        const reason = body.reason || body.message || data.reason || data.message || null;
+        console.log(`[v0] TxtConnect response: to=${to}, http=${response.status}, messageId=${String(messageId)}, statusCode=${String(data.status_code ?? "")}, reason=${String(reason)}, raw=${raw}`);
+        return { to, status: response.status, body, message_id: messageId, reason };
       } catch (error) {
         console.error(`[v0] TxtConnect request failed for ${to}`, error);
         return { to, status: 599, body: { error: error instanceof Error ? error.message : "Provider request failed" }, message_id: null };
@@ -121,7 +122,10 @@ Deno.serve(async (request) => {
     if (failed.length) await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: chargePerRecipient * failed.length, p_owner_type: ownerType });
     const providerMessageIds = results.map((result) => result.message_id).filter(Boolean);
     await supabase.from("sms_messages").update({ status: failed.length ? (failed.length === results.length ? "failed" : "partial") : "sent", provider_response: results, provider_message_ids: providerMessageIds, last_delivery_check_at: null, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("id", record.id);
-    if (failed.length) return json({ error: `${failed.length} message(s) failed`, sent: results.length - failed.length, refunded: chargePerRecipient * failed.length, total: results.length, pages }, 502);
+    if (failed.length) {
+      const reasons = Array.from(new Set(failed.map((result) => result.reason || `HTTP ${result.status}`).filter(Boolean)));
+      return json({ error: `${failed.length} message(s) failed: ${reasons.join("; ")}`, provider_reasons: reasons, sent: results.length - failed.length, refunded: chargePerRecipient * failed.length, total: results.length, pages }, 502);
+    }
     return json({ success: true, sent: results.length, charge: totalCharge, pages, id: record.id });
   } catch (error) { console.error("[v0] TxtConnect SMS error", error); return json({ error: error instanceof Error ? error.message : "SMS service request failed" }, 500); }
 });
