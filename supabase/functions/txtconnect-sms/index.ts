@@ -35,7 +35,8 @@ Deno.serve(async (request) => {
     const auth = request.headers.get("Authorization");
     const body = await request.json();
     const action = body.action || "send";
-    const apiKey = Deno.env.get("TXT_CONNECT_API") || Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("API_KEY");
+    const providerAuth = Deno.env.get("CURL_AUTH_HEADER_12") || Deno.env.get("CURL_AUTH_HEADER") || Deno.env.get("TXT_CONNECT_API") || Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("API_KEY");
+    const providerHeaders = { Authorization: providerAuth?.startsWith("Bearer ") ? providerAuth : `Bearer ${providerAuth || ""}`, "Content-Type": "application/json" };
     const normalizeSenderPhone = (value: string) => normalizeLocalGh(value);
     if (action === "generate") {
       const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY") || Deno.env.get("AI_GATEWAY_KEY") || Deno.env.get("OPENAI_API_KEY") || Deno.env.get("API_KEY");
@@ -74,14 +75,14 @@ Deno.serve(async (request) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return json({ error: "Authentication required" }, 401);
-    if (!apiKey) return json({ error: "TxtConnect is not configured" }, 503);
+    if (!providerAuth) return json({ error: "TxtConnect is not configured" }, 503);
     if (action === "balance") {
-      const response = await fetch("https://api.txtconnect.net/dev/api/sms/checkbalance", { headers: { Authorization: `Bearer ${apiKey}` } });
+      const response = await fetch("https://api.txtconnect.net/dev/api/sms/checkbalance", { headers: providerHeaders });
       return json(await response.json(), response.status);
     }
     if (action === "status") {
       if (!body.message_id) return json({ error: "message_id is required" }, 400);
-      const response = await fetch(`https://api.txtconnect.net/dev/api/sms/getstatus/${encodeURIComponent(String(body.message_id))}`, { headers: { Authorization: `Bearer ${apiKey}` } });
+      const response = await fetch(`https://api.txtconnect.net/dev/api/sms/getstatus/${encodeURIComponent(String(body.message_id))}`, { headers: providerHeaders });
       const raw = await response.text();
       let payload: unknown = {};
       try { payload = JSON.parse(raw); } catch { payload = { raw }; }
@@ -89,7 +90,7 @@ Deno.serve(async (request) => {
     }
     const ownerType = ["agent", "subagent", "subsubagent"].includes(String(body.owner_type)) ? String(body.owner_type) : "customer";
     const localRecipients = Array.from(new Set((Array.isArray(body.recipients) ? body.recipients : []).map((value: string) => normalizeLocalGh(value)).filter((value: string | null): value is string => Boolean(value && /^0[2-5]\d{8}$/.test(value)))));
-    const recipients = localRecipients.map((value) => `233${value.slice(1)}`);
+    const recipients = localRecipients;
     const senderId = String(body.sender_id || "").trim();
     const message = String(body.message || "").trim();
     console.log(`[v0] SMS send requested: ${localRecipients.length} recipient(s), sender=${senderId}, chars=${smsUnits(message)}`);
@@ -113,10 +114,10 @@ Deno.serve(async (request) => {
     if (chargeError || !charged) return json({ error: "Insufficient wallet balance for this SMS campaign" }, 402);
     const { data: record, error: insertError } = await supabase.from("sms_messages").insert({ user_id: user.id, owner_type: ownerType, owner_id: body.owner_id || user.id, recipients, sender_id: senderId, message, total_charge: totalCharge, unit_price: contactPrice }).select("id").single();
     if (insertError) { await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType }); return json({ error: "Could not create the SMS record" }, 500); }
-    const unicode = hasUnicode(message) ? "unicode" : "regular";
+    const unicode = hasUnicode(message);
     const results = await Promise.all(recipients.map(async (to: string) => {
       try {
-        const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ to, from: senderId, unicode, sms: message }) });
+        const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: providerHeaders, body: JSON.stringify({ to, from: senderId, unicode, sms: message }) });
         const raw = await response.text();
         let body: Record<string, unknown> = {};
         try { body = JSON.parse(raw) as Record<string, unknown>; } catch { body = { raw }; }
