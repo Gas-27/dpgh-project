@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
 // COMMENTED OUT: mashup packages deactivated
 // import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
-import SubagentYouTubeSection from "@/components/SubagentYouTubeSection";
+import SubSubagentTrainingVideoSection from "@/components/SubSubagentTrainingVideoSection";
 import SubSubagentAFAPriceManager from "@/components/SubSubagentAFAPriceManager";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import SubSubagentAFABundleRegistrations from "@/components/SubSubagentAFABundleRegistrations";
@@ -203,7 +203,6 @@ const SubSubagentDashboard = () => {
   const [agentToSubagentCost, setAgentToSubagentCost] = useState<Record<string, number>>({});
   const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
-  const [tutorialUrls, setTutorialUrls] = useState<Record<string, string>>({});
   const [markupPercent, setMarkupPercent] = useState("");
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [savingPrices, setSavingPrices] = useState(false);
@@ -500,7 +499,7 @@ const SubSubagentDashboard = () => {
           supabase.from("transfer_recipients").select("*").eq("user_id", user?.id ?? "").eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           // This sub-subagent's OWN customer-facing selling price (set on their own dashboard).
-          supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, tutorial_url").eq("sub_subagent_store_id", store.id),
+          supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
           store.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id) : Promise.resolve({ data: null, error: null })
@@ -568,10 +567,7 @@ const SubSubagentDashboard = () => {
             subagentPriceMap[p.package_id] = Number(p.customer_sell_price);
           }
         });
-        setSubagentPrices(subagentPriceMap);
-  const tutorialMap: Record<string, string> = {};
-  (subagentPricesResult.data || []).forEach((p: any) => { if (p.tutorial_url) tutorialMap[p.package_id] = p.tutorial_url; });
-  setTutorialUrls(tutorialMap);
+  setSubagentPrices(subagentPriceMap);
         setLoading(false);
 
       } else {
@@ -632,7 +628,7 @@ const SubSubagentDashboard = () => {
           supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           // This sub-subagent's OWN customer-facing selling price (set on their own dashboard).
-          supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price, tutorial_url").eq("sub_subagent_store_id", store.id),
+          supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", store.id),
           store.subagent_store_id ? supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).single() : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", store.subagent_store_id).eq("sub_subagent_store_id", store.id) : Promise.resolve({ data: null, error: null }),
           store.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price, sell_price").eq("subagent_store_id", store.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
@@ -686,9 +682,6 @@ const SubSubagentDashboard = () => {
   }
   });
   setSubagentPrices(subagentPriceMap);
-  const tutorialMap: Record<string, string> = {};
-  (subagentPricesResult.data || []).forEach((p: any) => { if (p.tutorial_url) tutorialMap[p.package_id] = p.tutorial_url; });
-  setTutorialUrls(tutorialMap);
   }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -1297,12 +1290,7 @@ const SubSubagentDashboard = () => {
         }
       }
 
-      for (const [packageId, tutorialUrl] of Object.entries(tutorialUrls)) {
-        const { data: rows } = await supabase.from("sub_subagent_package_prices").select("id").eq("sub_subagent_store_id", subagentStore.id).eq("package_id", packageId).order("created_at", { ascending: false }).limit(1);
-        if (rows?.[0]?.id) await supabase.from("sub_subagent_package_prices").update({ tutorial_url: tutorialUrl.trim() || null }).eq("id", rows[0].id);
-      }
-
-      // Update local state
+  // Update local state
       setSubagentPrices(prev => ({ ...prev, ...editedPrices }));
       setEditedPrices({});
       setMarkupPercent("");
@@ -1993,7 +1981,7 @@ return (
             </Card>
 
             {/* TRAINING VIDEOS */}
-            <SubagentYouTubeSection />
+            <SubSubagentTrainingVideoSection storeId={subagentStore?.id} />
 
             {/* Date Filter for Stats */}
             <div className="flex flex-wrap items-center gap-2 bg-card p-3 rounded-lg border border-border">
@@ -2779,9 +2767,8 @@ return (
                         <TableRow>
                           <TableHead>Size</TableHead>
                           <TableHead>Cost from Agent</TableHead>
-                          <TableHead>Your Selling Price</TableHead>
-                          <TableHead>Tutorial URL</TableHead>
-                          <TableHead>Profit</TableHead>
+  <TableHead>Your Selling Price</TableHead>
+  <TableHead>Profit</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2818,8 +2805,7 @@ return (
                                     )}
                                   </div>
                                 </TableCell>
-                                <TableCell><Input value={tutorialUrls[pkg.id] ?? ""} onChange={e => setTutorialUrls(prev => ({ ...prev, [pkg.id]: e.target.value }))} placeholder="YouTube/Vimeo URL" className="min-w-48" /></TableCell>
-                                <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
+  <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
                                   GHC {profit.toFixed(2)}
                                 </TableCell>
                               </TableRow>

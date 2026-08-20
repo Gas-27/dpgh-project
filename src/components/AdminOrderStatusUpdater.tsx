@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +18,8 @@ const networks = [
 ] as const;
 const statuses = ["pending", "processing", "waiting", "in-queue", "completed", "delivered", "failed"];
 const normalize = (value: string | null | undefined) => (value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+const normalizeContact = (value: string) => value.replace(/\D/g, "").replace(/^233/, "0").replace(/^00233/, "0");
+const parseContacts = (value: string) => new Set(value.split(/[\n,;]+/).map(normalizeContact).filter(Boolean));
 
 export default function AdminOrderStatusUpdater() {
   const { toast } = useToast();
@@ -27,7 +30,9 @@ export default function AdminOrderStatusUpdater() {
   const [toTime, setToTime] = useState("23:59");
   const [fromStatus, setFromStatus] = useState("processing");
   const [toStatus, setToStatus] = useState("delivered");
-  const [matches, setMatches] = useState<{ id: string; network: string; order_status: string; created_at: string }[]>([]);
+  const [includeContacts, setIncludeContacts] = useState("");
+  const [excludeContacts, setExcludeContacts] = useState("");
+  const [matches, setMatches] = useState<{ id: string; network: string; order_status: string; created_at: string; customer_number?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const canSearch = Boolean(from && to && fromStatus && toStatus && from <= to && fromTime && toTime && (from < to || fromTime <= toTime));
@@ -36,12 +41,20 @@ export default function AdminOrderStatusUpdater() {
   const preview = async () => {
     if (!canSearch) { toast({ title: "Complete the filters", description: "Choose a valid start and end date.", variant: "destructive" }); return; }
     setLoading(true);
-    let query = supabase.from("orders").select("id, network, order_status, created_at").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
+    let query = supabase.from("orders").select("id, network, order_status, created_at, customer_number").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
     if (network !== "all") query = query.in("network", network === "airteltigo" ? ["airteltigo", "airtel_tigo", "airtel-tigo", "airtel", "tigo"] : [network]);
     const { data, error } = await query;
     setLoading(false);
     if (error) { toast({ title: "Could not preview orders", description: error.message, variant: "destructive" }); return; }
-    const filtered = (data || []).filter((row) => normalize(row.order_status) === normalize(fromStatus));
+    const include = parseContacts(includeContacts);
+    const exclude = parseContacts(excludeContacts);
+    const filtered = (data || []).filter((row) => {
+      if (normalize(row.order_status) !== normalize(fromStatus)) return false;
+      const contact = normalizeContact(String((row as any).customer_number || ""));
+      if (exclude.has(contact)) return false;
+      if (include.size > 0 && !include.has(contact)) return false;
+      return true;
+    });
     setMatches(filtered as typeof matches);
     toast({ title: "Preview ready", description: `${filtered.length} ${networkLabel?.toLowerCase() || "matching"} order${filtered.length === 1 ? "" : "s"} found.` });
   };
@@ -70,6 +83,7 @@ export default function AdminOrderStatusUpdater() {
         <div className="space-y-2"><Label>To time</Label><Input type="time" value={toTime} onChange={(event) => setToTime(event.target.value)} /></div>
         <div className="flex items-end"><Button className="w-full" onClick={preview} disabled={loading || !canSearch}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}Preview matching orders</Button></div>
       </div>
+      <div className="grid gap-4 md:grid-cols-2"><div className="space-y-2"><Label>Include contacts (optional)</Label><Textarea value={includeContacts} onChange={(event) => setIncludeContacts(event.target.value)} placeholder="Only these contacts will be updated when provided" rows={3} /></div><div className="space-y-2"><Label>Exclude contacts</Label><Textarea value={excludeContacts} onChange={(event) => setExcludeContacts(event.target.value)} placeholder="These contacts will always be left unchanged" rows={3} /></div></div>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-4"><div><p className="font-medium">{matches.length} orders selected</p><p className="text-sm text-muted-foreground">Only orders matching every filter will be updated.</p></div><Button onClick={updateOrders} disabled={updating || !matches.length || fromStatus === toStatus} variant="default">{updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Update order status</Button></div>
     </CardContent>
   </Card>;

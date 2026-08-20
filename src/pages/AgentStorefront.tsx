@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import SmsComposer from "@/components/SmsComposer";
 import ChatBot from "@/components/ChatBot";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
@@ -177,7 +178,7 @@ const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 // ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
-// ───�����───────────────────────────────���─────��──���───────────���────────────────────
+// ───�����───────────────────────────────���─────��──����───────────���────────────────────
 const OrderTrackingCard = ({
   order,
   store,
@@ -1014,7 +1015,7 @@ const searchOrders = useCallback(async () => {
         />
       )}
 
-      <div className="container pt-6"><DeliveryProgressCard /></div>
+      <div className="container pt-6 space-y-6"><DeliveryProgressCard /><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></div>
 
       {/* Header */}
       <header className="border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50">

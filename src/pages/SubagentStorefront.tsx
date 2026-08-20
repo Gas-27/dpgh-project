@@ -23,7 +23,8 @@ const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"
 import DraggableFAB from "@/components/DraggableFAB";
 import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
-import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+  import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+  import SmsComposer from "@/components/SmsComposer";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
@@ -912,7 +913,7 @@ const searchOrders = useCallback(async () => {
         </div>
       )}
 
-      <div className="container pt-6"><DeliveryProgressCard /></div>
+      <div className="container pt-6 space-y-6"><DeliveryProgressCard /><SmsComposer ownerType="subagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></div>
 
       {/* Suspended Store Banner */}
       {store.suspended && (
