@@ -493,6 +493,7 @@ export function SubSubagentStorefront() {
   // Sub-Subagent Registration
   // ── AFA Packages ──
   const [showAFA, setShowAFA] = useState(false);
+  const [showSms, setShowSms] = useState(false);
   const [afaPaymentPkg, setAfaPaymentPkg] = useState<{ id: string; size_gb: number; price: number; network: string } | null>(null);
   const [afaPaymentOpen, setAfaPaymentOpen] = useState(false);
 
@@ -927,7 +928,6 @@ const searchOrders = useCallback(async () => {
         </div>
       )}
 
-      <div className="container pt-6 space-y-6"><div className="flex w-fit gap-1 rounded-lg border border-border bg-muted/30 p-1"><a href="#packages" className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-background">Packages</a><a href="#sms" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">SMS</a></div><div id="sms"><SmsComposer ownerType="subsubagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></div><div id="packages"><DeliveryProgressCard /></div></div>
 
       {/* Suspended Store Banner */}
       {store.suspended && (
@@ -1120,16 +1120,20 @@ const searchOrders = useCallback(async () => {
           <Button
             variant={showAFA ? "default" : "outline"}
             size="sm"
-            onClick={() => setShowAFA(!showAFA)}
+            onClick={() => { setShowAFA(!showAFA); setShowSms(false); }}
             style={showAFA ? { background: primaryColor, color: primaryForeground } : {}}
             className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
           >
             <Package className="h-4 w-4 mr-1" />
             AFA Bundles
-          </Button>
-        </div>
-
-        {/* AFA Bundles Section */}
+  </Button>
+  <div className="h-6 w-px bg-border flex-shrink-0"></div>
+  <Button variant={showSms ? "default" : "outline"} size="sm" onClick={() => { setShowSms(!showSms); setShowAFA(false); }} style={showSms ? { background: primaryColor, color: primaryForeground } : {}} className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"><MessageCircle className="h-4 w-4 mr-1" />SMS</Button>
+  </div>
+  
+  {showSms && <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subsubagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
+  
+  {/* AFA Bundles Section */}
         {showAFA ? (
           <div className="w-full pb-8 space-y-8">
             {/* Track AFA registration status — shown at the very top */}
@@ -1146,7 +1150,7 @@ const searchOrders = useCallback(async () => {
         ) : null}
 
         {/* Packages Grid */}
-        {!showAFA && <>
+        {!showAFA && !showSms && <>
         {/* USSD Info Banner */}
           {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
             <a href="tel:*380*455#" className="block mb-4 p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">

@@ -178,7 +178,7 @@ const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 // ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
-// ───�����───────────────────────────────���─────��──����───────────���────────────────────
+// ───�����─────────────────────────���─────���─────��──����───────────���────────────────────
 const OrderTrackingCard = ({
   order,
   store,
@@ -579,7 +579,7 @@ const AgentStorefront = () => {
 
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
-    "data" | "afa" | "vouchers" | "services" | "bulk"
+    "data" | "afa" | "vouchers" | "services" | "bulk" | "sms"
   >("data");
   
   // ── Bulk Orders ──
@@ -1015,7 +1015,6 @@ const searchOrders = useCallback(async () => {
         />
       )}
 
-      <div className="container pt-6 space-y-6"><div className="flex w-fit gap-1 rounded-lg border border-border bg-muted/30 p-1"><a href="#packages" className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-background">Packages</a><a href="#sms" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">SMS</a></div><div id="sms"><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></div><div id="packages"><DeliveryProgressCard /></div></div>
 
       {/* Header */}
       <header className="border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50">
@@ -1128,13 +1127,14 @@ const searchOrders = useCallback(async () => {
       {/* Category tabs */}
       <div className="container pb-8">
         <div className="flex flex-wrap justify-center gap-3 items-center">
-          {(["data", "afa", "vouchers", "services", "bulk"] as const).map((cat) => {
+          {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => {
             const icons: Record<string, React.ReactNode> = {
               data: <Wifi className="h-4 w-4 mr-2" />,
               afa: <Package className="h-4 w-4 mr-2" />,
               vouchers: <CheckCircle className="h-4 w-4 mr-2" />,
               services: <Rocket className="h-4 w-4 mr-2" />,
               bulk: <Layers className="h-4 w-4 mr-2" />,
+              sms: <MessageCircle className="h-4 w-4 mr-2" />,
             };
             const labels: Record<string, string> = {
               data: "Data",
@@ -1142,6 +1142,7 @@ const searchOrders = useCallback(async () => {
               vouchers: "Instant Data",
               services: "Services",
               bulk: "Bulk Orders",
+              sms: "SMS",
             };
             return (
               <Button
@@ -1170,7 +1171,9 @@ const searchOrders = useCallback(async () => {
         </div>
       </div>
 
-      {activeCategory === "data" ? (
+      {activeCategory === "sms" ? (
+        <div className="container pb-20"><Card className="mx-auto max-w-4xl border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card></div>
+      ) : activeCategory === "data" ? (
         <>
           {/* ── Order Tracking ── */}
           <div className="container pb-10">

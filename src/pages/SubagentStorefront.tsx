@@ -497,6 +497,7 @@ export function SubagentStorefront() {
   
   // Bulk Orders
   const [showBulkOrders, setShowBulkOrders] = useState(false);
+  const [showSms, setShowSms] = useState(false);
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
@@ -913,7 +914,6 @@ const searchOrders = useCallback(async () => {
         </div>
       )}
 
-      <div className="container pt-6 space-y-6"><div className="flex w-fit gap-1 rounded-lg border border-border bg-muted/30 p-1"><a href="#packages" className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-background">Packages</a><a href="#sms" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">SMS</a></div><div id="sms"><SmsComposer ownerType="subagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></div><div id="packages"><DeliveryProgressCard /></div></div>
 
       {/* Suspended Store Banner */}
       {store.suspended && (
@@ -1117,13 +1117,15 @@ const searchOrders = useCallback(async () => {
           <Button
             variant={showBulkOrders ? "default" : "outline"}
             size="sm"
-            onClick={() => { setShowBulkOrders(!showBulkOrders); setShowAFA(false); }}
+            onClick={() => { setShowBulkOrders(!showBulkOrders); setShowAFA(false); setShowSms(false); }}
             style={showBulkOrders ? { background: primaryColor, color: primaryForeground } : {}}
             className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
           >
             <Layers className="h-4 w-4 mr-1" />
             Bulk Orders
           </Button>
+          <div className="h-6 w-px bg-border flex-shrink-0"></div>
+          <Button variant={showSms ? "default" : "outline"} size="sm" onClick={() => { setShowSms(!showSms); setShowAFA(false); setShowBulkOrders(false); }} style={showSms ? { background: primaryColor, color: primaryForeground } : {}} className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"><MessageCircle className="h-4 w-4 mr-1" />SMS</Button>
           {store?.allow_sub_subagent_registration !== false && (
             <>
               <div className="h-6 w-px bg-border flex-shrink-0"></div>
@@ -1139,6 +1141,8 @@ const searchOrders = useCallback(async () => {
             </>
           )}
         </div>
+
+        {showSms && <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
 
         {/* AFA Bundles Section */}
         {showAFA ? (
@@ -1365,7 +1369,7 @@ const searchOrders = useCallback(async () => {
               </div>
             </CardContent>
           </Card>
-        ) : !showAFA ? (
+        ) : !showAFA && !showSms ? (
           /* Packages Grid */
           <>
           {/* USSD Info Banner */}
