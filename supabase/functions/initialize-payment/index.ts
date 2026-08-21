@@ -873,6 +873,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    // The dashboards apply admin overrides from agent_custom_base_prices before
+    // displaying the Buy Data price. Paystack must use the same override instead
+    // of falling back to data_packages.agent_price.
+    let customAgentBasePrice: number | null = null;
+    if (metadata.agent_store_id) {
+      const { data: customPrice } = await supabaseClient
+        .from("agent_custom_base_prices")
+        .select("custom_base_price")
+        .eq("agent_store_id", metadata.agent_store_id)
+        .eq("package_id", metadata.package_id)
+        .maybeSingle();
+      if (customPrice?.custom_base_price != null) {
+        customAgentBasePrice = Number(customPrice.custom_base_price);
+      }
+    }
+
     let baseAmount: number;
     let priceType: string;
     // ==========================
@@ -969,12 +985,12 @@ Deno.serve(async (req) => {
             baseAmount = Number(agentPrice.sell_price);
             priceType = "agent_sell_price_fallback";
           } else {
-            baseAmount = Number(packageData.price);
-            priceType = "admin_user_price";
+            baseAmount = customAgentBasePrice ?? Number(packageData.agent_price);
+            priceType = customAgentBasePrice != null ? "custom_agent_base_price_fallback" : "agent_base_price_fallback";
           }
         } else {
-          baseAmount = Number(packageData.price);
-          priceType = "admin_user_price";
+          baseAmount = customAgentBasePrice ?? Number(packageData.agent_price);
+          priceType = customAgentBasePrice != null ? "custom_agent_base_price_fallback" : "agent_base_price_fallback";
         }
       }
     } else if (metadata.agent_store_id) {
@@ -985,12 +1001,12 @@ Deno.serve(async (req) => {
         .eq("package_id", metadata.package_id)
         .maybeSingle();
 
-      if (agentPrice?.sell_price != null) {
+      if (agentPrice?.sell_price != null && !metadata.use_agent_price) {
         baseAmount = Number(agentPrice.sell_price);
         priceType = "agent_sell_price";
       } else {
-        baseAmount = Number(packageData.price);
-        priceType = "admin_user_price";
+        baseAmount = customAgentBasePrice ?? Number(packageData.agent_price);
+        priceType = customAgentBasePrice != null ? "custom_agent_base_price" : "agent_base_price";
       }
     } else {
       baseAmount = Number(packageData.price);
