@@ -5,9 +5,6 @@ Disallow: /agent-dashboard
 Disallow: /subagent-dashboard
 Disallow: /sub-subagent-dashboard
 Disallow: /dashboard
-Disallow: /admin
-Disallow: /admin-only
-Disallow: /sub-admin
 Disallow: /reset-password
 Disallow: /verify-email
 Disallow: /auth/
