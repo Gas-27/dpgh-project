@@ -2723,7 +2723,7 @@ return (
                       )}
                       <NetworkIndicator phone={buyCustomerNumber} />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       <Button
                         variant="outline"
                         className="w-full border-green-500 text-green-500 hover:bg-green-500/10"
@@ -2732,63 +2732,6 @@ return (
                       >
                         {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
                         Pay with Wallet
-                      </Button>
-                      <Button
-                        variant="hero"
-                        className="w-full"
-                        onClick={async () => {
-                          const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
-                          if (!buyCustomerNumber) {
-                            toast({ title: "Error", description: "Enter customer phone number", variant: "destructive" });
-                            return;
-                          }
-                          if (!isValidPhoneLength(buyCustomerNumber)) {
-                            toast({ title: "Error", description: "Phone number must be exactly 10 digits", variant: "destructive" });
-                            return;
-                          }
-                          const isValidForMTNMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detectNetwork(buyCustomerNumber) === "mtn";
-                          if (!isValidForMTNMashup && buyingPkg.network !== "mashup" && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
-                            const detected = detectNetwork(buyCustomerNumber);
-                            toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
-                            return;
-                          }
-                          setBuyLoading(true);
-                          try {
-                            const email = user?.email || `${buyCustomerNumber.replace(/^0/, "233")}@dataplug.store`;
-                            const { data, error } = await supabase.functions.invoke("initialize-payment", {
-                              body: {
-                                email,
-                                amount: price,
-                                phone: buyCustomerNumber.trim(),
-                                callback_url: `${window.location.origin}/dashboard`,
-                                metadata: {
-                                  package_id: buyingPkg.id,
-                                  network: buyingPkg.network,
-                                  package_name: `${(buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") ? (buyingPkg as any).size_gb_text : buyingPkg.size_gb + "GB"}`,
-  subagent_store_id: subagentStore?.id,
-  agent_store_id: subagentStore?.agent_store_id,
-  payment_method: "paystack",
-  is_subagent_order: true,
-  use_subagent_price: true,
-                                  ...((buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && { data_package_id: (buyingPkg as any).data_package_id }),
-                                },
-                              },
-                            });
-                            if (error || !data?.authorization_url) {
-                              throw new Error(error?.message || data?.error || "Payment initialization failed");
-                            }
-                            window.location.href = data.authorization_url;
-                          } catch (err: any) {
-                            console.error("Paystack init error:", err);
-                            toast({ title: "Error", description: err.message || "Could not initialize payment", variant: "destructive" });
-                          } finally {
-                            setBuyLoading(false);
-                          }
-                        }}
-                        disabled={buyLoading || !buyCustomerNumber}
-                      >
-                        {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Pay with Paystack
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground text-center">
