@@ -877,6 +877,9 @@ Deno.serve(async (req) => {
       profit_credited: false,
       agent_store_id: null,
       subagent_store_id: null,
+      // Authenticated customer purchases carry this through Paystack metadata.
+      // Agent/subagent orders intentionally remain attributed to their store.
+      customer_id: metadata.customer_id || metadata.user_id || null,
     };
     
     if (pkgAgentStoreId) {
