@@ -2274,7 +2274,15 @@ return (
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground text-center">
-                      Wallet Balance: GHC {availableWalletBalance.toFixed(2)}
+                      <span>Wallet Balance: GHC {availableWalletBalance.toFixed(2)}</span>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 ml-2 text-primary"
+                        onClick={() => { setBuyingPkg(null); setBuyCustomerNumber(""); setActiveTab("topup"); }}
+                      >
+                        Add Fund
+                      </Button>
                       {pendingWithdrawalAmount > 0 && (
                         <div className="text-yellow-400 text-xs mt-1">
                           (GH�� {pendingWithdrawalAmount.toFixed(2)} pending withdrawal)
