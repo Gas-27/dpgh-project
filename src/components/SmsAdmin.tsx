@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import AdminPricingManager from "@/components/AdminPricingManager";
 import { Check, Clock, Copy, Loader2, Plus, RefreshCw, Search, Trash2, Video, X } from "lucide-react";
 
+type BlockedSender = { id: string; sender_id: string; reason: string | null; created_at: string };
+
 type SenderRow = {
   id: string;
   sender_id: string;
@@ -45,12 +47,18 @@ export default function SmsAdmin() {
   const [activeTab, setActiveTab] = useState("pending");
   const [pendingSearch, setPendingSearch] = useState("");
   const [senderSearch, setSenderSearch] = useState("");
+  const [blockedSenders, setBlockedSenders] = useState<BlockedSender[]>([]);
+  const [blockedSender, setBlockedSender] = useState("");
+  const [blockedReason, setBlockedReason] = useState("");
+  const [savingBlocked, setSavingBlocked] = useState(false);
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase.rpc("admin_list_sms_sender_ids");
     if (error) toast({ title: "Could not load sender IDs", description: error.message, variant: "destructive" });
     setSenders((data || []) as SenderRow[]);
+    const { data: blocked } = await supabase.rpc("admin_list_blocked_sms_senders");
+    setBlockedSenders((blocked || []) as BlockedSender[]);
     const { data: settings } = await supabase.from("sms_settings").select("video_url,dashboard_video_url,packages_video_url,dashboard_link_url,packages_link_url").eq("id", true).maybeSingle();
     const current = settings as { video_url?: string | null; dashboard_video_url?: string | null; packages_video_url?: string | null; dashboard_link_url?: string | null; packages_link_url?: string | null } | null;
     setVideoUrl(current?.video_url ?? "");
@@ -104,6 +112,26 @@ export default function SmsAdmin() {
     }
     setSenders((current) => current.filter((item) => item.id !== row.id));
     toast({ title: "Sender deleted", description: `${row.sender_id} was removed.` });
+  };
+
+  const addBlocked = async () => {
+    const value = blockedSender.trim().toUpperCase();
+    if (!/^[A-Z0-9 ]{3,11}$/.test(value)) {
+      toast({ title: "Invalid sender ID", description: "Use 3-11 letters, numbers, or spaces.", variant: "destructive" });
+      return;
+    }
+    setSavingBlocked(true);
+    const { error } = await supabase.rpc("admin_add_blocked_sms_sender", { p_sender_id: value, p_reason: blockedReason });
+    setSavingBlocked(false);
+    if (error) { toast({ title: "Could not block sender ID", description: error.message, variant: "destructive" }); return; }
+    setBlockedSender(""); setBlockedReason(""); await load();
+    toast({ title: "Sender ID blocked", description: `${value} cannot be submitted or used for SMS.` });
+  };
+
+  const removeBlocked = async (row: BlockedSender) => {
+    const { error } = await supabase.rpc("admin_delete_blocked_sms_sender", { p_id: row.id });
+    if (error) { toast({ title: "Could not unblock sender ID", description: error.message, variant: "destructive" }); return; }
+    setBlockedSenders((current) => current.filter((item) => item.id !== row.id));
   };
 
   const addGlobal = async () => {
@@ -176,6 +204,15 @@ export default function SmsAdmin() {
               Add for everyone
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader><CardTitle>Blocked Sender IDs</CardTitle><CardDescription>Locked IDs cannot be submitted for approval or used to send SMS.</CardDescription></CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"><Input value={blockedSender} maxLength={11} onChange={(e) => setBlockedSender(e.target.value.toUpperCase())} placeholder="Sender ID to block" /><Input value={blockedReason} onChange={(e) => setBlockedReason(e.target.value)} placeholder="Reason (optional)" /><Button onClick={() => void addBlocked()} disabled={savingBlocked}>{savingBlocked ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}Block sender</Button></div>
+          {blockedSenders.map((row) => <div key={row.id} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><span className="font-mono font-semibold">{row.sender_id}</span>{row.reason && <p className="text-xs text-muted-foreground">{row.reason}</p>}</div><Button size="sm" variant="outline" onClick={() => void removeBlocked(row)}>Unblock</Button></div>)}
+          {!blockedSenders.length && <p className="text-sm text-muted-foreground">No sender IDs are blocked.</p>}
         </CardContent>
       </Card>
 

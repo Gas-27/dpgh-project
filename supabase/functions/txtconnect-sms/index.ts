@@ -67,6 +67,8 @@ Deno.serve(async (request) => {
       }
       const sender = String(body.sender_id || "").trim().toUpperCase();
       if (!/^[A-Z0-9 ]{3,11}$/.test(sender)) return json({ error: "Use 3-11 letters, numbers, or spaces for the sender ID" }, 400);
+      const { data: blocked } = await admin.rpc("is_sms_sender_blocked", { p_sender_id: sender });
+      if (blocked) return json({ error: "This sender ID is locked and cannot be used." }, 403);
       const { data, error } = await admin.from("sms_sender_ids").insert({ user_id: null, sender_id: sender, phone_number: phone, status: "pending", is_global: false }).select("id,sender_id,status,is_global,created_at,reviewed_at").single();
       if (error) return json({ error: error.code === "23505" ? "This sender ID is already pending or registered for that number" : "Could not submit sender ID" }, error.code === "23505" ? 409 : 500);
       return json({ sender: data });
@@ -101,6 +103,8 @@ Deno.serve(async (request) => {
     const recipients = localRecipients;
     const senderId = String(body.sender_id || "").trim();
     const message = String(body.message || "").trim();
+    const { data: blockedSender } = await supabase.rpc("is_sms_sender_blocked", { p_sender_id: senderId });
+    if (blockedSender) return json({ error: "This sender ID is locked and cannot be used to send SMS." }, 403);
     console.log(`[v0] SMS send requested: ${localRecipients.length} recipient(s), sender=${senderId}, chars=${smsUnits(message)}`);
     // A sender ID is usable if the user owns an approved copy OR it is a global approved sender.
     const { data: senderRecords } = await supabase
