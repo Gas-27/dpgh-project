@@ -65,8 +65,13 @@ Deno.serve(async (request) => {
         if (error) return json({ error: "Could not look up sender IDs" }, 500);
         return json({ senders: data || [] });
       }
-      const sender = String(body.sender_id || "").trim().toUpperCase();
-      if (!/^[A-Z0-9 ]{3,11}$/.test(sender)) return json({ error: "Use 3-11 letters, numbers, or spaces for the sender ID" }, 400);
+      const sender = String(body.sender_id || "").trim().replace(/\s+/g, " ").toUpperCase();
+      // Guideline checks mirror the submission form so the rules cannot be bypassed.
+      if (sender.length < 3 || sender.length > 11) return json({ error: "Sender ID must be 3-11 characters including spaces" }, 400);
+      if (!/^[A-Z0-9 ]+$/.test(sender)) return json({ error: "Sender ID cannot contain special characters" }, 400);
+      if (/^\d+$/.test(sender.replace(/\s+/g, ""))) return json({ error: "Sender ID cannot be only numbers" }, 400);
+      const { data: existingSender } = await admin.from("sms_sender_ids").select("id").ilike("sender_id", sender).maybeSingle();
+      if (existingSender) return json({ error: "This sender ID already exists and must be unique" }, 409);
       const { data: blocked } = await admin.rpc("is_sms_sender_blocked", { p_sender_id: sender });
       if (blocked) return json({ error: "This sender ID is locked and cannot be used." }, 403);
       const { data, error } = await admin.from("sms_sender_ids").insert({ user_id: null, sender_id: sender, phone_number: phone, status: "pending", is_global: false }).select("id,sender_id,status,is_global,created_at,reviewed_at").single();

@@ -94,6 +94,30 @@ const preprocessScreenshot = async (file: File): Promise<HTMLCanvasElement> => {
   return canvas;
 };
 
+/**
+ * Sender ID rules enforced before an approval request is created. The same
+ * checks run on the server so a locked or invalid ID can never be submitted.
+ */
+const senderIdRules = (value: string, existing: string[]) => {
+  const trimmed = value.trim();
+  return [
+    { label: "Maximum 11 characters including spaces", ok: trimmed.length > 0 && trimmed.length <= 11 },
+    { label: "No special characters (!@#$%^&*)", ok: trimmed.length > 0 && /^[A-Za-z0-9 ]+$/.test(trimmed) },
+    { label: "Letters and numbers are allowed", ok: /[A-Za-z0-9]/.test(trimmed) },
+    { label: "Cannot be only numbers", ok: trimmed.length > 0 && !/^\d+$/.test(trimmed.replace(/\s+/g, "")) },
+    { label: "Spaces are permitted", ok: trimmed.length > 0 },
+    { label: "Must be unique", ok: trimmed.length > 0 && !existing.includes(trimmed.replace(/\s+/g, " ").toUpperCase()) },
+  ];
+};
+
+/** Sender IDs are reviewed Monday to Friday; weekend requests wait for Monday. */
+const approvalWindowNotice = () => {
+  const day = new Date().getDay();
+  if (day === 6 || day === 0) return "Today is a weekend, so this request will be queued and reviewed on Monday.";
+  if (day === 5) return "Requests sent late on Friday may be queued and reviewed on Monday.";
+  return "Requests are reviewed on the next working day during Monday to Friday hours.";
+};
+
 const toEmbedUrl = (url: string): string => {
   const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{6,})/);
   if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
@@ -131,6 +155,9 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const [aiBrief, setAiBrief] = useState("");
   const [generating, setGenerating] = useState(false);
 
+  const existingSenderIds = useMemo(() => senders.map((row) => row.sender_id.replace(/\s+/g, " ").toUpperCase()), [senders]);
+  const senderChecks = useMemo(() => senderIdRules(custom, existingSenderIds), [custom, existingSenderIds]);
+  const senderChecksPassed = senderChecks.every((rule) => rule.ok);
   const numbers = useMemo(() => extractNumbers(recipients), [recipients]);
   const messageUnits = useMemo(() => Array.from(message).reduce((total, character) => total + (character.codePointAt(0)! > 0xffff ? 2 : 1), 0), [message]);
   const pages = useMemo(() => Math.max(1, Math.ceil(messageUnits / PAGE_SIZE)), [messageUnits]);
@@ -243,9 +270,15 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   }, [publicMode, toast]);
 
   const submitSender = async () => {
-    const value = custom.trim().toUpperCase();
-    if (!/^[A-Z0-9 ]{3,11}$/.test(value)) {
-      toast({ title: "Invalid sender ID", description: "Use 3-11 letters, numbers, or spaces.", variant: "destructive" });
+    const value = custom.trim().replace(/\s+/g, " ").toUpperCase();
+    const failedRule = senderIdRules(custom, existingSenderIds).find((rule) => !rule.ok);
+    if (failedRule) {
+      toast({ title: "Sender ID does not meet the guidelines", description: failedRule.label, variant: "destructive" });
+      return;
+    }
+    const { data: isBlocked } = await supabase.rpc("is_sms_sender_blocked", { p_sender_id: value });
+    if (isBlocked) {
+      toast({ title: "Sender ID not allowed", description: `${value} is locked and cannot be submitted or used.`, variant: "destructive" });
       return;
     }
   const phone = normalizeGh(senderPhone);
@@ -275,7 +308,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     await loadSenders();
     toast({
       title: "Submitted for approval",
-      description: `${value} is now pending approval from the network provider.`,
+      description: `${value} is pending approval. ${approvalWindowNotice()}`,
     });
   };
 
@@ -630,6 +663,23 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
               <p className="text-xs text-muted-foreground">Letters, numbers, and spaces allowed (max 11 characters)</p>
             </div>
 
+            <div className="rounded-lg border bg-muted/40 p-3">
+              <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+                Sender ID Guidelines
+              </p>
+              <ul className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                {senderChecks.map((rule) => (
+                  <li key={rule.label} className="flex items-start gap-2 text-xs">
+                    {rule.ok
+                      ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                      : <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" aria-hidden="true" />}
+                    <span className={rule.ok ? "text-muted-foreground" : "text-foreground"}>{rule.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="sender-phone">Phone number *</Label>
               <Input id="sender-phone" value={senderPhone} onChange={(event) => setSenderPhone(event.target.value)} placeholder="0241234567 or +233241234567" inputMode="tel" />
@@ -653,13 +703,17 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
                 Custom sender IDs require approval from the network provider and may take 24-48 hours to activate. Once you submit,
                 it will show as pending approval until an admin approves it.
               </p>
+              <p className="mt-2 text-xs font-medium text-amber-700">
+                Approvals are processed Monday to Friday only. A sender ID sent on Friday evening, Saturday, or Sunday is queued and approved on Monday.
+              </p>
+              <p className="mt-1 text-xs text-amber-700/90">{approvalWindowNotice()}</p>
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" onClick={() => void submitSender()} disabled={submitting}>
+            <Button type="button" onClick={() => void submitSender()} disabled={submitting || !senderChecksPassed}>
               {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Submit for Approval
             </Button>
