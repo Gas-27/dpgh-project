@@ -52,6 +52,57 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    // orders.customer_id references customers.id, not auth.users.id. Payment metadata
+    // carries the authenticated user's auth ID, so resolve it to the customer record
+    // before inserting the order. This prevents the occasional account purchase from
+    // being labeled as a guest when the metadata contains only the auth user ID.
+    const metadataCustomerId = String(metadata.customer_id || metadata.user_id || "").trim();
+    let resolvedCustomerId: string | null = null;
+    if (metadataCustomerId) {
+      const { data: customerById } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("id", metadataCustomerId)
+        .maybeSingle();
+      resolvedCustomerId = customerById?.id ?? null;
+
+      if (!resolvedCustomerId) {
+        const { data: customerByUser } = await supabase
+          .from("customers")
+          .select("id")
+          .eq("user_id", metadataCustomerId)
+          .maybeSingle();
+        resolvedCustomerId = customerByUser?.id ?? null;
+      }
+    }
+    const accountEmail = String(metadata.user_email || txData.customer?.email || "").trim().toLowerCase();
+    if (!resolvedCustomerId && accountEmail) {
+      const { data: customerByEmail } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("email", accountEmail)
+        .maybeSingle();
+      resolvedCustomerId = customerByEmail?.id ?? null;
+    }
+    if (metadataCustomerId && !resolvedCustomerId) {
+      const accountPhone = String(metadata.phone || "").replace(/\D/g, "").slice(-10);
+      const { data: recoveredCustomer, error: recoveryError } = await supabase
+        .from("customers")
+        .upsert({
+          user_id: metadataCustomerId,
+          email: accountEmail || null,
+          phone_number: accountPhone || null,
+        }, { onConflict: "user_id" })
+        .select("id")
+        .single();
+      resolvedCustomerId = recoveredCustomer?.id ?? null;
+      console.warn("[v0] Reconciled customer identity during payment verification", {
+        reference,
+        recovered: Boolean(resolvedCustomerId),
+        recovery_error: recoveryError?.code || null,
+      });
+    }
+
     // =====================================
     // SMS CAMPAIGN PAYMENT + PROVIDER DELIVERY
     // =====================================
@@ -879,7 +930,7 @@ Deno.serve(async (req) => {
       subagent_store_id: null,
       // Authenticated customer purchases carry this through Paystack metadata.
       // Agent/subagent orders intentionally remain attributed to their store.
-      customer_id: metadata.customer_id || metadata.user_id || null,
+      customer_id: resolvedCustomerId,
     };
     
     if (pkgAgentStoreId) {
