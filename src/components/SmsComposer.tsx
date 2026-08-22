@@ -32,8 +32,6 @@ type Sender = {
 };
 
 const PAGE_SIZE = 160;
-const CONTACT_PRICE = 0.09;
-const PAGE_PRICE = 2.00;
 
 /**
  * Smart Ghana phone number normalizer.
@@ -141,7 +139,8 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const [submitting, setSubmitting] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [unitPrice, setUnitPrice] = useState(0.05);
+  const [contactPrice, setContactPrice] = useState(0.07);
+  const [pagePrice, setPagePrice] = useState(1.5);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoOpen, setVideoOpen] = useState(true);
   const [senderSearch, setSenderSearch] = useState("");
@@ -163,7 +162,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const pages = useMemo(() => Math.max(1, Math.ceil(messageUnits / PAGE_SIZE)), [messageUnits]);
   const charsOnPage = messageUnits % PAGE_SIZE === 0 && messageUnits > 0 ? PAGE_SIZE : messageUnits % PAGE_SIZE;
   const remaining = PAGE_SIZE - charsOnPage;
-  const totalCost = CONTACT_PRICE * numbers.length + PAGE_PRICE * pages;
+  const totalCost = contactPrice * numbers.length + pagePrice * pages;
 
   const loadSenders = async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -240,11 +239,13 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   };
 
   const loadSettings = async () => {
-    const { data } = await supabase.from("sms_settings").select("unit_price,video_url").eq("id", true).maybeSingle();
-    if (data) {
-      setUnitPrice(Number(data.unit_price ?? 0.05));
-      setVideoUrl((data as { video_url?: string | null }).video_url ?? null);
-    }
+    const { data: smsSettings } = await supabase.from("sms_settings").select("video_url").eq("id", true).maybeSingle();
+    const pricingKey = publicMode || providedStoreUrl ? "sms_storefront_recipient_price, sms_storefront_page_price" : ownerType === "customer" ? "sms_dashboard_recipient_price, sms_dashboard_page_price" : "sms_storefront_recipient_price, sms_storefront_page_price";
+    const { data: pricing } = await supabase.from("app_settings").select(pricingKey).eq("id", 1).maybeSingle();
+    const values = pricing as Record<string, number> | null;
+    setContactPrice(Number(values?.[pricingKey.split(",")[0].trim()] ?? 0.07));
+    setPagePrice(Number(values?.[pricingKey.split(",")[1].trim()] ?? 1.5));
+    setVideoUrl((smsSettings as { video_url?: string | null } | null)?.video_url ?? null);
   };
 
   useEffect(() => {
@@ -628,8 +629,8 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
             </div>
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
               <p className="font-semibold text-foreground">How SMS pricing works</p>
-              <p>We charge GHS {CONTACT_PRICE.toFixed(2)} for each contact, plus GHS {PAGE_PRICE.toFixed(2)} for each SMS page. One page contains up to {PAGE_SIZE} character units.</p>
-              <p>Example: 5 contacts and 1 page = GHS {(CONTACT_PRICE * 5 + PAGE_PRICE).toFixed(2)}. Emoji characters count as 2 units and may create an additional page.</p>
+              <p>We charge GHS {contactPrice.toFixed(2)} for each contact, plus GHS {pagePrice.toFixed(2)} for each SMS page. One page contains up to {PAGE_SIZE} character units.</p>
+              <p>Example: 5 contacts and 1 page = GHS {(contactPrice * 5 + pagePrice).toFixed(2)}. Emoji characters count as 2 units and may create an additional page.</p>
             </div>
           </div>
 

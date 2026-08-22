@@ -121,9 +121,10 @@ Deno.serve(async (request) => {
     const messageUnits = smsUnits(message);
     if (!recipients.length || !senderId || !message || senderId.length > 11 || messageUnits > 1600) return json({ error: "Valid recipients, sender ID, and message are required" }, 400);
     if (!senderApproved) return json({ error: "This sender ID is not approved yet" }, 403);
-    // Confirmed pricing: GHS 0.09 per contact plus GHS 2.00 per SMS page.
-    const contactPrice = 0.09;
-    const pagePrice = 2.00;
+    const { data: appSettings } = await supabase.from("app_settings").select("sms_dashboard_recipient_price,sms_dashboard_page_price,sms_storefront_recipient_price,sms_storefront_page_price").eq("id", 1).maybeSingle();
+    const storefront = body.sales_channel === "storefront" || ownerType !== "customer";
+    const contactPrice = Number(storefront ? appSettings?.sms_storefront_recipient_price : appSettings?.sms_dashboard_recipient_price) || 0;
+    const pagePrice = Number(storefront ? appSettings?.sms_storefront_page_price : appSettings?.sms_dashboard_page_price) || 0;
     const pages = Math.max(1, Math.ceil(messageUnits / 160));
     const chargePerRecipient = contactPrice;
     const totalCharge = (contactPrice * recipients.length) + (pagePrice * pages);
