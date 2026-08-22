@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Clock, Copy, Loader2, Plus, RefreshCw, Trash2, Video, X } from "lucide-react";
+import AdminPricingManager from "@/components/AdminPricingManager";
+import { Check, Clock, Copy, Loader2, Plus, RefreshCw, Search, Trash2, Video, X } from "lucide-react";
 
 type SenderRow = {
   id: string;
@@ -42,6 +43,8 @@ export default function SmsAdmin() {
   const [savingVideo, setSavingVideo] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("pending");
+  const [pendingSearch, setPendingSearch] = useState("");
+  const [senderSearch, setSenderSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -141,8 +144,8 @@ export default function SmsAdmin() {
     }
   };
 
-  const pending = senders.filter((s) => s.status === "pending");
-  const others = senders.filter((s) => s.status !== "pending");
+  const pending = senders.filter((s) => s.status === "pending" && `${s.sender_id} ${s.user_email ?? ""}`.toLowerCase().includes(pendingSearch.toLowerCase().trim()));
+  const others = senders.filter((s) => s.status !== "pending" && `${s.sender_id} ${s.user_email ?? ""}`.toLowerCase().includes(senderSearch.toLowerCase().trim()));
 
   return (
     <div className="space-y-6">
@@ -199,9 +202,10 @@ export default function SmsAdmin() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pending">Pending Approval ({pending.length})</TabsTrigger>
           <TabsTrigger value="all">All Sender IDs ({senders.length})</TabsTrigger>
+          <TabsTrigger value="pricing">SMS Pricing</TabsTrigger>
         </TabsList>
         <TabsContent value="pending" className="mt-0">
       <Card className="border-border">
@@ -212,6 +216,7 @@ export default function SmsAdmin() {
           <CardDescription>Copy sender IDs to TxtConnect, then approve, reject, or delete one or more submissions.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={pendingSearch} onChange={(e) => setPendingSearch(e.target.value)} placeholder="Search pending sender IDs or email" className="pl-9" /></div>
           {pending.length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">
             <Checkbox checked={pending.every((row) => selectedIds.includes(row.id))} onCheckedChange={(checked) => setSelectedIds(checked ? pending.map((row) => row.id) : [])} aria-label="Select all pending sender IDs" />
             <span className="mr-auto text-sm">{selectedIds.length} selected</span>
@@ -257,6 +262,7 @@ export default function SmsAdmin() {
           <CardDescription>Approved and rejected sender IDs across all users.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={senderSearch} onChange={(e) => setSenderSearch(e.target.value)} placeholder="Search sender IDs or email" className="pl-9" /></div>
           {!loading && others.length === 0 && <p className="text-sm text-muted-foreground">Nothing here yet.</p>}
           {others.map((row) => (
             <div key={row.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -292,6 +298,9 @@ export default function SmsAdmin() {
           ))}
         </CardContent>
       </Card>
+        </TabsContent>
+        <TabsContent value="pricing" className="mt-0">
+          <AdminPricingManager />
         </TabsContent>
       </Tabs>
     </div>
