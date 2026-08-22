@@ -86,9 +86,15 @@ Deno.serve(async (req) => {
       const apiKey = Deno.env.get("TXT_CONNECT_API") || Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("API_KEY");
       if (!recipients.length || !senderId || !message || !apiKey) return new Response(JSON.stringify({ error: "SMS payment metadata is incomplete" }), { status: 400, headers: corsHeaders });
       const cleanRecipients = recipients.map((value: string) => { const digits = String(value).replace(/\\D/g, ""); return digits.startsWith("0") ? `233${digits.slice(1)}` : digits.startsWith("233") ? digits : ""; }).filter(Boolean);
+      const { error: claimError } = await supabaseClient.from("sms_messages").insert({ paystack_reference: reference, user_id: metadata?.user_id || null, owner_type: "customer", owner_id: metadata?.owner_id || null, recipients: cleanRecipients, sender_id: senderId, message, total_charge: Number(metadata?.base_amount || 0), unit_price: 0, status: "processing", sent_count: 0, failed_count: 0 });
+      if (claimError) {
+        const { data: existing } = await supabaseClient.from("sms_messages").select("status,sent_count,failed_count").eq("paystack_reference", reference).maybeSingle();
+        if (existing) return new Response(JSON.stringify({ success: true, already_processed: true, sent: existing.sent_count || 0, failed: existing.failed_count || 0, status: existing.status }), { status: 200, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: "Could not reserve this SMS payment" }), { status: 409, headers: corsHeaders });
+      }
       const results = await Promise.all(cleanRecipients.map(async (to: string) => { const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ to, from: senderId, unicode: /[^\\x00-\\x7F]/.test(message) ? "unicode" : "regular", sms: message }) }); const raw = await response.text(); let body: unknown = {}; try { body = JSON.parse(raw); } catch { body = { raw }; } return { to, status: response.status, body }; }));
       const failed = results.filter((item) => item.status < 200 || item.status >= 300);
-      await supabaseClient.from("sms_messages").insert({ user_id: metadata?.user_id || null, owner_type: "customer", owner_id: metadata?.owner_id || null, recipients: cleanRecipients, sender_id: senderId, message, total_charge: Number(metadata?.base_amount || 0), unit_price: 0.09, status: failed.length === results.length ? "failed" : failed.length ? "partial" : "sent", provider_response: results, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null });
+      await supabaseClient.from("sms_messages").update({ sent_count: results.length - failed.length, failed_count: failed.length, status: failed.length === results.length ? "failed" : failed.length ? "partial" : "sent", provider_response: results, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("paystack_reference", reference);
       return new Response(JSON.stringify({ success: !failed.length, sent: results.length - failed.length, failed: failed.length }), { status: failed.length ? 502 : 200, headers: corsHeaders });
     }
 

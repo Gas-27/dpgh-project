@@ -254,21 +254,6 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   void loadWalletAndStore();
   }, [ownerType, ownerId, providedStoreUrl]);
 
-  useEffect(() => {
-    if (!publicMode || !new URLSearchParams(window.location.search).has("sms_payment")) return;
-    const reference = sessionStorage.getItem("pending_sms_payment");
-    if (!reference) return;
-    sessionStorage.removeItem("pending_sms_payment");
-    void supabase.functions.invoke("verify-sms-payment", { body: { reference } }).then(async ({ data, error }) => {
-      if (error || data?.error || !data?.success) {
-        let detail = data?.error || error?.message || "Payment was received, but the SMS could not be submitted.";
-        try { const body = error?.context ? await error.context.clone().json() : null; detail = body?.error || detail; } catch { /* use fallback */ }
-        toast({ title: "SMS delivery failed", description: detail, variant: "destructive" });
-        return;
-      }
-      toast({ title: "SMS sent to provider", description: `${data.sent || 0} recipient(s) submitted successfully.` });
-    });
-  }, [publicMode, toast]);
 
   const submitSender = async () => {
     const value = custom.trim().replace(/\s+/g, " ").toUpperCase();
