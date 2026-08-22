@@ -276,10 +276,9 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   let data: any = null;
   let error: any = null;
   if (publicMode) {
-    const result = await supabase.functions.invoke("txtconnect-sms", { body: { action: "submit_sender", sender_id: value, phone } });
-    data = result.data?.sender;
-    error = result.error || (result.data?.error ? new Error(result.data.error) : null);
-    if (result.error?.status === 401) error = new Error("Guest sender approval is temporarily unavailable. Please complete payment first, then try again.");
+    const result = await supabase.rpc("submit_sms_sender_id", { p_sender_id: value, p_phone_number: phone });
+    data = result.data;
+    error = result.error;
   } else {
     const result = await supabase.from("sms_sender_ids").insert({ user_id: (await supabase.auth.getUser()).data.user?.id, sender_id: value, phone_number: phone });
     data = result.data;
