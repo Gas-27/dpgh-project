@@ -34,6 +34,7 @@ import DeliveryProgressAdmin from "@/components/DeliveryProgressAdmin";
 import AdminOrderStatusUpdater from "@/components/AdminOrderStatusUpdater";
 import NetworkProviderRoutingAdmin from "@/components/NetworkProviderRoutingAdmin";
 import SmsAdmin from "@/components/SmsAdmin";
+import AdminPricingManager from "@/components/AdminPricingManager";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import {
@@ -4543,6 +4544,7 @@ const AdminDashboard = () => {
 
   {canSee("settings") && (
   <TabsContent value="settings" className="space-y-6">
+  <AdminPricingManager />
   <DeliveryProgressAdmin />
   <Card className="border-border">
 

@@ -88,6 +88,7 @@ interface SubagentStore {
     gridColumns?: number;
   };
   agent_store_id: string;
+  subagent_store_id: string;
   approved?: boolean;
   suspended?: boolean;
 }
@@ -180,14 +181,6 @@ const SubSubagentOrderTrackingCard = ({
   const [complaintId, setComplaintId] = useState<string | null>(null);
   const [pendingNotes, setPendingNotes] = useState(0);
   const [totalNotes, setTotalNotes] = useState(0);
-
-  // ── WhatsApp text auto-hide after 4 seconds ──
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowGroupTooltip(false);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, []);
 
   // Fetch complaint status + ID for this order
   useEffect(() => {
@@ -1323,7 +1316,8 @@ const searchOrders = useCallback(async () => {
             onOpenChange={setReportDialogOpen}
             order={reportOrder}
             complaintType="subagent"
-            subagentStoreId={store.id}
+            subagentStoreId={store.subagent_store_id}
+            subSubagentStoreId={store.id}
           />
         )}
       </Suspense>

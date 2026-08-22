@@ -23,6 +23,7 @@ interface ReportComplaintDialogProps {
   complaintType: "storefront" | "agent" | "subagent";
   agentStoreId?: string;
   subagentStoreId?: string;
+  subSubagentStoreId?: string;
 }
 
 const formatNetworkName = (n: string) =>
@@ -37,6 +38,7 @@ export default function ReportComplaintDialog({
   complaintType,
   agentStoreId,
   subagentStoreId,
+  subSubagentStoreId,
 }: ReportComplaintDialogProps) {
   const isRefunded = order.status === "refunded" || order.fulfillment_status === "refunded";
   const [step, setStep] = useState<"checklist" | "screenshot" | "sending" | "sent" | "response">("checklist");
@@ -217,6 +219,7 @@ Please investigate and assist. Thank You.`;
         order_id: order.id,
         agent_store_id: agentStoreId || null,
         subagent_store_id: subagentStoreId || null,
+        sub_subagent_store_id: subSubagentStoreId || null,
         customer_number: order.customer_number,
         complaint_title: "Delivered but Data Not Received",
         complaint_details: complaintDetails,
