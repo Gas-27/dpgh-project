@@ -3311,7 +3311,7 @@ return (
 
           {/* ============================= SMS ============================= */}
           <TabsContent value="sms" className="space-y-6 mt-0">
-            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="agent" ownerId={store?.id} storeUrl={storeUrl} /></TabsContent><TabsContent value="history"><SmsHistory ownerType="agent" ownerId={store?.id} /></TabsContent></Tabs>
+            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="agent" ownerId={store?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="agent" ownerId={store?.id} /></TabsContent></Tabs>
           </TabsContent>
 
           {/* ============================= TOP UP ============================= */}

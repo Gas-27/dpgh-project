@@ -898,7 +898,7 @@ const UserDashboard = () => {
       case "afa-registration":
         return renderAfaRegistration();
       case "sms":
-        return <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="customer" ownerId={effectiveUserId} /></TabsContent><TabsContent value="history"><SmsHistory ownerType="customer" ownerId={effectiveUserId} /></TabsContent></Tabs>;
+        return <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="customer" ownerId={effectiveUserId} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="customer" ownerId={effectiveUserId} /></TabsContent></Tabs>;
       case "topup":
         return renderTopup();
       case "become-agent":

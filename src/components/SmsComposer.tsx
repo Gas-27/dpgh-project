@@ -20,7 +20,7 @@ import { Check, ChevronDown, Clock, Loader2, Send, Sparkles, Upload, UserPlus, V
 import { Switch } from "@/components/ui/switch";
 import OrderContactPicker from "@/components/OrderContactPicker";
 
-type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string; publicMode?: boolean };
+type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string; publicMode?: boolean; hideSenderPhone?: boolean };
 type Sender = {
   id: string;
   sender_id: string;
@@ -124,7 +124,7 @@ const toEmbedUrl = (url: string): string => {
   return url;
 };
 
-export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStoreUrl, publicMode = false }: SmsComposerProps) {
+export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStoreUrl, publicMode = false, hideSenderPhone = false }: SmsComposerProps) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -282,8 +282,8 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       toast({ title: "Sender ID not allowed", description: `${value} is locked and cannot be submitted or used.`, variant: "destructive" });
       return;
     }
-  const phone = normalizeGh(senderPhone);
-  if (!phone) {
+  const phone = hideSenderPhone ? null : normalizeGh(senderPhone);
+  if (!hideSenderPhone && !phone) {
     toast({ title: "Phone number required", description: "Enter the Ghana number that should own this sender ID.", variant: "destructive" });
     return;
   }
@@ -643,10 +643,10 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
 
       {/* Add New Sender ID modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Sender ID</DialogTitle>
-              <DialogDescription>Submit a sender ID with your phone number for approval. Use that number later to check its status and select it once approved.</DialogDescription>
+              <DialogDescription>{hideSenderPhone ? "Submit a sender ID for approval. You can select it once it has been approved." : "Submit a sender ID with your phone number for approval. Use that number later to check its status and select it once approved."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -681,11 +681,11 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
               </ul>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="sender-phone">Phone number *</Label>
-              <Input id="sender-phone" value={senderPhone} onChange={(event) => setSenderPhone(event.target.value)} placeholder="0241234567 or +233241234567" inputMode="tel" />
-              <p className="text-xs text-muted-foreground">Use this same number later to search for the sender ID and check approval.</p>
-            </div>
+  {!hideSenderPhone && <div className="space-y-2">
+  <Label htmlFor="sender-phone">Phone number *</Label>
+  <Input id="sender-phone" value={senderPhone} onChange={(event) => setSenderPhone(event.target.value)} placeholder="0241234567 or +233241234567" inputMode="tel" />
+  <p className="text-xs text-muted-foreground">Use this same number later to search for the sender ID and check approval.</p>
+  </div>}
 
             <div className="rounded-lg border p-3">
               <p className="mb-2 text-xs text-muted-foreground">How it will appear to recipients:</p>
