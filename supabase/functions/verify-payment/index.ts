@@ -71,6 +71,10 @@ Deno.serve(async (req) => {
     // SMS CAMPAIGN PAYMENT + PROVIDER DELIVERY
     // =====================================
     if (paymentType === "sms_campaign") {
+      const { data: alreadyProcessed } = await supabase.from("sms_messages").select("id,status,sent_count,failed_count").eq("paystack_reference", reference).maybeSingle();
+      if (alreadyProcessed) {
+        return new Response(JSON.stringify({ success: true, sent: Number(alreadyProcessed.sent_count || 0), failed: Number(alreadyProcessed.failed_count || 0), status: alreadyProcessed.status, already_processed: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const recipients = Array.isArray(metadata.recipients) ? metadata.recipients : [];
       const senderId = String(metadata.sender_id || "").trim();
       const message = String(metadata.message || "").trim();
@@ -80,10 +84,16 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "SMS payment metadata or provider configuration is incomplete" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const cleanRecipients = recipients.map((value: string) => { let digits = String(value).replace(/\\D/g, ""); if (digits.startsWith("00233")) digits = digits.slice(5); else if (digits.startsWith("233") && digits.length >= 12) digits = `0${digits.slice(3)}`; if (!digits.startsWith("0")) digits = `0${digits}`; return /^0[2-5]\\d{8}$/.test(digits) ? digits : ""; }).filter(Boolean);
+      const { data: claim, error: claimError } = await supabase.from("sms_messages").insert({ paystack_reference: reference, user_id: metadata.user_id || null, owner_type: metadata.owner_type || "customer", owner_id: metadata.owner_id || null, recipients: cleanRecipients, sender_id: senderId, message, total_charge: Number(metadata.base_amount || txData.amount / 100), unit_price: 0, status: "processing", sent_count: 0, failed_count: 0 }).select("id").single();
+      if (claimError || !claim) {
+        const { data: existing } = await supabase.from("sms_messages").select("status,sent_count,failed_count").eq("paystack_reference", reference).maybeSingle();
+        if (existing) return new Response(JSON.stringify({ success: true, already_processed: true, sent: existing.sent_count || 0, failed: existing.failed_count || 0, status: existing.status }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Could not reserve this SMS payment for delivery" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const results = await Promise.all(cleanRecipients.map(async (to: string) => { const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: providerHeaders, body: JSON.stringify({ to, from: senderId, unicode: /[^\\x00-\\x7F]/.test(message), sms: message }) }); const raw = await response.text(); let body: unknown = {}; try { body = JSON.parse(raw); } catch { body = { raw }; } return { to, status: response.status, body }; }));
       const failed = results.filter((item) => item.status < 200 || item.status >= 300);
       const status = failed.length === results.length ? "failed" : failed.length ? "partial" : "sent";
-      await supabase.from("sms_messages").insert({ user_id: metadata.user_id || null, owner_type: metadata.owner_type || "customer", owner_id: metadata.owner_id || null, recipients: cleanRecipients, sender_id: senderId, message, total_charge: Number(metadata.base_amount || txData.amount / 100), unit_price: 0.09, status, provider_response: results, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null });
+      await supabase.from("sms_messages").update({ sent_count: results.length - failed.length, failed_count: failed.length, status, provider_response: results, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("id", claim.id);
       return new Response(JSON.stringify({ success: failed.length === 0, sent: results.length - failed.length, failed: failed.length, status }), { status: failed.length ? 502 : 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
