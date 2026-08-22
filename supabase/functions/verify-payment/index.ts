@@ -56,7 +56,16 @@ Deno.serve(async (req) => {
     // Keep the authenticated UUID directly on both columns; customers.id is a
     // separate profile-row UUID and must not be written to orders.customer_id.
     const authenticatedUserId = String(metadata.user_id || metadata.customer_id || "").trim();
-    const resolvedCustomerId = authenticatedUserId || null;
+    let resolvedCustomerId: string | null = authenticatedUserId || null;
+    const paystackEmail = String(txData.customer?.email || "").trim().toLowerCase();
+    if (!resolvedCustomerId && paystackEmail) {
+      const { data: customerByEmail } = await supabase
+        .from("customers")
+        .select("user_id")
+        .eq("email", paystackEmail)
+        .maybeSingle();
+      resolvedCustomerId = customerByEmail?.user_id ?? null;
+    }
 
     // =====================================
     // SMS CAMPAIGN PAYMENT + PROVIDER DELIVERY

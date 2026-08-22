@@ -14,7 +14,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, phone, metadata, callback_url, amount: requestedAmount } = await req.json();
+    const { email, phone, metadata: requestMetadata, callback_url, amount: requestedAmount } = await req.json();
+    const authHeader = req.headers.get("Authorization");
+    let sessionUserId: string | null = null;
+    if (authHeader?.startsWith("Bearer ")) {
+      const authClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await authClient.auth.getUser();
+      sessionUserId = user?.id ?? null;
+    }
+    const metadata = {
+      ...(requestMetadata || {}),
+      // The verified session is authoritative; client metadata cannot impersonate an account.
+      user_id: sessionUserId || requestMetadata?.user_id || requestMetadata?.customer_id || null,
+    };
     console.log("[PAYMENT] Payment type:", metadata?.type);
     const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!PAYSTACK_SECRET_KEY) {
