@@ -420,20 +420,32 @@ const UserDashboard = () => {
     let attempts = 0;
 
     const claimOrder = async () => {
+      const { data: signedInCustomer } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
       while (!cancelled && attempts < 12) {
         attempts++;
         const { data: existing } = await supabase
           .from("orders")
-          .select("id, customer_id")
+          .select("id, customer_id, user_id")
           .eq("paystack_reference", reference)
           .maybeSingle();
 
         if (existing) {
-          if (!existing.customer_id) {
+          if (!existing.customer_id && signedInCustomer?.id) {
             await supabase
               .from("orders")
-              .update({ customer_id: user.id })
-              .eq("id", existing.id);
+              .update({
+                customer_id: signedInCustomer?.id || user.id,
+                user_id: user.id,
+              })
+              .eq("id", existing.id)
+              .is("agent_store_id", null)
+              .is("subagent_store_id", null)
+              .is("sub_subagent_store_id", null);
           }
           sessionStorage.removeItem("pending_buy_payment");
           sessionStorage.removeItem("pending_buy_phone");
@@ -822,8 +834,9 @@ const UserDashboard = () => {
             package_id: buyPkg.id,
             package_name: `${buyPkg.size_gb}GB`,
             size_gb: buyPkg.size_gb,
-            customer_id: effectiveUserId,
-            agent_store_id: null,
+  customer_id: effectiveUserId,
+  user_id: user?.id || null,
+  agent_store_id: null,
             subagent_store_id: null,
           }
         };
