@@ -26,18 +26,25 @@ Deno.serve(async (req) => {
       const { data: { user } } = await authClient.auth.getUser();
       sessionUserId = user?.id ?? null;
     }
-    const metadata = {
-      ...(requestMetadata || {}),
-      // The verified session is authoritative; client metadata cannot impersonate an account.
-      // Keep both legacy ownership keys populated because existing dashboards and
-      // storefront order reports use customer_id while newer flows use user_id.
-      user_id: sessionUserId,
-      customer_id: sessionUserId,
-    };
-    if ((requestMetadata?.user_id || requestMetadata?.customer_id) && !sessionUserId) {
+    const isStorefrontPurchase = Boolean(
+      requestMetadata?.agent_store_id ||
+      requestMetadata?.subagent_store_id ||
+      requestMetadata?.subsubagent_store_id
+    );
+    const metadata = isStorefrontPurchase
+      ? { ...(requestMetadata || {}) }
+      : {
+          ...(requestMetadata || {}),
+          // For normal User Dashboard and Packages purchases, the signed-in
+          // Supabase session is authoritative and both legacy ownership keys
+          // are populated for existing dashboard/report queries.
+          user_id: sessionUserId,
+          customer_id: sessionUserId,
+        };
+    if (!isStorefrontPurchase && !sessionUserId) {
       return new Response(JSON.stringify({ error: "Please sign in again before starting this payment." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    console.log("[PAYMENT] Payment type:", metadata?.type);
+    console.log("[PAYMENT] Payment type:", metadata?.type, "storefront:", isStorefrontPurchase);
     const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!PAYSTACK_SECRET_KEY) {
       console.error("PAYSTACK_SECRET_KEY not set");
