@@ -244,20 +244,13 @@ const UserDashboard = () => {
         setLoading(true);
         console.log("[v0] Fetching orders for user:", effectiveUserId);
         
-        // `orders.customer_id` stores the customers table primary key, while
-        // `orders.user_id` stores the auth user id. Resolve both keys before
-        // querying so normal signed-in purchases are visible.
-        const { data: orderCustomer } = await supabase
-          .from("customers")
-          .select("id")
-          .eq("user_id", effectiveUserId)
-          .maybeSingle();
-        const orderCustomerId = orderCustomer?.id || effectiveUserId;
-
+        // `orders.customer_id` stores the AUTH USER ID (verified: all 2833
+        // linked orders match auth.users, none match customers.id). Never
+        // resolve through the customers table here.
         const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
           .select("*")
-          .or(`customer_id.eq.${orderCustomerId},user_id.eq.${effectiveUserId}`)
+          .or(`customer_id.eq.${effectiveUserId},user_id.eq.${effectiveUserId}`)
           .order("created_at", { ascending: false })
           .range(0, 99999999);
 
