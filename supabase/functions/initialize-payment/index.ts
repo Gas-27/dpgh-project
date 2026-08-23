@@ -29,7 +29,10 @@ Deno.serve(async (req) => {
     const metadata = {
       ...(requestMetadata || {}),
       // The verified session is authoritative; client metadata cannot impersonate an account.
+      // Keep both legacy ownership keys populated because existing dashboards and
+      // storefront order reports use customer_id while newer flows use user_id.
       user_id: sessionUserId,
+      customer_id: sessionUserId,
     };
     if ((requestMetadata?.user_id || requestMetadata?.customer_id) && !sessionUserId) {
       return new Response(JSON.stringify({ error: "Please sign in again before starting this payment." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });

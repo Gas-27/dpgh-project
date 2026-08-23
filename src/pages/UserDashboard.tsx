@@ -248,7 +248,7 @@ const UserDashboard = () => {
         const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
           .select("*")
-          .eq("customer_id", effectiveUserId)
+          .or(`customer_id.eq.${effectiveUserId},user_id.eq.${effectiveUserId}`)
           .order("created_at", { ascending: false })
           .range(0, 99999999);
 
