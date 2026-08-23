@@ -29,8 +29,11 @@ Deno.serve(async (req) => {
     const metadata = {
       ...(requestMetadata || {}),
       // The verified session is authoritative; client metadata cannot impersonate an account.
-      user_id: sessionUserId || requestMetadata?.user_id || requestMetadata?.customer_id || null,
+      user_id: sessionUserId,
     };
+    if ((requestMetadata?.user_id || requestMetadata?.customer_id) && !sessionUserId) {
+      return new Response(JSON.stringify({ error: "Please sign in again before starting this payment." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     console.log("[PAYMENT] Payment type:", metadata?.type);
     const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!PAYSTACK_SECRET_KEY) {
@@ -510,6 +513,7 @@ Deno.serve(async (req) => {
         total_gb: metadata.total_gb,
         recipient_count: metadata.recipient_count,
         phone: phone || metadata.recipients[0]?.phone,
+        user_id: metadata.user_id,
       };
 
       if (metadata.agent_store_id) {

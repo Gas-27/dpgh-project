@@ -1065,7 +1065,11 @@ Deno.serve(async (req) => {
       paystack_reference: reference, payment_method: "paystack",
       selling_price: roundedBaseAmount, base_price: basePriceForOrder, profit: profitForOrder,
     };
-    if (metadata?.customer_id) orderData.customer_id = metadata.customer_id;
+    const trustedCustomerId = metadata?.user_id || metadata?.customer_id;
+    if (trustedCustomerId) {
+      orderData.customer_id = trustedCustomerId;
+      orderData.user_id = trustedCustomerId;
+    }
     if (agent_store_id) orderData.agent_store_id = agent_store_id;
     if (subagent_store_id) orderData.subagent_store_id = subagent_store_id;
     if (subsubagent_store_id) orderData.sub_subagent_store_id = subsubagent_store_id;
