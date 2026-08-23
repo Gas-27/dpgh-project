@@ -27,7 +27,7 @@ $$;
 create or replace function public.admin_list_blocked_sms_senders()
 returns setof public.sms_blocked_sender_ids language plpgsql security definer set search_path = public as $$
 begin
-  if not exists (select 1 from public.admin_users where user_id = auth.uid()) then
+  if not public.has_role(auth.uid(), 'admin'::public.app_role) then
     raise exception 'Admin access required';
   end if;
   return query select * from public.sms_blocked_sender_ids order by created_at desc;
@@ -38,7 +38,7 @@ create or replace function public.admin_add_blocked_sms_sender(p_sender_id text,
 returns public.sms_blocked_sender_ids language plpgsql security definer set search_path = public as $$
 declare result public.sms_blocked_sender_ids;
 begin
-  if not exists (select 1 from public.admin_users where user_id = auth.uid()) then raise exception 'Admin access required'; end if;
+  if not public.has_role(auth.uid(), 'admin'::public.app_role) then raise exception 'Admin access required'; end if;
   insert into public.sms_blocked_sender_ids(sender_id, reason, created_by)
   values (public.normalize_sms_sender_id(p_sender_id), nullif(trim(p_reason), ''), auth.uid())
   returning * into result;
@@ -49,7 +49,7 @@ $$;
 create or replace function public.admin_delete_blocked_sms_sender(p_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if not exists (select 1 from public.admin_users where user_id = auth.uid()) then raise exception 'Admin access required'; end if;
+  if not public.has_role(auth.uid(), 'admin'::public.app_role) then raise exception 'Admin access required'; end if;
   delete from public.sms_blocked_sender_ids where id = p_id;
 end;
 $$;
