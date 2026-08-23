@@ -1061,6 +1061,12 @@ Deno.serve(async (req) => {
 
     const orderData: Record<string, unknown> = {
       customer_number: phone, package_id, network, size_gb: sizeGb,
+      ...(!agent_store_id && !subagent_store_id && !subsubagent_store_id && metadata?.user_id
+        ? { user_id: metadata.user_id, customer_id: metadata.customer_id || metadata.user_id }
+        : {}),
+      ...(!agent_store_id && !subagent_store_id && !subsubagent_store_id && metadata?.user_id
+        ? { user_id: metadata.user_id, customer_id: metadata.customer_id || metadata.user_id }
+        : {}),
       amount: roundedBaseAmount, status: "paid", fulfillment_status: "pending",
       paystack_reference: reference, payment_method: "paystack",
       selling_price: roundedBaseAmount, base_price: basePriceForOrder, profit: profitForOrder,
