@@ -195,12 +195,13 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     setLookupLoading(true);
     setLookupResults([]);
     try {
-      const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body: { action: "sender_lookup", phone } });
-      if (error || data?.error) throw new Error(data?.error || error?.message || "Lookup failed");
-      setLookupResults((data?.senders || []) as Sender[]);
-      if (!data?.senders?.length) toast({ title: "No sender IDs found", description: "No sender IDs match that phone number." });
-    } catch {
-      toast({ title: "Lookup failed", description: "Please try again.", variant: "destructive" });
+      const { data, error } = await supabase.rpc("lookup_sms_sender_ids", { p_phone_number: phone });
+      if (error) throw error;
+      setLookupResults((data || []) as Sender[]);
+      if (!data?.length) toast({ title: "No sender IDs found", description: "No sender IDs match that phone number." });
+    } catch (error) {
+      console.error("[v0] Sender ID lookup failed:", error);
+      toast({ title: "Lookup failed", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
     } finally {
       setLookupLoading(false);
     }
