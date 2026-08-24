@@ -1839,7 +1839,7 @@ const searchOrders = async () => {
             <AFARegistrationTracker />
             <AFAPackagesDisplay
   onRegisterClick={(packageId, packageName, price) => {
-  openPackageCheckout({
+  setPaymentPkg({
   id: packageId,
   size_gb: 0,
   price,
