@@ -956,7 +956,7 @@ const AgentDashboard = () => {
       const ussdText = sd.topup_reference ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${sd.topup_reference}` : "";
       setShareText(
         `🔥 Get the BEST data deals from *${sd.store_name}*!\n\n` +
-        `📱 MTN • AirtelTigo • Telecel\n` +
+        `���� MTN • AirtelTigo • Telecel\n` +
         `⚡ Instant delivery • 24/7 Support${ussdText}\n\n` +
         `🛒 Shop now: ${url}\n` +
         `📞 Contact: ${sd.support_number}`
@@ -1476,9 +1476,9 @@ const AgentDashboard = () => {
         setBuyLoading(false); return;
       }
     }
-    const cutoff = new Date(Date.now() - 45 * 60 * 1000).toISOString();
+    const cutoff = new Date(Date.now() - 4 * 60 * 1000).toISOString();
     const { data: ro } = await supabase.from("orders").select("created_at").eq("customer_number", buyPhone.trim()).eq("agent_store_id", store.id).gte("created_at", cutoff).order("created_at", { ascending: false }).limit(1);
-    if (ro && ro.length > 0) { const el = Math.floor((Date.now() - new Date(ro[0].created_at).getTime()) / 60000); toast({ title: "Rate limit", description: `Wait ${45 - el} more minute(s).`, variant: "destructive" }); setBuyLoading(false); return; }
+    if (ro && ro.length > 0) { const el = Math.floor((Date.now() - new Date(ro[0].created_at).getTime()) / 60000); toast({ title: "Rate limit", description: `Wait ${Math.max(1, 4 - el)} more minute(s).`, variant: "destructive" }); setBuyLoading(false); return; }
     const ap = Number(buyPkg.agent_price);
     if (buyPaymentMethod === "wallet") {
       if (Number(store.wallet_balance) < ap) { toast({ title: "Insufficient balance", variant: "destructive" }); setBuyLoading(false); return; }

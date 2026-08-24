@@ -746,8 +746,8 @@ const UserDashboard = () => {
     try {
       const price = Number(buyPkg.price);
 
-      // Check for rate limit (45 minute window)
-      const cutoff = new Date(Date.now() - 45 * 60 * 1000).toISOString();
+// Check for rate limit (4 minute window)
+  const cutoff = new Date(Date.now() - 4 * 60 * 1000).toISOString();
       const { data: recentOrders } = await supabase
         .from("orders")
         .select("created_at")
@@ -759,7 +759,7 @@ const UserDashboard = () => {
 
       if (recentOrders && recentOrders.length > 0) {
         const el = Math.floor((Date.now() - new Date(recentOrders[0].created_at).getTime()) / 60000);
-        toast({ title: "Rate limit", description: `Wait ${45 - el} more minute(s).`, variant: "destructive" });
+        toast({ title: "Rate limit", description: `Wait ${Math.max(1, 4 - el)} more minute(s).`, variant: "destructive" });
         setBuyLoading(false);
         return;
       }
