@@ -1169,6 +1169,16 @@ const Packages = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showLoginRequired, setShowLoginRequired] = useState(false);
 
+  // Keep the purchase gate in the page as well as in the payment flow. This
+  // prevents guests from ever opening a payment dialog from the Packages page.
+  const openPackageCheckout = useCallback((pkg: DataPackage) => {
+    if (!currentUser) {
+      setShowLoginRequired(true);
+      return;
+    }
+    setPaymentPkg(pkg);
+  }, [currentUser]);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setCurrentUser(session?.user ?? null);
@@ -1588,7 +1598,7 @@ const searchOrders = async () => {
                             type="button"
                             variant="outline"
                             disabled={!available}
-                            onClick={() => setPaymentPkg(pkg)}
+                            onClick={() => openPackageCheckout(pkg)}
                             className="h-8 w-full rounded-lg border-white/25 bg-white/10 text-xs font-bold text-white hover:bg-white/20 hover:text-white"
                           >
                             {available ? "Buy Now" : "Not Available"}
@@ -1828,14 +1838,14 @@ const searchOrders = async () => {
           <div className="w-full pb-20 space-y-6">
             <AFARegistrationTracker />
             <AFAPackagesDisplay
-              onRegisterClick={(packageId, packageName, price) => {
-                setPaymentPkg({
-                  id: packageId,
-                  size_gb: 0,
-                  price,
-                  network: "mtn"
-                });
-              }}
+  onRegisterClick={(packageId, packageName, price) => {
+  openPackageCheckout({
+  id: packageId,
+  size_gb: 0,
+  price,
+  network: "mtn"
+  });
+  }}
               themeColor="#3b82f6"
             />
           </div>
