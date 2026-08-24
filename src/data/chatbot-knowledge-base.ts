@@ -125,6 +125,19 @@ export const CHATBOT_KNOWLEDGE_BASE: KnowledgeEntry[] = [
     relatedIds: ["delivery_time", "payment_methods"],
   },
   {
+    id: "sms_meaning",
+    questions: ["sms", "what is sms", "what does sms mean", "data sms", "delivery sms", "payment sms", "sms confirmation", "did not receive sms"],
+    answer: "An **SMS** is a text message from the mobile network or the platform. A Paystack SMS confirms payment, but it does not by itself prove that data was delivered — check **Track Order** for the order status. An MTN SMS may confirm AFA approval, which is separate from normal data delivery. If your order says **Delivered** but you have no SMS, check your network balance and phone message settings. For MTN dial *124# → Data Balance → Balance Breakdown → Master Beneficiary Data Bundle. If the order is Pending or Processing, delivery is still underway.",
+    category: "support",
+    relatedIds: ["delivery_time", "track_order", "wrong_number"],
+  },
+  {
+    id: "wrong_number",
+    questions: ["wrong number", "sent data to wrong number", "wrong recipient", "refund wrong number", "reverse wrong order", "cancel wrong order"],
+    answer: "Please always confirm the recipient number before paying. Data sent to the **wrong number cannot be refunded, reversed, cancelled, or redirected** after submission or delivery. If the order is still Pending or Processing, use the **Support** link in your dashboard immediately, but cancellation is not guaranteed.",
+    category: "refund",
+  },
+  {
     id: "delivery_time",
     questions: ["delivery time", "how long", "when get", "how fast is delivery"],
     answer: "Delivery normally takes 5 minutes to 2 hours depending on network conditions and provider load. If it's been longer than 2 hours, use 'Track Order' and I'll check the status for you.",
@@ -421,7 +434,7 @@ Please send the phone number now, including the leading 0, for example: 02412345
     category: "packages",
   },
 
-  // ───────────────────────── Refunds ─────────────────────────
+  // ───────────────────────── Refunds ─���───────────────────────
   {
     id: "refund_how",
     questions: ["refund", "how does refund work", "refund process", "get refund", "money back", "refund policy", "where do refunds go", "refund wallet", "storefront refund"],

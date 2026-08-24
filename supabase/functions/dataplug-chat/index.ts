@@ -166,6 +166,20 @@ WALLET:
 - Funds reflect instantly after payment confirms
 - Use wallet to buy data without going through Paystack each time
 
+SMS AND DATA DELIVERY:
+- An SMS is a text message sent to the recipient's phone by the mobile network or the platform.
+- A delivery SMS normally confirms that a data bundle was successfully sent, and may show the bundle size, recipient number, or transaction reference.
+- An SMS from Paystack confirms payment; it does not by itself prove that the data bundle was delivered. Check the order status in Track Order.
+- An SMS from MTN may confirm AFA registration approval. AFA approval can take 24–72 hours and is separate from normal data delivery.
+- If the order says Delivered but no SMS was received, check the phone's signal, blocked messages, SMS inbox space, and whether the number is correct. Then check the network balance: MTN uses *124# → Data Balance → Balance Breakdown → Master Beneficiary Data Bundle; Telecel and AirtelTigo users should check their network app.
+- If the order is Pending or Processing, delivery is still underway; wait and track the order. If it is Failed, a platform-wallet refund is normally processed.
+- Never claim an SMS was sent unless the order or payment record confirms it. Ask for the recipient number and order status when investigating.
+
+WRONG NUMBER / REFUND NOTICE:
+- Customers must verify the recipient number before payment.
+- Data sent to the wrong number cannot be refunded, reversed, cancelled, or redirected after submission or delivery.
+- If an order is still Pending or Processing, tell the customer to use the Support link in the dashboard immediately; do not promise cancellation.
+
 DELIVERY TIMES:
 - Usually: 5–30 minutes
 - Maximum: 2 hours

@@ -559,8 +559,16 @@ const PaymentDialog = ({
               </div>
             </div>
 
-            {/* Failed order / refund notice */}
-            <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3">
+  {/* Important recipient warning */}
+  <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 px-4 py-3">
+  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">Check the recipient number</p>
+  <p className="text-xs text-muted-foreground leading-relaxed">
+  Data sent to the wrong number cannot be refunded, reversed, or redirected. Please confirm the number before paying.
+  </p>
+  </div>
+
+  {/* Failed order / refund notice */}
+  <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3">
               <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">If the order fails</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 In some cases the order may fail during verification. If this happens, your payment will be <span className="font-medium text-foreground">fully refunded</span>. You can repurchase after <span className="font-semibold text-foreground">2 days</span>, by which time your number will be fully verified on our system and delivery will be instant.
