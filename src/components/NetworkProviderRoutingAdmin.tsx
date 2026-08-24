@@ -38,6 +38,8 @@ const providerCatalog = [
   { key: "spendless", label: "Spendless" },
   { key: "orisjay", label: "Orisjay" },
   { key: "datahubnet", label: "Datahubnet" },
+  { key: "fastdealgh", label: "FastDealGH" },
+  { key: "bundlezone", label: "Bundle Zone" },
 ];
 const providersByFlow: Record<Flow, typeof providerCatalog> = {
   purchase: providerCatalog,
