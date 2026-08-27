@@ -495,9 +495,10 @@ const PaymentDialog = ({
     {/* New beneficiary number warning — shown before the confirm step */}
     <Dialog open={showNewNumberWarning} onOpenChange={(val) => { if (!val) setShowNewNumberWarning(false); }}>
       <DialogContent
-        className="sm:max-w-md border-border bg-card p-0 overflow-hidden"
+        className="sm:max-w-md border-border bg-card p-0 overflow-hidden max-h-[90vh] flex flex-col"
         style={{ zIndex: 100000 }}
       >
+        <div className="min-h-0 overflow-y-auto">
         <div className="flex flex-col">
           {/* Amber header bar */}
           <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-4 flex items-center gap-3">
@@ -593,6 +594,7 @@ const PaymentDialog = ({
               </Button>
             </div>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>
