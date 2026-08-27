@@ -956,7 +956,7 @@ const AgentDashboard = () => {
       const ussdText = sd.topup_reference ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${sd.topup_reference}` : "";
       setShareText(
         `🔥 Get the BEST data deals from *${sd.store_name}*!\n\n` +
-        `���� MTN • AirtelTigo • Telecel\n` +
+        `������ MTN • AirtelTigo • Telecel\n` +
         `⚡ Instant delivery • 24/7 Support${ussdText}\n\n` +
         `🛒 Shop now: ${url}\n` +
         `📞 Contact: ${sd.support_number}`
@@ -4945,7 +4945,8 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
       {/* New MTN beneficiary number warning */}
       <Dialog open={showNewNumberWarning} onOpenChange={(v) => { if (!v) setShowNewNumberWarning(false); }}>
-        <DialogContent className="sm:max-w-md border-border bg-card p-0 overflow-hidden" style={{ zIndex: 100000 }}>
+        <DialogContent className="sm:max-w-md border-border bg-card p-0 overflow-hidden max-h-[90vh] flex flex-col" style={{ zIndex: 100000 }}>
+  <div className="min-h-0 overflow-y-auto">
           <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-4 flex items-center gap-3">
             <div className="flex-shrink-0 rounded-full bg-amber-500/20 p-2"><AlertTriangle className="h-5 w-5 text-amber-500" /></div>
             <div>
@@ -4961,12 +4962,13 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               <div className="flex items-start gap-3 p-3"><div className="flex-shrink-0 mt-0.5 rounded-full bg-green-500/10 p-1.5"><RefreshCw className="h-4 w-4 text-green-500" /></div><div><p className="text-xs font-semibold text-foreground">Future Orders Will Be Instant</p><p className="text-xs text-muted-foreground mt-0.5">Once verified, all future purchases to this number will be delivered immediately.</p></div></div>
             </div>
             <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3"><p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">If the order fails</p><p className="text-xs text-muted-foreground leading-relaxed">Your payment will be <span className="font-medium text-foreground">fully refunded</span>. You can repurchase after <span className="font-semibold text-foreground">2 days</span>, by which time your number will be fully verified.</p></div>
-            <div className="flex gap-3 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setShowNewNumberWarning(false)}>Cancel</Button>
-              <Button variant="hero" className="flex-1" onClick={() => { setShowNewNumberWarning(false); setBuyStep("confirm"); }}>I Understand, Continue</Button>
-            </div>
-          </div>
-        </DialogContent>
+<div className="flex gap-3 pt-1">
+  <Button variant="outline" className="flex-1" onClick={() => setShowNewNumberWarning(false)}>Cancel</Button>
+  <Button variant="hero" className="flex-1" onClick={() => { setShowNewNumberWarning(false); setBuyStep("confirm"); }}>I Understand, Continue</Button>
+  </div>
+  </div>
+  </div>
+  </DialogContent>
       </Dialog>
       
       <WhatsAppFloatingButton />

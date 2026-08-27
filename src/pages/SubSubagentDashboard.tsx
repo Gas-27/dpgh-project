@@ -3321,7 +3321,8 @@ return (
 
       {/* New MTN beneficiary number warning */}
       <Dialog open={showNewNumberWarning} onOpenChange={(v) => { if (!v) setShowNewNumberWarning(false); }}>
-        <DialogContent className="sm:max-w-md border-border bg-card p-0 overflow-hidden" style={{ zIndex: 100000 }}>
+        <DialogContent className="sm:max-w-md border-border bg-card p-0 overflow-hidden max-h-[90vh] flex flex-col" style={{ zIndex: 100000 }}>
+  <div className="min-h-0 overflow-y-auto">
           <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-4 flex items-center gap-3">
             <div className="flex-shrink-0 rounded-full bg-amber-500/20 p-2"><AlertTriangle className="h-5 w-5 text-amber-500" /></div>
             <div>
@@ -3338,12 +3339,13 @@ return (
             </div>
             <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3"><p className="text-xs font-semibold text-primary mb-1">Recommended for new numbers</p><p className="text-xs text-muted-foreground leading-relaxed">Because this is a new number, it is best to start with a 1GB purchase while MTN approves the number on our beneficiary list.</p></div>
             <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3"><p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">If the order fails</p><p className="text-xs text-muted-foreground leading-relaxed">Your payment will be <span className="font-medium text-foreground">fully refunded</span>. You can repurchase after <span className="font-semibold text-foreground">2 days</span>, by which time your number will be fully verified.</p></div>
-            <div className="flex gap-3 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setShowNewNumberWarning(false)}>Cancel</Button>
-              <Button variant="hero" className="flex-1" onClick={() => { acknowledgedNewNumber.current = true; setShowNewNumberWarning(false); handleBuyData(); }}>I Understand, Continue</Button>
-            </div>
-          </div>
-        </DialogContent>
+<div className="flex gap-3 pt-1">
+  <Button variant="outline" className="flex-1" onClick={() => setShowNewNumberWarning(false)}>Cancel</Button>
+  <Button variant="hero" className="flex-1" onClick={() => { setShowNewNumberWarning(false); setBuyStep("confirm"); }}>I Understand, Continue</Button>
+  </div>
+  </div>
+  </div>
+  </DialogContent>
       </Dialog>
     </div>
   );

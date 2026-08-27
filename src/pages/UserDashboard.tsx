@@ -3069,7 +3069,8 @@ return (
 
       {/* New MTN beneficiary number warning */}
       <Dialog open={showNewNumberWarning} onOpenChange={(v) => { if (!v) setShowNewNumberWarning(false); }}>
-        <DialogContent className="sm:max-w-md border-border bg-card p-0 overflow-hidden" style={{ zIndex: 100000 }}>
+        <DialogContent className="sm:max-w-md border-border bg-card p-0 overflow-hidden max-h-[90vh] flex flex-col" style={{ zIndex: 100000 }}>
+  <div className="min-h-0 overflow-y-auto">
           <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-4 flex items-center gap-3">
             <div className="flex-shrink-0 rounded-full bg-amber-500/20 p-2"><AlertTriangle className="h-5 w-5 text-amber-500" /></div>
             <div>
@@ -3089,6 +3090,7 @@ return (
               <Button variant="outline" className="flex-1" onClick={() => setShowNewNumberWarning(false)}>Cancel</Button>
               <Button variant="hero" className="flex-1" onClick={() => { setShowNewNumberWarning(false); setBuyStep("confirm"); }}>I Understand, Continue</Button>
             </div>
+          </div>
           </div>
         </DialogContent>
       </Dialog>
