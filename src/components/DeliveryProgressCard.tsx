@@ -20,9 +20,16 @@ const masked = (number?: string | number | null) => { const s = String(number ??
 const PREFIXES: Record<Network, string[]> = { mtn: ["024", "054", "055", "059"], mtn_express: ["024", "054", "055", "059"], telecel: ["020", "050"], airteltigo: ["026", "056", "027", "057"] };
 const fakeId = (prefixes: string, slot: number) => { const list = prefixes.split(",").map((p) => p.replace(/\D/g, "").slice(0, 3)).filter((p) => p.length === 3); const prefix = list[slot % Math.max(1, list.length)] || "024"; const suffix = String(Math.floor(Math.random() * 1000000)).padStart(6, "0"); return `${prefix}${suffix}`; };
 
-export default function DeliveryProgressCard() {
-  const [network, setNetwork] = useState<Network>("mtn_express");
+export default function DeliveryProgressCard({ selectedNetwork }: { selectedNetwork?: string }) {
+  const [network, setNetwork] = useState<Network>(() => normalize(selectedNetwork) ?? "mtn_express");
   const networkWasSelectedRef = useRef(false);
+  useEffect(() => {
+    const next = normalize(selectedNetwork);
+    if (next) {
+      networkWasSelectedRef.current = true;
+      setNetwork(next);
+    }
+  }, [selectedNetwork]);
   const [settings, setSettings] = useState<Setting[]>(defaults); const [globalEnabled, setGlobalEnabled] = useState(true); const [orders, setOrders] = useState<Order[]>([]); const [open, setOpen] = useState(false);
   const load = async () => {
     const [settingsResult, ordersResult] = await Promise.all([supabase.from("delivery_progress_settings").select("network, enabled, is_default, source, min_minutes, max_minutes, rotation_minutes, fake_enabled, fake_prefix, fake_count, status_color, message"), supabase.from("orders").select("id, customer_number, network, status, fulfillment_status, order_status, created_at, updated_at").order("updated_at", { ascending: false }).limit(1000)]); const saved = (settingsResult.data as Setting[]) ?? []; const configuredDefault = saved.find((s: any) => s.is_default)?.network;
