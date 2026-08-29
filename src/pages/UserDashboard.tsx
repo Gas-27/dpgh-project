@@ -27,6 +27,7 @@ import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
+import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DataPackage {
@@ -1227,6 +1228,8 @@ const UserDashboard = () => {
           <CardTitle>Buy Data Packages</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <DeliveryProgressCard selectedNetwork={networkFilter} />
+
           {/* Network Filter */}
           <div className="flex gap-2 flex-wrap">
             {[

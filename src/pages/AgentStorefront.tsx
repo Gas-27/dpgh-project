@@ -178,7 +178,7 @@ const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 // ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
-// ───�����─────────────────────────�����─────���─────��──����───────────���────────────────────
+// ───�����────────────────���────────�����─────���─────��──����───────────���────────────────────
 const OrderTrackingCard = ({
   order,
   store,
@@ -1311,6 +1311,8 @@ const searchOrders = useCallback(async () => {
               </CardContent>
             </Card>
           </div>
+
+          <DeliveryProgressCard selectedNetwork={networkFilter} />
 
           {/* ── Network filter ── */}
           <div className="container pb-6">

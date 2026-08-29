@@ -35,6 +35,7 @@ import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
+import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Helper function to get current order stage
@@ -2201,6 +2202,7 @@ return (
                 {hasPendingWithdrawal && <p className="text-xs text-orange-400">GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal.</p>}
               </CardContent>
             </Card>
+            <DeliveryProgressCard selectedNetwork={networkFilter} />
             <div className="flex gap-2 flex-wrap">
               {[
                 { key: "mtn", label: "MTN" },

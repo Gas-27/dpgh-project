@@ -1458,8 +1458,6 @@ const searchOrders = async () => {
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
-        <DeliveryProgressCard selectedNetwork={selectedNetwork} />
-
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => (
             <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => setActiveCategory(cat)} className={`font-semibold ${["bulk", "sms"].includes(cat) && activeCategory !== cat ? "border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10" : ""}`}>
@@ -1566,6 +1564,7 @@ const searchOrders = async () => {
             </div>
             <section aria-labelledby="data-bundles-heading" className="mx-auto w-full max-w-md pb-12">
               <h2 id="data-bundles-heading" className="sr-only">Data Bundles</h2>
+              <DeliveryProgressCard selectedNetwork={selectedNetwork} />
               <div className="mb-6 flex flex-wrap justify-center gap-3">
                 {(["mtn", "mtn_express", "airteltigo", "telecel"] as Network[]).map((network) => (
                   <Button

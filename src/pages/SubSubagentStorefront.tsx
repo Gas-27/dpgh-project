@@ -1104,6 +1104,8 @@ const searchOrders = useCallback(async () => {
           </CardContent>
         </Card>
 
+        <DeliveryProgressCard selectedNetwork={networkFilter} />
+
         {/* Network Tabs */}
         <div className="flex flex-wrap gap-2 pb-2 items-center">
         {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
