@@ -70,8 +70,6 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    if (!user || roles.length === 0) return;
-
     const fetchNotifications = async () => {
       const userRole = roles.includes("admin")
         ? "admin"
@@ -85,16 +83,18 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
         ? "customer"
         : "user";
 
-      const { data: dismissed } = await supabase
-        .from("notification_dismissals")
-        .select("notification_id, view_count")
-        .eq("user_id", user.id);
+      const dismissedCounts = new Map<string, number>();
+      if (user) {
+        const { data: dismissed } = await supabase
+          .from("notification_dismissals")
+          .select("notification_id, view_count")
+          .eq("user_id", user.id);
+        (dismissed ?? []).forEach((d: any) => dismissedCounts.set(d.notification_id, d.view_count ?? 1));
+      }
 
-      const dismissedCounts = new Map(
-        (dismissed ?? []).map((d: any) => [d.notification_id, d.view_count ?? 1])
-      );
-
-      const roleTargets = userRole === "customer" || userRole === "user"
+      const roleTargets = !user
+        ? ["user", "customer"]
+        : userRole === "customer" || userRole === "user"
         ? ["customer", "user"]
         : [userRole];
       const roleFilter = ["all", ...roleTargets].map((role) => `target_role.eq.${role}`).join(",");
@@ -117,7 +117,12 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
   }, [user, roles, surface]);
 
   const dismiss = async () => {
-    if (!user || notifications.length === 0) return;
+    if (notifications.length === 0) return;
+    if (!user) {
+      setNotifications((items) => items.filter((_, index) => index !== currentIndex));
+      setCurrentIndex((index) => Math.min(index, Math.max(0, notifications.length - 2)));
+      return;
+    }
 
     const notif = notifications[currentIndex];
 
