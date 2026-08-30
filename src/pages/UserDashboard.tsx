@@ -28,6 +28,7 @@ import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NotificationPopup from "@/components/NotificationPopup";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DataPackage {
@@ -2761,6 +2762,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
 return (
   <div className="min-h-screen bg-background">
+  <NotificationPopup surface="user-dashboard" />
   <ReportNotificationBadge />
       <Navbar />
 

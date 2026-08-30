@@ -19,7 +19,12 @@ interface Notification {
   title: string;
   message: string;
   created_at: string;
+  display_limit?: number;
+  target_surfaces?: string[];
 }
+
+const surfaceMatches = (targets: string[] | undefined, surface: string) =>
+  !targets?.length || targets.includes("all") || targets.includes(surface);
 
 const getMeta = (text: string) => {
   const t = text.toLowerCase();
@@ -59,7 +64,7 @@ const getMeta = (text: string) => {
   };
 };
 
-const NotificationPopup = () => {
+const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
   const { user, roles } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -76,11 +81,11 @@ const NotificationPopup = () => {
 
       const { data: dismissed } = await supabase
         .from("notification_dismissals")
-        .select("notification_id")
+        .select("notification_id, view_count")
         .eq("user_id", user.id);
 
-      const dismissedIds = (dismissed ?? []).map(
-        (d: any) => d.notification_id
+      const dismissedCounts = new Map(
+        (dismissed ?? []).map((d: any) => [d.notification_id, d.view_count ?? 1])
       );
 
       const { data: notifs } = await supabase
@@ -90,7 +95,8 @@ const NotificationPopup = () => {
         .order("created_at", { ascending: false });
 
       const unseen = (notifs ?? []).filter(
-        (n: any) => !dismissedIds.includes(n.id)
+        (n: any) => surfaceMatches(n.target_surfaces, surface) &&
+          (n.display_limit === 0 || (dismissedCounts.get(n.id) ?? 0) < (n.display_limit ?? 1))
       );
 
       setNotifications(unseen);
@@ -105,10 +111,17 @@ const NotificationPopup = () => {
 
     const notif = notifications[currentIndex];
 
-    await supabase.from("notification_dismissals").insert({
+    const { data: existing } = await supabase
+      .from("notification_dismissals")
+      .select("view_count")
+      .eq("notification_id", notif.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    await supabase.from("notification_dismissals").upsert({
       notification_id: notif.id,
       user_id: user.id,
-    });
+      view_count: (existing?.view_count ?? 0) + 1,
+    }, { onConflict: "notification_id,user_id" });
 
     if (currentIndex < notifications.length - 1) {
       setCurrentIndex((i) => i + 1);

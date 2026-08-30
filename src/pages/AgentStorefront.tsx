@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NotificationPopup from "@/components/NotificationPopup";
 import SmsComposer from "@/components/SmsComposer";
 import ChatBot from "@/components/ChatBot";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
@@ -1001,10 +1002,11 @@ const searchOrders = useCallback(async () => {
 
   // ── JSX ──
   return (
-    <div
-      className="min-h-screen relative"
-      style={{ backgroundColor: backgroundColor } as React.CSSProperties}
-    >
+  <div
+    className="min-h-screen relative"
+    style={{ backgroundColor: backgroundColor } as React.CSSProperties}
+  >
+    <NotificationPopup surface="agent-storefront" />
       {/* Notification modal */}
       {modalOpen && undismissedNotifications.length > 0 && (
         <NotificationModal

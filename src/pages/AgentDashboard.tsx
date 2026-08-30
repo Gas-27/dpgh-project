@@ -956,7 +956,7 @@ const AgentDashboard = () => {
       const url = DOMAINS.getAgentStoreUrl(sd.store_name);
       const ussdText = sd.topup_reference ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${sd.topup_reference}` : "";
       setShareText(
-        `🔥 Get the BEST data deals from *${sd.store_name}*!\n\n` +
+        `���� Get the BEST data deals from *${sd.store_name}*!\n\n` +
         `�������� MTN • AirtelTigo • Telecel\n` +
         `⚡ Instant delivery • 24/7 Support${ussdText}\n\n` +
         `🛒 Shop now: ${url}\n` +
@@ -2318,7 +2318,7 @@ return (
         </div>
       )}
 
-      <NotificationPopup />
+      <NotificationPopup surface="agent-dashboard" />
 
       {/* NAV */}
       <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">

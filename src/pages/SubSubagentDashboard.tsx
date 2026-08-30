@@ -36,6 +36,7 @@ import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
 // Helper function to get current order stage
@@ -1816,6 +1817,7 @@ const SubSubagentDashboard = () => {
 
 return (
   <div className="min-h-screen bg-background">
+  <NotificationPopup surface="subsubagent-dashboard" />
   <ReportNotificationBadge />
       {/* Notification from parent subagent (shown to sub-subagent as "Admin") */}
       {subSubagentNotifications.length > 0 && showSubagentNotificationPopup && (

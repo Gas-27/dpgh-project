@@ -228,6 +228,8 @@ const AdminDashboard = () => {
   const [notifTitle, setNotifTitle] = useState("");
   const [notifMessage, setNotifMessage] = useState("");
   const [notifTarget, setNotifTarget] = useState("all");
+  const [notifSurfaces, setNotifSurfaces] = useState<string[]>(["all"]);
+  const [notifDisplayLimit, setNotifDisplayLimit] = useState("1");
   const [notifExpiresAt, setNotifExpiresAt] = useState("");
   const [sendingNotif, setSendingNotif] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -2375,11 +2377,13 @@ const AdminDashboard = () => {
     if (!notifTitle.trim() || !notifMessage.trim()) { toast({ title: "Fill title and message", variant: "destructive" }); return; }
     setSendingNotif(true);
     const effectiveTarget = notifTarget === "user" ? "all" : notifTarget;
-    const insertData: any = {
-      title: notifTitle.trim(),
-      message: notifMessage.trim(),
-      target_role: effectiveTarget
-    };
+  const insertData: any = {
+  title: notifTitle.trim(),
+  message: notifMessage.trim(),
+  target_role: effectiveTarget,
+  target_surfaces: notifSurfaces.includes("all") ? ["all"] : notifSurfaces,
+  display_limit: Number(notifDisplayLimit)
+  };
     if (notifExpiresAt) {
       insertData.expires_at = new Date(notifExpiresAt).toISOString();
     }
@@ -2389,8 +2393,10 @@ const AdminDashboard = () => {
       toast({ title: "Notification sent!" }); 
       setNotifTitle(""); 
       setNotifMessage(""); 
-      setNotifTarget("all"); 
-      setNotifExpiresAt("");
+  setNotifTarget("all");
+  setNotifSurfaces(["all"]);
+  setNotifDisplayLimit("1");
+  setNotifExpiresAt("");
       fetchNotifications();
     }
     setSendingNotif(false);
@@ -4142,6 +4148,8 @@ const AdminDashboard = () => {
                     </Select>
                     <p className="text-xs text-muted-foreground">Note: "User" target will also be visible to non-logged-in visitors.</p>
                   </div>
+                  <div className="space-y-2"><Label>Show On</Label><div className="grid grid-cols-2 gap-2 text-sm">{[["all","Everywhere"],["user-dashboard","User dashboard"],["packages","Package page"],["agent-dashboard","Agent dashboard"],["agent-storefront","Agent storefront"],["subagent-dashboard","Subagent dashboard"],["subagent-storefront","Subagent storefront"],["subsubagent-dashboard","Sub-subagent dashboard"],["subsubagent-storefront","Sub-subagent storefront"]].map(([value, label]) => <label key={value} className="flex items-center gap-2"><input type="checkbox" checked={notifSurfaces.includes(value)} onChange={(e) => setNotifSurfaces(e.target.checked ? (value === "all" ? ["all"] : [...notifSurfaces.filter((v) => v !== "all"), value]) : notifSurfaces.filter((v) => v !== value))} />{label}</label>)}</div></div>
+                  <div className="space-y-2"><Label>Popup Display Limit</Label><Select value={notifDisplayLimit} onValueChange={setNotifDisplayLimit}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">Every refresh</SelectItem><SelectItem value="1">Once</SelectItem><SelectItem value="2">Twice</SelectItem><SelectItem value="5">Five times</SelectItem></SelectContent></Select></div>
                   <div className="space-y-2"><Label>Title</Label><Input placeholder="Notification title" value={notifTitle} onChange={(e) => setNotifTitle(e.target.value)} /></div>
                   <div className="space-y-2"><Label>Message</Label><Textarea placeholder="Write your message here..." value={notifMessage} onChange={(e) => setNotifMessage(e.target.value)} rows={4} /></div>
                   <div className="space-y-2">

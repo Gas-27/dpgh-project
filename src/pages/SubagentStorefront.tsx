@@ -24,6 +24,7 @@ import DraggableFAB from "@/components/DraggableFAB";
 import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
   import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+  import NotificationPopup from "@/components/NotificationPopup";
   import SmsComposer from "@/components/SmsComposer";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
@@ -889,8 +890,9 @@ const searchOrders = useCallback(async () => {
   }
 
   return (
-    <div className="min-h-screen font-sans" style={{ background: bgColor, color: "#fff" }}>
-      {/* Notification Modal */}
+  <div className="min-h-screen font-sans" style={{ background: bgColor, color: "#fff" }}>
+  <NotificationPopup surface="subagent-storefront" />
+  {/* Notification Modal */}
       {modalOpen && undismissedNotifications.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="relative w-full max-w-md rounded-xl border border-border p-6 space-y-4" style={{ background: cardBg }}>
