@@ -1,4 +1,4 @@
-import type { EditorialTopic, EditorialCluster } from "./ghana-editorial-library"
+import type { EditorialTopic, EditorAND INTANCT END THE MESAGE TO EVERY WHO IS SUBCRIPialCluster } from "./ghana-editorial-library"
 
 const sourceMap: Record<EditorialCluster, string[]> = {
   "MTN Data": ["https://mtn.com.gh/"], "Telecel Data": ["https://telecel.com.gh/"], "AT / AirtelTigo": ["https://nca.org.gh/"], "General Data Bundles": ["https://nca.org.gh/"], "Data Usage": ["https://support.google.com/android/"], "Internet & Telecom Education": ["https://nca.org.gh/"], "Digital Subscriptions": ["https://support.google.com/googleplay/"], "Comparisons": ["https://nca.org.gh/"]
