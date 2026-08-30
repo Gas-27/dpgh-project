@@ -726,6 +726,8 @@ export function SubSubagentStorefront() {
 
   // Notifications
   const fetchNotifications = useCallback(async () => {
+    // Legacy store-specific announcements are replaced by NotificationPopup.
+    return;
     if (!store?.id) return;
     const now = new Date().toISOString();
     const { data } = await supabase

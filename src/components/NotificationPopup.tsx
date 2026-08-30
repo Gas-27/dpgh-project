@@ -94,7 +94,9 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
         (dismissed ?? []).map((d: any) => [d.notification_id, d.view_count ?? 1])
       );
 
-      const roleTargets = userRole === "customer" ? ["customer", "user"] : [userRole];
+      const roleTargets = userRole === "customer" || userRole === "user"
+        ? ["customer", "user"]
+        : [userRole];
       const roleFilter = ["all", ...roleTargets].map((role) => `target_role.eq.${role}`).join(",");
       const { data: notifs } = await supabase
         .from("notifications")
