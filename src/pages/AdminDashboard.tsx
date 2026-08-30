@@ -4144,6 +4144,9 @@ const AdminDashboard = () => {
                         <SelectItem value="all">All Users & Agents (including non-logged-in)</SelectItem>
                         <SelectItem value="user">Users Only (also shown to non-logged-in visitors)</SelectItem>
                         <SelectItem value="agent">Agents Only</SelectItem>
+                        <SelectItem value="customer">Customers Only</SelectItem>
+                        <SelectItem value="subagent">Subagents Only</SelectItem>
+                        <SelectItem value="subsubagent">Sub-subagents Only</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">Note: "User" target will also be visible to non-logged-in visitors.</p>

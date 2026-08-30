@@ -75,8 +75,14 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
     const fetchNotifications = async () => {
       const userRole = roles.includes("admin")
         ? "admin"
+        : roles.includes("sub_subagent") || roles.includes("subsubagent")
+        ? "subsubagent"
+        : roles.includes("subagent")
+        ? "subagent"
         : roles.includes("agent")
         ? "agent"
+        : roles.includes("customer")
+        ? "customer"
         : "user";
 
       const { data: dismissed } = await supabase
@@ -88,10 +94,12 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
         (dismissed ?? []).map((d: any) => [d.notification_id, d.view_count ?? 1])
       );
 
+      const roleTargets = userRole === "customer" ? ["customer", "user"] : [userRole];
+      const roleFilter = ["all", ...roleTargets].map((role) => `target_role.eq.${role}`).join(",");
       const { data: notifs } = await supabase
         .from("notifications")
         .select("*")
-        .or(`target_role.eq.all,target_role.eq.${userRole}`)
+        .or(roleFilter)
         .order("created_at", { ascending: false });
 
       const unseen = (notifs ?? []).filter(
@@ -104,7 +112,7 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
     };
 
     fetchNotifications();
-  }, [user, roles]);
+  }, [user, roles, surface]);
 
   const dismiss = async () => {
     if (!user || notifications.length === 0) return;

@@ -1453,7 +1453,7 @@ const searchOrders = async () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <NotificationPopup />
+      <NotificationPopup surface="packages" />
       <Navbar />
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
