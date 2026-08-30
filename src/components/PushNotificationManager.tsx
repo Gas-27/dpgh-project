@@ -106,11 +106,14 @@ export default function PushNotificationManager() {
 
     setSending(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Admin session expired");
       // Call the Vercel API route to send push notifications
       const response = await fetch("/api/send-push-notification", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           title: title.trim(),

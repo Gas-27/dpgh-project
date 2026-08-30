@@ -2,11 +2,10 @@ import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-
-// VAPID keys for web push - you should generate your own
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "UUxI4O8-FbRouAf7-fG-hSJMC7O4y0rJmB1qgFgKbXY";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_EMAIL = process.env.VAPID_EMAIL || "admin@dataplug.store";
 
 export default async function handler(req, res) {
   // Handle CORS
@@ -23,6 +22,17 @@ export default async function handler(req, res) {
   }
 
   try {
+    const authHeader = req.headers.authorization || "";
+    const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!accessToken || !supabaseUrl || !supabaseKey) {
+      return res.status(401).json({ error: "Admin authentication required" });
+    }
+    const adminClient = createClient(supabaseUrl, supabaseKey);
+    const { data: { user }, error: authError } = await adminClient.auth.getUser(accessToken);
+    if (authError || !user) return res.status(401).json({ error: "Invalid session" });
+    const { data: adminRole } = await adminClient.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+    if (!adminRole) return res.status(403).json({ error: "Admin permission required" });
+
     const { title, body, url } = req.body;
 
     if (!title || !body) {
@@ -31,7 +41,7 @@ export default async function handler(req, res) {
 
     // Configure web-push
     webpush.setVapidDetails(
-      "mailto:admin@datapluggh.com",
+      `mailto:${VAPID_EMAIL}`,
       VAPID_PUBLIC_KEY,
       VAPID_PRIVATE_KEY
     );
@@ -73,28 +83,22 @@ export default async function handler(req, res) {
     let failedCount = 0;
     const failedEndpoints = [];
 
-    // Send to all subscribers
-    for (const sub of subscriptions) {
-      try {
-        const pushSubscription = {
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.p256dh,
-            auth: sub.auth,
-          },
-        };
-
-        await webpush.sendNotification(pushSubscription, payload);
-        successCount++;
-      } catch (err) {
-        console.error("Failed to send to:", sub.endpoint, err.message);
-        failedCount++;
-        
-        // Remove invalid subscriptions (expired or unsubscribed)
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          failedEndpoints.push(sub.endpoint);
+    // Send concurrently in bounded batches so all devices receive the push promptly.
+    const uniqueSubscriptions = [...new Map(subscriptions.map((sub) => [sub.endpoint, sub])).values()];
+    for (let i = 0; i < uniqueSubscriptions.length; i += 100) {
+      const batch = uniqueSubscriptions.slice(i, i + 100);
+      const results = await Promise.allSettled(batch.map(async (sub) => {
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload);
+        return sub;
+      }));
+      results.forEach((result) => {
+        if (result.status === "fulfilled") successCount++;
+        else {
+          failedCount++;
+          const err = result.reason;
+          if (err?.statusCode === 410 || err?.statusCode === 404) failedEndpoints.push(batch[results.indexOf(result)].endpoint);
         }
-      }
+      });
     }
 
     // Clean up invalid subscriptions
