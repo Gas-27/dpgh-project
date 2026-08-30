@@ -769,12 +769,22 @@ const SubSubagentDashboard = () => {
     }
     setSendingNotification(true);
     const expires_at = newNotificationExpiry ? new Date(newNotificationExpiry).toISOString() : null;
-    const { error } = await supabase.from("sub_subagent_storefront_notifications").insert({
+    const { error: legacyError } = await supabase.from("sub_subagent_storefront_notifications").insert({
       sub_subagent_store_id: subagentStore.id,
       message: newNotificationMsg.trim(),
       is_active: true,
       expires_at
     });
+    const { error: sharedError } = legacyError ? { error: legacyError } : await supabase.from("notifications").insert({
+      title: "Message from your sub-subagent",
+      message: newNotificationMsg.trim(),
+      target_role: "sub_subagent",
+      target_surfaces: ["subsubagent-storefront"],
+      display_limit: 1,
+      is_active: true,
+      expires_at,
+    });
+    const error = sharedError || legacyError;
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {

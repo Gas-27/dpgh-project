@@ -956,7 +956,7 @@ const AgentDashboard = () => {
       const url = DOMAINS.getAgentStoreUrl(sd.store_name);
       const ussdText = sd.topup_reference ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${sd.topup_reference}` : "";
       setShareText(
-        `���� Get the BEST data deals from *${sd.store_name}*!\n\n` +
+        `������ Get the BEST data deals from *${sd.store_name}*!\n\n` +
         `�������� MTN • AirtelTigo • Telecel\n` +
         `⚡ Instant delivery • 24/7 Support${ussdText}\n\n` +
         `🛒 Shop now: ${url}\n` +
@@ -1349,11 +1349,20 @@ const AgentDashboard = () => {
       return;
     }
     setSendingSubagentNotification(true);
-    const { error } = await supabase.from("agent_to_subagent_notifications").insert({
+    const { error: legacyError } = await supabase.from("agent_to_subagent_notifications").insert({
       agent_store_id: store.id,
       message: subagentNotificationMsg.trim(),
       is_active: true,
     });
+    const { error: sharedError } = legacyError ? { error: legacyError } : await supabase.from("notifications").insert({
+      title: "Message from your agent",
+      message: subagentNotificationMsg.trim(),
+      target_role: "subagent",
+      target_surfaces: ["subagent-dashboard", "subagent-storefront"],
+      display_limit: 1,
+      is_active: true,
+    });
+    const error = sharedError || legacyError;
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
