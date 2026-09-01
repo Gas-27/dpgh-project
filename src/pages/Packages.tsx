@@ -1141,7 +1141,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
 
 // ──────────────────────���──────────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
 const Packages = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user: authUser, isAgent, hasPendingAgentStore } = useAuth();
@@ -1220,7 +1220,24 @@ const Packages = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const checkingOrderIds = useOrderStatusRefresh(orders, setOrders);
-  const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services" | "bulk" | "sms">("data");
+  type PackageCategory = "data" | "afa" | "vouchers" | "services" | "bulk" | "sms";
+  const categoryPaths: Record<PackageCategory, string> = {
+    data: "/packages", afa: "/afa-bundles", vouchers: "/instant-data", services: "/services", bulk: "/bulk-orders", sms: "/bulk-sms",
+  };
+  const pathCategories: Record<string, PackageCategory> = Object.fromEntries(Object.entries(categoryPaths).map(([category, path]) => [path, category as PackageCategory]));
+  const initialCategory = pathCategories[window.location.pathname] ?? "data";
+  const [activeCategory, setActiveCategory] = useState<PackageCategory>(initialCategory);
+  useEffect(() => {
+    const category = pathCategories[window.location.pathname] ?? "data";
+    if (category !== activeCategory) setActiveCategory(category);
+  }, [searchParams]);
+
+  const changeCategory = (category: PackageCategory) => {
+    setActiveCategory(category);
+    setSearchParams({}, { replace: false });
+    navigate(categoryPaths[category]);
+  };
+
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
@@ -1460,7 +1477,7 @@ const searchOrders = async () => {
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => (
-            <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => setActiveCategory(cat)} className={`font-semibold ${["bulk", "sms"].includes(cat) && activeCategory !== cat ? "border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10" : ""}`}>
+            <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => changeCategory(cat)} className={`font-semibold ${["bulk", "sms"].includes(cat) && activeCategory !== cat ? "border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10" : ""}`}>
               {cat === "bulk" ? <Layers className="h-4 w-4 mr-2" /> : cat === "sms" ? <MessageCircle className="h-4 w-4 mr-2" /> : catIcons[cat]}{catLabels[cat]}
             </Button>
           ))}

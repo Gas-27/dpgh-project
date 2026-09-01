@@ -245,6 +245,11 @@ const App = () => {
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/only-admin/log.in" element={<AdminLogin />} />
                   <Route path="/packages" element={<Packages />} />
+                  <Route path="/afa-bundles" element={<Packages />} />
+                  <Route path="/instant-data" element={<Packages />} />
+                  <Route path="/services" element={<Packages />} />
+                  <Route path="/bulk-orders" element={<Packages />} />
+                  <Route path="/bulk-sms" element={<Packages />} />
                   <Route path="/agent-onboarding" element={<AgentOnboarding />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />
                   {/* Old paths – redirect to subdomain */}
