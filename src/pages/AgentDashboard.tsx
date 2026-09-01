@@ -28,7 +28,7 @@ import {
   LayoutGrid, Minus, Plus as PlusIcon, Coins, Menu, Image, Download, Share2,
   ChevronDown, ChevronUp, BookOpen, Percent, Users, AlertCircle, ShieldAlert,
   Send, Eye, Upload, FileSpreadsheet, Layers, MessageCircle, Clock, Key, Globe,
-  AlertTriangle, UserCheck, RefreshCw,
+  AlertTriangle, UserCheck, RefreshCw, BriefcaseBusiness,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ChatBot from "@/components/ChatBot";
@@ -38,6 +38,7 @@ import WalletTopupDialog from "@/components/WalletTopupDialog";
 import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
+import AgentDigitalServicesPricing from "@/components/AgentDigitalServicesPricing";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
@@ -105,6 +106,7 @@ const menuItems = [
   { id: "bulk", label: "Bulk Orders", icon: Layers },
   { id: "refunds", label: "Refunds", icon: Wallet },
   { id: "store", label: "Store Prices", icon: Store },
+  { id: "services", label: "Services", icon: BriefcaseBusiness },
   { id: "subagents", label: "Subagents", icon: Users },
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
   { id: "sub-subagents", label: "Sub-Subagents", icon: Users },
@@ -956,7 +958,7 @@ const AgentDashboard = () => {
       const url = DOMAINS.getAgentStoreUrl(sd.store_name);
       const ussdText = sd.topup_reference ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${sd.topup_reference}` : "";
       setShareText(
-        `������ Get the BEST data deals from *${sd.store_name}*!\n\n` +
+        `�������� Get the BEST data deals from *${sd.store_name}*!\n\n` +
         `�������� MTN • AirtelTigo • Telecel\n` +
         `⚡ Instant delivery • 24/7 Support${ussdText}\n\n` +
         `🛒 Shop now: ${url}\n` +
@@ -4463,8 +4465,13 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
             />
           </TabsContent>
 
-          {/* ============================= SUBAGENTS ============================= */}
-          <TabsContent value="subagents" className="mt-0 space-y-6">
+  {/* ============================= SERVICES ============================= */}
+  <TabsContent value="services" className="mt-0 space-y-6">
+    {store && <AgentDigitalServicesPricing agentStoreId={store.id} />}
+  </TabsContent>
+
+  {/* ============================= SUBAGENTS ============================= */}
+  <TabsContent value="subagents" className="mt-0 space-y-6">
             {/* Share Subagent Signup Link */}
             {store?.allow_subagent_registration && (
               <Card className="border-primary/30 bg-primary/5">
