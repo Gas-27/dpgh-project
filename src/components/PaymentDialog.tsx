@@ -76,6 +76,8 @@ const PaymentDialog = ({
   const [checking, setChecking] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [showNewNumberWarning, setShowNewNumberWarning] = useState(false);
+  const [mtnPendingRoutes, setMtnPendingRoutes] = useState<string[]>([]);
+  const [mtnRetryEligibleAt, setMtnRetryEligibleAt] = useState<string | null>(null);
 
   // Support both prop patterns
   const isDialogOpen = open ?? isOpen ?? false;
@@ -200,20 +202,22 @@ const PaymentDialog = ({
     const isMTNPackage = selectedNetwork === "mtn" || selectedNetwork === "mtn_express";
 
     if (isMTNPackage) {
-      const { data: blockedOrder } = await supabase
+      const { data: pendingOrders } = await supabase
         .from("orders")
-        .select("network,mtn_retry_eligible_at")
-        .eq("customer_number", phone)
-        .eq("network", selectedNetwork)
+        .select("customer_number,network,mtn_retry_eligible_at")
+        .in("network", ["mtn", "mtn_express"])
         .eq("mtn_beneficiary_status", "pending")
         .gt("mtn_retry_eligible_at", new Date().toISOString())
-        .order("mtn_retry_eligible_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (blockedOrder?.mtn_retry_eligible_at) {
-        const days = Math.max(1, Math.ceil((new Date(blockedOrder.mtn_retry_eligible_at).getTime() - Date.now()) / 86400000));
+        .order("mtn_retry_eligible_at", { ascending: false });
+      const matchingOrders = (pendingOrders || []).filter((order) => normalizePhone(String(order.customer_number || "")) === normalizePhone(phone));
+      const routes = [...new Set(matchingOrders.map((order) => order.network))];
+      setMtnPendingRoutes(routes);
+      const latest = matchingOrders[0];
+      setMtnRetryEligibleAt(latest?.mtn_retry_eligible_at || null);
+      if (routes.includes(selectedNetwork)) {
+        const days = Math.max(1, Math.ceil((new Date(latest.mtn_retry_eligible_at).getTime() - Date.now()) / 86400000));
         setChecking(false);
-        toast({ title: "MTN purchase temporarily unavailable", description: `This number cannot purchase through ${selectedNetwork === "mtn" ? "MTN" : "MTN Express"} for another ${days} day${days === 1 ? "" : "s"}. You may try the other MTN option while MTN approves the beneficiary list.`, variant: "destructive" });
+        toast({ title: "MTN purchase temporarily unavailable", description: `This number is being verified by MTN. Please wait ${days} day${days === 1 ? "" : "s"} before purchasing through ${selectedNetwork === "mtn" ? "MTN" : "MTN Express"}. You may use the other MTN option while approval is pending.`, variant: "destructive" });
         return;
       }
     }
@@ -591,7 +595,7 @@ const PaymentDialog = ({
   <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3">
               <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">If the order fails</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                In some cases the order may fail during verification. If this happens, your payment will be <span className="font-medium text-foreground">fully refunded</span>. You can repurchase after <span className="font-semibold text-foreground">2 days</span>, by which time your number will be fully verified on our system and delivery will be instant.
+                In some cases the order may fail during verification. If this happens, your payment will be <span className="font-medium text-foreground">fully refunded</span>. Your number will be sent to MTN for beneficiary approval, and this same MTN route will be blocked for <span className="font-semibold text-foreground">5 days</span>. You may use the other MTN option while waiting; once approved, delivery will go through normally.
               </p>
             </div>
 
@@ -642,8 +646,13 @@ const PaymentDialog = ({
                   <Label htmlFor="pay-phone">Recipient Phone Number (10 digits)</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      ref={phoneInputRef}
+              {mtnPendingRoutes.length > 0 && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+                  This number is currently being verified by MTN for {mtnPendingRoutes.map((route) => route === "mtn" ? "MTN" : "MTN Express").join(" and ")}. MTN must approve it for the beneficiary list first. The failed route is unavailable for 5 days; use the other MTN option while waiting.
+                </div>
+              )}
+              <Input
+                ref={phoneInputRef}
                       id="pay-phone"
                       type="tel"
                       inputMode="numeric"
