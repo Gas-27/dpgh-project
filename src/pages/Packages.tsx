@@ -70,6 +70,10 @@ interface Order {
   agent_store_id?: string | null;
   subagent_store_id?: string | null;
   sub_subagent_store_id?: string | null;
+  mtn_beneficiary_status?: string | null;
+  mtn_failure_reason?: string | null;
+  mtn_beneficiary_submitted_at?: string | null;
+  mtn_retry_eligible_at?: string | null;
   customer_id?: string | null;
 }
 
@@ -237,9 +241,14 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     step = 4;
     const isFromStore = !!(order.agent_store_id || order.subagent_store_id || (order as any).sub_subagent_store_id);
     msg = "REFUNDED";
-    note = isFromStore
-      ? "Your order has been refunded to the account you bought from — your agent's wallet on the site (not your MoMo wallet). Your agent will refund you shortly."
-      : "Your order has been refunded to your user wallet on the site. Visit your dashboard to see your refund.";
+    const isMtn = ["mtn", "mtn_express"].includes((order.network || "").toLowerCase());
+    const eligibleAt = order.mtn_retry_eligible_at ? new Date(order.mtn_retry_eligible_at) : null;
+    const days = eligibleAt ? Math.max(0, Math.ceil((eligibleAt.getTime() - Date.now()) / 86400000)) : 6;
+    note = isMtn && order.mtn_beneficiary_status === "pending"
+      ? `Your ${formatNetworkName(order.network)} order failed and was refunded because MTN now requires every number to be approved on our beneficiary list before delivery. We have captured your number and sent it to MTN for approval. Approval can take up to 6 days. You can retry using ${order.network === "mtn" ? "MTN Express" : "MTN"} while waiting. Please wait ${days} day${days === 1 ? "" : "s"} before retrying this same MTN option.`
+      : isFromStore
+        ? "Your order has been refunded to the account you bought from — your agent's wallet on the site (not your MoMo wallet). Your agent will refund you shortly."
+        : "Your order has been refunded to your user wallet on the site. Visit your dashboard to see your refund.";
   } else if (orderStatus === "failed") {
     step = 1;
     msg = "This order could not be fulfilled.";

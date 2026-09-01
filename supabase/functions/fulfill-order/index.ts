@@ -231,7 +231,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ─── Clean phone number ──────────────────────────────────────────────────
+    // ─── Clean phone number ─────��────────────────────────────────────────────
     let phone = order.customer_number.replace(/[^0-9]/g, "");
     if (phone.startsWith("233")) phone = "0" + phone.slice(3);
     if (!phone.startsWith("0"))  phone = "0" + phone;
@@ -414,7 +414,20 @@ Deno.serve(async (req) => {
       if (isLowBalance)    console.warn(`[FULFILL] LOW BALANCE on ${provider}`);
       if (isCapacityIssue) console.warn(`[FULFILL] CAPACITY ISSUE on ${provider}`);
 
-      await supabase.from("orders").update({ fulfillment_status: "failed", api_response: rawText }).eq("id", order_id);
+      const isMtnRoute = ["mtn", "mtn_express"].includes(normalizedNetwork);
+      const beneficiaryFailure = isMtnRoute && /beneficiar|whitelist|portal list|not.*list|not.*added/i.test(String(errorMsg));
+      const failureUpdate: Record<string, unknown> = {
+        fulfillment_status: beneficiaryFailure ? "refunded" : "failed",
+        order_status: beneficiaryFailure ? "refunded" : "failed",
+        api_response: rawText,
+      };
+      if (beneficiaryFailure) {
+        failureUpdate.mtn_beneficiary_status = "pending";
+        failureUpdate.mtn_failure_reason = "MTN requires the number to be approved on our beneficiary list before delivery.";
+        failureUpdate.mtn_beneficiary_submitted_at = new Date().toISOString();
+        failureUpdate.mtn_retry_eligible_at = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
+      }
+      await supabase.from("orders").update(failureUpdate).eq("id", order_id);
 
       // Log to api_error_logs for admin visibility
       try {
