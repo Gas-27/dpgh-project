@@ -243,12 +243,12 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     msg = "REFUNDED";
     const isMtn = ["mtn", "mtn_express"].includes((order.network || "").toLowerCase());
     const eligibleAt = order.mtn_retry_eligible_at ? new Date(order.mtn_retry_eligible_at) : null;
-    const days = eligibleAt ? Math.max(0, Math.ceil((eligibleAt.getTime() - Date.now()) / 86400000)) : 6;
+    const days = eligibleAt ? Math.max(0, Math.ceil((eligibleAt.getTime() - Date.now()) / 86400000)) : 5;
   const genericRefundNote = isFromStore
   ? "Your order has been refunded to the account you bought from — your agent's wallet on the site (not your MoMo wallet). Your agent will refund you shortly."
   : "Your order has been refunded to your user wallet on the site. Visit your dashboard to see your refund.";
   const mtnRefundNote = isMtn
-  ? `MTN delivery failed because MTN now requires your number to be approved on our beneficiary list before delivery. We have captured your number and sent it to MTN for approval. Approval can take up to 6 days. You can retry using ${order.network === "mtn" ? "MTN Express" : "MTN"} while waiting, but please wait ${days} day${days === 1 ? "" : "s"} before retrying this same MTN option. These are MTN rules, and we are sorry for the inconvenience.`
+  ? `MTN delivery failed because MTN now requires your number to be approved on our beneficiary list before delivery. We have captured your number and sent it to MTN for approval. Approval can take up to 5 days. You can retry using ${order.network === "mtn" ? "MTN Express" : "MTN"} while waiting, but please wait ${days} day${days === 1 ? "" : "s"} before retrying this same MTN option. ${isFromStore ? "Your agent will retry it for you using the other MTN option, or may choose to refund you directly if that retry also fails. If the retry fails, your agent will refund you shortly." : "These are MTN rules, and we are sorry for the inconvenience."}`
   : null;
   note = mtnRefundNote ? `${genericRefundNote} ${mtnRefundNote}` : genericRefundNote;
   } else if (orderStatus === "failed") {
@@ -1419,7 +1419,7 @@ const searchOrders = async () => {
     let q = searchQuery.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
     q = q.replace(/\s/g, "");
-    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,order_status,created_at,package_id,agent_store_id,subagent_store_id,sub_subagent_store_id,customer_id,provider_reference,provider_order_id");
+    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,order_status,created_at,package_id,agent_store_id,subagent_store_id,sub_subagent_store_id,customer_id,provider_reference,provider_order_id,mtn_beneficiary_status,mtn_failure_reason,mtn_beneficiary_submitted_at,mtn_retry_eligible_at");
     // If query is a UUID (contains hyphens), search by ID; otherwise search by phone number (without spaces)
     if (q.length === 36 && q.includes("-")) {
       query = query.eq("id", q);

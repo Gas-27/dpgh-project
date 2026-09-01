@@ -188,7 +188,7 @@ const PaymentDialog = ({
 
     setChecking(true);
 
-    // Check if this number has any previous orders in our system
+    // Check the normal short purchase lock first.
     const isBlocked = checkRecentPurchase(phone);
     if (isBlocked) {
       setChecking(false);
@@ -198,6 +198,25 @@ const PaymentDialog = ({
     // Beneficiary verification check only applies to MTN and MTN Express packages.
     // All other networks (Telecel, AirtelTigo, etc.) skip this check entirely.
     const isMTNPackage = selectedNetwork === "mtn" || selectedNetwork === "mtn_express";
+
+    if (isMTNPackage) {
+      const { data: blockedOrder } = await supabase
+        .from("orders")
+        .select("network,mtn_retry_eligible_at")
+        .eq("customer_number", phone)
+        .eq("network", selectedNetwork)
+        .eq("mtn_beneficiary_status", "pending")
+        .gt("mtn_retry_eligible_at", new Date().toISOString())
+        .order("mtn_retry_eligible_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (blockedOrder?.mtn_retry_eligible_at) {
+        const days = Math.max(1, Math.ceil((new Date(blockedOrder.mtn_retry_eligible_at).getTime() - Date.now()) / 86400000));
+        setChecking(false);
+        toast({ title: "MTN purchase temporarily unavailable", description: `This number cannot purchase through ${selectedNetwork === "mtn" ? "MTN" : "MTN Express"} for another ${days} day${days === 1 ? "" : "s"}. You may try the other MTN option while MTN approves the beneficiary list.`, variant: "destructive" });
+        return;
+      }
+    }
 
     if (!isMTNPackage) {
       setChecking(false);

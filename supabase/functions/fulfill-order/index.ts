@@ -425,7 +425,7 @@ Deno.serve(async (req) => {
         failureUpdate.mtn_beneficiary_status = "pending";
         failureUpdate.mtn_failure_reason = "MTN requires the number to be approved on our beneficiary list before delivery.";
         failureUpdate.mtn_beneficiary_submitted_at = new Date().toISOString();
-        failureUpdate.mtn_retry_eligible_at = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString();
+        failureUpdate.mtn_retry_eligible_at = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
       }
       await supabase.from("orders").update(failureUpdate).eq("id", order_id);
 
