@@ -210,9 +210,9 @@ const PaymentDialog = ({
     if (isMTNPackage) {
       const { data: pendingOrders, error: pendingOrdersError } = await supabase
         .from("orders")
-        .select("customer_number,network,mtn_retry_eligible_at,created_at,order_status,fulfillment_status,status")
+        .select("customer_number,network,mtn_retry_eligible_at,created_at,refunded,refunded_at,refund_date,order_status,fulfillment_status,status")
         .in("network", ["mtn", "mtn_express", "MTN", "MTN Express"])
-        .or("order_status.eq.refunded,fulfillment_status.eq.refunded,status.eq.refunded")
+        .or("status.ilike.refunded,order_status.ilike.refunded,fulfillment_status.ilike.refunded,refunded.eq.true")
         .order("created_at", { ascending: false });
       if (pendingOrdersError) {
         setChecking(false);
@@ -222,8 +222,11 @@ const PaymentDialog = ({
       const now = Date.now();
       const matchingOrders = (pendingOrders || []).map((order) => ({
         ...order,
-        effectiveRetryAt: order.mtn_retry_eligible_at || new Date(new Date(order.created_at).getTime() + 5 * 86400000).toISOString(),
-      })).filter((order) => normalizePhone(String(order.customer_number || "")) === normalizePhone(phone) && new Date(order.effectiveRetryAt).getTime() > now);
+        effectiveRetryAt: order.mtn_retry_eligible_at || new Date(new Date(order.refunded_at || order.refund_date || order.created_at).getTime() + 5 * 86400000).toISOString(),
+      })).filter((order) => {
+        const isRefunded = String(order.refunded).toLowerCase() === "true" || [order.status, order.order_status, order.fulfillment_status].some((value) => String(value || "").toLowerCase() === "refunded");
+        return isRefunded && normalizePhone(String(order.customer_number || "")) === normalizePhone(phone) && new Date(order.effectiveRetryAt).getTime() > now;
+      });
       const routes = [...new Set(matchingOrders.map((order) => normalizeNetwork(order.network)))];
       setMtnPendingRoutes(routes);
       const latest = matchingOrders[0];
