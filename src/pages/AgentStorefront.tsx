@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
+import DigitalServicesCatalog, { type Service } from "@/components/DigitalServicesCatalog";
+import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
@@ -556,6 +558,7 @@ const AgentStorefront = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   // �����─ Order tracking ──
   const [searchQuery, setSearchQuery] = useState("");
@@ -1175,7 +1178,9 @@ const searchOrders = useCallback(async () => {
         </div>
       </div>
 
-      {activeCategory === "sms" ? (
+      {activeCategory === "services" ? (
+        <div className="container pb-20"><DigitalServicesCatalog agentStoreId={store?.id} onBuy={setSelectedService} /></div>
+      ) : activeCategory === "sms" ? (
         <div className="container pb-20"><Card className="mx-auto max-w-4xl border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card></div>
       ) : activeCategory === "data" ? (
         <>
@@ -1759,8 +1764,9 @@ const searchOrders = useCallback(async () => {
       )}
 
       {/* Payment dialog */}
-      {paymentPkg && (
-        <PaymentDialog
+  {selectedService && <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => !open && setSelectedService(null)} />}
+  {paymentPkg && (
+  <PaymentDialog
           open={!!paymentPkg}
           onOpenChange={(v) => !v && setPaymentPkg(null)}
           package={paymentPkg}

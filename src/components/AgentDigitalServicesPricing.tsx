@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Save, BriefcaseBusiness } from "lucide-react";
 
-type Service = { id: string; name: string; category: string; price: number; is_free: boolean; agent_min_price: number; agent_max_price: number };
+type Service = { id: string; name: string; category: string; price: number; is_free: boolean; active: boolean; agent_min_price: number; agent_max_price: number };
 type Price = { service_id: string; base_price: number; sell_price: number | string; max_price: number };
 
 export default function AgentDigitalServicesPricing({ agentStoreId }: { agentStoreId: string }) {
@@ -23,7 +23,7 @@ export default function AgentDigitalServicesPricing({ agentStoreId }: { agentSto
         supabase.from("agent_service_pricing").select("service_id,base_price,sell_price,max_price").eq("agent_store_id", agentStoreId),
       ]);
       if (serviceError) { toast({ title: "Services unavailable", description: serviceError.message, variant: "destructive" }); return; }
-      const rows = (serviceRows ?? []) as Service[];
+      const rows = [...((serviceRows ?? []) as Service[])].sort((a, b) => Number(b.active) - Number(a.active) || a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
       setServices(rows);
       const next: Record<string, Price> = {};
       rows.forEach((service) => {
