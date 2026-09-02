@@ -204,19 +204,21 @@ const PaymentDialog = ({
     if (isMTNPackage) {
       const { data: pendingOrders } = await supabase
         .from("orders")
-        .select("customer_number,network,mtn_retry_eligible_at,order_status,fulfillment_status,status")
-        .in("network", ["mtn", "mtn_express"])
-        .eq("mtn_beneficiary_status", "pending")
+        .select("customer_number,network,mtn_retry_eligible_at,created_at,order_status,fulfillment_status,status")
+        .in("network", ["mtn", "mtn_express", "MTN", "MTN Express"])
         .or("order_status.eq.refunded,fulfillment_status.eq.refunded,status.eq.refunded")
-        .gt("mtn_retry_eligible_at", new Date().toISOString())
         .order("mtn_retry_eligible_at", { ascending: false });
-      const matchingOrders = (pendingOrders || []).filter((order) => normalizePhone(String(order.customer_number || "")) === normalizePhone(phone));
-      const routes = [...new Set(matchingOrders.map((order) => order.network))];
+      const now = Date.now();
+      const matchingOrders = (pendingOrders || []).map((order) => ({
+        ...order,
+        effectiveRetryAt: order.mtn_retry_eligible_at || new Date(new Date(order.created_at).getTime() + 5 * 86400000).toISOString(),
+      })).filter((order) => normalizePhone(String(order.customer_number || "")) === normalizePhone(phone) && new Date(order.effectiveRetryAt).getTime() > now);
+      const routes = [...new Set(matchingOrders.map((order) => normalizeNetwork(order.network)))];
       setMtnPendingRoutes(routes);
       const latest = matchingOrders[0];
-      setMtnRetryEligibleAt(latest?.mtn_retry_eligible_at || null);
-      if (routes.includes(selectedNetwork)) {
-        const days = Math.max(1, Math.ceil((new Date(latest.mtn_retry_eligible_at).getTime() - Date.now()) / 86400000));
+      setMtnRetryEligibleAt(latest?.effectiveRetryAt || null);
+      if (routes.includes(normalizeNetwork(selectedNetwork))) {
+        const days = Math.max(1, Math.ceil((new Date(latest.effectiveRetryAt).getTime() - Date.now()) / 86400000));
         setChecking(false);
         toast({ title: "MTN purchase temporarily unavailable", description: `This number is being verified by MTN. Please wait ${days} day${days === 1 ? "" : "s"} before purchasing through ${selectedNetwork === "mtn" ? "MTN" : "MTN Express"}. You may use the other MTN option while approval is pending.`, variant: "destructive" });
         return;

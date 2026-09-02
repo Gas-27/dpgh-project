@@ -8,12 +8,6 @@ const corsHeaders = {
 
 const PAYSTACK_FEE_PERCENT = 1.98;
 
-const normalizePhone = (value: unknown) => String(value ?? "").replace(/\\D/g, "").replace(/^233/, "0");
-const normalizeNetwork = (value: unknown) => {
-  const network = String(value ?? "").toLowerCase().replace(/[\\s_-]+/g, "");
-  return network === "mtnexpress" ? "mtn_express" : network;
-};
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -907,31 +901,6 @@ Deno.serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    // Enforce the MTN beneficiary wait at the server boundary so every dashboard
-    // and storefront follows the same rule, regardless of client-side checks.
-    const requestedNetwork = normalizeNetwork(packageData.network);
-    if (requestedNetwork === "mtn" || requestedNetwork === "mtn_express") {
-      const { data: refundedOrders } = await supabaseClient
-        .from("orders")
-        .select("customer_number,network,mtn_retry_eligible_at,order_status,fulfillment_status,status")
-        .in("network", ["mtn", "mtn_express", "MTN", "MTN Express"])
-        .eq("mtn_beneficiary_status", "pending")
-        .or("order_status.eq.refunded,fulfillment_status.eq.refunded,status.eq.refunded")
-        .gt("mtn_retry_eligible_at", new Date().toISOString());
-      const matchingRefund = (refundedOrders || []).find((order) =>
-        normalizePhone(order.customer_number) === normalizePhone(phone) &&
-        normalizeNetwork(order.network) === requestedNetwork
-      );
-      if (matchingRefund?.mtn_retry_eligible_at) {
-        const days = Math.max(1, Math.ceil((new Date(matchingRefund.mtn_retry_eligible_at).getTime() - Date.now()) / 86400000));
-        return new Response(JSON.stringify({
-          error: `This number cannot purchase through ${requestedNetwork === "mtn" ? "MTN" : "MTN Express"} for another ${days} day${days === 1 ? "" : "s"}. MTN is verifying the number for beneficiary-list approval. You may try the other MTN option while waiting.`,
-          code: "MTN_BENEFICIARY_WAIT",
-          retry_eligible_at: matchingRefund.mtn_retry_eligible_at,
-        }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
     }
 
     // The dashboards apply admin overrides from agent_custom_base_prices before
