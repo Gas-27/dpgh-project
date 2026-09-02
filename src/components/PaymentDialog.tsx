@@ -707,9 +707,10 @@ const PaymentDialog = ({
                       ⚠️ Network providers rule: You can't purchase for the same number again until {LOCK_MINUTES} minutes have passed. This helps prevent duplicate orders and ensures your purchase is delivered correctly.
                     </p>
                     <p className="text-xs mt-2 font-medium text-red-600">
-                      ⚠️ IMPORTANT: If the {LOCK_MINUTES}-minute timer has ended but you have NOT received your data yet, 
-                      DO NOT buy another package until you receive the previous one. Buying again may override your pending order. 
-                      Proceed at your own risk!
+                      ⚠️ IMPORTANT: There is no refund for an order sent to the wrong number. Always check that the number above is correct before payment.
+                    </p>
+                    <p className="text-xs mt-2 font-medium text-red-600">
+                      ⚠️ Before purchasing, make sure there is no outstanding airtime, MoMo, or bundle debt on this contact. Because of an outstanding debt, the order may be sent successfully but you may not receive the data. Please clear any debt before buying data.
                     </p>
                   </div>
                 </div>
