@@ -204,15 +204,21 @@ const PaymentDialog = ({
 
     // Beneficiary verification check only applies to MTN and MTN Express packages.
     // All other networks (Telecel, AirtelTigo, etc.) skip this check entirely.
-    const isMTNPackage = selectedNetwork === "mtn" || selectedNetwork === "mtn_express";
+    const normalizedSelectedNetwork = normalizeNetwork(selectedNetwork);
+    const isMTNPackage = normalizedSelectedNetwork === "mtn" || normalizedSelectedNetwork === "mtn_express";
 
     if (isMTNPackage) {
-      const { data: pendingOrders } = await supabase
+      const { data: pendingOrders, error: pendingOrdersError } = await supabase
         .from("orders")
         .select("customer_number,network,mtn_retry_eligible_at,created_at,order_status,fulfillment_status,status")
         .in("network", ["mtn", "mtn_express", "MTN", "MTN Express"])
         .or("order_status.eq.refunded,fulfillment_status.eq.refunded,status.eq.refunded")
-        .order("mtn_retry_eligible_at", { ascending: false });
+        .order("created_at", { ascending: false });
+      if (pendingOrdersError) {
+        setChecking(false);
+        toast({ title: "Unable to verify this number", description: "Please try again before continuing with payment.", variant: "destructive" });
+        return;
+      }
       const now = Date.now();
       const matchingOrders = (pendingOrders || []).map((order) => ({
         ...order,
