@@ -51,6 +51,11 @@ function normalizePhone(phone: string): string {
   return phone.replace(/[\s\-\(\)]/g, "");
 }
 
+function normalizeNetwork(network: unknown): string {
+  const value = String(network ?? "").toLowerCase().replace(/[\s_-]+/g, "");
+  return value === "mtnexpress" ? "mtn_express" : value;
+}
+
 const PaymentDialog = ({
   open,
   isOpen,
