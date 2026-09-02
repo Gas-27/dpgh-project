@@ -204,9 +204,10 @@ const PaymentDialog = ({
     if (isMTNPackage) {
       const { data: pendingOrders } = await supabase
         .from("orders")
-        .select("customer_number,network,mtn_retry_eligible_at")
+        .select("customer_number,network,mtn_retry_eligible_at,order_status,fulfillment_status,status")
         .in("network", ["mtn", "mtn_express"])
         .eq("mtn_beneficiary_status", "pending")
+        .or("order_status.eq.refunded,fulfillment_status.eq.refunded,status.eq.refunded")
         .gt("mtn_retry_eligible_at", new Date().toISOString())
         .order("mtn_retry_eligible_at", { ascending: false });
       const matchingOrders = (pendingOrders || []).filter((order) => normalizePhone(String(order.customer_number || "")) === normalizePhone(phone));
