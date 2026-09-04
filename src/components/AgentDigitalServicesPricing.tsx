@@ -19,7 +19,7 @@ export default function AgentDigitalServicesPricing({ agentStoreId }: { agentSto
   useEffect(() => {
     const load = async () => {
       const [{ data: serviceRows, error: serviceError }, { data: priceRows }] = await Promise.all([
-        supabase.from("digital_services").select("id,name,category,price,is_free,agent_min_price,agent_max_price").order("category").order("name"),
+        supabase.from("digital_services").select("id,name,category,price,is_free,active,agent_min_price,agent_max_price").order("active", { ascending: false }).order("category").order("name"),
         supabase.from("agent_service_pricing").select("service_id,base_price,sell_price,max_price").eq("agent_store_id", agentStoreId),
       ]);
       if (serviceError) { toast({ title: "Services unavailable", description: serviceError.message, variant: "destructive" }); return; }
