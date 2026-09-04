@@ -26,6 +26,7 @@ import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatu
   import DeliveryProgressCard from "@/components/DeliveryProgressCard";
   import NotificationPopup from "@/components/NotificationPopup";
   import SmsComposer from "@/components/SmsComposer";
+import RoleServicesPanel from "@/components/RoleServicesPanel";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
@@ -1029,8 +1030,9 @@ const searchOrders = useCallback(async () => {
         </div>
       )}
 
-      <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-        {/* Order Search */}
+<main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
+  <RoleServicesPanel agentStoreId={store?.id} />
+  {/* Order Search */}
         <Card style={{ background: cardBg }} className="border-border">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row gap-2">

@@ -27,6 +27,7 @@ import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
+import RoleServicesPanel from "@/components/RoleServicesPanel";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NotificationPopup from "@/components/NotificationPopup";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -914,6 +915,8 @@ const UserDashboard = () => {
         return renderApiOrders();
       case "afa-registration":
         return renderAfaRegistration();
+      case "services":
+        return <RoleServicesPanel />;
       case "sms":
         return <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="customer" ownerId={effectiveUserId} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="customer" ownerId={effectiveUserId} /></TabsContent></Tabs>;
       case "topup":

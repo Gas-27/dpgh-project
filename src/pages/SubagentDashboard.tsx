@@ -20,6 +20,7 @@ import {
   Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import RoleServicesPanel from "@/components/RoleServicesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
@@ -2350,6 +2351,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
+          <TabsContent value="services" className="mt-0"><RoleServicesPanel agentStoreId={subagentStore?.id} /></TabsContent>
 
           <TabsContent value="sms" className="mt-0 space-y-6">
             <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="subagent" ownerId={subagentStore?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="subagent" ownerId={subagentStore?.id} /></TabsContent></Tabs>
