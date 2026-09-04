@@ -3,8 +3,23 @@ project_id = "uloaiqmknsrknqikbmtb"
 [functions.initialize-payment]
 verify_jwt = false
 
+[functions.initialize-wallet-topup]
+verify_jwt = false
+
 [functions.verify-payment]
 verify_jwt = false
 
 [functions.fulfill-order]
+verify_jwt = false
+
+[functions.dakazina-webhook]
+verify_jwt = false
+
+[functions.sync-order-status]
+verify_jwt = false
+
+[functions.dakazina-sync]
+verify_jwt = false
+
+[functions.txtconnect-sms]
 verify_jwt = false

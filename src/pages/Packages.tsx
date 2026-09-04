@@ -1,32 +1,59 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState, useRef, useCallback, lazy, Suspense } from "react";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
+import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+import DigitalServicesCatalog, { Service } from "@/components/DigitalServicesCatalog";
+import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
+// Lazy-loaded to break circular dependency (ReferenceError: Cannot access 'J' before initialization)
+const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
+const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
+import ChatBot from "@/components/ChatBot";
+import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
+import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
+import AFARegistrationTracker from "@/components/AFARegistrationTracker";
+import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
+import AgentSignupPrompt from "@/components/AgentSignupPrompt";
+import DraggableFAB from "@/components/DraggableFAB";
+import NetworkIndicator from "@/components/NetworkIndicator";
+import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
+import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import SmsComposer from "@/components/SmsComposer";
+import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Wifi, Search, Package, CheckCircle, Clock, XCircle, X,
-  Loader2, Check, Mail, MessageCircle, Rocket, Gift, Trophy,
+  Loader2, Check, Mail, MessageCircle, Rocket, Gift, Trophy, UserPlus, Layers, FileSpreadsheet, RotateCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
+import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 
 // ──────────────────────────────────────────────────────────── Types ─────
-type Network = "mtn" | "airteltigo" | "telecel";
+type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel";
 
 interface DataPackage {
   id: string;
   network: string;
   size_gb: number;
+  size_gb_text?: string;
+  mins?: number;
   price: number;
+  active?: boolean;
+  is_online?: boolean;
+  offline_reason?: string;
 }
 
 interface Order {
@@ -37,7 +64,17 @@ interface Order {
   amount: number;
   status: string;
   fulfillment_status: string;
+  order_status: string;
   created_at: string;
+  provider_reference?: string | null;
+  agent_store_id?: string | null;
+  subagent_store_id?: string | null;
+  sub_subagent_store_id?: string | null;
+  mtn_beneficiary_status?: string | null;
+  mtn_failure_reason?: string | null;
+  mtn_beneficiary_submitted_at?: string | null;
+  mtn_retry_eligible_at?: string | null;
+  customer_id?: string | null;
 }
 
 interface SpinSegment {
@@ -50,6 +87,7 @@ interface SpinSegment {
 // ───────────────────────────────────────────────────────── Constants ──
 const networkConfig: Record<Network, { label: string; color: string }> = {
   mtn: { label: "MTN", color: "text-yellow-400" },
+  mtn_express: { label: "MTN Express", color: "text-amber-500" },
   airteltigo: { label: "AirtelTigo", color: "text-blue-400" },
   telecel: { label: "Telecel", color: "text-red-400" },
 };
@@ -140,52 +178,109 @@ const sounds = {
   noWin: () => { playTone(220, "sawtooth", 0.28, 0.22); playTone(180, "sawtooth", 0.22, 0.18, 0.18); },
 };
 
-// ────────────────────────────────────────────── Order Tracking Card (UPDATED: delivered at 200 minutes) ──
-const OrderTrackingCard = ({ order, toast }: { order: Order; toast: any }) => {
-  const [now, setNow] = useState(new Date());
-  useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
+// ────────────────────────────────────────────── Order Tracking Card (UPDATED: delivered at 300 minutes) ──
+const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toast: any; onReportClick: (order: Order) => void }) => {
+  const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
+  const [complaintId, setComplaintId] = useState<string | null>(null);
+  const [pendingNotes, setPendingNotes] = useState(0);
+  const [totalNotes, setTotalNotes] = useState(0);
 
-  const elapsed = (now.getTime() - new Date(order.created_at).getTime()) / 60000;
+  // Fetch complaint status + ID for this order
+  useEffect(() => {
+    const fetchComplaintStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("complaints")
+          .select("id, status")
+          .eq("order_id", order.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!error && data) {
+          setComplaintStatus(data.status);
+          setComplaintId(data.id);
+        }
+      } catch (e) {
+        // No complaint found, that's okay
+      }
+    };
+
+    fetchComplaintStatus();
+    const interval = setInterval(fetchComplaintStatus, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
+  }, [order.id]);
+
+  // ── Status-based step logic (no time dependency) ──
+  // Check both order_status and status fields — refunded may be set on either
+  const orderStatus = normalizeOrderStatus(order);
   let step = 1, msg = "", note: string | null = null;
 
-  // 🔁 CHANGED: delivery threshold from 90 minutes to 200 minutes
-  if (elapsed >= 200) {
-    step = 4; msg = "Your data bundle has been delivered successfully.";
+  if (orderStatus === "delivered") {
+    step = 4;
+    msg = "Your data bundle has been delivered successfully.";
     note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
       : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
         : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
-  } else if (elapsed >= 60) {
+  } else if ((orderStatus === "waiting" || orderStatus === "in-queue")) {
+    const net = (order.network || "").toLowerCase();
+    const isNonMtn = net === "telecel" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
+    step = 2;
+    if (isNonMtn) {
+      msg = "Your order is in the queue.";
+      note = `Your ${formatNetworkName(order.network)} order has been received and is currently queued for processing. It will be picked up and sent to the network shortly. No action is needed on your part — please check back in a few minutes.`;
+    } else {
+      msg = "Your number is being added to our beneficiary list.";
+      note = "MTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.";
+    }
+  } else if (orderStatus === "processing") {
     step = 3;
-    msg = order.network === "mtn" ? "Expecting your data soon. Check MTN / MTNUP2U messages."
-      : order.network === "airteltigo" ? "Expecting your data soon. Check AirtelTigo iShare / BigTime."
-        : order.network === "telecel" ? "Expecting your data soon. Check Telecel messages." : "Expecting your data soon.";
-    note = "Order is now with the network. Any further delay is from them.";
-  } else if (elapsed >= 15) {
-    step = 3; msg = "Your order can be delivered any moment. Report only if it shows 'Delivered' but you didn't receive.";
-  } else if (elapsed >= 12) {
-    step = 3; msg = `Waiting for validation from ${formatNetworkName(order.network)}…`;
-  } else if (elapsed >= 9) {
-    step = 2; msg = `Order sent to ${formatNetworkName(order.network)} for validation.`;
-    note = "Delay from here is from the network.";
+    msg = `Order sent to ${formatNetworkName(order.network)} for delivery.`;
+    note = "Your order is being processed by the network. The status will update automatically once delivered.";
+  } else if (orderStatus === "refunded") {
+    step = 4;
+    const isFromStore = !!(order.agent_store_id || order.subagent_store_id || (order as any).sub_subagent_store_id);
+    msg = "REFUNDED";
+    const isMtn = ["mtn", "mtn_express"].includes((order.network || "").toLowerCase());
+    const eligibleAt = order.mtn_retry_eligible_at ? new Date(order.mtn_retry_eligible_at) : null;
+    const days = eligibleAt ? Math.max(0, Math.ceil((eligibleAt.getTime() - Date.now()) / 86400000)) : 5;
+  const genericRefundNote = isFromStore
+  ? "Your order has been refunded to the account you bought from — your agent's wallet on the site (not your MoMo wallet). Your agent will refund you shortly."
+  : "Your order has been refunded to your user wallet on the site. Visit your dashboard to see your refund.";
+  const mtnRefundNote = isMtn
+  ? `MTN delivery failed because MTN now requires your number to be approved on our beneficiary list before delivery. We have captured your number and sent it to MTN for approval. Approval can take up to 5 days. You can retry using ${order.network === "mtn" ? "MTN Express" : "MTN"} while waiting, but please wait ${days} day${days === 1 ? "" : "s"} before retrying this same MTN option. ${isFromStore ? "Your agent will retry it for you using the other MTN option, or may choose to refund you directly if that retry also fails. If the retry fails, your agent will refund you shortly." : "These are MTN rules, and we are sorry for the inconvenience."}`
+  : null;
+  note = mtnRefundNote ? `${genericRefundNote} ${mtnRefundNote}` : genericRefundNote;
+  } else if (orderStatus === "failed") {
+    step = 1;
+    msg = "This order could not be fulfilled.";
+    note = "Please contact support for assistance.";
+  } else if (orderStatus === "pending") {
+    step = 1;
+    msg = "Order is placed and sent to the portal and now waiting for the portal to pick it up for processing.";
+    note = "Your order has been received and is in the queue. It will be picked up by the portal for processing shortly.";
   } else {
-    msg = "Order being processed…";
+    // any other status defaults to processing step
+    step = 3;
+    msg = `Order sent to ${formatNetworkName(order.network)} for delivery.`;
+    note = "Waiting for the network to deliver your data.";
   }
 
   const getDetailedReportMessage = (): string => {
     const orderDate = new Date(order.created_at).toLocaleString();
     const networkName = formatNetworkName(order.network);
-    const amountFormatted = `GH₵ ${Number(order.amount).toFixed(2)}`;
-    const orderStatus = `${order.status} / ${order.fulfillment_status}`;
+    const amountFormatted = `GHC ${Number(order.amount).toFixed(2)}`;
+    const orderStatusStr = `${order.status} / ${order.fulfillment_status}`;
 
     return `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.
 
 Order Details:
 - Order Date: ${orderDate}
 - Network: ${networkName}
-- Data: ${order.size_gb}GB
+- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}
 - Amount: ${amountFormatted}
 - Customer Number: ${order.customer_number}
-- Order Status: ${orderStatus}
+- Order Status: ${orderStatusStr}
 - Order ID: ${order.id}
 
 Please investigate and assist. Thank you.`;
@@ -195,34 +290,117 @@ Please investigate and assist. Thank you.`;
   const waLink = `https://wa.me/233200511211?text=${encodeURIComponent(reportMessage)}`;
   const mailtoLink = `mailto:dataplugstore@gmail.com?subject=${encodeURIComponent("Order Support - Delivered but not received")}&body=${encodeURIComponent(reportMessage)}`;
 
-  const labels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
+  // All networks now use 4 steps: Order Placed → Number Verifying → Processing → Delivered/Refunded
+  const isRefunded = orderStatus === "refunded";
+  const lastLabel = isRefunded ? "Refunded" : "Delivered";
+  const labels = ["Order Placed", "Number Verifying", "Processing", lastLabel];
 
   if (step === 4) return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Delivery Status</span>
-        <Badge className="bg-green-600/20 text-green-400 border-green-600/30"><CheckCircle className="h-3 w-3 mr-1" />Delivered</Badge>
+        {isRefunded ? (
+          <Badge className="bg-red-600/20 text-red-400 border-red-600/30 font-semibold tracking-wide">
+            <CheckCircle className="h-3 w-3 mr-1" />Refunded
+          </Badge>
+        ) : (
+          <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
+            <CheckCircle className="h-3 w-3 mr-1" />Delivered
+          </Badge>
+        )}
       </div>
       <div className="relative">
         <div className="flex justify-between">
           {labels.map((l, i) => (
             <div key={i} className="flex flex-col items-center flex-1">
-              <div className="w-8 h-8 rounded-full bg-green-600/20 text-green-400 flex items-center justify-center"><Check className="h-4 w-4" /></div>
-              <span className="text-xs text-center mt-1 text-muted-foreground">{l}</span>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRefunded ? "bg-red-600/20 text-red-400" : "bg-green-600/20 text-green-400"}`}>
+                <Check className="h-4 w-4" />
+              </div>
+              <span className={`text-xs text-center mt-1 ${i === 3 && isRefunded ? "text-red-400 font-semibold" : "text-muted-foreground"}`}>{l}</span>
             </div>
           ))}
         </div>
-        <div className="absolute top-4 left-0 w-full h-0.5 bg-green-600/30 -z-10" />
+        <div className={`absolute top-4 left-0 w-full h-0.5 -z-10 ${isRefunded ? "bg-red-600/30" : "bg-green-600/30"}`} />
       </div>
-      <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
-        <p className="text-sm font-medium">{msg}</p>
-        {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-600/20">{note}</p>}
-      </div>
-      {/* Report button now appears after 200 minutes (changed from 90) */}
-      {elapsed >= 200 && elapsed < 3030 && (
-        <Button variant="outline" size="sm" className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10" asChild>
-          <a href={waLink} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4 mr-2" />Only tap on this Report: If it Shows <br></br>Delivered but you have not received it</a>
+      {isRefunded ? (
+        <div className="p-3 rounded-lg bg-red-600/10 border border-red-600/30">
+          <p className="text-sm font-semibold text-red-400 uppercase tracking-wide">{msg}</p>
+          {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-red-600/20">{note}</p>}
+        </div>
+      ) : (
+        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+          <p className="text-sm font-medium">{msg}</p>
+          {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-600/20">{note}</p>}
+        </div>
+      )}
+      {/* Report button only shows when order status is "delivered" (not refunded) */}
+      {orderStatus === "delivered" && !complaintStatus && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
+          onClick={() => onReportClick(order)}
+        >
+          <MessageCircle className="h-4 w-4 mr-2" />
+          Only tap on this Report: If it Shows <br />Delivered but you have not received it
         </Button>
+      )}
+      
+      {/* Static status box — always shown when a complaint exists */}
+      {complaintStatus && complaintStatus !== "resolved" && (
+        <div className="space-y-3">
+          <div className="p-3 rounded-lg bg-blue-600/10 border border-blue-600/30 flex items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium text-blue-400">
+                Report has been sent — we are working on it
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}
+              </p>
+            </div>
+            {pendingNotes > 0 && (
+              <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5">
+                {pendingNotes} question{pendingNotes > 1 ? "s" : ""} from support
+              </span>
+            )}
+          </div>
+          {/* Thread: always mounted (to detect notes), only visible when admin has notes */}
+          {complaintId && (
+            <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
+              <ComplaintNotesThread
+                complaintId={complaintId}
+                isAdmin={false}
+                onPendingCountChange={setPendingNotes}
+                onTotalNotesChange={setTotalNotes}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {complaintStatus === "resolved" && (
+        <div className="space-y-3">
+          <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30 flex items-start justify-between gap-2">
+            <p className="text-sm font-medium text-green-400">
+              Your complaint has been resolved
+            </p>
+            {pendingNotes > 0 && (
+              <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5">
+                {pendingNotes} question{pendingNotes > 1 ? "s" : ""} from support
+              </span>
+            )}
+          </div>
+          {complaintId && (
+            <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
+              <ComplaintNotesThread
+                complaintId={complaintId}
+                isAdmin={false}
+                onPendingCountChange={setPendingNotes}
+                onTotalNotesChange={setTotalNotes}
+              />
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -233,11 +411,13 @@ Please investigate and assist. Thank you.`;
         <div className="flex justify-between">
           {labels.map((l, i) => {
             const n = i + 1;
-            const icon = n < step ? <Check className="h-4 w-4 text-green-400" /> : n === step ? <Loader2 className="h-4 w-4 text-primary animate-spin" /> : <Clock className="h-4 w-4 text-muted-foreground" />;
+            // For mashup/mtn_mashup at delivered (step 3), show check mark instead of loader
+            const isMashupDelivered = (order.network === "mashup" || order.network === "mtn_mashup") && step === 3 && n === step;
+            const icon = n < step ? <Check className="h-4 w-4 text-green-400" /> : n === step && !isMashupDelivered ? <Loader2 className="h-4 w-4 text-primary animate-spin" /> : n === step && isMashupDelivered ? <Check className="h-4 w-4 text-green-400" /> : <Clock className="h-4 w-4 text-muted-foreground" />;
             return (
               <div key={i} className="flex flex-col items-center flex-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${n < step ? "bg-green-600/20" : n === step ? "bg-primary/20 border border-primary/50" : "bg-muted"}`}>{icon}</div>
-                <span className={`text-xs text-center mt-1 ${n === step ? "text-primary font-medium" : "text-muted-foreground"}`}>{l}</span>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${n < step ? "bg-green-600/20" : n === step ? isMashupDelivered ? "bg-green-600/20" : "bg-primary/20 border border-primary/50" : "bg-muted"}`}>{icon}</div>
+                <span className={`text-xs text-center mt-1 ${n === step ? isMashupDelivered ? "text-green-400 font-medium" : "text-primary font-medium" : "text-muted-foreground"}`}>{l}</span>
               </div>
             );
           })}
@@ -249,18 +429,13 @@ Please investigate and assist. Thank you.`;
       <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
         <p className="text-sm font-medium">{msg}</p>
         {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-primary/20">{note}</p>}
-        {step === 1 && elapsed < 8 && <p className="text-xs text-muted-foreground mt-1">Estimated time remaining: {Math.max(0, Math.ceil(8 - elapsed))} min(s)</p>}
+
       </div>
-      {elapsed >= 132 && (
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <a href={mailtoLink}><Mail className="h-4 w-4 mr-2" />Contact Support</a>
-        </Button>
-      )}
     </div>
   );
 };
 
-// ─────────────────────────────────────────────── Spin Wheel Popup (unchanged) ──
+// ─����─────────────────────────────────�����──────────��� Spin Wheel Popup (unchanged) ──
 interface SpinWheelPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -270,6 +445,13 @@ interface SpinWheelPopupProps {
     payment_required: boolean;
     payment_amount: number;
     segments: SpinSegment[];
+    chance_2gb?: number;
+    chance_1gb?: number;
+    chance_extra_spin?: number;
+    auto_disable_enabled?: boolean;
+    auto_disable_order_limit?: number;
+    current_spin_orders?: number;
+    display_spin_orders?: number;
   } | null;
 }
 
@@ -483,7 +665,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     } else if (seg.type === "gb" && Number(seg.value) > 0) {
       sounds.win();
       setSuccessGb(Number(seg.value));
-      setResultMsg(`🎉 You won ${seg.value}GB!`);
+      setResultMsg(`���� You won ${seg.value}GB!`);
 
       setSpinCount(0);
       if (!paymentRequired) {
@@ -544,6 +726,23 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     if (phaseRef.current !== "idle" || segs.length === 0) return;
     if (spinCount <= 0) { toast({ title: "No spins left", variant: "destructive" }); return; }
     if (!paymentRequired && cooldownMs > 0) return;
+    
+    // Validate phone number for spin wheel - must be MTN
+    if (!isValidPhoneLength(phone)) {
+      toast({ title: "Invalid phone number", description: "Please enter exactly 10 digits", variant: "destructive" });
+      return;
+    }
+    
+    const detectedNetwork = detectNetwork(phone);
+    if (detectedNetwork === "unknown") {
+      toast({ title: "Invalid phone prefix", description: "Please check your phone number. The prefix is not recognized.", variant: "destructive" });
+      return;
+    }
+    
+    if (detectedNetwork !== "mtn") {
+      toast({ title: "MTN Only", description: "The spin wheel is only available for MTN phone numbers. Your number appears to be " + detectedNetwork.toUpperCase() + ".", variant: "destructive" });
+      return;
+    }
 
     setSuccessGb(0); setResultMsg(""); setShowWinBanner(false); setWonGbForBanner(0);
     setWinningIdx(null);
@@ -553,17 +752,80 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     phaseRef.current = "freewheeling";
     setPhase("freewheeling");
     runLoop();
-  }, [segs, spinCount, paymentRequired, cooldownMs, toast, runLoop]);
+  }, [segs, spinCount, paymentRequired, cooldownMs, toast, runLoop, phone]);
 
-  // ── Stop button: pick a random winning segment, compute target angle to place it under pointer ──
+  // ── Stop button: use PROBABILITY-BASED winning, then find matching segment ──
   const handleStop = useCallback(() => {
     if (phaseRef.current !== "freewheeling") return;
-
-    const total = segs.reduce((s, sg) => s + (sg.weight || 1), 0);
-    let r = Math.random() * total;
+    
+    // Get probabilities from config (defaults: 4% for 2GB, 9% for 1GB, 12% for extra spin)
+    const chance2gb = config?.chance_2gb ?? 4;
+    const chance1gb = config?.chance_1gb ?? 9;
+    const chanceExtraSpin = config?.chance_extra_spin ?? 12;
+    
+    // Roll the dice (0-100)
+    const roll = Math.random() * 100;
+    
+    // Determine what the user wins based on probabilities
+    let targetType: "2gb" | "1gb" | "extra_spin" | "message" = "message";
+    if (roll < chance2gb) {
+      targetType = "2gb";
+    } else if (roll < chance2gb + chance1gb) {
+      targetType = "1gb";
+    } else if (roll < chance2gb + chance1gb + chanceExtraSpin) {
+      targetType = "extra_spin";
+    }
+    
+    // Find a matching segment on the wheel
     let chosenIdx = 0;
-    for (let i = 0; i < segs.length; i++) { r -= segs[i].weight || 1; if (r < 0) { chosenIdx = i; break; } }
-
+    
+    if (targetType === "2gb") {
+      // Find a 2GB segment
+      const gb2Segments = segs.map((s, i) => ({ s, i })).filter(({ s }) => s.type === "gb" && Number(s.value) === 2);
+      if (gb2Segments.length > 0) {
+        chosenIdx = gb2Segments[Math.floor(Math.random() * gb2Segments.length)].i;
+      } else {
+        // Fallback to any GB segment or message
+        const anyGb = segs.findIndex(s => s.type === "gb");
+        chosenIdx = anyGb >= 0 ? anyGb : 0;
+      }
+    } else if (targetType === "1gb") {
+      // Find a 1GB segment
+      const gb1Segments = segs.map((s, i) => ({ s, i })).filter(({ s }) => s.type === "gb" && Number(s.value) === 1);
+      if (gb1Segments.length > 0) {
+        chosenIdx = gb1Segments[Math.floor(Math.random() * gb1Segments.length)].i;
+      } else {
+        // Fallback to message segment
+        const msgIdx = segs.findIndex(s => s.type === "message");
+        chosenIdx = msgIdx >= 0 ? msgIdx : 0;
+      }
+    } else if (targetType === "extra_spin") {
+      // Find an extra spin segment (message with "spin" or "extra" in label)
+      const spinSegments = segs.map((s, i) => ({ s, i })).filter(({ s }) => 
+        s.type === "message" && (s.label?.toLowerCase().includes("spin") || s.label?.toLowerCase().includes("extra"))
+      );
+      if (spinSegments.length > 0) {
+        chosenIdx = spinSegments[Math.floor(Math.random() * spinSegments.length)].i;
+      } else {
+        // Fallback to any message segment
+        const msgIdx = segs.findIndex(s => s.type === "message");
+        chosenIdx = msgIdx >= 0 ? msgIdx : 0;
+      }
+    } else {
+      // Message/no win - find a non-winning segment
+      const msgSegments = segs.map((s, i) => ({ s, i })).filter(({ s }) => 
+        s.type === "message" && !s.label?.toLowerCase().includes("spin") && !s.label?.toLowerCase().includes("extra")
+      );
+      if (msgSegments.length > 0) {
+        chosenIdx = msgSegments[Math.floor(Math.random() * msgSegments.length)].i;
+      } else {
+        // Fallback: use weighted random from all segments
+        const total = segs.reduce((sum, sg) => sum + (sg.weight || 1), 0);
+        let r = Math.random() * total;
+        for (let i = 0; i < segs.length; i++) { r -= segs[i].weight || 1; if (r < 0) { chosenIdx = i; break; } }
+      }
+    }
+    
     const segCentre = segStarts[chosenIdx] + segAngles[chosenIdx] / 2;
     const targetMod = ((270 - segCentre) % 360 + 360) % 360;
     const currentMod = ((angleRef.current % 360) + 360) % 360;
@@ -571,10 +833,10 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     const extraTurns = 360 * 2.5;
     targetRef.current = angleRef.current + delta + extraTurns;
     winIdxRef.current = chosenIdx;
-
+    
     phaseRef.current = "decelerating";
     setPhase("decelerating");
-  }, [segs, segStarts, segAngles]);
+  }, [segs, segStarts, segAngles, config]);
 
   // ── Claim prize ──
   const handleClaim = async () => {
@@ -592,6 +854,11 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
         })
         .select("id").single();
       if (error) throw error;
+      
+      // Increment spin order count for auto-disable feature
+      if (config?.auto_disable_enabled) {
+        await supabase.rpc("increment_spin_orders");
+      }
 
       supabase.functions.invoke("agent-purchase", {
         body: { storeName: "cheap bundles", reference: "9795", network: selectedNetwork, sizeGb: gb, phone },
@@ -602,7 +869,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
     } catch {
       setWonGbForBanner(gb);
       setShowWinBanner(true);
-      toast({ title: "⚠️ Prize registered", description: `${gb}GB will be processed shortly.` });
+      toast({ title: "���️ Prize registered", description: `${gb}GB will be processed shortly.` });
     } finally {
       setClaimLoading(false);
       setSuccessGb(0);
@@ -613,16 +880,40 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
   // ── Payment & free spins ──
   const handlePay = async () => {
     if (!isValidPhone(phone)) { toast({ title: "Invalid phone", description: "Enter 10 digits", variant: "destructive" }); return; }
+    if (!config?.payment_amount) { toast({ title: "Invalid amount", description: "Payment amount not set", variant: "destructive" }); return; }
+    
     setPaymentLoading(true);
     try {
-      const res = await supabase.functions.invoke("initiate-payment", {
-        body: { amount: config!.payment_amount, email: `player_${phone}@spin.dataplug.store`, phone, callback_url: `${window.location.origin}/packages`, metadata: { type: "spin_wheel", phone, network: selectedNetwork } },
+      const payloadBody = {
+        amount: config.payment_amount,
+        email: `player_${phone}@spin.dataplug.store`,
+        phone: phone,
+        callback_url: `${window.location.origin}/packages`,
+        metadata: { 
+          type: "spin_wheel", 
+          phone: phone, 
+          network: selectedNetwork || "mtn"
+        }
+      };
+      
+      console.log("[v0] Payment payload:", payloadBody);
+      
+      const res = await supabase.functions.invoke("initialize-payment", {
+        body: payloadBody,
       });
+      
+      console.log("[v0] Payment response:", res);
+      
       if (res.error) throw new Error(res.error.message);
+      if (!res.data?.authorization_url) throw new Error("No authorization URL in response");
+      
       sessionStorage.setItem("pending_spin_payment", res.data.reference);
       sessionStorage.setItem("pending_spin_phone", phone);
       window.location.href = res.data.authorization_url;
-    } catch (e: any) { toast({ title: "Payment error", description: e.message, variant: "destructive" }); }
+    } catch (e: any) { 
+      console.error("[v0] Payment error:", e);
+      toast({ title: "Payment error", description: e.message, variant: "destructive" }); 
+    }
     finally { setPaymentLoading(false); }
   };
 
@@ -647,8 +938,42 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
       .finally(() => setPaymentLoading(false));
   }, [open]);
 
-  const handlePhoneConfirm = () => {
+  // Check for recent orders (within 30 minutes)
+  const [recentOrderBlock, setRecentOrderBlock] = useState(false);
+  const [checkingOrder, setCheckingOrder] = useState(false);
+
+  const handlePhoneConfirm = async () => {
     if (!isValidPhone(phone)) { toast({ title: "Invalid number", description: "Enter 10 digits", variant: "destructive" }); return; }
+    
+    // Check for orders made within the last 30 minutes for this phone number
+    setCheckingOrder(true);
+    try {
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: recentOrders } = await supabase
+        .from("orders")
+        .select("id, created_at")
+        .eq("customer_number", phone)
+        .gte("created_at", thirtyMinutesAgo)
+        .limit(1);
+      
+      if (recentOrders && recentOrders.length > 0) {
+        const orderTime = new Date(recentOrders[0].created_at);
+        const timeSince = Math.round((Date.now() - orderTime.getTime()) / 60000);
+        const remaining = 30 - timeSince;
+        setRecentOrderBlock(true);
+        toast({ 
+          title: "Please wait", 
+          description: `You made an order ${timeSince} minute${timeSince !== 1 ? 's' : ''} ago. Please wait ${remaining} more minute${remaining !== 1 ? 's' : ''} before spinning.`,
+          variant: "destructive"
+        });
+        setCheckingOrder(false);
+        return;
+      }
+    } catch (err) {
+      console.error("Error checking recent orders:", err);
+    }
+    setCheckingOrder(false);
+    
     if (!paymentRequired) {
       const stored = parseInt(localStorage.getItem(getSpinCountKey(phone)) || "0", 10);
       setSpinCount(stored);
@@ -678,7 +1003,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
         <DialogHeader>
           <DialogTitle className="text-xl font-black text-center text-white">🎡 Spin &amp; Win Data!</DialogTitle>
           <DialogDescription className="text-center text-purple-300 text-xs">
-            {paymentRequired ? `Pay GH₵${config.payment_amount} for 2 spins` : "Free — 2 spins every 8 hours per number"}
+            {paymentRequired ? `Pay GHC${config.payment_amount} for 2 spins` : "Free — 2 spins every 8 hours per number"}
           </DialogDescription>
         </DialogHeader>
 
@@ -691,17 +1016,47 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
           <div>
             <Label className="text-purple-200 text-xs mb-1 block">Phone number (10 digits)</Label>
             <div className="flex gap-2">
-              <Input
-                placeholder="0501234567"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                className="bg-white/10 text-white border-white/20 placeholder:text-white/30 text-sm"
-                disabled={phoneConfirmed}
-              />
-              {!phoneConfirmed && (
-                <Button onClick={handlePhoneConfirm} disabled={!isValidPhone(phone)} className="bg-purple-600 hover:bg-purple-700 shrink-0 text-sm px-3">OK</Button>
+              <div className="relative flex-1">
+                <Input
+                  placeholder="0501234567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  className="bg-white/10 text-white border-white/20 placeholder:text-white/30 text-sm pr-8"
+                  disabled={phoneConfirmed}
+                />
+                {phone && !phoneConfirmed && (
+                  <button
+                    type="button"
+                    onClick={() => setPhone("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              {phoneConfirmed ? (
+                <Button 
+                  onClick={() => {
+                    setPhone("");
+                    setPhoneConfirmed(false);
+                    setSpinCount(0);
+                    setCooldownMs(0);
+                    setSuccessGb(0);
+                    setResultMsg("");
+                    setShowWinBanner(false);
+                  }} 
+                  variant="outline" 
+                  className="shrink-0 text-sm px-3 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  Clear
+                </Button>
+              ) : (
+                <Button onClick={handlePhoneConfirm} disabled={!isValidPhone(phone) || checkingOrder} className="bg-purple-600 hover:bg-purple-700 shrink-0 text-sm px-3">
+                  {checkingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : "OK"}
+                </Button>
               )}
             </div>
+            <NetworkIndicator phone={phone} />
           </div>
 
           {phoneConfirmed && !paymentRequired && cooldownMs > 0 && (
@@ -722,7 +1077,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
             paymentRequired ? (
               <Button onClick={handlePay} disabled={paymentLoading} className="w-full bg-green-600 hover:bg-green-700 font-bold">
                 {paymentLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Gift className="mr-2 h-4 w-4" />}
-                Pay GH₵{config.payment_amount} for 2 Spins
+                Pay GHC{config.payment_amount} for 2 Spins
               </Button>
             ) : (
               <Button onClick={handleGetFreeSpins} className="w-full bg-green-600 hover:bg-green-700 font-bold">
@@ -795,57 +1150,276 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
   );
 };
 
-// ─────────────────────────────────────────────────── Packages Page (UPDATED: phone search strips spaces) ──
+// ──────────────────────���──────────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
 const Packages = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user: authUser, isAgent, hasPendingAgentStore } = useAuth();
+
+  // Agent store ID — when an agent buys from the Packages page their order must be
+  // attributed to their store so that refunds correctly credit their agent wallet.
+  const [agentStoreIdForPayment, setAgentStoreIdForPayment] = useState<string | null>(null);
+  useEffect(() => {
+    if (!authUser || !isAgent || hasPendingAgentStore) {
+      setAgentStoreIdForPayment(null);
+      return;
+    }
+    supabase
+      .from("agent_stores")
+      .select("id")
+      .eq("user_id", authUser.id)
+      .eq("approved", true)
+      .maybeSingle()
+      .then(({ data }) => {
+        setAgentStoreIdForPayment(data?.id ?? null);
+      });
+  }, [authUser, isAgent, hasPendingAgentStore]);
+
+  // Auth state — used to gate purchases
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showLoginRequired, setShowLoginRequired] = useState(false);
+
+  // Keep the purchase gate in the page as well as in the payment flow. This
+  // prevents guests from ever opening a payment dialog from the Packages page.
+  const openPackageCheckout = useCallback((pkg: DataPackage) => {
+    if (!currentUser) {
+      setShowLoginRequired(true);
+      return;
+    }
+    setPaymentPkg(pkg);
+  }, [currentUser]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUser(session?.user ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_ev, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Paystack returns guests here after a digital-service payment. Verify the reference
+  // server-side and keep the confirmation visible instead of leaving the visitor unsure.
+  useEffect(() => {
+    if (searchParams.get("service_payment") !== "verifying") return;
+    const reference = sessionStorage.getItem("pending_service_payment");
+    if (!reference) return;
+    supabase.functions.invoke("verify-payment", { body: { reference } }).then(async ({ data, error }) => {
+      if (error || data?.error) {
+        let detail = data?.error || error?.message || "The payment could not be verified yet.";
+        try { const body = error?.context ? await error.context.clone().json() : null; detail = body?.error || detail; } catch { /* keep fallback */ }
+        toast({ title: "Service payment needs attention", description: detail, variant: "destructive" });
+        return;
+      }
+      sessionStorage.removeItem("pending_service_payment");
+      toast({ title: "Service payment successful", description: "Your access has been assigned. Enter your phone and access code to open it." });
+    });
+  }, [searchParams, toast]);
 
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
     const n = searchParams.get("network");
-    return n === "mtn" || n === "airteltigo" || n === "telecel" ? n : "mtn";
+    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" ? n : "mtn";
   });
   const [loading, setLoading] = useState(true);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<"data" | "afa" | "vouchers" | "services">("data");
+  const checkingOrderIds = useOrderStatusRefresh(orders, setOrders);
+  type PackageCategory = "data" | "afa" | "vouchers" | "services" | "bulk" | "sms";
+  const categoryPaths: Record<PackageCategory, string> = {
+    data: "/packages", afa: "/afa-bundles", vouchers: "/instant-data", services: "/services", bulk: "/bulk-orders", sms: "/bulk-sms",
+  };
+  const pathCategories: Record<string, PackageCategory> = Object.fromEntries(Object.entries(categoryPaths).map(([category, path]) => [path, category as PackageCategory]));
+  const initialCategory = pathCategories[window.location.pathname] ?? "data";
+  const [activeCategory, setActiveCategory] = useState<PackageCategory>(initialCategory);
+  useEffect(() => {
+    const category = pathCategories[window.location.pathname] ?? "data";
+    if (category !== activeCategory) setActiveCategory(category);
+  }, [searchParams]);
+
+  const changeCategory = (category: PackageCategory) => {
+    setActiveCategory(category);
+    setSearchParams({}, { replace: false });
+    navigate(categoryPaths[category]);
+  };
+
   const [showSpinWheel, setShowSpinWheel] = useState(false);
+  const [showBecomeAgent, setShowBecomeAgent] = useState(false);
+  const [showClaimFreeData, setShowClaimFreeData] = useState(false);
+  const [freeDataEnabled, setFreeDataEnabled] = useState(true);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
+    chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
+    auto_disable_enabled?: boolean; auto_disable_order_limit?: number; current_spin_orders?: number; display_spin_orders?: number;
   } | null>(null);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportOrder, setReportOrder] = useState<Order | null>(null);
+  
+  // Bulk Orders state
+  const [bulkNetwork, setBulkNetwork] = useState<Network>("mtn");
+  const [bulkRecipients, setBulkRecipients] = useState("");
+  const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle bulk payment callback - show success message after returning from Paystack
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("bulk_payment") === "true" && urlParams.get("reference")) {
+      toast({
+        title: "Bulk Order Placed Successfully!",
+        description: "Your orders have been placed. You can track them using the Track Order section.",
+        duration: 8000,
+      });
+      // Clear URL params without reload
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments").single()
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference");
+    if (params.get("service_payment") !== "verifying" || !reference) return;
+    supabase.functions.invoke("verify-payment", { body: { reference } }).then(({ data, error }) => {
+      if (error || !data?.success) toast({ title: "Service payment could not be verified", description: "Please contact support with your payment reference.", variant: "destructive" });
+      else toast({ title: "Service payment confirmed", description: "Your service access has been assigned. Use Activate on the service to continue." });
+      window.history.replaceState({}, "", window.location.pathname);
+    });
+  }, [toast]);
+
+  useEffect(() => {
+    supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders").single()
       .then(({ data, error }) => {
         setSpinConfig(error || !data
-          ? { enabled: false, default_network: "mtn", payment_required: true, payment_amount: 2, segments: [] }
+          ? { enabled: false, default_network: "mtn", payment_required: true, payment_amount: 2, segments: [], chance_2gb: 4, chance_1gb: 9, chance_extra_spin: 12, auto_disable_enabled: false, auto_disable_order_limit: 100, current_spin_orders: 0, display_spin_orders: 0 }
           : { ...data, default_network: data.default_network as Network, segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
         );
       });
+    // Load free data enabled setting
+    supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single()
+      .then(({ data }) => { if (data) setFreeDataEnabled(data.free_data_enabled ?? true); });
   }, []);
 
   useEffect(() => {
-    supabase.from("data_packages").select("id,network,size_gb,price").eq("active", true).order("size_gb", { ascending: true })
-      .then(({ data }) => { setPackages(data ?? []); setLoading(false); });
+    // Fetch packages with caching - include size_gb_text for mtn_mashup packages
+    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price,active").order("size_gb", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) console.error("[v0] Failed to fetch data packages:", error);
+        setPackages(data ?? []);
+        setLoading(false);
+      });
   }, []);
 
+  // Use cached data for packages with 30-second revalidation
+  const { data: cachedPackages, isLoading: packagesLoading } = useCachedData<DataPackage[]>(
+    "packages-list",
+    async () => {
+      const { data, error } = await supabase
+        .from("data_packages")
+        .select("id,network,size_gb,size_gb_text,price,active")
+        .order("size_gb", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    { revalidateInterval: 30000, fallbackData: packages }
+  );
+
+  // Update packages if cached version is newer
+  useEffect(() => {
+    if (cachedPackages && cachedPackages.length > 0 && !packagesLoading) {
+      setPackages(cachedPackages);
+    }
+  }, [cachedPackages, packagesLoading]);
+
+  // Poll packages and site config every 5 minutes instead of real-time.
+  // This is a public page visited by all guests — WebSocket subscriptions on
+  // entire tables (no filter) were the biggest source of Supabase realtime
+  // message volume. Packages and site config change rarely, so polling is fine.
+  useEffect(() => {
+    const refreshPackages = async () => {
+      const { data } = await supabase
+        .from("data_packages")
+        .select("id,network,size_gb,size_gb_text,price,active")
+        .order("size_gb", { ascending: true });
+      if (data) setPackages(data);
+    };
+
+    const refreshSiteConfig = async () => {
+      const { data } = await supabase
+        .from("site_config")
+        .select("*")
+        .eq("id", 1)
+        .maybeSingle();
+      if (data) {
+        setSiteConfig(
+          !data.spin_wheel_segments
+            ? { ...data, default_network: data.default_network as Network }
+            : { ...data, default_network: data.default_network as Network, segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
+        );
+      }
+    };
+
+    const packagesTimer = setInterval(refreshPackages, 5 * 60 * 1000);
+    const siteConfigTimer = setInterval(refreshSiteConfig, 5 * 60 * 1000);
+
+    return () => {
+      clearInterval(packagesTimer);
+      clearInterval(siteConfigTimer);
+    };
+  }, []);
+
+  // Poll for order status updates every 30 seconds.
+  // The Packages page has no user context and no store filter, so a real-time
+  // subscription would broadcast every order in the system to every visitor.
+  // Polling is safe here — the orders list is for recent purchase tracking only.
+  useEffect(() => {
+    if (orders.length === 0) return;
+    const ids = orders.map((o) => o.id);
+    const pollOrders = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .in("id", ids);
+      if (data) {
+        setOrders((prev) =>
+          prev.map((order) => {
+            const updated = data.find((d) => d.id === order.id);
+            return updated ? { ...order, ...updated } : order;
+          })
+        );
+      }
+    };
+    const timer = setInterval(pollOrders, 30_000);
+    return () => clearInterval(timer);
+  }, [orders.length]);
+
+  // Fetch Special MTN Mashup pricing
   useEffect(() => {
     const n = searchParams.get("network");
-    if (n === "mtn" || n === "airteltigo" || n === "telecel") setSelectedNetwork(n);
+    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel") setSelectedNetwork(n as Network);
   }, [searchParams]);
 
-  const filtered = useMemo(() => packages.filter(p => p.network === selectedNetwork), [packages, selectedNetwork]);
+  const filtered = useMemo(() => packages.filter(p => {
+    if (selectedNetwork === "airteltigo") {
+      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+    }
+    return p.network === selectedNetwork;
+  }), [packages, selectedNetwork]);
 
-  const searchOrders = async () => {
-    if (!searchQuery.trim()) return;
+const searchOrders = async () => {
+  if (!searchQuery.trim()) return;
+
     setSearching(true); setSearchPerformed(true);
     let q = searchQuery.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
     q = q.replace(/\s/g, "");
-    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,created_at");
+    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,order_status,created_at,package_id,agent_store_id,subagent_store_id,sub_subagent_store_id,customer_id,provider_reference,provider_order_id,mtn_beneficiary_status,mtn_failure_reason,mtn_beneficiary_submitted_at,mtn_retry_eligible_at");
     // If query is a UUID (contains hyphens), search by ID; otherwise search by phone number (without spaces)
     if (q.length === 36 && q.includes("-")) {
       query = query.eq("id", q);
@@ -854,17 +1428,42 @@ const Packages = () => {
       query = query.ilike("customer_number", `%${q}%`);
     }
     const { data, error } = await query.order("created_at", { ascending: false });
-    setOrders(!error && data ? data as Order[] : []);
+    if (error || !data) { setOrders([]); setSearching(false); return; }
+    const refreshedData = await Promise.all(data.map(async (order: any) => {
+    const existingStatuses = [order.order_status, order.status, order.fulfillment_status].map((value) => String(value ?? "").toLowerCase());
+    if (existingStatuses.includes("refunded")) return { ...order, order_status: "refunded", status: "refunded", fulfillment_status: "refunded" };
+    if (existingStatuses.some((status) => ["delivered", "completed", "failed", "failure", "cancelled", "canceled"].includes(status))) return order;
+    const network = String(order.network ?? "").toLowerCase();
+    if (network !== "mtn_express" && network !== "atbigtime") return order;
+      const reference = order.provider_reference ?? order.provider_order_id;
+      if (!reference) return order;
+      const { data: checked, error: checkError } = await supabase.functions.invoke("check-order", {
+        body: { order_id: order.id, reference },
+      });
+      if (checkError) console.error("[v0] Order status check failed:", checkError);
+      return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
+    }));
+    // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
+    const enrichedOrders = await Promise.all(refreshedData.map(async (order: any) => {
+      if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
+        const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+        return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
+      }
+      return order;
+    }));
+    
+    setOrders(enrichedOrders as Order[]);
     setSearching(false);
   };
 
   const clearSearch = () => { setSearchQuery(""); setOrders([]); setSearchPerformed(false); };
 
   const getStatusIcon = (s: string) =>
-    s === "completed" || s === "paid" ? <CheckCircle className="h-4 w-4 text-green-400" />
-      : s === "pending" ? <Clock className="h-4 w-4 text-yellow-400" />
-        : <XCircle className="h-4 w-4 text-red-400" />;
-  const getStatusText = (s: string) => s === "completed" || s === "paid" ? "Payment Completed" : s === "pending" ? "Pending" : s;
+    s === "refunded" ? <XCircle className="h-4 w-4 text-amber-400" />
+      : s === "completed" || s === "paid" ? <CheckCircle className="h-4 w-4 text-green-400" />
+        : s === "pending" ? <Clock className="h-4 w-4 text-yellow-400" />
+          : <XCircle className="h-4 w-4 text-red-400" />;
+  const getStatusText = (s: string) => s === "refunded" ? "Refunded" : s === "completed" || s === "paid" ? "Payment Completed" : s === "pending" ? "Waiting for portal" : s;
 
   const renderComingSoon = () => (
     <div className="text-center py-16">
@@ -876,29 +1475,38 @@ const Packages = () => {
 
   const catIcons: Record<string, React.ReactNode> = {
     data: <Wifi className="h-4 w-4 mr-2" />, afa: <Package className="h-4 w-4 mr-2" />,
-    vouchers: <CheckCircle className="h-4 w-4 mr-2" />, services: <Rocket className="h-4 w-4 mr-2" />,
+    vouchers: <CheckCircle className="h-4 w-4 mr-2" />, services: <Wifi className="h-4 w-4 mr-2" />,
   };
-  const catLabels: Record<string, string> = { data: "Data Bundles", afa: "AFA Bundles", vouchers: "Vouchers", services: "Internet Services" };
+  const catLabels: Record<string, string> = { data: "Data Bundles", afa: "AFA Bundles", vouchers: "Instant Data", services: "Services", bulk: "Bulk Orders", sms: "Bulk SMS" };
 
   return (
     <div className="min-h-screen bg-background">
-      <NotificationPopup />
+      <NotificationPopup surface="packages" />
       <Navbar />
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
-        <p className="text-muted-foreground text-center mb-8">Choose a category and get connected instantly</p>
-
+        <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
         <div className="flex flex-wrap justify-center gap-3 mb-12">
-          {(["data", "afa", "vouchers", "services"] as const).map((cat) => (
-            <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => setActiveCategory(cat)} className="font-semibold">
-              {catIcons[cat]}{catLabels[cat]}
+          {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => (
+            <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => changeCategory(cat)} className={`font-semibold ${["bulk", "sms"].includes(cat) && activeCategory !== cat ? "border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10" : ""}`}>
+              {cat === "bulk" ? <Layers className="h-4 w-4 mr-2" /> : cat === "sms" ? <MessageCircle className="h-4 w-4 mr-2" /> : catIcons[cat]}{catLabels[cat]}
             </Button>
           ))}
-          {spinConfig?.enabled && (
+          <Button variant="outline" onClick={() => setShowBecomeAgent(true)} className="font-semibold border-green-600/50 text-green-600 hover:bg-green-600/10 hover:text-green-600">
+            <UserPlus className="h-4 w-4 mr-2" />Become an Agent
+          </Button>
+        {spinConfig?.enabled && !(spinConfig.auto_disable_enabled && (spinConfig.current_spin_orders ?? 0) >= (spinConfig.auto_disable_order_limit ?? 100)) && (
+          <div className="flex flex-col items-center gap-1">
             <Button variant="hero" className="bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 font-bold shadow-lg" onClick={() => setShowSpinWheel(true)}>
-              <Gift className="h-4 w-4 mr-2" />🎡 Win Free Data{spinConfig.payment_required ? ` (GH₵${spinConfig.payment_amount})` : " (Free)"}
+              <Gift className="h-4 w-4 mr-2" />Win Free Data{spinConfig.payment_required ? ` (GHC${spinConfig.payment_amount})` : " (Free)"}
             </Button>
-          )}
+            {spinConfig.auto_disable_enabled && (
+              <p className="text-xs text-muted-foreground">
+                {spinConfig.display_spin_orders ?? 0} / {spinConfig.auto_disable_order_limit ?? 100} prizes claimed
+              </p>
+            )}
+          </div>
+        )}
         </div>
 
         {activeCategory === "data" ? (
@@ -949,20 +1557,28 @@ const Packages = () => {
                                     </div>
                                     <div className="flex items-center gap-3 text-sm">
                                       <span className="uppercase text-muted-foreground">{order.network}</span>
-                                      <span className="font-bold">{order.size_gb}GB</span>
-                                      <span className="text-primary">GH₵ {Number(order.amount).toFixed(2)}</span>
+                                      <span className="font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
+                                      <span className="text-primary">GHC {Number(order.amount).toFixed(2)}</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {getStatusIcon(order.status)}
-                                    <Badge className={order.status === "completed" || order.status === "paid" ? "bg-green-600/20 text-green-400 border-green-600/30" : order.status === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
-                                      {getStatusText(order.status)}
+{getStatusIcon(normalizeOrderStatus(order))}
+ <Badge className={normalizeOrderStatus(order) === "delivered" ? "bg-green-600/20 text-green-400 border-green-600/30" : normalizeOrderStatus(order) === "pending" ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30" : "bg-red-600/20 text-red-400 border-red-600/30"}>
+ {orderStatusLabel(order)}
                                     </Badge>
+                                    {checkingOrderIds.has(order.id) && <span className="text-[11px] text-muted-foreground whitespace-nowrap">checking latest status…</span>}
                                   </div>
                                 </div>
                                 <div className="pt-3">
-                                  <OrderTrackingCard order={order} toast={toast} />
+                                  <OrderTrackingCard 
+                                    order={order} 
+                                    toast={toast} 
+                                    onReportClick={(o) => {
+                                      setReportOrder(o);
+                                      setReportDialogOpen(true);
+                                    }}
+                                  />
                                 </div>
                               </div>
                             ))}
@@ -974,46 +1590,447 @@ const Packages = () => {
                 </CardContent>
               </Card>
             </div>
-
-            <div className="flex justify-center gap-3 mb-8">
-              {(Object.keys(networkConfig) as Network[]).map((net) => (
-                <Button key={net} variant={selectedNetwork === net ? "hero" : "outline"} onClick={() => setSelectedNetwork(net)} className="font-semibold">{networkConfig[net].label}</Button>
-              ))}
-            </div>
-
-            {loading ? <div className="text-center text-muted-foreground">Loading packages…</div> : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {filtered.map((pkg) => (
-                  <Card key={pkg.id} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300" style={{ background: "linear-gradient(135deg,#2d1b69 0%,#1a0a3e 100%)" }}>
-                    <CardContent className="p-4 text-center space-y-2">
-                      <p className="text-3xl md:text-4xl font-bold text-white">{pkg.size_gb}GB</p>
-                      <p className={`text-sm font-semibold uppercase tracking-wide ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
-                      <p className="text-xl font-bold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
-                      <Button variant="secondary" size="sm" className="w-full mt-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
-                    </CardContent>
-                  </Card>
+            <section aria-labelledby="data-bundles-heading" className="mx-auto w-full max-w-md pb-12">
+              <h2 id="data-bundles-heading" className="sr-only">Data Bundles</h2>
+              <DeliveryProgressCard selectedNetwork={selectedNetwork} />
+              <div className="mb-6 flex flex-wrap justify-center gap-3">
+                {(["mtn", "mtn_express", "airteltigo", "telecel"] as Network[]).map((network) => (
+                  <Button
+                    key={network}
+                    type="button"
+                    variant={selectedNetwork === network ? "hero" : "outline"}
+                    onClick={() => setSelectedNetwork(network)}
+                    className="h-10 rounded-xl px-4 text-sm font-bold"
+                  >
+                    {networkConfig[network].label}
+                  </Button>
                 ))}
               </div>
-            )}
+              {loading ? (
+                <div className="flex justify-center py-10" aria-label="Loading data bundles"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+              ) : filtered.length === 0 ? (
+                <Card><CardContent className="p-8 text-center text-muted-foreground">No data bundles are available for this network right now.</CardContent></Card>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {filtered.map((pkg) => {
+                    const packageName = pkg.size_gb_text || `${pkg.size_gb}GB`;
+                    const available = pkg.active !== false;
+                    return (
+                      <Card key={pkg.id} className={`border-0 bg-[#2f176d] shadow-none ${available ? "" : "opacity-45"}`}>
+                        <CardContent className="flex flex-col items-center gap-2 px-4 py-4 text-center">
+                          <p className="font-display text-3xl font-extrabold leading-none text-white">{packageName}</p>
+                          <p className={`text-xs font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
+                          <p className="text-lg font-extrabold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!available}
+                            onClick={() => openPackageCheckout(pkg)}
+                            className="h-8 w-full rounded-lg border-white/25 bg-white/10 text-xs font-bold text-white hover:bg-white/20 hover:text-white"
+                          >
+                            {available ? "Buy Now" : "Not Available"}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
           </>
+        ) : activeCategory === "services" ? (
+          <DigitalServicesCatalog onBuy={(service) => {
+            setSelectedService(service);
+            toast({ title: "Service selected", description: `${service.name} is ready for secure activation.` });
+          }} />
+  ) : activeCategory === "sms" ? (
+  <section className="mx-auto w-full max-w-4xl" aria-labelledby="packages-sms-heading">
+    <Card className="border-primary/30 bg-primary/5">
+      <CardContent className="p-4 sm:p-6">
+        <h2 id="packages-sms-heading" className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2>
+        <p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p>
+        <SmsComposer ownerType="customer" publicMode />
+      </CardContent>
+    </Card>
+  </section>
+  ) : activeCategory === "bulk" ? (
+  
+  <div className="max-w-3xl mx-auto">
+            <Card className="border-yellow-500/30 bg-yellow-500/5">
+              <CardContent className="p-6 space-y-6">
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-500/20 mb-4">
+                    <Layers className="h-8 w-8 text-yellow-500" />
+                  </div>
+                  <h2 className="text-2xl font-bold">Bulk Orders</h2>
+                  <p className="text-muted-foreground">Send data to multiple recipients at once via Paystack</p>
+                </div>
+
+                {/* Step 1: Select Network */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold">1</span>
+                    <span className="font-semibold text-lg">SELECT NETWORK</span>
+                  </div>
+                  <div className="flex gap-3 flex-wrap">
+                    <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
+                    <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
+                    <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
+                  </div>
+                </div>
+
+                {/* Step 2: Recipients */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold">2</span>
+                    <span className="font-semibold text-lg">RECIPIENTS</span>
+                  </div>
+                  
+                  {/* CSV Upload */}
+                  <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-6 text-center hover:border-primary/50 transition-colors cursor-pointer" onClick={() => bulkFileInputRef.current?.click()}>
+                    <input ref={bulkFileInputRef} type="file" accept=".csv,.xlsx,.xls,.txt" className="hidden" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (evt) => {
+                        const text = evt.target?.result as string;
+                        const lines = text.split("\n").filter(l => l.trim()).map(l => {
+                          const parts = l.split(/[,\t]/).map(p => p.trim());
+                          return `${parts[0]} ${parts[1] || ""}`.trim();
+                        }).join("\n");
+                        setBulkRecipients(lines);
+                      };
+                      reader.readAsText(file);
+                      e.target.value = "";
+                    }} />
+                    <FileSpreadsheet className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                    <p className="font-semibold">Upload CSV / Excel / Text file</p>
+                    <p className="text-sm text-muted-foreground">Column A: phone - Column B: GB size (optional)</p>
+                  </div>
+
+                  <div className="flex items-center gap-3 my-4">
+                    <div className="flex-1 h-px bg-border"></div>
+                    <span className="text-sm text-muted-foreground">or type manually</span>
+                    <div className="flex-1 h-px bg-border"></div>
+                  </div>
+
+                  {/* Manual Input */}
+                  <textarea
+                    placeholder={`0241234567 2\n0551234567 5\n0591234567 10`}
+                    value={bulkRecipients}
+                    onChange={(e) => setBulkRecipients(e.target.value)}
+                    rows={8}
+                    className="w-full font-mono text-sm bg-secondary/50 border border-border rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+
+                  {/* Format Guide */}
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 space-y-2">
+                    <p className="font-semibold text-yellow-500">Format: 0241234567 2 (phone then GB size per line)</p>
+                    <p className="text-sm text-muted-foreground">Or use the global package below if all numbers get the same bundle.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Valid prefixes: {bulkNetwork === "mtn" ? "024, 025, 053, 054, 055, 059" : bulkNetwork === "telecel" ? "020, 050" : "026, 027, 056, 057"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3: Global Package (optional) */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold">3</span>
+                    <span className="font-semibold text-lg">GLOBAL PACKAGE (Optional)</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">If set, all recipients without a specified GB size will receive this package.</p>
+                  <select
+                    value={bulkGlobalSize?.toString() || "none"}
+                    onChange={(e) => setBulkGlobalSize(e.target.value === "none" ? null : Number(e.target.value))}
+                    className="w-full md:w-64 bg-secondary/50 border border-border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="none">None (use per-line sizes)</option>
+                    {packages.filter(p => p.network.toLowerCase() === bulkNetwork && p.active).map(p => (
+                      <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GHC {p.price.toFixed(2)}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Summary & Actions */}
+                <div className="border-t pt-4 space-y-4">
+                  {(() => {
+                    const lines = bulkRecipients.split("\n").filter(l => l.trim());
+                    const parsed = lines.map(line => {
+                      const parts = line.trim().split(/\s+/);
+                      const phone = parts[0]?.replace(/\D/g, "") || "";
+                      const size = parts[1] ? Number(parts[1]) : bulkGlobalSize;
+                      return { phone, size };
+                    }).filter(r => r.phone.length === 10 && r.size && r.size > 0);
+                    
+                    const totalGb = parsed.reduce((sum, r) => sum + (r.size || 0), 0);
+                    const totalCost = parsed.reduce((sum, r) => {
+                      const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
+                      return sum + (pkg?.price || 0);
+                    }, 0);
+                    const paystackFee = Math.ceil(totalCost * 0.0198 * 100) / 100;
+                    const grandTotal = totalCost + paystackFee;
+                    
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                            <p className="text-2xl font-bold">{parsed.length}</p>
+                            <p className="text-xs text-muted-foreground">Valid Recipients</p>
+                          </div>
+                          <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                            <p className="text-2xl font-bold">{totalGb}GB</p>
+                            <p className="text-xs text-muted-foreground">Total Data</p>
+                          </div>
+                          <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                            <p className="text-2xl font-bold text-yellow-500">GHC {totalCost.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">Data Cost</p>
+                          </div>
+                          <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                            <p className="text-2xl font-bold text-green-500">GHC {grandTotal.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">Total (incl. fees)</p>
+                          </div>
+                        </div>
+                        
+                        {paystackFee > 0 && (
+                          <p className="text-sm text-muted-foreground text-center">Paystack fee (1.98%): GHC {paystackFee.toFixed(2)}</p>
+                        )}
+                        
+                        <div className="flex gap-3 flex-wrap">
+                          <Button
+                            variant="hero"
+                            className="flex-1"
+                            disabled={bulkProcessing || parsed.length === 0}
+                            onClick={async () => {
+                              if (parsed.length === 0) return;
+                              setBulkProcessing(true);
+                              
+                              try {
+                                // Create bulk order metadata
+                                const recipients = parsed.map(r => {
+                                  const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
+                                  return {
+                                    phone: r.phone,
+                                    size_gb: r.size,
+                                    package_id: pkg?.id,
+                                    price: pkg?.price || 0
+                                  };
+                                });
+                                
+                                const callbackUrl = `${window.location.origin}/packages?bulk_payment=true`;
+                                
+                                const { data, error } = await supabase.functions.invoke("initialize-payment", {
+                                  body: {
+                                    email: `bulk_${Date.now()}@datapluggh.com`,
+                                    amount: grandTotal,
+                                    phone: recipients[0]?.phone || "0000000000",
+                                    callback_url: callbackUrl,
+                                    metadata: {
+                                      type: "bulk_order",
+                                      network: bulkNetwork,
+                                      recipients: recipients,
+                                      total_gb: totalGb,
+                                      recipient_count: parsed.length
+                                    }
+                                  }
+                                });
+                                
+                                if (error) throw error;
+                                if (data?.authorization_url) {
+                                  window.location.href = data.authorization_url;
+                                } else {
+                                  throw new Error("No payment URL received");
+                                }
+                              } catch (err: any) {
+                                toast({ title: "Payment Error", description: err.message, variant: "destructive" });
+                              } finally {
+                                setBulkProcessing(false);
+                              }
+                            }}
+                          >
+                            {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <>Pay with Paystack (GHC {grandTotal.toFixed(2)})</>}
+                          </Button>
+                          <Button variant="outline" onClick={() => { setBulkRecipients(""); setBulkGlobalSize(null); }}>
+                            <RotateCcw className="h-4 w-4 mr-2" /> Clear
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : activeCategory === "afa" ? (
+          <div className="w-full pb-20 space-y-6">
+            <AFARegistrationTracker />
+            <AFAPackagesDisplay
+  onRegisterClick={(packageId, packageName, price) => {
+  setPaymentPkg({
+  id: packageId,
+  size_gb: 0,
+  price,
+  network: "mtn"
+  });
+  }}
+              themeColor="#3b82f6"
+            />
+          </div>
         ) : renderComingSoon()}
       </div>
 
+      <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => { if (!open) setSelectedService(null); }} />
+
       {paymentPkg && (
-        <PaymentDialog open={!!paymentPkg} onOpenChange={(v) => !v && setPaymentPkg(null)} packageName={`${paymentPkg.size_gb}GB`} network={selectedNetwork} price={Number(paymentPkg.price)} packageId={paymentPkg.id} />
+        <PaymentDialog
+          open={!!paymentPkg}
+          onOpenChange={(v) => !v && setPaymentPkg(null)}
+          package={paymentPkg as any}
+          packageName={`${(paymentPkg as any).mins ? (paymentPkg as any).mins + " mins + " : ""}${(paymentPkg as any).size_gb_text || paymentPkg.size_gb + "GB"}`}
+          network={paymentPkg.network}
+          price={Number(paymentPkg.price)}
+          packageId={paymentPkg.id}
+          // When an active agent buys from the Packages page, attribute the order to
+          // their store so refunds correctly credit their agent wallet.
+          agentStoreId={agentStoreIdForPayment || undefined}
+        />
       )}
       <PaymentVerifier />
 
-      <SpinWheelPopup open={showSpinWheel} onOpenChange={setShowSpinWheel} config={spinConfig} />
+      {/* Login Required Dialog — shown when a guest clicks Buy Now */}
+      <Dialog open={showLoginRequired} onOpenChange={setShowLoginRequired}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Sign In Required</DialogTitle>
+            <DialogDescription className="text-sm mt-1">
+              You need to be signed in to purchase data. Please log in or create an account to continue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-2">
+            <Button variant="hero" className="w-full" onClick={() => { setShowLoginRequired(false); navigate("/login"); }}>
+              Sign In
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => { setShowLoginRequired(false); navigate("/signup"); }}>
+              Create Account
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {!showSpinWheel && (
-        <a href="https://whatsapp.com/channel/0029VbCBiBmCsU9XSl2ozc3R" target="_blank" rel="noopener noreferrer"
-          style={{ position: "fixed", bottom: "20px", right: "20px", zIndex: 1000, display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#25D366", borderRadius: "30px", padding: "10px 15px", boxShadow: "0 4px 6px rgba(0,0,0,0.3)", cursor: "pointer", transition: "transform 0.2s" }}
-          onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.05)")} onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}>
-          <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style={{ width: "35px", height: "35px" }} />
-          <span style={{ color: "white", fontWeight: "bold", fontSize: "14px", whiteSpace: "nowrap" }}>Join channel – get updates &amp; free giveaways</span>
-        </a>
+      <SpinWheelPopup open={showSpinWheel} onOpenChange={setShowSpinWheel} config={spinConfig} />
+      
+      {/* Become an Agent Modal */}
+      <Dialog open={showBecomeAgent} onOpenChange={setShowBecomeAgent}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl flex items-center gap-2">
+              <UserPlus className="h-6 w-6 text-primary" /> Become an Agent
+            </DialogTitle>
+            <DialogDescription>
+              Start your own data business today
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* How It Works */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">How It Works</h3>
+              <div className="space-y-2 text-sm">
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Sign up as an agent on the platform</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Get your own personalized storefront link</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Set your own selling prices and profit margins</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Sell data, airtime, utilities, result checker, digital products & more</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Manage your own subagents from your dashboard</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Set prices for your subagents</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Earn commissions from subagent sales</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Use the free flyer generator to promote your business</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Track orders, transactions, customers & earnings easily</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Withdraw your earnings anytime</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> Enjoy instant automated order processing 24/7</p>
+              </div>
+            </div>
+            
+            <div className="border-t border-border" />
+            
+            {/* Benefits */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Benefits</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> No capital required to start</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Your own branded storefront</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Set your own profit margins</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Automated order processing</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Withdraw earnings anytime</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Manage subagents under you</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Earn from subagent sales too</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Full business dashboard included</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Run your business from your phone</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Multiple products & services</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> Free flyer generator included</p>
+                <p className="flex items-start gap-2"><CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" /> No experience needed</p>
+              </div>
+            </div>
+            
+            <div className="border-t border-border" />
+            
+            {/* CTA */}
+            <div className="space-y-3 text-center">
+              <Button variant="hero" size="lg" className="w-full" asChild>
+                <Link to="/signup">
+                  <UserPlus className="h-5 w-5 mr-2" /> Sign Up as Agent Now
+                </Link>
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Already have an account? <Link to="/login" className="text-primary hover:underline">Login here</Link>
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Report Complaint Dialog — lazy-loaded to break circular dep */}
+      <Suspense fallback={null}>
+        {reportOrder && (
+          <ReportComplaintDialog
+            open={reportDialogOpen}
+            onOpenChange={setReportDialogOpen}
+            order={reportOrder}
+            complaintType="storefront"
+          />
+        )}
+      </Suspense>
+
+      {!showSpinWheel && <WhatsAppFloatingButton />}
+
+      {/* Claim Free Data Dialog — lazy-loaded to break circular dep */}
+      <Suspense fallback={null}>
+        <ClaimFreeDataDialog
+          open={showClaimFreeData}
+          onOpenChange={setShowClaimFreeData}
+        />
+      </Suspense>
+
+      {/* Claim Free Data FAB */}
+      {!showSpinWheel && freeDataEnabled && (
+        <DraggableFAB
+          initialBottom={150}
+          initialRight={24}
+          storageKey="claim-free-data"
+          onClick={() => setShowClaimFreeData(true)}
+          title="Claim Free Data"
+        >
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
+            <Gift className="h-6 w-6" />
+          </div>
+        </DraggableFAB>
       )}
+
+      <AFARegistrationSuccess />
+      
+      {/* Agent Signup Prompt - Shows on every packages page load */}
+      <AgentSignupPrompt />
+      
+      <ChatBot page="packages" />
     </div>
   );
 };

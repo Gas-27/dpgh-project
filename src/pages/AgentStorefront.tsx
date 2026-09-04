@@ -1,17 +1,76 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
+import { DOMAINS } from "@/config/domains";
+import { getStoreNameFromSubdomain, findStoreByName, fetchAllStores } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import PaymentDialog from "@/components/PaymentDialog";
+import DigitalServicesCatalog, { type Service } from "@/components/DigitalServicesCatalog";
+import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
+import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
+const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
+import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
+const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
+import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
-  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket,
+  CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
+  Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2, Users, MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import DraggableFAB from "@/components/DraggableFAB";
+import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
+import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NotificationPopup from "@/components/NotificationPopup";
+import SmsComposer from "@/components/SmsComposer";
+import ChatBot from "@/components/ChatBot";
+import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
+import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
+
+// Utility function to update page metadata dynamically
+const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
+  try {
+    // Update document title
+    document.title = `${storeName} - Buy Affordable Data Bundles Instantly`;
+
+    // Update og:title
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
+
+    // Update twitter:title
+    const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+    if (twitterTitle) twitterTitle.setAttribute('content', `${storeName} - Buy Affordable Data Bundles Instantly`);
+
+    // Update og:description
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    const desc = description || `Get instant data bundles from ${storeName}. Buy affordable MTN, AirtelTigo & Telecel data bundles. Fast, reliable 24/7 service.`;
+    if (ogDesc) ogDesc.setAttribute('content', desc);
+
+    // Update twitter:description
+    const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+    if (twitterDesc) twitterDesc.setAttribute('content', desc);
+
+    // Update meta description
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', desc);
+
+    // Update og:image if provided
+    if (imageUrl) {
+      const ogImage = document.querySelector('meta[property="og:image"]');
+      if (ogImage) ogImage.setAttribute('content', imageUrl);
+
+      const twitterImage = document.querySelector('meta[name="twitter:image"]');
+      if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+    }
+  } catch (error) {
+    console.error("[v0] Error updating page metadata:", error);
+  }
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES
@@ -23,6 +82,9 @@ interface AgentStore {
   support_number: string;
   whatsapp_group?: string | null;
   show_whatsapp_group_icon?: boolean;
+  show_ussd_on_storefront?: boolean;
+  topup_reference?: string;
+  allow_subagent_registration?: boolean;
   theme_config?: {
     primary: string;
     primary_foreground: string;
@@ -42,6 +104,9 @@ interface DataPackage {
   network: string;
   size_gb: number;
   price: number;
+  size_gb_text?: string;
+  active?: boolean;
+  is_online?: boolean;
 }
 
 interface Order {
@@ -52,7 +117,9 @@ interface Order {
   amount: number;
   status: string;
   fulfillment_status: string;
+  order_status: string;
   created_at: string;
+  provider_reference?: string | null;
 }
 
 interface Notification {
@@ -66,6 +133,7 @@ interface Notification {
 // ─────────────────────────────────────────────────────────────────────────────
 const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
+  if (network === "mtn_express") return "MTN Express";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
   return network;
@@ -80,20 +148,10 @@ const copyToClipboard = async (text: string, toast: any) => {
   }
 };
 
-const getStoreNameFromSubdomain = (): string | null => {
-  const hostname = window.location.hostname;
-  if (hostname.endsWith(".datastores.shop")) {
-    const parts = hostname.split(".");
-    if (parts.length >= 3) return parts[0].toLowerCase().trim();
-  }
-  return null;
-};
-
-const slugify = (name: string) =>
-  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/-+/g, "-");
+// Note: getStoreNameFromSubdomain and slugify are now imported from @/utils/storeUtils
 
 const getNetworkLabelColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", airteltigo: "#60a5fa", telecel: "#f87171" };
+  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#60a5fa", telecel: "#f87171" };
   return colors[network] || "#ffffff";
 };
 
@@ -120,153 +178,233 @@ const getInternationalDigits = (phone: string): string => {
  */
 const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────�����──────────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
-// ─────────────────────────────────────────────────────────────────────────────
+// ───�����────────────────���────────�����─────���─────��──����───────────���────────────────────
 const OrderTrackingCard = ({
   order,
   store,
   toast,
+  onReportClick,
 }: {
   order: Order;
   store: AgentStore;
   toast: any;
+  onReportClick: (order: Order) => void;
 }): JSX.Element => {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
+  const [complaintId, setComplaintId] = useState<string | null>(null);
+  const [pendingNotes, setPendingNotes] = useState(0);
+  const [totalNotes, setTotalNotes] = useState(0);
 
+  // Fetch complaint status + ID for this order
   useEffect(() => {
-    const id = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
+    const fetchComplaintStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("complaints")
+          .select("id, status")
+          .eq("order_id", order.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-  const elapsedMs = currentTime.getTime() - new Date(order.created_at).getTime();
-  const elapsedMinutes = elapsedMs / 60_000;
+        if (!error && data) {
+          setComplaintStatus(data.status);
+          setComplaintId(data.id);
+        }
+      } catch (e) {
+        // No complaint found, that's okay
+      }
+    };
 
-  // ── Step logic ──
-  // Step 4 (Delivered) only after 200 minutes
+    fetchComplaintStatus();
+    const interval = setInterval(fetchComplaintStatus, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
+  }, [order.id]);
+
+  // ── Status-based step logic (no time dependency) ──
+  // Use the same status precedence as the order table, including fulfillment_status.
+  const orderStatus = normalizeOrderStatus(order);
   let currentStep = 1;
   let statusMessage = "";
   let extraNote: string | null = null;
 
-  if (elapsedMinutes >= 200) {
+  if (orderStatus === "delivered") {
     currentStep = 4;
     statusMessage = "Your data bundle has been delivered successfully.";
     if (order.network === "mtn")
       extraNote = "Please check your MTNUP2U and MTN messages for delivery confirmation.";
     else if (order.network === "airteltigo")
-      extraNote =
-        "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
+      extraNote = "Please check your AirtelTigo iShare and BigTime messages for delivery confirmation.";
     else if (order.network === "telecel")
       extraNote = "Please check your Telecel messages for delivery confirmation.";
-    else extraNote = "Please check your messages for delivery confirmation.";
-  } else if (elapsedMinutes >= 60) {
-    currentStep = 3;
-    if (order.network === "mtn")
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your MTN and MTNUP2U messages for delivery confirmation.";
-    else if (order.network === "airteltigo")
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your AirtelTigo iShare or BigTime messages for delivery confirmation.";
-    else if (order.network === "telecel")
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your Telecel messages for delivery confirmation.";
     else
-      statusMessage =
-        "Please be expecting your data any moment from now. Check your messages for delivery confirmation.";
-    extraNote =
-      "The order has left our system and is now with the network you bought the data from. All delays from now are from them.";
-  } else if (elapsedMinutes >= 15) {
-    currentStep = 3;
-    statusMessage =
-      "Your order can be delivered any moment from now. You can ignore the progress steps. Please report only if data is not delivered while it shows 'Delivered'.";
-  } else if (elapsedMinutes >= 12) {
-    currentStep = 3;
-    statusMessage = `Waiting for validation from ${formatNetworkName(order.network)}...`;
-  } else if (elapsedMinutes >= 9) {
+      extraNote = "Please check your messages for delivery confirmation.";
+  } else if ((orderStatus === "waiting" || orderStatus === "in-queue")) {
+    const net = (order.network || "").toLowerCase();
+    const isNonMtn = net === "telecel" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
     currentStep = 2;
-    statusMessage = `Order sent to ${formatNetworkName(order.network)} for validation`;
-    extraNote =
-      "Now waiting for validation from the network to deliver your data. All delay now is from the network you bought the data from.";
-  } else {
+    if (isNonMtn) {
+      statusMessage = "Your order is in the queue.";
+      extraNote = `Your ${formatNetworkName(order.network)} order has been received and is currently queued for processing. It will be picked up and sent to the network shortly. No action is needed on your part — please check back in a few minutes.`;
+    } else {
+      statusMessage = "Your number is being added to our beneficiary list.";
+      extraNote = "MTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.";
+    }
+  } else if (orderStatus === "processing") {
+    currentStep = 3;
+    statusMessage = `Order sent to ${formatNetworkName(order.network)} for delivery.`;
+    extraNote = "Your order is being processed by the network. The status will update automatically once delivered.";
+  } else if (orderStatus === "refunded") {
+    currentStep = 4;
+    statusMessage = "REFUNDED";
+    extraNote = "Your order has been refunded to the account you bought from — your agent's wallet on the site (not your MoMo wallet). Your agent will refund you shortly.";
+  } else if (orderStatus === "failed") {
     currentStep = 1;
-    statusMessage = "Order being processed...";
+    statusMessage = "This order could not be fulfilled.";
+    extraNote = "Please contact support for assistance.";
+  } else if (orderStatus === "pending") {
+    currentStep = 1;
+    statusMessage = "Order is placed and sent to the portal and now waiting for the portal to pick it up for processing.";
+    extraNote = "Your order has been received and is in the queue. It will be picked up by the portal for processing shortly.";
+  } else {
+    // any other status defaults to processing step
+    currentStep = 3;
+    statusMessage = `Order sent to ${formatNetworkName(order.network)} for delivery.`;
+    extraNote = "Waiting for the network to deliver your data.";
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${order.size_gb}GB\nAmount: GH₵ ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
+  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GHC ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
   const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
-    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Data: ${order.size_gb}GB\n- Amount: GH₵ ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
+    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${formatNetworkName(order.network)}\n- Package Size: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GHC ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
-  // Support button: show after 132 min if still not delivered
-  const showSupportButton = elapsedMinutes >= 132 && currentStep !== 4;
-  // Report button: show once delivered, within a reasonable window
-  const showReportButton =
-    currentStep === 4 && elapsedMinutes >= 200 && elapsedMinutes < 3030;
+  // Support button: show whenever order is not yet delivered
+  const showSupportButton = currentStep !== 4;
+  
+  // Report button: show only when order status is "delivered"
+  const showReportButton = orderStatus === "delivered";
 
-  const stepLabels = ["Order Placed", "Sent to Network", "Network Validation", "Delivered"];
+  const isRefunded = orderStatus === "refunded";
+  const stepLabels = ["Order Placed", "Number Verifying", "Processing", isRefunded ? "Refunded" : "Delivered"];
 
-  // ── Delivered state ──
+  // ── Delivered / Refunded state ──
   if (currentStep === 4) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-foreground">Delivery Status</span>
-          <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
-            <CheckCircle className="h-3 w-3 mr-1" /> Delivered
-          </Badge>
+          {isRefunded ? (
+            <Badge className="bg-red-600/20 text-red-400 border-red-600/30 font-semibold tracking-wide">
+              <CheckCircle className="h-3 w-3 mr-1" /> Refunded
+            </Badge>
+          ) : (
+            <Badge className="bg-green-600/20 text-green-400 border-green-600/30">
+              <CheckCircle className="h-3 w-3 mr-1" /> Delivered
+            </Badge>
+          )}
         </div>
 
         <div className="relative">
           <div className="flex items-center justify-between">
             {stepLabels.map((label, idx) => (
               <div key={idx} className="flex flex-col items-center flex-1">
-                <div className="w-8 h-8 rounded-full bg-green-600/20 text-green-400 flex items-center justify-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRefunded ? "bg-red-600/20 text-red-400" : "bg-green-600/20 text-green-400"}`}>
                   <Check className="h-4 w-4" />
                 </div>
-                <span className="text-xs text-center mt-1 text-muted-foreground">{label}</span>
+                <span className={`text-xs text-center mt-1 ${idx === 3 && isRefunded ? "text-red-400 font-semibold" : "text-muted-foreground"}`}>{label}</span>
               </div>
             ))}
           </div>
-          <div className="absolute top-4 left-0 w-full h-0.5 bg-green-600/30 -z-10" />
+          <div className={`absolute top-4 left-0 w-full h-0.5 -z-10 ${isRefunded ? "bg-red-600/30" : "bg-green-600/30"}`} />
         </div>
 
-        <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
-          <p className="text-sm text-foreground font-medium">{statusMessage}</p>
-          {extraNote && (
-            <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">
-              {extraNote}
-            </p>
-          )}
-        </div>
+        {isRefunded ? (
+          <div className="p-3 rounded-lg bg-red-600/10 border border-red-600/30">
+            <p className="text-sm font-semibold text-red-400 uppercase tracking-wide">{statusMessage}</p>
+            {extraNote && <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-red-600/20">{extraNote}</p>}
+          </div>
+        ) : (
+          <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+            <p className="text-sm font-semibold text-green-400">{statusMessage}</p>
+            {extraNote && <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-green-600/20">{extraNote}</p>}
+          </div>
+        )}
 
-        {showReportButton && (
+        {/* Report button - only if delivered (not refunded) and no complaint yet */}
+        {showReportButton && !isRefunded && !complaintStatus && (
           <Button
             variant="outline"
             size="sm"
             className="w-full border-yellow-600/50 text-yellow-600 hover:bg-yellow-600/10"
-            asChild
+            onClick={() => onReportClick(order)}
           >
-            <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              <img
-                src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
-                alt="WhatsApp"
-                className="h-4 w-4 mr-2"
-                style={{ filter: "invert(1)" }}
-              />
-              Tap on this Report only :  if it  Shows <br></br>Delivered but data  has not been  received
-            </a>
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Only tap on this Report: If it Shows <br />Delivered but you have not received it
           </Button>
+        )}
+
+        {/* Static status box — always shown; thread only visible when admin has notes */}
+        {complaintStatus && complaintStatus !== "resolved" && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium text-yellow-400 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" /> Report has been sent — we are working on it
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Status: {complaintStatus === "in-progress" ? "In Progress" : "Pending"}
+                </p>
+              </div>
+              {pendingNotes > 0 && (
+                <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-2 py-0.5">
+                  {pendingNotes} question{pendingNotes > 1 ? "s" : ""} from support
+                </span>
+              )}
+            </div>
+            {complaintId && (
+              <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
+                <ComplaintNotesThread
+                  complaintId={complaintId}
+                  isAdmin={false}
+                  onPendingCountChange={setPendingNotes}
+                  onTotalNotesChange={setTotalNotes}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {complaintStatus === "resolved" && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
+              <p className="text-sm font-medium text-green-400 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" /> Your complaint has been resolved
+              </p>
+            </div>
+            {complaintId && (
+              <div className={totalNotes > 0 ? "rounded-lg border border-border bg-card/50 p-3" : "hidden"}>
+                <ComplaintNotesThread
+                  complaintId={complaintId}
+                  isAdmin={false}
+                  onPendingCountChange={setPendingNotes}
+                  onTotalNotesChange={setTotalNotes}
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
     );
   }
 
-  // ── In-progress state ──
+  // ������ In-progress state ──
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -315,24 +453,10 @@ const OrderTrackingCard = ({
             {extraNote}
           </p>
         )}
-        {currentStep === 1 && elapsedMinutes < 8 && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Estimated time remaining: {Math.max(0, Math.ceil(8 - elapsedMinutes))} minute(s)
-          </p>
-        )}
+
       </div>
 
-      {showSupportButton && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => copyToClipboard(contactMessage, toast)}
-        >
-          <Copy className="h-4 w-4 mr-2" />
-          Contact Support ({store.support_number})
-        </Button>
-      )}
+
     </div>
   );
 };
@@ -414,15 +538,18 @@ const NotificationModal = ({
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─────────────────────────────────────────────────────────────────────────────
+// ─�����������────────────────────────��──────────────────────────────────────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
-  const subdomainStoreName = getStoreNameFromSubdomain();
+  const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
   const storeName = subdomainStoreName || paramStoreName;
 
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Simply render the storefront - subagent dashboard is on its own /subagent-dashboard route
 
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
@@ -431,23 +558,58 @@ const AgentStorefront = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
-  // ── Order tracking ──
+  // �����─ Order tracking ──
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const checkingOrderIds = useOrderStatusRefresh(orders, setOrders);
 
-  // ── Notifications ──
-  const [showGroupTooltip] = useState(true);
+  // ─��� Notifications ──
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
+  // ���─ Report complaint dialog �������
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportOrder, setReportOrder] = useState<Order | null>(null);
+  
+  // ── Claim Free Data dialog ──
+  const [claimFreeDataOpen, setClaimFreeDataOpen] = useState(false);
+  const [freeDataEnabled, setFreeDataEnabled] = useState(true);
+
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
-    "data" | "afa" | "vouchers" | "services"
+    "data" | "afa" | "vouchers" | "services" | "bulk" | "sms"
   >("data");
+  
+  // ── Bulk Orders ──
+  const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
+  const [bulkRecipients, setBulkRecipients] = useState("");
+  const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
+
+
+  // ── AFA Packages ──
+  // (Handled by AFABundleSection component)
+
+  // Handle bulk payment callback - show success message after returning from Paystack
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("bulk_payment") === "true" && urlParams.get("reference")) {
+      toast({
+        title: "Bulk Order Placed Successfully!",
+        description: "Your orders have been placed. You can track them using the Track Order section above.",
+        duration: 8000,
+      });
+      // Clear URL params without reload
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [toast]);
 
   // ── Default theme ──
   const defaultTheme = {
@@ -477,6 +639,14 @@ const AgentStorefront = () => {
 
   const fetchingRef = useRef(false);
 
+  // ── WhatsApp text auto-hide after 4 seconds ──
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowGroupTooltip(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // ── Price refresh ──
   const refreshPrices = useCallback(async () => {
     if (!store?.id || fetchingRef.current) return;
@@ -500,34 +670,93 @@ const AgentStorefront = () => {
   // ── Initial data fetch ──
   useEffect(() => {
     const fetchStore = async () => {
-      if (!storeName) { setNotFound(true); setLoading(false); return; }
-      const normalized = storeName.toLowerCase().trim();
-      const { data: stores } = await supabase.from("agent_stores").select("*").eq("approved", true) as any;
-      if (!stores || stores.length === 0) { setNotFound(true); setLoading(false); return; }
+      if (!storeName) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
 
-      let matched = (stores as any[]).find((s: any) => slugify(s.store_name) === normalized);
-      if (!matched) matched = (stores as any[]).find((s: any) => s.store_name.toLowerCase().trim() === normalized);
-      if (!matched) matched = (stores as any[]).find((s: any) => slugify(s.store_name).replace(/-/g, "") === normalized.replace(/-/g, ""));
-      if (!matched) { setNotFound(true); setLoading(false); return; }
+      // Fetch ALL agent and subagent stores via pagination (bypasses the 1000-row cap)
+      const [agentStores, subagentStores] = await Promise.all([
+        fetchAllStores(supabase, "agent_stores"),
+        fetchAllStores(supabase, "subagent_stores", "*, agent_stores(store_name)"),
+      ]);
+
+      // Try to find match in agent stores first
+      let matched = findStoreByName(storeName, agentStores);
+
+      // If no agent store match, try subagent stores (works on any domain)
+      if (!matched) {
+        matched = findStoreByName(storeName, subagentStores);
+
+        if (matched) {
+          // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices
+          matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
+          matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
+          matched.is_subagent_store = true;
+          setStore(matched);
+
+          const [pkgRes, subagentPriceRes, agentPriceRes] = await Promise.all([
+            supabase
+          .from("data_packages")
+          .select("*")
+          .order("size_gb"),
+            supabase
+              .from("subagent_package_prices")
+              .select("package_id, sell_price")
+              .eq("subagent_store_id", matched.id),
+            supabase
+              .from("agent_package_prices")
+              .select("package_id, sell_price")
+              .eq("agent_store_id", matched.agent_store_id),
+          ]);
+          setPackages(pkgRes.data ?? []);
+
+          // Use subagent prices if available, otherwise fall back to agent prices
+          const priceMap: Record<string, number> = {};
+          (agentPriceRes.data ?? []).forEach((p: any) => {
+            priceMap[p.package_id] = p.sell_price;
+          });
+          (subagentPriceRes.data ?? []).forEach((p: any) => {
+            priceMap[p.package_id] = p.sell_price;
+          });
+          setAgentPrices(priceMap);
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (!matched) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
       setStore(matched);
 
-      const [pkgRes, priceRes] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price").eq("active", true).order("size_gb"),
+      const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
+        supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
+        supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
       ]);
       setPackages(pkgRes.data ?? []);
       const priceMap: Record<string, number> = {};
       (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
       setAgentPrices(priceMap);
+      if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
       setLoading(false);
     };
     fetchStore();
-  }, [storeName]);
+  }, [storeName, subdomainStoreName]);
 
-  // ── Price polling (15 s) + realtime ──
+  // ── Update page metadata when store loads ──
+  useEffect(() => {
+    if (store?.store_name) {
+      updatePageMetadata(store.store_name);
+    }
+  }, [store?.store_name]);
   useEffect(() => {
     if (!store?.id) return;
     refreshPrices();
@@ -548,8 +777,60 @@ const AgentStorefront = () => {
     return () => { supabase.removeChannel(channel); };
   }, [store?.id, refreshPrices]);
 
+  // ── Real-time store settings updates (spin wheel, theme, etc.) ──
+  useEffect(() => {
+    if (!store?.id) return;
+    const isSubagent = !!(store as any).is_subagent_store;
+    const tableName = isSubagent ? "subagent_stores" : "agent_stores";
+    
+    const storeChannel = supabase
+      .channel(`store-settings-${store.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: tableName, filter: `id=eq.${store.id}` },
+        (payload) => {
+          const newData = payload.new as any;
+          setStore(prev => prev ? { 
+            ...prev, 
+            ...newData,
+            theme_config: { ...prev.theme_config, ...(newData.theme_config || {}) }
+          } : prev);
+        }
+      )
+      .subscribe();
+    
+    return () => { supabase.removeChannel(storeChannel); };
+  }, [store?.id]);
+
+  // ── Real-time order status updates for MTN orders ──
+  useEffect(() => {
+    if (!store?.id) return;
+    
+    const ordersChannel = supabase
+      .channel(`orders-${store.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders", filter: `agent_store_id=eq.${store.id}` },
+        (payload) => {
+          const updatedOrder = payload.new as Order;
+          setOrders(prevOrders =>
+            prevOrders.map(order =>
+              order.id === updatedOrder.id
+                ? { ...order, ...updatedOrder }
+                : order
+            )
+          );
+        }
+      )
+      .subscribe();
+    
+    return () => { supabase.removeChannel(ordersChannel); };
+  }, [store?.id]);
+
   // ── Notifications ──
   const fetchNotifications = useCallback(async () => {
+    // Legacy store-specific announcements are replaced by NotificationPopup.
+    return;
     if (!store?.id) return;
     const now = new Date().toISOString();
     const { data, error } = await (supabase
@@ -568,6 +849,7 @@ const AgentStorefront = () => {
   }, [store?.id, dismissedIds, modalOpen]);
 
   useEffect(() => { if (store?.id) fetchNotifications(); }, [store?.id, fetchNotifications]);
+
 
   const dismissNotification = (id: string) => {
     const next = [...dismissedIds, id];
@@ -589,8 +871,8 @@ const AgentStorefront = () => {
   // ── Order search ──
   // Phone numbers are stripped of ALL spaces before comparing so
   // "059 944 9202", "05 99 44 92 02", "0599449202" all match the same record.
-  const searchOrders = useCallback(async () => {
-    if (!searchQuery.trim()) return;
+const searchOrders = useCallback(async () => {
+  if (!searchQuery.trim()) return;
     setSearching(true);
     setSearchPerformed(true);
 
@@ -600,7 +882,7 @@ const AgentStorefront = () => {
 
     let query = supabase
       .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, created_at");
+      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id, provider_reference, provider_order_id");
 
     // If it looks like a UUID, search by ID directly
     if (noSpaces.length === 36 && raw.includes("-")) {
@@ -612,8 +894,30 @@ const AgentStorefront = () => {
     }
 
     const { data, error } = await query.order("created_at", { ascending: false });
+  const refreshedData = data && !error ? await Promise.all(data.map(async (order: any) => {
+    const existingStatuses = [order.order_status, order.status, order.fulfillment_status].map((value) => String(value ?? "").toLowerCase());
+    if (existingStatuses.includes("refunded")) return { ...order, order_status: "refunded", status: "refunded", fulfillment_status: "refunded" };
+    if (existingStatuses.some((status) => ["delivered", "completed", "failed", "failure", "cancelled", "canceled"].includes(status))) return order;
+    const network = String(order.network ?? "").toLowerCase();
+    if (network !== "mtn_express" && network !== "atbigtime") return order;
+    const reference = order.provider_reference ?? (order as any).provider_order_id;
+    if (!reference) return order;
+    const { data: checked, error: checkError } = await supabase.functions.invoke("check-order", {
+      body: { order_id: order.id, reference },
+    });
+    if (checkError) console.error("[v0] Order status check failed:", checkError);
+    return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
+  })) : data;
     if (!error && data) {
-      setOrders(data as Order[]);
+      // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
+      const enrichedOrders = await Promise.all(refreshedData.map(async (order: any) => {
+        if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
+          const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
+          return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
+        }
+        return order;
+      }));
+      setOrders(enrichedOrders as Order[]);
     } else {
       setOrders([]);
       if (error) console.error("Order search error:", error);
@@ -628,7 +932,12 @@ const AgentStorefront = () => {
   };
 
   // ── Render helpers ──
-  const filteredPackages = packages.filter((p) => p.network === networkFilter);
+  const filteredPackages = packages.filter((p) => {
+    if (networkFilter === "airteltigo") {
+      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+    }
+    return p.network === networkFilter;
+  });
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
@@ -638,11 +947,13 @@ const AgentStorefront = () => {
     store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
 
   const getStatusIcon = (status: string) => {
+    if (status === "refunded") return <XCircle className="h-4 w-4 text-amber-400" />;
     if (status === "completed" || status === "paid") return <CheckCircle className="h-4 w-4 text-green-400" />;
     if (status === "pending") return <Clock className="h-4 w-4 text-yellow-400" />;
     return <XCircle className="h-4 w-4 text-red-400" />;
   };
   const getStatusText = (status: string) => {
+    if (status === "refunded") return "Refunded";
     if (status === "completed" || status === "paid") return "Payment Completed";
     if (status === "pending") return "Pending";
     return status;
@@ -696,10 +1007,11 @@ const AgentStorefront = () => {
 
   // ── JSX ──
   return (
-    <div
-      className="min-h-screen relative"
-      style={{ backgroundColor: backgroundColor } as React.CSSProperties}
-    >
+  <div
+    className="min-h-screen relative"
+    style={{ backgroundColor: backgroundColor } as React.CSSProperties}
+  >
+    <NotificationPopup surface="agent-storefront" />
       {/* Notification modal */}
       {modalOpen && undismissedNotifications.length > 0 && (
         <NotificationModal
@@ -709,6 +1021,7 @@ const AgentStorefront = () => {
           primaryColor={primaryColor}
         />
       )}
+
 
       {/* Header */}
       <header className="border-b border-border bg-background/90 backdrop-blur-xl sticky top-0 z-50">
@@ -723,6 +1036,13 @@ const AgentStorefront = () => {
             <span className="font-display text-lg font-bold">{store.store_name}</span>
           </div>
           <div className="flex items-center gap-2">
+            {groupLink && (
+              <Button variant="ghost" size="icon" asChild>
+                <a href={groupLink} target="_blank" rel="noopener noreferrer" title="Join WhatsApp Group">
+                  <Users className="h-5 w-5" style={{ color: primaryColor }} />
+                </a>
+              </Button>
+            )}
             <Button variant="outline" size="sm" asChild>
               <a href={`tel:${store.support_number}`}>
                 <Phone className="h-4 w-4 mr-1" /> Call
@@ -743,62 +1063,93 @@ const AgentStorefront = () => {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden py-16 md:py-20">
-        <div
-          className="absolute inset-0"
-          style={{ background: `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}05)` }}
-        />
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full blur-[120px]"
-          style={{ background: `${primaryColor}30` }}
-        />
-        <div className="container relative text-center space-y-6">
-          <div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium"
-            style={{ borderColor: `${primaryColor}50`, background: `${primaryColor}10`, color: primaryColor }}
-          >
-            <Wifi className="h-4 w-4" /> Fast &amp; Reliable Data Delivery
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-            Cheap Data Bundles
-            <br />
-            <span style={{ color: primaryColor }}>Instant Delivery</span>
-          </h1>
-          <p className="text-muted-foreground max-w-lg mx-auto text-lg">
-            Get the best data deals from{" "}
-            <span className="text-foreground font-semibold">{store.store_name}</span>. Select your
-            network and package below.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground pt-2">
-            <span className="flex items-center gap-2">
-              <Shield className="h-4 w-4" style={{ color: primaryColor }} /> Trusted Seller
-            </span>
-            <span className="flex items-center gap-2">
-              <Clock className="h-4 w-4" style={{ color: primaryColor }} /> &lt;60min Delivery
-            </span>
-            <span className="flex items-center gap-2">
-              <Star className="h-4 w-4" style={{ color: primaryColor }} /> 24/7 Support
-            </span>
+      {/* Store URL Banner - Redesigned for better appeal */}
+      {store && (
+        <div className="relative px-4 py-6 overflow-hidden">
+          <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)` }} />
+          <div className="container mx-auto max-w-3xl relative z-10">
+            <div className="rounded-xl border-2 p-6 backdrop-blur-sm" style={{ borderColor: `${primaryColor}40`, backgroundColor: `${primaryColor}08` }}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+                    <Share2 className="h-3 w-3" /> Share Your Store
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-3">Spread the word and earn more! Share this link with your network:</p>
+                  <code 
+                    className="block w-full rounded-lg px-3 py-2 font-mono text-sm font-semibold break-all"
+                    style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, border: `1px solid ${primaryColor}30` }}
+                  >
+                    {DOMAINS.getAgentStoreUrl(store.store_name).replace('https://', '')}
+                  </code>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+                  <Button 
+                    size="sm" 
+                    className="flex-1 sm:flex-auto rounded-lg font-semibold"
+                    style={{ backgroundColor: primaryColor, color: primaryForeground }}
+                    onClick={() => {
+                      const url = DOMAINS.getAgentStoreUrl(store.store_name);
+                      if (navigator.share) {
+                        navigator.share({
+                          title: `${store.store_name} - Data Store`,
+                          text: `Buy affordable data bundles from ${store.store_name}`,
+                          url: url,
+                        }).catch(() => {});
+                      } else {
+                        navigator.clipboard.writeText(url);
+                        toast({
+                          title: "Link copied!",
+                          description: "Store link copied to clipboard",
+                        });
+                      }
+                    }}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="flex-1 sm:flex-auto rounded-lg"
+                    onClick={() => {
+                      const url = DOMAINS.getAgentStoreUrl(store.store_name);
+                      navigator.clipboard.writeText(url);
+                      toast({
+                        title: "Link copied!",
+                        description: "Store link copied to clipboard",
+                      });
+                    }}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
+      )}
 
+      {/* Hero */}
       {/* Category tabs */}
       <div className="container pb-8">
-        <div className="flex flex-wrap justify-center gap-3">
-          {(["data", "afa", "vouchers", "services"] as const).map((cat) => {
+        <div className="flex flex-wrap justify-center gap-3 items-center">
+          {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => {
             const icons: Record<string, React.ReactNode> = {
               data: <Wifi className="h-4 w-4 mr-2" />,
               afa: <Package className="h-4 w-4 mr-2" />,
               vouchers: <CheckCircle className="h-4 w-4 mr-2" />,
               services: <Rocket className="h-4 w-4 mr-2" />,
+              bulk: <Layers className="h-4 w-4 mr-2" />,
+              sms: <MessageCircle className="h-4 w-4 mr-2" />,
             };
             const labels: Record<string, string> = {
               data: "Data",
               afa: "AFA Bundles",
-              vouchers: "Vouchers",
-              services: "Internet Services",
+              vouchers: "Instant Data",
+              services: "Services",
+              bulk: "Bulk Orders",
+              sms: "SMS",
             };
             return (
               <Button
@@ -812,10 +1163,26 @@ const AgentStorefront = () => {
               </Button>
             );
           })}
+          {store?.allow_subagent_registration !== false && (
+            <>
+              <div className="h-6 w-px bg-border"></div>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/become-agent")}
+                className="font-semibold"
+              >
+                Become an Agent
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {activeCategory === "data" ? (
+      {activeCategory === "services" ? (
+        <div className="container pb-20"><DigitalServicesCatalog agentStoreId={store?.id} onBuy={setSelectedService} /></div>
+      ) : activeCategory === "sms" ? (
+        <div className="container pb-20"><Card className="mx-auto max-w-4xl border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card></div>
+      ) : activeCategory === "data" ? (
         <>
           {/* ── Order Tracking ── */}
           <div className="container pb-10">
@@ -889,9 +1256,9 @@ const AgentStorefront = () => {
                                   <span className="uppercase text-muted-foreground">
                                     {order.network}
                                   </span>
-                                  <span className="font-display font-bold">{order.size_gb}GB</span>
+                                  <span className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
                                   <span className="text-primary">
-                                    GH₵ {Number(order.amount).toFixed(2)}
+                                    GHC {Number(order.amount).toFixed(2)}
                                   </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
@@ -899,22 +1266,40 @@ const AgentStorefront = () => {
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
-                                {getStatusIcon(order.status)}
-                                <Badge
-                                  className={
-                                    order.status === "completed" || order.status === "paid"
-                                      ? "bg-green-600/20 text-green-400 border-green-600/30"
-                                      : order.status === "pending"
-                                        ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
-                                        : "bg-red-600/20 text-red-400 border-red-600/30"
-                                  }
-                                >
-                                  {getStatusText(order.status)}
-                                </Badge>
+                                {(() => {
+                                  const displayStatus = normalizeOrderStatus(order);
+                                  return (
+                                    <>
+                                      {getStatusIcon(displayStatus)}
+                                      <Badge
+                                        className={
+                                          displayStatus === "refunded"
+                                            ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                                            : displayStatus === "delivered"
+                                              ? "bg-green-600/20 text-green-400 border-green-600/30"
+                                              : displayStatus === "pending" || displayStatus === "in-queue" || displayStatus === "waiting"
+                                                ? "bg-yellow-600/20 text-yellow-400 border-yellow-600/30"
+                                                : "bg-blue-600/20 text-blue-400 border-blue-600/30"
+                                        }
+                                      >
+                                        {displayStatus === "delivered" ? "Delivered" : orderStatusLabel(order)}
+                                      </Badge>
+                                      {checkingOrderIds.has(order.id) && <span className="text-[11px] text-muted-foreground whitespace-nowrap">checking latest status…</span>}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <div className="pt-3">
-                              <OrderTrackingCard order={order} store={store} toast={toast} />
+                              <OrderTrackingCard
+                                order={order}
+                                store={store}
+                                toast={toast}
+                                onReportClick={(o) => {
+                                  setReportOrder(o);
+                                  setReportDialogOpen(true);
+                                }}
+                              />
                             </div>
                           </div>
                         ))}
@@ -930,96 +1315,385 @@ const AgentStorefront = () => {
                         Check the contact well, or check your order ID.
                       </p>
                     </div>
-                  ) : (
-                    <div className="text-center py-8 border border-border rounded-lg bg-background/50">
-                      <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground">
-                        Enter a phone number or order ID and click Search.
-                      </p>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
           </div>
 
+          <DeliveryProgressCard selectedNetwork={networkFilter} />
+
           {/* ── Network filter ── */}
           <div className="container pb-6">
-            <div className="flex gap-2 justify-center">
-              {["mtn", "airteltigo", "telecel"].map((net) => (
+            <div className="flex gap-2 justify-center flex-wrap">
+              {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
                 <Button
                   key={net}
-                  variant={networkFilter === net ? "hero" : "outline"}
+                  variant={networkFilter === net ? "default" : "outline"}
                   size="sm"
-                  className="min-w-[100px]"
+                  className="text-xs sm:text-sm"
+                  style={networkFilter === net && net === "mtn" ? { background: "#fbbf24", color: "#000" } :
+                         networkFilter === net && net === "mtn_express" ? { background: "#f59e0b", color: "#000" } :
+                         networkFilter === net && net === "telecel" ? { background: "#ef4444", color: "#fff" } :
+                         networkFilter === net && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } : {}}
                   onClick={() => setNetworkFilter(net)}
                 >
-                  {net === "mtn" ? "MTN" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
                 </Button>
               ))}
             </div>
           </div>
 
-          {/* ── Packages grid ── */}
+          {/* USSD Info Banner */}
+          {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
+            <div className="container pb-4">
+              <a href="tel:*380*455#" className="block p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
+                <div className="flex items-center justify-center gap-3 text-center">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Phone className="h-5 w-5" style={{ color: primaryColor }} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
+                    <p className="text-xl font-bold font-mono" style={{ color: primaryColor }}>*380*455#</p>
+                    <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
+                  </div>
+                </div>
+              </a>
+            </div>
+          )}
+
+          {/* Packages grid */}
           <div className="container pb-20">
             <div
-              className="grid gap-3 sm:gap-4"
-              style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}
+              className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+              style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 300px), 1fr))` }}
             >
-              {filteredPackages.map((pkg) => {
-                const price = getPrice(pkg);
-                return (
+              {loading ? (
+                <div className="col-span-full flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filteredPackages.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground mb-4">No packages available for this network.</p>
+                  <p className="text-sm text-muted-foreground">Check back later or try a different network.</p>
+                </div>
+              ) : (
+                filteredPackages.map((pkg) => {
+                  const price = getPrice(pkg);
+                  const isInactive = pkg.active === false;
+                  const isOffline = pkg.is_online === false;
+        // COMMENTED OUT: mashup packages deactivated
+        const isMTNMashup = false; // pkg.network === "mtn_mashup" || pkg.network === "mashup";
+        // Show Express badge only on specific mtn_mashup packages (matching flyer image)
+        const showExpress = false; // pkg.network === "mtn_mashup" && ["125mins + 0.36GB", "360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(pkg.size_gb_text || "");
+                  return (
                   <Card
-                    key={pkg.id}
-                    className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group w-full"
-                    style={{ background: cardBackground }}
-                  >
-                    <CardContent className={`${getPadding()} text-center space-y-1 sm:space-y-2 w-full`}>
-                      <p
-                        className={`${getGbFontSize()} font-bold break-words`}
-                        style={{ color: gbTextColor }}
-                      >
-                        {pkg.size_gb}GB
-                      </p>
-                      <p
-                        className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words"
-                        style={{ color: getNetworkLabelColor(networkFilter) }}
-                      >
-                        {formatNetworkName(networkFilter)}
-                      </p>
-                      <p
-                        className={`${getPriceFontSize()} font-bold break-words`}
-                        style={{ color: priceTextColor }}
-                      >
-                        GHC{Number(price).toFixed(2)}
-                      </p>
-                      <Button
-                        variant="secondary"
-                        size={getButtonSize() === "xs" ? "sm" : (getButtonSize() as any)}
-                        className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap"
-                        style={{
-                          backgroundColor: buttonBgColor,
-                          color: buttonTextColor,
-                          borderColor: buttonBorderColor,
-                          borderWidth: "1px",
-                          borderStyle: "solid",
-                        }}
-                        onClick={() => setPaymentPkg(pkg)}
-                      >
-                        Buy Now
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                      key={pkg.id}
+                      className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 group w-full ${isInactive ? "opacity-50 grayscale" : "hover:shadow-xl"}`}
+                      style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBackground }}
+                    >
+                      {isMTNMashup ? (
+                        <>
+                          <CardContent className="p-6 text-center space-y-4">
+                            {(isInactive || isOffline) && (
+                              <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />
+                            )}
+                            <div className="relative bg-white/20 rounded-lg p-3 mb-3">
+                              {showExpress && <div className="absolute top-1 right-1 bg-yellow-400 text-black px-2 py-1 rounded text-xs font-bold">Express</div>}
+                              <p className="font-semibold text-base text-white">Special MTN Mashup</p>
+                              <p className="text-xs opacity-90 text-white">Data Bundle</p>
+                            </div>
+                            <p className="text-4xl md:text-5xl font-bold text-white">{pkg.size_gb_text}</p>
+                            <p className="text-base font-medium text-white">GHC {Number(price).toFixed(2)} - Valid forever</p>
+                            <div className="space-y-2 text-sm text-white">
+                              <div className="flex items-center justify-center gap-2"><Check className="h-4 w-4" />No SMS is sent for data delivery. Check your balance before purchasing.</div>
+                            </div>
+                            <Button variant="secondary" size="lg" className="w-full font-semibold bg-orange-700 hover:bg-orange-800 text-white border-0" onClick={() => setPaymentPkg(pkg)}>Buy Now</Button>
+                          </CardContent>
+                        </>
+                      ) : (
+                        <>
+                          <CardContent className={`${getPadding()} text-center space-y-1 sm:space-y-2 w-full`}>
+                            {(isInactive || isOffline) && (
+                              <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />
+                            )}
+                            <p
+                              className={`${getGbFontSize()} font-bold break-words`}
+                              style={{ color: gbTextColor }}
+                            >
+                              {pkg.size_gb}GB
+                            </p>
+                            <p
+                              className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words"
+                              style={{ color: getNetworkLabelColor(networkFilter) }}
+                            >
+                              {formatNetworkName(networkFilter)}
+                            </p>
+                            <p
+                              className={`${getPriceFontSize()} font-bold break-words`}
+                              style={{ color: priceTextColor }}
+                            >
+                              GHC{Number(price).toFixed(2)}
+                            </p>
+                            <Button
+                              variant="secondary"
+                              size={getButtonSize() === "xs" ? "sm" : (getButtonSize() as any)}
+                              disabled={isInactive}
+                              className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap disabled:opacity-100 disabled:cursor-not-allowed"
+                              style={isInactive ? {
+                                backgroundColor: "transparent",
+                                color: "inherit",
+                                borderColor: buttonBorderColor,
+                                borderWidth: "1px",
+                                borderStyle: "solid",
+                              } : {
+                                backgroundColor: buttonBgColor,
+                                color: buttonTextColor,
+                                borderColor: buttonBorderColor,
+                                borderWidth: "1px",
+                                borderStyle: "solid",
+                              }}
+                              onClick={() => !isInactive && setPaymentPkg(pkg)}
+                            >
+                              {isInactive ? "Not Available" : "Buy Now"}
+                            </Button>
+                          </CardContent>
+                        </>
+                      )}
+                    </Card>
+                  );
+                })
+              )}
             </div>
-            {filteredPackages.length === 0 && (
-              <p className="text-center text-muted-foreground py-12">
-                No packages available for this network.
-              </p>
-            )}
           </div>
         </>
+      ) : activeCategory === "bulk" ? (
+        <div className="container pb-20">
+          <Card className="border-primary/30 bg-primary/5 max-w-3xl mx-auto">
+            <CardContent className="p-6 space-y-6">
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
+                  <Layers className="h-8 w-8" style={{ color: primaryColor }} />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground">Bulk Orders</h2>
+                <p className="text-muted-foreground">Send data to multiple recipients at once via Paystack</p>
+              </div>
+
+              {/* Step 1: Select Network */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold" style={{ backgroundColor: primaryColor, color: primaryForeground }}>1</span>
+                  <span className="font-semibold text-lg">SELECT NETWORK</span>
+                </div>
+                <div className="flex gap-3 flex-wrap">
+                  <Button variant={bulkNetwork === "mtn" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "mtn" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : ""}`} onClick={() => setBulkNetwork("mtn")}>MTN</Button>
+                  <Button variant={bulkNetwork === "telecel" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "telecel" ? "bg-red-600 hover:bg-red-700" : ""}`} onClick={() => setBulkNetwork("telecel")}>Telecel</Button>
+                  <Button variant={bulkNetwork === "airteltigo" ? "default" : "outline"} className={`px-8 py-6 text-lg font-bold ${bulkNetwork === "airteltigo" ? "bg-blue-600 hover:bg-blue-700" : ""}`} onClick={() => setBulkNetwork("airteltigo")}>AirtelTigo</Button>
+                </div>
+              </div>
+
+              {/* Step 2: Recipients */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold" style={{ backgroundColor: primaryColor, color: primaryForeground }}>2</span>
+                  <span className="font-semibold text-lg">RECIPIENTS</span>
+                </div>
+                
+                {/* CSV Upload */}
+                <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-6 text-center hover:border-primary/50 transition-colors cursor-pointer" onClick={() => bulkFileInputRef.current?.click()}>
+                  <input ref={bulkFileInputRef} type="file" accept=".csv,.xlsx,.xls,.txt" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      const text = evt.target?.result as string;
+                      const lines = text.split("\n").filter(l => l.trim()).map(l => {
+                        const parts = l.split(/[,\t]/).map(p => p.trim());
+                        return `${parts[0]} ${parts[1] || ""}`.trim();
+                      }).join("\n");
+                      setBulkRecipients(lines);
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }} />
+                  <FileSpreadsheet className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                  <p className="font-semibold">Upload CSV / Excel / Text file</p>
+                  <p className="text-sm text-muted-foreground">Column A: phone - Column B: GB size (optional)</p>
+                </div>
+
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-border"></div>
+                  <span className="text-sm text-muted-foreground">or type manually</span>
+                  <div className="flex-1 h-px bg-border"></div>
+                </div>
+
+                {/* Manual Input */}
+                <textarea
+                  placeholder={`0241234567 2\n0551234567 5\n0591234567 10`}
+                  value={bulkRecipients}
+                  onChange={(e) => setBulkRecipients(e.target.value)}
+                  rows={8}
+                  className="w-full font-mono text-sm bg-secondary/50 border border-border rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+
+                {/* Format Guide */}
+                <div className="rounded-lg p-4 space-y-2" style={{ backgroundColor: `${primaryColor}20`, borderColor: `${primaryColor}50`, borderWidth: 1 }}>
+                  <p className="font-semibold" style={{ color: primaryColor }}>Format: 0241234567 2 (phone then GB size per line)</p>
+                  <p className="text-sm text-muted-foreground">Or use the global package below if all numbers get the same bundle.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Valid prefixes: {bulkNetwork === "mtn" ? "024, 025, 053, 054, 055, 059" : bulkNetwork === "telecel" ? "020, 050" : "026, 027, 056, 057"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3: Global Package (optional) */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold" style={{ backgroundColor: primaryColor, color: primaryForeground }}>3</span>
+                  <span className="font-semibold text-lg">GLOBAL PACKAGE (Optional)</span>
+                </div>
+                <p className="text-sm text-muted-foreground">If set, all recipients without a specified GB size will receive this package.</p>
+                <select
+                  value={bulkGlobalSize?.toString() || "none"}
+                  onChange={(e) => setBulkGlobalSize(e.target.value === "none" ? null : Number(e.target.value))}
+                  className="w-full md:w-64 bg-secondary/50 border border-border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="none">None (use per-line sizes)</option>
+                  {packages.filter(p => p.network.toLowerCase() === bulkNetwork).map(p => {
+                    const price = agentPrices[p.id] ?? p.price;
+                    return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GHC {price.toFixed(2)}</option>;
+                  })}
+                </select>
+              </div>
+
+              {/* Summary & Actions */}
+              <div className="border-t pt-4 space-y-4">
+                {(() => {
+                  const lines = bulkRecipients.split("\n").filter(l => l.trim());
+                  const parsed = lines.map(line => {
+                    const parts = line.trim().split(/\s+/);
+                    const phone = parts[0]?.replace(/\D/g, "") || "";
+                    const size = parts[1] ? Number(parts[1]) : bulkGlobalSize;
+                    return { phone, size };
+                  }).filter(r => r.phone.length === 10 && r.size && r.size > 0);
+                  
+                  const totalGb = parsed.reduce((sum, r) => sum + (r.size || 0), 0);
+                  const totalCost = parsed.reduce((sum, r) => {
+                    const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
+                    const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                    return sum + price;
+                  }, 0);
+                  const paystackFee = Math.ceil(totalCost * 0.0198 * 100) / 100;
+                  const grandTotal = totalCost + paystackFee;
+                  
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-2xl font-bold">{parsed.length}</p>
+                          <p className="text-xs text-muted-foreground">Valid Recipients</p>
+                        </div>
+                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-2xl font-bold">{totalGb}GB</p>
+                          <p className="text-xs text-muted-foreground">Total Data</p>
+                        </div>
+                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-2xl font-bold" style={{ color: primaryColor }}>GHC {totalCost.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">Data Cost</p>
+                        </div>
+                        <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                          <p className="text-2xl font-bold text-green-500">GHC {grandTotal.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">Total (incl. fees)</p>
+                        </div>
+                      </div>
+                      
+                      {paystackFee > 0 && (
+                        <p className="text-sm text-muted-foreground text-center">Paystack fee (1.98%): GHC {paystackFee.toFixed(2)}</p>
+                      )}
+                      
+                      <div className="flex gap-3 flex-wrap">
+                        <Button
+                          variant="hero"
+                          className="flex-1"
+                          disabled={bulkProcessing || parsed.length === 0}
+                          onClick={async () => {
+                            if (parsed.length === 0 || !store) return;
+                            setBulkProcessing(true);
+                            
+                            try {
+                              const recipients = parsed.map(r => {
+                                const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
+                                const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                                return {
+                                  phone: r.phone,
+                                  size_gb: r.size,
+                                  package_id: pkg?.id,
+                                  price: price
+                                };
+                              });
+                              
+                              const callbackUrl = window.location.href.split("?")[0] + "?bulk_payment=true";
+                              
+                              const { data, error } = await supabase.functions.invoke("initialize-payment", {
+                                body: {
+                                  email: `bulk_${Date.now()}@datapluggh.com`,
+                                  amount: grandTotal,
+                                  phone: recipients[0]?.phone || "0000000000",
+                                  callback_url: callbackUrl,
+                                  metadata: {
+                                    type: "bulk_order",
+                                    network: bulkNetwork,
+                                    recipients: recipients,
+                                    total_gb: totalGb,
+                                    recipient_count: parsed.length,
+                                    agent_store_id: store.id
+                                  }
+                                }
+                              });
+                              
+                              if (error) throw error;
+                              if (data?.authorization_url) {
+                                window.location.href = data.authorization_url;
+                              } else {
+                                throw new Error("No payment URL received");
+                              }
+                            } catch (err: any) {
+                              toast({ title: "Payment Error", description: err.message, variant: "destructive" });
+                            } finally {
+                              setBulkProcessing(false);
+                            }
+                          }}
+                        >
+                          {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <>Pay with Paystack (GHC {grandTotal.toFixed(2)})</>}
+                        </Button>
+                        <Button variant="outline" onClick={() => { setBulkRecipients(""); setBulkGlobalSize(null); }}>
+                          <RotateCcw className="h-4 w-4 mr-2" /> Clear
+                        </Button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : activeCategory === "afa" ? (
+        <div className="w-full pb-20">
+          <AFAPackagesDisplay
+            agentStoreId={store?.id}
+            onRegisterClick={(packageId, packageName, price) => {
+              setPaymentPkg({
+                id: packageId,
+                size_gb: 0,
+                price: store?.afa_bundle_price || price,
+                network: "mtn",
+                callbackUrl: typeof window !== 'undefined' ? window.location.href : '',
+                agentStoreId: store?.id
+              });
+            }}
+            themeColor={primaryColor}
+          />
+        </div>
       ) : (
         <div className="container pb-20">{renderComingSoon()}</div>
       )}
@@ -1056,45 +1730,93 @@ const AgentStorefront = () => {
               <span style={{ color: primaryColor }}>TECH</span>
             </span>
           </p>
+          <p className="text-sm text-muted-foreground pt-2">
+            Already an agent?{" "}
+            <a 
+              href="https://agentsstore.shop/login"
+              className="font-semibold hover:underline"
+              style={{ color: primaryColor }}
+            >
+              Login here
+            </a>
+          </p>
         </div>
       </footer>
 
-      {/* WhatsApp group FAB */}
+      {/* WhatsApp group FAB - Draggable */}
       {groupLink && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <a
-            href={groupLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-[#25D366] hover:bg-[#20B859] text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105"
-            style={{ padding: showGroupTooltip ? "0.75rem 1.5rem" : "0.75rem" }}
-          >
+        <DraggableFAB
+          initialBottom={freeDataEnabled ? 88 : 24}
+          initialRight={24}
+          storageKey="whatsapp-group-agent"
+          href={groupLink}
+          title="Join WhatsApp Group"
+        >
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#25D366] hover:bg-[#20B859] text-white shadow-lg transition-all duration-300 hover:scale-110">
             <img
               src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/whatsapp.svg"
               alt="WhatsApp"
               className="h-6 w-6"
               style={{ filter: "brightness(0) invert(1)" }}
             />
-            {showGroupTooltip && (
-              <span className="font-medium text-sm whitespace-nowrap">Join WhatsApp Group</span>
-            )}
-          </a>
-        </div>
+          </div>
+        </DraggableFAB>
       )}
 
       {/* Payment dialog */}
-      {paymentPkg && (
-        <PaymentDialog
+  {selectedService && <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => !open && setSelectedService(null)} />}
+  {paymentPkg && (
+  <PaymentDialog
           open={!!paymentPkg}
           onOpenChange={(v) => !v && setPaymentPkg(null)}
-          packageName={`${paymentPkg.size_gb}GB`}
+          package={paymentPkg}
           network={networkFilter}
           price={Number(selectedPaymentPrice)}
-          packageId={paymentPkg.id}
           agentStoreId={store.id}
         />
       )}
       <PaymentVerifier />
+      <AFARegistrationSuccess />
+
+      {/* Report Complaint Dialog — lazy-loaded to break circular dep */}
+      <Suspense fallback={null}>
+        {reportOrder && (
+          <ReportComplaintDialog
+            open={reportDialogOpen}
+            onOpenChange={setReportDialogOpen}
+            order={reportOrder}
+            complaintType="agent"
+            agentStoreId={store?.id}
+          />
+        )}
+      </Suspense>
+
+      {/* Claim Free Data Dialog — lazy-loaded to break circular dep */}
+      <Suspense fallback={null}>
+        <ClaimFreeDataDialog
+          open={claimFreeDataOpen}
+          onOpenChange={setClaimFreeDataOpen}
+          storeId={store?.id}
+        />
+      </Suspense>
+
+      {/* Claim Free Data FAB - draggable */}
+      {freeDataEnabled && (
+        <DraggableFAB
+          initialBottom={groupLink ? 88 : 24}
+          initialRight={24}
+          storageKey="claim-free-data-agent"
+          onClick={() => setClaimFreeDataOpen(true)}
+          title="Claim Free Data"
+        >
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
+            <Gift className="h-6 w-6" />
+          </div>
+        </DraggableFAB>
+      )}
+
+      {/* Support ChatBot */}
+      <ChatBot page="agent-storefront" />
     </div>
   );
 };

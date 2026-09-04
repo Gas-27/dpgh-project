@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -171,7 +172,7 @@ const AgentOnboarding = () => {
 
   // Compute the proposed subdomain for display
   const proposedSlug = storeName.trim() ? slugify(storeName) : "";
-  const storeLink = proposedSlug ? `https://${proposedSlug}.datastores.shop` : "";
+  const storeLink = proposedSlug ? DOMAINS.getAgentStoreUrl(storeName) : "";
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
