@@ -1,0 +1,32 @@
+import { useEffect, useState } from "react";
+import { RefreshCw, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+
+export default function AdminSpaceshipPricing() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase.from("spaceship_tld_pricing").select("tld,provider_price,customer_price,active").order("tld");
+    setRows(data ?? []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function save(row: any) {
+    setSaving(row.tld);
+    setMessage("");
+    const { error } = await supabase.from("spaceship_tld_pricing").update({ provider_price: Number(row.provider_price), customer_price: Number(row.customer_price), active: row.active, updated_at: new Date().toISOString() }).eq("tld", row.tld);
+    setSaving(null);
+    setMessage(error ? "Pricing could not be saved. Check admin permissions." : `${row.tld} pricing saved.`);
+  }
+
+  return <Card className="border-border/60 bg-card/80"><CardHeader className="flex flex-row items-center justify-between"><div><CardTitle>Spaceship domain pricing</CardTitle><p className="text-sm text-muted-foreground">Manage customer prices for every supported TLD.</p></div><Button variant="outline" size="sm" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button></CardHeader><CardContent className="space-y-3">{loading ? <p className="text-sm text-muted-foreground">Loading pricing...</p> : rows.map((row) => <div key={row.tld} className="grid grid-cols-[80px_1fr_1fr_auto_auto] items-center gap-3 rounded-lg border border-border p-3"><strong>{row.tld}</strong><Input type="number" min="0" step="0.01" value={row.provider_price} onChange={(e) => setRows(rows.map((item) => item.tld === row.tld ? { ...item, provider_price: e.target.value } : item))} aria-label={`${row.tld} provider price`} /><Input type="number" min="0" step="0.01" value={row.customer_price} onChange={(e) => setRows(rows.map((item) => item.tld === row.tld ? { ...item, customer_price: e.target.value } : item))} aria-label={`${row.tld} customer price`} /><Switch checked={row.active} onCheckedChange={(active) => setRows(rows.map((item) => item.tld === row.tld ? { ...item, active } : item))} aria-label={`${row.tld} active`} /><Button size="sm" onClick={() => save(row)} disabled={saving === row.tld}><Save className="h-4 w-4" /></Button></div>)}{message && <p className="text-sm text-muted-foreground">{message}</p>}</CardContent></Card>;
+}

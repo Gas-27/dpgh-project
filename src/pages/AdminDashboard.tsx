@@ -33,6 +33,7 @@ import DeliveryAutomationAdmin from "@/components/DeliveryAutomationAdmin";
 import DeliveryProgressAdmin from "@/components/DeliveryProgressAdmin";
 import AdminOrderStatusUpdater from "@/components/AdminOrderStatusUpdater";
 import NetworkProviderRoutingAdmin from "@/components/NetworkProviderRoutingAdmin";
+import AdminSpaceshipPricing from "@/components/AdminSpaceshipPricing";
 import SmsAdmin from "@/components/SmsAdmin";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
@@ -2690,7 +2691,8 @@ const AdminDashboard = () => {
   <TabsTrigger value="network_routing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Route className="h-3 w-3 md:h-4 md:w-4" /> Network Routing</TabsTrigger>
                 <TabsTrigger value="sms" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><MessageCircle className="h-3 w-3 md:h-4 md:w-4" /> SMS</TabsTrigger>
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
-          <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
+          <TabsTrigger value="spaceship_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Spaceship Domains</TabsTrigger>
+            <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
 
           {/* PRICES TAB */}
@@ -4869,6 +4871,10 @@ const AdminDashboard = () => {
               </Card>}
             </TabsContent>
             )}
+
+            <TabsContent value="spaceship_pricing" className="space-y-6">
+              <AdminSpaceshipPricing />
+            </TabsContent>
 
             {/* API Pricing Tab */}
             <TabsContent value="api_pricing" className="space-y-6">
