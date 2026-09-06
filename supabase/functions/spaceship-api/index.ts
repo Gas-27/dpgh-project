@@ -23,7 +23,11 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get("SPACESHIP_API_KEY");
   const apiSecret = Deno.env.get("SPACESHIP_API_SECRET");
   if (!apiKey || !apiSecret) {
-    return json({ error: "Spaceship API credentials are not configured." }, 500);
+    return json({
+      error: "Spaceship API credentials are not configured in Supabase Edge Function secrets.",
+      missing: [!apiKey ? "SPACESHIP_API_KEY" : null, !apiSecret ? "SPACESHIP_API_SECRET" : null].filter(Boolean),
+      fix: "Add both secrets to the spaceship-api function, then redeploy it.",
+    }, 500);
   }
 
   let input: { method?: string; path?: string; query?: Record<string, string>; body?: unknown };
@@ -68,6 +72,15 @@ Deno.serve(async (req) => {
     payload = JSON.parse(text);
   } catch {
     // Preserve non-JSON upstream responses without exposing credentials.
+  }
+  if (!upstream.ok) {
+    return json({
+      error: "Spaceship API request failed.",
+      status: upstream.status,
+      details: payload,
+      spaceshipErrorCode: upstream.headers.get("spaceship-error-code"),
+      operationId: upstream.headers.get("spaceship-operation-id"),
+    }, upstream.status);
   }
   return json(payload, upstream.status);
 });

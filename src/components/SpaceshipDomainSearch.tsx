@@ -33,7 +33,17 @@ export default function SpaceshipDomainSearch() {
     });
     setLoading(false);
     if (invokeError) {
-      setError(invokeError.message || "We could not check this domain right now.");
+      let detail = invokeError.message || "We could not check this domain right now.";
+      try {
+        const response = (invokeError as { context?: Response }).context;
+        if (response) {
+          const payload = await response.clone().json();
+          detail = payload?.error || payload?.message || detail;
+        }
+      } catch {
+        // Keep the SDK error when the function response is not JSON.
+      }
+      setError(detail);
       return;
     }
 

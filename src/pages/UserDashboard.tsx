@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
+import CustomDomainPanel from "@/components/CustomDomainPanel";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -2744,7 +2745,8 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   );
 
   const renderSettings = () => (
-    <div className="space-y-6">
+  <div className="space-y-6">
+  <CustomDomainPanel />
       <Card>
         <CardHeader>
           <CardTitle>Account Settings</CardTitle>
