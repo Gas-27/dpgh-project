@@ -94,6 +94,8 @@ const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
     apiUrl: "https://fricopay.com/devapi/cheap-data/purchase",
     networkMap: {
       mtn: "YELLO",
+      mtn_express: "YELLO",
+      mtn_xpress: "YELLO",
       telecel: "TELECEL",
       airteltigo: "AT_PREMIUM",
       atbigtime: "AT_BIGTIME",
@@ -355,7 +357,7 @@ Deno.serve(async (req) => {
       reqHeaders["X-API-Key"]     = apiKey;
     }
 
-    // ─── Call provider API ───────────────────────────────────────────────────
+    // ─── Call provider API ─────────��─────────────────────────────────────────
     const apiRes  = await fetch(config.apiUrl, { method: "POST", headers: reqHeaders, body: JSON.stringify(requestBody) });
     const rawText = await apiRes.text();
 
