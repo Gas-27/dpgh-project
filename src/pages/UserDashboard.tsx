@@ -902,7 +902,7 @@ const UserDashboard = () => {
       case "orders":
         return renderOrders();
       case "domains":
-        return <DomainDashboardPanel />;
+        return <DomainDashboardPanel walletBalance={Number(normalWallet ?? 0)} walletLabel="Wallet balance" />;
       case "refunds":
         return renderRefunds();
   case "my-complaints":

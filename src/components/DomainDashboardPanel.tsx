@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 const tlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap"];
 type RecordItem = { type: string; name: string; value: string; ttl: number };
 
-export default function DomainDashboardPanel() {
+type DomainDashboardPanelProps = { walletBalance?: number; walletLabel?: string };
+
+export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = "Wallet balance" }: DomainDashboardPanelProps) {
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -75,10 +77,10 @@ export default function DomainDashboardPanel() {
   }
 
   return <div className="space-y-6">
-    <Card className="border-primary/30 bg-primary/5"><CardHeader><CardTitle className="flex items-center gap-2"><Globe2 className="h-5 w-5 text-primary" /> Domains</CardTitle><p className="text-sm text-muted-foreground">Search, buy, and manage your domains, DNS records, and nameservers from one place.</p></CardHeader><CardContent className="space-y-4">
+    <Card className="border-primary/30 bg-primary/5"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><Globe2 className="h-5 w-5 text-primary" /> Domains</CardTitle><p className="text-sm text-muted-foreground">Search, buy, and manage your domains, DNS records, and nameservers from one place.</p></div><Badge variant="outline">{walletLabel}: GHC {walletBalance.toFixed(2)}</Badge></div></CardHeader><CardContent className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row"><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="example.com" aria-label="Domain to search" /><Button onClick={search} disabled={loading || !query.trim()}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Search domain</Button></div>
       <div className="flex flex-wrap gap-2">{tlds.map((tld) => <button type="button" key={tld} className="rounded-full border border-border px-2 py-1 text-xs text-muted-foreground hover:border-primary hover:text-primary" onClick={() => setQuery((query.split(".")[0] || "example") + tld)}>{tld}</button>)}</div>
-      {results.length > 0 && <div className="grid gap-2 sm:grid-cols-2">{results.map((item: any) => { const name = item.domain || item.name || query; const available = isAvailable(item); return <div key={name} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 p-4"><div><p className="font-semibold">{name}</p><Badge variant={available ? "default" : "secondary"}>{available ? "Available" : "Unavailable"}</Badge></div><Button onClick={() => { setResult(item); setQuery(name); buy(name); }} disabled={loading || !available}>Buy domain</Button></div>; })}</div>}
+      {results.length > 0 && <div className="grid gap-2 sm:grid-cols-2">{results.map((item: any) => { const name = item.domain || item.name || query; const available = isAvailable(item); const price = Number(item.price ?? item.registrationPrice ?? item.amount ?? 0); const canAfford = price <= 0 || walletBalance >= price; return <div key={name} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 p-4"><div><p className="font-semibold">{name}</p><Badge variant={available ? "default" : "secondary"}>{available ? "Available" : "Unavailable"}</Badge>{price > 0 && <p className="text-xs text-muted-foreground">GHC {price.toFixed(2)}</p>}</div><Button onClick={() => { setResult(item); setQuery(name); buy(name); }} disabled={loading || !available || !canAfford}>{canAfford ? "Buy domain" : "Insufficient wallet"}</Button></div>; })}</div>}
     </CardContent></Card>
 
     <Card><CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle>Your domains</CardTitle><p className="text-sm text-muted-foreground">Load registered domains and open DNS management.</p></div><Button variant="outline" onClick={loadDomains} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button></div></CardHeader><CardContent>{domains.length ? <div className="space-y-2">{domains.map((item, index) => { const name = item.name || item.domain; return <div key={`${name}-${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"><span className="font-medium">{name}</span><Button variant="outline" size="sm" onClick={() => manage(name)}>Manage DNS</Button></div>; })}</div> : <p className="text-sm text-muted-foreground">Click Refresh to load your domains.</p>}</CardContent></Card>
