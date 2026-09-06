@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
-import { isValidStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
+import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
@@ -4318,8 +4318,9 @@ return (
   <p className="text-xs text-muted-foreground">{STORE_NAME_RULE}</p>
   <Input
   value={storeForm.store_name || ""}
-  onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })}
+  onChange={e => setStoreForm({ ...storeForm, store_name: sanitizeStoreName(e.target.value) })}
   pattern="[A-Za-z0-9 ]+"
+  className="font-sans"
   title={STORE_NAME_RULE}
                       />
                     </div>
@@ -4410,7 +4411,7 @@ return (
                     </div>
                     <div className="flex gap-2">
                       <Button variant="outline" onClick={() => setEditingStore(false)}>Cancel</Button>
-                      <Button variant="hero" onClick={handleSaveStore} disabled={saving}>
+                      <Button variant="hero" onClick={handleSaveStore} disabled={saving || !isValidStoreName(storeForm.store_name || "")}>
                         {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
                         Save Changes
                       </Button>
