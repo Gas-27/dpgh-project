@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
+import CustomDomainPanel from "@/components/CustomDomainPanel";
 import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import NetworkIndicator from "@/components/NetworkIndicator";
@@ -3045,6 +3046,7 @@ return (
   </TabsContent>
 
   <TabsContent value="settings" className="mt-0 space-y-6">
+  <CustomDomainPanel />
             <Card className="border-border">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Store Information</CardTitle>

@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+const supportedTlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap"];
+
 export default function SpaceshipDomainSearch() {
   const [domain, setDomain] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -52,6 +54,7 @@ export default function SpaceshipDomainSearch() {
         <p className="text-sm text-muted-foreground">Check availability across Spaceship-supported extensions.</p>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">{supportedTlds.map((tld) => <button key={tld} type="button" className="rounded-full border border-border px-2 py-1 hover:border-primary hover:text-primary" onClick={() => setDomain((current) => current.replace(/\.[a-z]+$/i, "") + tld)}>{tld}</button>)}</div>
         <form onSubmit={searchDomain} className="flex flex-col gap-2 sm:flex-row">
           <Input value={domain} onChange={(event) => setDomain(event.target.value)} placeholder="yourbrand.com" aria-label="Domain name" />
           <Button type="submit" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Check availability</Button>
