@@ -2377,7 +2377,7 @@ return (
 
           {/* ============================= DOMAINS ============================= */}
           <TabsContent value="domains" className="space-y-6 mt-0">
-            <DomainDashboardPanel />
+            <DomainDashboardPanel walletBalance={Number(store?.wallet_balance ?? 0)} walletLabel="Agent wallet" />
           </TabsContent>
 
           {/* ============================= OVERVIEW ============================= */}
@@ -3877,7 +3877,7 @@ return (
                   <div>
                     <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>�� <span className="font-mono">limit</span> (integer) - Orders to return (default: 50)</li>
+                      <li>��� <span className="font-mono">limit</span> (integer) - Orders to return (default: 50)</li>
                       <li>• <span className="font-mono">offset</span> (integer) - Orders to skip (default: 0)</li>
                       <li>• <span className="font-mono">status</span> - Filter by status (pending, processing, completed, failed, delivered)</li>
                       <li>• <span className="font-mono">network</span> - Filter by network (mtn, mtn_express, telecel, airteltigo)</li>

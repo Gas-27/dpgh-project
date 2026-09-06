@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 const tlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap"];
 type RecordItem = { type: string; name: string; value: string; ttl: number };
 
-type DomainDashboardPanelProps = { walletBalance?: number; walletLabel?: string };
+type DomainDashboardPanelProps = { walletBalance?: number; walletLabel?: string; onPurchaseComplete?: () => void };
 
-export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = "Wallet balance" }: DomainDashboardPanelProps) {
+export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = "Wallet balance", onPurchaseComplete }: DomainDashboardPanelProps) {
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -66,7 +66,14 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
     const value = selected || result?.domain || query.trim().toLowerCase();
     if (!value) return;
     setLoading(true); setError(""); setMessage("");
-    try { const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`, {}); setMessage(data?.operationId ? `Purchase started. Operation: ${data.operationId}` : "Purchase request submitted."); await loadDomains(); }
+    try {
+      const price = Number((Array.isArray(result) ? result.find((item: any) => (item.domain || item.name) === value) : result)?.price ?? 0);
+      if (price > 0 && walletBalance < price) throw new Error(`Insufficient wallet balance. You need GHC ${price.toFixed(2)}.`);
+      const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`, { autoRenew: false, period: 1 });
+      setMessage(data?.operationId ? `Purchase started. Operation: ${data.operationId}` : "Purchase request submitted.");
+      onPurchaseComplete?.();
+      await loadDomains();
+    }
     catch (cause) { const text = cause instanceof Error ? cause.message : "Purchase request failed."; setError(text.includes("credentials") ? "Domain purchase is temporarily unavailable. Please try again shortly." : text); } finally { setLoading(false); }
   }
 
