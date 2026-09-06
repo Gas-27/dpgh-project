@@ -23,14 +23,27 @@ export default function SpaceshipDomainSearch() {
     setError("");
     setResult(null);
     const { data, error: invokeError } = await supabase.functions.invoke("spaceship-api", {
-      body: { method: "GET", path: `/v1/domains/${encodeURIComponent(normalized)}/available` },
+      body: {
+        method: "POST",
+        path: "/v1/domains/available",
+        body: { domains: [normalized] },
+      },
     });
     setLoading(false);
-    if (invokeError) setError("We could not check this domain right now.");
-    else setResult(data);
+    if (invokeError) {
+      setError(invokeError.message || "We could not check this domain right now.");
+      return;
+    }
+
+    const domainResult = data?.domains?.[0];
+    if (!domainResult) {
+      setError("Spaceship returned no availability result for this domain.");
+      return;
+    }
+    setResult(domainResult);
   }
 
-  const available = result?.available ?? result?.isAvailable;
+  const available = result?.result === "available" || result?.available === true || result?.isAvailable === true;
 
   return (
     <Card className="border-border/60 bg-card/80">
