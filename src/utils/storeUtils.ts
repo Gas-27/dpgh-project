@@ -16,6 +16,15 @@ export type StoreType = "agent" | "subagent";
 /**
  * Generic slugify function matching the one used in storefronts
  */
+export const STORE_NAME_PATTERN = /^[A-Za-z0-9 ]+$/;
+
+export const isValidStoreName = (name: string): boolean => {
+  const value = name.trim();
+  return value.length >= 2 && STORE_NAME_PATTERN.test(value);
+};
+
+export const STORE_NAME_RULE = "Use letters, numbers, and spaces only. Emojis and special characters are not allowed because your store URL supports only text and numbers.";
+
 export const slugify = (name: string): string => {
   return name
     .toLowerCase()

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
+import { isValidStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
@@ -868,8 +869,9 @@ const SubSubagentDashboard = () => {
     }
   };
 
-  const handleSaveStore = async () => {
-    try {
+const handleSaveStore = async () => {
+  if (!isValidStoreName(storeForm.store_name || "")) { toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" }); return; }
+  try {
       setSaving(true);
       
       let finalStoreName = storeForm.store_name;
@@ -3069,10 +3071,13 @@ return (
                 {editingStore ? (
                   <>
                     <div className="space-y-2">
-                      <Label>Store Name</Label>
-                      <Input
-                        value={storeForm.store_name || ""}
-                        onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })}
+<Label>Store Name</Label>
+  <p className="text-xs text-muted-foreground">{STORE_NAME_RULE}</p>
+  <Input
+  value={storeForm.store_name || ""}
+  onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })}
+  pattern="[A-Za-z0-9 ]+"
+  title={STORE_NAME_RULE}
                       />
                     </div>
                     <div className="space-y-2">

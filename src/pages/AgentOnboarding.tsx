@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Store, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { isValidStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 
 // Helper: convert store name to a URL‑safe slug (subdomain)
 const slugify = (name: string) =>
@@ -98,6 +99,9 @@ const AgentOnboarding = () => {
 
   const handleStoreNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setStoreName(e.target.value);
+    if (e.target.value && !/^[A-Za-z0-9 ]*$/.test(e.target.value)) {
+      toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" });
+    }
     if (nameAvailable !== null) setNameAvailable(null);
   };
 
@@ -115,6 +119,11 @@ const AgentOnboarding = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isValidStoreName(storeName)) {
+      toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" });
+      return;
+    }
 
     // Final verification before insert
     if (nameAvailable !== true) {
@@ -188,12 +197,15 @@ const AgentOnboarding = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>Store Name</Label>
+              <p className="text-xs text-muted-foreground">{STORE_NAME_RULE}</p>
               <div className="relative">
                 <Input
                   value={storeName}
                   onChange={handleStoreNameChange}
                   placeholder="e.g. DataKing GH"
                   required
+                  pattern="[A-Za-z0-9 ]+"
+                  title={STORE_NAME_RULE}
                   className={nameAvailable === false ? "border-red-500 pr-10" : nameAvailable === true ? "border-green-500 pr-10" : ""}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
