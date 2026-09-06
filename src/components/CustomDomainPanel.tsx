@@ -16,7 +16,7 @@ export default function CustomDomainPanel() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function callSpaceship(method: string, path: string, body?: unknown) {
+  async function callDomainService(method: string, path: string, body?: unknown) {
     const { data, error: invokeError } = await supabase.functions.invoke("spaceship-api", {
       body: { method, path, body },
     });
@@ -28,16 +28,16 @@ export default function CustomDomainPanel() {
   async function loadDns() {
     const normalized = domain.trim().toLowerCase();
     if (!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(normalized)) {
-      setError("Enter a valid domain you manage at Spaceship.");
+      setError("Enter a valid domain you manage at domain service.");
       return;
     }
     setLoading(true); setError(""); setMessage("");
     try {
-      const data = await callSpaceship("GET", `/v1/dns/records/${encodeURIComponent(normalized)}`);
+      const data = await callDomainService("GET", `/v1/dns/records/${encodeURIComponent(normalized)}`);
       setRecords(data?.records ?? data ?? []);
-      setMessage("DNS records loaded from Spaceship.");
+      setMessage("DNS records loaded successfully.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Spaceship could not load DNS records.");
+      setError(cause instanceof Error ? cause.message : "domain service could not load DNS records.");
     } finally { setLoading(false); }
   }
 
@@ -45,10 +45,10 @@ export default function CustomDomainPanel() {
     const normalized = domain.trim().toLowerCase();
     setLoading(true); setError(""); setMessage("");
     try {
-      await callSpaceship("PUT", `/v1/dns/records/${encodeURIComponent(normalized)}`, { records });
-      setMessage("DNS records saved to Spaceship.");
+      await callDomainService("PUT", `/v1/dns/records/${encodeURIComponent(normalized)}`, { records });
+      setMessage("DNS records saved successfully.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Spaceship could not save DNS records.");
+      setError(cause instanceof Error ? cause.message : "domain service could not save DNS records.");
     } finally { setLoading(false); }
   }
 
@@ -58,12 +58,12 @@ export default function CustomDomainPanel() {
   return (
     <Card className="border-border">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Globe2 className="h-5 w-5 text-primary" /> Spaceship domain management</CardTitle>
-        <p className="text-sm text-muted-foreground">Manage a domain registered in Spaceship, load its DNS records, add records, and save changes directly through the Spaceship API.</p>
+        <CardTitle className="flex items-center gap-2"><Globe2 className="h-5 w-5 text-primary" /> domain service domain management</CardTitle>
+        <p className="text-sm text-muted-foreground">Manage a domain registered in domain service, load its DNS records, add records, and save changes directly through the domain service API.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Input value={domain} onChange={(event) => setDomain(event.target.value)} placeholder="example.com" aria-label="Spaceship domain" />
+          <Input value={domain} onChange={(event) => setDomain(event.target.value)} placeholder="example.com" aria-label="domain service domain" />
           <Button type="button" onClick={loadDns} disabled={loading || !domain.trim()}><Link2 className="mr-2 h-4 w-4" />Load DNS</Button>
         </div>
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground"><span>Supported:</span>{supportedTlds.map((tld) => <span key={tld} className="rounded-full border border-border px-2 py-1">{tld}</span>)}</div>
@@ -79,7 +79,7 @@ export default function CustomDomainPanel() {
         </div>}
         {records.length === 0 && domain && <Button type="button" variant="outline" onClick={addRecord}><Plus className="mr-2 h-4 w-4" />Add DNS record</Button>}
         {message && <p className="text-sm text-primary">{message}</p>}
-        {error && <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"><strong>Spaceship request failed:</strong> {error}</div>}
+        {error && <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"><strong>Domain request failed:</strong> {error}</div>}
       </CardContent>
     </Card>
   );

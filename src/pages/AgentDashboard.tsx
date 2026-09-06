@@ -28,7 +28,7 @@ import {
   LayoutGrid, Minus, Plus as PlusIcon, Coins, Menu, Image, Download, Share2,
   ChevronDown, ChevronUp, BookOpen, Percent, Users, AlertCircle, ShieldAlert,
   Send, Eye, Upload, FileSpreadsheet, Layers, MessageCircle, Clock, Key, Globe,
-  AlertTriangle, UserCheck, RefreshCw, BriefcaseBusiness,
+  AlertTriangle, UserCheck, RefreshCw, BriefcaseBusiness, Globe2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ChatBot from "@/components/ChatBot";
