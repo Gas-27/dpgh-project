@@ -89,6 +89,24 @@ const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
     authHeader: "bearer",
   },
 
+  // Fricopay handles provider-routed standard data purchases.
+  fricopay: {
+    apiUrl: "https://fricopay.com/devapi/cheap-data/purchase",
+    networkMap: {
+      mtn: "YELLO",
+      telecel: "TELECEL",
+      airteltigo: "AT_PREMIUM",
+      atbigtime: "AT_BIGTIME",
+    },
+    buildRequest: (phone, sizeGb, networkKey) => ({
+      network: networkKey,
+      recipient: phone,
+      capacity: Number(sizeGb),
+    }),
+    apiKeyEnvVar: "FRICOPAY_API_KEY",
+    authHeader: "bearer",
+  },
+
   // Datahubnet handles: mashup (Special MTN Mashup packages)
   datahubnet: {
     apiUrl: "https://www.datahubnet.online/api/v1/special-offers/",
@@ -231,7 +249,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ─── Clean phone number ─────��────────────────────────────────────────────
+    // ─── Clean phone number ─────���────────────────────────────────────────────
     let phone = order.customer_number.replace(/[^0-9]/g, "");
     if (phone.startsWith("233")) phone = "0" + phone.slice(3);
     if (!phone.startsWith("0"))  phone = "0" + phone;
@@ -267,6 +285,9 @@ Deno.serve(async (req) => {
     const { data: mappedProvider, error: routeError } = await supabase.rpc("get_network_provider_route", { p_network_key: normalizedNetwork, p_flow: "fulfillment" });
     if (routeError) console.warn(`[FULFILL] Route lookup failed, using fallback: ${routeError.message}`);
     const provider = mappedProvider || fallbackProvider;
+    if (provider === "fricopay" && normalizedNetwork === "mtn_xpress") {
+      console.log("[FULFILL] Fricopay does not expose MTN Xpress; using its MTN route.");
+    }
 
     if (!provider) {
       console.error(`[FULFILL] No provider for network: ${order.network}`);
