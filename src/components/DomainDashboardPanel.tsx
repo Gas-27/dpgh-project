@@ -69,8 +69,8 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
     try {
       const price = Number((Array.isArray(result) ? result.find((item: any) => (item.domain || item.name) === value) : result)?.price ?? 0);
       if (price > 0 && walletBalance < price) throw new Error(`Insufficient wallet balance. You need GHC ${price.toFixed(2)}.`);
-      const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`, { autoRenew: false, period: 1 });
-      setMessage(data?.operationId ? `Purchase started. Operation: ${data.operationId}` : "Purchase request submitted.");
+      const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`);
+      setMessage(data?.operationId || data?.asyncOperationId ? `Purchase started. Operation: ${data.operationId || data.asyncOperationId}` : "Purchase request submitted.");
       onPurchaseComplete?.();
       await loadDomains();
     }

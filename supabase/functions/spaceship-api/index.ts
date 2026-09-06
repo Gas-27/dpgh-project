@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     upstream = await fetch(url, {
       method,
       headers,
-      body: method === "GET" || method === "DELETE" ? undefined : JSON.stringify(input.body ?? {}),
+      body: method === "GET" || method === "DELETE" || input.body === undefined ? undefined : JSON.stringify(input.body),
     });
   } catch {
     return json({ error: "Spaceship could not be reached. Check the API credentials and endpoint configuration." }, 502);
