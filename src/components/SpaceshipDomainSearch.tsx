@@ -45,7 +45,7 @@ export default function SpaceshipDomainSearch() {
       } catch {
         // Keep the SDK error when the function response is not JSON.
       }
-      setError(detail);
+      setError(detail.includes("credentials") ? "Domain search is temporarily unavailable. Please try again shortly." : detail);
       return;
     }
 

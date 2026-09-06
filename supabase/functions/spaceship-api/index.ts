@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
     Accept: "application/json",
   };
   if (method !== "GET" && method !== "DELETE") headers["Content-Type"] = "application/json";
+  headers["User-Agent"] = "DataPlug Domain Service/1.0";
 
   let upstream: Response;
   try {
@@ -75,9 +76,10 @@ Deno.serve(async (req) => {
   }
   if (!upstream.ok) {
     return json({
-      error: "Spaceship API request failed.",
+      error: "Domain provider request failed.",
       status: upstream.status,
       details: payload,
+      message: typeof payload === "object" && payload !== null ? ((payload as Record<string, unknown>).detail || (payload as Record<string, unknown>).message || (payload as Record<string, unknown>).title || null) : null,
       spaceshipErrorCode: upstream.headers.get("spaceship-error-code"),
       operationId: upstream.headers.get("spaceship-operation-id"),
     }, upstream.status);

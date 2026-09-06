@@ -30,7 +30,11 @@ export default function DomainDashboardPanel() {
       try { const payload = await context?.clone().json(); detail = payload?.error || payload?.details?.detail || detail; } catch {}
       throw new Error(detail);
     }
-    if (response.data?.error) throw new Error(`${response.data.error}${response.data.status ? ` (HTTP ${response.data.status})` : ""}`);
+      if (response.data?.error) {
+        const detail = response.data.details?.detail || response.data.details?.message || response.data.details?.title;
+        const code = response.data.spaceshipErrorCode ? ` [${response.data.spaceshipErrorCode}]` : "";
+        throw new Error(`${detail || response.data.error}${response.data.status ? ` (HTTP ${response.data.status})` : ""}${code}`);
+      }
     return response.data;
   }
 
@@ -41,13 +45,13 @@ export default function DomainDashboardPanel() {
     const requested = raw.includes(".") ? [raw] : tlds.map((tld) => `${base}${tld}`);
     setLoading(true); setError(""); setMessage(""); setResult(null);
     try { const data = await call("POST", "/v1/domains/available", { domains: requested }); setResult(data?.domains ?? data?.items ?? []); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Domain search failed."); } finally { setLoading(false); }
+    catch (cause) { const text = cause instanceof Error ? cause.message : "Domain search failed."; setError(text.includes("credentials") ? "Domain search is temporarily unavailable. Please try again shortly." : text); } finally { setLoading(false); }
   }
 
   async function loadDomains() {
     setLoading(true); setError("");
     try { const data = await call("GET", "/v1/domains", undefined, { take: "100", skip: "0", orderBy: "-expirationDate" }); setDomains(data?.items ?? []); setMessage("Domains loaded successfully."); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load domains."); } finally { setLoading(false); }
+    catch (cause) { const text = cause instanceof Error ? cause.message : "Could not load domains."; setError(text.includes("credentials") ? "Domain management is temporarily unavailable. Please try again shortly." : text); } finally { setLoading(false); }
   }
 
   async function manage(value: string) {
@@ -60,8 +64,8 @@ export default function DomainDashboardPanel() {
     const value = selected || result?.domain || query.trim().toLowerCase();
     if (!value) return;
     setLoading(true); setError(""); setMessage("");
-    try { const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`); setMessage(data?.operationId ? `Purchase started. Operation: ${data.operationId}` : "Purchase request submitted."); await loadDomains(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Purchase request failed."); } finally { setLoading(false); }
+    try { const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`, {}); setMessage(data?.operationId ? `Purchase started. Operation: ${data.operationId}` : "Purchase request submitted."); await loadDomains(); }
+    catch (cause) { const text = cause instanceof Error ? cause.message : "Purchase request failed."; setError(text.includes("credentials") ? "Domain purchase is temporarily unavailable. Please try again shortly." : text); } finally { setLoading(false); }
   }
 
   async function saveDns() {
