@@ -46,7 +46,7 @@ import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import ComplaintsManager from "@/components/ComplaintsManager";
-import CustomDomainPanel from "@/components/CustomDomainPanel";
+import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import {
@@ -104,6 +104,7 @@ const TELECEL_SIZES = [2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 50, 100];
 const menuItems = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
+  { id: "domains", label: "Domains", icon: Globe2 },
   { id: "bulk", label: "Bulk Orders", icon: Layers },
   { id: "refunds", label: "Refunds", icon: Wallet },
   { id: "store", label: "Store Prices", icon: Store },
@@ -134,7 +135,7 @@ const MANUAL_SECTIONS = [
 • Store Status – confirms your store is live.
 • Total Orders – every order ever placed through your store.
 • Pending Orders – orders still being processed.
-• Revenue – total money collected from customers.
+�� Revenue – total money collected from customers.
 • Total Profit – earnings after subtracting the base (cost) price.
 • My Wallet – your wallet balance you can cash out.
 
@@ -2373,6 +2374,11 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
+
+          {/* ============================= DOMAINS ============================= */}
+          <TabsContent value="domains" className="space-y-6 mt-0">
+            <DomainDashboardPanel />
+          </TabsContent>
 
           {/* ============================= OVERVIEW ============================= */}
           <TabsContent value="overview" className="space-y-6 mt-0">

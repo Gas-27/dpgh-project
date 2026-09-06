@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
-import CustomDomainPanel from "@/components/CustomDomainPanel";
+import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -187,6 +187,7 @@ const UserDashboard = () => {
     { id: "overview", label: "Overview", icon: Home },
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "orders", label: "Orders", icon: BarChart3 },
+  { id: "domains", label: "Domains", icon: Globe },
     { id: "refunds", label: "Refunds", icon: Wallet },
     { id: "my-complaints", label: "My Complaints", icon: MessageCircle },
   { id: "reports", label: "Report an Issue", icon: AlertTriangle },
@@ -900,6 +901,8 @@ const UserDashboard = () => {
         return renderBuyData();
       case "orders":
         return renderOrders();
+      case "domains":
+        return <DomainDashboardPanel />;
       case "refunds":
         return renderRefunds();
   case "my-complaints":
