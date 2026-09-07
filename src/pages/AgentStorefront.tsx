@@ -90,8 +90,12 @@ interface AgentStore {
     primary_foreground: string;
     background: string;
     card_background: string;
-    gridColumns?: number;
-    gb_text_color?: string;
+gridColumns?: number;
+  cardRadius?: number;
+  cardShadow?: boolean;
+  showShareStore?: boolean;
+  visibleSections?: Record<string, boolean>;
+  gb_text_color?: string;
     price_text_color?: string;
     button_text_color?: string;
     button_bg_color?: string;
@@ -1064,7 +1068,7 @@ const searchOrders = useCallback(async () => {
       </header>
 
       {/* Store URL Banner - Redesigned for better appeal */}
-      {store && (
+      {store && theme.showShareStore !== false && (
         <div className="relative px-4 py-6 overflow-hidden">
           <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)` }} />
           <div className="container mx-auto max-w-3xl relative z-10">

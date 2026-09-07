@@ -34,7 +34,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
     }
       if (response.data?.error) {
         const detail = response.data.details?.detail || response.data.details?.message || response.data.details?.title;
-        const code = response.data.spaceshipErrorCode ? ` [${response.data.spaceshipErrorCode}]` : "";
+        const code = response.data.errorCode ? ` [${response.data.errorCode}]` : "";
         throw new Error(`${detail || response.data.error}${response.data.status ? ` (HTTP ${response.data.status})` : ""}${code}`);
       }
     return response.data?.data ?? response.data;
@@ -82,7 +82,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
       onPurchaseComplete?.();
       await loadDomains();
     }
-    catch (cause) { const text = cause instanceof Error ? cause.message : "Purchase request failed."; setError(text.includes("credentials") ? "Domain purchase is temporarily unavailable. Please try again shortly." : text); } finally { setLoading(false); }
+    catch (cause) { const text = cause instanceof Error ? cause.message : "Purchase request failed."; setError(text); } finally { setLoading(false); }
   }
 
   async function saveDns() {

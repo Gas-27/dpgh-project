@@ -9,7 +9,6 @@ import PaymentVerifier from "@/components/PaymentVerifier";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import DigitalServicesCatalog, { Service } from "@/components/DigitalServicesCatalog";
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
-import SpaceshipDomainSearch from "@/components/SpaceshipDomainSearch";
 // Lazy-loaded to break circular dependency (ReferenceError: Cannot access 'J' before initialization)
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
@@ -1487,7 +1486,6 @@ const searchOrders = async () => {
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
-        <div className="mx-auto mb-10 max-w-4xl"><SpaceshipDomainSearch /></div>
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => (
             <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => changeCategory(cat)} className={`font-semibold ${["bulk", "sms"].includes(cat) && activeCategory !== cat ? "border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10" : ""}`}>
