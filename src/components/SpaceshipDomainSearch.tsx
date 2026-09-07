@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-const supportedTlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap"];
+const supportedTlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap", ".me", ".dev", ".ai", ".xyz", ".tech", ".store", ".cloud", ".pro", ".info", ".biz", ".live", ".space", ".blog", ".club", ".today", ".world", ".digital", ".solutions", ".gh"];
 
 export default function SpaceshipDomainSearch() {
   const [domain, setDomain] = useState("");
@@ -40,7 +40,7 @@ export default function SpaceshipDomainSearch() {
         const response = (invokeError as { context?: Response }).context;
         if (response) {
           const payload = await response.clone().json();
-          detail = payload?.error || payload?.message || detail;
+          detail = payload?.message || payload?.details?.detail || payload?.details?.message || payload?.error || detail;
         }
       } catch {
         // Keep the SDK error when the function response is not JSON.

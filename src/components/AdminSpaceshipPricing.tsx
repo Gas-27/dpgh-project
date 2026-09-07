@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 
+const supportedTlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap", ".me", ".dev", ".ai", ".xyz", ".tech", ".store", ".cloud", ".pro", ".info", ".biz", ".live", ".space", ".blog", ".club", ".today", ".world", ".digital", ".solutions", ".gh"];
+
 export default function AdminSpaceshipPricing() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +17,8 @@ export default function AdminSpaceshipPricing() {
   async function load() {
     setLoading(true);
     const { data } = await supabase.from("spaceship_tld_pricing").select("tld,provider_price,customer_price,active").order("tld");
-    setRows(data ?? []);
+    const existing = new Map((data ?? []).map((row: any) => [row.tld, row]));
+    setRows(supportedTlds.map((tld) => existing.get(tld) ?? { tld, provider_price: 0, customer_price: 0, active: true }));
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -23,7 +26,7 @@ export default function AdminSpaceshipPricing() {
   async function save(row: any) {
     setSaving(row.tld);
     setMessage("");
-    const { error } = await supabase.from("spaceship_tld_pricing").update({ provider_price: Number(row.provider_price), customer_price: Number(row.customer_price), active: row.active, updated_at: new Date().toISOString() }).eq("tld", row.tld);
+    const { error } = await supabase.from("spaceship_tld_pricing").upsert({ tld: row.tld, provider_price: Number(row.provider_price), customer_price: Number(row.customer_price), active: Boolean(row.active), updated_at: new Date().toISOString() }, { onConflict: "tld" });
     setSaving(null);
     setMessage(error ? "Pricing could not be saved. Check admin permissions." : `${row.tld} pricing saved.`);
   }

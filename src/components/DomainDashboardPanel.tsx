@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-const tlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap"];
+const tlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap", ".me", ".dev", ".ai", ".xyz", ".tech", ".store", ".cloud", ".pro", ".info", ".biz", ".live", ".space", ".blog", ".club", ".today", ".world", ".digital", ".solutions", ".gh"];
 type RecordItem = { type: string; name: string; value: string; ttl: number };
 
 type DomainDashboardPanelProps = { walletBalance?: number; walletLabel?: string; onPurchaseComplete?: () => void };
