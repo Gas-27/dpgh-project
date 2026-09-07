@@ -37,7 +37,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
         const code = response.data.spaceshipErrorCode ? ` [${response.data.spaceshipErrorCode}]` : "";
         throw new Error(`${detail || response.data.error}${response.data.status ? ` (HTTP ${response.data.status})` : ""}${code}`);
       }
-    return response.data;
+    return response.data?.data ?? response.data;
   }
 
   async function search() {
@@ -46,7 +46,12 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
     if (!/^[a-z0-9-]{1,63}$/.test(base)) { setError("Enter a domain name using letters, numbers, or hyphens."); return; }
     const requested = raw.includes(".") ? [raw] : tlds.map((tld) => `${base}${tld}`);
     setLoading(true); setError(""); setMessage(""); setResult(null);
-    try { const data = await call("POST", "/v1/domains/available", { domains: requested }); setResult(data?.domains ?? data?.items ?? []); }
+    try {
+      const data = await call("POST", "/v1/domains/available", { domains: requested });
+      const items = Array.isArray(data) ? data : data?.domains ?? data?.items ?? data?.results ?? [];
+      setResult(items);
+      if (!items.length) setMessage("No domain availability results were returned. Try another name.");
+    }
     catch (cause) { const text = cause instanceof Error ? cause.message : "Domain search failed."; setError(text.includes("credentials") ? "Domain search is temporarily unavailable. Please try again shortly." : text); } finally { setLoading(false); }
   }
 
