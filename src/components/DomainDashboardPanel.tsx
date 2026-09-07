@@ -33,8 +33,8 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
       throw new Error(detail);
     }
       if (response.data?.error) {
-        const detail = response.data.details?.detail || response.data.details?.message || response.data.details?.title;
-        const code = response.data.errorCode ? ` [${response.data.errorCode}]` : "";
+        const detail = response.data.message || response.data.details?.detail || response.data.details?.message || response.data.details?.title;
+        const code = response.data.spaceshipErrorCode ? ` [${response.data.spaceshipErrorCode}]` : "";
         throw new Error(`${detail || response.data.error}${response.data.status ? ` (HTTP ${response.data.status})` : ""}${code}`);
       }
     return response.data?.data ?? response.data;
@@ -47,8 +47,10 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
     const requested = raw.includes(".") ? [raw] : tlds.map((tld) => `${base}${tld}`);
     setLoading(true); setError(""); setMessage(""); setResult(null);
     try {
-      const data = await call("POST", "/v1/domains/available", { domains: requested });
-      const items = Array.isArray(data) ? data : data?.domains ?? data?.items ?? data?.results ?? [];
+      const responses = await Promise.all(requested.map(async (candidate) => {
+        try { return await call("POST", "/v1/domains/available", { domains: [candidate] }); } catch { return null; }
+      }));
+      const items = responses.flatMap((data: any) => Array.isArray(data) ? data : data?.domains ?? data?.items ?? data?.results ?? (data ? [data] : []));
       setResult(items);
       if (!items.length) setMessage("No domain availability results were returned. Try another name.");
     }
