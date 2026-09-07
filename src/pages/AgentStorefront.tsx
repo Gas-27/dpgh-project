@@ -633,6 +633,9 @@ const AgentStorefront = () => {
 
   const theme = store?.theme_config || defaultTheme;
   const gridColumns = theme.gridColumns || 2;
+  const cardRadius = theme.cardRadius ?? 12;
+  const cardShadow = theme.cardShadow !== false;
+  const savedLayout = theme.layout || ["header", "delivery", "categories", "tracking", "products"];
   const primaryColor = theme.primary || defaultTheme.primary;
   const primaryForeground = theme.primary_foreground || defaultTheme.primary_foreground;
   const backgroundColor = theme.background || defaultTheme.background;
@@ -1371,8 +1374,8 @@ const searchOrders = useCallback(async () => {
           {/* Packages grid */}
           <div className="container pb-20">
             <div
-              className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-              style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 300px), 1fr))` }}
+className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+  style={{ gridTemplateColumns: `repeat(${Math.min(6, Math.max(1, Number(gridColumns) || 2))}, minmax(0, 1fr))` }}
             >
               {loading ? (
                 <div className="col-span-full flex items-center justify-center py-12">
@@ -1396,7 +1399,7 @@ const searchOrders = useCallback(async () => {
                   <Card
                       key={pkg.id}
                       className={`relative overflow-hidden border-0 shadow-lg transition-all duration-300 group w-full ${isInactive ? "opacity-50 grayscale" : "hover:shadow-xl"}`}
-                      style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)" } : { background: cardBackground }}
+                      style={isMTNMashup ? { background: "linear-gradient(135deg,#FFA500 0%,#FF8C00 100%)", borderRadius: cardRadius, boxShadow: cardShadow ? `0 10px 24px ${primaryColor}20` : "none" } : { background: cardBackground, borderRadius: cardRadius, boxShadow: cardShadow ? `0 10px 24px ${primaryColor}20` : "none" }}
                     >
                       {isMTNMashup ? (
                         <>
