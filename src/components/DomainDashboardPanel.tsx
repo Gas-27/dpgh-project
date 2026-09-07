@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 const tlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap", ".me", ".dev", ".ai", ".xyz", ".tech", ".store", ".cloud", ".pro", ".info", ".biz", ".live", ".space", ".blog", ".club", ".today", ".world", ".digital", ".solutions", ".gh"];
 type RecordItem = { type: string; name: string; value: string; ttl: number };
 
-type DomainDashboardPanelProps = { walletBalance?: number; walletLabel?: string; onPurchaseComplete?: () => void };
+type DomainDashboardPanelProps = { walletBalance?: number; walletLabel?: string; agentStoreId?: string | null; onPurchaseComplete?: () => void };
 
-export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = "Wallet balance", onPurchaseComplete }: DomainDashboardPanelProps) {
+export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = "Wallet balance", agentStoreId = null, onPurchaseComplete }: DomainDashboardPanelProps) {
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -57,7 +57,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
 
   async function loadDomains() {
     setLoading(true); setError("");
-    try { const data = await call("GET", "/v1/domains", undefined, { take: "100", skip: "0", orderBy: "-expirationDate" }); setDomains(data?.items ?? []); setMessage("Domains loaded successfully."); }
+    try { const userId = (await supabase.auth.getUser()).data.user?.id; let query = supabase.from("domain_purchases").select("id, domain, status, price, provider_operation_id, created_at"); query = agentStoreId ? query.eq("agent_store_id", agentStoreId) : query.eq("buyer_user_id", userId ?? "00000000-0000-0000-0000-000000000000"); const { data, error: loadError } = await query.order("created_at", { ascending: false }); if (loadError) throw loadError; setDomains(data ?? []); setMessage("Owned domains loaded successfully."); }
     catch (cause) { const text = cause instanceof Error ? cause.message : "Could not load domains."; setError(text.includes("credentials") ? "Domain management is temporarily unavailable. Please try again shortly." : text); } finally { setLoading(false); }
   }
 
@@ -74,8 +74,11 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
     try {
       const price = Number((Array.isArray(result) ? result.find((item: any) => (item.domain || item.name) === value) : result)?.price ?? 0);
       if (price > 0 && walletBalance < price) throw new Error(`Insufficient wallet balance. You need GHC ${price.toFixed(2)}.`);
+      const idempotencyKey = `${agentStoreId ?? "user"}:${value}:${Date.now()}`;
+      const { data: purchase, error: purchaseError } = await supabase.rpc("purchase_domain", { p_domain: value, p_agent_store_id: agentStoreId, p_idempotency_key: idempotencyKey, p_registration_metadata: {} });
+      if (purchaseError) throw purchaseError;
       const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`);
-      setMessage(data?.operationId || data?.asyncOperationId ? `Purchase started. Operation: ${data.operationId || data.asyncOperationId}` : "Purchase request submitted.");
+      setMessage(data?.operationId || data?.asyncOperationId ? `Purchase started. Operation: ${data.operationId || data.asyncOperationId}` : `Purchase submitted for ${purchase?.domain ?? value}.`);
       onPurchaseComplete?.();
       await loadDomains();
     }
