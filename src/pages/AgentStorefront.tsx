@@ -95,6 +95,8 @@ gridColumns?: number;
   cardShadow?: boolean;
   showShareStore?: boolean;
   visibleSections?: Record<string, boolean>;
+  layout?: string[];
+  sectionWidths?: Record<string, number>;
   gb_text_color?: string;
     price_text_color?: string;
     button_text_color?: string;
@@ -182,7 +184,7 @@ const getInternationalDigits = (phone: string): string => {
  */
 const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 
-// ──────�����──────────────────────��──────────────────────────────────────────────
+// ──────�����───��──────────────────��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
 // ───�����────────────────���────────�����─────���─────��──����───────────���────────────────────
