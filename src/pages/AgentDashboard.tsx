@@ -4476,7 +4476,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           </TabsContent>
 
   <TabsContent value="products" className="mt-0">
-  {store && <AgentProductStorePanel storeId={store.id} storeKind="agent" supportPhone={supportNum} />}
+  {store && <AgentProductStorePanel storeId={store.id} storeKind="agent" supportPhone={supportNum} walletBalance={Number(store.wallet_balance ?? 0)} onWalletBalanceChange={(wallet_balance) => setStore((current) => current ? { ...current, wallet_balance } : current)} />}
   </TabsContent>
 
   {/* ============================= SERVICES ============================= */}

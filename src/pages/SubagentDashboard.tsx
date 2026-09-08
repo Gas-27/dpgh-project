@@ -2356,7 +2356,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
-          <TabsContent value="products" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subagent" /></TabsContent>
+          <TabsContent value="products" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subagent" walletBalance={Number(subagentStore?.wallet_balance ?? 0)} onWalletBalanceChange={(wallet_balance) => setSubagentStore((current) => current ? { ...current, wallet_balance } : current)} /></TabsContent>
           <TabsContent value="services" className="mt-0"><RoleServicesPanel agentStoreId={subagentStore?.id} /></TabsContent>
           <TabsContent value="store" className="mt-0">{/* Store Prices */}</TabsContent>
 

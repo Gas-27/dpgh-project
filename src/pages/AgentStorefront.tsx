@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import PaymentDialog from "@/components/PaymentDialog";
 import DigitalServicesCatalog, { type Service } from "@/components/DigitalServicesCatalog";
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
@@ -566,6 +567,8 @@ const AgentStorefront = () => {
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<(typeof storeProducts)[number] | null>(null);
+  const [selectedProductImage, setSelectedProductImage] = useState(0);
 
   // �����─ Order tracking ──
   const [searchQuery, setSearchQuery] = useState("");
@@ -1193,7 +1196,7 @@ const searchOrders = useCallback(async () => {
       </div>
 
       {activeCategory === "products" ? (
-        <div className="container pb-20"><Card className="border-primary/30"><CardContent className="p-4 sm:p-6"><div className="mb-6 text-center"><h2 className="font-display text-2xl font-bold">Products</h2><p className="text-sm text-muted-foreground">Products available from this store</p></div>{storeProducts.length === 0 ? <p className="py-12 text-center text-muted-foreground">No products are available right now.</p> : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{storeProducts.map(product => <Card key={product.id} className="overflow-hidden" style={{ borderRadius: cardRadius, boxShadow: cardShadow ? `0 10px 24px ${primaryColor}20` : "none" }}><div className="aspect-[4/3] bg-muted">{product.image_urls?.[0] ? <img src={product.image_urls[0]} alt={product.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image</div>}</div><CardContent className="space-y-3 p-4"><div><h3 className="font-semibold">{product.title}</h3><p className="mt-1 text-sm text-muted-foreground">{product.description}</p></div><div className="flex items-center justify-between"><span className="font-bold" style={{ color: primaryColor }}>GHS {Number(product.price).toFixed(2)}</span><Button onClick={() => window.open(`https://wa.me/${String(store?.support_phone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I want to buy ${product.title} for GHS ${Number(product.price).toFixed(2)}.`)}`, "_blank")}>Buy</Button></div></CardContent></Card>)}</div>}</CardContent></Card></div>
+        <div className="container pb-20"><Card className="border-primary/30"><CardContent className="p-4 sm:p-6"><div className="mb-6 text-center"><h2 className="font-display text-2xl font-bold">Products</h2><p className="text-sm text-muted-foreground">Products available from this store</p></div>{storeProducts.length === 0 ? <p className="py-12 text-center text-muted-foreground">No products are available right now.</p> : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{storeProducts.map(product => <Card key={product.id} className="overflow-hidden" style={{ borderRadius: cardRadius, boxShadow: cardShadow ? `0 10px 24px ${primaryColor}20` : "none" }}><div className="aspect-[4/3] bg-muted">{product.image_urls?.[0] ? <img src={product.image_urls[0]} alt={product.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image</div>}</div><CardContent className="space-y-3 p-4"><div><h3 className="font-semibold">{product.title}</h3><p className="mt-1 text-sm text-muted-foreground">{product.description}</p></div><div className="flex items-center justify-between"><span className="font-bold" style={{ color: primaryColor }}>GHS {Number(product.price).toFixed(2)}</span><Button variant="outline" onClick={() => { setSelectedProduct(product); setSelectedProductImage(0); }}>More details</Button></div></CardContent></Card>)}</div>}</CardContent></Card></div>
       ) : activeCategory === "services" ? (
         <div className="container pb-20"><DigitalServicesCatalog agentStoreId={store?.id} onBuy={setSelectedService} /></div>
       ) : activeCategory === "sms" ? (
@@ -1779,7 +1782,9 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         </DraggableFAB>
       )}
 
-      {/* Payment dialog */}
+      {selectedProduct && <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{selectedProduct.title}</DialogTitle><DialogDescription>Product details and available images</DialogDescription></DialogHeader><div className="grid gap-6 md:grid-cols-[1.2fr_1fr]"><div className="space-y-3"><div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted">{selectedProduct.image_urls?.[selectedProductImage] ? <img src={selectedProduct.image_urls[selectedProductImage]} alt={`${selectedProduct.title} image ${selectedProductImage + 1}`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image available</div>}</div>{selectedProduct.image_urls?.length > 1 && <div className="grid grid-cols-4 gap-2">{selectedProduct.image_urls.map((image, index) => <button type="button" key={image} onClick={() => setSelectedProductImage(index)} className={`aspect-square overflow-hidden rounded-lg border-2 ${selectedProductImage === index ? "border-primary" : "border-transparent"}`}><img src={image} alt={`${selectedProduct.title} thumbnail ${index + 1}`} className="h-full w-full object-cover" /></button>)}</div>}</div><div className="space-y-4"><div><p className="text-sm text-muted-foreground">Price</p><p className="text-2xl font-bold" style={{ color: primaryColor }}>GHS {Number(selectedProduct.price).toFixed(2)}</p></div><div><p className="text-sm text-muted-foreground">Details</p><p className="whitespace-pre-wrap leading-relaxed">{selectedProduct.description || "No additional details provided."}</p></div><Button className="w-full" onClick={() => window.open(`https://wa.me/${String(store?.support_phone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I want to buy ${selectedProduct.title} for GHS ${Number(selectedProduct.price).toFixed(2)}.`)}`, "_blank")}>Buy this product</Button></div></div></DialogContent></Dialog>}
+
+  {/* Payment dialog */}
   {selectedService && <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => !open && setSelectedService(null)} />}
   {paymentPkg && (
   <PaymentDialog
