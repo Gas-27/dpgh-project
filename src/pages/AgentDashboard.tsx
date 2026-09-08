@@ -39,6 +39,7 @@ import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentDigitalServicesPricing from "@/components/AgentDigitalServicesPricing";
+import AgentProductStorePanel from "@/components/AgentProductStorePanel";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
@@ -2919,8 +2920,9 @@ return (
           </TabsContent>
 
           {/* ============================= STORE PRICES ============================= */}
-          <TabsContent value="store" className="space-y-4 mt-0">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+<TabsContent value="store" className="space-y-6 mt-0">
+  {store && <AgentProductStorePanel storeId={store.id} storeKind="agent" supportPhone={supportNum} />}
+  <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Network filter buttons */}
               <div className="flex gap-2 flex-wrap">
                 {[

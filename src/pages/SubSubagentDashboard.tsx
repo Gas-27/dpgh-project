@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
+import AgentProductStorePanel from "@/components/AgentProductStorePanel";
 import CustomDomainPanel from "@/components/CustomDomainPanel";
 import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -1690,7 +1691,7 @@ const handleSaveStore = async () => {
   const menuItems = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
-    { id: "store", label: "Store Prices", icon: Store },
+    { id: "store", label: "Product Store", icon: Store },
     { id: "orders", label: "Orders", icon: ShoppingCart },
   { id: "topup", label: "Top Up", icon: Wallet },
   { id: "sms", label: "Send SMS", icon: Send },
@@ -1958,6 +1959,7 @@ return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
   <TabsContent value="services" className="mt-0"><RoleServicesPanel agentStoreId={subagentStore?.id} /></TabsContent>
+  <TabsContent value="store" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subsubagent" /></TabsContent>
 
   <TabsContent value="sms" className="mt-0 space-y-6">
     <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="subsubagent" ownerId={subagentStore?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="subsubagent" ownerId={subagentStore?.id} /></TabsContent></Tabs>
