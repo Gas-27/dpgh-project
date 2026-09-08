@@ -26,6 +26,7 @@ import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatu
   import NotificationPopup from "@/components/NotificationPopup";
 import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
+import StorefrontSectionCards from "@/components/StorefrontSectionCards";
   import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
@@ -1052,7 +1053,7 @@ const searchOrders = useCallback(async () => {
       )}
 
 <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-  <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-card/60 p-2"><Button variant={activeSection === "data" ? "default" : "outline"} onClick={() => setActiveSection("data")}>Data Bundles</Button><Button variant={activeSection === "afa" ? "default" : "outline"} onClick={() => setActiveSection("afa")}>AFA Bundles</Button><Button variant={activeSection === "services" ? "default" : "outline"} onClick={() => setActiveSection("services")}>Digital Services</Button><Button variant="outline">Products</Button></div>
+  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id === "products" ? "data" : id as typeof activeSection)} onBecomeAgent={() => navigate("/become-agent")} />
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
   {/* Order Search */}
         <Card style={{ background: cardBg }} className="border-border">

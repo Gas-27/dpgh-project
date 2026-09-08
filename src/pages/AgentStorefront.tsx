@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import PaymentDialog from "@/components/PaymentDialog";
 import DigitalServicesCatalog, { type Service } from "@/components/DigitalServicesCatalog";
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
+import StorefrontSectionCards, { type SectionId } from "@/components/StorefrontSectionCards";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
@@ -1145,55 +1146,7 @@ const searchOrders = useCallback(async () => {
         </div>
       )}
 
-      {/* Hero */}
-      {/* Category tabs */}
-      <div className="container pb-8">
-        <div className="flex flex-wrap justify-center gap-3 items-center">
-          {(["data", "afa", "vouchers", "services", "bulk", "sms", "products"] as const).map((cat) => {
-            const icons: Record<string, React.ReactNode> = {
-              data: <Wifi className="h-4 w-4 mr-2" />,
-              afa: <Package className="h-4 w-4 mr-2" />,
-              vouchers: <CheckCircle className="h-4 w-4 mr-2" />,
-              services: <Rocket className="h-4 w-4 mr-2" />,
-              bulk: <Layers className="h-4 w-4 mr-2" />,
-              sms: <MessageCircle className="h-4 w-4 mr-2" />,
-              products: <Package className="h-4 w-4 mr-2" />,
-            };
-            const labels: Record<string, string> = {
-              data: "Data",
-              afa: "AFA Bundles",
-              vouchers: "Instant Data",
-              services: "Services",
-              bulk: "Bulk Orders",
-              sms: "SMS",
-              products: "Products",
-            };
-            return (
-              <Button
-                key={cat}
-                variant={activeCategory === cat ? "hero" : "outline"}
-                onClick={() => setActiveCategory(cat)}
-                className="font-semibold"
-              >
-                {icons[cat]}
-                {labels[cat]}
-              </Button>
-            );
-          })}
-          {store?.allow_subagent_registration !== false && (
-            <>
-              <div className="h-6 w-px bg-border"></div>
-              <Button
-                variant="outline"
-                onClick={() => navigate("/become-agent")}
-                className="font-semibold"
-              >
-                Become an Agent
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={(id) => setActiveCategory(id === "instant" ? "vouchers" : id as SectionId & typeof activeCategory)} onBecomeAgent={() => navigate("/become-agent")} />
 
       {activeCategory === "products" ? (
         <div className="container pb-20"><Card className="border-primary/30"><CardContent className="p-4 sm:p-6"><div className="mb-6 text-center"><h2 className="font-display text-2xl font-bold">Products</h2><p className="text-sm text-muted-foreground">Products available from this store</p></div>{storeProducts.length === 0 ? <p className="py-12 text-center text-muted-foreground">No products are available right now.</p> : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{storeProducts.map(product => <Card key={product.id} className="overflow-hidden" style={{ borderRadius: cardRadius, boxShadow: cardShadow ? `0 10px 24px ${primaryColor}20` : "none" }}><div className="aspect-[4/3] bg-muted">{product.image_urls?.[0] ? <img src={product.image_urls[0]} alt={product.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image</div>}</div><CardContent className="space-y-3 p-4"><div><h3 className="font-semibold">{product.title}</h3><p className="mt-1 text-sm text-muted-foreground">{product.description}</p></div><div className="flex items-center justify-between"><span className="font-bold" style={{ color: primaryColor }}>GHS {Number(product.price).toFixed(2)}</span><Button variant="outline" onClick={() => { setSelectedProduct(product); setSelectedProductImage(0); }}>More details</Button></div></CardContent></Card>)}</div>}</CardContent></Card></div>
@@ -1204,9 +1157,9 @@ const searchOrders = useCallback(async () => {
       ) : activeCategory === "data" ? (
         <>
           {/* ── Order Tracking ── */}
-          <div className="container pb-10">
+          <div className="container pb-6">
             <Card className="border-primary/30 bg-primary/5">
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
                   <div className="flex-1">
                     <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2 mb-2">

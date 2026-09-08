@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
+import StorefrontSectionCards from "@/components/StorefrontSectionCards";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
@@ -1511,10 +1512,11 @@ const searchOrders = async () => {
 
         {activeCategory === "data" ? (
           <>
-            <div className="max-w-4xl mx-auto mb-12">
+            <StorefrontSectionCards onSelect={() => undefined} onBecomeAgent={() => navigate("/become-agent")} />
+            <div className="max-w-4xl mx-auto mb-6">
               <Card className="border-primary/30 bg-primary/5">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+                <CardContent className="p-4">
+                  <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                     <div className="flex-1">
                       <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2 mb-2"><Package className="h-5 w-5 text-primary" />Track Your Order</h2>
                       <p className="text-sm text-muted-foreground">Enter your phone number or order ID to check your purchase status.</p>
