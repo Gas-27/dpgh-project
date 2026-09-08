@@ -1117,6 +1117,7 @@ const searchOrders = useCallback(async () => {
 
         <DeliveryProgressCard selectedNetwork={networkFilter} />
 
+        {activeSection === "data" && <>
         {/* Network Tabs */}
         <div className="flex flex-wrap gap-2 pb-2 items-center">
         {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
@@ -1146,6 +1147,7 @@ const searchOrders = useCallback(async () => {
   <div className="h-6 w-px bg-border flex-shrink-0"></div>
   <Button variant={activeSection === "sms" ? "default" : "outline"} size="sm" onClick={() => setActiveSection(activeSection === "sms" ? "data" : "sms")} style={activeSection === "sms" ? { background: primaryColor, color: primaryForeground } : {}} className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"><MessageCircle className="h-4 w-4 mr-1" />SMS</Button>
   </div>
+  </>}
   
   {activeSection === "sms" && <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subsubagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
   

@@ -1055,7 +1055,7 @@ const AdminDashboard = () => {
 
   // ======================== Admin permissions ========================
   const fetchCurrentUserPermissions = async (userId: string) => {
-    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "digital_services", "network_routing", "sms", "settings"];
+    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "digital_services", "network_routing", "sms", "public_products", "settings"];
     
     const { data, error } = await supabase
       .from("admin_permissions")
