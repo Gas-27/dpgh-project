@@ -560,6 +560,7 @@ const AgentStorefront = () => {
   const [store, setStore] = useState<AgentStore | null>(null);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
+  const [storeProducts, setStoreProducts] = useState<Array<{ id: string; title: string; description: string; price: number; image_urls: string[] }>>([]);
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -589,7 +590,7 @@ const AgentStorefront = () => {
 
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
-    "data" | "afa" | "vouchers" | "services" | "bulk" | "sms"
+    "data" | "afa" | "vouchers" | "services" | "bulk" | "sms" | "products"
   >("data");
   
   // ── Bulk Orders ──
@@ -743,9 +744,11 @@ const AgentStorefront = () => {
 
       matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
       matched.show_whatsapp_group_icon = matched.show_whatsapp_group_icon ?? false;
-      setStore(matched);
-
-      const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
+  setStore(matched);
+  const { data: productRows } = await supabase.from("store_products").select("id,title,description,price,image_urls").eq("store_id", matched.id).eq("status", "active").eq("available", true).order("created_at", { ascending: false });
+  setStoreProducts((productRows || []) as typeof storeProducts);
+  
+  const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
@@ -1143,7 +1146,7 @@ const searchOrders = useCallback(async () => {
       {/* Category tabs */}
       <div className="container pb-8">
         <div className="flex flex-wrap justify-center gap-3 items-center">
-          {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => {
+          {(["data", "afa", "vouchers", "services", "bulk", "sms", "products"] as const).map((cat) => {
             const icons: Record<string, React.ReactNode> = {
               data: <Wifi className="h-4 w-4 mr-2" />,
               afa: <Package className="h-4 w-4 mr-2" />,
@@ -1151,6 +1154,7 @@ const searchOrders = useCallback(async () => {
               services: <Rocket className="h-4 w-4 mr-2" />,
               bulk: <Layers className="h-4 w-4 mr-2" />,
               sms: <MessageCircle className="h-4 w-4 mr-2" />,
+              products: <Package className="h-4 w-4 mr-2" />,
             };
             const labels: Record<string, string> = {
               data: "Data",
@@ -1159,6 +1163,7 @@ const searchOrders = useCallback(async () => {
               services: "Services",
               bulk: "Bulk Orders",
               sms: "SMS",
+              products: "Products",
             };
             return (
               <Button
@@ -1187,7 +1192,9 @@ const searchOrders = useCallback(async () => {
         </div>
       </div>
 
-      {activeCategory === "services" ? (
+      {activeCategory === "products" ? (
+        <div className="container pb-20"><Card className="border-primary/30"><CardContent className="p-4 sm:p-6"><div className="mb-6 text-center"><h2 className="font-display text-2xl font-bold">Products</h2><p className="text-sm text-muted-foreground">Products available from this store</p></div>{storeProducts.length === 0 ? <p className="py-12 text-center text-muted-foreground">No products are available right now.</p> : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{storeProducts.map(product => <Card key={product.id} className="overflow-hidden" style={{ borderRadius: cardRadius, boxShadow: cardShadow ? `0 10px 24px ${primaryColor}20` : "none" }}><div className="aspect-[4/3] bg-muted">{product.image_urls?.[0] ? <img src={product.image_urls[0]} alt={product.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image</div>}</div><CardContent className="space-y-3 p-4"><div><h3 className="font-semibold">{product.title}</h3><p className="mt-1 text-sm text-muted-foreground">{product.description}</p></div><div className="flex items-center justify-between"><span className="font-bold" style={{ color: primaryColor }}>GHS {Number(product.price).toFixed(2)}</span><Button onClick={() => window.open(`https://wa.me/${String(store?.support_phone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I want to buy ${product.title} for GHS ${Number(product.price).toFixed(2)}.`)}`, "_blank")}>Buy</Button></div></CardContent></Card>)}</div>}</CardContent></Card></div>
+      ) : activeCategory === "services" ? (
         <div className="container pb-20"><DigitalServicesCatalog agentStoreId={store?.id} onBuy={setSelectedService} /></div>
       ) : activeCategory === "sms" ? (
         <div className="container pb-20"><Card className="mx-auto max-w-4xl border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card></div>
