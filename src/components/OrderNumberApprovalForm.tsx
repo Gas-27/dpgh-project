@@ -5,14 +5,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { formatApprovalNumber, validateApprovalNumber } from "@/lib/orderNumberApproval";
 
 type Props = {
   source: string;
   storeId?: string | null;
-  orderId?: string | null;
   compact?: boolean;
 };
 
@@ -20,8 +18,6 @@ export default function OrderNumberApprovalForm({ source, storeId, orderId, comp
   const { user, roles } = useAuth();
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
-  const [reference, setReference] = useState(orderId ?? "");
-  const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -37,12 +33,12 @@ export default function OrderNumberApprovalForm({ source, storeId, orderId, comp
     const { error: insertError } = await supabase.from("order_number_submissions").insert({
       phone_number: result.normalized,
       normalized_phone: result.normalized,
-      order_id: reference.trim() || null,
+      order_id: null,
       requester_id: user?.id ?? null,
       requester_role: roles[0] ?? "customer",
       source,
       store_id: storeId ?? null,
-      admin_note: note.trim() || null,
+      admin_note: null,
     });
     setSaving(false);
     if (insertError) {
@@ -59,8 +55,6 @@ export default function OrderNumberApprovalForm({ source, storeId, orderId, comp
 
   return <div className={`${compact ? "space-y-3" : "space-y-4"} rounded-2xl border border-slate-700/80 bg-slate-900/80 p-5 text-slate-100 shadow-xl`}>
     <div className="space-y-1.5"><Label htmlFor={`approval-phone-${source}`}>Phone number</Label><Input id={`approval-phone-${source}`} value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0242206542" inputMode="tel" /></div>
-    <div className="space-y-1.5"><Label htmlFor={`approval-order-${source}`}>Order ID <span className="text-muted-foreground">(optional)</span></Label><Input id={`approval-order-${source}`} value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Order ID" /></div>
-    {!compact && <div className="space-y-1.5"><Label htmlFor={`approval-note-${source}`}>Note <span className="text-muted-foreground">(optional)</span></Label><Textarea id={`approval-note-${source}`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Add context for the admin" rows={3} /></div>}
     {error && <p className="text-sm text-destructive">{error}</p>}
     <Button type="button" onClick={submit} disabled={saving} className="w-full"><>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Submit for approval</></Button>
   </div>;
