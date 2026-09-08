@@ -16,7 +16,7 @@ import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
   ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw, Zap,
-  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList
+  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList, Package
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
