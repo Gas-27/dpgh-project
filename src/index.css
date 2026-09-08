@@ -71,7 +71,14 @@
   .storefront-section-pink .storefront-section-icon { background: hsl(330 82% 58%); color: hsl(0 0% 98%); }
   .storefront-section-blue .storefront-section-icon { background: hsl(197 91% 52%); }
   .storefront-section-teal .storefront-section-icon { background: hsl(183 78% 47%); }
-  .storefront-section-active { filter: brightness(1.28) saturate(1.15); box-shadow: 0 0 0 1px currentColor, 0 8px 22px hsl(0 0% 0% / 0.28); }
+  .storefront-section-active { filter: brightness(1.22) saturate(1.18); box-shadow: 0 0 0 2px currentColor, 0 8px 22px hsl(0 0% 0% / 0.3); }
+  .storefront-section-active.storefront-section-cyan { border-color: hsl(194 95% 58%); }
+  .storefront-section-active.storefront-section-violet { border-color: hsl(267 89% 62%); }
+  .storefront-section-active.storefront-section-green { border-color: hsl(157 72% 50%); }
+  .storefront-section-active.storefront-section-amber { border-color: hsl(39 96% 54%); }
+  .storefront-section-active.storefront-section-pink { border-color: hsl(330 82% 58%); }
+  .storefront-section-active.storefront-section-blue { border-color: hsl(197 91% 52%); }
+  .storefront-section-active.storefront-section-teal { border-color: hsl(183 78% 47%); }
   .storefront-section-active .storefront-section-icon { transform: scale(1.04); }
 }
 
