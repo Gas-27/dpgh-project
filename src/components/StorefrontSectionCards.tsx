@@ -14,11 +14,11 @@ const sections = [
 type SectionId = (typeof sections)[number]["id"];
 
 export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent }: { active?: string; onSelect: (id: SectionId) => void; onBecomeAgent?: () => void }) {
-  return <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 sm:grid-cols-2">
+  return <div className="mx-auto grid w-full max-w-5xl grid-cols-2 gap-3 px-0 sm:gap-4">
     {sections.map(({ id, label, description, icon: Icon, tone }) => {
       const isAgent = id === "agent";
-      return <button key={id} type="button" onClick={() => isAgent ? onBecomeAgent?.() : onSelect(id)} className={`group flex min-h-32 items-center justify-between rounded-3xl border p-6 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${active === id ? "ring-2 ring-primary" : ""} storefront-section-${tone}`}>
-        <span className="flex items-center gap-5"><span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-primary/90 text-primary-foreground"><Icon className="h-10 w-10" /></span><span><span className="block text-2xl font-bold tracking-tight">{label}</span><span className="mt-1 block text-lg text-muted-foreground">{description}</span></span></span><ArrowRight className="h-8 w-8 shrink-0 text-primary transition group-hover:translate-x-1" />
+      return <button key={id} type="button" onClick={() => isAgent ? onBecomeAgent?.() : onSelect(id)} className={`group storefront-section-${tone} flex min-h-[74px] w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-lg sm:min-h-[92px] sm:px-3.5 sm:py-3 ${active === id ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}>
+        <span className="flex min-w-0 items-center gap-2.5 sm:gap-3"><span className="storefront-section-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12"><Icon className="h-6 w-6 sm:h-7 sm:w-7" /></span><span className="min-w-0"><span className="block truncate text-sm font-bold leading-tight tracking-tight sm:text-base">{label}</span><span className="mt-1 block max-w-[120px] text-[10px] leading-[1.2] text-slate-200/80 sm:max-w-[150px] sm:text-xs">{description}</span></span></span><ArrowRight className="h-4 w-4 shrink-0 transition group-hover:translate-x-1 sm:h-5 sm:w-5" />
       </button>;
     })}
   </div>;

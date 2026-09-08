@@ -56,6 +56,23 @@
   }
 }
 
+@layer components {
+  .storefront-section-cyan { background: linear-gradient(135deg, hsl(211 88% 16%), hsl(214 76% 12%)); border-color: hsl(203 88% 39%); color: hsl(0 0% 98%); }
+  .storefront-section-violet { background: linear-gradient(135deg, hsl(252 62% 20%), hsl(247 62% 14%)); border-color: hsl(261 76% 48%); color: hsl(0 0% 98%); }
+  .storefront-section-green { background: linear-gradient(135deg, hsl(170 70% 14%), hsl(167 56% 10%)); border-color: hsl(168 72% 34%); color: hsl(0 0% 98%); }
+  .storefront-section-amber { background: linear-gradient(135deg, hsl(28 48% 16%), hsl(25 33% 12%)); border-color: hsl(31 72% 38%); color: hsl(0 0% 98%); }
+  .storefront-section-pink { background: linear-gradient(135deg, hsl(326 65% 17%), hsl(318 54% 12%)); border-color: hsl(326 77% 46%); color: hsl(0 0% 98%); }
+  .storefront-section-blue { background: linear-gradient(135deg, hsl(213 79% 18%), hsl(215 69% 12%)); border-color: hsl(207 82% 43%); color: hsl(0 0% 98%); }
+  .storefront-section-teal { background: linear-gradient(135deg, hsl(185 72% 15%), hsl(185 57% 11%)); border-color: hsl(184 78% 35%); color: hsl(0 0% 98%); }
+  .storefront-section-icon { background: hsl(190 95% 55%); color: hsl(215 25% 6%); }
+  .storefront-section-violet .storefront-section-icon { background: hsl(267 89% 62%); color: hsl(0 0% 98%); }
+  .storefront-section-green .storefront-section-icon { background: hsl(157 72% 50%); }
+  .storefront-section-amber .storefront-section-icon { background: hsl(39 96% 54%); }
+  .storefront-section-pink .storefront-section-icon { background: hsl(330 82% 58%); color: hsl(0 0% 98%); }
+  .storefront-section-blue .storefront-section-icon { background: hsl(197 91% 52%); }
+  .storefront-section-teal .storefront-section-icon { background: hsl(183 78% 47%); }
+}
+
 @layer base {
   * {
     @apply border-border;
