@@ -1694,8 +1694,9 @@ const handleSaveStore = async () => {
  { id: "approvals", label: "Submit for Approval", icon: Send },
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
     { id: "store", label: "Store Prices", icon: Store },
-    { id: "products", label: "Products", icon: Package },
-    { id: "orders", label: "Orders", icon: ShoppingCart },
+  { id: "products", label: "Products", icon: Package },
+  { id: "services", label: "Services", icon: BriefcaseBusiness },
+  { id: "orders", label: "Orders", icon: ShoppingCart },
   { id: "topup", label: "Top Up", icon: Wallet },
   { id: "sms", label: "Send SMS", icon: Send },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
@@ -1973,7 +1974,7 @@ return (
           <TabsContent value="approvals" className="mt-0 space-y-6"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="subsubagent-dashboard" storeId={subagentStore?.id} /></CardContent></Card></TabsContent>
 <TabsContent value="overview" className="mt-0 space-y-6">
                        {/* Instruction Manual Dropdown */}
-  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "topup", label: "Top Up" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }].map((item, index) => <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold ${["border-cyan-400/40 bg-cyan-400/10 text-cyan-200", "border-amber-400/40 bg-amber-400/10 text-amber-200", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index]}`}>{item.label}</button>)}</div>
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa-registrations", label: "AFA Registration" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }].map((item, index) => <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold ${["border-cyan-400/40 bg-cyan-400/10 text-cyan-200", "border-amber-400/40 bg-amber-400/10 text-amber-200", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index]}`}>{item.label}</button>)}</div>
   <Card className="hidden border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
                 <div className="flex items-center gap-3">
