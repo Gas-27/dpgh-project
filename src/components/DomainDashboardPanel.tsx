@@ -21,6 +21,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tldPricing, setTldPricing] = useState<Record<string, { customer_price: number; active: boolean }>>({});
   const results = Array.isArray(result) ? result : result ? [result] : [];
   const isAvailable = (item: any) => item?.available === true || item?.isAvailable === true || item?.result === "available";
 
@@ -51,6 +52,13 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
         try { return await call("POST", "/v1/domains/available", { domains: [candidate] }); } catch { return null; }
       }));
       const items = responses.flatMap((data: any) => Array.isArray(data) ? data : data?.domains ?? data?.items ?? data?.results ?? (data ? [data] : []));
+      const resultTlds = Array.from(new Set(items.map((item: any) => {
+        const name = String(item.domain || item.name || "").toLowerCase();
+        return name.includes(".") ? `.${name.split(".").slice(1).join(".")}` : "";
+      }).filter(Boolean)));
+      const { data: pricingRows, error: pricingError } = await supabase.from("spaceship_tld_pricing").select("tld,customer_price,active").in("tld", resultTlds);
+      if (pricingError) throw pricingError;
+      setTldPricing(Object.fromEntries((pricingRows ?? []).map((row: any) => [String(row.tld).toLowerCase(), { customer_price: Number(row.customer_price), active: Boolean(row.active) }])));
       setResult(items);
       if (!items.length) setMessage("No domain availability results were returned. Try another name.");
     }
@@ -75,7 +83,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
     setLoading(true); setError(""); setMessage("");
     try {
       const selectedResult = (Array.isArray(result) ? result.find((item: any) => (item.domain || item.name) === value) : result) as any;
-      const tld = `.${value.split(".").slice(1).join(".")}`;
+      const tld = `.${value.split(".").slice(1).join(".")}`.toLowerCase();
       const { data: pricing, error: pricingError } = await supabase.from("spaceship_tld_pricing").select("customer_price,active").eq("tld", tld).maybeSingle();
       if (pricingError) throw pricingError;
       if (pricing && pricing.active === false) throw new Error(`${tld} domains are not currently available for purchase.`);
@@ -103,7 +111,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
     <Card className="border-primary/30 bg-primary/5"><CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><Globe2 className="h-5 w-5 text-primary" /> Domains</CardTitle><p className="text-sm text-muted-foreground">Search, buy, and manage your domains, DNS records, and nameservers from one place.</p></div><Badge variant="outline">{walletLabel}: GHC {walletBalance.toFixed(2)}</Badge></div></CardHeader><CardContent className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row"><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="example.com" aria-label="Domain to search" /><Button onClick={search} disabled={loading || !query.trim()}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Search domain</Button></div>
       <div className="flex flex-wrap gap-2">{tlds.map((tld) => <button type="button" key={tld} className="rounded-full border border-border px-2 py-1 text-xs text-muted-foreground hover:border-primary hover:text-primary" onClick={() => setQuery((query.split(".")[0] || "example") + tld)}>{tld}</button>)}</div>
-      {results.length > 0 && <div className="grid gap-2 sm:grid-cols-2">{results.map((item: any) => { const name = item.domain || item.name || query; const available = isAvailable(item); const price = Number(item.price ?? item.registrationPrice ?? item.amount ?? 0); const canAfford = price <= 0 || walletBalance >= price; return <div key={name} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 p-4"><div><p className="font-semibold">{name}</p><Badge variant={available ? "default" : "secondary"}>{available ? "Available" : "Unavailable"}</Badge>{price > 0 && <p className="text-xs text-muted-foreground">GHC {price.toFixed(2)}</p>}</div><Button onClick={() => { setResult(item); setQuery(name); buy(name); }} disabled={loading || !available || !canAfford}>{canAfford ? "Buy domain" : "Insufficient wallet"}</Button></div>; })}</div>}
+      {results.length > 0 && <div className="grid gap-2 sm:grid-cols-2">{results.map((item: any) => { const name = item.domain || item.name || query; const available = isAvailable(item); const tld = `.${String(name).split(".").slice(1).join(".")}`.toLowerCase(); const configured = tldPricing[tld]; const price = configured?.customer_price ?? 0; const purchasable = available && Boolean(configured?.active) && Number.isFinite(price) && price > 0; const canAfford = purchasable && walletBalance >= price; return <div key={name} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 p-4"><div><p className="font-semibold">{name}</p><div className="flex flex-wrap items-center gap-2"><Badge variant={available ? "default" : "secondary"}>{available ? "Available" : "Unavailable"}</Badge><span className="text-sm font-semibold text-primary">{purchasable ? `GHC ${price.toFixed(2)}` : "Price unavailable"}</span></div>{!purchasable && available && <p className="text-xs text-muted-foreground">This extension is not available for purchase yet.</p>}</div><Button onClick={() => { setResult(item); setQuery(name); void buy(name); }} disabled={loading || !canAfford}>{!purchasable ? "Unavailable" : canAfford ? "Buy domain" : "Insufficient wallet"}</Button></div>; })}</div>}
     </CardContent></Card>
 
     <Card><CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle>Your domains</CardTitle><p className="text-sm text-muted-foreground">Load registered domains and open DNS management.</p></div><Button variant="outline" onClick={loadDomains} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button></div></CardHeader><CardContent>{domains.length ? <div className="space-y-2">{domains.map((item, index) => { const name = item.name || item.domain; return <div key={`${name}-${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"><span className="font-medium">{name}</span><Button variant="outline" size="sm" onClick={() => manage(name)}>Manage DNS</Button></div>; })}</div> : <p className="text-sm text-muted-foreground">Click Refresh to load your domains.</p>}</CardContent></Card>
