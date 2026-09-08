@@ -20,17 +20,23 @@ export default function AdminSpaceshipPricing() {
     if (error) {
       setMessage(`Pricing could not be loaded: ${error.message}`);
     }
-    const existing = new Map((data ?? []).map((row: any) => [row.tld, { ...row, customer_price: Number(row.customer_price ?? 0) }]));
+    const existing = new Map((data ?? []).map((row: any) => [String(row.tld).trim().toLowerCase(), { ...row, tld: String(row.tld).trim().toLowerCase(), customer_price: Number(row.customer_price ?? 0) }]));
     setRows(supportedTlds.map((tld) => existing.get(tld) ?? { tld, customer_price: 0, active: true }));
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
   async function save(row: any) {
-    setSaving(row.tld);
+    const tld = String(row.tld).trim().toLowerCase();
+    setSaving(tld);
     setMessage("");
     const customerPrice = Number(row.customer_price);
-    const { data: saved, error } = await supabase.from("spaceship_tld_pricing").upsert({ tld: row.tld, provider_price: 0, customer_price: Number.isFinite(customerPrice) ? customerPrice : 0, active: Boolean(row.active), updated_at: new Date().toISOString() }, { onConflict: "tld" }).select("tld,customer_price,active").single();
+    if (!tld.startsWith(".") || !Number.isFinite(customerPrice) || customerPrice < 0) {
+      setSaving(null);
+      setMessage(`Enter a valid non-negative price for ${tld || "this TLD"}.`);
+      return;
+    }
+    const { data: saved, error } = await supabase.from("spaceship_tld_pricing").upsert({ tld, provider_price: 0, customer_price: customerPrice, active: Boolean(row.active), updated_at: new Date().toISOString() }, { onConflict: "tld" }).select("tld,customer_price,active").single();
     setSaving(null);
     if (error) {
       setMessage(`Pricing could not be saved: ${error.message}`);
