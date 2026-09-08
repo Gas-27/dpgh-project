@@ -25,4 +25,3 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
 }
 
 export type { SectionId };
-цәажә
