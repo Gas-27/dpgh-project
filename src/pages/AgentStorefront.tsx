@@ -1356,15 +1356,15 @@ const searchOrders = useCallback(async () => {
           {/* USSD Info Banner */}
           {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
             <div className="container pb-4">
-              <a href="tel:*380*455#" className="block p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
+              <a href={`tel:*380*455*${encodeURIComponent(store.topup_reference)}#`} className="block p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
                 <div className="flex items-center justify-center gap-3 text-center">
                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                     <Phone className="h-5 w-5" style={{ color: primaryColor }} />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
-                    <p className="text-xl font-bold font-mono" style={{ color: primaryColor }}>*380*455#</p>
-                    <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
+<p className="text-xl font-bold font-mono" style={{ color: primaryColor }}>*380*455*{store.topup_reference}#</p>
+  <p className="text-xs text-muted-foreground">Tap to dial your store&apos;s USSD code</p>
                   </div>
                 </div>
               </a>
