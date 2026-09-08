@@ -1,7 +1,7 @@
 import { ArrowRight, Box, BriefcaseBusiness, Layers3, MessageCircle, UserRoundPlus, Wifi, Zap } from "lucide-react";
 
 const sections = [
-  { id: "data", label: "Data", description: "Buy data bundles instantly", icon: Wifi, tone: "cyan" },
+  { id: "data", label: "Cheap Data", description: "Buy affordable data bundles", icon: Wifi, tone: "cyan" },
   { id: "afa", label: "AFA Bundles", description: "Get exclusive AFA bundles", icon: Box, tone: "violet" },
   { id: "instant", label: "Instant Data", description: "Fast & reliable top-ups", icon: Zap, tone: "green" },
   { id: "services", label: "Services", description: "More services for you", icon: BriefcaseBusiness, tone: "amber" },
