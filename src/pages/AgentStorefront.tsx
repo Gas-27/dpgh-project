@@ -897,7 +897,7 @@ const searchOrders = useCallback(async (input?: string) => {
 
     // Remove every space the user may have typed
     const raw = searchTerm.trim();
-    const noSpaces = stripSpaces(raw);
+    const noSpaces = raw.replace(/\s+/g, "");
 
     let query = supabase
       .from("orders")
@@ -1297,7 +1297,7 @@ const searchOrders = useCallback(async (input?: string) => {
             </Card>
           </div>
 
-          <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} /></div>
+          <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} /></div>
           <DeliveryProgressCard selectedNetwork={networkFilter} />
 
           {/* ── Network filter ── */}

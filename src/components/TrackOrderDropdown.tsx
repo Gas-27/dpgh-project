@@ -4,9 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 
-type Props = { source: string; storeId?: string | null; onTrack?: (value: string) => void | Promise<void>; primaryColor?: string };
+type Props = { source: string; storeId?: string | null; onTrack?: (value: string) => void | Promise<void>; onCancel?: () => void; hasResults?: boolean; searching?: boolean; primaryColor?: string };
 
-export default function TrackOrderDropdown({ source, storeId, onTrack, primaryColor = "#2563eb" }: Props) {
+export default function TrackOrderDropdown({ source, storeId, onTrack, onCancel, hasResults = false, searching = false, primaryColor = "#2563eb" }: Props) {
   const [open, setOpen] = useState(false);
   const [lookup, setLookup] = useState("");
   return <div className="overflow-hidden rounded-[22px] border border-cyan-400/80 bg-gradient-to-r from-slate-950 via-blue-950 to-blue-700 shadow-lg shadow-blue-950/30">
@@ -16,7 +16,7 @@ export default function TrackOrderDropdown({ source, storeId, onTrack, primaryCo
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-500 shadow-md"><ChevronDown className={`h-5 w-5 transition-transform ${open ? "rotate-180" : ""}`} /></span>
     </button>
     {open && <div className="space-y-3 border-t border-white/15 bg-slate-950/35 p-4 sm:p-5">
-      <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); const value = lookup.trim(); if (value) void onTrack?.(value); }}><Input value={lookup} onChange={(event) => setLookup(event.target.value)} placeholder="0242206542 or order ID" className="border-cyan-400 bg-white/10 text-white placeholder:text-blue-100/60 focus-visible:ring-cyan-400" /><Button type="submit" disabled={!lookup.trim()} style={{ backgroundColor: primaryColor }}><Search className="mr-2 h-4 w-4" />Track</Button></form>
+      <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); const value = lookup.trim(); if (value) void onTrack?.(value); }}><Input value={lookup} onChange={(event) => setLookup(event.target.value)} placeholder="0242206542 or order ID" className="border-cyan-400 bg-white/10 text-white placeholder:text-blue-100/60 focus-visible:ring-cyan-400" /><Button type="submit" disabled={!lookup.trim() || searching} style={{ backgroundColor: primaryColor }}><Search className="mr-2 h-4 w-4" />{searching ? "Searching…" : "Track"}</Button>{hasResults && <Button type="button" variant="outline" onClick={() => { setLookup(""); onCancel?.(); }}>Cancel Search</Button>}</form>
       <details className="rounded-lg border border-white/15 bg-white/5 p-3"><summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-white [&::-webkit-details-marker]:hidden">Need approval for this number?<ChevronDown className="h-4 w-4" /></summary><div className="pt-3"><OrderNumberApprovalForm source={`${source}-track-order`} storeId={storeId} compact /></div></details>
     </div>}
   </div>;

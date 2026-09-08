@@ -1062,7 +1062,7 @@ const searchOrders = useCallback(async (input?: string) => {
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
 {activeSection === "data" && <>
-  <TrackOrderDropdown source="subsubagent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} />
+  <TrackOrderDropdown source="subsubagent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <DeliveryProgressCard selectedNetwork={networkFilter} />
   </>}
 
