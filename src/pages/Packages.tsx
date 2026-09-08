@@ -1502,12 +1502,12 @@ const searchOrders = async () => {
           </div>
         )}
 
+        <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={handleStorefrontSectionSelect} onBecomeAgent={() => setShowBecomeAgent(true)} />
         <div id="storefront-section-content" className="scroll-mt-6" />
         {activeCategory === "products" ? (
           <PublicProductsSection />
         ) : activeCategory === "data" ? (
           <>
-            <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={handleStorefrontSectionSelect} onBecomeAgent={() => setShowBecomeAgent(true)} />
             <div className="max-w-4xl mx-auto mb-6">
               <Card className="border-primary/30 bg-primary/5">
                 <CardContent className="p-4">
