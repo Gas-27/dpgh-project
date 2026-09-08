@@ -54,15 +54,18 @@ export default function OrderNumberApprovalForm({ source, storeId, compact = fal
       return;
     }
     setSubmitted(true);
-    toast({ title: "Number submitted", description: `${formatApprovalNumber(result.normalized)} is waiting for approval.` });
+    toast({ title: "Numbers submitted", description: `${results.length} number${results.length === 1 ? "" : "s"} waiting for approval.` });
   }
 
   if (submitted) {
     return <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300"><Check className="h-4 w-4" /> Number submitted for approval.</div>;
   }
 
-  return <div className={`${compact ? "space-y-3" : "space-y-4"} rounded-2xl border border-slate-700/80 bg-slate-900/80 p-5 text-slate-100 shadow-xl`}>
+  const enteredCount = compact ? (phone.trim() ? 1 : 0) : numbers.split(/[\n,]+/).map((value) => value.trim()).filter(Boolean).length;
+  return <div className={`${compact ? "space-y-3" : "space-y-5"} rounded-2xl border border-slate-700/80 bg-slate-950 p-5 text-slate-100 shadow-xl`}>
+    {!compact && <div className="flex items-start justify-between border-b border-slate-800 pb-4"><div><p className="text-lg font-bold">Submit numbers</p><p className="text-sm text-slate-400">Paste, type, or import up to 10,000 numbers.</p></div><span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">₵0.00</span></div>}
     <div className="space-y-1.5"><Label htmlFor={`approval-phone-${source}`}>{compact ? "Phone number" : "MTN numbers"}</Label>{compact ? <Input id={`approval-phone-${source}`} value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0242206542" inputMode="tel" /> : <Textarea id={`approval-phone-${source}`} value={numbers} onChange={(event) => setNumbers(event.target.value)} placeholder="0240000000\n0550000000" className="min-h-56 resize-y font-mono" />}</div>
+    {!compact && <div className="grid grid-cols-3 gap-2 text-center text-xs"><div className="rounded-lg bg-slate-900 p-3"><strong className="block text-base text-white">{enteredCount}</strong><span className="text-slate-400">Detected</span></div><div className="rounded-lg bg-emerald-500/10 p-3"><strong className="block text-base text-emerald-300">{enteredCount}</strong><span className="text-slate-400">Valid</span></div><div className="rounded-lg bg-rose-500/10 p-3"><strong className="block text-base text-rose-300">0</strong><span className="text-slate-400">Check</span></div></div>}
     {error && <p className="text-sm text-destructive">{error}</p>}
     <Button type="button" onClick={submit} disabled={saving} className="w-full"><>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Submit for approval</></Button>
   </div>;
