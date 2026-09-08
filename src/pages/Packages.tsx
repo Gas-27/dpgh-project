@@ -1489,7 +1489,6 @@ const searchOrders = async (input?: string) => {
   return (
     <div className="min-h-screen bg-background">
       <NotificationPopup surface="packages" />
-  <div className="mx-auto max-w-5xl px-4 pt-4"><TrackOrderDropdown source="packages" onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} /></div>
       <Navbar />
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
@@ -1511,28 +1510,10 @@ const searchOrders = async (input?: string) => {
           <PublicProductsSection />
         ) : activeCategory === "data" ? (
           <>
+            <div className="mx-auto mb-6 w-full max-w-5xl">
+              <TrackOrderDropdown source="packages" onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} />
+            </div>
             <div className="max-w-4xl mx-auto mb-6">
-              <Card className="border-primary/30 bg-primary/5">
-                <CardContent className="p-4">
-                  <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                    <div className="flex-1">
-                      <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2 mb-2"><Package className="h-5 w-5 text-primary" />Track Your Order</h2>
-                      <p className="text-sm text-muted-foreground">Enter your phone number or order ID to check your purchase status.</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                      <Input
-                        placeholder="Phone number or Order ID"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && searchOrders()}
-                        className="bg-background min-w-[200px]"
-                      />
-                      <Button variant="hero" onClick={searchOrders} disabled={searching}>
-                        {searching ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" /> : <Search className="h-4 w-4 mr-1" />}Search
-                      </Button>
-                      {searchPerformed && <Button variant="outline" onClick={clearSearch} disabled={searching}><X className="h-4 w-4 mr-1" />Clear</Button>}
-                    </div>
-                  </div>
                   {searchPerformed && (
                     <div className="mt-6">
                       {searching ? (
@@ -1587,8 +1568,6 @@ const searchOrders = async (input?: string) => {
                       )}
                     </div>
                   )}
-                </CardContent>
-              </Card>
             </div>
             <section aria-labelledby="data-bundles-heading" className="mx-auto w-full max-w-md pb-12">
               <h2 id="data-bundles-heading" className="sr-only">Data Bundles</h2>
