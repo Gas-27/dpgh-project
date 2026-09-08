@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 
-type Props = { source: string; storeId?: string | null; onTrack?: (value: string) => void; primaryColor?: string };
+type Props = { source: string; storeId?: string | null; onTrack?: (value: string) => void | Promise<void>; primaryColor?: string };
 
 export default function TrackOrderDropdown({ source, storeId, onTrack, primaryColor = "#2563eb" }: Props) {
   const [open, setOpen] = useState(true);

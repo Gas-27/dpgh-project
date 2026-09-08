@@ -757,12 +757,13 @@ export function SubagentStorefront() {
   const undismissedNotifications = notifications.filter((n) => !dismissedIds.includes(n.id));
 
   // Order search - searches both subagent orders and parent agent orders
-const searchOrders = useCallback(async () => {
-  if (!searchQuery.trim()) return;
+const searchOrders = useCallback(async (input?: string) => {
+  const searchTerm = input ?? searchQuery;
+  if (!searchTerm.trim()) return;
     setSearching(true);
     setSearchPerformed(true);
 
-    const raw = searchQuery.trim();
+    const raw = searchTerm.trim();
     const noSpaces = stripSpaces(raw);
     
     let allOrders: Order[] = [];
@@ -1038,7 +1039,7 @@ const searchOrders = useCallback(async () => {
   <div id="storefront-section-content" className="scroll-mt-6" />
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
-  <TrackOrderDropdown source="subagent-storefront" storeId={store?.id} primaryColor={primaryColor} />
+  <TrackOrderDropdown source="subagent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} />
 
         <DeliveryProgressCard selectedNetwork={networkFilter} />
 

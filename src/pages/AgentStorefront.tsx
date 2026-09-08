@@ -888,13 +888,14 @@ const AgentStorefront = () => {
   // ── Order search ──
   // Phone numbers are stripped of ALL spaces before comparing so
   // "059 944 9202", "05 99 44 92 02", "0599449202" all match the same record.
-const searchOrders = useCallback(async () => {
-  if (!searchQuery.trim()) return;
+const searchOrders = useCallback(async (input?: string) => {
+  const searchTerm = input ?? searchQuery;
+  if (!searchTerm.trim()) return;
     setSearching(true);
     setSearchPerformed(true);
 
     // Remove every space the user may have typed
-    const raw = searchQuery.trim();
+    const raw = searchTerm.trim();
     const noSpaces = stripSpaces(raw);
 
     let query = supabase
@@ -1159,7 +1160,7 @@ const searchOrders = useCallback(async () => {
       ) : activeCategory === "data" ? (
         <>
           {/* ── Order Tracking ── */}
-          <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} /></div>
+          <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} /></div>
           <div className="hidden">
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="p-4">

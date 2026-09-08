@@ -1418,11 +1418,12 @@ const Packages = () => {
     return p.network === selectedNetwork;
   }), [packages, selectedNetwork]);
 
-const searchOrders = async () => {
-  if (!searchQuery.trim()) return;
+const searchOrders = async (input?: string) => {
+  const searchTerm = input ?? searchQuery;
+  if (!searchTerm.trim()) return;
 
     setSearching(true); setSearchPerformed(true);
-    let q = searchQuery.trim();
+    let q = searchTerm.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
     q = q.replace(/\s/g, "");
     let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,order_status,created_at,package_id,agent_store_id,subagent_store_id,sub_subagent_store_id,customer_id,provider_reference,provider_order_id,mtn_beneficiary_status,mtn_failure_reason,mtn_beneficiary_submitted_at,mtn_retry_eligible_at");
@@ -1488,7 +1489,7 @@ const searchOrders = async () => {
   return (
     <div className="min-h-screen bg-background">
       <NotificationPopup surface="packages" />
-  <div className="mx-auto max-w-5xl px-4 pt-4"><TrackOrderDropdown source="packages" onTrack={(value) => setSearchParams({ track: value })} /></div>
+  <div className="mx-auto max-w-5xl px-4 pt-4"><TrackOrderDropdown source="packages" onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} /></div>
       <Navbar />
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
