@@ -498,7 +498,7 @@ export function SubagentStorefront() {
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
   
   // Bulk Orders
-  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms">("data");
+  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms" | "services">("data");
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
@@ -1031,7 +1031,8 @@ const searchOrders = useCallback(async () => {
       )}
 
 <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-  <RoleServicesPanel agentStoreId={store?.id} />
+  <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-card/60 p-2"><Button variant={activeSection === "data" ? "default" : "outline"} onClick={() => setActiveSection("data")}>Data Bundles</Button><Button variant={activeSection === "afa" ? "default" : "outline"} onClick={() => setActiveSection("afa")}>AFA Bundles</Button><Button variant={activeSection === "services" ? "default" : "outline"} onClick={() => setActiveSection("services")}>Digital Services</Button><Button variant="outline">Products</Button></div>
+  {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
   {/* Order Search */}
         <Card style={{ background: cardBg }} className="border-border">
           <CardContent className="p-4">

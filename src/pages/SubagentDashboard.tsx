@@ -2090,7 +2090,8 @@ const handleSaveStore = async () => {
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
     { id: "bulk", label: "Bulk Orders", icon: Layers },
-    { id: "store", label: "Product Store", icon: Store },
+    { id: "store", label: "Store Prices", icon: Store },
+    { id: "products", label: "Products", icon: Package },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "refunds", label: "Refunds", icon: RotateCcw },
     { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
@@ -2355,8 +2356,9 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
+          <TabsContent value="products" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subagent" /></TabsContent>
           <TabsContent value="services" className="mt-0"><RoleServicesPanel agentStoreId={subagentStore?.id} /></TabsContent>
-          <TabsContent value="store" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subagent" /></TabsContent>
+          <TabsContent value="store" className="mt-0">{/* Store Prices */}</TabsContent>
 
           <TabsContent value="sms" className="mt-0 space-y-6">
             <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="subagent" ownerId={subagentStore?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="subagent" ownerId={subagentStore?.id} /></TabsContent></Tabs>
@@ -3802,9 +3804,10 @@ return (
             )}
         </TabsContent>
 
-          {/* APPEARANCE */}
-        <TabsContent value="appearance" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  {/* APPEARANCE */}
+  <TabsContent value="appearance" className="mt-0">
+  <Card className="border-border mb-6"><CardHeader><CardTitle className="font-display">Design your storefront</CardTitle><p className="text-sm text-muted-foreground">Arrange and resize the same storefront blocks your customers will see.</p></CardHeader><CardContent><div className="rounded-xl border-2 border-dashed border-primary/40 p-4" style={{ backgroundColor: themeColors.background }}><div className="space-y-3">{(themeColors.layout || DEFAULT_THEME.layout).map((blockId, index, blocks) => <div key={blockId} className="relative rounded-xl border-2 border-primary/50 p-4" style={{ backgroundColor: themeColors.card_background, width: `${(((themeColors.sectionWidths as any)?.[blockId] || 12) / 12) * 100}%` }}><div className="flex items-center justify-between"><span className="text-sm font-semibold">{{ header: "Store header + navigation", delivery: "Delivery progress", categories: "Category navigation", tracking: "Track order", products: "Product cards" }[blockId]}</span><span className="text-xs text-muted-foreground">{(themeColors.sectionWidths as any)?.[blockId] || 12}/12</span></div><div className="absolute right-2 top-2 flex gap-1"><Button size="sm" variant="outline" onClick={() => { if (index > 0) { const layout = [...themeColors.layout]; [layout[index - 1], layout[index]] = [layout[index], layout[index - 1]]; setThemeColors({ ...themeColors, layout }); } }}>↑</Button><Button size="sm" variant="outline" onClick={() => { if (index < blocks.length - 1) { const layout = [...themeColors.layout]; [layout[index], layout[index + 1]] = [layout[index + 1], layout[index]]; setThemeColors({ ...themeColors, layout }); } }}>↓</Button></div></div>)}</div></div><div className="mt-4 flex items-center gap-3"><Label>Resize blocks</Label><input type="range" min="4" max="12" value={((themeColors.sectionWidths as any)?.header || 12)} onChange={event => setThemeColors({ ...themeColors, sectionWidths: { ...themeColors.sectionWidths, header: Number(event.target.value) } })} /><Button variant="hero" onClick={saveThemeColors} disabled={savingTheme}>{savingTheme ? "Saving..." : "Save design"}</Button></div></CardContent></Card>
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-border">
                 <CardHeader>
                   <CardTitle className="font-display">Customise Your Storefront</CardTitle>

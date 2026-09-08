@@ -109,6 +109,7 @@ const menuItems = [
   { id: "bulk", label: "Bulk Orders", icon: Layers },
   { id: "refunds", label: "Refunds", icon: Wallet },
   { id: "store", label: "Store Prices", icon: Store },
+  { id: "products", label: "Products", icon: Package },
   { id: "services", label: "Services", icon: BriefcaseBusiness },
   { id: "subagents", label: "Subagents", icon: Users },
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
@@ -2921,7 +2922,6 @@ return (
 
           {/* ============================= STORE PRICES ============================= */}
 <TabsContent value="store" className="space-y-6 mt-0">
-  {store && <AgentProductStorePanel storeId={store.id} storeKind="agent" supportPhone={supportNum} />}
   <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Network filter buttons */}
               <div className="flex gap-2 flex-wrap">
@@ -4474,6 +4474,10 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               userEmail={user?.email}
             />
           </TabsContent>
+
+  <TabsContent value="products" className="mt-0">
+  {store && <AgentProductStorePanel storeId={store.id} storeKind="agent" supportPhone={supportNum} />}
+  </TabsContent>
 
   {/* ============================= SERVICES ============================= */}
   <TabsContent value="services" className="mt-0 space-y-6">

@@ -487,7 +487,7 @@ export function SubSubagentStorefront() {
 
   // Sub-Subagent Registration
   // ── AFA Packages ──
-  const [activeSection, setActiveSection] = useState<"data" | "afa" | "sms">("data");
+  const [activeSection, setActiveSection] = useState<"data" | "afa" | "sms" | "services">("data");
   const [afaPaymentPkg, setAfaPaymentPkg] = useState<{ id: string; size_gb: number; price: number; network: string } | null>(null);
   const [afaPaymentOpen, setAfaPaymentOpen] = useState(false);
 
@@ -1052,7 +1052,8 @@ const searchOrders = useCallback(async () => {
       )}
 
 <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-  <RoleServicesPanel agentStoreId={store?.id} />
+  <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-card/60 p-2"><Button variant={activeSection === "data" ? "default" : "outline"} onClick={() => setActiveSection("data")}>Data Bundles</Button><Button variant={activeSection === "afa" ? "default" : "outline"} onClick={() => setActiveSection("afa")}>AFA Bundles</Button><Button variant={activeSection === "services" ? "default" : "outline"} onClick={() => setActiveSection("services")}>Digital Services</Button><Button variant="outline">Products</Button></div>
+  {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
   {/* Order Search */}
         <Card style={{ background: cardBg }} className="border-border">
           <CardContent className="p-4">
