@@ -74,8 +74,14 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
     if (!value) return;
     setLoading(true); setError(""); setMessage("");
     try {
-      const price = Number((Array.isArray(result) ? result.find((item: any) => (item.domain || item.name) === value) : result)?.price ?? 0);
-      if (price > 0 && walletBalance < price) throw new Error(`Insufficient wallet balance. You need GHC ${price.toFixed(2)}.`);
+      const selectedResult = (Array.isArray(result) ? result.find((item: any) => (item.domain || item.name) === value) : result) as any;
+      const tld = `.${value.split(".").slice(1).join(".")}`;
+      const { data: pricing, error: pricingError } = await supabase.from("spaceship_tld_pricing").select("customer_price,active").eq("tld", tld).maybeSingle();
+      if (pricingError) throw pricingError;
+      if (pricing && pricing.active === false) throw new Error(`${tld} domains are not currently available for purchase.`);
+      const price = Number(pricing?.customer_price ?? selectedResult?.price ?? selectedResult?.registrationPrice ?? selectedResult?.amount ?? 0);
+      if (!Number.isFinite(price) || price <= 0) throw new Error("No customer price is configured for this domain extension.");
+      if (walletBalance < price) throw new Error(`Insufficient wallet balance. You need GHC ${price.toFixed(2)}.`);
       const idempotencyKey = `${agentStoreId ?? "user"}:${value}:${Date.now()}`;
       const { data: purchase, error: purchaseError } = await supabase.rpc("purchase_domain", { p_domain: value, p_agent_store_id: agentStoreId, p_idempotency_key: idempotencyKey, p_registration_metadata: {} });
       if (purchaseError) throw purchaseError;

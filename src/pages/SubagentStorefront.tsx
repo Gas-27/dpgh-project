@@ -1036,7 +1036,7 @@ const searchOrders = useCallback(async (input?: string) => {
       )}
 
 <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
+  <StorefrontSectionCards active={activeSection} hiddenIds={["instant"]} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}

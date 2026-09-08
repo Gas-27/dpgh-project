@@ -36,7 +36,8 @@ export default function AdminSpaceshipPricing() {
       setMessage(`Pricing could not be saved: ${error.message}`);
       return;
     }
-    setRows((current) => current.map((item) => item.tld === row.tld ? { ...item, customer_price: Number(saved.customer_price ?? customerPrice), active: saved.active } : item));
+    setRows((current) => current.map((item) => item.tld === row.tld ? { ...item, customer_price: Number(saved?.customer_price ?? customerPrice), active: saved?.active ?? Boolean(row.active) } : item));
+    await load();
     setMessage(`${row.tld} pricing saved.`);
   }
 

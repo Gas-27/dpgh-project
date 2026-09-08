@@ -13,9 +13,9 @@ const sections = [
 
 type SectionId = (typeof sections)[number]["id"];
 
-export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent }: { active?: string; onSelect: (id: SectionId) => void; onBecomeAgent?: () => void }) {
+export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent, hiddenIds = [] }: { active?: string; onSelect: (id: SectionId) => void; onBecomeAgent?: () => void; hiddenIds?: SectionId[] }) {
   return <div className="mx-auto grid w-full max-w-5xl grid-cols-2 gap-3 px-0 sm:gap-4">
-    {sections.map(({ id, label, description, icon: Icon, tone }) => {
+    {sections.filter(({ id }) => !hiddenIds.includes(id)).map(({ id, label, description, icon: Icon, tone }) => {
       const isAgent = id === "agent";
       const handleClick = () => {
         if (isAgent) {

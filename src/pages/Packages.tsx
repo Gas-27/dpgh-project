@@ -1511,7 +1511,7 @@ const searchOrders = async (input?: string) => {
         ) : activeCategory === "data" ? (
           <>
             <div className="mx-auto mb-6 w-full max-w-5xl">
-              <TrackOrderDropdown source="packages" onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} />
+              <TrackOrderDropdown source="packages" hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} />
             </div>
             <div className="max-w-4xl mx-auto mb-6">
                   {searchPerformed && (
