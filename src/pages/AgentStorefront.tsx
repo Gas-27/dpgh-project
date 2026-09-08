@@ -1160,7 +1160,7 @@ const searchOrders = useCallback(async (input?: string) => {
       ) : activeCategory === "data" ? (
         <>
           {/* ── Order Tracking ── */}
-          <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} /></div>
+          <div className="hidden"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} /></div>
           <div className="hidden">
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="p-4">
@@ -1298,6 +1298,7 @@ const searchOrders = useCallback(async (input?: string) => {
           </div>
 
           <DeliveryProgressCard selectedNetwork={networkFilter} />
+          <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} /></div>
 
           {/* ── Network filter ── */}
           <div className="container pb-6">

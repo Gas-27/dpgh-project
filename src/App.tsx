@@ -247,6 +247,7 @@ const App = () => {
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/only-admin/log.in" element={<AdminLogin />} />
                   <Route path="/packages" element={<Packages />} />
+                  <Route path="/products" element={<Packages />} />
                   <Route path="/afa-bundles" element={<Packages />} />
                   <Route path="/instant-data" element={<Packages />} />
                   <Route path="/services" element={<Packages />} />

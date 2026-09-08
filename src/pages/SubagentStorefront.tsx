@@ -1039,9 +1039,9 @@ const searchOrders = useCallback(async (input?: string) => {
   <div id="storefront-section-content" className="scroll-mt-6" />
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
-  <TrackOrderDropdown source="subagent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} />
-
         <DeliveryProgressCard selectedNetwork={networkFilter} />
+
+  <TrackOrderDropdown source="subagent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} />
 
         {activeSection === "data" && <>
         {/* Network Tabs */}
