@@ -14,8 +14,8 @@ import {
   Zap, Phone, Wifi, Clock, Search, Package,
   CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
   MessageCircle, Users, AlertTriangle, Check, Gift,
-  Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2,
-} from "lucide-react";
+  Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2, ChevronDown,
+  } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
@@ -1037,9 +1037,19 @@ const searchOrders = useCallback(async () => {
   <div id="storefront-section-content" className="scroll-mt-6" />
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
-  {/* Order Search */}
-        <Card style={{ background: cardBg }} className="border-border">
-          <CardContent className="p-4">
+  {/* Order Search — collapsible Track Your Order dropdown */}
+        <details className="group overflow-hidden rounded-xl border border-border" style={{ background: cardBg }}>
+          <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${primaryColor}1a`, color: primaryColor }}>
+              <Package className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display font-bold text-foreground">Track Your Order</span>
+              <span className="block text-xs text-muted-foreground">Enter your phone number or order ID to check your purchase status.</span>
+            </span>
+            <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="border-t border-border p-4">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1093,8 +1103,8 @@ const searchOrders = useCallback(async () => {
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </details>
 
         <DeliveryProgressCard selectedNetwork={networkFilter} />
 

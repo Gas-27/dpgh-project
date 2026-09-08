@@ -102,7 +102,7 @@ interface WithdrawalRequest {
 }
 
 // Default theme
-const DEFAULT_THEME = { primary: "#38bdf8", primary_foreground: "#000000", background: "#0a0a0a", card_background: "#171717", gridColumns: 2 };
+  const DEFAULT_THEME = { primary: "#38bdf8", primary_foreground: "#000000", background: "#0a0a0a", card_background: "#171717", gridColumns: 2, layout: ["header", "delivery", "categories", "tracking", "products"] as string[], sectionWidths: { header: 12, delivery: 12, categories: 12, tracking: 12, products: 12 } as Record<string, number> };
 
 // Instruction manual sections
 const MANUAL_SECTIONS = [
@@ -566,8 +566,7 @@ const SubagentDashboard = () => {
           topupsResult,
           agentInfoResult,
           subSubagentsResult,
-          recipientsResult,
-          registrationsResult
+          recipientsResult
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
@@ -578,8 +577,7 @@ const SubagentDashboard = () => {
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
           supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id || "").eq("status", "active").order("created_at", { ascending: false }),
-          supabase.from("sub_subagent_registrations").select("id, registration_fee_amount").eq("subagent_id", store.id)
+          supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id || "").eq("status", "active").order("created_at", { ascending: false })
         ]);
 
         setOrders(ordersResult.data || []);
@@ -2043,8 +2041,9 @@ const handleSaveStore = async () => {
     );
   }
 
-  // Only allow pure subagents (not sub-subagents) to access this dashboard
-  if (!isSubagent || isSubSubagent) {
+  // Only allow pure subagents (not sub-subagents) to access this dashboard.
+  // Admin impersonation loads a store directly and must bypass the role check.
+  if (!isImpersonating && (!isSubagent || isSubSubagent)) {
     return <Navigate to="/" />;
   }
 
@@ -3806,7 +3805,7 @@ return (
 
   {/* APPEARANCE */}
   <TabsContent value="appearance" className="mt-0">
-  <Card className="border-border mb-6"><CardHeader><CardTitle className="font-display">Design your storefront</CardTitle><p className="text-sm text-muted-foreground">Arrange and resize the same storefront blocks your customers will see.</p></CardHeader><CardContent><div className="rounded-xl border-2 border-dashed border-primary/40 p-4" style={{ backgroundColor: themeColors.background }}><div className="space-y-3">{(themeColors.layout || DEFAULT_THEME.layout).map((blockId, index, blocks) => <div key={blockId} className="relative rounded-xl border-2 border-primary/50 p-4" style={{ backgroundColor: themeColors.card_background, width: `${(((themeColors.sectionWidths as any)?.[blockId] || 12) / 12) * 100}%` }}><div className="flex items-center justify-between"><span className="text-sm font-semibold">{{ header: "Store header + navigation", delivery: "Delivery progress", categories: "Category navigation", tracking: "Track order", products: "Product cards" }[blockId]}</span><span className="text-xs text-muted-foreground">{(themeColors.sectionWidths as any)?.[blockId] || 12}/12</span></div><div className="absolute right-2 top-2 flex gap-1"><Button size="sm" variant="outline" onClick={() => { if (index > 0) { const layout = [...themeColors.layout]; [layout[index - 1], layout[index]] = [layout[index], layout[index - 1]]; setThemeColors({ ...themeColors, layout }); } }}>↑</Button><Button size="sm" variant="outline" onClick={() => { if (index < blocks.length - 1) { const layout = [...themeColors.layout]; [layout[index], layout[index + 1]] = [layout[index + 1], layout[index]]; setThemeColors({ ...themeColors, layout }); } }}>↓</Button></div></div>)}</div></div><div className="mt-4 flex items-center gap-3"><Label>Resize blocks</Label><input type="range" min="4" max="12" value={((themeColors.sectionWidths as any)?.header || 12)} onChange={event => setThemeColors({ ...themeColors, sectionWidths: { ...themeColors.sectionWidths, header: Number(event.target.value) } })} /><Button variant="hero" onClick={saveThemeColors} disabled={savingTheme}>{savingTheme ? "Saving..." : "Save design"}</Button></div></CardContent></Card>
+  <Card className="border-border mb-6"><CardHeader><CardTitle className="font-display">Design your storefront</CardTitle><p className="text-sm text-muted-foreground">Arrange and resize the same storefront blocks your customers will see.</p></CardHeader><CardContent><div className="rounded-xl border-2 border-dashed border-primary/40 p-4" style={{ backgroundColor: themeColors.background }}><div className="space-y-3">{(themeColors.layout || DEFAULT_THEME.layout).map((blockId, index, blocks) => <div key={blockId} className="relative rounded-xl border-2 border-primary/50 p-4" style={{ backgroundColor: themeColors.card_background, width: `${(((themeColors.sectionWidths as any)?.[blockId] || 12) / 12) * 100}%` }}><div className="flex items-center justify-between"><span className="text-sm font-semibold">{{ header: "Store header + navigation", delivery: "Delivery progress", categories: "Category navigation", tracking: "Track order", products: "Product cards" }[blockId]}</span><span className="text-xs text-muted-foreground">{(themeColors.sectionWidths as any)?.[blockId] || 12}/12</span></div><div className="absolute right-2 top-2 flex gap-1"><Button size="sm" variant="outline" onClick={() => { if (index > 0) { const layout = [...(themeColors.layout || DEFAULT_THEME.layout)]; [layout[index - 1], layout[index]] = [layout[index], layout[index - 1]]; setThemeColors({ ...themeColors, layout }); } }}>↑</Button><Button size="sm" variant="outline" onClick={() => { if (index < blocks.length - 1) { const layout = [...(themeColors.layout || DEFAULT_THEME.layout)]; [layout[index], layout[index + 1]] = [layout[index + 1], layout[index]]; setThemeColors({ ...themeColors, layout }); } }}>↓</Button></div></div>)}</div></div><div className="mt-4 flex items-center gap-3"><Label>Resize blocks</Label><input type="range" min="4" max="12" value={((themeColors.sectionWidths as any)?.header || 12)} onChange={event => setThemeColors({ ...themeColors, sectionWidths: { ...themeColors.sectionWidths, header: Number(event.target.value) } })} /><Button variant="hero" onClick={saveThemeColors} disabled={savingTheme}>{savingTheme ? "Saving..." : "Save design"}</Button></div></CardContent></Card>
   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-border">
                 <CardHeader>
