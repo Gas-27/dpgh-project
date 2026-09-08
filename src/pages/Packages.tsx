@@ -24,6 +24,8 @@ import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import TrackOrderDropdown from "@/components/TrackOrderDropdown";
+import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import SmsComposer from "@/components/SmsComposer";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -180,7 +182,7 @@ const sounds = {
   noWin: () => { playTone(220, "sawtooth", 0.28, 0.22); playTone(180, "sawtooth", 0.22, 0.18, 0.18); },
 };
 
-// ───────────────────────────��────────────────── Order Tracking Card (UPDATED: delivered at 300 minutes) ──
+// ──��────────────────────────��────────────────── Order Tracking Card (UPDATED: delivered at 300 minutes) ──
 const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toast: any; onReportClick: (order: Order) => void }) => {
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
   const [complaintId, setComplaintId] = useState<string | null>(null);
@@ -1487,6 +1489,7 @@ const searchOrders = async () => {
   return (
     <div className="min-h-screen bg-background">
       <NotificationPopup surface="packages" />
+  <div className="mx-auto max-w-3xl space-y-4 px-4 pt-4"><TrackOrderDropdown source="packages" onTrack={(value) => setSearchParams({ track: value })} /><Card><CardContent className="p-4"><OrderNumberApprovalForm source="packages" /></CardContent></Card></div>
       <Navbar />
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>

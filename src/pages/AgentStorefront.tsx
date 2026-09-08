@@ -28,6 +28,8 @@ import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import TrackOrderDropdown from "@/components/TrackOrderDropdown";
+import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import NotificationPopup from "@/components/NotificationPopup";
 import SmsComposer from "@/components/SmsComposer";
 import ChatBot from "@/components/ChatBot";
@@ -1158,7 +1160,8 @@ const searchOrders = useCallback(async () => {
       ) : activeCategory === "data" ? (
         <>
           {/* ── Order Tracking ── */}
-          <div className="container pb-6">
+          <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} /><div className="mt-4"><OrderNumberApprovalForm source="agent-storefront" storeId={store?.id} compact /></div></div>
+          <div className="hidden">
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="p-4">
                 <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">

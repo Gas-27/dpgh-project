@@ -21,6 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import AgentProductStorePanel from "@/components/AgentProductStorePanel";
+import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import CustomDomainPanel from "@/components/CustomDomainPanel";
 import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -1969,6 +1970,7 @@ return (
   
   {/* OVERVIEW */}
           <TabsContent value="overview" className="mt-0 space-y-6">
+            <Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="subsubagent-dashboard" storeId={subagentStore?.id} /></CardContent></Card>
             {/* Instruction Manual Dropdown */}
             <Card className="border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">

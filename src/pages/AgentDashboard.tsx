@@ -40,6 +40,7 @@ import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentDigitalServicesPricing from "@/components/AgentDigitalServicesPricing";
 import AgentProductStorePanel from "@/components/AgentProductStorePanel";
+import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
@@ -2385,6 +2386,7 @@ return (
 
           {/* ============================= OVERVIEW ============================= */}
           <TabsContent value="overview" className="space-y-6 mt-0">
+            <Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="agent-dashboard" storeId={store?.id} /></CardContent></Card>
             <Card className="border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
                 <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><div><p className="font-display font-bold text-foreground">📖 Dashboard Instruction Manual</p><p className="text-xs text-muted-foreground">Tap to {manualOpen ? "hide" : "view"} a full guide on how every section works</p></div></div>

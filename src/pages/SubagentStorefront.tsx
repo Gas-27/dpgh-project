@@ -27,6 +27,8 @@ import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatu
   import NotificationPopup from "@/components/NotificationPopup";
   import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
+import TrackOrderDropdown from "@/components/TrackOrderDropdown";
+import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
 import PublicProductsSection from "@/components/PublicProductsSection";
 import ChatBot from "@/components/ChatBot";
@@ -1037,7 +1039,9 @@ const searchOrders = useCallback(async () => {
   <div id="storefront-section-content" className="scroll-mt-6" />
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
-  {/* Order Search — collapsible Track Your Order dropdown */}
+  <TrackOrderDropdown source="subagent-storefront" storeId={store?.id} primaryColor={primaryColor} />
+  <div className="mt-4"><OrderNumberApprovalForm source="subagent-storefront" storeId={store?.id} compact /></div>
+  {/* Legacy order search retained for existing results */}
         <details className="group overflow-hidden rounded-xl border border-border" style={{ background: cardBg }}>
           <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${primaryColor}1a`, color: primaryColor }}>

@@ -35,6 +35,7 @@ import DeliveryProgressAdmin from "@/components/DeliveryProgressAdmin";
 import AdminOrderStatusUpdater from "@/components/AdminOrderStatusUpdater";
 import NetworkProviderRoutingAdmin from "@/components/NetworkProviderRoutingAdmin";
 import AdminSpaceshipPricing from "@/components/AdminSpaceshipPricing";
+import AdminOrderNumberApprovals from "@/components/AdminOrderNumberApprovals";
 import SmsAdmin from "@/components/SmsAdmin";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
@@ -2666,7 +2667,8 @@ const AdminDashboard = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="prices">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
             <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>
-            <TabsTrigger value="orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
+            <TabsTrigger value="order_approvals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><ClipboardList className="h-3 w-3 md:h-4 md:w-4" /> Approvals</TabsTrigger>
+<TabsTrigger value="orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
               <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" /> Orders
               {failedCount > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{failedCount}</Badge>}
             </TabsTrigger>
@@ -2697,7 +2699,9 @@ const AdminDashboard = () => {
             <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
 
-          {/* PRICES TAB */}
+          <TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /></TabsContent>
+
+  {/* PRICES TAB */}
           {canSee("prices") && (
             <TabsContent value="prices" className="space-y-6">
               <div className="flex items-center justify-between flex-wrap gap-3">

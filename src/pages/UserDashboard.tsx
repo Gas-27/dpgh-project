@@ -29,6 +29,7 @@ import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
+import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NotificationPopup from "@/components/NotificationPopup";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -945,6 +946,7 @@ const UserDashboard = () => {
 
     return (
     <div className="space-y-6">
+      <Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="user-dashboard" /></CardContent></Card>
       {/* Announcement Video — collapsible dropdown at very top */}
       {announcement && embedUrl && (
         <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
