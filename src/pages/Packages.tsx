@@ -1502,6 +1502,7 @@ const searchOrders = async () => {
           </div>
         )}
 
+        <div id="storefront-section-content" className="scroll-mt-6" />
         {activeCategory === "products" ? (
           <PublicProductsSection />
         ) : activeCategory === "data" ? (

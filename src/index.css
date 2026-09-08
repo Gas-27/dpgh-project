@@ -71,6 +71,8 @@
   .storefront-section-pink .storefront-section-icon { background: hsl(330 82% 58%); color: hsl(0 0% 98%); }
   .storefront-section-blue .storefront-section-icon { background: hsl(197 91% 52%); }
   .storefront-section-teal .storefront-section-icon { background: hsl(183 78% 47%); }
+  .storefront-section-active { filter: brightness(1.28) saturate(1.15); box-shadow: 0 0 0 1px currentColor, 0 8px 22px hsl(0 0% 0% / 0.28); }
+  .storefront-section-active .storefront-section-icon { transform: scale(1.04); }
 }
 
 @layer base {

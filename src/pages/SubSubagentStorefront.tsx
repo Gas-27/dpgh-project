@@ -1055,6 +1055,7 @@ const searchOrders = useCallback(async () => {
 
 <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
   <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => navigate("/become-agent")} />
+  <div id="storefront-section-content" className="scroll-mt-6" />
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
   {/* Order Search */}
