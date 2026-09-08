@@ -27,7 +27,6 @@ import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatu
 import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
-import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
 import PublicProductsSection from "@/components/PublicProductsSection";
   import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
@@ -1061,8 +1060,7 @@ const searchOrders = useCallback(async () => {
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
   <TrackOrderDropdown source="subsubagent-storefront" storeId={store?.id} primaryColor={primaryColor} />
-  <div className="mt-4"><OrderNumberApprovalForm source="subsubagent-storefront" storeId={store?.id} compact /></div>
-  {/* Legacy order search retained for existing results */}
+    {/* Legacy order search retained for existing results */}
         <details className="group overflow-hidden rounded-xl border border-border" style={{ background: cardBg }}>
           <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${primaryColor}1a`, color: primaryColor }}>

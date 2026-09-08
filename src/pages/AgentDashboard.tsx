@@ -105,6 +105,7 @@ const TELECEL_SIZES = [2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 50, 100];
 
 const menuItems = [
   { id: "overview", label: "Overview", icon: BarChart3 },
+ { id: "approvals", label: "Submit for Approval", icon: Send },
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
   { id: "domains", label: "Domains", icon: Globe2 },
   { id: "bulk", label: "Bulk Orders", icon: Layers },
@@ -2385,9 +2386,9 @@ return (
           </TabsContent>
 
           {/* ============================= OVERVIEW ============================= */}
-          <TabsContent value="overview" className="space-y-6 mt-0">
-            <Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="agent-dashboard" storeId={store?.id} /></CardContent></Card>
-            <Card className="border-primary/30 bg-primary/5">
+          <TabsContent value="approvals" className="space-y-6 mt-0"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="agent-dashboard" storeId={store?.id} /></CardContent></Card></TabsContent>
+  <TabsContent value="overview" className="space-y-6 mt-0">
+                        <Card className="border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
                 <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><div><p className="font-display font-bold text-foreground">📖 Dashboard Instruction Manual</p><p className="text-xs text-muted-foreground">Tap to {manualOpen ? "hide" : "view"} a full guide on how every section works</p></div></div>
                 {manualOpen ? <ChevronUp className="h-5 w-5 text-primary" /> : <ChevronDown className="h-5 w-5 text-primary" />}

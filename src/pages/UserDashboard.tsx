@@ -186,6 +186,7 @@ const UserDashboard = () => {
 
   const menuItems = [
     { id: "overview", label: "Overview", icon: Home },
+ { id: "approvals", label: "Submit for Approval", icon: Send },
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "orders", label: "Orders", icon: BarChart3 },
   { id: "domains", label: "Domains", icon: Globe },
@@ -895,8 +896,10 @@ const UserDashboard = () => {
 
   // Render content based on active menu
   const renderContent = () => {
-    switch (activeMenu) {
-      case "overview":
+  switch (activeMenu) {
+  case "approvals":
+    return <Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="user-dashboard" /></CardContent></Card>;
+  case "overview":
         return renderOverview();
       case "buy-data":
         return renderBuyData();
@@ -946,8 +949,7 @@ const UserDashboard = () => {
 
     return (
     <div className="space-y-6">
-      <Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="user-dashboard" /></CardContent></Card>
-      {/* Announcement Video — collapsible dropdown at very top */}
+            {/* Announcement Video — collapsible dropdown at very top */}
       {announcement && embedUrl && (
         <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
           <button

@@ -2088,6 +2088,7 @@ const handleSaveStore = async () => {
 
   const menuItems = [
     { id: "overview", label: "Overview", icon: BarChart3 },
+ { id: "approvals", label: "Submit for Approval", icon: Send },
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
     { id: "bulk", label: "Bulk Orders", icon: Layers },
     { id: "store", label: "Store Prices", icon: Store },
@@ -2365,9 +2366,9 @@ return (
           </TabsContent>
 
           {/* OVERVIEW */}
-          <TabsContent value="overview" className="mt-0 space-y-6">
-            <Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="subagent-dashboard" storeId={subagentStore?.id} /></CardContent></Card>
-            {/* Instruction Manual Dropdown */}
+          <TabsContent value="approvals" className="mt-0 space-y-6"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="subagent-dashboard" storeId={subagentStore?.id} /></CardContent></Card></TabsContent>
+<TabsContent value="overview" className="mt-0 space-y-6">
+                        {/* Instruction Manual Dropdown */}
             <Card className="border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
                 <div className="flex items-center gap-3">

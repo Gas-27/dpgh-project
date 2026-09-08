@@ -57,7 +57,7 @@ export default function OrderNumberApprovalForm({ source, storeId, orderId, comp
     return <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300"><Check className="h-4 w-4" /> Number submitted for approval.</div>;
   }
 
-  return <div className={compact ? "space-y-3" : "space-y-4"}>
+  return <div className={`${compact ? "space-y-3" : "space-y-4"} rounded-2xl border border-slate-700/80 bg-slate-900/80 p-5 text-slate-100 shadow-xl`}>
     <div className="space-y-1.5"><Label htmlFor={`approval-phone-${source}`}>Phone number</Label><Input id={`approval-phone-${source}`} value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0242206542" inputMode="tel" /></div>
     <div className="space-y-1.5"><Label htmlFor={`approval-order-${source}`}>Order ID <span className="text-muted-foreground">(optional)</span></Label><Input id={`approval-order-${source}`} value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Order ID" /></div>
     {!compact && <div className="space-y-1.5"><Label htmlFor={`approval-note-${source}`}>Note <span className="text-muted-foreground">(optional)</span></Label><Textarea id={`approval-note-${source}`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Add context for the admin" rows={3} /></div>}
