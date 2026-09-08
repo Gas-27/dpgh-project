@@ -1057,7 +1057,7 @@ const searchOrders = useCallback(async (input?: string) => {
       )}
 
 <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => navigate("/become-agent")} />
+  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => toast({ title: "Coming soon", description: "Become an Agent will be available soon." })} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
