@@ -549,7 +549,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��──────────────────────────────────────────────────
+// ─�����������────────────────────────��─────────────────────────────────���────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -1160,8 +1160,7 @@ const searchOrders = useCallback(async (input?: string) => {
       ) : activeCategory === "data" ? (
         <>
           {/* ── Order Tracking ── */}
-          <div className="hidden"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} /></div>
-          <div className="hidden">
+                  <div className="hidden">
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="p-4">
                 <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
@@ -1297,8 +1296,8 @@ const searchOrders = useCallback(async (input?: string) => {
             </Card>
           </div>
 
-          <DeliveryProgressCard selectedNetwork={networkFilter} />
           <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} /></div>
+          <DeliveryProgressCard selectedNetwork={networkFilter} />
 
           {/* ── Network filter ── */}
           <div className="container pb-6">

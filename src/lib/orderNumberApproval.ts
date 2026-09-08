@@ -6,7 +6,7 @@ export function normalizeApprovalNumber(value: string) {
 
 export function validateApprovalNumber(value: string) {
   const normalized = normalizeApprovalNumber(value);
-  if (!isValidPhone(normalized) || normalized.length !== 10) {
+  if (value !== value.trim() || /\s/.test(value) || !/^0\d{9}$/.test(value) || !isValidPhone(normalized) || normalized.length !== 10) {
     return { normalized, error: "Enter a valid 10-digit Ghana number, for example 0242206542." };
   }
   return { normalized, error: null };
