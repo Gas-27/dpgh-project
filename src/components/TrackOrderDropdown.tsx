@@ -7,7 +7,7 @@ import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 type Props = { source: string; storeId?: string | null; onTrack?: (value: string) => void | Promise<void>; primaryColor?: string };
 
 export default function TrackOrderDropdown({ source, storeId, onTrack, primaryColor = "#2563eb" }: Props) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [lookup, setLookup] = useState("");
   return <div className="overflow-hidden rounded-[22px] border border-cyan-400/80 bg-gradient-to-r from-slate-950 via-blue-950 to-blue-700 shadow-lg shadow-blue-950/30">
     <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left text-white sm:px-6">
@@ -16,7 +16,7 @@ export default function TrackOrderDropdown({ source, storeId, onTrack, primaryCo
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-500 shadow-md"><ChevronDown className={`h-5 w-5 transition-transform ${open ? "rotate-180" : ""}`} /></span>
     </button>
     {open && <div className="space-y-3 border-t border-white/15 bg-slate-950/35 p-4 sm:p-5">
-      <div className="flex gap-2"><Input value={lookup} onChange={(event) => setLookup(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); onTrack?.(lookup.trim()); } }} placeholder="0242206542 or order ID" className="border-cyan-400 bg-white/10 text-white placeholder:text-blue-100/60 focus-visible:ring-cyan-400" /><Button type="button" onClick={() => onTrack?.(lookup.trim())} disabled={!lookup.trim()} style={{ backgroundColor: primaryColor }}><Search className="mr-2 h-4 w-4" />Track</Button></div>
+      <div className="flex gap-2"><Input value={lookup} onChange={(event) => setLookup(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); onTrack?.(lookup.trim()); } }} placeholder="0242206542 or order ID" className="border-cyan-400 bg-white/10 text-white placeholder:text-blue-100/60 focus-visible:ring-cyan-400" /><Button type="button" onClick={(event) => { event.stopPropagation(); const value = lookup.trim(); if (value) void onTrack?.(value); }} disabled={!lookup.trim()} style={{ backgroundColor: primaryColor }}><Search className="mr-2 h-4 w-4" />Track</Button></div>
       <details className="rounded-lg border border-white/15 bg-white/5 p-3"><summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-white [&::-webkit-details-marker]:hidden">Need approval for this number?<ChevronDown className="h-4 w-4" /></summary><div className="pt-3"><OrderNumberApprovalForm source={`${source}-track-order`} storeId={storeId} compact /></div></details>
     </div>}
   </div>;
