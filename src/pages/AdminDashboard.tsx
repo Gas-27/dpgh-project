@@ -23,6 +23,7 @@ import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import ReportCenter from "@/components/ReportCenter";
 import AdminDigitalServicesManager from "@/components/AdminDigitalServicesManager";
+import AdminPublicProductsManager from "@/components/AdminPublicProductsManager";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import AdminAFABundleManager from "@/components/AdminAFABundleManager";
 import AdminAFABundleRegistrations from "@/components/AdminAFABundleRegistrations";
@@ -83,7 +84,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "sms" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "sms" | "public_products" | "settings";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -2690,6 +2691,7 @@ const AdminDashboard = () => {
   <TabsTrigger value="digital_services" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><KeyRound className="h-3 w-3 md:h-4 md:w-4" /> Digital Services</TabsTrigger>
   <TabsTrigger value="network_routing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Route className="h-3 w-3 md:h-4 md:w-4" /> Network Routing</TabsTrigger>
                 <TabsTrigger value="sms" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><MessageCircle className="h-3 w-3 md:h-4 md:w-4" /> SMS</TabsTrigger>
+ <TabsTrigger value="public_products" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> Store Products</TabsTrigger>
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
           <TabsTrigger value="spaceship_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Spaceship Domains</TabsTrigger>
             <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
@@ -4552,6 +4554,10 @@ const AdminDashboard = () => {
   <TabsContent value="sms" className="space-y-6">
   <SmsAdmin />
   </TabsContent>
+  )}
+
+  {canSee("public_products") && (
+  <TabsContent value="public_products" className="space-y-6"><AdminPublicProductsManager /></TabsContent>
   )}
 
   {canSee("settings") && (

@@ -5,6 +5,7 @@ import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import PublicProductsSection from "@/components/PublicProductsSection";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
@@ -179,7 +180,7 @@ const sounds = {
   noWin: () => { playTone(220, "sawtooth", 0.28, 0.22); playTone(180, "sawtooth", 0.22, 0.18, 0.18); },
 };
 
-// ────────────────────────────────────────────── Order Tracking Card (UPDATED: delivered at 300 minutes) ──
+// ───────────────────────────��────────────────── Order Tracking Card (UPDATED: delivered at 300 minutes) ──
 const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toast: any; onReportClick: (order: Order) => void }) => {
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
   const [complaintId, setComplaintId] = useState<string | null>(null);
@@ -1232,9 +1233,12 @@ const Packages = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const checkingOrderIds = useOrderStatusRefresh(orders, setOrders);
-  type PackageCategory = "data" | "afa" | "vouchers" | "services" | "bulk" | "sms";
+  type PackageCategory = "data" | "afa" | "vouchers" | "services" | "bulk" | "sms" | "products";
   const categoryPaths: Record<PackageCategory, string> = {
-    data: "/packages", afa: "/afa-bundles", vouchers: "/instant-data", services: "/services", bulk: "/bulk-orders", sms: "/bulk-sms",
+    data: "/packages", afa: "/afa-bundles", vouchers: "/instant-data", services: "/services", bulk: "/bulk-orders", sms: "/bulk-sms", products: "/products",
+  };
+  const handleStorefrontSectionSelect = (section: "data" | "afa" | "instant" | "services" | "bulk" | "sms" | "products") => {
+    changeCategory(section === "instant" ? "vouchers" : section);
   };
   const pathCategories: Record<string, PackageCategory> = Object.fromEntries(Object.entries(categoryPaths).map(([category, path]) => [path, category as PackageCategory]));
   const initialCategory = pathCategories[window.location.pathname] ?? "data";
@@ -1487,32 +1491,22 @@ const searchOrders = async () => {
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
-          {(["data", "afa", "vouchers", "services", "bulk", "sms"] as const).map((cat) => (
-            <Button key={cat} variant={activeCategory === cat ? "hero" : "outline"} onClick={() => changeCategory(cat)} className={`font-semibold ${["bulk", "sms"].includes(cat) && activeCategory !== cat ? "border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10" : ""}`}>
-              {cat === "bulk" ? <Layers className="h-4 w-4 mr-2" /> : cat === "sms" ? <MessageCircle className="h-4 w-4 mr-2" /> : catIcons[cat]}{catLabels[cat]}
-            </Button>
-          ))}
-          <Button variant="outline" onClick={() => setShowBecomeAgent(true)} className="font-semibold border-green-600/50 text-green-600 hover:bg-green-600/10 hover:text-green-600">
-            <UserPlus className="h-4 w-4 mr-2" />Become an Agent
-          </Button>
         {spinConfig?.enabled && !(spinConfig.auto_disable_enabled && (spinConfig.current_spin_orders ?? 0) >= (spinConfig.auto_disable_order_limit ?? 100)) && (
-          <div className="flex flex-col items-center gap-1">
-            <Button variant="hero" className="bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 font-bold shadow-lg" onClick={() => setShowSpinWheel(true)}>
-              <Gift className="h-4 w-4 mr-2" />Win Free Data{spinConfig.payment_required ? ` (GHC${spinConfig.payment_amount})` : " (Free)"}
-            </Button>
-            {spinConfig.auto_disable_enabled && (
-              <p className="text-xs text-muted-foreground">
-                {spinConfig.display_spin_orders ?? 0} / {spinConfig.auto_disable_order_limit ?? 100} prizes claimed
-              </p>
-            )}
+          <div className="mb-8 flex justify-center">
+            <div className="flex flex-col items-center gap-1">
+              <Button variant="hero" className="bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 font-bold shadow-lg" onClick={() => setShowSpinWheel(true)}>
+                <Gift className="h-4 w-4 mr-2" />Win Free Data{spinConfig.payment_required ? ` (GHC${spinConfig.payment_amount})` : " (Free)"}
+              </Button>
+              {spinConfig.auto_disable_enabled && <p className="text-xs text-muted-foreground">{spinConfig.display_spin_orders ?? 0} / {spinConfig.auto_disable_order_limit ?? 100} prizes claimed</p>}
+            </div>
           </div>
         )}
-        </div>
 
-        {activeCategory === "data" ? (
+        {activeCategory === "products" ? (
+          <PublicProductsSection />
+        ) : activeCategory === "data" ? (
           <>
-            <StorefrontSectionCards onSelect={() => undefined} onBecomeAgent={() => navigate("/become-agent")} />
+            <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={handleStorefrontSectionSelect} onBecomeAgent={() => setShowBecomeAgent(true)} />
             <div className="max-w-4xl mx-auto mb-6">
               <Card className="border-primary/30 bg-primary/5">
                 <CardContent className="p-4">

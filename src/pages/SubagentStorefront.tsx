@@ -28,6 +28,7 @@ import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatu
   import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import PublicProductsSection from "@/components/PublicProductsSection";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
@@ -499,7 +500,7 @@ export function SubagentStorefront() {
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
   
   // Bulk Orders
-  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms" | "services">("data");
+  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms" | "services" | "products">("data");
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);
@@ -1032,7 +1033,8 @@ const searchOrders = useCallback(async () => {
       )}
 
 <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id === "products" ? "data" : id as typeof activeSection)} onBecomeAgent={() => navigate("/become-agent")} />
+  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => navigate("/become-agent")} />
+  {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
   {/* Order Search */}
         <Card style={{ background: cardBg }} className="border-border">

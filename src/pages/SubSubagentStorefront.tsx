@@ -27,6 +27,7 @@ import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatu
 import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import PublicProductsSection from "@/components/PublicProductsSection";
   import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
@@ -488,7 +489,7 @@ export function SubSubagentStorefront() {
 
   // Sub-Subagent Registration
   // ── AFA Packages ──
-  const [activeSection, setActiveSection] = useState<"data" | "afa" | "sms" | "services">("data");
+  const [activeSection, setActiveSection] = useState<"data" | "afa" | "sms" | "services" | "products">("data");
   const [afaPaymentPkg, setAfaPaymentPkg] = useState<{ id: string; size_gb: number; price: number; network: string } | null>(null);
   const [afaPaymentOpen, setAfaPaymentOpen] = useState(false);
 
@@ -1053,7 +1054,8 @@ const searchOrders = useCallback(async () => {
       )}
 
 <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id === "products" ? "data" : id as typeof activeSection)} onBecomeAgent={() => navigate("/become-agent")} />
+  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => navigate("/become-agent")} />
+  {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
   {/* Order Search */}
         <Card style={{ background: cardBg }} className="border-border">
