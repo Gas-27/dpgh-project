@@ -549,7 +549,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��─────────────────────────────────���────────────────
+// ─�����������────────────────────────��─────────────────────────────────�����────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -891,6 +891,7 @@ const AgentStorefront = () => {
 const searchOrders = useCallback(async (input?: string) => {
   const searchTerm = input ?? searchQuery;
   if (!searchTerm.trim()) return;
+    setSearchQuery(searchTerm.trim());
     setSearching(true);
     setSearchPerformed(true);
 

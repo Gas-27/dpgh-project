@@ -49,7 +49,7 @@ export default function SpaceshipDomainSearch() {
       return;
     }
 
-    const results = data?.domains ?? data?.items ?? [];
+    const results = Array.isArray(data) ? data : data?.domains ?? data?.items ?? data?.results ?? (data ? [data] : []);
     if (!results.length) {
       setError("No domain options were returned. Try another name.");
       return;

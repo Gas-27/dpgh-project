@@ -79,7 +79,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
       const idempotencyKey = `${agentStoreId ?? "user"}:${value}:${Date.now()}`;
       const { data: purchase, error: purchaseError } = await supabase.rpc("purchase_domain", { p_domain: value, p_agent_store_id: agentStoreId, p_idempotency_key: idempotencyKey, p_registration_metadata: {} });
       if (purchaseError) throw purchaseError;
-      const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`);
+      const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`, { autoRenew: false, privacyProtection: true });
       setMessage(data?.operationId || data?.asyncOperationId ? `Purchase started. Operation: ${data.operationId || data.asyncOperationId}` : `Purchase submitted for ${purchase?.domain ?? value}.`);
       onPurchaseComplete?.();
       await loadDomains();

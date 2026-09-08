@@ -778,6 +778,7 @@ export function SubSubagentStorefront() {
 const searchOrders = useCallback(async (input?: string) => {
   const searchTerm = input ?? searchQuery;
   if (!searchTerm.trim()) return;
+    setSearchQuery(searchTerm.trim());
     setSearching(true);
     setSearchPerformed(true);
 
