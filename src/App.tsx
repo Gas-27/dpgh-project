@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useParams, BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -174,6 +174,35 @@ const RedirectToAgentSubdomain = () => {
   return <RouteLoader />;
 };
 
+const CustomDomainResolver = () => {
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<"loading" | "missing">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    const hostname = window.location.hostname.toLowerCase();
+    const resolve = async () => {
+      const { data, error } = await supabase
+        .from("agent_stores")
+        .select("store_name, custom_domain, custom_domain_status")
+        .ilike("custom_domain", hostname)
+        .eq("custom_domain_status", "active")
+        .maybeSingle();
+      if (cancelled) return;
+      if (!error && data?.store_name) {
+        navigate(`/__custom/agent/${encodeURIComponent(data.store_name)}`, { replace: true });
+        return;
+      }
+      setStatus("missing");
+    };
+    void resolve();
+    return () => { cancelled = true; };
+  }, [navigate]);
+
+  if (status === "missing") return <NotFound />;
+  return <RouteLoader />;
+};
+
 const App = () => {
   // Determine if we are on a subdomain of datastores.shop or agentsstore.shop
   const hostname = window.location.hostname;
@@ -181,6 +210,8 @@ const App = () => {
   const isSubagentDomain = hostname === DOMAINS.SUBAGENT_STORE || 
                            hostname === `www.${DOMAINS.SUBAGENT_STORE}` ||
                            hostname.endsWith(`.${DOMAINS.SUBAGENT_STORE}`);
+  const isKnownAppHost = hostname === DOMAINS.AGENT_STORE || hostname === DOMAINS.SUBAGENT_STORE || hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app") || hostname.endsWith(".vercel.sh");
+  const isCustomDomain = !isKnownAppHost && !isAgentSubdomain && !isSubagentDomain;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -195,7 +226,12 @@ const App = () => {
             <PasswordRecoveryRedirect />
             <RouteErrorBoundary>
             <Suspense fallback={<RouteLoader />}>
-              {isSubagentDomain ? (
+              {isCustomDomain ? (
+                <Routes>
+                  <Route path="/__custom/agent/:storeName" element={<AgentStorefront />} />
+                  <Route path="*" element={<CustomDomainResolver />} />
+                </Routes>
+              ) : isSubagentDomain ? (
                 // agentsstore.shop - Subagent domain with separate routing
                 <Routes>
                   {/* Specific routes BEFORE catch-all routes */}
