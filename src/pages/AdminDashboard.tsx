@@ -986,6 +986,11 @@ const AdminDashboard = () => {
       auto_disable_order_limit: data.auto_disable_order_limit ?? 100,
       current_spin_orders: data.current_spin_orders ?? 0,
       display_spin_orders: data.display_spin_orders ?? 0,
+      eligibility_mode: data.eligibility_mode ?? "unrestricted",
+      eligibility_period: data.eligibility_period ?? "week",
+      minimum_order_count: data.minimum_order_count ?? 0,
+      minimum_order_amount: data.minimum_order_amount ?? 0,
+      placement_targets: Array.isArray(data.placement_targets) ? data.placement_targets : ["packages", "agent", "subagent", "subsubagent"],
     });
   } else {
     setSpinConfig({
@@ -1002,6 +1007,11 @@ const AdminDashboard = () => {
       auto_disable_order_limit: 100,
       current_spin_orders: 0,
       display_spin_orders: 0,
+      eligibility_mode: "unrestricted",
+      eligibility_period: "week",
+      minimum_order_count: 0,
+      minimum_order_amount: 0,
+      placement_targets: ["packages", "agent", "subagent", "subsubagent"],
     });
   }
   };
@@ -4255,7 +4265,7 @@ const AdminDashboard = () => {
     <Select value={spinConfig.eligibility_period} onValueChange={(value) => setSpinConfig({ ...spinConfig, eligibility_period: value as "day" | "week" })}><SelectTrigger><SelectValue placeholder="Period" /></SelectTrigger><SelectContent><SelectItem value="day">Today</SelectItem><SelectItem value="week">This week</SelectItem></SelectContent></Select>
     <Input type="number" min="0" value={spinConfig.minimum_order_count} onChange={(event) => setSpinConfig({ ...spinConfig, minimum_order_count: Number(event.target.value) || 0 })} placeholder="Required completed orders" />
     <Input type="number" min="0" step="0.01" value={spinConfig.minimum_order_amount} onChange={(event) => setSpinConfig({ ...spinConfig, minimum_order_amount: Number(event.target.value) || 0 })} placeholder="Required amount in GHS" />
-    <div className="md:col-span-2 flex flex-wrap gap-2 text-sm">{[{ id: "packages", label: "Package page" }, { id: "agent", label: "Agent storefront" }, { id: "subagent", label: "Subagent storefront" }, { id: "subsubagent", label: "Sub-subagent storefront" }].map((target) => <label key={target.id} className="flex items-center gap-2"><Checkbox checked={spinConfig.placement_targets.includes(target.id)} onCheckedChange={(checked) => setSpinConfig({ ...spinConfig, placement_targets: checked ? [...spinConfig.placement_targets, target.id] : spinConfig.placement_targets.filter((item) => item !== target.id) })} />{target.label}</label>)}</div>
+    <div className="md:col-span-2 flex flex-wrap gap-2 text-sm">{[{ id: "packages", label: "Package page" }, { id: "agent", label: "Agent storefront" }, { id: "subagent", label: "Subagent storefront" }, { id: "subsubagent", label: "Sub-subagent storefront" }].map((target) => <label key={target.id} className="flex items-center gap-2"><Checkbox checked={(spinConfig.placement_targets ?? []).includes(target.id)} onCheckedChange={(checked) => setSpinConfig({ ...spinConfig, placement_targets: checked ? [...spinConfig.placement_targets, target.id] : spinConfig.placement_targets.filter((item) => item !== target.id) })} />{target.label}</label>)}</div>
   </div>
   </div>
 
