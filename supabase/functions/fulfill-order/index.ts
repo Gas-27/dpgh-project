@@ -373,6 +373,7 @@ Deno.serve(async (req) => {
       apiRes.status < 300 &&
       (
         parsed?.status  === "success"  ||
+        parsed?.status  === "placed"   ||
         parsed?.success === true       ||
         // Dakazina sometimes returns { "message": "Package purchased successfully." }
         (typeof parsed?.message === "string" && parsed.message.toLowerCase().includes("purchased successfully"))
@@ -381,18 +382,19 @@ Deno.serve(async (req) => {
     if (isSuccess) {
       console.log(`[FULFILL] SUCCESS for order ${order_id}`);
 
-      // Extract any reference Dakazina returns
-      const dakazinaOrderCode =
-        parsed?.data?.order_code     ??
-        parsed?.data?.code           ??
-        parsed?.data?.reference      ??
-        parsed?.order_code           ??
-        parsed?.reference            ??
-        parsed?.transaction_code     ??
-        parsed?.data?.transaction_code ??
-        null;
+      // Provider references must come from the provider response, never from a local/generated order id.
+      const providerReference = provider === "fricopay"
+        ? (parsed?.reference ?? parsed?.data?.reference ?? null)
+        : (parsed?.data?.order_code ??
+          parsed?.data?.code ??
+          parsed?.data?.reference ??
+          parsed?.order_code ??
+          parsed?.reference ??
+          parsed?.transaction_code ??
+          parsed?.data?.transaction_code ??
+          null);
 
-      console.log(`[FULFILL] Dakazina order_code from response: ${dakazinaOrderCode}`);
+      console.log(`[FULFILL] ${provider} provider reference from response: ${providerReference ?? "none"}`);
 
       // Build update — provider_reference = dakazina order code (if any)
       // provider_order_id = also store order code for webhook matching
@@ -405,9 +407,9 @@ Deno.serve(async (req) => {
         order_status:       "processing",
       };
 
-      if (dakazinaOrderCode) {
-        updatePayload.provider_reference = dakazinaOrderCode;
-        updatePayload.provider_order_id  = dakazinaOrderCode;
+      if (providerReference) {
+        updatePayload.provider_reference = String(providerReference);
+        updatePayload.provider_order_id  = String(providerReference);
       }
 
       const { error: updateErr } = await supabase.from("orders").update(updatePayload).eq("id", order_id);
@@ -419,11 +421,12 @@ Deno.serve(async (req) => {
         });
       }
 
-      console.log(`[FULFILL] Order ${order_id} marked as fulfilled. dakazina_code=${dakazinaOrderCode}`);
+      console.log(`[FULFILL] Order ${order_id} marked as fulfilled. provider=${provider}, provider_reference=${providerReference ?? "none"}`);
       return new Response(JSON.stringify({
         success: true,
         message: "Order fulfilled successfully",
-        dakazina_order_code: dakazinaOrderCode,
+        provider,
+        provider_reference: providerReference,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     } else {

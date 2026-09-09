@@ -1263,6 +1263,7 @@ const Packages = () => {
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
     chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
     auto_disable_enabled?: boolean; auto_disable_order_limit?: number; current_spin_orders?: number; display_spin_orders?: number;
+  eligibility_mode?: "unrestricted" | "order_count" | "order_amount"; eligibility_period?: "day" | "week"; minimum_order_count?: number; minimum_order_amount?: number; placement_targets?: string[];
   } | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportOrder, setReportOrder] = useState<Order | null>(null);
@@ -1300,7 +1301,7 @@ const Packages = () => {
   }, [toast]);
 
   useEffect(() => {
-    supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders").single()
+    supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders,eligibility_mode,eligibility_period,minimum_order_count,minimum_order_amount,placement_targets").single()
       .then(({ data, error }) => {
         setSpinConfig(error || !data
           ? { enabled: false, default_network: "mtn", payment_required: true, payment_amount: 2, segments: [], chance_2gb: 4, chance_1gb: 9, chance_extra_spin: 12, auto_disable_enabled: false, auto_disable_order_limit: 100, current_spin_orders: 0, display_spin_orders: 0 }
@@ -1366,7 +1367,7 @@ const Packages = () => {
         setSiteConfig(
           !data.spin_wheel_segments
             ? { ...data, default_network: data.default_network as Network }
-            : { ...data, default_network: data.default_network as Network, segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
+  : { ...data, default_network: data.default_network as Network, placement_targets: Array.isArray(data.placement_targets) ? data.placement_targets : ["packages"], segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
         );
       }
     };
@@ -1493,7 +1494,7 @@ const searchOrders = async (input?: string) => {
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
-        {spinConfig?.enabled && !(spinConfig.auto_disable_enabled && (spinConfig.current_spin_orders ?? 0) >= (spinConfig.auto_disable_order_limit ?? 100)) && (
+        {spinConfig?.enabled && (spinConfig.placement_targets?.includes("all") || spinConfig.placement_targets?.includes("packages") || !spinConfig.placement_targets) && !(spinConfig.auto_disable_enabled && (spinConfig.current_spin_orders ?? 0) >= (spinConfig.auto_disable_order_limit ?? 100)) && (
           <div className="mb-8 flex justify-center">
             <div className="flex flex-col items-center gap-1">
               <Button variant="hero" className="bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 font-bold shadow-lg" onClick={() => setShowSpinWheel(true)}>

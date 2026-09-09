@@ -255,6 +255,11 @@ const AdminDashboard = () => {
     auto_disable_order_limit: number;
     current_spin_orders: number;
     display_spin_orders: number; // Admin can manipulate what users see
+    eligibility_mode: "unrestricted" | "order_count" | "order_amount";
+    eligibility_period: "day" | "week";
+    minimum_order_count: number;
+    minimum_order_amount: number;
+    placement_targets: string[];
   } | null>(null);
   const [spinSaving, setSpinSaving] = useState(false);
 
@@ -1016,6 +1021,11 @@ const AdminDashboard = () => {
       auto_disable_order_limit: spinConfig.auto_disable_order_limit,
       current_spin_orders: spinConfig.current_spin_orders,
       display_spin_orders: spinConfig.display_spin_orders,
+      eligibility_mode: spinConfig.eligibility_mode,
+      eligibility_period: spinConfig.eligibility_period,
+      minimum_order_count: spinConfig.minimum_order_count,
+      minimum_order_amount: spinConfig.minimum_order_amount,
+      placement_targets: spinConfig.placement_targets,
     };
     const { error } = await supabase
       .from("spin_config")
@@ -4237,10 +4247,21 @@ const AdminDashboard = () => {
                     <Switch checked={spinConfig.enabled} onCheckedChange={(checked) => setSpinConfig({ ...spinConfig, enabled: checked })} />
                   </div>
 
-                  <div className="space-y-4 border p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-base">Require Payment</Label>
+  <div className="space-y-4 border p-4 rounded-lg">
+  <Label className="text-base">Eligibility rules</Label>
+  <div className="grid gap-3 md:grid-cols-2">
+    <Select value={spinConfig.eligibility_mode} onValueChange={(value) => setSpinConfig({ ...spinConfig, eligibility_mode: value as "unrestricted" | "order_count" | "order_amount" })}><SelectTrigger><SelectValue placeholder="Eligibility type" /></SelectTrigger><SelectContent><SelectItem value="unrestricted">Everyone</SelectItem><SelectItem value="order_count">Completed order count</SelectItem><SelectItem value="order_amount">Completed order amount</SelectItem></SelectContent></Select>
+    <Select value={spinConfig.eligibility_period} onValueChange={(value) => setSpinConfig({ ...spinConfig, eligibility_period: value as "day" | "week" })}><SelectTrigger><SelectValue placeholder="Period" /></SelectTrigger><SelectContent><SelectItem value="day">Today</SelectItem><SelectItem value="week">This week</SelectItem></SelectContent></Select>
+    <Input type="number" min="0" value={spinConfig.minimum_order_count} onChange={(event) => setSpinConfig({ ...spinConfig, minimum_order_count: Number(event.target.value) || 0 })} placeholder="Required completed orders" />
+    <Input type="number" min="0" step="0.01" value={spinConfig.minimum_order_amount} onChange={(event) => setSpinConfig({ ...spinConfig, minimum_order_amount: Number(event.target.value) || 0 })} placeholder="Required amount in GHS" />
+    <div className="md:col-span-2 flex flex-wrap gap-2 text-sm">{[{ id: "packages", label: "Package page" }, { id: "agent", label: "Agent storefront" }, { id: "subagent", label: "Subagent storefront" }, { id: "subsubagent", label: "Sub-subagent storefront" }].map((target) => <label key={target.id} className="flex items-center gap-2"><Checkbox checked={spinConfig.placement_targets.includes(target.id)} onCheckedChange={(checked) => setSpinConfig({ ...spinConfig, placement_targets: checked ? [...spinConfig.placement_targets, target.id] : spinConfig.placement_targets.filter((item) => item !== target.id) })} />{target.label}</label>)}</div>
+  </div>
+  </div>
+
+  <div className="space-y-4 border p-4 rounded-lg">
+  <div className="flex items-center justify-between">
+  <div className="space-y-0.5">
+  <Label className="text-base">Require Payment</Label>
                         <p className="text-sm text-muted-foreground">If OFF, spins are free (no Paystack).</p>
                       </div>
                       <Switch checked={spinConfig.payment_required} onCheckedChange={(checked) => setSpinConfig({ ...spinConfig, payment_required: checked })} />
