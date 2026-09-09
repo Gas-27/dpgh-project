@@ -33,6 +33,6 @@ begin
  elsif p_store_kind='subagent' then update public.subagent_stores set wallet_balance=wallet_balance-v_price where id=p_store_id and wallet_balance>=v_price;
  else update public.sub_subagent_stores set wallet_balance=wallet_balance-v_price where id=p_store_id and wallet_balance>=v_price; end if;
  if not found then raise exception 'Wallet balance changed. Refresh and try again.'; end if;
- insert into public.domain_purchases (buyer_user_id,agent_store_id,store_kind,store_id,domain,tld,price,status,idempotency_key,registration_metadata) values (v_user,p_store_id,p_store_kind,p_store_id,v_domain,v_tld,v_price,'pending_manual',p_idempotency_key,coalesce(p_registration_metadata,'{}'::jsonb)) returning * into v_purchase;
+ insert into public.domain_purchases (buyer_user_id,agent_store_id,store_kind,store_id,domain,tld,price,status,idempotency_key,registration_metadata) values (v_user,p_store_id,p_store_kind,p_store_id,v_domain,v_tld,v_price,'pending',p_idempotency_key,coalesce(p_registration_metadata,'{}'::jsonb)) returning * into v_purchase;
  return v_purchase;
 end; $$;
