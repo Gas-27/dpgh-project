@@ -25,7 +25,6 @@ import NetworkIndicator from "@/components/NetworkIndicator";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
-import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsComposer from "@/components/SmsComposer";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -440,7 +439,7 @@ Please investigate and assist. Thank you.`;
 };
 
 // ─����─────────────────────────────────�����──────────��� Spin Wheel Popup (unchanged) ──
-interface SpinWheelPopupProps {
+export interface SpinWheelPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   config: {
@@ -465,7 +464,7 @@ interface SpinWheelPopupProps {
 
 type SpinPhase = "idle" | "freewheeling" | "decelerating";
 
-const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => {
+export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -1510,16 +1509,6 @@ const searchOrders = async (input?: string) => {
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
-        {spinConfig?.enabled && (spinConfig.placement_targets?.includes("all") || spinConfig.placement_targets?.includes("packages") || !spinConfig.placement_targets) && !(spinConfig.auto_disable_enabled && (spinConfig.current_spin_orders ?? 0) >= (spinConfig.auto_disable_order_limit ?? 100)) && (
-          <div className="mb-8 flex justify-center">
-            <div className="flex flex-col items-center gap-1">
-              <Button variant="hero" className="bg-gradient-to-r from-pink-600 to-orange-500 hover:from-pink-700 hover:to-orange-600 font-bold shadow-lg" onClick={() => setShowSpinWheel(true)}>
-                <Gift className="h-4 w-4 mr-2" />Win Free Data{spinConfig.payment_required ? ` (GHC${spinConfig.payment_amount})` : " (Free)"}
-              </Button>
-              {spinConfig.auto_disable_enabled && <p className="text-xs text-muted-foreground">{spinConfig.display_spin_orders ?? 0} / {spinConfig.auto_disable_order_limit ?? 100} prizes claimed</p>}
-            </div>
-          </div>
-        )}
 
         <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={handleStorefrontSectionSelect} onBecomeAgent={() => setShowBecomeAgent(true)} />
         <div id="storefront-section-content" className="scroll-mt-6" />
