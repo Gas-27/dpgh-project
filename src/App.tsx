@@ -204,6 +204,26 @@ const CustomDomainResolver = () => {
           return;
         }
       }
+
+      const { data: purchase } = await supabase
+        .from("domain_purchases")
+        .select("store_kind, store_id, agent_store_id")
+        .or(`assigned_domain.ilike.${hostname},domain.ilike.${hostname}`)
+        .eq("status", "assigned")
+        .maybeSingle();
+      if (purchase) {
+        const storeId = purchase.store_id || purchase.agent_store_id;
+        const table = purchase.store_kind === "subagent" ? "subagent_stores" : purchase.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
+        const { data: assignedStore } = await supabase.from(table).select("store_name, subagent_store_id").eq("id", storeId).maybeSingle();
+        if (assignedStore?.store_name && purchase.store_kind === "subsubagent" && assignedStore.subagent_store_id) {
+          const { data: parent } = await supabase.from("subagent_stores").select("store_name").eq("id", assignedStore.subagent_store_id).maybeSingle();
+          if (parent?.store_name) navigate(`/__custom/subsubagent/${encodeURIComponent(parent.store_name)}/${encodeURIComponent(assignedStore.store_name)}`, { replace: true });
+          else setStatus("missing");
+        } else if (assignedStore?.store_name) {
+          navigate(`/__custom/${purchase.store_kind === "subagent" ? "subagent" : "agent"}/${encodeURIComponent(assignedStore.store_name)}`, { replace: true });
+        } else setStatus("missing");
+        return;
+      }
       setStatus("missing");
     };
     void resolve();
