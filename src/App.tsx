@@ -182,16 +182,27 @@ const CustomDomainResolver = () => {
     let cancelled = false;
     const hostname = window.location.hostname.toLowerCase();
     const resolve = async () => {
-      const { data, error } = await supabase
-        .from("agent_stores")
-        .select("store_name, custom_domain, custom_domain_status")
-        .ilike("custom_domain", hostname)
-        .eq("custom_domain_status", "active")
-        .maybeSingle();
+      const domainFilter = (query: any) => query.ilike("custom_domain", hostname).neq("custom_domain_status", "not_configured").maybeSingle();
+      const [agentResult, subagentResult, subSubagentResult] = await Promise.all([
+        domainFilter(supabase.from("agent_stores").select("store_name")),
+        domainFilter(supabase.from("subagent_stores").select("store_name")),
+        domainFilter(supabase.from("sub_subagent_stores").select("store_name, subagent_store_id")),
+      ]);
       if (cancelled) return;
-      if (!error && data?.store_name) {
-        navigate(`/__custom/agent/${encodeURIComponent(data.store_name)}`, { replace: true });
+      if (!agentResult.error && agentResult.data?.store_name) {
+        navigate(`/__custom/agent/${encodeURIComponent(agentResult.data.store_name)}`, { replace: true });
         return;
+      }
+      if (!subagentResult.error && subagentResult.data?.store_name) {
+        navigate(`/__custom/subagent/${encodeURIComponent(subagentResult.data.store_name)}`, { replace: true });
+        return;
+      }
+      if (!subSubagentResult.error && subSubagentResult.data?.store_name && subSubagentResult.data?.subagent_store_id) {
+        const { data: parent } = await supabase.from("subagent_stores").select("store_name").eq("id", subSubagentResult.data.subagent_store_id).maybeSingle();
+        if (parent?.store_name) {
+          navigate(`/__custom/subsubagent/${encodeURIComponent(parent.store_name)}/${encodeURIComponent(subSubagentResult.data.store_name)}`, { replace: true });
+          return;
+        }
       }
       setStatus("missing");
     };
@@ -228,9 +239,11 @@ const App = () => {
             <Suspense fallback={<RouteLoader />}>
               {isCustomDomain ? (
                 <Routes>
-                  <Route path="/" element={<AgentStorefront />} />
+                  <Route path="/" element={<CustomDomainResolver />} />
                   <Route path="/__custom/agent/:storeName" element={<AgentStorefront />} />
-                  <Route path="*" element={<AgentStorefront />} />
+                  <Route path="/__custom/subagent/:storeName" element={<AgentStorefront />} />
+                  <Route path="/__custom/subsubagent/:subagentStoreName/:subSubagentStoreName" element={<SubSubagentStorefront />} />
+                  <Route path="*" element={<CustomDomainResolver />} />
                 </Routes>
               ) : isSubagentDomain ? (
                 // agentsstore.shop - Subagent domain with separate routing
