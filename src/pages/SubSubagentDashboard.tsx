@@ -1791,7 +1791,7 @@ const handleSaveStore = async () => {
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
   // For sub-subagents, use the sub-subagent URL which includes parent subagent store name
   const defaultStoreUrl = (storeName && parentSubagentStoreName) ? DOMAINS.getSubSubagentStoreUrl(parentSubagentStoreName, storeName) : "";
-  const storeUrl = subagentStore?.custom_domain && subagentStore?.custom_domain_status === "active" ? `https://${subagentStore.custom_domain}` : defaultStoreUrl;
+  const storeUrl = subagentStore?.custom_domain ? `https://${subagentStore.custom_domain}` : defaultStoreUrl;
   
   // Filter orders by search, date, and optional refunded-only toggle
   const filteredOrders = getDateFilteredOrders(orders).filter(o => {

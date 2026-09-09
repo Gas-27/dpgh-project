@@ -2229,7 +2229,7 @@ const handleSaveStore = async () => {
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
   const defaultStoreUrl = storeName ? DOMAINS.getSubagentStoreUrl(storeName) : "";
-  const storeUrl = subagentStore?.custom_domain && subagentStore?.custom_domain_status === "active" ? `https://${subagentStore.custom_domain}` : defaultStoreUrl;
+  const storeUrl = subagentStore?.custom_domain ? `https://${subagentStore.custom_domain}` : defaultStoreUrl;
   
   // Filter orders by search and apply date filter
   const filteredOrders = getDateFilteredOrders(orders).filter(o => 
