@@ -25,6 +25,7 @@ import NetworkIndicator from "@/components/NetworkIndicator";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
+import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsComposer from "@/components/SmsComposer";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -455,6 +456,10 @@ interface SpinWheelPopupProps {
     auto_disable_order_limit?: number;
     current_spin_orders?: number;
     display_spin_orders?: number;
+    eligibility_mode?: "unrestricted" | "order_count" | "order_amount";
+    eligibility_period?: "day" | "week";
+    minimum_order_count?: number;
+    minimum_order_amount?: number;
   } | null;
 }
 
@@ -497,6 +502,12 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
 
   const selectedNetwork = config?.default_network ?? "mtn";
   const paymentRequired = config?.payment_required ?? true;
+  const eligibilityPeriod = config?.eligibility_period === "week" ? "this week" : "today";
+  const eligibilityMessage = config?.eligibility_mode === "order_count" && (config.minimum_order_count ?? 0) > 0
+    ? `Complete ${config.minimum_order_count} order${config.minimum_order_count === 1 ? "" : "s"} ${eligibilityPeriod} before spinning.`
+    : config?.eligibility_mode === "order_amount" && (config.minimum_order_amount ?? 0) > 0
+      ? `Buy at least GHC ${Number(config.minimum_order_amount).toFixed(2)} ${eligibilityPeriod} before spinning.`
+      : "Meet the Spin to Win requirement below before spinning.";
 
   // Adjust weights to make 1GB & 2GB harder
   const segs = useMemo<SpinSegment[]>(() => segments.map(s => {
@@ -1008,6 +1019,7 @@ const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => 
           <DialogDescription className="text-center text-purple-300 text-xs">
             {paymentRequired ? `Pay GHC${config.payment_amount} for 2 spins` : "Free — 2 spins every 8 hours per number"}
           </DialogDescription>
+          <div className="rounded-lg border border-yellow-300/30 bg-yellow-400/10 px-3 py-2 text-center text-xs text-yellow-100">{eligibilityMessage}</div>
         </DialogHeader>
 
         <div className="space-y-3 pb-2">
@@ -1256,6 +1268,10 @@ const Packages = () => {
   };
 
   const [showSpinWheel, setShowSpinWheel] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("spin") === "true") setShowSpinWheel(true);
+  }, [searchParams]);
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
@@ -1513,6 +1529,7 @@ const searchOrders = async (input?: string) => {
           <>
             <div className="mx-auto mb-6 w-full max-w-5xl">
               <TrackOrderDropdown source="packages" hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { setSearchQuery(value); void searchOrders(value); }} />
+              <SpinToWinCard target="packages" />
             </div>
             <div className="max-w-4xl mx-auto mb-6">
                   {searchPerformed && (

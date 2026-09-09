@@ -29,6 +29,7 @@ import DraggableFAB from "@/components/DraggableFAB";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
+import { SpinToWinCard } from "@/components/SpinToWinCard";
 import NotificationPopup from "@/components/NotificationPopup";
 import SmsComposer from "@/components/SmsComposer";
 import ChatBot from "@/components/ChatBot";
@@ -549,7 +550,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��─────────────────────────────────�����────────────────
+// ─�����������────────────────────────��─────────────────────────────────�������────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -1297,7 +1298,8 @@ const searchOrders = useCallback(async (input?: string) => {
             </Card>
           </div>
 
-          <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} /></div>
+          <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
+  <SpinToWinCard target="agent" /></div>
           {(searching || searchPerformed) && <div className="container mt-6 space-y-4">{searching ? <div className="py-8 text-center"><div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /><p className="text-muted-foreground">Searching for your order…</p></div> : orders.length > 0 ? <div><p className="mb-3 text-sm font-medium text-foreground">Found {orders.length} order(s):</p><div className="max-h-[500px] space-y-4 overflow-y-auto pr-2">{orders.map((order) => { const displayStatus = normalizeOrderStatus(order); return <div key={order.id} className="flex flex-col rounded-lg border border-border bg-background/50 p-4 transition-colors hover:bg-background"><div className="flex flex-col justify-between gap-2 border-b border-border/50 pb-3 sm:flex-row sm:items-center"><div className="space-y-1"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="font-mono text-xs">{order.id.slice(0, 8)}…</Badge><span className="text-sm font-medium text-foreground">{order.customer_number}</span></div><div className="flex items-center gap-3 text-sm"><span className="uppercase text-muted-foreground">{order.network}</span><span className="font-bold">{(order as any).size_gb_text || `${order.size_gb}GB`}</span><span className="text-primary">GHC {Number(order.amount).toFixed(2)}</span></div><p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p></div><div className="flex items-center gap-2">{getStatusIcon(displayStatus)}<Badge className={displayStatus === "refunded" ? "border-amber-500/30 bg-amber-500/20 text-amber-400" : displayStatus === "delivered" ? "border-green-600/30 bg-green-600/20 text-green-400" : displayStatus === "pending" || displayStatus === "in-queue" || displayStatus === "waiting" ? "border-yellow-600/30 bg-yellow-600/20 text-yellow-400" : "border-blue-600/30 bg-blue-600/20 text-blue-400"}>{displayStatus === "delivered" ? "Delivered" : orderStatusLabel(order)}</Badge>{checkingOrderIds.has(order.id) && <span className="whitespace-nowrap text-[11px] text-muted-foreground">checking latest status…</span>}</div></div><div className="pt-3"><OrderTrackingCard order={order} store={store} toast={toast} onReportClick={(o) => { setReportOrder(o); setReportDialogOpen(true); }} /></div></div>; })}</div></div> : <div className="rounded-lg border border-border bg-background/50 py-8 text-center"><Package className="mx-auto mb-2 h-10 w-10 text-muted-foreground" /><p className="text-muted-foreground">No orders found for &quot;{searchQuery}&quot;.</p><p className="mt-1 text-xs text-muted-foreground">Check the contact number, or check your order ID.</p></div>}</div>}
           <DeliveryProgressCard selectedNetwork={networkFilter} />
 
