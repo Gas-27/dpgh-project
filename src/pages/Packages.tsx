@@ -483,6 +483,8 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
   // Phone / spins
   const [phone, setPhone] = useState("");
   const [phoneConfirmed, setPhoneConfirmed] = useState(false);
+  const [eligibility, setEligibility] = useState<{ eligible: boolean; order_count: number; order_amount: number } | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
   const [spinCount, setSpinCount] = useState(0);
   const [cooldownMs, setCooldownMs] = useState(0);
 
@@ -556,7 +558,7 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
     lastTickRef.current = 0;
     setPhase("idle");
     setWinningIdx(null);
-    setPhone(""); setPhoneConfirmed(false);
+    setPhone(""); setPhoneConfirmed(false); setEligibility(null);
     setSpinCount(0); setCooldownMs(0);
     setSuccessGb(0); setResultMsg("");
     setShowWinBanner(false); setWonGbForBanner(0);
@@ -738,6 +740,7 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
   const handleSpin = useCallback(() => {
     if (phaseRef.current !== "idle" || segs.length === 0) return;
     if (spinCount <= 0) { toast({ title: "No spins left", variant: "destructive" }); return; }
+    if (config?.eligibility_mode !== "unrestricted" && eligibility?.eligible !== true) { toast({ title: "Not eligible yet", description: eligibilityMessage, variant: "destructive" }); return; }
     if (!paymentRequired && cooldownMs > 0) return;
     
     // Validate phone number for spin wheel - must be MTN
@@ -985,6 +988,11 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
     } catch (err) {
       console.error("Error checking recent orders:", err);
     }
+    const { data: eligibilityData, error: eligibilityError } = await supabase.rpc("check_spin_eligibility", { p_phone: phone, p_mode: config?.eligibility_mode ?? "unrestricted", p_period: config?.eligibility_period ?? "day", p_minimum_count: config?.minimum_order_count ?? 0, p_minimum_amount: config?.minimum_order_amount ?? 0 });
+    if (eligibilityError) { toast({ title: "Eligibility check failed", description: eligibilityError.message, variant: "destructive" }); setCheckingOrder(false); return; }
+    const verifiedEligibility = eligibilityData as { eligible: boolean; order_count: number; order_amount: number };
+    setEligibility(verifiedEligibility);
+    if (!verifiedEligibility.eligible) { toast({ title: "Not eligible yet", description: eligibilityMessage, variant: "destructive" }); setCheckingOrder(false); return; }
     setCheckingOrder(false);
     
     if (!paymentRequired) {
@@ -1018,7 +1026,7 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
           <DialogDescription className="text-center text-purple-300 text-xs">
             {paymentRequired ? `Pay GHC${config.payment_amount} for 2 spins` : "Free — 2 spins every 8 hours per number"}
           </DialogDescription>
-          <div className="rounded-lg border border-yellow-300/30 bg-yellow-400/10 px-3 py-2 text-center text-xs text-yellow-100">{eligibilityMessage}</div>
+          <div className="rounded-lg border border-yellow-300/30 bg-yellow-400/10 px-3 py-2 text-center text-xs text-yellow-100">{eligibilityMessage}{eligibility && config.eligibility_mode === "order_count" ? ` Progress: ${eligibility.order_count}/${config.minimum_order_count ?? 0} completed orders.` : eligibility && config.eligibility_mode === "order_amount" ? ` Progress: GHC ${Number(eligibility.order_amount).toFixed(2)}/GHC ${Number(config.minimum_order_amount ?? 0).toFixed(2)}.` : ""}</div>
         </DialogHeader>
 
         <div className="space-y-3 pb-2">

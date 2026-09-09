@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 const tlds = [".com", ".net", ".org", ".co", ".io", ".app", ".shop", ".site", ".online", ".website", ".cheap", ".me", ".dev", ".ai", ".xyz", ".tech", ".store", ".cloud", ".pro", ".info", ".biz", ".live", ".space", ".blog", ".club", ".today", ".world", ".digital", ".solutions", ".gh"];
 type RecordItem = { type: string; name: string; value: string; ttl: number };
 
-type DomainDashboardPanelProps = { walletBalance?: number; walletLabel?: string; agentStoreId?: string | null; onPurchaseComplete?: () => void };
+type DomainDashboardPanelProps = { walletBalance?: number; walletLabel?: string; agentStoreId?: string | null; storeKind?: "agent" | "subagent" | "subsubagent"; onPurchaseComplete?: () => void };
 
-export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = "Wallet balance", agentStoreId = null, onPurchaseComplete }: DomainDashboardPanelProps) {
+export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = "Wallet balance", agentStoreId = null, storeKind = "agent", onPurchaseComplete }: DomainDashboardPanelProps) {
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -97,10 +97,9 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
       if (!Number.isFinite(price) || price <= 0) throw new Error("No customer price is configured for this domain extension.");
       if (walletBalance < price) throw new Error(`Insufficient wallet balance. You need GHC ${price.toFixed(2)}.`);
       const idempotencyKey = `${agentStoreId ?? "user"}:${value}:${Date.now()}`;
-      const { data: purchase, error: purchaseError } = await supabase.rpc("purchase_domain", { p_domain: value, p_agent_store_id: agentStoreId, p_idempotency_key: idempotencyKey, p_registration_metadata: {} });
+      const { data: purchase, error: purchaseError } = await supabase.rpc("purchase_domain_for_store", { p_domain: value, p_store_kind: storeKind, p_store_id: agentStoreId, p_idempotency_key: idempotencyKey, p_registration_metadata: {} });
       if (purchaseError) throw purchaseError;
-      const data = await call("POST", `/v1/domains/${encodeURIComponent(value)}`, { autoRenew: false, privacyProtection: true });
-      setMessage(data?.operationId || data?.asyncOperationId ? `Purchase started. Operation: ${data.operationId || data.asyncOperationId}` : `Purchase submitted for ${purchase?.domain ?? value}.`);
+      setMessage(`Wallet payment recorded for ${purchase?.domain ?? value}. Buy this domain manually on Spaceship, then ask admin to assign the purchased domain in the Admin Dashboard.`);
       onPurchaseComplete?.();
       await loadDomains();
     }
