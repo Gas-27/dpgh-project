@@ -25,6 +25,7 @@ import NetworkIndicator from "@/components/NetworkIndicator";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
+import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsComposer from "@/components/SmsComposer";
 import { detectNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Card, CardContent } from "@/components/ui/card";

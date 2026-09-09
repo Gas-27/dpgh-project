@@ -210,7 +210,7 @@ const App = () => {
   const isSubagentDomain = hostname === DOMAINS.SUBAGENT_STORE || 
                            hostname === `www.${DOMAINS.SUBAGENT_STORE}` ||
                            hostname.endsWith(`.${DOMAINS.SUBAGENT_STORE}`);
-  const isKnownAppHost = hostname === DOMAINS.AGENT_STORE || hostname === DOMAINS.SUBAGENT_STORE || hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app") || hostname.endsWith(".vercel.sh");
+  const isKnownAppHost = hostname === "dataplug.store" || hostname === "www.dataplug.store" || hostname === DOMAINS.AGENT_STORE || hostname === `www.${DOMAINS.AGENT_STORE}` || hostname === DOMAINS.SUBAGENT_STORE || hostname === `www.${DOMAINS.SUBAGENT_STORE}` || hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app") || hostname.endsWith(".vercel.sh");
   const isCustomDomain = !isKnownAppHost && !isAgentSubdomain && !isSubagentDomain;
 
   return (
