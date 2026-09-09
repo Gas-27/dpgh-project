@@ -550,7 +550,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��────────────���────────────────────�������────────────────
+// ─�����������────────────────────────��────────────�����────────────────────�������────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -562,6 +562,7 @@ const AgentStorefront = () => {
   // Simply render the storefront - subagent dashboard is on its own /subagent-dashboard route
 
   const [store, setStore] = useState<AgentStore | null>(null);
+  const [showGroupTooltip, setShowGroupTooltip] = useState(true);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
   const [storeProducts, setStoreProducts] = useState<Array<{ id: string; title: string; description: string; price: number; image_urls: string[] }>>([]);
