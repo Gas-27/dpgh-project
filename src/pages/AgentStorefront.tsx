@@ -550,7 +550,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��─────────────────────────────────�������────────────────
+// ─�����������────────────────────────��────────────���────────────────────�������────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -686,7 +686,18 @@ const AgentStorefront = () => {
   // ── Initial data fetch ──
   useEffect(() => {
     const fetchStore = async () => {
-      if (!storeName) {
+      let resolvedStoreName = storeName;
+      if (!resolvedStoreName) {
+        const hostname = window.location.hostname.toLowerCase();
+        const { data: customStore, error: customStoreError } = await supabase
+          .from("agent_stores")
+          .select("store_name")
+          .ilike("custom_domain", hostname)
+          .neq("custom_domain_status", "not_configured")
+          .maybeSingle();
+        if (!customStoreError && customStore?.store_name) resolvedStoreName = customStore.store_name;
+      }
+      if (!resolvedStoreName) {
         setNotFound(true);
         setLoading(false);
         return;
@@ -699,11 +710,11 @@ const AgentStorefront = () => {
       ]);
 
       // Try to find match in agent stores first
-      let matched = findStoreByName(storeName, agentStores);
+      let matched = findStoreByName(resolvedStoreName, agentStores);
 
       // If no agent store match, try subagent stores (works on any domain)
       if (!matched) {
-        matched = findStoreByName(storeName, subagentStores);
+        matched = findStoreByName(resolvedStoreName, subagentStores);
 
         if (matched) {
           // For subagent stores, fetch prices from subagent_package_prices or use parent agent's prices

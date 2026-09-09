@@ -228,8 +228,9 @@ const App = () => {
             <Suspense fallback={<RouteLoader />}>
               {isCustomDomain ? (
                 <Routes>
+                  <Route path="/" element={<AgentStorefront />} />
                   <Route path="/__custom/agent/:storeName" element={<AgentStorefront />} />
-                  <Route path="*" element={<CustomDomainResolver />} />
+                  <Route path="*" element={<AgentStorefront />} />
                 </Routes>
               ) : isSubagentDomain ? (
                 // agentsstore.shop - Subagent domain with separate routing
