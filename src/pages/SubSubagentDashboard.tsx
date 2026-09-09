@@ -78,6 +78,8 @@ interface SubagentStore {
   theme_config?: any;
   store_headline?: string;
   whatsapp_group?: string;
+  custom_domain?: string | null;
+  custom_domain_status?: string;
 }
 
 interface Order {
@@ -471,7 +473,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Loading by storeId:", resolvedStoreId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference, custom_domain, custom_domain_status")
           .eq("id", resolvedStoreId)
           .single();
 
@@ -592,7 +594,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] Querying sub_subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference")
+          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference, custom_domain, custom_domain_status")
           .eq("user_id", effectiveUserId)
           .order("created_at", { ascending: false });
 
@@ -1788,7 +1790,8 @@ const handleSaveStore = async () => {
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
   // For sub-subagents, use the sub-subagent URL which includes parent subagent store name
-  const storeUrl = (storeName && parentSubagentStoreName) ? DOMAINS.getSubSubagentStoreUrl(parentSubagentStoreName, storeName) : "";
+  const defaultStoreUrl = (storeName && parentSubagentStoreName) ? DOMAINS.getSubSubagentStoreUrl(parentSubagentStoreName, storeName) : "";
+  const storeUrl = subagentStore?.custom_domain && subagentStore?.custom_domain_status === "active" ? `https://${subagentStore.custom_domain}` : defaultStoreUrl;
   
   // Filter orders by search, date, and optional refunded-only toggle
   const filteredOrders = getDateFilteredOrders(orders).filter(o => {

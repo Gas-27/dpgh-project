@@ -81,6 +81,8 @@ interface SubagentStore {
   theme_config?: any;
   store_headline?: string;
   whatsapp_group?: string;
+  custom_domain?: string | null;
+  custom_domain_status?: string;
 }
 
 interface Order {
@@ -2226,7 +2228,8 @@ const handleSaveStore = async () => {
   
   // Use store_name, fallback to checking what's actually in the store object
   const storeName = subagentStore?.store_name || subagentStore?.storeName || "";
-  const storeUrl = storeName ? DOMAINS.getSubagentStoreUrl(storeName) : "";
+  const defaultStoreUrl = storeName ? DOMAINS.getSubagentStoreUrl(storeName) : "";
+  const storeUrl = subagentStore?.custom_domain && subagentStore?.custom_domain_status === "active" ? `https://${subagentStore.custom_domain}` : defaultStoreUrl;
   
   // Filter orders by search and apply date filter
   const filteredOrders = getDateFilteredOrders(orders).filter(o => 

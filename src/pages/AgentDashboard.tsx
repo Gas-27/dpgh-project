@@ -85,6 +85,7 @@ interface AgentStore {
   wallet_balance: number; topup_reference: string; store_headline: string;
   tutorial_video_url: string | null; allow_subagent_registration?: boolean;
   theme_config: { primary: string; primary_foreground: string; background: string; card_background: string; gridColumns: number; };
+  custom_domain?: string | null; custom_domain_status?: string;
   }
 interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; }
 interface Order { id: string; customer_number: string; network: string; size_gb: number; amount: number; status: string; fulfillment_status: string; order_status: string; payment_method: string; created_at: string; package_id: string; }
@@ -2183,7 +2184,8 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     return p.network === networkFilter;
   });
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
-  const storeUrl = store ? DOMAINS.getAgentStoreUrl(store.store_name) : "";
+  const defaultStoreUrl = store ? DOMAINS.getAgentStoreUrl(store.store_name) : "";
+  const storeUrl = store?.custom_domain && store?.custom_domain_status === "active" ? `https://${store.custom_domain}` : defaultStoreUrl;
   const subagentSignupUrl = storeUrl ? `${storeUrl}/become-agent` : "";
   const storeName = store?.store_name || "DATA PLUG .STORE";
   const supportNum = store?.support_number || "";
