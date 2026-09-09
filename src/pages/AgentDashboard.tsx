@@ -2378,9 +2378,10 @@ return (
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="hidden" />
-
-          {/* ============================= DOMAINS ============================= */}
+  <TabsList className="hidden" />
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-10">{[{ id: "buy", label: "Buy Data" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "domains", label: "Domains" }].map((item) => <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className="rounded-lg border border-border bg-card px-2 py-2 text-xs font-semibold text-foreground hover:border-primary hover:text-primary">{item.label}</button>)}</div>
+  
+  {/* ============================= DOMAINS ============================= */}
           <TabsContent value="domains" className="space-y-6 mt-0">
             <DomainDashboardPanel walletBalance={Number(store?.wallet_balance ?? 0)} walletLabel="Agent wallet" agentStoreId={store?.id ?? null} />
           </TabsContent>

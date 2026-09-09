@@ -17,13 +17,14 @@ import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
   ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw, Layers, FileSpreadsheet, Upload, Zap,
-  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList, Package
+  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList, Package, Globe2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import AgentProductStorePanel from "@/components/AgentProductStorePanel";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import CustomDomainPanel from "@/components/CustomDomainPanel";
+import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import NetworkIndicator from "@/components/NetworkIndicator";
@@ -2357,6 +2358,8 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-10">{[{ id: "buy", label: "Buy Data" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "sub-subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "domains", label: "Domains" }].map((item) => <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className="rounded-lg border border-border bg-card px-2 py-2 text-xs font-semibold text-foreground hover:border-primary hover:text-primary">{item.label}</button>)}</div>
+          <TabsContent value="domains" className="mt-0"><DomainDashboardPanel walletBalance={Number(subagentStore?.wallet_balance ?? 0)} walletLabel="Subagent wallet" agentStoreId={subagentStore?.id ?? null} /></TabsContent>
           <TabsContent value="products" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subagent" walletBalance={Number(subagentStore?.wallet_balance ?? 0)} onWalletBalanceChange={(wallet_balance) => setSubagentStore((current) => current ? { ...current, wallet_balance } : current)} /></TabsContent>
           <TabsContent value="services" className="mt-0"><RoleServicesPanel agentStoreId={subagentStore?.id} /></TabsContent>
           <TabsContent value="store" className="mt-0">{/* Store Prices */}</TabsContent>
