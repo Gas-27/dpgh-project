@@ -103,7 +103,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
       onPurchaseComplete?.();
       await loadDomains();
     }
-    catch (cause) { const text = cause instanceof Error ? cause.message : "Purchase request failed."; setError(text); } finally { setLoading(false); }
+    catch (cause) { const text = cause instanceof Error ? cause.message : "Purchase request failed."; setError(text || "The wallet purchase could not be recorded. Please refresh and try again."); } finally { setLoading(false); }
   }
 
   async function saveDns() {
