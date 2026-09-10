@@ -2,7 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://uloaiqmknsrknqikbmtb.supabase.co";
+// Route browser requests through the app origin so deployed previews do not depend on Supabase CORS allowlists.
+const SUPABASE_URL = `${window.location.origin}/supabase`;
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsb2FpcW1rbnNya25xaWtibXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3MDMxNTksImV4cCI6MjA4OTI3OTE1OX0.vegCKSDJlFT8DKoU99pMCskhrS1XUCLKg2PXXInPub0";
 
 // Import the supabase client like this:
