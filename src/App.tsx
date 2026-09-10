@@ -195,6 +195,27 @@ const CustomDomainResolver = () => {
         resolved = fallback.data as { store_kind?: string; store_name?: string; parent_store_name?: string } | null;
       }
       if (!resolved?.store_name) {
+        // Pending domain purchases still belong to a storefront and should remain usable
+        // while DNS/provider verification is being completed.
+        const { data: pendingDomain } = await supabase
+          .from("domain_purchases")
+          .select("store_kind, store_id, agent_store_id")
+          .ilike("domain", hostname)
+          .in("status", ["pending", "active", "verified"])
+          .maybeSingle();
+        const storeId = pendingDomain?.store_id || pendingDomain?.agent_store_id;
+        if (storeId) {
+          const { data: store } = await supabase
+            .from("agent_stores")
+            .select("store_name")
+            .eq("id", storeId)
+            .maybeSingle();
+          if (store?.store_name) {
+            resolved = { store_kind: pendingDomain?.store_kind || "agent", store_name: store.store_name };
+          }
+        }
+      }
+      if (!resolved?.store_name) {
         setStatus("missing");
         return;
       }
