@@ -243,6 +243,8 @@ const App = () => {
                            hostname === `www.${DOMAINS.SUBAGENT_STORE}` ||
                            hostname.endsWith(`.${DOMAINS.SUBAGENT_STORE}`);
   const isKnownAppHost = hostname === "dataplug.store" || hostname === "www.dataplug.store" || hostname === DOMAINS.AGENT_STORE || hostname === `www.${DOMAINS.AGENT_STORE}` || hostname === DOMAINS.SUBAGENT_STORE || hostname === `www.${DOMAINS.SUBAGENT_STORE}` || hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app") || hostname.endsWith(".vercel.sh");
+  const isAgentStorefrontPath = /^\/store\//i.test(window.location.pathname) || /^\/agent\//i.test(window.location.pathname);
+  const isSubagentStorefrontPath = /^\/[^/]+\/store\/[^/]+$/i.test(window.location.pathname) || /^\/[^/]+$/i.test(window.location.pathname);
   const isCustomDomain = !isKnownAppHost && !isAgentSubdomain && !isSubagentDomain;
 
   return (
