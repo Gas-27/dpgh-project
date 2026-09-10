@@ -35,7 +35,7 @@ export function SpinToWinCard({ target }: { target: "packages" | "agent" | "suba
     : config.eligibility_mode === "order_amount" && (config.minimum_order_amount ?? 0) > 0
       ? `Buy at least GHC ${Number(config.minimum_order_amount).toFixed(2)} in data ${period} before you spin.`
       : config.eligibility_mode === "order_gb" && (config.minimum_order_gb ?? 0) > 0
-        ? `Order at least ${Number(config.minimum_order_gb)}GB ${period} before you spin.`
+        ? `Order at least ${Number(config.minimum_order_gb)}GB or have a total of ${Number(config.minimum_order_gb)}GB in orders ${period} before you spin.`
         : "No purchase requirement. Spin for a chance to win free data.";
   const limit = config.auto_disable_order_limit ?? 50;
 

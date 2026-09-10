@@ -511,7 +511,7 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
  : config?.eligibility_mode === "order_amount" && (config.minimum_order_amount ?? 0) > 0
  ? `Buy at least GHC ${Number(config.minimum_order_amount).toFixed(2)} ${eligibilityPeriod} before spinning.`
  : config?.eligibility_mode === "order_gb" && (config.minimum_order_gb ?? 0) > 0
- ? `Order at least ${Number(config.minimum_order_gb)}GB ${eligibilityPeriod} before spinning.`
+ ? `Order at least ${Number(config.minimum_order_gb)}GB or have a total of ${Number(config.minimum_order_gb)}GB in orders ${eligibilityPeriod} before spinning.`
  : "Meet the Spin to Win requirement below before spinning.";
 
   // Adjust weights to make 1GB & 2GB harder

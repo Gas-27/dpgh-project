@@ -182,58 +182,27 @@ const CustomDomainResolver = () => {
     let cancelled = false;
     const hostname = window.location.hostname.toLowerCase();
     const resolve = async () => {
-      const { data: alias } = await supabase.from("store_domain_aliases").select("store_kind, store_id").eq("normalized_hostname", hostname).eq("status", "active").maybeSingle();
-      if (alias?.store_id) {
-        const aliasTable = alias.store_kind === "subagent" ? "subagent_stores" : alias.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
-        const { data: aliasStore } = await supabase.from(aliasTable).select("store_name, subagent_store_id").eq("id", alias.store_id).maybeSingle();
-        if (aliasStore?.store_name && alias.store_kind === "subsubagent" && aliasStore.subagent_store_id) {
-          const { data: parent } = await supabase.from("subagent_stores").select("store_name").eq("id", aliasStore.subagent_store_id).maybeSingle();
-          if (parent?.store_name) { navigate(`/__custom/subsubagent/${encodeURIComponent(parent.store_name)}/${encodeURIComponent(aliasStore.store_name)}`, { replace: true }); return; }
-        } else if (aliasStore?.store_name) { navigate(`/__custom/${alias.store_kind === "subagent" ? "subagent" : "agent"}/${encodeURIComponent(aliasStore.store_name)}`, { replace: true }); return; }
-      }
-      const domainFilter = (query: any) => query.ilike("custom_domain", hostname).neq("custom_domain_status", "not_configured").maybeSingle();
-      const [agentResult, subagentResult, subSubagentResult] = await Promise.all([
-        domainFilter(supabase.from("agent_stores").select("store_name")),
-        domainFilter(supabase.from("subagent_stores").select("store_name")),
-        domainFilter(supabase.from("sub_subagent_stores").select("store_name, subagent_store_id")),
-      ]);
+      const { data, error } = await supabase.rpc("resolve_store_domain", { p_hostname: hostname });
       if (cancelled) return;
-      if (!agentResult.error && agentResult.data?.store_name) {
-        navigate(`/__custom/agent/${encodeURIComponent(agentResult.data.store_name)}`, { replace: true });
+      if (error) {
+        console.error("[v0] Custom domain resolution failed", { hostname, error });
+        setStatus("missing");
         return;
       }
-      if (!subagentResult.error && subagentResult.data?.store_name) {
-        navigate(`/__custom/subagent/${encodeURIComponent(subagentResult.data.store_name)}`, { replace: true });
+      let resolved = data as { store_kind?: string; store_name?: string; parent_store_name?: string } | null;
+      if (!resolved?.store_name && hostname.startsWith("www.")) {
+        const fallback = await supabase.rpc("resolve_store_domain", { p_hostname: hostname.slice(4) });
+        resolved = fallback.data as { store_kind?: string; store_name?: string; parent_store_name?: string } | null;
+      }
+      if (!resolved?.store_name) {
+        setStatus("missing");
         return;
       }
-      if (!subSubagentResult.error && subSubagentResult.data?.store_name && subSubagentResult.data?.subagent_store_id) {
-        const { data: parent } = await supabase.from("subagent_stores").select("store_name").eq("id", subSubagentResult.data.subagent_store_id).maybeSingle();
-        if (parent?.store_name) {
-          navigate(`/__custom/subsubagent/${encodeURIComponent(parent.store_name)}/${encodeURIComponent(subSubagentResult.data.store_name)}`, { replace: true });
-          return;
-        }
-      }
-
-      const { data: purchase } = await supabase
-        .from("domain_purchases")
-        .select("store_kind, store_id, agent_store_id")
-        .or(`assigned_domain.ilike.${hostname},domain.ilike.${hostname}`)
-        .eq("status", "active")
-        .maybeSingle();
-      if (purchase) {
-        const storeId = purchase.store_id || purchase.agent_store_id;
-        const table = purchase.store_kind === "subagent" ? "subagent_stores" : purchase.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
-        const { data: assignedStore } = await supabase.from(table).select("store_name, subagent_store_id").eq("id", storeId).maybeSingle();
-        if (assignedStore?.store_name && purchase.store_kind === "subsubagent" && assignedStore.subagent_store_id) {
-          const { data: parent } = await supabase.from("subagent_stores").select("store_name").eq("id", assignedStore.subagent_store_id).maybeSingle();
-          if (parent?.store_name) navigate(`/__custom/subsubagent/${encodeURIComponent(parent.store_name)}/${encodeURIComponent(assignedStore.store_name)}`, { replace: true });
-          else setStatus("missing");
-        } else if (assignedStore?.store_name) {
-          navigate(`/__custom/${purchase.store_kind === "subagent" ? "subagent" : "agent"}/${encodeURIComponent(assignedStore.store_name)}`, { replace: true });
-        } else setStatus("missing");
+      if (resolved.store_kind === "subsubagent" && resolved.parent_store_name) {
+        navigate(`/__custom/subsubagent/${encodeURIComponent(resolved.parent_store_name)}/${encodeURIComponent(resolved.store_name)}`, { replace: true });
         return;
       }
-      setStatus("missing");
+      navigate(`/__custom/${resolved.store_kind === "subagent" ? "subagent" : "agent"}/${encodeURIComponent(resolved.store_name)}`, { replace: true });
     };
     void resolve();
     return () => { cancelled = true; };
