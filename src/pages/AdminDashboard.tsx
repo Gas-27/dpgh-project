@@ -38,6 +38,7 @@ import AdminOrderStatusUpdater from "@/components/AdminOrderStatusUpdater";
 import NetworkProviderRoutingAdmin from "@/components/NetworkProviderRoutingAdmin";
 import AdminSpaceshipPricing from "@/components/AdminSpaceshipPricing";
 import AdminOrderNumberApprovals from "@/components/AdminOrderNumberApprovals";
+  import AdminBlockedSenderIds from "@/components/AdminBlockedSenderIds";
 import SmsAdmin from "@/components/SmsAdmin";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
@@ -2744,7 +2745,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /></TabsContent>
+          <TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedSenderIds /></TabsContent>
           <TabsContent value="domain_purchases" className="space-y-6"><AdminDomainPurchasesPanel /></TabsContent>
 
   {/* PRICES TAB */}

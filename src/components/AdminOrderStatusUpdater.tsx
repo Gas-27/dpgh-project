@@ -30,6 +30,7 @@ export default function AdminOrderStatusUpdater() {
   const [toTime, setToTime] = useState("23:59");
   const [fromStatus, setFromStatus] = useState("processing");
   const [toStatus, setToStatus] = useState("delivered");
+  const [provider, setProvider] = useState("all");
   const [includeContacts, setIncludeContacts] = useState("");
   const [excludeContacts, setExcludeContacts] = useState("");
   const [matches, setMatches] = useState<{ id: string; network: string; fulfillment_status: string; order_status?: string; created_at: string; customer_number?: string }[]>([]);
@@ -41,7 +42,7 @@ export default function AdminOrderStatusUpdater() {
   const preview = async () => {
     if (!canSearch) { toast({ title: "Complete the filters", description: "Choose a valid start and end date.", variant: "destructive" }); return; }
     setLoading(true);
-    let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, created_at, customer_number").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
+    let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, fulfillment_provider, created_at, customer_number").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
     if (network !== "all") {
       const networkValues = network === "mtn_express"
         ? ["mtn_express", "mtn-express", "mtnexpress"]
@@ -56,6 +57,7 @@ export default function AdminOrderStatusUpdater() {
     const include = parseContacts(includeContacts);
     const exclude = parseContacts(excludeContacts);
     const filtered = (data || []).filter((row) => {
+      if (provider !== "all" && row.fulfillment_provider !== provider) return false;
       // order_status is the canonical tracking field; fulfillment_status is only a fallback for older rows.
       if (normalize(row.order_status || row.fulfillment_status) !== normalize(fromStatus)) return false;
       const contact = normalizeContact(String((row as any).customer_number || ""));
@@ -96,6 +98,7 @@ export default function AdminOrderStatusUpdater() {
         <div className="space-y-2"><Label>Network</Label><Select value={network} onValueChange={setNetwork}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{networks.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
         <div className="space-y-2"><Label>Current status</Label><Select value={fromStatus} onValueChange={setFromStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statuses.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent></Select></div>
         <div className="space-y-2"><Label>New status</Label><Select value={toStatus} onValueChange={setToStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{statuses.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent></Select></div>
+        <div className="space-y-2"><Label>Provider</Label><Select value={provider} onValueChange={setProvider}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All providers</SelectItem><SelectItem value="spaceship">Spaceship</SelectItem><SelectItem value="bossudata">BossuData</SelectItem><SelectItem value="cledanet">Cledanet</SelectItem><SelectItem value="ghdataconnect">GHDataConnect</SelectItem></SelectContent></Select></div>
         <div className="space-y-2"><Label>From date</Label><div className="relative"><Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-9" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></div></div>
         <div className="space-y-2"><Label>To date</Label><div className="relative"><Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="pl-9" type="date" value={to} onChange={(event) => setTo(event.target.value)} /></div></div>
         <div className="space-y-2"><Label>From time</Label><Input type="time" value={fromTime} onChange={(event) => setFromTime(event.target.value)} /></div>

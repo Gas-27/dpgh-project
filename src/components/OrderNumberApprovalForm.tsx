@@ -57,7 +57,22 @@ export default function OrderNumberApprovalForm({ source, storeId, compact = fal
     }
     setError(null);
     setSaving(true);
-    const { error: insertError } = await supabase.from("order_number_submissions").insert(results.map((result) => ({
+    const normalizedNumbers = results.map((result) => result.normalized);
+    const [{ data: existingOrders }, { data: existingSubmissions }] = await Promise.all([
+      supabase.from("orders").select("customer_number").in("customer_number", normalizedNumbers),
+      supabase.from("order_number_submissions").select("normalized_phone").in("normalized_phone", normalizedNumbers).in("status", ["pending", "approved"]),
+    ]);
+    const alreadyUsed = new Set([
+      ...(existingOrders ?? []).map((row) => String(row.customer_number)),
+      ...(existingSubmissions ?? []).map((row) => String(row.normalized_phone)),
+    ]);
+    const eligibleResults = results.filter((result) => !alreadyUsed.has(result.normalized));
+    if (!eligibleResults.length) {
+      setSaving(false);
+      setError("Every number is already in use or awaiting approval.");
+      return;
+    }
+    const { error: insertError } = await supabase.from("order_number_submissions").insert(eligibleResults.map((result) => ({
       phone_number: result.normalized,
       normalized_phone: result.normalized,
       order_id: null,
@@ -75,8 +90,8 @@ export default function OrderNumberApprovalForm({ source, storeId, compact = fal
     setSubmitted(true);
     setPhone("");
     setNumbers("");
-    setPreviousNumbers((current) => [...results.map((result) => ({ normalized_phone: result.normalized, status: "pending" })), ...current]);
-    toast({ title: "Numbers submitted", description: `${results.length} number${results.length === 1 ? "" : "s"} waiting for approval.` });
+    setPreviousNumbers((current) => [...eligibleResults.map((result) => ({ normalized_phone: result.normalized, status: "pending" })), ...current]);
+    toast({ title: "Numbers submitted", description: `${eligibleResults.length} number${eligibleResults.length === 1 ? "" : "s"} waiting for approval${eligibleResults.length < results.length ? "; duplicates skipped" : ""}.` });
   }
 
   const enteredValues = compact ? (phone.trim() ? [phone.trim()] : []) : parseValues(numbers);
