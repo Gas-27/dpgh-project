@@ -1,7 +1,7 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/supabase/(.*)", "destination": "https://uloaiqmknsrknqikbmtb.supabase.co/$1" },
+    { "source": "/supabase/:path*", "destination": "https://uloaiqmknsrknqikbmtb.supabase.co/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
