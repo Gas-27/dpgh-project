@@ -182,6 +182,15 @@ const CustomDomainResolver = () => {
     let cancelled = false;
     const hostname = window.location.hostname.toLowerCase();
     const resolve = async () => {
+      const { data: alias } = await supabase.from("store_domain_aliases").select("store_kind, store_id").eq("normalized_hostname", hostname).eq("status", "active").maybeSingle();
+      if (alias?.store_id) {
+        const aliasTable = alias.store_kind === "subagent" ? "subagent_stores" : alias.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
+        const { data: aliasStore } = await supabase.from(aliasTable).select("store_name, subagent_store_id").eq("id", alias.store_id).maybeSingle();
+        if (aliasStore?.store_name && alias.store_kind === "subsubagent" && aliasStore.subagent_store_id) {
+          const { data: parent } = await supabase.from("subagent_stores").select("store_name").eq("id", aliasStore.subagent_store_id).maybeSingle();
+          if (parent?.store_name) { navigate(`/__custom/subsubagent/${encodeURIComponent(parent.store_name)}/${encodeURIComponent(aliasStore.store_name)}`, { replace: true }); return; }
+        } else if (aliasStore?.store_name) { navigate(`/__custom/${alias.store_kind === "subagent" ? "subagent" : "agent"}/${encodeURIComponent(aliasStore.store_name)}`, { replace: true }); return; }
+      }
       const domainFilter = (query: any) => query.ilike("custom_domain", hostname).neq("custom_domain_status", "not_configured").maybeSingle();
       const [agentResult, subagentResult, subSubagentResult] = await Promise.all([
         domainFilter(supabase.from("agent_stores").select("store_name")),

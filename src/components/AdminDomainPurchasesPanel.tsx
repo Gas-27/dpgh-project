@@ -14,12 +14,15 @@ export default function AdminDomainPurchasesPanel() {
   const [items, setItems] = useState<any[]>([]);
   const [domains, setDomains] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [aliases, setAliases] = useState<Record<string, any[]>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("domain_purchases").select("*").order("created_at", { ascending: false });
     if (error) toast({ title: "Could not load domain purchases", description: error.message, variant: "destructive" });
     setItems(data ?? []);
+    const { data: aliasRows } = await supabase.from("store_domain_aliases").select("id, domain_purchase_id, hostname, status, store_kind, store_id").eq("status", "active");
+    setAliases((aliasRows ?? []).reduce((result: Record<string, any[]>, alias: any) => { (result[alias.store_kind + ":" + alias.store_id] ??= []).push(alias); return result; }, {}));
     setLoading(false);
   }, [toast]);
 
@@ -29,6 +32,8 @@ export default function AdminDomainPurchasesPanel() {
     const domain = normalize(domains[item.id] || item.domain);
     if (!validDomain(domain)) { toast({ title: "Invalid domain", description: "Enter the domain purchased on Spaceship, such as example.com.", variant: "destructive" }); return; }
     setLoading(true);
+    const aliasResult = await supabase.from("store_domain_aliases").upsert({ domain_purchase_id: item.id, store_kind: item.store_kind, store_id: item.store_id || item.agent_store_id, hostname: domain, status: "active" }, { onConflict: "normalized_hostname" });
+    if (aliasResult.error) { toast({ title: "Could not assign domain", description: aliasResult.error.message, variant: "destructive" }); setLoading(false); return; }
     const table = item.store_kind === "subagent" ? "subagent_stores" : item.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
     let { error: storeError } = await supabase.from(table).update({ custom_domain: domain, custom_domain_status: "active" }).eq("id", item.store_id || item.agent_store_id);
     if (!storeError) {
@@ -45,10 +50,11 @@ export default function AdminDomainPurchasesPanel() {
     const table = item.store_kind === "subagent" ? "subagent_stores" : item.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
     const storeId = item.store_id || item.agent_store_id;
     const { error: storeError } = await supabase.from(table).update({ custom_domain: null, custom_domain_status: "not_configured" }).eq("id", storeId);
-    const { error: purchaseError } = storeError ? { error: storeError } : await supabase.from("domain_purchases").update({ assigned_domain: null, status: "pending", assigned_at: null, custom_domain_enabled: false }).eq("id", item.id);
+    const { error: aliasError } = await supabase.from("store_domain_aliases").update({ status: "inactive", updated_at: new Date().toISOString() }).eq("domain_purchase_id", item.id);
+    const { error: purchaseError } = storeError || aliasError ? { error: storeError || aliasError } : await supabase.from("domain_purchases").update({ assigned_domain: null, status: "pending", assigned_at: null, custom_domain_enabled: false }).eq("id", item.id);
     if (storeError || purchaseError) toast({ title: "Could not unassign domain", description: (storeError || purchaseError)?.message, variant: "destructive" }); else { setDomains((current) => ({ ...current, [item.id]: "" })); toast({ title: "Domain unassigned", description: "The store is back on its default link." }); await load(); }
     setLoading(false);
   }
 
-  return <Card><CardHeader><CardTitle>Domain purchases</CardTitle><p className="text-sm text-muted-foreground">Assign or unassign the purchased domain. Unassigning immediately restores the default store link.</p></CardHeader><CardContent className="space-y-3">{items.length === 0 ? <p className="text-sm text-muted-foreground">No domain purchases yet.</p> : items.map((item) => <div key={item.id} className="grid gap-3 rounded-lg border p-4 md:grid-cols-[1fr_1fr_1.4fr_auto_auto] md:items-center"><div><p className="font-semibold">{item.domain}</p><p className="text-xs text-muted-foreground">{item.store_kind} store · GHC {Number(item.price).toFixed(2)}</p></div><Badge variant={item.term_ends_at && new Date(item.term_ends_at) < new Date() ? "destructive" : "outline"}>{item.term_ends_at && new Date(item.term_ends_at) < new Date() ? "expired" : item.renewal_due_at && new Date(item.renewal_due_at) <= new Date() ? "renewal due" : item.status}</Badge><Input value={domains[item.id] ?? item.assigned_domain ?? ""} onChange={(event) => setDomains((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="Paste purchased domain" aria-label={`Purchased domain for ${item.domain}`} /><Button onClick={() => void (item.status === "assigned" ? unassign(item) : assign(item))} disabled={loading}>{item.status === "assigned" ? "Unassign" : "Assign domain"}</Button></div>)}</CardContent></Card>;
+  return <Card><CardHeader><CardTitle>Domain purchases</CardTitle><p className="text-sm text-muted-foreground">Assign or unassign the purchased domain. Unassigning immediately restores the default store link.</p></CardHeader><CardContent className="space-y-3">{items.length === 0 ? <p className="text-sm text-muted-foreground">No domain purchases yet.</p> : items.map((item) => <div key={item.id} className="grid gap-3 rounded-lg border p-4 md:grid-cols-[1fr_1fr_1.4fr_auto_auto] md:items-center"><div><p className="font-semibold">{item.domain}</p><p className="text-xs text-muted-foreground">{item.store_kind} store · GHC {Number(item.price).toFixed(2)}</p>{(aliases[item.store_kind + ":" + (item.store_id || item.agent_store_id)] ?? []).map((alias) => <p key={alias.id} className="text-xs text-primary">Alias: {alias.hostname}</p>)}</div><Badge variant={item.term_ends_at && new Date(item.term_ends_at) < new Date() ? "destructive" : "outline"}>{item.term_ends_at && new Date(item.term_ends_at) < new Date() ? "expired" : item.renewal_due_at && new Date(item.renewal_due_at) <= new Date() ? "renewal due" : item.status}</Badge><Input value={domains[item.id] ?? item.assigned_domain ?? ""} onChange={(event) => setDomains((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="Paste purchased domain" aria-label={`Purchased domain for ${item.domain}`} /><Button onClick={() => void (item.status === "assigned" ? unassign(item) : assign(item))} disabled={loading}>{item.status === "assigned" ? "Unassign" : "Assign domain"}</Button></div>)}</CardContent></Card>;
 }
