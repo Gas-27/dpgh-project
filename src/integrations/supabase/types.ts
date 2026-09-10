@@ -366,6 +366,8 @@ export type Database = {
           created_at: string | null
           customer_number: string
           fulfillment_status: string
+          fulfillment_provider: string | null
+          provider_attempts: unknown
           id: string
           network: string
           package_id: string
@@ -381,6 +383,8 @@ export type Database = {
           created_at?: string | null
           customer_number: string
           fulfillment_status?: string
+          fulfillment_provider?: string | null
+          provider_attempts?: unknown
           id?: string
           network: string
           package_id: string
@@ -396,6 +400,8 @@ export type Database = {
           created_at?: string | null
           customer_number?: string
           fulfillment_status?: string
+          fulfillment_provider?: string | null
+          provider_attempts?: unknown
           id?: string
           network?: string
           package_id?: string

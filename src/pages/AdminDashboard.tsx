@@ -1688,6 +1688,24 @@ const AdminDashboard = () => {
     for (const order of failedOrders) { await retryOrder(order.id); }
   };
 
+  const updateOrderProvider = async (order: Order, provider: string) => {
+    const attempts = Array.isArray((order as any).provider_attempts) ? (order as any).provider_attempts : [];
+    const nextAttempts = provider && provider !== (order as any).fulfillment_provider
+      ? [...attempts, { provider, status: "selected", source: "admin", created_at: new Date().toISOString() }]
+      : attempts;
+    const { error } = await supabase.from("orders").update({
+      fulfillment_provider: provider || null,
+      provider_attempts: nextAttempts,
+    }).eq("id", order.id);
+    if (error) {
+      toast({ title: "Provider update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    setOrders((prev) => prev.map((item) => item.id === order.id ? { ...item, fulfillment_provider: provider || null, provider_attempts: nextAttempts } as Order : item));
+    setFilteredOrdersFromDB((prev) => prev.map((item) => item.id === order.id ? { ...item, fulfillment_provider: provider || null, provider_attempts: nextAttempts } as Order : item));
+    toast({ title: "Provider updated" });
+  };
+
   // Toggle order fulfillment status
   const toggleOrderFulfillment = async (orderId: string, currentStatus: string) => {
     const newStatus = currentStatus === "completed" ? "pending" : "completed";
@@ -3026,9 +3044,9 @@ const AdminDashboard = () => {
                         </div>
                       )}
                       <Table>
-                        <TableHeader><TableRow><TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedOrderIds.size === paginated.length && paginated.length > 0} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set(paginated.map(o => o.id))); } else { setSelectedOrderIds(new Set()); } }} className="rounded border-border" /></TableHead><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Refund</TableHead><TableHead>Source</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Order Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead style={{ width: "40px" }}><input type="checkbox" checked={selectedOrderIds.size === paginated.length && paginated.length > 0} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set(paginated.map(o => o.id))); } else { setSelectedOrderIds(new Set()); } }} className="rounded border-border" /></TableHead><TableHead>Date & Time</TableHead><TableHead>Phone</TableHead><TableHead>Network</TableHead><TableHead>Provider</TableHead><TableHead>Size</TableHead><TableHead>Amount</TableHead><TableHead>Refund</TableHead><TableHead>Source</TableHead><TableHead>Method</TableHead><TableHead>Payment</TableHead><TableHead>Fulfillment</TableHead><TableHead>Order Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                          {paginated.length === 0 ? <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
+                          {paginated.length === 0 ? <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">No orders match your search.</TableCell></TableRow> :
                             paginated.map((order) => {
                               // Determine source
                               const agentStore = order.agent_store_id ? agents.find(a => a.id === order.agent_store_id) : null;
@@ -3067,6 +3085,23 @@ const AdminDashboard = () => {
                                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                                <TableCell>
+                                  <select
+                                    aria-label={`Provider for order ${order.id}`}
+                                    value={(order as any).fulfillment_provider || ""}
+                                    onChange={(event) => updateOrderProvider(order, event.target.value)}
+                                    className="w-32 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
+                                  >
+                                    <option value="">Auto</option>
+                                    <option value="spaceship">Spaceship</option>
+                                    <option value="bossudata">BossuData</option>
+                                    <option value="cledanet">Cledanet</option>
+                                    <option value="ghdataconnect">GHDataConnect</option>
+                                  </select>
+                                  {Array.isArray((order as any).provider_attempts) && (order as any).provider_attempts.length > 0 && (
+                                    <p className="mt-1 text-[10px] text-muted-foreground">{(order as any).provider_attempts.length} attempt{(order as any).provider_attempts.length === 1 ? "" : "s"}</p>
+                                  )}
+                                </TableCell>
                                 <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
                                 <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                                 <TableCell>
