@@ -24,8 +24,7 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { getSupabaseUrl } = require("./_lib/supabase-url");
-  const supabaseUrl = getSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "");
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
   if (!supabaseUrl || !serviceRoleKey) {

@@ -1,8 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
-import { getSupabaseUrl } from "./_lib/supabase-url";
 
-const supabaseUrl = getSupabaseUrl(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL);
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 // VAPID keys for web push - you should generate your own
