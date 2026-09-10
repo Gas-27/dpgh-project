@@ -180,6 +180,8 @@ const CustomDomainResolver = () => {
 
   useEffect(() => {
     let cancelled = false;
+    const pathname = window.location.pathname;
+    if (pathname === "/become-agent") return;
     const hostname = window.location.hostname.toLowerCase();
     const resolve = async () => {
       const { data, error } = await supabase.rpc("resolve_store_domain", { p_hostname: hostname });

@@ -20,13 +20,20 @@ export default function BecomeAgent() {
   useEffect(() => {
     const loadStore = async () => {
       try {
-        const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
-        if (!subdomainStoreName) {
-          setLoading(false);
-          return;
-        }
+        const hostname = window.location.hostname.toLowerCase();
+        const subdomainStoreName = getStoreNameFromSubdomain(hostname);
         const stores = await fetchAllStores(supabase, "agent_stores");
-        const matched = findStoreByName(subdomainStoreName, stores);
+        let matched = subdomainStoreName ? findStoreByName(subdomainStoreName, stores) : null;
+
+        if (!matched) {
+          const { data: domainStore } = await supabase
+            .from("agent_stores")
+            .select("*")
+            .ilike("custom_domain", hostname)
+            .neq("custom_domain_status", "not_configured")
+            .maybeSingle();
+          matched = domainStore;
+        }
         if (matched) {
           matched.theme_config = { ...defaultTheme, ...(matched.theme_config || {}) };
           setStore(matched);

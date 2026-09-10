@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { SpinWheelPopup, type SpinWheelPopupProps } from "@/pages/Packages";
 
@@ -47,17 +46,6 @@ export function SpinToWinCard({ target }: { target: "packages" | "agent" | "suba
           <Gift className="mr-2 h-4 w-4" />Win Free Data ({config.eligibility_mode === "unrestricted" ? "Free" : "Eligibility Required"})
         </Button>
         {config.auto_disable_enabled && <p className="text-xs text-muted-foreground">{config.display_spin_orders ?? 0} / {limit} prizes claimed</p>}
-        <div className="mt-1 flex w-full max-w-sm items-center gap-2 rounded-md border border-primary/20 bg-muted/30 px-2 py-1">
-          <span className="sr-only">Spin rules</span>
-          <Select value={config.eligibility_period ?? "day"} disabled>
-            <SelectTrigger className="h-7 flex-1 border-0 bg-transparent px-2 text-[11px] shadow-none"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="day">Today</SelectItem><SelectItem value="week">This week</SelectItem></SelectContent>
-          </Select>
-          <Select value={config.eligibility_mode ?? "unrestricted"} disabled>
-            <SelectTrigger className="h-7 flex-[1.5] border-0 bg-transparent px-2 text-[11px] shadow-none"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="unrestricted">Free spin</SelectItem><SelectItem value="order_count">Orders required</SelectItem><SelectItem value="order_amount">Amount required</SelectItem><SelectItem value="order_gb">GB required</SelectItem></SelectContent>
-          </Select>
-        </div>
         <p className="max-w-sm text-center text-[11px] text-muted-foreground">{requirement}{config.auto_disable_enabled ? ` Promotion closes after ${limit} prizes.` : ""}</p>
       </section>
       <SpinWheelPopup open={open} onOpenChange={setOpen} config={config} />
