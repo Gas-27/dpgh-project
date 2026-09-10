@@ -218,7 +218,7 @@ const CustomDomainResolver = () => {
         .from("domain_purchases")
         .select("store_kind, store_id, agent_store_id")
         .or(`assigned_domain.ilike.${hostname},domain.ilike.${hostname}`)
-        .eq("status", "assigned")
+        .eq("status", "active")
         .maybeSingle();
       if (purchase) {
         const storeId = purchase.store_id || purchase.agent_store_id;

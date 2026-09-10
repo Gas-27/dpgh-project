@@ -2717,8 +2717,8 @@ const AdminDashboard = () => {
                 <TabsTrigger value="sms" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><MessageCircle className="h-3 w-3 md:h-4 md:w-4" /> SMS</TabsTrigger>
  <TabsTrigger value="public_products" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> Store Products</TabsTrigger>
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
-          <TabsTrigger value="spaceship_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Spaceship Domains</TabsTrigger>
-            <TabsTrigger value="domain_purchases" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Domain Purchases</TabsTrigger>
+<TabsTrigger value="spaceship_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Custom Branding (Domain)</TabsTrigger>
+  <TabsTrigger value="domain_purchases" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Custom Branding Assignments</TabsTrigger>
             <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
 
