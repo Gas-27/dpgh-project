@@ -58,8 +58,8 @@ export default function CustomDomainPanel() {
   return (
     <Card className="border-border">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Globe2 className="h-5 w-5 text-primary" /> domain service domain management</CardTitle>
-        <p className="text-sm text-muted-foreground">Manage a domain registered in domain service, load its DNS records, add records, and save changes directly through the domain service API.</p>
+        <CardTitle className="flex items-center gap-2"><Globe2 className="h-5 w-5 text-primary" /> Custom Branding (Domain)</CardTitle>
+        <p className="text-sm text-muted-foreground">Use your own domain instead of the default store URL. Point its DNS records to this storefront, then save the records here. Supported services include Spaceship, Cloudflare, GoDaddy, Namecheap, and other DNS providers. Domain registration and additional purchases are handled separately.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row">

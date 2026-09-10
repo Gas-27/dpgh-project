@@ -550,7 +550,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��────────────�����────────────────────�������────────────────
+// ─�����������────────────────────────��────────────�������────────────────────�������────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -1111,7 +1111,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     className="block w-full rounded-lg px-3 py-2 font-mono text-sm font-semibold break-all"
                     style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, border: `1px solid ${primaryColor}30` }}
                   >
-                    {DOMAINS.getAgentStoreUrl(store.store_name).replace('https://', '')}
+                    {(store.custom_domain || DOMAINS.getAgentStoreUrl(store.store_name)).replace(/^https?:\/\//, '').replace(/\/$/, '')}
                   </code>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
@@ -1120,7 +1120,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     className="flex-1 sm:flex-auto rounded-lg font-semibold"
                     style={{ backgroundColor: primaryColor, color: primaryForeground }}
                     onClick={() => {
-                      const url = DOMAINS.getAgentStoreUrl(store.store_name);
+                      const url = `${window.location.origin}/`;
                       if (navigator.share) {
                         navigator.share({
                           title: `${store.store_name} - Data Store`,
@@ -1144,7 +1144,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     variant="outline"
                     className="flex-1 sm:flex-auto rounded-lg"
                     onClick={() => {
-                      const url = DOMAINS.getAgentStoreUrl(store.store_name);
+                      const url = `${window.location.origin}/`;
                       navigator.clipboard.writeText(url);
                       toast({
                         title: "Link copied!",

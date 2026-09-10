@@ -2093,6 +2093,7 @@ const handleSaveStore = async () => {
     { id: "overview", label: "Overview", icon: BarChart3 },
  { id: "approvals", label: "Submit for Approval", icon: Send },
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
+    { id: "domains", label: "Custom Branding (Domain)", icon: Globe2 },
     { id: "bulk", label: "Bulk Orders", icon: Layers },
     { id: "store", label: "Store Prices", icon: Store },
     { id: "products", label: "Products", icon: Package },
@@ -2362,7 +2363,7 @@ return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "sub-subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-400/40 bg-cyan-400/10 text-cyan-200", "border-amber-400/40 bg-amber-400/10 text-amber-200", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
-          <TabsContent value="domains" className="mt-0"><DomainDashboardPanel walletBalance={Number(subagentStore?.wallet_balance ?? 0)} walletLabel="Subagent wallet" agentStoreId={subagentStore?.id ?? null} storeKind="subagent" /></TabsContent>
+          <TabsContent value="domains" className="mt-0"><DomainDashboardPanel walletBalance={Number(subagentStore?.wallet_balance ?? 0)} walletLabel="Wallet" agentStoreId={subagentStore?.id ?? null} storeKind="subagent" /></TabsContent>
           <TabsContent value="products" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subagent" walletBalance={Number(subagentStore?.wallet_balance ?? 0)} onWalletBalanceChange={(wallet_balance) => setSubagentStore((current) => current ? { ...current, wallet_balance } : current)} /></TabsContent>
           <TabsContent value="services" className="mt-0"><RoleServicesPanel agentStoreId={subagentStore?.id} /></TabsContent>
           <TabsContent value="store" className="mt-0">{/* Store Prices */}</TabsContent>

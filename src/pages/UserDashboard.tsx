@@ -189,7 +189,7 @@ const UserDashboard = () => {
  { id: "approvals", label: "Submit for Approval", icon: Send },
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "orders", label: "Orders", icon: BarChart3 },
-  { id: "domains", label: "Domains", icon: Globe },
+  { id: "domains", label: "Custom Branding (Domain)", icon: Globe },
     { id: "refunds", label: "Refunds", icon: Wallet },
     { id: "my-complaints", label: "My Complaints", icon: MessageCircle },
   { id: "reports", label: "Report an Issue", icon: AlertTriangle },
@@ -906,7 +906,7 @@ const UserDashboard = () => {
       case "orders":
         return renderOrders();
       case "domains":
-        return <DomainDashboardPanel walletBalance={Number(normalWallet ?? 0)} walletLabel="Wallet balance" onPurchaseComplete={() => setRefreshKey((key) => key + 1)} />;
+        return <DomainDashboardPanel walletBalance={Number(normalWallet ?? 0)} walletLabel="Wallet" onPurchaseComplete={() => setRefreshKey((key) => key + 1)} />;
       case "refunds":
         return renderRefunds();
   case "my-complaints":

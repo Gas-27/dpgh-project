@@ -965,38 +965,29 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
   const handlePhoneConfirm = async () => {
     if (!isValidPhone(phone)) { toast({ title: "Invalid number", description: "Enter 10 digits", variant: "destructive" }); return; }
     
-    // Check for orders made within the last 30 minutes for this phone number
     setCheckingOrder(true);
+    const { data: eligibilityData, error: eligibilityError } = await supabase.rpc("check_spin_eligibility", { p_phone: phone, p_mode: config?.eligibility_mode ?? "unrestricted", p_period: config?.eligibility_period ?? "day", p_minimum_count: config?.minimum_order_count ?? 0, p_minimum_amount: config?.minimum_order_amount ?? 0, p_minimum_gb: config?.minimum_order_gb ?? 0 });
+    if (eligibilityError) { toast({ title: "Eligibility check failed", description: eligibilityError.message, variant: "destructive" }); setCheckingOrder(false); return; }
+    const verifiedEligibility = eligibilityData as { eligible: boolean; order_count: number; order_amount: number; order_gb: number };
+    setEligibility(verifiedEligibility);
+    if (!verifiedEligibility.eligible) { toast({ title: "Not eligible yet", description: eligibilityMessage, variant: "destructive" }); setCheckingOrder(false); return; }
+
+    // Only eligible users are subject to the recent-order cooldown.
     try {
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      const { data: recentOrders } = await supabase
-        .from("orders")
-        .select("id, created_at")
-        .eq("customer_number", phone)
-        .gte("created_at", thirtyMinutesAgo)
-        .limit(1);
-      
+      const { data: recentOrders } = await supabase.from("orders").select("id, created_at").eq("customer_number", phone).gte("created_at", thirtyMinutesAgo).limit(1);
       if (recentOrders && recentOrders.length > 0) {
         const orderTime = new Date(recentOrders[0].created_at);
         const timeSince = Math.round((Date.now() - orderTime.getTime()) / 60000);
         const remaining = 30 - timeSince;
         setRecentOrderBlock(true);
-        toast({ 
-          title: "Please wait", 
-          description: `You made an order ${timeSince} minute${timeSince !== 1 ? 's' : ''} ago. Please wait ${remaining} more minute${remaining !== 1 ? 's' : ''} before spinning.`,
-          variant: "destructive"
-        });
+        toast({ title: "Please wait", description: `You made an order ${timeSince} minute${timeSince !== 1 ? "s" : ""} ago. Please wait ${remaining} more minute${remaining !== 1 ? "s" : ""} before spinning.`, variant: "destructive" });
         setCheckingOrder(false);
         return;
       }
     } catch (err) {
       console.error("Error checking recent orders:", err);
     }
-    const { data: eligibilityData, error: eligibilityError } = await supabase.rpc("check_spin_eligibility", { p_phone: phone, p_mode: config?.eligibility_mode ?? "unrestricted", p_period: config?.eligibility_period ?? "day", p_minimum_count: config?.minimum_order_count ?? 0, p_minimum_amount: config?.minimum_order_amount ?? 0, p_minimum_gb: config?.minimum_order_gb ?? 0 });
-    if (eligibilityError) { toast({ title: "Eligibility check failed", description: eligibilityError.message, variant: "destructive" }); setCheckingOrder(false); return; }
-    const verifiedEligibility = eligibilityData as { eligible: boolean; order_count: number; order_amount: number; order_gb: number };
-    setEligibility(verifiedEligibility);
-    if (!verifiedEligibility.eligible) { toast({ title: "Not eligible yet", description: eligibilityMessage, variant: "destructive" }); setCheckingOrder(false); return; }
     setCheckingOrder(false);
     
     if (!paymentRequired) {

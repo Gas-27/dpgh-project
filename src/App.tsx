@@ -238,6 +238,7 @@ const App = () => {
               {isCustomDomain ? (
                 <Routes>
                   <Route path="/" element={<CustomDomainResolver />} />
+                  <Route path="/become-agent" element={<BecomeAgent />} />
                   <Route path="/__custom/agent/:storeName" element={<AgentStorefront />} />
                   <Route path="/__custom/subagent/:storeName" element={<AgentStorefront />} />
                   <Route path="/__custom/subsubagent/:subagentStoreName/:subSubagentStoreName" element={<SubSubagentStorefront />} />

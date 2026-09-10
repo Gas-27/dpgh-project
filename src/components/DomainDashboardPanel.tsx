@@ -12,7 +12,7 @@ type RecordItem = { type: string; name: string; value: string; ttl: number };
 
 type DomainDashboardPanelProps = { walletBalance?: number; walletLabel?: string; agentStoreId?: string | null; storeKind?: "agent" | "subagent" | "subsubagent"; onPurchaseComplete?: () => void };
 
-export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = "Wallet balance", agentStoreId = null, storeKind = "agent", onPurchaseComplete }: DomainDashboardPanelProps) {
+export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = "Wallet", agentStoreId = null, storeKind = "agent", onPurchaseComplete }: DomainDashboardPanelProps) {
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("");
   const [result, setResult] = useState<any>(null);
