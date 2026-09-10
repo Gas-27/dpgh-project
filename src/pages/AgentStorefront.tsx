@@ -664,7 +664,7 @@ const AgentStorefront = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // ── Price refresh ─���
+  // ── Price refresh ──
   const refreshPrices = useCallback(async () => {
     if (!store?.id || fetchingRef.current) return;
     fetchingRef.current = true;
@@ -977,23 +977,6 @@ const searchOrders = useCallback(async (input?: string) => {
   const whatsappLink = store ? `https://wa.me/${getInternationalDigits(store.whatsapp_number)}` : "#";
   const groupLink =
     store?.show_whatsapp_group_icon && store?.whatsapp_group ? store.whatsapp_group : null;
-  const productContactNumber = store?.whatsapp_number || store?.support_number || "";
-  const openProductPurchase = (product: (typeof storeProducts)[number]) => {
-    const phone = getInternationalDigits(productContactNumber);
-    if (!phone) {
-      toast({ title: "Seller contact unavailable", description: "Please contact the store support team." , variant: "destructive" });
-      return;
-    }
-    const imageUrl = product.image_urls?.[0] || "No image attached";
-    const message = [
-      `Hello ${store?.store_name || "seller"}, I want to buy this product:`,
-      `Product: ${product.title}`,
-      `Price: GHS ${Number(product.price).toFixed(2)}`,
-      `Details: ${product.description || "No additional details provided."}`,
-      `Image: ${imageUrl}`,
-    ].join("\\n");
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
-  };
 
   const getStatusIcon = (status: string) => {
     if (status === "refunded") return <XCircle className="h-4 w-4 text-amber-400" />;
@@ -1772,7 +1755,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         </DraggableFAB>
       )}
 
-      {selectedProduct && <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{selectedProduct.title}</DialogTitle><DialogDescription>Product details and available images</DialogDescription></DialogHeader><div className="grid gap-6 md:grid-cols-[1.2fr_1fr]"><div className="space-y-3"><div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted">{selectedProduct.image_urls?.[selectedProductImage] ? <img src={selectedProduct.image_urls[selectedProductImage]} alt={`${selectedProduct.title} image ${selectedProductImage + 1}`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image available</div>}</div>{selectedProduct.image_urls?.length > 1 && <div className="grid grid-cols-4 gap-2">{selectedProduct.image_urls.map((image, index) => <button type="button" key={image} onClick={() => setSelectedProductImage(index)} className={`aspect-square overflow-hidden rounded-lg border-2 ${selectedProductImage === index ? "border-primary" : "border-transparent"}`}><img src={image} alt={`${selectedProduct.title} thumbnail ${index + 1}`} className="h-full w-full object-cover" /></button>)}</div>}</div><div className="space-y-4"><div><p className="text-sm text-muted-foreground">Price</p><p className="text-2xl font-bold" style={{ color: primaryColor }}>GHS {Number(selectedProduct.price).toFixed(2)}</p></div><div><p className="text-sm text-muted-foreground">Details</p><p className="whitespace-pre-wrap leading-relaxed">{selectedProduct.description || "No additional details provided."}</p></div><Button className="w-full" onClick={() => openProductPurchase(selectedProduct)}>Buy this product</Button></div></div></DialogContent></Dialog>}
+      {selectedProduct && <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{selectedProduct.title}</DialogTitle><DialogDescription>Product details and available images</DialogDescription></DialogHeader><div className="grid gap-6 md:grid-cols-[1.2fr_1fr]"><div className="space-y-3"><div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted">{selectedProduct.image_urls?.[selectedProductImage] ? <img src={selectedProduct.image_urls[selectedProductImage]} alt={`${selectedProduct.title} image ${selectedProductImage + 1}`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image available</div>}</div>{selectedProduct.image_urls?.length > 1 && <div className="grid grid-cols-4 gap-2">{selectedProduct.image_urls.map((image, index) => <button type="button" key={image} onClick={() => setSelectedProductImage(index)} className={`aspect-square overflow-hidden rounded-lg border-2 ${selectedProductImage === index ? "border-primary" : "border-transparent"}`}><img src={image} alt={`${selectedProduct.title} thumbnail ${index + 1}`} className="h-full w-full object-cover" /></button>)}</div>}</div><div className="space-y-4"><div><p className="text-sm text-muted-foreground">Price</p><p className="text-2xl font-bold" style={{ color: primaryColor }}>GHS {Number(selectedProduct.price).toFixed(2)}</p></div><div><p className="text-sm text-muted-foreground">Details</p><p className="whitespace-pre-wrap leading-relaxed">{selectedProduct.description || "No additional details provided."}</p></div><Button className="w-full" onClick={() => window.open(`https://wa.me/${String(store?.support_phone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I want to buy ${selectedProduct.title} for GHS ${Number(selectedProduct.price).toFixed(2)}.`)}`, "_blank")}>Buy this product</Button></div></div></DialogContent></Dialog>}
 
   {/* Payment dialog */}
   {selectedService && <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => !open && setSelectedService(null)} />}
