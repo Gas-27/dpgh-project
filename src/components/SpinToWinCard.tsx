@@ -21,7 +21,7 @@ export function SpinToWinCard({ target }: { target: "packages" | "agent" | "suba
 
   useEffect(() => {
     let active = true;
-    supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders,placement_targets,eligibility_mode,eligibility_period,minimum_order_count,minimum_order_amount").maybeSingle().then(({ data }) => {
+    supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders,placement_targets,eligibility_mode,eligibility_period,minimum_order_count,minimum_order_amount,minimum_order_gb").maybeSingle().then(({ data }) => {
       if (active && data) setConfig(data as SpinConfig);
     });
     return () => { active = false; };
@@ -34,7 +34,9 @@ export function SpinToWinCard({ target }: { target: "packages" | "agent" | "suba
     ? `Complete ${config.minimum_order_count} order${config.minimum_order_count === 1 ? "" : "s"} ${period} before you spin.`
     : config.eligibility_mode === "order_amount" && (config.minimum_order_amount ?? 0) > 0
       ? `Buy at least GHC ${Number(config.minimum_order_amount).toFixed(2)} in data ${period} before you spin.`
-      : "No purchase requirement. Spin for a chance to win free data.";
+      : config.eligibility_mode === "order_gb" && (config.minimum_order_gb ?? 0) > 0
+        ? `Order at least ${Number(config.minimum_order_gb)}GB ${period} before you spin.`
+        : "No purchase requirement. Spin for a chance to win free data.";
   const limit = config.auto_disable_order_limit ?? 50;
 
   return (

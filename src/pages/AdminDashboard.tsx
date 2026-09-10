@@ -257,11 +257,12 @@ const AdminDashboard = () => {
     auto_disable_order_limit: number;
     current_spin_orders: number;
     display_spin_orders: number; // Admin can manipulate what users see
-    eligibility_mode: "unrestricted" | "order_count" | "order_amount";
-    eligibility_period: "day" | "week";
-    minimum_order_count: number;
-    minimum_order_amount: number;
-    placement_targets: string[];
+ eligibility_mode: "unrestricted" | "order_count" | "order_amount" | "order_gb";
+  eligibility_period: "day" | "week";
+  minimum_order_count: number;
+  minimum_order_amount: number;
+  minimum_order_gb: number;
+  placement_targets: string[];
   } | null>(null);
   const [spinSaving, setSpinSaving] = useState(false);
 
@@ -991,6 +992,7 @@ const AdminDashboard = () => {
       eligibility_period: data.eligibility_period ?? "week",
       minimum_order_count: data.minimum_order_count ?? 0,
       minimum_order_amount: data.minimum_order_amount ?? 0,
+      minimum_order_gb: data.minimum_order_gb ?? 0,
       placement_targets: Array.isArray(data.placement_targets) ? data.placement_targets : ["packages", "agent", "subagent", "subsubagent"],
     });
   } else {
@@ -1012,6 +1014,7 @@ const AdminDashboard = () => {
       eligibility_period: "week",
       minimum_order_count: 0,
       minimum_order_amount: 0,
+      minimum_order_gb: 0,
       placement_targets: ["packages", "agent", "subagent", "subsubagent"],
     });
   }
@@ -1037,6 +1040,7 @@ const AdminDashboard = () => {
       eligibility_period: spinConfig.eligibility_period,
       minimum_order_count: spinConfig.minimum_order_count,
       minimum_order_amount: spinConfig.minimum_order_amount,
+      minimum_order_gb: spinConfig.minimum_order_gb,
       placement_targets: spinConfig.placement_targets,
     };
     const { error } = await supabase
@@ -3304,7 +3308,7 @@ const AdminDashboard = () => {
                               <p className="text-sm text-muted-foreground">Ref: <span className="font-bold text-primary">{agent.topup_reference}</span></p>
                               <p className="text-sm text-muted-foreground">WhatsApp: {agent.whatsapp_number}</p>
                               <p className="text-sm text-muted-foreground">Support: {agent.support_number}</p>
-                              <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} • {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
+                              <p className="text-xs text-muted-foreground">MoMo: {agent.momo_name} �� {agent.momo_number} • {agent.momo_network.toUpperCase()}</p>
                               <p className="text-xs text-muted-foreground">Wallet: <span className="font-bold text-green-400">GHC {Number(agent.wallet_balance || 0).toFixed(2)}</span></p>
                               <p className="text-xs text-muted-foreground">Subagent Profit: <span className="font-bold text-purple-400">GHC {Number(agent.subagent_commission_balance || 0).toFixed(2)}</span></p>
                               {agent.approved && <a href={DOMAINS.getAgentStoreUrl(agent.store_name)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1"><Eye className="h-3 w-3" /> View Store</a>}
@@ -4264,10 +4268,11 @@ const AdminDashboard = () => {
   <div className="space-y-4 border p-4 rounded-lg">
   <Label className="text-base">Eligibility rules</Label>
   <div className="grid gap-3 md:grid-cols-2">
-    <Select value={spinConfig.eligibility_mode} onValueChange={(value) => setSpinConfig({ ...spinConfig, eligibility_mode: value as "unrestricted" | "order_count" | "order_amount" })}><SelectTrigger><SelectValue placeholder="Eligibility type" /></SelectTrigger><SelectContent><SelectItem value="unrestricted">Everyone</SelectItem><SelectItem value="order_count">Completed order count</SelectItem><SelectItem value="order_amount">Completed order amount</SelectItem></SelectContent></Select>
+    <Select value={spinConfig.eligibility_mode} onValueChange={(value) => setSpinConfig({ ...spinConfig, eligibility_mode: value as "unrestricted" | "order_count" | "order_amount" | "order_gb" })}><SelectTrigger><SelectValue placeholder="Eligibility type" /></SelectTrigger><SelectContent><SelectItem value="unrestricted">Everyone</SelectItem><SelectItem value="order_count">Completed order count</SelectItem><SelectItem value="order_amount">Completed order amount</SelectItem><SelectItem value="order_gb">Total GB ordered</SelectItem></SelectContent></Select>
     <Select value={spinConfig.eligibility_period} onValueChange={(value) => setSpinConfig({ ...spinConfig, eligibility_period: value as "day" | "week" })}><SelectTrigger><SelectValue placeholder="Period" /></SelectTrigger><SelectContent><SelectItem value="day">Today</SelectItem><SelectItem value="week">This week</SelectItem></SelectContent></Select>
-    <Input type="number" min="0" value={spinConfig.minimum_order_count === 0 ? "" : spinConfig.minimum_order_count} onChange={(event) => setSpinConfig({ ...spinConfig, minimum_order_count: event.target.value === "" ? 0 : Math.max(0, Number(event.target.value)) })} placeholder="Required completed orders" />
-    <Input type="number" min="0" step="0.01" value={spinConfig.minimum_order_amount === 0 ? "" : spinConfig.minimum_order_amount} onChange={(event) => setSpinConfig({ ...spinConfig, minimum_order_amount: event.target.value === "" ? 0 : Math.max(0, Number(event.target.value)) })} placeholder="Required amount in GHS" />
+    {spinConfig.eligibility_mode === "order_count" && <Input type="number" min="0" value={spinConfig.minimum_order_count === 0 ? "" : spinConfig.minimum_order_count} onChange={(event) => setSpinConfig({ ...spinConfig, minimum_order_count: event.target.value === "" ? 0 : Math.max(0, Number(event.target.value)) })} placeholder="Required completed orders" />}
+    {spinConfig.eligibility_mode === "order_amount" && <Input type="number" min="0" step="0.01" value={spinConfig.minimum_order_amount === 0 ? "" : spinConfig.minimum_order_amount} onChange={(event) => setSpinConfig({ ...spinConfig, minimum_order_amount: event.target.value === "" ? 0 : Math.max(0, Number(event.target.value)) })} placeholder="Required amount in GHS" />}
+    {spinConfig.eligibility_mode === "order_gb" && <Input type="number" min="0" step="0.1" value={spinConfig.minimum_order_gb === 0 ? "" : spinConfig.minimum_order_gb} onChange={(event) => setSpinConfig({ ...spinConfig, minimum_order_gb: event.target.value === "" ? 0 : Math.max(0, Number(event.target.value)) })} placeholder="Required GB ordered" />}
     <div className="md:col-span-2 flex flex-wrap gap-2 text-sm">{[{ id: "packages", label: "Package page" }, { id: "agent", label: "Agent storefront" }, { id: "subagent", label: "Subagent storefront" }, { id: "subsubagent", label: "Sub-subagent storefront" }].map((target) => <label key={target.id} className="flex items-center gap-2"><Checkbox checked={(spinConfig.placement_targets ?? []).includes(target.id)} onCheckedChange={(checked) => setSpinConfig({ ...spinConfig, placement_targets: checked ? [...spinConfig.placement_targets, target.id] : spinConfig.placement_targets.filter((item) => item !== target.id) })} />{target.label}</label>)}</div>
   </div>
   </div>

@@ -456,12 +456,13 @@ export interface SpinWheelPopupProps {
     auto_disable_order_limit?: number;
     current_spin_orders?: number;
     display_spin_orders?: number;
-    eligibility_mode?: "unrestricted" | "order_count" | "order_amount";
-    eligibility_period?: "day" | "week";
-    minimum_order_count?: number;
-    minimum_order_amount?: number;
+ eligibility_mode?: "unrestricted" | "order_count" | "order_amount" | "order_gb";
+  eligibility_period?: "day" | "week";
+  minimum_order_count?: number;
+  minimum_order_amount?: number;
+  minimum_order_gb?: number;
   } | null;
-}
+  }
 
 type SpinPhase = "idle" | "freewheeling" | "decelerating";
 
@@ -484,7 +485,7 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
   // Phone / spins
   const [phone, setPhone] = useState("");
   const [phoneConfirmed, setPhoneConfirmed] = useState(false);
-  const [eligibility, setEligibility] = useState<{ eligible: boolean; order_count: number; order_amount: number } | null>(null);
+  const [eligibility, setEligibility] = useState<{ eligible: boolean; order_count: number; order_amount: number; order_gb: number } | null>(null);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
   const [spinCount, setSpinCount] = useState(0);
   const [cooldownMs, setCooldownMs] = useState(0);
@@ -505,11 +506,13 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
   const selectedNetwork = config?.default_network ?? "mtn";
   const paymentRequired = config?.payment_required ?? true;
   const eligibilityPeriod = config?.eligibility_period === "week" ? "this week" : "today";
-  const eligibilityMessage = config?.eligibility_mode === "order_count" && (config.minimum_order_count ?? 0) > 0
-    ? `Complete ${config.minimum_order_count} order${config.minimum_order_count === 1 ? "" : "s"} ${eligibilityPeriod} before spinning.`
-    : config?.eligibility_mode === "order_amount" && (config.minimum_order_amount ?? 0) > 0
-      ? `Buy at least GHC ${Number(config.minimum_order_amount).toFixed(2)} ${eligibilityPeriod} before spinning.`
-      : "Meet the Spin to Win requirement below before spinning.";
+const eligibilityMessage = config?.eligibility_mode === "order_count" && (config.minimum_order_count ?? 0) > 0
+ ? `Complete ${config.minimum_order_count} order${config.minimum_order_count === 1 ? "" : "s"} ${eligibilityPeriod} before spinning.`
+ : config?.eligibility_mode === "order_amount" && (config.minimum_order_amount ?? 0) > 0
+ ? `Buy at least GHC ${Number(config.minimum_order_amount).toFixed(2)} ${eligibilityPeriod} before spinning.`
+ : config?.eligibility_mode === "order_gb" && (config.minimum_order_gb ?? 0) > 0
+ ? `Order at least ${Number(config.minimum_order_gb)}GB ${eligibilityPeriod} before spinning.`
+ : "Meet the Spin to Win requirement below before spinning.";
 
   // Adjust weights to make 1GB & 2GB harder
   const segs = useMemo<SpinSegment[]>(() => segments.map(s => {
@@ -989,9 +992,9 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
     } catch (err) {
       console.error("Error checking recent orders:", err);
     }
-    const { data: eligibilityData, error: eligibilityError } = await supabase.rpc("check_spin_eligibility", { p_phone: phone, p_mode: config?.eligibility_mode ?? "unrestricted", p_period: config?.eligibility_period ?? "day", p_minimum_count: config?.minimum_order_count ?? 0, p_minimum_amount: config?.minimum_order_amount ?? 0 });
+    const { data: eligibilityData, error: eligibilityError } = await supabase.rpc("check_spin_eligibility", { p_phone: phone, p_mode: config?.eligibility_mode ?? "unrestricted", p_period: config?.eligibility_period ?? "day", p_minimum_count: config?.minimum_order_count ?? 0, p_minimum_amount: config?.minimum_order_amount ?? 0, p_minimum_gb: config?.minimum_order_gb ?? 0 });
     if (eligibilityError) { toast({ title: "Eligibility check failed", description: eligibilityError.message, variant: "destructive" }); setCheckingOrder(false); return; }
-    const verifiedEligibility = eligibilityData as { eligible: boolean; order_count: number; order_amount: number };
+    const verifiedEligibility = eligibilityData as { eligible: boolean; order_count: number; order_amount: number; order_gb: number };
     setEligibility(verifiedEligibility);
     if (!verifiedEligibility.eligible) { toast({ title: "Not eligible yet", description: eligibilityMessage, variant: "destructive" }); setCheckingOrder(false); return; }
     setCheckingOrder(false);
@@ -1027,7 +1030,7 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
           <DialogDescription className="text-center text-purple-300 text-xs">
             {paymentRequired ? `Pay GHC${config.payment_amount} for 2 spins` : "Free — 2 spins every 8 hours per number"}
           </DialogDescription>
-          <div className="rounded-lg border border-yellow-300/30 bg-yellow-400/10 px-3 py-2 text-center text-xs text-yellow-100">{eligibilityMessage}{eligibility && config.eligibility_mode === "order_count" ? ` Progress: ${eligibility.order_count}/${config.minimum_order_count ?? 0} completed orders.` : eligibility && config.eligibility_mode === "order_amount" ? ` Progress: GHC ${Number(eligibility.order_amount).toFixed(2)}/GHC ${Number(config.minimum_order_amount ?? 0).toFixed(2)}.` : ""}</div>
+          <div className="rounded-lg border border-yellow-300/30 bg-yellow-400/10 px-3 py-2 text-center text-xs text-yellow-100">{eligibilityMessage}{eligibility && config.eligibility_mode === "order_count" ? ` Progress: ${eligibility.order_count}/${config.minimum_order_count ?? 0} completed orders.` : eligibility && config.eligibility_mode === "order_amount" ? ` Progress: GHC ${Number(eligibility.order_amount).toFixed(2)}/GHC ${Number(config.minimum_order_amount ?? 0).toFixed(2)}.` : eligibility && config.eligibility_mode === "order_gb" ? ` Progress: ${Number(eligibility.order_gb)}GB/${Number(config.minimum_order_gb ?? 0)}GB.` : ""}</div>
         </DialogHeader>
 
         <div className="space-y-3 pb-2">
