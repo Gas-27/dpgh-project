@@ -48,7 +48,7 @@ export function SpinToWinCard({ target }: { target: "packages" | "agent" | "suba
         </Button>
         {config.auto_disable_enabled && <p className="text-xs text-muted-foreground">{config.display_spin_orders ?? 0} / {limit} prizes claimed</p>}
         <div className="mt-1 flex w-full max-w-sm items-center gap-2 rounded-md border border-primary/20 bg-muted/30 px-2 py-1">
-          <span className="shrink-0 text-[11px] font-semibold text-foreground">Rules</span>
+          <span className="sr-only">Spin rules</span>
           <Select value={config.eligibility_period ?? "day"} disabled>
             <SelectTrigger className="h-7 flex-1 border-0 bg-transparent px-2 text-[11px] shadow-none"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="day">Today</SelectItem><SelectItem value="week">This week</SelectItem></SelectContent>

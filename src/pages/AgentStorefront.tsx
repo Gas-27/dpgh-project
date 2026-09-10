@@ -550,7 +550,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��────────────�������────────────────────�������────────────────
+// ─�����������────────────────────────��────────────���������────────────────────�������────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -1120,7 +1120,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     className="flex-1 sm:flex-auto rounded-lg font-semibold"
                     style={{ backgroundColor: primaryColor, color: primaryForeground }}
                     onClick={() => {
-                      const url = `${window.location.origin}/`;
+                      const url = store.custom_domain ? `https://${store.custom_domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}` : DOMAINS.getAgentStoreUrl(store.store_name);
                       if (navigator.share) {
                         navigator.share({
                           title: `${store.store_name} - Data Store`,
@@ -1144,7 +1144,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     variant="outline"
                     className="flex-1 sm:flex-auto rounded-lg"
                     onClick={() => {
-                      const url = `${window.location.origin}/`;
+                      const url = store.custom_domain ? `https://${store.custom_domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}` : DOMAINS.getAgentStoreUrl(store.store_name);
                       navigator.clipboard.writeText(url);
                       toast({
                         title: "Link copied!",
