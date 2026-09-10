@@ -32,27 +32,16 @@ export default function AdminDomainPurchasesPanel() {
     const domain = normalize(domains[item.id] || item.domain);
     if (!validDomain(domain)) { toast({ title: "Invalid domain", description: "Enter the domain purchased on Spaceship, such as example.com.", variant: "destructive" }); return; }
     setLoading(true);
-    const aliasResult = await supabase.from("store_domain_aliases").upsert({ domain_purchase_id: item.id, store_kind: item.store_kind, store_id: item.store_id || item.agent_store_id, hostname: domain, status: "active" }, { onConflict: "normalized_hostname" });
-    if (aliasResult.error) { toast({ title: "Could not assign domain", description: aliasResult.error.message, variant: "destructive" }); setLoading(false); return; }
-    const table = item.store_kind === "subagent" ? "subagent_stores" : item.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
-    let { error: storeError } = await supabase.from(table).update({ custom_domain: domain, custom_domain_status: "active" }).eq("id", item.store_id || item.agent_store_id);
-    if (!storeError) {
-      const assignedAt = new Date(); const termEndsAt = new Date(assignedAt); termEndsAt.setFullYear(termEndsAt.getFullYear() + 1); const renewalDueAt = new Date(termEndsAt); renewalDueAt.setMonth(renewalDueAt.getMonth() - 1); const { error } = await supabase.from("domain_purchases").update({ assigned_domain: domain, status: "assigned", assigned_at: assignedAt.toISOString(), purchased_at: assignedAt.toISOString(), term_ends_at: termEndsAt.toISOString(), renewal_due_at: renewalDueAt.toISOString(), renewal_price: item.price, auto_renew: true, renewal_status: "current", custom_domain_enabled: true }).eq("id", item.id);
-      if (error) storeError = error;
-    }
-    if (storeError) toast({ title: "Could not assign domain", description: storeError.message, variant: "destructive" });
-    else { toast({ title: "Domain assigned", description: `${domain} is now the preferred domain for this store. Configure Vercel and DNS manually.` }); await load(); }
+    const { error } = await supabase.rpc("admin_assign_store_domain", { p_domain_purchase_id: item.id, p_hostname: domain });
+    if (error) toast({ title: "Could not assign domain", description: error.message, variant: "destructive" });
+    else { toast({ title: "Domain assigned", description: `${domain} now opens the same storefront. Configure this hostname in Vercel and DNS if needed.` }); await load(); }
     setLoading(false);
   }
 
   async function unassign(item: any) {
     setLoading(true);
-    const table = item.store_kind === "subagent" ? "subagent_stores" : item.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
-    const storeId = item.store_id || item.agent_store_id;
-    const { error: storeError } = await supabase.from(table).update({ custom_domain: null, custom_domain_status: "not_configured" }).eq("id", storeId);
-    const { error: aliasError } = await supabase.from("store_domain_aliases").update({ status: "inactive", updated_at: new Date().toISOString() }).eq("domain_purchase_id", item.id);
-    const { error: purchaseError } = storeError || aliasError ? { error: storeError || aliasError } : await supabase.from("domain_purchases").update({ assigned_domain: null, status: "pending", assigned_at: null, custom_domain_enabled: false }).eq("id", item.id);
-    if (storeError || purchaseError) toast({ title: "Could not unassign domain", description: (storeError || purchaseError)?.message, variant: "destructive" }); else { setDomains((current) => ({ ...current, [item.id]: "" })); toast({ title: "Domain unassigned", description: "The store is back on its default link." }); await load(); }
+    const { error } = await supabase.rpc("admin_unassign_store_domain", { p_domain_purchase_id: item.id });
+    if (error) toast({ title: "Could not unassign domain", description: error.message, variant: "destructive" }); else { setDomains((current) => ({ ...current, [item.id]: "" })); toast({ title: "Domain unassigned", description: "The store is back on its default link." }); await load(); }
     setLoading(false);
   }
 
