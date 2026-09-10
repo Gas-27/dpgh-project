@@ -102,7 +102,7 @@ export const findStoreByName = (
   if (matched) return matched;
 
   // Strategy 2: Try database slug field if populated
-  matched = stores.find((s) => s.store_name_slug && slugify(String(s.store_name_slug)) === normalizedSlugified);
+  matched = stores.find((s) => s.store_name_slug && s.store_name_slug === normalizedSlugified);
   if (matched) return matched;
 
   // Strategy 3: Try slugified comparison
