@@ -2375,7 +2375,7 @@ return (
           {/* OVERVIEW */}
           <TabsContent value="approvals" className="mt-0 space-y-6"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="subagent-dashboard" storeId={subagentStore?.id} /></CardContent></Card></TabsContent>
 <TabsContent value="overview" className="mt-0 space-y-6">
-  <Button type="button" size="sm" variant="outline" onClick={() => setActiveTab("withdraw")}>Withdraw</Button>
+  <Button type="button" size="sm" variant="outline" className="rounded-full border-border/80 px-4 py-2 text-sm font-medium" onClick={() => setActiveTab("withdraw")}>Withdraw</Button>
                         {/* Instruction Manual Dropdown */}
   <Card className="hidden border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">

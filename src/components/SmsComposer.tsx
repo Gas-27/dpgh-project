@@ -571,8 +571,8 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
 
   {/* Recipients */}
   {!publicMode && (ownerType === "agent" || ownerType === "subagent" || ownerType === "subsubagent") && <OrderContactPicker ownerType={ownerType} ownerId={ownerId} onContacts={setRecipients} />}
-  {!publicMode && <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-    <Label>Customer audience</Label>
+  {!publicMode && ownerType === "customer" && <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+  <Label>Customer audience</Label>
     <div className="flex flex-wrap gap-2" role="tablist" aria-label="Customer audience">
       {(["all", "recent", "inactive", "custom"] as SmsAudience[]).map((item) => (
         <Button key={item} type="button" size="sm" variant={audience === item ? "default" : "outline"} disabled={audienceLoading} onClick={() => void loadAudience(item)}>
@@ -581,7 +581,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       ))}
     </div>
     {audience === "custom" && <div className="flex items-center gap-2"><Input type="number" min="1" value={customInactiveDays} onChange={(event) => setCustomInactiveDays(event.target.value)} className="w-24" aria-label="Days without purchase" /><span className="text-sm text-muted-foreground">days without a purchase</span><Button type="button" size="sm" onClick={() => void loadAudience("custom")} disabled={audienceLoading}>Apply</Button></div>}
-    <p className="text-xs text-muted-foreground">Audience numbers are deduplicated from the selected order source.</p>
+    <p className="text-xs text-muted-foreground">For agent and subagent SMS, the order source and date picker above controls the exact customer numbers added here.</p>
   </div>}
   <div className="space-y-2">
             <div className="flex items-center justify-between">
