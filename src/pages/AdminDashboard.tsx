@@ -3131,9 +3131,21 @@ const AdminDashboard = () => {
                                     <p className={`text-xs font-semibold ${effectiveProvider ? "text-cyan-400" : "text-muted-foreground"}`}>
                                       {formatProviderName(effectiveProvider)}
                                     </p>
-                                    <span className="inline-flex rounded border border-border bg-background px-2 py-1 text-xs text-foreground">
-                                      Snapshot from order time
-                                    </span>
+  {order.fulfillment_status !== "completed" && order.fulfillment_status !== "delivered" ? (
+  <select
+  aria-label={`Provider for order ${order.id}`}
+  value={(order as any).fulfillment_provider || ""}
+  onChange={(event) => void updateOrderProvider(order, event.target.value)}
+  className="w-36 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
+  >
+  <option value="">Select provider</option>
+  {Object.entries(providerLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+  </select>
+  ) : (
+  <span className="inline-flex rounded border border-border bg-background px-2 py-1 text-xs text-foreground">
+  Locked after fulfillment
+  </span>
+  )}
                                     {Array.isArray((order as any).provider_attempts) && (order as any).provider_attempts.length > 0 && (() => {
                                       const latest = (order as any).provider_attempts.at(-1);
                                       return <p className="text-[10px] text-muted-foreground">{latest?.status || "attempted"}{latest?.created_at ? ` · ${new Date(latest.created_at).toLocaleString()}` : ""}</p>;
