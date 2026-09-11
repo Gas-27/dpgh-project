@@ -97,6 +97,7 @@ const providerLabels: Record<string, string> = {
 };
 
 const formatProviderName = (provider?: string | null) => provider ? (providerLabels[provider.toLowerCase()] || provider) : "Auto / not assigned";
+const normalizeNetworkKey = (network?: string | null) => String(network || "").toLowerCase().replace(/[-\s]/g, "_");
 
 interface SpinSegment {
   type: "gb" | "message";
@@ -121,6 +122,7 @@ const AdminDashboard = () => {
   const [customerExactMatch, setCustomerExactMatch] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrdersFromDB, setFilteredOrdersFromDB] = useState<Order[]>([]);
+  const [fulfillmentRoutes, setFulfillmentRoutes] = useState<Record<string, string>>({});
   const [isFilteringOrders, setIsFilteringOrders] = useState(false);
   const [apiErrors, setAPIErrors] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
@@ -189,6 +191,12 @@ const AdminDashboard = () => {
   // Start with withdrawals tab (loads first)
   const [activeTab, setActiveTab] = useState("orders");
   const [loadedTabs, setLoadedTabs] = useState(new Set<string>()); // Track which tabs have been loaded
+
+  useEffect(() => {
+    if (activeTab !== "orders") return;
+    void supabase.from("network_provider_routes").select("network_key, provider_key").eq("flow", "fulfillment").eq("enabled", true)
+      .then(({ data }) => setFulfillmentRoutes(Object.fromEntries((data ?? []).map((route: any) => [route.network_key, route.provider_key]))));
+  }, [activeTab]);
 
   // Agent-specific pricing state
   const [agentPriceDialogOpen, setAgentPriceDialogOpen] = useState(false);
@@ -1679,6 +1687,11 @@ const AdminDashboard = () => {
         return;
       }
       if (currentOrder.status !== "paid") { toast({ title: "Order not paid yet", variant: "destructive" }); return; }
+      const order = orders.find((item) => item.id === orderId);
+      const provider = order?.fulfillment_provider || fulfillmentRoutes[normalizeNetworkKey(order?.network)] || null;
+      if (provider) {
+        await supabase.from("orders").update({ fulfillment_provider: provider }).eq("id", orderId);
+      }
       const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: orderId } });
       if (error) throw error;
       if (data?.success) {
@@ -3105,6 +3118,7 @@ const AdminDashboard = () => {
                                 sourceBadgeClass = "bg-green-500/10 text-green-400 border-green-500/30";
                               }
                               
+                              const effectiveProvider = (order as any).fulfillment_provider || fulfillmentRoutes[normalizeNetworkKey(order.network)] || null;
                               return (
                               <TableRow key={order.id} className={selectedOrderIds.has(order.id) ? "bg-cyan-500/10" : ""}>
                                 <TableCell style={{ width: "40px" }} className="text-center"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set([...selectedOrderIds, order.id])); } else { const newSet = new Set(selectedOrderIds); newSet.delete(order.id); setSelectedOrderIds(newSet); } }} className="rounded border-border" /></TableCell>
@@ -3113,12 +3127,12 @@ const AdminDashboard = () => {
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell>
                                   <div className="min-w-40 space-y-1">
-                                    <p className={`text-xs font-semibold ${(order as any).fulfillment_provider ? "text-cyan-400" : "text-muted-foreground"}`}>
-                                      {formatProviderName((order as any).fulfillment_provider)}
+                                    <p className={`text-xs font-semibold ${effectiveProvider ? "text-cyan-400" : "text-muted-foreground"}`}>
+                                      {formatProviderName(effectiveProvider)}
                                     </p>
                                     <select
                                       aria-label={`Set provider for order ${order.id}`}
-                                      value={(order as any).fulfillment_provider || ""}
+                                      value={(order as any).fulfillment_provider || effectiveProvider || ""}
                                       onChange={(event) => updateOrderProvider(order, event.target.value)}
                                       className="w-36 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
                                     >
