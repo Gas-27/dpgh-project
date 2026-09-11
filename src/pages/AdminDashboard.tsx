@@ -1695,12 +1695,12 @@ const AdminDashboard = () => {
       if (error) throw error;
       if (data?.success) {
         toast({ title: "Order fulfilled successfully!" });
-        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed", ...(providerOverride ? { fulfillment_provider: providerOverride, provider_attempts: nextAttempts } : {}) } : o));
-        setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed", ...(providerOverride ? { fulfillment_provider: providerOverride, provider_attempts: nextAttempts } : {}) } : o));
+        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed", fulfillment_provider: provider, provider_attempts: nextAttempts } : o));
+        setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed", fulfillment_provider: provider, provider_attempts: nextAttempts } : o));
       } else {
         toast({ title: "Fulfillment failed", description: data?.message || "Check API balance", variant: "destructive" });
-        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed", ...(providerOverride ? { fulfillment_provider: providerOverride, provider_attempts: nextAttempts } : {}) } : o));
-        setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed", ...(providerOverride ? { fulfillment_provider: providerOverride, provider_attempts: nextAttempts } : {}) } : o));
+        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed", fulfillment_provider: provider, provider_attempts: nextAttempts } : o));
+        setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed", fulfillment_provider: provider, provider_attempts: nextAttempts } : o));
       }
     } catch (err: any) {
       toast({ title: "Retry failed", description: err.message, variant: "destructive" });
@@ -3119,7 +3119,7 @@ const AdminDashboard = () => {
                                 sourceBadgeClass = "bg-green-500/10 text-green-400 border-green-500/30";
                               }
                               
-                              const effectiveProvider = (order as any).fulfillment_provider || null;
+                              const effectiveProvider = (order as any).fulfillment_provider || (Array.isArray((order as any).provider_attempts) ? (order as any).provider_attempts.at(-1)?.provider : null) || null;
                               return (
                               <TableRow key={order.id} className={selectedOrderIds.has(order.id) ? "bg-cyan-500/10" : ""}>
                                 <TableCell style={{ width: "40px" }} className="text-center"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set([...selectedOrderIds, order.id])); } else { const newSet = new Set(selectedOrderIds); newSet.delete(order.id); setSelectedOrderIds(newSet); } }} className="rounded border-border" /></TableCell>
