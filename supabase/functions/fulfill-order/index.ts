@@ -236,17 +236,27 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ─── Lock order as processing ────────────────────────────────────────────
-    const { error: lockErr } = await supabase
+    // ─── Atomically claim the order before calling any provider ───────────────
+    // A conditional update plus select prevents concurrent callbacks from both
+    // passing the pending/failed guard and sending the same bundle twice.
+    const { data: claimedOrder, error: lockErr } = await supabase
       .from("orders")
       .update({ fulfillment_status: "processing" })
       .eq("id", order_id)
-      .in("fulfillment_status", ["pending", "failed"]);
+      .in("fulfillment_status", ["pending", "failed"])
+      .select("id")
+      .maybeSingle();
 
     if (lockErr) {
       console.error(`[FULFILL] Failed to lock order: ${lockErr.message}`);
       return new Response(JSON.stringify({ error: "Failed to lock order" }), {
         status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!claimedOrder) {
+      console.log(`[FULFILL] Order ${order_id} was claimed by another request. Skipping.`);
+      return new Response(JSON.stringify({ success: true, message: "Fulfillment already in progress", skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

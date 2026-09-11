@@ -45,6 +45,7 @@ import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistration
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import SmsComposer from "@/components/SmsComposer";
+import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import ComplaintsManager from "@/components/ComplaintsManager";
@@ -290,7 +291,7 @@ Managing: Toggle Active/Inactive to show or hide without deleting. Delete to rem
 
 • Store Name – displayed on your storefront and used to generate your store URL.
 • WhatsApp Number – customers can message you on this number.
-• Support Number – shown in the footer of your promotional flyer.
+• Support Number ��� shown in the footer of your promotional flyer.
 • WhatsApp Group Link – optional link for customers to join your group/channel.
 • Show Group Icon – toggle the WhatsApp join button on your store (on by default).
 • MoMo Name / Number / Network – for processing withdrawals.
@@ -2391,7 +2392,8 @@ return (
           {/* ============================= OVERVIEW ============================= */}
           <TabsContent value="approvals" className="space-y-6 mt-0"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="agent-dashboard" storeId={store?.id} /></CardContent></Card></TabsContent>
   <TabsContent value="overview" className="space-y-6 mt-0">
-                        <Card className="hidden border-primary/30 bg-primary/5">
+  <SpinToWinCard target="agent" />
+  <Card className="hidden border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
                 <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><div><p className="font-display font-bold text-foreground">📖 Dashboard Instruction Manual</p><p className="text-xs text-muted-foreground">Tap to {manualOpen ? "hide" : "view"} a full guide on how every section works</p></div></div>
                 {manualOpen ? <ChevronUp className="h-5 w-5 text-primary" /> : <ChevronDown className="h-5 w-5 text-primary" />}

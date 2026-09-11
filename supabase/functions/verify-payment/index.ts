@@ -30,9 +30,17 @@ Deno.serve(async (req) => {
     }
 
     // Verify payment with Paystack
-    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-      headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-    });
+    const verifyController = new AbortController();
+    const verifyTimeout = setTimeout(() => verifyController.abort(), 15000);
+    let verifyRes: Response;
+    try {
+      verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+        headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, Accept: "application/json" },
+        signal: verifyController.signal,
+      });
+    } finally {
+      clearTimeout(verifyTimeout);
+    }
 
     const verifyData = await verifyRes.json();
     console.log("[v0] Paystack verification response:", verifyData.data?.status);
@@ -906,6 +914,7 @@ Deno.serve(async (req) => {
       // Agent/subagent orders intentionally remain attributed to their store.
       customer_id: resolvedCustomerId,
       user_id: resolvedCustomerId,
+      purchase_provider: String(metadata.purchase_provider || metadata.provider || "auto").trim().toLowerCase() || "auto",
     };
     
     if (pkgAgentStoreId) {

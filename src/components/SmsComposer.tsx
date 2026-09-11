@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import OrderContactPicker from "@/components/OrderContactPicker";
 
 type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string; publicMode?: boolean; hideSenderPhone?: boolean };
+type SmsAudience = "all" | "recent" | "inactive";
 type Sender = {
   id: string;
   sender_id: string;
@@ -125,6 +126,8 @@ const toEmbedUrl = (url: string): string => {
 };
 
 export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStoreUrl, publicMode = false, hideSenderPhone = false }: SmsComposerProps) {
+  const [audience, setAudience] = useState<SmsAudience>("all");
+  const [audienceLoading, setAudienceLoading] = useState(false);
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -237,6 +240,35 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       : supabase.from(ownerTable).select("store_name_slug,id").eq("user_id", uid).maybeSingle();
     const { data } = await query;
     if (data) setStoreLink(`https://dataplug.store/store/${data.store_name_slug || data.id}`);
+  };
+
+  const loadAudience = async (nextAudience: SmsAudience) => {
+    setAudience(nextAudience);
+    if (publicMode || nextAudience === "all") return;
+    setAudienceLoading(true);
+    try {
+      const column = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : ownerType === "subsubagent" ? "sub_subagent_store_id" : "customer_id";
+      let query = supabase.from("orders").select("customer_number,created_at").not("customer_number", "is", null).order("created_at", { ascending: false }).limit(2000);
+      if (ownerType === "customer") {
+        const { data: auth } = await supabase.auth.getUser();
+        if (!auth.user?.id) throw new Error("Your sign-in session has expired.");
+        query = query.eq("customer_id", auth.user.id);
+      } else if (ownerId) query = query.eq(column, ownerId);
+      const { data, error } = await query;
+      if (error) throw error;
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const phones = new Set<string>();
+      for (const order of data || []) {
+        const phone = normalizeGh(String(order.customer_number || ""));
+        if (!phone) continue;
+        const recent = new Date(order.created_at).getTime() >= cutoff;
+        if ((nextAudience === "recent" && recent) || (nextAudience === "inactive" && !recent)) phones.add(phone);
+      }
+      setRecipients(Array.from(phones).join(","));
+      toast({ title: "Audience loaded", description: `${phones.size} unique customer number${phones.size === 1 ? "" : "s"} selected.` });
+    } catch (error) {
+      toast({ title: "Could not load audience", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+    } finally { setAudienceLoading(false); }
   };
 
   const loadSettings = async () => {
@@ -535,9 +567,18 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
             </div>
           </div>
 
-          {/* Recipients */}
-          {!publicMode && (ownerType === "agent" || ownerType === "subagent" || ownerType === "subsubagent") && <OrderContactPicker ownerType={ownerType} ownerId={ownerId} onContacts={setRecipients} />}
-          <div className="space-y-2">
+  {/* Recipients */}
+  {!publicMode && (ownerType === "agent" || ownerType === "subagent" || ownerType === "subsubagent") && <OrderContactPicker ownerType={ownerType} ownerId={ownerId} onContacts={setRecipients} />}
+  {!publicMode && <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+    <Label htmlFor="sms-audience">Customer audience</Label>
+    <select id="sms-audience" value={audience} onChange={(event) => void loadAudience(event.target.value as SmsAudience)} disabled={audienceLoading} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+      <option value="all">All customers</option>
+      <option value="recent">Bought in the last 30 days</option>
+      <option value="inactive">Haven&apos;t bought in the last 30 days</option>
+    </select>
+    <p className="text-xs text-muted-foreground">Audience numbers are deduplicated from orders for this dashboard owner.</p>
+  </div>}
+  <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Recipients ({numbers.length})</Label>
             </div>

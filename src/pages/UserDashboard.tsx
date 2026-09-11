@@ -28,6 +28,7 @@ import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
+import { SpinToWinCard } from "@/components/SpinToWinCard";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
@@ -995,6 +996,8 @@ const UserDashboard = () => {
           </button>
         </CardContent>
       </Card>
+
+      <SpinToWinCard target="packages" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
