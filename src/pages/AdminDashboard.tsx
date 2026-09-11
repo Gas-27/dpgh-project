@@ -68,7 +68,7 @@ interface UserProfile {
 interface Order {
   id: string; customer_number: string; network: string; size_gb: number; amount: number;
   status: string; fulfillment_status: string; api_response: string | null;
-  paystack_reference: string | null; created_at: string | null; agent_store_id: string | null; purchase_provider?: string | null;
+  paystack_reference: string | null; created_at: string | null; agent_store_id: string | null;
   payment_method: string; subagent_store_id?: string | null; customer_id?: string | null;
   api_user?: string | null; package_id?: string | null; base_price?: number | null;
   agent_price?: number | null; refunded_amount?: number | null;
@@ -184,7 +184,7 @@ const AdminDashboard = () => {
   const orderSearch = useDatabaseSearch<Order>(
     "orders",
     "customer_number",
-    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, purchase_provider, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id"
+    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id"
   );
   
   const profileSearch = useDatabaseSearch<UserProfile>(
@@ -3087,21 +3087,18 @@ const AdminDashboard = () => {
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell>
-                                  <div className="space-y-1">
-                                    <Badge variant="outline" className="text-xs">{order.purchase_provider || "legacy"}</Badge>
-                                    <select
-                                      aria-label={`Fulfillment provider override for order ${order.id}`}
-                                      value={(order as any).fulfillment_provider || ""}
-                                      onChange={(event) => updateOrderProvider(order, event.target.value)}
-                                      className="w-32 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-                                    >
-                                      <option value="">Auto fulfillment</option>
-                                      <option value="spaceship">Spaceship</option>
-                                      <option value="bossudata">BossuData</option>
-                                      <option value="cledanet">Cledanet</option>
-                                      <option value="ghdataconnect">GHDataConnect</option>
-                                    </select>
-                                  </div>
+                                  <select
+                                    aria-label={`Provider for order ${order.id}`}
+                                    value={(order as any).fulfillment_provider || ""}
+                                    onChange={(event) => updateOrderProvider(order, event.target.value)}
+                                    className="w-32 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
+                                  >
+                                    <option value="">Auto</option>
+                                    <option value="spaceship">Spaceship</option>
+                                    <option value="bossudata">BossuData</option>
+                                    <option value="cledanet">Cledanet</option>
+                                    <option value="ghdataconnect">GHDataConnect</option>
+                                  </select>
                                   {Array.isArray((order as any).provider_attempts) && (order as any).provider_attempts.length > 0 && (
                                     <p className="mt-1 text-[10px] text-muted-foreground">{(order as any).provider_attempts.length} attempt{(order as any).provider_attempts.length === 1 ? "" : "s"}</p>
                                   )}

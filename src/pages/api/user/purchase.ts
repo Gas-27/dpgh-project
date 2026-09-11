@@ -84,7 +84,6 @@ export default async function handler(
         base_price: amount,
         profit: 0,
         profit_credited: false,
-        purchase_provider: "api",
       })
       .select('id')
       .single();
