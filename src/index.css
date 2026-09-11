@@ -6,36 +6,36 @@
 
 @layer base {
   :root {
-    /* Liquid Glass - Deep Dark Theme */
-    --background: 215 25% 6%;
-    --foreground: 0 0% 98%;
+    /* Bright marketplace palette */
+    --background: 220 36% 97%;
+    --foreground: 222 47% 14%;
 
-    --card: 215 20% 12%;
-    --card-foreground: 0 0% 96%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 14%;
 
-    --popover: 215 20% 12%;
-    --popover-foreground: 0 0% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 14%;
 
-    /* Primary: Cyan/Blue accent */
-    --primary: 190 95% 55%;
-    --primary-foreground: 215 25% 6%;
+    /* Primary: vivid cyan */
+    --primary: 190 92% 45%;
+    --primary-foreground: 222 47% 14%;
 
-    /* Secondary: Deep slate */
-    --secondary: 215 15% 20%;
-    --secondary-foreground: 0 0% 96%;
+    /* Secondary: soft blue-lilac */
+    --secondary: 228 52% 94%;
+    --secondary-foreground: 222 47% 20%;
 
-    --muted: 215 15% 28%;
-    --muted-foreground: 0 0% 68%;
+    --muted: 220 24% 92%;
+    --muted-foreground: 222 20% 42%;
 
-    --accent: 190 95% 55%;
-    --accent-foreground: 215 25% 6%;
+    --accent: 267 86% 67%;
+    --accent-foreground: 222 47% 14%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 96%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 215 20% 20%;
-    --input: 215 20% 18%;
-    --ring: 190 95% 55%;
+    --border: 220 24% 86%;
+    --input: 220 24% 88%;
+    --ring: 190 92% 45%;
 
     --radius: 1rem;
 
@@ -43,14 +43,14 @@
     --telecel: 0 84% 60%;
     --airteltigo: 0 84% 60%;
 
-    --sidebar-background: 215 25% 8%;
-    --sidebar-foreground: 0 0% 96%;
-    --sidebar-primary: 190 95% 55%;
-    --sidebar-primary-foreground: 215 25% 6%;
-    --sidebar-accent: 215 20% 25%;
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 215 20% 20%;
-    --sidebar-ring: 190 95% 55%;
+    --sidebar-background: 228 52% 98%;
+    --sidebar-foreground: 222 47% 14%;
+    --sidebar-primary: 190 92% 45%;
+    --sidebar-primary-foreground: 222 47% 14%;
+    --sidebar-accent: 267 86% 94%;
+    --sidebar-accent-foreground: 222 47% 20%;
+    --sidebar-border: 220 24% 86%;
+    --sidebar-ring: 190 92% 45%;
 
     font-family: 'Inter', sans-serif;
   }
@@ -90,7 +90,7 @@
   html {
     height: 100%;
     width: 100%;
-    background: url('/site-background.png') center/cover fixed no-repeat;
+    background: linear-gradient(135deg, hsl(220 36% 97%), hsl(228 52% 94%)) center/cover fixed no-repeat;
   }
 
   body {
@@ -108,15 +108,15 @@
 @layer components {
   /* Glass morphism effect - Refined with minimal opacity */
   .glass {
-    @apply backdrop-blur-md bg-white/[0.03] border border-white/[0.10] rounded-xl;
+    @apply backdrop-blur-md bg-white/80 border border-white/90 rounded-xl shadow-sm;
   }
 
   .glass-sm {
-    @apply backdrop-blur-md bg-white/[0.02] border border-white/[0.08] rounded-lg;
+    @apply backdrop-blur-md bg-white/75 border border-white/90 rounded-lg shadow-sm;
   }
 
   .glass-lg {
-    @apply backdrop-blur-xl bg-white/[0.04] border border-white/[0.12] rounded-2xl;
+    @apply backdrop-blur-xl bg-white/85 border border-white/90 rounded-2xl shadow-md;
   }
 
   /* Colored glass variants with accent borders */
@@ -146,12 +146,12 @@
   }
 
   .smooth-hover {
-    @apply smooth-transition hover:bg-white/[0.08] hover:border-white/[0.15];
+    @apply smooth-transition hover:bg-white hover:border-primary/40 hover:shadow-md;
   }
 
   /* Refined glass button */
   .glass-button-refined {
-    @apply backdrop-blur-md bg-white/[0.02] border border-white/[0.10] rounded-xl px-4 py-2 smooth-transition hover:bg-white/[0.06] hover:border-white/[0.15];
+    @apply backdrop-blur-md bg-white/80 border border-primary/20 rounded-xl px-4 py-2 smooth-transition hover:bg-primary/10 hover:border-primary/40;
   }
 
   /* Glow effects */
