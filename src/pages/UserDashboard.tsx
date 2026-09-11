@@ -997,7 +997,7 @@ const UserDashboard = () => {
         </CardContent>
       </Card>
 
-      <SpinToWinCard target="packages" />
+      <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="packages" /><Button type="button" size="sm" variant="outline" onClick={() => setActiveMenu("withdraw")}>Withdraw</Button></div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

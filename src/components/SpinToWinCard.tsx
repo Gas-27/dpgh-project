@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { SpinWheelPopup, type SpinWheelPopupProps } from "@/pages/Packages";
 
@@ -30,14 +29,6 @@ export function SpinToWinCard({ target }: { target: "packages" | "agent" | "suba
 
   if (!config?.enabled || !(config.placement_targets ?? ["all"]).some((item) => targetAliases[target].includes(item))) return null;
 
-  const period = config.eligibility_period === "week" ? "this week" : "today";
-  const requirement = config.eligibility_mode === "order_count" && (config.minimum_order_count ?? 0) > 0
-    ? `Complete ${config.minimum_order_count} order${config.minimum_order_count === 1 ? "" : "s"} ${period} before you spin.`
-    : config.eligibility_mode === "order_amount" && (config.minimum_order_amount ?? 0) > 0
-      ? `Buy at least GHC ${Number(config.minimum_order_amount).toFixed(2)} in data ${period} before you spin.`
-      : config.eligibility_mode === "order_gb" && (config.minimum_order_gb ?? 0) > 0
-        ? `Order at least ${Number(config.minimum_order_gb)}GB or have a total of ${Number(config.minimum_order_gb)}GB in orders ${period} before you spin.`
-        : "No purchase requirement. Spin for a chance to win free data.";
   const limit = config.auto_disable_order_limit ?? 50;
 
   return (
@@ -47,18 +38,7 @@ export function SpinToWinCard({ target }: { target: "packages" | "agent" | "suba
           <Gift className="mr-2 h-4 w-4" />Win Free Data ({config.eligibility_mode === "unrestricted" ? "Free" : "Eligibility Required"})
         </Button>
         {config.auto_disable_enabled && <p className="text-xs text-muted-foreground">{config.display_spin_orders ?? 0} / {limit} prizes claimed</p>}
-        <div className="mt-1 flex w-full max-w-sm items-center gap-2 rounded-md border border-primary/20 bg-muted/30 px-2 py-1">
-          <span className="sr-only">Spin rules</span>
-          <Select value={config.eligibility_period ?? "day"} disabled>
-            <SelectTrigger className="h-7 flex-1 border-0 bg-transparent px-2 text-[11px] shadow-none"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="day">Today</SelectItem><SelectItem value="week">This week</SelectItem></SelectContent>
-          </Select>
-          <Select value={config.eligibility_mode ?? "unrestricted"} disabled>
-            <SelectTrigger className="h-7 flex-[1.5] border-0 bg-transparent px-2 text-[11px] shadow-none"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="unrestricted">Free spin</SelectItem><SelectItem value="order_count">Orders required</SelectItem><SelectItem value="order_amount">Amount required</SelectItem><SelectItem value="order_gb">GB required</SelectItem></SelectContent>
-          </Select>
-        </div>
-        <p className="max-w-sm text-center text-[11px] text-muted-foreground">{requirement}{config.auto_disable_enabled ? ` Promotion closes after ${limit} prizes.` : ""}</p>
+
       </section>
       <SpinWheelPopup open={open} onOpenChange={setOpen} config={config} />
     </>
