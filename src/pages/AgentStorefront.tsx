@@ -1099,7 +1099,7 @@ const searchOrders = useCallback(async (input?: string) => {
       {store && theme.showShareStore !== false && (
         <div className="relative px-4 py-6 overflow-hidden">
           <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)` }} />
-          <div className="container mx-auto max-w-3xl relative z-10">
+          <div className="container mx-auto max-w-none relative z-10">
             <div className="rounded-xl border-2 p-6 backdrop-blur-sm" style={{ borderColor: `${primaryColor}40`, backgroundColor: `${primaryColor}08` }}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex-1">
@@ -1170,7 +1170,7 @@ const searchOrders = useCallback(async (input?: string) => {
       ) : activeCategory === "services" ? (
         <div className="container pb-20"><DigitalServicesCatalog agentStoreId={store?.id} onBuy={setSelectedService} /></div>
       ) : activeCategory === "sms" ? (
-        <div className="container pb-20"><Card className="mx-auto max-w-4xl border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card></div>
+        <div className="container pb-20"><Card className="mx-auto max-w-none border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card></div>
       ) : activeCategory === "data" ? (
         <>
           {/* ── Order Tracking ── */}
@@ -1461,7 +1461,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         </>
       ) : activeCategory === "bulk" ? (
         <div className="container pb-20">
-          <Card className="border-primary/30 bg-primary/5 max-w-3xl mx-auto">
+          <Card className="border-primary/30 bg-primary/5 max-w-none mx-auto">
             <CardContent className="p-6 space-y-6">
               <div className="text-center mb-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
@@ -1755,7 +1755,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         </DraggableFAB>
       )}
 
-      {selectedProduct && <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{selectedProduct.title}</DialogTitle><DialogDescription>Product details and available images</DialogDescription></DialogHeader><div className="grid gap-6 md:grid-cols-[1.2fr_1fr]"><div className="space-y-3"><div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted">{selectedProduct.image_urls?.[selectedProductImage] ? <img src={selectedProduct.image_urls[selectedProductImage]} alt={`${selectedProduct.title} image ${selectedProductImage + 1}`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image available</div>}</div>{selectedProduct.image_urls?.length > 1 && <div className="grid grid-cols-4 gap-2">{selectedProduct.image_urls.map((image, index) => <button type="button" key={image} onClick={() => setSelectedProductImage(index)} className={`aspect-square overflow-hidden rounded-lg border-2 ${selectedProductImage === index ? "border-primary" : "border-transparent"}`}><img src={image} alt={`${selectedProduct.title} thumbnail ${index + 1}`} className="h-full w-full object-cover" /></button>)}</div>}</div><div className="space-y-4"><div><p className="text-sm text-muted-foreground">Price</p><p className="text-2xl font-bold" style={{ color: primaryColor }}>GHS {Number(selectedProduct.price).toFixed(2)}</p></div><div><p className="text-sm text-muted-foreground">Details</p><p className="whitespace-pre-wrap leading-relaxed">{selectedProduct.description || "No additional details provided."}</p></div><Button className="w-full" onClick={() => window.open(`https://wa.me/${String(store?.support_phone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I want to buy ${selectedProduct.title} for GHS ${Number(selectedProduct.price).toFixed(2)}.`)}`, "_blank")}>Buy this product</Button></div></div></DialogContent></Dialog>}
+      {selectedProduct && <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}><DialogContent className="max-w-none"><DialogHeader><DialogTitle>{selectedProduct.title}</DialogTitle><DialogDescription>Product details and available images</DialogDescription></DialogHeader><div className="grid gap-6 md:grid-cols-[1.2fr_1fr]"><div className="space-y-3"><div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted">{selectedProduct.image_urls?.[selectedProductImage] ? <img src={selectedProduct.image_urls[selectedProductImage]} alt={`${selectedProduct.title} image ${selectedProductImage + 1}`} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image available</div>}</div>{selectedProduct.image_urls?.length > 1 && <div className="grid grid-cols-4 gap-2">{selectedProduct.image_urls.map((image, index) => <button type="button" key={image} onClick={() => setSelectedProductImage(index)} className={`aspect-square overflow-hidden rounded-lg border-2 ${selectedProductImage === index ? "border-primary" : "border-transparent"}`}><img src={image} alt={`${selectedProduct.title} thumbnail ${index + 1}`} className="h-full w-full object-cover" /></button>)}</div>}</div><div className="space-y-4"><div><p className="text-sm text-muted-foreground">Price</p><p className="text-2xl font-bold" style={{ color: primaryColor }}>GHS {Number(selectedProduct.price).toFixed(2)}</p></div><div><p className="text-sm text-muted-foreground">Details</p><p className="whitespace-pre-wrap leading-relaxed">{selectedProduct.description || "No additional details provided."}</p></div><Button className="w-full" onClick={() => window.open(`https://wa.me/${String(store?.support_phone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I want to buy ${selectedProduct.title} for GHS ${Number(selectedProduct.price).toFixed(2)}.`)}`, "_blank")}>Buy this product</Button></div></div></DialogContent></Dialog>}
 
   {/* Payment dialog */}
   {selectedService && <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => !open && setSelectedService(null)} />}

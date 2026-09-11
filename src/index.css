@@ -177,6 +177,14 @@
 }
 
 @layer utilities {
+  /* Use the full viewport for app shells; inner forms can still opt into max-width. */
+  .container {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+    padding-inline: clamp(1rem, 3vw, 3rem);
+  }
+
   .font-display {
     font-family: 'Sora', sans-serif;
   }
