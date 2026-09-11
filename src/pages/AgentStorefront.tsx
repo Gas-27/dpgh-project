@@ -631,7 +631,7 @@ const AgentStorefront = () => {
     primary_foreground: "#ffffff",
     background: "#0f0f0f",
     card_background: "linear-gradient(135deg, #2d1b69 0%, #1a0a3e 100%)",
-    gridColumns: 2,
+    gridColumns: 1,
     gb_text_color: "#ffffff",
     price_text_color: "#ffffff",
     button_text_color: "#ffffff",
@@ -640,7 +640,7 @@ const AgentStorefront = () => {
   };
 
   const theme = store?.theme_config || defaultTheme;
-  const gridColumns = theme.gridColumns || 2;
+  const gridColumns = Math.min(2, Math.max(1, Number(theme.gridColumns) || 1));
   const cardRadius = theme.cardRadius ?? 12;
   const cardShadow = theme.cardShadow !== false;
   const savedLayout = theme.layout || ["header", "delivery", "categories", "tracking", "products"];
@@ -664,7 +664,7 @@ const AgentStorefront = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // ── Price refresh ──
+  // ── Price refresh ─���
   const refreshPrices = useCallback(async () => {
     if (!store?.id || fetchingRef.current) return;
     fetchingRef.current = true;
@@ -1358,7 +1358,7 @@ const searchOrders = useCallback(async (input?: string) => {
           <div className="container pb-20">
             <div
 className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-  style={{ gridTemplateColumns: `repeat(${Math.min(6, Math.max(1, Number(gridColumns) || 2))}, minmax(0, 1fr))` }}
+  style={{ gridTemplateColumns: `repeat(${Math.min(2, Math.max(1, Number(gridColumns) || 1))}, minmax(0, 1fr))` }}
             >
               {loading ? (
                 <div className="col-span-full flex items-center justify-center py-12">

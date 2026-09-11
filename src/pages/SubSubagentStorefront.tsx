@@ -168,7 +168,7 @@ const defaultTheme = {
   primary_foreground: "#ffffff",
   background: "#09090b",
   card_background: "#18181b",
-  gridColumns: 2,
+  gridColumns: 1,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -508,7 +508,7 @@ export function SubSubagentStorefront() {
   const primaryForeground = theme.primary_foreground || defaultTheme.primary_foreground;
   const bgColor = theme.background || defaultTheme.background;
   const cardBg = theme.card_background || defaultTheme.card_background;
-  const gridColumns = theme.gridColumns || 2;
+  const gridColumns = Math.min(2, Math.max(1, Number(theme.gridColumns) || 1));
 
   // ── Update page metadata when store loads ──
   useEffect(() => {

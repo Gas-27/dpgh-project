@@ -1396,7 +1396,7 @@ const AgentDashboard = () => {
     setSavingTheme(false);
   };
   const resetToDefault = () => setThemeColors(DEFAULT_THEME);
-  const changeColumns = (d: number) => setThemeColors({ ...themeColors, gridColumns: Math.min(6, Math.max(1, (themeColors.gridColumns || 2) + d)) });
+  const changeColumns = (d: number) => setThemeColors({ ...themeColors, gridColumns: Math.min(2, Math.max(1, (themeColors.gridColumns || 1) + d)) });
 
   const saveStoreHeadline = async () => {
     if (!store) return; setSavingHeadline(true);

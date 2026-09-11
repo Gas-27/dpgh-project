@@ -1221,9 +1221,10 @@ const Packages = () => {
   // server-side and keep the confirmation visible instead of leaving the visitor unsure.
   useEffect(() => {
     if (searchParams.get("service_payment") !== "verifying") return;
-    const reference = sessionStorage.getItem("pending_service_payment");
-    if (!reference) return;
-    supabase.functions.invoke("verify-payment", { body: { reference } }).then(async ({ data, error }) => {
+    const pendingRaw = sessionStorage.getItem("pending_service_payment");
+    if (!pendingRaw) return;
+    const pending = JSON.parse(pendingRaw) as { reference: string; serviceName?: string; serviceType?: string; price?: number; phone?: string };
+    supabase.functions.invoke("verify-payment", { body: { reference: pending.reference } }).then(async ({ data, error }) => {
       if (error || data?.error) {
         let detail = data?.error || error?.message || "The payment could not be verified yet.";
         try { const body = error?.context ? await error.context.clone().json() : null; detail = body?.error || detail; } catch { /* keep fallback */ }
@@ -1231,7 +1232,9 @@ const Packages = () => {
         return;
       }
       sessionStorage.removeItem("pending_service_payment");
-      toast({ title: "Service payment successful", description: "Your access has been assigned. Enter your phone and access code to open it." });
+      toast({ title: "Service payment successful", description: "Your access has been assigned. Opening WhatsApp with your purchase details." });
+      const whatsappText = encodeURIComponent(`Private service purchase confirmed.\n\nService: ${pending.serviceName || "Digital service"}\nShare: ${pending.serviceType === "private_shared" ? "Private share" : "Public share"}\nPaid: GHC ${Number(pending.price || 0).toFixed(2)}\nCustomer phone: ${pending.phone || "Not provided"}\nOrder code: ${pending.reference}\n\nPlease process my purchase.`);
+      window.location.assign(`https://wa.me/233274467682?text=${whatsappText}`);
     });
   }, [searchParams, toast]);
 
@@ -1305,17 +1308,6 @@ const Packages = () => {
       // Clear URL params without reload
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [toast]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const reference = params.get("reference");
-    if (params.get("service_payment") !== "verifying" || !reference) return;
-    supabase.functions.invoke("verify-payment", { body: { reference } }).then(({ data, error }) => {
-      if (error || !data?.success) toast({ title: "Service payment could not be verified", description: "Please contact support with your payment reference.", variant: "destructive" });
-      else toast({ title: "Service payment confirmed", description: "Your service access has been assigned. Use Activate on the service to continue." });
-      window.history.replaceState({}, "", window.location.pathname);
-    });
   }, [toast]);
 
   useEffect(() => {
