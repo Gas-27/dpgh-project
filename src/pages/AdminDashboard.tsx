@@ -68,7 +68,6 @@ interface UserProfile {
 interface Order {
   id: string; customer_number: string; network: string; size_gb: number; amount: number;
   status: string; fulfillment_status: string; api_response: string | null;
-  fulfillment_provider?: string | null; provider_attempts?: Array<{ provider?: string; status?: string; source?: string; reference?: string; created_at?: string }> | null;
   paystack_reference: string | null; created_at: string | null; agent_store_id: string | null;
   payment_method: string; subagent_store_id?: string | null; customer_id?: string | null;
   api_user?: string | null; package_id?: string | null; base_price?: number | null;
@@ -83,22 +82,6 @@ interface TopupRecord {
   id: string; agent_store_id: string; amount: number; created_at: string;
   agent_stores: { store_name: string; topup_reference: string; wallet_balance: number; momo_name: string; } | null;
 }
-
-const providerLabels: Record<string, string> = {
-  spaceship: "Spaceship",
-  bossudata: "BossuData",
-  cledanet: "Cledanet",
-  ghdataconnect: "GH Data Connect",
-  datahubnet: "Datahubnet",
-  spendless: "Spendless",
-  orisjay: "Orisjay",
-  fricopay: "Fricopay",
-  dakazina: "Dakazina",
-};
-
-const formatProviderName = (provider?: string | null) => provider ? (providerLabels[provider.toLowerCase()] || provider) : "Auto / not assigned";
-const normalizeNetworkKey = (network?: string | null) => String(network || "").toLowerCase().replace(/[-\s]/g, "_");
-
 interface SpinSegment {
   type: "gb" | "message";
   value: number | string;
@@ -122,7 +105,6 @@ const AdminDashboard = () => {
   const [customerExactMatch, setCustomerExactMatch] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrdersFromDB, setFilteredOrdersFromDB] = useState<Order[]>([]);
-
   const [isFilteringOrders, setIsFilteringOrders] = useState(false);
   const [apiErrors, setAPIErrors] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
@@ -192,7 +174,6 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("orders");
   const [loadedTabs, setLoadedTabs] = useState(new Set<string>()); // Track which tabs have been loaded
 
-
   // Agent-specific pricing state
   const [agentPriceDialogOpen, setAgentPriceDialogOpen] = useState(false);
   const [selectedAgentForPricing, setSelectedAgentForPricing] = useState<AgentStore | null>(null);
@@ -203,7 +184,7 @@ const AdminDashboard = () => {
   const orderSearch = useDatabaseSearch<Order>(
     "orders",
     "customer_number",
-    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, fulfillment_provider, provider_attempts, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id"
+    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id"
   );
   
   const profileSearch = useDatabaseSearch<UserProfile>(
@@ -1667,13 +1648,13 @@ const AdminDashboard = () => {
     }
   };
 
-  const retryOrder = async (orderId: string, providerOverride?: string) => {
+  const retryOrder = async (orderId: string) => {
     if (retryingOrders.has(orderId)) return;
     setRetryingOrders((prev) => new Set(prev).add(orderId));
     try {
       const { data: currentOrder } = await supabase
         .from("orders")
-        .select("fulfillment_status, status, fulfillment_provider, provider_attempts")
+        .select("fulfillment_status, status")
         .eq("id", orderId)
         .single();
       if (!currentOrder) { toast({ title: "Order not found" }); return; }
@@ -1682,25 +1663,14 @@ const AdminDashboard = () => {
         return;
       }
       if (currentOrder.status !== "paid") { toast({ title: "Order not paid yet", variant: "destructive" }); return; }
-      const provider = providerOverride || currentOrder.fulfillment_provider;
-      const attempts = Array.isArray(currentOrder.provider_attempts) ? currentOrder.provider_attempts : [];
-      const nextAttempts = provider && provider !== currentOrder.fulfillment_provider
-        ? [...attempts, { provider, status: "retry_selected", source: "admin", created_at: new Date().toISOString() }]
-        : attempts;
-      if (providerOverride && providerOverride !== currentOrder.fulfillment_provider) {
-        const { error: providerError } = await supabase.from("orders").update({ fulfillment_provider: providerOverride, provider_attempts: nextAttempts }).eq("id", orderId);
-        if (providerError) throw providerError;
-      }
-      const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: orderId, provider } });
+      const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: orderId } });
       if (error) throw error;
       if (data?.success) {
         toast({ title: "Order fulfilled successfully!" });
-        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed", fulfillment_provider: provider, provider_attempts: nextAttempts } : o));
-        setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed", fulfillment_provider: provider, provider_attempts: nextAttempts } : o));
+        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed" } : o));
       } else {
         toast({ title: "Fulfillment failed", description: data?.message || "Check API balance", variant: "destructive" });
-        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed", fulfillment_provider: provider, provider_attempts: nextAttempts } : o));
-        setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed", fulfillment_provider: provider, provider_attempts: nextAttempts } : o));
+        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed" } : o));
       }
     } catch (err: any) {
       toast({ title: "Retry failed", description: err.message, variant: "destructive" });
@@ -1740,15 +1710,9 @@ const AdminDashboard = () => {
   // Toggle order fulfillment status
   const toggleOrderFulfillment = async (orderId: string, currentStatus: string) => {
     const newStatus = currentStatus === "completed" ? "pending" : "completed";
-    const order = orders.find((item) => item.id === orderId);
-    const attempts = Array.isArray(order?.provider_attempts) ? order.provider_attempts : [];
-    const provider = order?.fulfillment_provider || null;
-    const nextAttempts = provider
-      ? [...attempts, { provider, status: newStatus, source: "admin", created_at: new Date().toISOString() }]
-      : attempts;
     const { error } = await supabase
       .from("orders")
-      .update({ fulfillment_status: newStatus, provider_attempts: nextAttempts })
+      .update({ fulfillment_status: newStatus })
       .eq("id", orderId);
     
     if (error) {
@@ -1757,10 +1721,7 @@ const AdminDashboard = () => {
     }
 
     setOrders((prev) =>
-      prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: newStatus, provider_attempts: nextAttempts } : o)
-    );
-    setFilteredOrdersFromDB((prev) =>
-      prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: newStatus, provider_attempts: nextAttempts } : o)
+      prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: newStatus } : o)
     );
 
     const action = newStatus === "completed" ? "marked as completed" : "marked as pending";
@@ -3119,7 +3080,6 @@ const AdminDashboard = () => {
                                 sourceBadgeClass = "bg-green-500/10 text-green-400 border-green-500/30";
                               }
                               
-                              const effectiveProvider = (order as any).fulfillment_provider || (Array.isArray((order as any).provider_attempts) ? (order as any).provider_attempts.at(-1)?.provider : null) || null;
                               return (
                               <TableRow key={order.id} className={selectedOrderIds.has(order.id) ? "bg-cyan-500/10" : ""}>
                                 <TableCell style={{ width: "40px" }} className="text-center"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set([...selectedOrderIds, order.id])); } else { const newSet = new Set(selectedOrderIds); newSet.delete(order.id); setSelectedOrderIds(newSet); } }} className="rounded border-border" /></TableCell>
@@ -3127,30 +3087,21 @@ const AdminDashboard = () => {
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell>
-                                  <div className="min-w-40 space-y-1">
-                                    <p className={`text-xs font-semibold ${effectiveProvider ? "text-cyan-400" : "text-muted-foreground"}`}>
-                                      {formatProviderName(effectiveProvider)}
-                                    </p>
-  {order.fulfillment_status === "failed" ? (
-  <select
-  aria-label={`Provider for order ${order.id}`}
-  value={(order as any).fulfillment_provider || ""}
-  onChange={(event) => void updateOrderProvider(order, event.target.value)}
-  className="w-36 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-  >
-  <option value="">Select provider</option>
-  {Object.entries(providerLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-  </select>
-  ) : (
-  <span className="inline-flex rounded border border-border bg-background px-2 py-1 text-xs text-foreground">
-  Locked to this order
-  </span>
-  )}
-                                    {Array.isArray((order as any).provider_attempts) && (order as any).provider_attempts.length > 0 && (() => {
-                                      const latest = (order as any).provider_attempts.at(-1);
-                                      return <p className="text-[10px] text-muted-foreground">{latest?.status || "attempted"}{latest?.created_at ? ` · ${new Date(latest.created_at).toLocaleString()}` : ""}</p>;
-                                    })()}
-                                  </div>
+                                  <select
+                                    aria-label={`Provider for order ${order.id}`}
+                                    value={(order as any).fulfillment_provider || ""}
+                                    onChange={(event) => updateOrderProvider(order, event.target.value)}
+                                    className="w-32 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
+                                  >
+                                    <option value="">Auto</option>
+                                    <option value="spaceship">Spaceship</option>
+                                    <option value="bossudata">BossuData</option>
+                                    <option value="cledanet">Cledanet</option>
+                                    <option value="ghdataconnect">GHDataConnect</option>
+                                  </select>
+                                  {Array.isArray((order as any).provider_attempts) && (order as any).provider_attempts.length > 0 && (
+                                    <p className="mt-1 text-[10px] text-muted-foreground">{(order as any).provider_attempts.length} attempt{(order as any).provider_attempts.length === 1 ? "" : "s"}</p>
+                                  )}
                                 </TableCell>
                                 <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
                                 <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
@@ -3279,23 +3230,9 @@ const AdminDashboard = () => {
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
                                     {order.fulfillment_status !== "completed" && order.fulfillment_status !== "delivered" && (
-                                      <>
-                                        <select
-                                          aria-label={`Provider for retrying order ${order.id}`}
-                                          defaultValue={(order as any).fulfillment_provider || ""}
-                                          className="w-32 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-                                          id={`retry-provider-${order.id}`}
-                                        >
-                                          <option value="">Keep current</option>
-                                          {Object.entries(providerLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                                        </select>
-                                        <Button variant="outline" size="sm" onClick={() => {
-                                          const selected = (document.getElementById(`retry-provider-${order.id}`) as HTMLSelectElement)?.value;
-                                          void retryOrder(order.id, selected || undefined);
-                                        }} disabled={retryingOrders.has(order.id)}>
-                                          {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
-                                        </Button>
-                                      </>
+                                      <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
+                                        {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
+                                      </Button>
                                     )}
                                     <Button 
                                       variant={order.fulfillment_status === "completed" || order.fulfillment_status === "delivered" ? "default" : "secondary"} 

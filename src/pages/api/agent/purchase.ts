@@ -62,16 +62,7 @@ export default async function handler(
     const sizeMatch = packageData.name?.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
 
-    const networkKey = String(network).toLowerCase().replace(/[-\s]/g, '_');
-    const { data: route } = await supabase
-      .from('network_provider_routes')
-      .select('provider_key')
-      .eq('network_key', networkKey)
-      .eq('flow', 'fulfillment')
-      .eq('enabled', true)
-      .maybeSingle();
-
-    // Snapshot the fulfillment provider on the order. Routing changes must only affect new orders.
+    // Create the order with agent_store_id
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -86,7 +77,6 @@ export default async function handler(
         status: 'paid',
         order_status: 'processing',
         fulfillment_status: 'pending',
-        fulfillment_provider: route?.provider_key ?? null,
         payment_method: 'api',
         source: 'api',
         agent_store_id: agentStore.id,

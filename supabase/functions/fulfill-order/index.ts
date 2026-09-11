@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase       = createClient(supabaseUrl, serviceRoleKey);
 
-    const { order_id, paystack_reference, provider: providerOverride } = await req.json();
+    const { order_id, paystack_reference } = await req.json();
 
     if (!order_id) {
       return new Response(JSON.stringify({ error: "Missing order_id" }), {
@@ -286,9 +286,7 @@ Deno.serve(async (req) => {
     const fallbackProvider = NETWORK_TO_PROVIDER[normalizedNetwork];
     const { data: mappedProvider, error: routeError } = await supabase.rpc("get_network_provider_route", { p_network_key: normalizedNetwork, p_flow: "fulfillment" });
     if (routeError) console.warn(`[FULFILL] Route lookup failed, using fallback: ${routeError.message}`);
-    // An explicit retry provider applies only to this order. Otherwise preserve the
-    // provider already saved on the order; route lookup is only for legacy/new orders.
-    const provider = providerOverride || order.fulfillment_provider || mappedProvider || fallbackProvider;
+    const provider = mappedProvider || fallbackProvider;
     if (provider === "fricopay" && normalizedNetwork === "mtn_xpress") {
       console.log("[FULFILL] Fricopay does not expose MTN Xpress; using its MTN route.");
     }
@@ -302,21 +300,6 @@ Deno.serve(async (req) => {
     }
 
     const config = NETWORK_CONFIGS[provider];
-    if (!config) {
-      await supabase.from("orders").update({ fulfillment_status: "failed", api_response: `Unknown provider: ${provider}` }).eq("id", order_id);
-      return new Response(JSON.stringify({ error: `Unknown provider: ${provider}` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    const previousAttempts = Array.isArray(order.provider_attempts) ? order.provider_attempts : [];
-    const providerChangedForRetry = Boolean(providerOverride && providerOverride !== order.fulfillment_provider);
-    const providerAttempts = [...previousAttempts, {
-      provider,
-      status: "selected",
-      source: providerChangedForRetry ? "admin_retry" : "fulfillment",
-      created_at: new Date().toISOString(),
-    }];
-    await supabase.from("orders").update({ fulfillment_provider: provider, provider_attempts: providerAttempts }).eq("id", order_id);
-
     const apiKey = Deno.env.get(config.apiKeyEnvVar);
 
     if (!apiKey) {
