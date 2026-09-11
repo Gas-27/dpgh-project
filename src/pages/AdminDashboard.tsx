@@ -71,7 +71,7 @@ interface Order {
   paystack_reference: string | null; created_at: string | null; agent_store_id: string | null;
   payment_method: string; subagent_store_id?: string | null; customer_id?: string | null;
   api_user?: string | null; package_id?: string | null; base_price?: number | null;
-  agent_price?: number | null; refunded_amount?: number | null;
+  agent_price?: number | null; refunded_amount?: number | null; fulfillment_provider?: string | null;
 }
   interface WithdrawalRequest {
     id: string; agent_store_id: string | null; subagent_store_id?: string | null; sub_subagent_store_id?: string | null; amount: number; status: string;
@@ -184,7 +184,7 @@ const AdminDashboard = () => {
   const orderSearch = useDatabaseSearch<Order>(
     "orders",
     "customer_number",
-    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id"
+    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id, fulfillment_provider"
   );
   
   const profileSearch = useDatabaseSearch<UserProfile>(
@@ -3087,18 +3087,9 @@ const AdminDashboard = () => {
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell>
-                                  <select
-                                    aria-label={`Provider for order ${order.id}`}
-                                    value={(order as any).fulfillment_provider || ""}
-                                    onChange={(event) => updateOrderProvider(order, event.target.value)}
-                                    className="w-32 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-                                  >
-                                    <option value="">Auto</option>
-                                    <option value="spaceship">Spaceship</option>
-                                    <option value="bossudata">BossuData</option>
-                                    <option value="cledanet">Cledanet</option>
-                                    <option value="ghdataconnect">GHDataConnect</option>
-                                  </select>
+                                  <Badge variant="outline" className="text-xs">
+                                    {(order as any).fulfillment_provider || "Not captured"}
+                                  </Badge>
                                   {Array.isArray((order as any).provider_attempts) && (order as any).provider_attempts.length > 0 && (
                                     <p className="mt-1 text-[10px] text-muted-foreground">{(order as any).provider_attempts.length} attempt{(order as any).provider_attempts.length === 1 ? "" : "s"}</p>
                                   )}

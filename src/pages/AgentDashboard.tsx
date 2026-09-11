@@ -2392,7 +2392,7 @@ return (
           {/* ============================= OVERVIEW ============================= */}
           <TabsContent value="approvals" className="space-y-6 mt-0"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="agent-dashboard" storeId={store?.id} /></CardContent></Card></TabsContent>
   <TabsContent value="overview" className="space-y-6 mt-0">
-  <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="agent" /><Button type="button" size="sm" variant="outline" className="rounded-full border-border/80 px-4 py-2 text-sm font-medium" onClick={() => setActiveTab("withdraw")}>Withdraw</Button></div>
+  <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="agent" /><Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveTab("withdraw")}>Withdraw</Button></div>
   <Card className="hidden border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
                 <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><div><p className="font-display font-bold text-foreground">📖 Dashboard Instruction Manual</p><p className="text-xs text-muted-foreground">Tap to {manualOpen ? "hide" : "view"} a full guide on how every section works</p></div></div>
