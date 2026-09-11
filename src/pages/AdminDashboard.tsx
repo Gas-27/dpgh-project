@@ -1667,13 +1667,13 @@ const AdminDashboard = () => {
     }
   };
 
-  const retryOrder = async (orderId: string) => {
+  const retryOrder = async (orderId: string, providerOverride?: string) => {
     if (retryingOrders.has(orderId)) return;
     setRetryingOrders((prev) => new Set(prev).add(orderId));
     try {
       const { data: currentOrder } = await supabase
         .from("orders")
-        .select("fulfillment_status, status")
+        .select("fulfillment_status, status, fulfillment_provider, provider_attempts")
         .eq("id", orderId)
         .single();
       if (!currentOrder) { toast({ title: "Order not found" }); return; }
@@ -1682,14 +1682,25 @@ const AdminDashboard = () => {
         return;
       }
       if (currentOrder.status !== "paid") { toast({ title: "Order not paid yet", variant: "destructive" }); return; }
-      const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: orderId } });
+      const provider = providerOverride || currentOrder.fulfillment_provider;
+      const attempts = Array.isArray(currentOrder.provider_attempts) ? currentOrder.provider_attempts : [];
+      const nextAttempts = provider && provider !== currentOrder.fulfillment_provider
+        ? [...attempts, { provider, status: "retry_selected", source: "admin", created_at: new Date().toISOString() }]
+        : attempts;
+      if (providerOverride && providerOverride !== currentOrder.fulfillment_provider) {
+        const { error: providerError } = await supabase.from("orders").update({ fulfillment_provider: providerOverride, provider_attempts: nextAttempts }).eq("id", orderId);
+        if (providerError) throw providerError;
+      }
+      const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: orderId, provider } });
       if (error) throw error;
       if (data?.success) {
         toast({ title: "Order fulfilled successfully!" });
-        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed" } : o));
+        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed", ...(providerOverride ? { fulfillment_provider: providerOverride, provider_attempts: nextAttempts } : {}) } : o));
+        setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed", ...(providerOverride ? { fulfillment_provider: providerOverride, provider_attempts: nextAttempts } : {}) } : o));
       } else {
         toast({ title: "Fulfillment failed", description: data?.message || "Check API balance", variant: "destructive" });
-        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed" } : o));
+        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed", ...(providerOverride ? { fulfillment_provider: providerOverride, provider_attempts: nextAttempts } : {}) } : o));
+        setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed", ...(providerOverride ? { fulfillment_provider: providerOverride, provider_attempts: nextAttempts } : {}) } : o));
       }
     } catch (err: any) {
       toast({ title: "Retry failed", description: err.message, variant: "destructive" });
@@ -3256,9 +3267,23 @@ const AdminDashboard = () => {
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
                                     {order.fulfillment_status !== "completed" && order.fulfillment_status !== "delivered" && (
-                                      <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
-                                        {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
-                                      </Button>
+                                      <>
+                                        <select
+                                          aria-label={`Provider for retrying order ${order.id}`}
+                                          defaultValue={(order as any).fulfillment_provider || ""}
+                                          className="w-32 rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
+                                          id={`retry-provider-${order.id}`}
+                                        >
+                                          <option value="">Keep current</option>
+                                          {Object.entries(providerLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                        </select>
+                                        <Button variant="outline" size="sm" onClick={() => {
+                                          const selected = (document.getElementById(`retry-provider-${order.id}`) as HTMLSelectElement)?.value;
+                                          void retryOrder(order.id, selected || undefined);
+                                        }} disabled={retryingOrders.has(order.id)}>
+                                          {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
+                                        </Button>
+                                      </>
                                     )}
                                     <Button 
                                       variant={order.fulfillment_status === "completed" || order.fulfillment_status === "delivered" ? "default" : "secondary"} 
