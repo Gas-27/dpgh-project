@@ -3131,7 +3131,7 @@ const AdminDashboard = () => {
                                     <p className={`text-xs font-semibold ${effectiveProvider ? "text-cyan-400" : "text-muted-foreground"}`}>
                                       {formatProviderName(effectiveProvider)}
                                     </p>
-  {order.fulfillment_status !== "completed" && order.fulfillment_status !== "delivered" ? (
+  {order.fulfillment_status === "failed" ? (
   <select
   aria-label={`Provider for order ${order.id}`}
   value={(order as any).fulfillment_provider || ""}
@@ -3143,7 +3143,7 @@ const AdminDashboard = () => {
   </select>
   ) : (
   <span className="inline-flex rounded border border-border bg-background px-2 py-1 text-xs text-foreground">
-  Locked after fulfillment
+  Locked to this order
   </span>
   )}
                                     {Array.isArray((order as any).provider_attempts) && (order as any).provider_attempts.length > 0 && (() => {
