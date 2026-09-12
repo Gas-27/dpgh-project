@@ -2016,7 +2016,9 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
       toast({ title: "Refund unavailable", description: "The store-side refund amount could not be determined.", variant: "destructive" });
       return;
     }
-setRefundingDirectOrderId(order.id);
+    const confirmed = window.confirm("Refund this order through Paystack? The refund will be sent to the original payment method. It usually takes a few minutes, but Paystack may take up to 7 days to complete it.");
+    if (!confirmed) return;
+    setRefundingDirectOrderId(order.id);
   setInitiatedDirectRefundIds((current) => new Set(current).add(order.id));
   try {
       const result = await refundStorefrontOrder({

@@ -31,9 +31,16 @@ export async function refundStorefrontOrder(input: StorefrontRefundInput) {
 
   let { data: payload, error } = await invokeRefund(accessToken);
   if (error?.context?.status === 401) {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    const refreshedToken = refreshed.session?.access_token;
+    if (!refreshError && refreshedToken) {
+      ({ data: payload, error } = await invokeRefund(refreshedToken));
+    }
+  }
+  if (error?.context?.status === 401) {
     const context = error.context;
     const details = context ? await context.clone().json().catch(() => null) : null;
-    throw new Error(details?.error || "Refund authorization failed. Your session was preserved; please retry without refreshing the page.");
+    throw new Error(details?.error || "Refund authorization failed. Please sign in again and retry.");
   }
   if (error) {
     const context = (error as any).context;

@@ -1018,8 +1018,10 @@ const SubagentDashboard = () => {
       toast({ title: "Refund unavailable", description: "This order is missing its Paystack reference or amount.", variant: "destructive" });
       return;
     }
-setRefundingOwnOrderId(order.id);
-    setInitiatedOwnRefundIds((current) => new Set(current).add(order.id));
+  const confirmed = window.confirm("Refund this order through Paystack? The refund usually takes a few minutes, but Paystack may take up to 7 days to complete.");
+  if (!confirmed) return;
+  setRefundingOwnOrderId(order.id);
+  setInitiatedOwnRefundIds((current) => new Set(current).add(order.id));
   try {
       const result = await refundStorefrontOrder({ orderId: order.id, actorRole: "subagent", storefrontId: subagentStore!.id, amount, paystackReference, phone: order.customer_number, reason: "Direct subagent storefront customer refund" });
       toast({ title: "Refund through Paystack submitted", description: result.message });
