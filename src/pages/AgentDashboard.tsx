@@ -2010,7 +2010,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
   
   const processDirectStorefrontRefund = async (order: any) => {
     const paystackReference = String(order.paystack_reference || order.reference || "").trim();
-    const refundAmount = Number(order.agent_price || order.base_price || 0);
+    const refundAmount = Number(order.amount || order.total_amount || order.agent_price || order.base_price || 0);
     if (!paystackReference) {
       toast({ title: "Refund unavailable", description: "This order has no Paystack reference.", variant: "destructive" });
       return;

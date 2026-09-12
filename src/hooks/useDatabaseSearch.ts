@@ -10,7 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 export function useDatabaseSearch<T>(
   table: string,
   searchColumn: string,
-  selectColumns: string = '*'
+  selectColumns: string = '*',
+  resultLimit = 100
 ) {
   const [results, setResults] = useState<T[]>([]);
   const [isSearching, setIsSearching] = useState(false);
