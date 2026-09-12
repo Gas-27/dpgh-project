@@ -1569,7 +1569,7 @@ const AdminDashboard = () => {
   };
 
   // ======================== Orders ========================
-  const queryOrdersFromDB = async (network: string, fulfillment: string, paymentStatus: string, delivery: string = orderDeliveryFilter, source: string = orderSourceFilter) => {
+  const queryOrdersFromDB = async (network: string, fulfillment: string, paymentStatus: string, delivery: string = orderDeliveryFilter, source: string = orderSourceFilter, contactSearch: string = orderSearchTerm) => {
     setIsFilteringOrders(true);
     try {
       // Build query with DB-side filters — do NOT filter in memory
@@ -1577,6 +1577,12 @@ const AdminDashboard = () => {
         .from("orders")
         .select("*")
         .order("created_at", { ascending: false });
+
+      const searchTerms = contactSearch.split(/[\\s,\\n]+/).map((term) => term.trim()).filter(Boolean);
+      if (searchTerms.length > 0) {
+        const phoneFilters = searchTerms.map((term) => `customer_number.ilike.%${term}%`).join(",");
+        query = query.or(phoneFilters);
+      }
 
       // Apply network filter directly on DB
       if (network !== "all") {
@@ -2570,9 +2576,9 @@ const AdminDashboard = () => {
   const filteredUsers = userSearchTerm.length > 0 ? profileSearch.results : users;
   
   // Use database filtered results if filters are active, otherwise use search results
-  let baseOrders = (orderNetworkFilter !== "all" || orderFulfillmentFilter !== "all" || orderPaymentStatusFilter !== "all" || orderSourceFilter !== "all" || orderDeliveryFilter !== "all")
+  let baseOrders = (orderNetworkFilter !== "all" || orderFulfillmentFilter !== "all" || orderPaymentStatusFilter !== "all" || orderSourceFilter !== "all" || orderDeliveryFilter !== "all" || orderSearchTerm.trim().length > 0)
     ? filteredOrdersFromDB
-    : (orderSearchTerm.length > 0 ? orderSearch.results : orders);
+    : orders;
 
   // Apply latest orders filter (keep only last N orders per customer)
   if (orderLatestFilter && orderLatestFilter > 0 && orderSearchTerm.length > 0) {
@@ -2825,12 +2831,12 @@ const AdminDashboard = () => {
                   <textarea 
                     placeholder="Search by phone number (paste multiple separated by commas, newlines, or spaces)..." 
                     value={orderSearchTerm}
-                    onChange={(e) => {
-                      setOrderSearchTerm(e.target.value);
-                      if (e.target.value.length > 0) {
-                        orderSearch.search(e.target.value);
-                      }
-                    }}
+  onChange={(e) => {
+  const value = e.target.value;
+  setOrderSearchTerm(value);
+  setOrderPage(1);
+  queryOrdersFromDB(orderNetworkFilter, orderFulfillmentFilter, orderPaymentStatusFilter, orderDeliveryFilter, orderSourceFilter, value);
+  }}
                     className="pl-10 w-full min-h-20 p-3 rounded-md border border-input bg-background text-sm resize-none" 
                   />
                   {orderSearch.isSearching && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />}
