@@ -168,6 +168,7 @@ const SubSubagentDashboard = () => {
   const [allRefundedOrders, setAllRefundedOrders] = useState<Order[]>([]);
   const [refundedOrdersTotal, setRefundedOrdersTotal] = useState(0);
   const [refundingOwnOrderId, setRefundingOwnOrderId] = useState<string | null>(null);
+  const [initiatedOwnRefundIds, setInitiatedOwnRefundIds] = useState<Set<string>>(new Set());
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [totalOrderCount, setTotalOrderCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -268,12 +269,18 @@ const SubSubagentDashboard = () => {
       toast({ title: "Refund unavailable", description: "This order is missing its Paystack reference or amount.", variant: "destructive" });
       return;
     }
-    setRefundingOwnOrderId(order.id);
-    try {
+setRefundingOwnOrderId(order.id);
+    setInitiatedOwnRefundIds((current) => new Set(current).add(order.id));
+  try {
       const result = await refundStorefrontOrder({ orderId: order.id, actorRole: "sub_subagent", storefrontId: subagentStore!.id, amount, paystackReference, phone: order.customer_number, reason: "Direct sub-subagent storefront customer refund" });
       toast({ title: "Refund through Paystack submitted", description: result.message });
-    } catch (error: any) {
-      toast({ title: "Refund failed", description: error?.message || "Unable to submit refund.", variant: "destructive" });
+  } catch (error: any) {
+    setInitiatedOwnRefundIds((current) => {
+      const next = new Set(current);
+      next.delete(order.id);
+      return next;
+    });
+  toast({ title: "Refund failed", description: error?.message || "Unable to submit refund.", variant: "destructive" });
     } finally {
       setRefundingOwnOrderId(null);
     }
@@ -3326,8 +3333,8 @@ return (
                               </TableCell>
                               <TableCell>
                                 {!(order as any).paystack_refund_id && !(order as any).refund_id ? (
-                                  <Button size="sm" variant="outline" disabled={refundingOwnOrderId === order.id} onClick={() => processOwnStorefrontRefund(order)}>
-                                    {refundingOwnOrderId === order.id ? "Processing..." : "Refund via Paystack"}
+                                  <Button size="sm" variant="outline" disabled={refundingOwnOrderId === order.id || initiatedOwnRefundIds.has(order.id)} onClick={() => processOwnStorefrontRefund(order)}>
+                                    {refundingOwnOrderId === order.id ? "Processing..." : initiatedOwnRefundIds.has(order.id) ? "Refund initiated" : "Refund via Paystack"}
                                   </Button>
                                 ) : <span className="text-xs text-green-400">Refund submitted</span>}
                               </TableCell>

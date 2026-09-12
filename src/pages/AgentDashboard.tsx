@@ -444,6 +444,7 @@ const AgentDashboard = () => {
   const [selectedSubagentOrderIds, setSelectedSubagentOrderIds] = useState<Set<string>>(new Set());
   const [refundingSubagentOrders, setRefundingSubagentOrders] = useState<Set<string>>(new Set());
   const [refundingDirectOrderId, setRefundingDirectOrderId] = useState<string | null>(null);
+  const [initiatedDirectRefundIds, setInitiatedDirectRefundIds] = useState<Set<string>>(new Set());
   const [refundFilterAgent, setRefundFilterAgent] = useState<"all" | "processing" | "delivered" | "refunded">("all");
   const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
 
@@ -2015,8 +2016,9 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
       toast({ title: "Refund unavailable", description: "The store-side refund amount could not be determined.", variant: "destructive" });
       return;
     }
-    setRefundingDirectOrderId(order.id);
-    try {
+setRefundingDirectOrderId(order.id);
+  setInitiatedDirectRefundIds((current) => new Set(current).add(order.id));
+  try {
       const result = await refundStorefrontOrder({
         orderId: order.id,
         actorRole: "agent",
@@ -2027,8 +2029,13 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
         reason: "Direct storefront customer refund",
       });
       toast({ title: "Refund through Paystack submitted", description: result.message });
-    } catch (error: any) {
-      toast({ title: "Refund failed", description: error?.message || "Top up your wallet before trying again.", variant: "destructive" });
+  } catch (error: any) {
+  setInitiatedDirectRefundIds((current) => {
+    const next = new Set(current);
+    next.delete(order.id);
+    return next;
+  });
+  toast({ title: "Refund failed", description: error?.message || "Top up your wallet before trying again.", variant: "destructive" });
     } finally {
       setRefundingDirectOrderId(null);
     }
@@ -2954,10 +2961,10 @@ return (
                                     size="sm"
                                     variant="outline"
                                     className="border-cyan-600 bg-cyan-50 font-semibold text-cyan-900 hover:bg-cyan-100"
-                                    disabled={refundingDirectOrderId === order.id}
+                                    disabled={refundingDirectOrderId === order.id || initiatedDirectRefundIds.has(order.id)}
                                     onClick={() => processDirectStorefrontRefund(order)}
                                   >
-                                    {refundingDirectOrderId === order.id ? "Processing..." : "Refund via Paystack"}
+                                    {refundingDirectOrderId === order.id ? "Processing..." : initiatedDirectRefundIds.has(order.id) ? "Refund initiated" : "Refund via Paystack"}
                                   </Button>
                                 ) : !isSubagentOrder && !isSubSubagentOrder ? (
                                   <Badge className="bg-green-500/20 text-green-700 border-green-500/30 text-xs whitespace-nowrap">Refund submitted</Badge>

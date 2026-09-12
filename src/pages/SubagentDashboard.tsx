@@ -247,6 +247,7 @@ const SubagentDashboard = () => {
   const [selectedSubSubagentRefundIds, setSelectedSubSubagentRefundIds] = useState<Set<string>>(new Set());
   const [refundingSubSubagentOrders, setRefundingSubSubagentOrders] = useState<Set<string>>(new Set());
   const [refundingOwnOrderId, setRefundingOwnOrderId] = useState<string | null>(null);
+  const [initiatedOwnRefundIds, setInitiatedOwnRefundIds] = useState<Set<string>>(new Set());
 
   // Sub-Subagents
   const [subSubagents, setSubSubagents] = useState<any[]>([]);
@@ -1017,12 +1018,18 @@ const SubagentDashboard = () => {
       toast({ title: "Refund unavailable", description: "This order is missing its Paystack reference or amount.", variant: "destructive" });
       return;
     }
-    setRefundingOwnOrderId(order.id);
-    try {
+setRefundingOwnOrderId(order.id);
+    setInitiatedOwnRefundIds((current) => new Set(current).add(order.id));
+  try {
       const result = await refundStorefrontOrder({ orderId: order.id, actorRole: "subagent", storefrontId: subagentStore!.id, amount, paystackReference, phone: order.customer_number, reason: "Direct subagent storefront customer refund" });
       toast({ title: "Refund through Paystack submitted", description: result.message });
-    } catch (error: any) {
-      toast({ title: "Refund failed", description: error?.message || "Unable to submit refund.", variant: "destructive" });
+  } catch (error: any) {
+    setInitiatedOwnRefundIds((current) => {
+      const next = new Set(current);
+      next.delete(order.id);
+      return next;
+    });
+  toast({ title: "Refund failed", description: error?.message || "Unable to submit refund.", variant: "destructive" });
     } finally {
       setRefundingOwnOrderId(null);
     }
@@ -3015,8 +3022,8 @@ return (
                                 </TableCell>
                                 <TableCell>
                                   {!isSubSub && !alreadyForwarded && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
-                                    <Button size="sm" variant="outline" disabled={refundingOwnOrderId === order.id} onClick={() => processOwnStorefrontRefund(order)}>
-                                      {refundingOwnOrderId === order.id ? "Processing..." : "Refund via Paystack"}
+                                    <Button size="sm" variant="outline" disabled={refundingOwnOrderId === order.id || initiatedOwnRefundIds.has(order.id)} onClick={() => processOwnStorefrontRefund(order)}>
+                                      {refundingOwnOrderId === order.id ? "Processing..." : initiatedOwnRefundIds.has(order.id) ? "Refund initiated" : "Refund via Paystack"}
                                     </Button>
                                   ) : !isSubSub ? <span className="text-xs text-green-400">Refund submitted</span> : <span className="text-xs text-muted-foreground">Forward to sub-subagent</span>}
                                 </TableCell>
