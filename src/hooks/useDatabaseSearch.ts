@@ -45,7 +45,7 @@ export function useDatabaseSearch<T>(
           .select(selectColumns)
           .ilike(searchColumn, `%${searchTerms[0]}%`)
           .order('created_at', { ascending: false })
-          .limit(100);
+          .limit(resultLimit);
 
         if (searchError) throw searchError;
         setResults((data as T[]) || []);
@@ -61,7 +61,7 @@ export function useDatabaseSearch<T>(
             .select(selectColumns)
             .ilike(searchColumn, `%${term}%`)
             .order('created_at', { ascending: false })
-            .limit(100);
+            .limit(resultLimit);
 
           if (searchError) throw searchError;
 

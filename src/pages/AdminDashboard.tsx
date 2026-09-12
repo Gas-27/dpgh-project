@@ -203,7 +203,8 @@ const AdminDashboard = () => {
   const agentSearch = useDatabaseSearch<AgentStore>(
     "agent_stores",
     "store_name",
-    "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance"
+    "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance",
+  10000
   );
 
   const subagentSearch = useDatabaseSearch<any>(
@@ -3408,6 +3409,13 @@ const AdminDashboard = () => {
                         </CardContent>
                       </Card>
                     ))}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-3 py-4">
+                        <Button variant="outline" size="sm" onClick={() => setAgentPage((page) => Math.max(1, page - 1))} disabled={agentPage === 1}>Previous</Button>
+                        <span className="text-sm text-muted-foreground">Page {agentPage} of {totalPages}</span>
+                        <Button variant="outline" size="sm" onClick={() => setAgentPage((page) => Math.min(totalPages, page + 1))} disabled={agentPage === totalPages}>Next</Button>
+                      </div>
+                    )}
                   </>
                 );
               })()}
