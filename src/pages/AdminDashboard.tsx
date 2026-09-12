@@ -71,7 +71,7 @@ interface Order {
   paystack_reference: string | null; created_at: string | null; agent_store_id: string | null;
   payment_method: string; subagent_store_id?: string | null; customer_id?: string | null;
   api_user?: string | null; package_id?: string | null; base_price?: number | null;
-  agent_price?: number | null; refunded_amount?: number | null; fulfillment_provider?: string | null; provider_attempts?: Array<{ provider?: string; status?: string; created_at?: string }> | null;
+  agent_price?: number | null; refunded_amount?: number | null; fulfillment_provider?: string | null; purchase_provider?: string | null; purchase_provider_source?: string | null; provider_attempts?: Array<{ provider?: string; status?: string; created_at?: string }> | null;
 }
   interface WithdrawalRequest {
     id: string; agent_store_id: string | null; subagent_store_id?: string | null; sub_subagent_store_id?: string | null; amount: number; status: string;
@@ -184,7 +184,7 @@ const AdminDashboard = () => {
   const orderSearch = useDatabaseSearch<Order>(
     "orders",
     "customer_number",
-    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id, fulfillment_provider, provider_attempts"
+    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id, fulfillment_provider, purchase_provider, purchase_provider_source, provider_attempts"
   );
   
   const profileSearch = useDatabaseSearch<UserProfile>(
@@ -645,7 +645,7 @@ const AdminDashboard = () => {
         setTopupHistory(data ?? []);
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
-        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount, sub_subagent_store_id, fulfillment_provider, provider_attempts", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount, sub_subagent_store_id, fulfillment_provider, purchase_provider, purchase_provider_source, provider_attempts", { column: "created_at", ascending: false }, 1000);
         setOrders(data ?? []);
         // Auto-refund any orders that are already order_status="failed" but not yet refunded.
         // These may have arrived before the realtime listener was active.
@@ -3088,7 +3088,7 @@ const AdminDashboard = () => {
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className="text-xs">
-                                    {((order as any).fulfillment_provider || (Array.isArray((order as any).provider_attempts) ? (order as any).provider_attempts.at(-1)?.provider : null) || "Provider pending")}
+                                    {((order as any).purchase_provider || (order as any).fulfillment_provider || (Array.isArray((order as any).provider_attempts) ? (order as any).provider_attempts.at(-1)?.provider : null) || "Provider pending")}
                                   </Badge>
                                   {Array.isArray((order as any).provider_attempts) && (order as any).provider_attempts.length > 0 && (
                                     <p className="mt-1 text-[10px] text-muted-foreground">{(order as any).provider_attempts.length} attempt{(order as any).provider_attempts.length === 1 ? "" : "s"}</p>

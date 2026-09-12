@@ -61,6 +61,11 @@ export default async function handler(
 
     const sizeMatch = packageData.name?.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
+    const { data: routedProvider } = await supabase.rpc("get_network_provider_route", {
+      p_network_key: String(network).toLowerCase(),
+      p_flow: "purchase",
+    });
+    const purchaseProvider = routedProvider ? String(routedProvider) : null;
 
     // Create the order — set api_user so it appears in the user's API orders tab
     const { data: order, error: orderError } = await supabase
@@ -79,6 +84,9 @@ export default async function handler(
         fulfillment_status: 'pending',
         payment_method: 'api',
         source: 'api',
+        purchase_provider: purchaseProvider,
+        purchase_provider_source: 'api',
+        fulfillment_provider: purchaseProvider,
         api_user: apiUser.id,
         selling_price: amount,
         base_price: amount,

@@ -49,3 +49,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useTheme() {
   return useContext(ThemeContext);
 }
+
+export function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const nextTheme = theme === "system" ? "dark" : theme === "dark" ? "light" : "system";
+  const label = theme === "system" ? "System theme" : theme === "dark" ? "Dark theme" : "Light theme";
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(nextTheme)}
+      className="fixed bottom-5 right-5 z-[60] flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-lg backdrop-blur transition hover:border-primary hover:text-primary"
+      aria-label={`${label}. Switch to ${nextTheme} theme`}
+      title={`${label} · switch to ${nextTheme}`}
+    >
+      <span aria-hidden="true">{theme === "system" ? "◐" : theme === "dark" ? "☾" : "☀"}</span>
+    </button>
+  );
+}

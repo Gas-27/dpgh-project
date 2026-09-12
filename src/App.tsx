@@ -15,7 +15,7 @@ import NotificationPrompt from "@/components/NotificationPrompt";
 import ChatBot from "@/components/ChatBot";
 import RouteSeoGuard from "@/components/RouteSeoGuard";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
-import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeProvider, ThemeToggle } from "@/components/ThemeProvider";
 
 // Wraps React.lazy so that a stale-deploy chunk failure (old bundle requesting
 // chunk filenames that no longer exist -> server returns index.html with a
@@ -248,6 +248,7 @@ return (
   <ThemeProvider>
   <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <ThemeToggle />
         <Toaster />
         <Sonner />
         <PWAInstallPrompt />

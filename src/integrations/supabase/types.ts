@@ -367,6 +367,8 @@ export type Database = {
           customer_number: string
           fulfillment_status: string
           fulfillment_provider: string | null
+          purchase_provider: string | null
+          purchase_provider_source: string | null
           provider_attempts: unknown
           id: string
           network: string
@@ -384,6 +386,8 @@ export type Database = {
           customer_number: string
           fulfillment_status?: string
           fulfillment_provider?: string | null
+          purchase_provider?: string | null
+          purchase_provider_source?: string | null
           provider_attempts?: unknown
           id?: string
           network: string
@@ -401,6 +405,8 @@ export type Database = {
           customer_number?: string
           fulfillment_status?: string
           fulfillment_provider?: string | null
+          purchase_provider?: string | null
+          purchase_provider_source?: string | null
           provider_attempts?: unknown
           id?: string
           network?: string

@@ -100,13 +100,13 @@ const Navbar = () => {
 
     {/* Mobile Menu Overlay - Outside Nav */}
     {mobileOpen && (
-      <div className="md:hidden fixed inset-0 top-0 z-30 bg-slate-950 bg-opacity-98 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+      <div className="md:hidden fixed inset-0 top-0 z-30 bg-background/98 text-foreground backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
         <div className="pt-20 px-6 py-8 space-y-8 pb-20">
           {/* Search */}
           <button
             type="button"
             onClick={() => { setMobileOpen(false); setSearchOpen(true); }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary/40 border border-border text-slate-300 hover:text-white hover:border-primary/40 transition-all"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary/40 border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
             aria-label="Search DataPlug"
           >
             <Search className="h-5 w-5" />
@@ -124,12 +124,12 @@ const Navbar = () => {
 
           {/* MENU Section */}
           <div>
-            <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">MENU</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground tracking-wider mb-4">MENU</h3>
             <div className="space-y-2">
               <Link 
                 to="/" 
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-500 bg-opacity-20 border border-blue-400 border-opacity-30 text-white hover:bg-opacity-30 transition-all"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/15 border border-primary/30 text-foreground hover:bg-primary/25 transition-all"
               >
                 <Home className="h-5 w-5" />
                 <span className="font-medium">Home</span>
@@ -137,7 +137,7 @@ const Navbar = () => {
               <Link 
                 to="/packages" 
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
               >
                 <Search className="h-5 w-5" />
                 <span className="font-medium">Packages</span>
@@ -147,7 +147,7 @@ const Navbar = () => {
 
           {/* ACCOUNT Section */}
           <div>
-            <h3 className="text-xs font-semibold text-slate-400 tracking-wider mb-4">ACCOUNT</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground tracking-wider mb-4">ACCOUNT</h3>
             <div className="space-y-2">
               {loading ? (
                 <div className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400">
@@ -159,7 +159,7 @@ const Navbar = () => {
                   <Link 
                     to={dashboardRoute}
                     onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
                   >
                     <LayoutDashboard className="h-5 w-5" />
                     <span className="font-medium">{getDashboardLabel()}</span>
@@ -177,7 +177,7 @@ const Navbar = () => {
                   <Link 
                     to="/login"
                     onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
                   >
                     <LogIn className="h-5 w-5" />
                     <span className="font-medium">Login</span>
@@ -185,7 +185,7 @@ const Navbar = () => {
                   <Link 
                     to="/signup"
                     onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
                   >
                     <UserPlus className="h-5 w-5" />
                     <span className="font-medium">Sign Up</span>

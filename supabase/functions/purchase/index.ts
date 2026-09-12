@@ -527,6 +527,9 @@ Deno.serve(async (req) => {
         payment_method: "api_wallet",
         paystack_reference: null,
         provider_reference: providerReference,
+        purchase_provider: provider,
+        purchase_provider_source: "api",
+        fulfillment_provider: provider,
         api_response: apiData,
         api_user: apiUser.id,  // <-- ADDED: Link order to API user
         agent_store_id: null,
