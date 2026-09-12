@@ -102,7 +102,17 @@ Deno.serve(async (req) => {
       const failed = results.filter((item) => item.status < 200 || item.status >= 300);
       const status = failed.length === results.length ? "failed" : failed.length ? "partial" : "sent";
       await supabase.from("sms_messages").update({ sent_count: results.length - failed.length, failed_count: failed.length, status, provider_response: results, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("id", claim.id);
-      return new Response(JSON.stringify({ success: failed.length === 0, sent: results.length - failed.length, failed: failed.length, status }), { status: failed.length ? 502 : 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({
+        success: true,
+        payment_confirmed: true,
+        fulfillment_pending: failed.length > 0,
+        sent: results.length - failed.length,
+        failed: failed.length,
+        status,
+        message: failed.length > 0
+          ? "Payment confirmed. Delivery is pending and will be retried automatically."
+          : "Payment confirmed and delivery completed.",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // =====================================

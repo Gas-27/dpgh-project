@@ -35,11 +35,16 @@ const PaymentVerifier = () => {
         body: { reference },
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = error.message || "Payment verification request failed.";
+        throw new Error(errorMessage);
+      }
 
-      if (data?.success) {
+      if (data?.success || data?.payment_confirmed) {
         setStatus("success");
-        setMessage("Payment confirmed! Your data is being processed and will be delivered shortly.");
+        setMessage(data?.fulfillment_pending
+          ? "Payment confirmed! Your order was created, and delivery is being retried automatically."
+          : "Payment confirmed! Your data is being processed and will be delivered shortly.");
       } else {
         setStatus("error");
         setMessage(data?.error || "Payment verification failed.");
