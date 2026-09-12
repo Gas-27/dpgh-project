@@ -4,6 +4,8 @@ import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
+import { RefundStatusCell } from "@/components/RefundStatusCell";
+import { useStorefrontRefunds } from "@/hooks/useStorefrontRefunds";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
@@ -447,6 +449,7 @@ const AgentDashboard = () => {
   const [initiatedDirectRefundIds, setInitiatedDirectRefundIds] = useState<Set<string>>(new Set());
   const [refundFilterAgent, setRefundFilterAgent] = useState<"all" | "processing" | "delivered" | "refunded">("all");
   const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
+  const { refundsByOrderId, setOptimisticRefund, clearRefund } = useStorefrontRefunds(store?.id);
 
   // Withdrawal source selection
   const [withdrawSource, setWithdrawSource] = useState<"wallet" | "subagent_commission">("wallet");
@@ -2020,6 +2023,14 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     if (!confirmed) return;
     setRefundingDirectOrderId(order.id);
   setInitiatedDirectRefundIds((current) => new Set(current).add(order.id));
+  setOptimisticRefund(order.id, {
+    status: "pending",
+    amount: refundAmount,
+    paystack_reference: paystackReference,
+    reason: "Direct storefront customer refund",
+    created_at: new Date().toISOString(),
+    processed_at: null,
+  });
   try {
       const result = await refundStorefrontOrder({
         orderId: order.id,
@@ -2037,6 +2048,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     next.delete(order.id);
     return next;
   });
+  clearRefund(order.id);
   toast({ title: "Refund failed", description: error?.message || "Top up your wallet before trying again.", variant: "destructive" });
     } finally {
       setRefundingDirectOrderId(null);
@@ -2958,7 +2970,9 @@ return (
                                 )}
                               </TableCell>
                               <TableCell>
-                                {!isSubagentOrder && !isSubSubagentOrder && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
+                                {refundsByOrderId[order.id] ? (
+                                  <RefundStatusCell refund={refundsByOrderId[order.id]} />
+                                ) : !isSubagentOrder && !isSubSubagentOrder && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
                                   <Button
                                     size="sm"
                                     variant="outline"

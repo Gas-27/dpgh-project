@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { RefundStatusCell } from "@/components/RefundStatusCell";
+import { useStorefrontRefunds } from "@/hooks/useStorefrontRefunds";
 import { Navigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,6 +171,7 @@ const SubSubagentDashboard = () => {
   const [refundedOrdersTotal, setRefundedOrdersTotal] = useState(0);
   const [refundingOwnOrderId, setRefundingOwnOrderId] = useState<string | null>(null);
   const [initiatedOwnRefundIds, setInitiatedOwnRefundIds] = useState<Set<string>>(new Set());
+  const { refundsByOrderId, setOptimisticRefund, clearRefund } = useStorefrontRefunds(subagentStore?.id);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [totalOrderCount, setTotalOrderCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -273,19 +276,28 @@ const SubSubagentDashboard = () => {
   if (!confirmed) return;
   setRefundingOwnOrderId(order.id);
   setInitiatedOwnRefundIds((current) => new Set(current).add(order.id));
+  setOptimisticRefund(order.id, {
+    status: "pending",
+    amount,
+    paystack_reference: paystackReference,
+    reason: "Direct sub-subagent storefront customer refund",
+    created_at: new Date().toISOString(),
+    processed_at: null,
+  });
   try {
-      const result = await refundStorefrontOrder({ orderId: order.id, actorRole: "sub_subagent", storefrontId: subagentStore!.id, amount, paystackReference, phone: order.customer_number, reason: "Direct sub-subagent storefront customer refund" });
-      toast({ title: "Refund through Paystack submitted", description: result.message });
+  const result = await refundStorefrontOrder({ orderId: order.id, actorRole: "sub_subagent", storefrontId: subagentStore!.id, amount, paystackReference, phone: order.customer_number, reason: "Direct sub-subagent storefront customer refund" });
+  toast({ title: "Refund through Paystack submitted", description: result.message });
   } catch (error: any) {
-    setInitiatedOwnRefundIds((current) => {
-      const next = new Set(current);
-      next.delete(order.id);
-      return next;
-    });
+  setInitiatedOwnRefundIds((current) => {
+  const next = new Set(current);
+  next.delete(order.id);
+  return next;
+  });
+  clearRefund(order.id);
   toast({ title: "Refund failed", description: error?.message || "Unable to submit refund.", variant: "destructive" });
-    } finally {
-      setRefundingOwnOrderId(null);
-    }
+  } finally {
+  setRefundingOwnOrderId(null);
+  }
   };
 
   useEffect(() => {
@@ -3334,7 +3346,9 @@ return (
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                {!(order as any).paystack_refund_id && !(order as any).refund_id ? (
+                                {refundsByOrderId[order.id] ? (
+                                  <RefundStatusCell refund={refundsByOrderId[order.id]} />
+                                ) : !(order as any).paystack_refund_id && !(order as any).refund_id ? (
                                   <Button size="sm" variant="outline" disabled={refundingOwnOrderId === order.id || initiatedOwnRefundIds.has(order.id)} onClick={() => processOwnStorefrontRefund(order)}>
                                     {refundingOwnOrderId === order.id ? "Processing..." : initiatedOwnRefundIds.has(order.id) ? "Refund initiated" : "Refund via Paystack"}
                                   </Button>
