@@ -19,15 +19,17 @@ export interface StorefrontRefundRecord {
  * survives page reloads and updates live as Paystack's webhook moves a refund from
  * pending -> processing -> processed/failed.
  */
-export function useStorefrontRefunds(storefrontId: string | undefined) {
+export function useStorefrontRefunds(storefrontId: string | undefined, orderIds: string[] = []) {
   const [refundsByOrderId, setRefundsByOrderId] = useState<Record<string, StorefrontRefundRecord>>({});
 
   const fetchRefunds = useCallback(async () => {
-    if (!storefrontId) return;
-    const { data, error } = await supabase
+    if (!storefrontId && orderIds.length === 0) return;
+    let query = supabase
       .from("paystack_refunds")
-      .select("id, order_id, status, amount, paystack_reference, reason, created_at, processed_at, updated_at")
-      .eq("storefront_id", storefrontId);
+      .select("id, order_id, status, amount, paystack_reference, reason, created_at, processed_at, updated_at");
+    const { data, error } = storefrontId
+      ? await query.eq("storefront_id", storefrontId)
+      : await query.in("order_id", orderIds);
     if (error) {
       console.log("[v0] Failed to load storefront refunds:", error.message);
       return;
@@ -35,23 +37,25 @@ export function useStorefrontRefunds(storefrontId: string | undefined) {
     const map: Record<string, StorefrontRefundRecord> = {};
     for (const row of data || []) map[row.order_id] = row as StorefrontRefundRecord;
     setRefundsByOrderId(map);
-  }, [storefrontId]);
+  }, [storefrontId, orderIds.join(",")]);
 
   useEffect(() => {
     fetchRefunds();
-    if (!storefrontId) return;
+    if (!storefrontId && orderIds.length === 0) return;
     const channel = supabase
-      .channel(`paystack-refunds-${storefrontId}`)
+      .channel(`paystack-refunds-${storefrontId || "customer"}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "paystack_refunds", filter: `storefront_id=eq.${storefrontId}` },
+        storefrontId
+          ? { event: "*", schema: "public", table: "paystack_refunds", filter: `storefront_id=eq.${storefrontId}` }
+          : { event: "*", schema: "public", table: "paystack_refunds" },
         () => fetchRefunds()
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [storefrontId, fetchRefunds]);
+  }, [storefrontId, orderIds.join(","), fetchRefunds]);
 
   // Optimistically record a refund the instant it is submitted so the button flips to a
   // status badge immediately, even before the DB round-trip / realtime event lands.

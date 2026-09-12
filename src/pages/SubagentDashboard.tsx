@@ -1021,7 +1021,7 @@ const SubagentDashboard = () => {
       toast({ title: "Refund unavailable", description: "This order is missing its Paystack reference or amount.", variant: "destructive" });
       return;
     }
-  const confirmed = window.confirm("Refund this order through Paystack? The refund usually takes a few minutes, but Paystack may take up to 7 days to complete.");
+  const confirmed = window.confirm("Refund this order through Paystack? The money will return to the account or number used for this purchase. Refunds usually take 20 minutes to 72 hours, and Paystack will notify the customer.");
   if (!confirmed) return;
   setRefundingOwnOrderId(order.id);
   setInitiatedOwnRefundIds((current) => new Set(current).add(order.id));

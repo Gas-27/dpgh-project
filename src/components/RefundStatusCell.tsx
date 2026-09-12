@@ -68,8 +68,7 @@ export function RefundStatusCell({ refund }: { refund: StorefrontRefundRecord })
               </div>
             )}
             <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-              Refunds take 30 minutes to 7 days for Paystack to send back to the customer number used for the
-              purchase.
+              Refunds usually take 20 minutes to 72 hours. Paystack sends the money back to the account or number used for the purchase, and Paystack will notify the customer when the refund is processed.
             </p>
           </div>
         </DialogContent>

@@ -2019,7 +2019,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
       toast({ title: "Refund unavailable", description: "The store-side refund amount could not be determined.", variant: "destructive" });
       return;
     }
-    const confirmed = window.confirm("Refund this order through Paystack? The refund will be sent to the original payment method. It usually takes a few minutes, but Paystack may take up to 7 days to complete it.");
+    const confirmed = window.confirm("Refund this order through Paystack? The money will return to the account or number used for this purchase. Refunds usually take 20 minutes to 72 hours, and Paystack will send the customer a refund notification.");
     if (!confirmed) return;
     setRefundingDirectOrderId(order.id);
   setInitiatedDirectRefundIds((current) => new Set(current).add(order.id));
@@ -2761,7 +2761,7 @@ return (
                 <p className="text-sm font-semibold text-blue-400">How Refunds Work</p>
                 <div className="text-xs text-blue-300/80 space-y-1.5">
                   <p>When an order is refunded by the admin, the money is credited back to your agent wallet. Here is what you should do next depending on the order source:</p>
-                  <p><strong className="text-blue-300">Storefront (Direct) Orders:</strong> Use <strong>Refund via Paystack</strong> to return the store-side amount to the customer&apos;s original payment method. Your wallet must have enough balance first. Paystack usually processes refunds within minutes, but it can take up to 7 days.</p>
+                  <p><strong className="text-blue-300">Storefront (Direct) Orders:</strong> Use <strong>Refund via Paystack</strong> to return the store-side amount to the customer&apos;s original payment method. Your wallet must have enough balance first. Refunds usually take 20 minutes to 72 hours. Paystack sends the money to the account or number used for the purchase and notifies the customer.</p>
                   <p><strong className="text-blue-300">Subagent / Sub-Subagent Orders:</strong> Select the affected orders using the checkboxes and click <strong>Refund Selected</strong>. This deducts the base price from your wallet and credits it directly to the subagent wallet so they can retry.</p>
                   <p><strong className="text-blue-300">One Refund Per Order:</strong> Each order can only be refunded once. If an order has already been refunded, the checkbox will not be selectable and the system will block a second refund automatically.</p>
                 </div>

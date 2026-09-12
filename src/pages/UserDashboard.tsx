@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { RefundStatusCell } from "@/components/RefundStatusCell";
+import { useStorefrontRefunds } from "@/hooks/useStorefrontRefunds";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -121,6 +123,7 @@ const UserDashboard = () => {
   };
   
   const [orders, setOrders] = useState<Order[]>([]);
+  const { refundsByOrderId } = useStorefrontRefunds(undefined, orders.map((order) => order.id));
   const [loading, setLoading] = useState(true);
   const [showRefundedOnly, setShowRefundedOnly] = useState(false);
   const [totalDataPurchased, setTotalDataPurchased] = useState(0);
@@ -1194,6 +1197,7 @@ const UserDashboard = () => {
                     <TableHead className="text-xs">Amount</TableHead>
                     <TableHead className="text-xs">Method</TableHead>
                     <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">Paystack Refund</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1216,6 +1220,13 @@ const UserDashboard = () => {
                       <TableCell>
                         {/* Refunded takes priority over any other status field */}
 <OrderStatusBadge status={normalizeOrderStatus(order)} />
+                      </TableCell>
+                      <TableCell>
+                        {refundsByOrderId[order.id] ? (
+                          <RefundStatusCell refund={refundsByOrderId[order.id]} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Not refunded</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
