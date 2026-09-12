@@ -2972,7 +2972,7 @@ return (
                               <TableCell>
                                 {refundsByOrderId[order.id] ? (
                                   <RefundStatusCell refund={refundsByOrderId[order.id]} />
-                                ) : !isSubagentOrder && !isSubSubagentOrder && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
+                                ) : !isSubagentOrder && !isSubSubagentOrder && new Date(order.created_at).toDateString() === new Date().toDateString() && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
                                   <Button
                                     size="sm"
                                     variant="outline"

@@ -3037,7 +3037,7 @@ return (
                                 <TableCell>
                                   {refundsByOrderId[order.id] ? (
                                     <RefundStatusCell refund={refundsByOrderId[order.id]} />
-                                  ) : !isSubSub && !alreadyForwarded && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
+                                  ) : !isSubSub && !alreadyForwarded && new Date(order.created_at).toDateString() === new Date().toDateString() && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
                                     <Button size="sm" variant="outline" disabled={refundingOwnOrderId === order.id || initiatedOwnRefundIds.has(order.id)} onClick={() => processOwnStorefrontRefund(order)}>
                                       {refundingOwnOrderId === order.id ? "Processing..." : initiatedOwnRefundIds.has(order.id) ? "Refund initiated" : "Refund via Paystack"}
                                     </Button>
