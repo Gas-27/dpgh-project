@@ -3088,7 +3088,7 @@ const AdminDashboard = () => {
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className="text-xs">
-                                    {(order as any).fulfillment_provider || "Not captured"}
+                                    {((order as any).fulfillment_provider || (Array.isArray((order as any).provider_attempts) ? (order as any).provider_attempts.at(-1)?.provider : null) || "Provider pending")}
                                   </Badge>
                                   {Array.isArray((order as any).provider_attempts) && (order as any).provider_attempts.length > 0 && (
                                     <p className="mt-1 text-[10px] text-muted-foreground">{(order as any).provider_attempts.length} attempt{(order as any).provider_attempts.length === 1 ? "" : "s"}</p>

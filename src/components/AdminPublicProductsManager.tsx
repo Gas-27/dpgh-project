@@ -35,7 +35,7 @@ export default function AdminPublicProductsManager() {
     setSaving(true);
     const { error } = await supabase.from("public_store_products").insert({ title: draft.title.trim(), description: draft.description.trim(), price: Number(draft.price), image_urls: draft.image_urls.split("\n").map((url) => url.trim()).filter(Boolean), active: draft.active });
     setSaving(false);
-    if (error) toast({ title: "Could not publish product", description: error.message, variant: "destructive" }); else { setDraft(emptyProduct); await load(); toast({ title: "Product published" }); }
+    if (error) { console.error("[v0] Product publish failed:", error); toast({ title: "Could not publish product", description: error.code === "42501" ? "Your admin session is not authorized to publish products. Sign out, sign back in, and try again." : error.message, variant: "destructive" }); } else { setDraft(emptyProduct); await load(); toast({ title: "Product published" }); }
   };
   const toggle = async (product: PublicProduct) => { const { error } = await supabase.from("public_store_products").update({ active: !product.active, updated_at: new Date().toISOString() }).eq("id", product.id); if (error) toast({ title: "Could not update product", description: error.message, variant: "destructive" }); else await load(); };
   const remove = async (id: string) => { const { error } = await supabase.from("public_store_products").delete().eq("id", id); if (error) toast({ title: "Could not remove product", description: error.message, variant: "destructive" }); else await load(); };
