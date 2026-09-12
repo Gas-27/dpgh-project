@@ -32,8 +32,8 @@ export async function refundStorefrontOrder(input: StorefrontRefundInput) {
 
   let { data: payload, error } = await invokeRefund(accessToken);
   if (error?.context?.status === 401) {
-    const { data: retrySession } = await supabase.auth.refreshSession();
-    if (retrySession.session?.access_token) ({ data: payload, error } = await invokeRefund(retrySession.session.access_token));
+    await supabase.auth.signOut({ scope: "local" });
+    throw new Error("Your sign-in session is no longer valid. Please sign in again, then retry the refund.");
   }
   if (error) {
     const context = (error as any).context;

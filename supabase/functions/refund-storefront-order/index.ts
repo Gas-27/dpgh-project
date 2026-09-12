@@ -23,11 +23,15 @@ Deno.serve(async (req) => {
   if (!authHeader) return json({ error: "Authentication required" }, 401);
   if (!secret || !serviceKey) return json({ error: "Refund service is not configured" }, 500);
 
-  const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-    global: { headers: { Authorization: authHeader } },
+  const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!bearerToken) return json({ error: "Authentication required" }, 401);
+
+  const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "", {
+    global: { headers: { Authorization: `Bearer ${bearerToken}` } },
   });
-  const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return json({ error: "Authentication required" }, 401);
+  const { data: userData, error: userError } = await userClient.auth.getUser(bearerToken);
+  if (userError || !userData.user) return json({ error: "Authentication required" }, 401);
+  const user = userData.user;
 
   const body = await req.json().catch(() => null);
   const orderId = String(body?.order_id ?? "").trim();
