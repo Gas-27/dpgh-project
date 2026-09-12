@@ -2751,6 +2751,10 @@ const AdminDashboard = () => {
   {/* PRICES TAB */}
           {canSee("prices") && (
             <TabsContent value="prices" className="space-y-6">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
+                <p className="font-semibold text-foreground">How package pricing works</p>
+                <p className="mt-1">User Price is used on the main site. Agent Price is used through an agent storefront. API Price is used for API purchases. Payment collects the money; the provider selected for the order fulfills the data after payment.</p>
+              </div>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex gap-2">
                   {[

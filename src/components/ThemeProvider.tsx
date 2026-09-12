@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Monitor, Moon, Sun } from "lucide-react";
 
 type Theme = "light" | "dark" | "system";
 type ResolvedTheme = "light" | "dark";
@@ -59,11 +60,11 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(nextTheme)}
-      className="fixed bottom-5 right-5 z-[60] flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-lg backdrop-blur transition hover:border-primary hover:text-primary"
+      className="fixed bottom-24 right-4 z-[45] flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background/95 text-muted-foreground shadow-md backdrop-blur transition hover:border-primary hover:text-primary md:bottom-5 md:right-5"
       aria-label={`${label}. Switch to ${nextTheme} theme`}
       title={`${label} · switch to ${nextTheme}`}
     >
-      <span aria-hidden="true">{theme === "system" ? "◐" : theme === "dark" ? "☾" : "☀"}</span>
+      {theme === "system" ? <Monitor className="h-3.5 w-3.5" aria-hidden="true" /> : theme === "dark" ? <Moon className="h-3.5 w-3.5" aria-hidden="true" /> : <Sun className="h-3.5 w-3.5" aria-hidden="true" />}
     </button>
   );
 }

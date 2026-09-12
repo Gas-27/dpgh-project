@@ -11,22 +11,30 @@ export interface StorefrontRefundInput {
 }
 
 export async function refundStorefrontOrder(input: StorefrontRefundInput) {
-  const { data: sessionData } = await supabase.auth.getSession();
+  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+  const { data: sessionData } = refreshed.session ? { data: refreshed } : await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
-  if (!accessToken) throw new Error("Your session has expired. Please sign in again before requesting a refund.");
+  if (refreshError || !accessToken) throw new Error("Your session has expired. Please sign in again before requesting a refund.");
 
-  const { data: payload, error } = await supabase.functions.invoke("refund-storefront-order", {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: {
-      order_id: input.orderId,
-      actor_role: input.actorRole,
-      storefront_id: input.storefrontId,
-      amount: input.amount,
-      paystack_reference: input.paystackReference,
-      phone: input.phone,
-      reason: input.reason,
-    },
+  const requestBody = {
+    order_id: input.orderId,
+    actor_role: input.actorRole,
+    storefront_id: input.storefrontId,
+    amount: input.amount,
+    paystack_reference: input.paystackReference,
+    phone: input.phone,
+    reason: input.reason,
+  };
+  const invokeRefund = (token: string) => supabase.functions.invoke("refund-storefront-order", {
+    headers: { Authorization: `Bearer ${token}` },
+    body: requestBody,
   });
+
+  let { data: payload, error } = await invokeRefund(accessToken);
+  if (error?.context?.status === 401) {
+    const { data: retrySession } = await supabase.auth.refreshSession();
+    if (retrySession.session?.access_token) ({ data: payload, error } = await invokeRefund(retrySession.session.access_token));
+  }
   if (error) {
     const context = (error as any).context;
     const details = context ? await context.json().catch(() => null) : null;
