@@ -294,7 +294,7 @@ Managing: Toggle Active/Inactive to show or hide without deleting. Delete to rem
 • Support Number ��� shown in the footer of your promotional flyer.
 • WhatsApp Group Link – optional link for customers to join your group/channel.
 • Show Group Icon – toggle the WhatsApp join button on your store (on by default).
-• MoMo Name / Number / Network – for processing withdrawals.
+��� MoMo Name / Number / Network – for processing withdrawals.
 • Top-Up Reference – your unique code for wallet top-ups (read-only).
 
 Note: The Support Number shown here is what appears in the contact footer of your generated flyer.` },
@@ -2375,14 +2375,14 @@ return (
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
               <div><p className="text-sm font-semibold text-foreground">Your Store Website</p><p className="text-xs text-muted-foreground">{storeUrl}</p></div>
-              <div className="flex gap-2"><Button variant="outline" size="sm" onClick={copyStoreLink}><Copy className="h-4 w-4 mr-1" /> Copy Link</Button><Button variant="hero" size="sm" asChild><a href={storeUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4 mr-1" /> Visit Store</a></Button></div>
+              <div className="flex gap-2"><Button variant="outline" size="sm" className="border-2 border-cyan-600 bg-cyan-50 font-semibold text-cyan-900 hover:bg-cyan-100" onClick={copyStoreLink}><Copy className="h-4 w-4 mr-1" /> Copy Link</Button><Button variant="hero" size="sm" asChild><a href={storeUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4 mr-1" /> Visit Store</a></Button></div>
             </CardContent>
           </Card>
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-400/40 bg-cyan-400/10 text-cyan-200", "border-amber-400/40 bg-amber-400/10 text-amber-200", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
   
   {/* ============================= DOMAINS ============================= */}
           <TabsContent value="domains" className="space-y-6 mt-0">
@@ -3594,7 +3594,7 @@ return (
                           <div className="flex-1">
                             <p className="font-semibold text-amber-400 text-sm">Withdrawal Cooldown Active</p>
                             <p className="text-amber-300 text-xs mt-0.5">Next withdrawal available in:</p>
-                            <p className="text-amber-200 font-mono font-bold text-lg tracking-wider mt-1">{cooldownTimeRemaining}</p>
+                            <p className="text-amber-800 font-mono font-bold text-lg tracking-wider mt-1">{cooldownTimeRemaining}</p>
                           </div>
                         </div>
                       )}

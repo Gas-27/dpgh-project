@@ -1020,7 +1020,7 @@ const searchOrders = useCallback(async (input?: string) => {
                   <Button 
                     size="sm" 
                     variant="outline"
-                    className="flex-1 sm:flex-auto rounded-lg"
+                    className="flex-1 rounded-lg border-2 border-cyan-600 bg-cyan-50 font-semibold text-cyan-900 hover:bg-cyan-100 sm:flex-auto"
                     onClick={() => {
                       const url = DOMAINS.getSubagentStoreUrl(store.store_name);
                       navigator.clipboard.writeText(url);
