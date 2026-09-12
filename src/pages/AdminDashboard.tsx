@@ -1578,9 +1578,16 @@ const AdminDashboard = () => {
         .select("*")
         .order("created_at", { ascending: false });
 
-      const searchTerms = contactSearch.split(/[\s,\n]+/).map((term) => term.trim()).filter(Boolean);
+      const searchTerms = contactSearch
+        .split(/[\s,;]+/)
+        .map((term) => term.trim().replace(/[^0-9+]/g, ""))
+        .filter((term) => term.length >= 3);
       if (searchTerms.length > 0) {
-        const phoneFilters = searchTerms.map((term) => `customer_number.ilike.%${term}%`).join(",");
+        // PostgREST uses * as the wildcard in OR filters. Each number is an
+        // independent OR clause, so pasted lines/spaces match any number.
+        const phoneFilters = searchTerms
+          .map((term) => `customer_number.ilike.*${term}*`)
+          .join(",");
         query = query.or(phoneFilters);
       }
 
@@ -1638,7 +1645,7 @@ const AdminDashboard = () => {
         const { data, error } = await query.range(page * pageSize, page * pageSize + pageSize - 1);
         if (error) {
           console.error("[v0] Error querying orders from DB:", error);
-          toast({ title: "Error", description: "Failed to filter orders", variant: "destructive" });
+          toast({ title: "Search error", description: error.message || "Failed to search orders", variant: "destructive" });
           return;
         }
         filtered.push(...((data || []) as Order[]));
