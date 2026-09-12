@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
         const network = metadata.network || "";
         const packageName = metadata.package_name || "";
         const agentStoreId = metadata.agent_store_id || null;
+        const authenticatedUserId = metadata.user_id || metadata.customer_id || null;
 
         const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
         const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
@@ -87,6 +88,8 @@ Deno.serve(async (req) => {
             status: "paid",
             fulfillment_status: "pending",
             paystack_reference: reference,
+            user_id: authenticatedUserId,
+            customer_id: authenticatedUserId,
         };
         if (agentStoreId) {
             orderInsert.agent_store_id = agentStoreId;

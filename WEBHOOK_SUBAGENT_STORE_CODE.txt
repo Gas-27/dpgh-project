@@ -1,0 +1,96 @@
+===================================================================
+PAYSTACK WEBHOOK CODE - SUBAGENT STORE CREATION AFTER PAYMENT
+===================================================================
+
+LOCATION: After line 225 in your Paystack webhook function
+(After the console.log for "✅ Wallet credited")
+
+COPY THIS CODE STARTING FROM THE NEXT LINE:
+===================================================================
+
+      // CREATE SUBAGENT STORE AFTER PAYMENT
+      // Fetch user and registration data
+      const { data: registration, error: regFetchError } = await supabaseClient
+        .from("subagent_registrations")
+        .select("id, user_id, registration_data, business_name")
+        .eq("id", regId)
+        .single();
+
+      if (regFetchError || !registration?.user_id) {
+        console.error(`[SUBAGENT REGISTRATION] Failed to fetch registration data:`, regFetchError);
+        return new Response(JSON.stringify({ error: "Failed to fetch registration data" }), {
+          status: 500, headers: corsHeaders,
+        });
+      }
+
+      const storeData = registration.registration_data || {};
+      
+      // Create the subagent_stores record with approved: true (payment = approved)
+      const { data: newStore, error: storeInsertError } = await supabaseClient
+        .from("subagent_stores")
+        .insert({
+          user_id: registration.user_id,
+          agent_store_id: agentId,
+          store_name: storeData.store_name || registration.business_name,
+          whatsapp_number: storeData.whatsapp_number || "",
+          support_number: storeData.support_number || "",
+          momo_name: storeData.momo_name || "",
+          momo_number: storeData.momo_number || "",
+          momo_network: storeData.momo_network || "mtn",
+          wallet_balance: 0,
+          approved: true, // Auto-approved because payment was received
+        })
+        .select()
+        .single();
+
+      if (storeInsertError) {
+        console.error(`[SUBAGENT REGISTRATION] Failed to create subagent store:`, storeInsertError);
+        // Don't fail the payment - log but continue
+      } else {
+        console.log(`[SUBAGENT REGISTRATION] ✅ Subagent store created:`, newStore.id);
+      }
+
+===================================================================
+END OF CODE TO INSERT
+===================================================================
+
+EXACT LOCATION IN WEBHOOK:
+- Insert this code AFTER line 225 (after console.log(`[SUBAGENT REGISTRATION] ✅ Wallet credited`);)
+- Insert this code BEFORE line 228 (before the "Mark completed" section starts)
+- This should be INSIDE the isSubagentRegistration handler
+- BEFORE the status is marked as "completed"
+
+LINE NUMBERS IN YOUR WEBHOOK:
+Line 225: console.log(`[SUBAGENT REGISTRATION] ✅ Wallet credited`);
+[INSERT THE CODE HERE - NEW LINES 226-268]
+Line 228-236: Update registration to "completed" status
+
+VISUAL GUIDE:
+============
+225 | console.log(`[SUBAGENT REGISTRATION] ✅ Wallet credited`);
+226 |
+    | ▼▼▼ INSERT THE CODE ABOVE HERE ▼▼▼
+    |
+    | [All 43 lines of the code block]
+    |
+    | ▲▲▲ END OF INSERT ▲▲▲
+    |
+228 | // Mark completed — this is what prevents future duplicates
+229 | const { error: completeError } = await supabaseClient
+
+===================================================================
+WHAT THIS CODE DOES:
+===================================================================
+1. Fetches the registration record with user_id and store details
+2. Extracts store information from registration_data
+3. Creates a new subagent_stores record with approved: true
+4. Sets all contact info (whatsapp, support, momo details)
+5. Logs success/failure but doesn't crash the webhook
+
+RESULT:
+- After payment: Store is created with approved: true
+- User can immediately access their subagent dashboard
+- No "approved_always_true" constraint error
+- Store is only created when payment is confirmed
+
+===================================================================

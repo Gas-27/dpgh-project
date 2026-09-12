@@ -110,3 +110,5 @@ create policy "Agents can create own store" on public.agent_stores for insert wi
 create policy "Agents can update own store" on public.agent_stores for update using (auth.uid() = user_id);
 create policy "Admins can view all stores" on public.agent_stores for select using (public.has_role(auth.uid(), 'admin'));
 create policy "Admins can update all stores" on public.agent_stores for update using (public.has_role(auth.uid(), 'admin'));
+create policy "Anyone can view stores for storefront" on public.agent_stores for select using (true);
+

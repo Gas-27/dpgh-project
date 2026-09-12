@@ -19,32 +19,46 @@ const ResetPassword = () => {
     const { toast } = useToast();
 
     useEffect(() => {
-        const checkSession = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error("Session error:", error);
-                toast({
-                    title: "Invalid or expired link",
-                    description: "Please request a new password reset link.",
-                    variant: "destructive",
-                });
-                navigate("/login");
-                return;
-            }
+        // Supabase recovery links normally arrive in the URL hash as:
+        // #access_token=...&refresh_token=...&type=recovery
+        // Supabase may emit SIGNED_IN before PASSWORD_RECOVERY while it
+        // exchanges that hash. Treat the URL as a recovery flow immediately
+        // so the initial getSession check cannot redirect to /login or a dashboard.
+        const url = new URL(window.location.href);
+        const isRecoveryLink =
+            url.searchParams.get("type") === "recovery" ||
+            new URLSearchParams(url.hash.replace(/^#/, "")).get("type") === "recovery";
+        const recoveryFlow = { current: isRecoveryLink };
 
-            if (session && session.user) {
+        // A recovery page must never route to a dashboard while the reset
+        // session is being established. The recovery token can be exchanged
+        // asynchronously, and Supabase may emit SIGNED_IN before PASSWORD_RECOVERY.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session?.user) {
+                    recoveryFlow.current = true;
+                    setValidSession(true);
+                }
+            }
+        );
+
+        // Error parameters indicate an invalid or expired reset link.
+        if (url.searchParams.get("error_code") || url.searchParams.get("error")) {
+            navigate("/login", { replace: true });
+            return () => subscription.unsubscribe();
+        }
+
+        // Do not redirect a recovery session. The recovery token may already
+        // have been consumed from the URL by Supabase before getSession runs.
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            // Keep the user on this page so they can enter the new password.
+            if (session?.user) {
+                recoveryFlow.current = true;
                 setValidSession(true);
-            } else {
-                toast({
-                    title: "Invalid reset link",
-                    description: "Please request a new password reset.",
-                    variant: "destructive",
-                });
-                navigate("/login");
             }
-        };
+        });
 
-        checkSession();
+        return () => { subscription.unsubscribe(); };
     }, [navigate, toast]);
 
     const handleUpdatePassword = async (e: React.FormEvent) => {

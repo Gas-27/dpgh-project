@@ -1,14 +1,17 @@
+'use client';
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Wifi } from "lucide-react";
 import PaymentDialog from "@/components/PaymentDialog";
+import { useFetchRealtimePackages } from "@/hooks/useRealtimePackages";
 
 const networks = [
   { id: "mtn", name: "MTN", color: "bg-mtn text-primary-foreground" },
-  { id: "airteltigo", name: "AirtelTigo", color: "bg-telecel text-foreground" },
+  { id: "mtn_express", name: "MTN Exp", color: "bg-mtn text-primary-foreground" },
+  { id: "airteltigo", name: "AT", color: "bg-telecel text-foreground" },
   { id: "telecel", name: "Telecel", color: "bg-telecel text-foreground" },
 ];
 
@@ -17,6 +20,9 @@ interface DataPackage {
   network: string;
   size_gb: number;
   price: number;
+  data_package_id?: string;
+  size_gb_text?: string;
+  active?: boolean;
 }
 
 const QuickBuyWidget = () => {
@@ -24,30 +30,26 @@ const QuickBuyWidget = () => {
   const navigate = useNavigate();
   const [selectedNetwork, setSelectedNetwork] = useState("mtn");
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
-  const [packages, setPackages] = useState<DataPackage[]>([]);
-  const [loading, setLoading] = useState(true);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
 
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("data_packages")
-        .select("id, network, size_gb, price")
-        .eq("active", true)
-        .order("size_gb");
-      setPackages(data ?? []);
-      setLoading(false);
-    };
-    void fetch();
-  }, []);
+  // Use real-time packages hook for instant updates (include inactive so they show as unavailable)
+  const { packages, loading } = useFetchRealtimePackages();
 
   const filteredPlans = useMemo(
-    () => packages.filter((p) => p.network === selectedNetwork).slice(0, 4),
+    () => {
+      return packages.filter((p) => {
+        // COMMENTED OUT: mashup packages deactivated
+        // if (selectedNetwork === "mtn_mashup") {
+        //   return (p.network === "mtn_mashup" || p.network === "mashup");
+        // }
+        return p.network === selectedNetwork;
+      }).slice(0, 4);
+    },
     [packages, selectedNetwork],
   );
 
   const handleBuyNow = () => {
-    if (selectedPlan === null || !filteredPlans[selectedPlan]) {
+    if (selectedPlan === null || !filteredPlans[selectedPlan] || filteredPlans[selectedPlan].active === false) {
       navigate(`/packages?network=${selectedNetwork}`);
       return;
     }
@@ -66,13 +68,13 @@ const QuickBuyWidget = () => {
           <h3 className="font-display text-lg font-semibold text-foreground">Quick Buy</h3>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-1 sm:gap-2">
           {networks.map((n) => (
             <button
               key={n.id}
               type="button"
               onClick={() => { setSelectedNetwork(n.id); setSelectedPlan(null); }}
-              className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all ${
+              className={`rounded-lg px-1 sm:px-2 py-2 text-xs font-semibold transition-all ${
                 selectedNetwork === n.id
                   ? `${n.color} shadow-md`
                   : "bg-secondary text-muted-foreground hover:text-foreground"
@@ -91,21 +93,33 @@ const QuickBuyWidget = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {filteredPlans.map((plan, i) => (
-              <button
-                key={plan.id}
-                type="button"
-                onClick={() => setSelectedPlan(i)}
-                className={`rounded-lg border p-3 text-left transition-all ${
-                  selectedPlan === i
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/40"
-                }`}
-              >
-                <p className="font-display text-lg font-bold text-foreground">{plan.size_gb}GB</p>
-                <p className="text-xs text-muted-foreground">GH₵ {Number(plan.price).toFixed(2)}</p>
-              </button>
-            ))}
+            {filteredPlans.map((plan, i) => {
+              const isInactive = plan.active === false;
+              return (
+                <button
+                  key={plan.id}
+                  type="button"
+                  disabled={isInactive}
+                  onClick={() => !isInactive && setSelectedPlan(i)}
+                  className={`rounded-lg border p-3 text-left transition-all ${
+                    isInactive
+                      ? "border-border opacity-50 grayscale cursor-not-allowed"
+                      : selectedPlan === i
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <p className="font-display text-base sm:text-lg font-bold text-foreground">
+                    {`${plan.size_gb}GB`}
+                  </p>
+                  {isInactive ? (
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">GHC {Number(plan.price).toFixed(2)}</p>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -118,10 +132,9 @@ const QuickBuyWidget = () => {
         <PaymentDialog
           open={!!paymentPkg}
           onOpenChange={(v) => !v && setPaymentPkg(null)}
-          packageName={`${paymentPkg.size_gb}GB`}
+          package={paymentPkg}
           network={selectedNetwork}
           price={Number(paymentPkg.price)}
-          packageId={paymentPkg.id}
         />
       )}
     </>

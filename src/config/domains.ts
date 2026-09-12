@@ -1,0 +1,68 @@
+// Domain configuration for DataStore Shop
+export const DOMAINS = {
+  // Main agent store domain
+  AGENT_STORE: "datastores.shop",
+  
+  // Subagent store domain
+  SUBAGENT_STORE: "agentsstore.shop",
+  
+  // Sanitize store name for URL - removes special characters, trims spaces, handles edge cases
+  sanitizeStoreName: (storeName: string): string => {
+    return storeName
+      .toLowerCase()
+      .trim()                           // Remove leading/trailing spaces
+      .replace(/'/g, "")                // Remove apostrophes (store'name -> storename)
+      .replace(/\./g, "")               // Remove periods (store.name -> storename)
+      .replace(/[^a-z0-9\s-]/g, "")     // Remove all other special characters
+      .replace(/\s+/g, "-")             // Replace spaces with hyphens
+      .replace(/-+/g, "-")              // Replace multiple hyphens with single hyphen
+      .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
+  },
+  
+  // Normalize a URL slug or store name for comparison (removes ALL special chars including hyphens)
+  normalizeForComparison: (name: string): string => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]/g, "");       // Remove ALL non-alphanumeric characters
+  },
+  
+  // Get full agent store URL (subdomain)
+  getAgentStoreUrl: (storeName: string) => {
+    const slug = DOMAINS.sanitizeStoreName(storeName);
+    return `https://${slug}.${DOMAINS.AGENT_STORE}`;
+  },
+  
+  // Get subagent store URL (path-based)
+  getSubagentStoreUrl: (storeName: string) => {
+    const slug = DOMAINS.sanitizeStoreName(storeName);
+    return `https://${DOMAINS.SUBAGENT_STORE}/${slug}`;
+  },
+  
+  // Get subagent dashboard URL
+  getSubagentDashboardUrl: () => {
+    return `https://${DOMAINS.SUBAGENT_STORE}/dashboard`;
+  },
+
+  // Get subagent login URL
+  getSubagentLoginUrl: () => {
+    return `https://${DOMAINS.SUBAGENT_STORE}/login`;
+  },
+
+  // Get sub-subagent store URL (nested under subagent)
+  getSubSubagentStoreUrl: (subagentStoreName: string, subSubagentStoreName: string) => {
+    const subagentSlug = DOMAINS.sanitizeStoreName(subagentStoreName);
+    const subSubagentSlug = DOMAINS.sanitizeStoreName(subSubagentStoreName);
+    return `https://${DOMAINS.SUBAGENT_STORE}/${subagentSlug}/store/${subSubagentSlug}`;
+  },
+
+  // Get sub-subagent dashboard URL
+  getSubSubagentDashboardUrl: () => {
+    return `https://${DOMAINS.SUBAGENT_STORE}/sub-subagent-dashboard`;
+  },
+
+  // Get sub-subagent login URL
+  getSubSubagentLoginUrl: () => {
+    return `https://${DOMAINS.SUBAGENT_STORE}/sub-subagent-login`;
+  },
+};
