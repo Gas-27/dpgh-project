@@ -1578,7 +1578,7 @@ const AdminDashboard = () => {
         .select("*")
         .order("created_at", { ascending: false });
 
-      const searchTerms = contactSearch.split(/[\\s,\\n]+/).map((term) => term.trim()).filter(Boolean);
+      const searchTerms = contactSearch.split(/[\s,\n]+/).map((term) => term.trim()).filter(Boolean);
       if (searchTerms.length > 0) {
         const phoneFilters = searchTerms.map((term) => `customer_number.ilike.%${term}%`).join(",");
         query = query.or(phoneFilters);
