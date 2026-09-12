@@ -20,7 +20,8 @@ Deno.serve(async (req) => {
   const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!authHeader || !secret || !serviceKey) return json({ error: "Refund service is not configured" }, 500);
+  if (!authHeader) return json({ error: "Authentication required" }, 401);
+  if (!secret || !serviceKey) return json({ error: "Refund service is not configured" }, 500);
 
   const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
     global: { headers: { Authorization: authHeader } },
