@@ -1,15 +1,17 @@
-import { Zap, Menu, X, LayoutDashboard, Loader2, Home, Search, LogIn, UserPlus } from "lucide-react";
+import { Zap, Menu, X, LayoutDashboard, Loader2, Home, Search, LogIn, UserPlus, Sun, Moon, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import PushNotificationSubscribe from "@/components/PushNotificationSubscribe";
 import SiteSearchModal from "@/components/SiteSearchModal";
+import { useTheme } from "@/components/ThemeProvider";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const { user, isAdmin, isAgent, signOut, getDashboardRoute, loading } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
   // Get the correct dashboard route (with fallback)
@@ -55,6 +57,12 @@ const Navbar = () => {
             <kbd className="ml-1 hidden xl:inline-block rounded border border-border px-1 py-0.5 font-mono text-[10px] text-muted-foreground/60">/</kbd>
           </button>
           <PushNotificationSubscribe variant="icon" />
+          <label className="sr-only" htmlFor="theme-select">Color theme</label>
+          <select id="theme-select" value={theme} onChange={(event) => setTheme(event.target.value as "light" | "dark" | "system")} className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground" aria-label="Color theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
           {loading ? (
             <Button variant="ghost" size="sm" disabled>
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -104,6 +112,15 @@ const Navbar = () => {
             <Search className="h-5 w-5" />
             <span className="font-medium">Search DataPlug</span>
           </button>
+
+          <div className="flex items-center justify-between rounded-lg border border-border bg-background/70 px-4 py-3">
+            <span className="text-sm font-medium text-foreground">Color theme</span>
+            <select value={theme} onChange={(event) => setTheme(event.target.value as "light" | "dark" | "system")} className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground" aria-label="Color theme">
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
 
           {/* MENU Section */}
           <div>

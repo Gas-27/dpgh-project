@@ -15,6 +15,7 @@ import NotificationPrompt from "@/components/NotificationPrompt";
 import ChatBot from "@/components/ChatBot";
 import RouteSeoGuard from "@/components/RouteSeoGuard";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 // Wraps React.lazy so that a stale-deploy chunk failure (old bundle requesting
 // chunk filenames that no longer exist -> server returns index.html with a
@@ -243,8 +244,9 @@ const App = () => {
   const isKnownAppHost = hostname === "dataplug.store" || hostname === "www.dataplug.store" || hostname === DOMAINS.AGENT_STORE || hostname === `www.${DOMAINS.AGENT_STORE}` || hostname === DOMAINS.SUBAGENT_STORE || hostname === `www.${DOMAINS.SUBAGENT_STORE}` || hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app") || hostname.endsWith(".vercel.sh");
   const isCustomDomain = !isKnownAppHost && !isAgentSubdomain && !isSubagentDomain;
 
-  return (
-    <QueryClientProvider client={queryClient}>
+return (
+  <ThemeProvider>
+  <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -438,6 +440,7 @@ const App = () => {
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+  </ThemeProvider>
   );
 };
 
