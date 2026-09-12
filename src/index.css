@@ -57,13 +57,13 @@
 }
 
 @layer components {
-  .storefront-section-cyan { background: linear-gradient(145deg, hsl(213 91% 25%), hsl(216 83% 13%)); border-color: hsl(199 96% 44%); color: hsl(0 0% 98%); }
-  .storefront-section-violet { background: linear-gradient(135deg, hsl(252 62% 20%), hsl(247 62% 14%)); border-color: hsl(261 76% 48%); color: hsl(0 0% 98%); }
-  .storefront-section-green { background: linear-gradient(135deg, hsl(170 70% 14%), hsl(167 56% 10%)); border-color: hsl(168 72% 34%); color: hsl(0 0% 98%); }
-  .storefront-section-amber { background: linear-gradient(135deg, hsl(28 48% 16%), hsl(25 33% 12%)); border-color: hsl(31 72% 38%); color: hsl(0 0% 98%); }
-  .storefront-section-pink { background: linear-gradient(135deg, hsl(326 65% 17%), hsl(318 54% 12%)); border-color: hsl(326 77% 46%); color: hsl(0 0% 98%); }
-  .storefront-section-blue { background: linear-gradient(135deg, hsl(213 79% 18%), hsl(215 69% 12%)); border-color: hsl(207 82% 43%); color: hsl(0 0% 98%); }
-  .storefront-section-teal { background: linear-gradient(135deg, hsl(185 72% 15%), hsl(185 57% 11%)); border-color: hsl(184 78% 35%); color: hsl(0 0% 98%); }
+  .storefront-section-cyan { background: linear-gradient(145deg, hsl(213 91% 25%), hsl(216 83% 13%)) !important; border-color: hsl(199 96% 44%); color: hsl(0 0% 98%) !important; }
+  .storefront-section-violet { background: linear-gradient(135deg, hsl(252 62% 20%), hsl(247 62% 14%)) !important; border-color: hsl(261 76% 48%); color: hsl(0 0% 98%); }
+  .storefront-section-green { background: linear-gradient(135deg, hsl(170 70% 14%), hsl(167 56% 10%)) !important; border-color: hsl(168 72% 34%); color: hsl(0 0% 98%); }
+  .storefront-section-amber { background: linear-gradient(135deg, hsl(28 48% 16%), hsl(25 33% 12%)) !important; border-color: hsl(31 72% 38%); color: hsl(0 0% 98%); }
+  .storefront-section-pink { background: linear-gradient(135deg, hsl(326 65% 17%), hsl(318 54% 12%)) !important; border-color: hsl(326 77% 46%); color: hsl(0 0% 98%); }
+  .storefront-section-blue { background: linear-gradient(135deg, hsl(213 79% 18%), hsl(215 69% 12%)) !important; border-color: hsl(207 82% 43%); color: hsl(0 0% 98%); }
+  .storefront-section-teal { background: linear-gradient(135deg, hsl(185 72% 15%), hsl(185 57% 11%)) !important; border-color: hsl(184 78% 35%); color: hsl(0 0% 98%); }
   .storefront-section-icon { background: hsl(190 95% 55%); color: hsl(215 25% 6%); }
   .storefront-section-violet .storefront-section-icon { background: hsl(267 89% 62%); color: hsl(0 0% 98%); }
   .storefront-section-green .storefront-section-icon { background: hsl(157 72% 50%); }
@@ -85,6 +85,27 @@
   .storefront-readable .text-foreground { color: hsl(0 0% 98%); }
   .storefront-readable .text-primary { color: hsl(190 95% 70%); }
   .storefront-readable .bg-card, .storefront-readable [data-card] { color: hsl(0 0% 98%); }
+  .storefront-readable .storefront-section-cyan,
+  .storefront-readable .storefront-section-violet,
+  .storefront-readable .storefront-section-green,
+  .storefront-readable .storefront-section-amber,
+  .storefront-readable .storefront-section-pink,
+  .storefront-readable .storefront-section-blue,
+  .storefront-readable .storefront-section-teal { color: hsl(0 0% 98%) !important; }
+  .storefront-readable .storefront-section-cyan span,
+  .storefront-readable .storefront-section-violet span,
+  .storefront-readable .storefront-section-green span,
+  .storefront-readable .storefront-section-amber span,
+  .storefront-readable .storefront-section-pink span,
+  .storefront-readable .storefront-section-blue span,
+  .storefront-readable .storefront-section-teal span { color: inherit; }
+  .storefront-readable .storefront-section-cyan span span,
+  .storefront-readable .storefront-section-violet span span,
+  .storefront-readable .storefront-section-green span span,
+  .storefront-readable .storefront-section-amber span span,
+  .storefront-readable .storefront-section-pink span span,
+  .storefront-readable .storefront-section-blue span span,
+  .storefront-readable .storefront-section-teal span span { color: hsl(215 28% 86%) !important; }
 }
 
 @layer base {
