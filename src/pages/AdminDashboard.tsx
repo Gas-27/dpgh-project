@@ -1583,12 +1583,9 @@ const AdminDashboard = () => {
         .map((term) => term.trim().replace(/[^0-9+]/g, ""))
         .filter((term) => term.length >= 3);
       if (searchTerms.length > 0) {
-        // PostgREST uses * as the wildcard in OR filters. Each number is an
-        // independent OR clause, so pasted lines/spaces match any number.
-        const phoneFilters = searchTerms
-          .map((term) => `customer_number.ilike.*${term}*`)
-          .join(",");
-        query = query.or(phoneFilters);
+        // Use an indexed IN lookup instead of multiple wildcard scans. The
+        // previous ilike OR query timed out on the large orders table.
+        query = query.in("customer_number", searchTerms);
       }
 
       // Apply network filter directly on DB
