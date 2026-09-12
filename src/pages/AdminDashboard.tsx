@@ -645,7 +645,7 @@ const AdminDashboard = () => {
         setTopupHistory(data ?? []);
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
-        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount, sub_subagent_store_id, fulfillment_provider, purchase_provider, purchase_provider_source, provider_attempts", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount, sub_subagent_store_id, fulfillment_provider, provider_attempts", { column: "created_at", ascending: false }, 1000);
         setOrders(data ?? []);
         // Auto-refund any orders that are already order_status="failed" but not yet refunded.
         // These may have arrived before the realtime listener was active.
