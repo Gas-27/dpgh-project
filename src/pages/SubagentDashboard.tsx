@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
@@ -245,6 +246,7 @@ const SubagentDashboard = () => {
   // Refunds
   const [selectedSubSubagentRefundIds, setSelectedSubSubagentRefundIds] = useState<Set<string>>(new Set());
   const [refundingSubSubagentOrders, setRefundingSubSubagentOrders] = useState<Set<string>>(new Set());
+  const [refundingOwnOrderId, setRefundingOwnOrderId] = useState<string | null>(null);
 
   // Sub-Subagents
   const [subSubagents, setSubSubagents] = useState<any[]>([]);
@@ -1006,6 +1008,24 @@ const SubagentDashboard = () => {
     const { error } = await supabase.from("subagent_notifications").delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchNotifications();
+  };
+
+  const processOwnStorefrontRefund = async (order: any) => {
+    const paystackReference = String(order.paystack_reference || order.reference || "").trim();
+    const amount = Number(order.amount || order.selling_price || 0);
+    if (!paystackReference || amount <= 0) {
+      toast({ title: "Refund unavailable", description: "This order is missing its Paystack reference or amount.", variant: "destructive" });
+      return;
+    }
+    setRefundingOwnOrderId(order.id);
+    try {
+      const result = await refundStorefrontOrder({ orderId: order.id, actorRole: "subagent", storefrontId: subagentStore!.id, amount, paystackReference, phone: order.customer_number, reason: "Direct subagent storefront customer refund" });
+      toast({ title: "Refund through Paystack submitted", description: result.message });
+    } catch (error: any) {
+      toast({ title: "Refund failed", description: error?.message || "Unable to submit refund.", variant: "destructive" });
+    } finally {
+      setRefundingOwnOrderId(null);
+    }
   };
 
   // Refund sub-subagent orders: credit the sub-subagent wallet at the base price this
@@ -2992,6 +3012,13 @@ return (
                                   ) : (
                                     <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Pending Refund</Badge>
                                   )}
+                                </TableCell>
+                                <TableCell>
+                                  {!isSubSub && !alreadyForwarded && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
+                                    <Button size="sm" variant="outline" disabled={refundingOwnOrderId === order.id} onClick={() => processOwnStorefrontRefund(order)}>
+                                      {refundingOwnOrderId === order.id ? "Processing..." : "Refund via Paystack"}
+                                    </Button>
+                                  ) : !isSubSub ? <span className="text-xs text-green-400">Refund submitted</span> : <span className="text-xs text-muted-foreground">Forward to sub-subagent</span>}
                                 </TableCell>
                               </TableRow>
                             );
