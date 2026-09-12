@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
@@ -442,6 +443,7 @@ const AgentDashboard = () => {
   // Refund state for subagent orders
   const [selectedSubagentOrderIds, setSelectedSubagentOrderIds] = useState<Set<string>>(new Set());
   const [refundingSubagentOrders, setRefundingSubagentOrders] = useState<Set<string>>(new Set());
+  const [refundingDirectOrderId, setRefundingDirectOrderId] = useState<string | null>(null);
   const [refundFilterAgent, setRefundFilterAgent] = useState<"all" | "processing" | "delivered" | "refunded">("all");
   const [subagentBasePrices, setSubagentBasePrices] = useState<Record<string, number>>({});
 
@@ -2002,6 +2004,36 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     }
   };
   
+  const processDirectStorefrontRefund = async (order: any) => {
+    const paystackReference = String(order.paystack_reference || order.reference || "").trim();
+    const refundAmount = Number(order.agent_price || order.base_price || 0);
+    if (!paystackReference) {
+      toast({ title: "Refund unavailable", description: "This order has no Paystack reference.", variant: "destructive" });
+      return;
+    }
+    if (refundAmount <= 0) {
+      toast({ title: "Refund unavailable", description: "The store-side refund amount could not be determined.", variant: "destructive" });
+      return;
+    }
+    setRefundingDirectOrderId(order.id);
+    try {
+      const result = await refundStorefrontOrder({
+        orderId: order.id,
+        actorRole: "agent",
+        storefrontId: store.id,
+        amount: refundAmount,
+        paystackReference,
+        phone: order.customer_number,
+        reason: "Direct storefront customer refund",
+      });
+      toast({ title: "Refund through Paystack submitted", description: result.message });
+    } catch (error: any) {
+      toast({ title: "Refund failed", description: error?.message || "Top up your wallet before trying again.", variant: "destructive" });
+    } finally {
+      setRefundingDirectOrderId(null);
+    }
+  };
+
   // Process refunds for subagent orders (defined before guards to keep hook order stable)
   // Handles: direct subagent orders → credit subagent wallet at agent_price
   //          sub-subagent orders → credit subagent wallet at subagent_package_prices.base_price
@@ -2708,7 +2740,7 @@ return (
                 <p className="text-sm font-semibold text-blue-400">How Refunds Work</p>
                 <div className="text-xs text-blue-300/80 space-y-1.5">
                   <p>When an order is refunded by the admin, the money is credited back to your agent wallet. Here is what you should do next depending on the order source:</p>
-                  <p><strong className="text-blue-300">Storefront (Direct) Orders:</strong> The customer paid you directly via your store. You should either <strong>send the money back to the customer via MoMo</strong> or <strong>retry the data order</strong> for them manually. The choice is yours — direct orders cannot be re-selected here since the admin already covered them.</p>
+                  <p><strong className="text-blue-300">Storefront (Direct) Orders:</strong> Use <strong>Refund via Paystack</strong> to return the store-side amount to the customer&apos;s original payment method. Your wallet must have enough balance first. Paystack usually processes refunds within minutes, but it can take up to 7 days.</p>
                   <p><strong className="text-blue-300">Subagent / Sub-Subagent Orders:</strong> Select the affected orders using the checkboxes and click <strong>Refund Selected</strong>. This deducts the base price from your wallet and credits it directly to the subagent wallet so they can retry.</p>
                   <p><strong className="text-blue-300">One Refund Per Order:</strong> Each order can only be refunded once. If an order has already been refunded, the checkbox will not be selectable and the system will block a second refund automatically.</p>
                 </div>
@@ -2914,6 +2946,23 @@ return (
                                   <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs whitespace-nowrap">Refunded to Subagent</Badge>
                                 ) : (
                                   <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Pending Refund</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {!isSubagentOrder && !isSubSubagentOrder && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-cyan-600 bg-cyan-50 font-semibold text-cyan-900 hover:bg-cyan-100"
+                                    disabled={refundingDirectOrderId === order.id}
+                                    onClick={() => processDirectStorefrontRefund(order)}
+                                  >
+                                    {refundingDirectOrderId === order.id ? "Processing..." : "Refund via Paystack"}
+                                  </Button>
+                                ) : !isSubagentOrder && !isSubSubagentOrder ? (
+                                  <Badge className="bg-green-500/20 text-green-700 border-green-500/30 text-xs whitespace-nowrap">Refund submitted</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">Store-owner flow</span>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -4793,7 +4842,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                               <TableHead>Network</TableHead>
                               <TableHead>Size</TableHead>
                               <TableHead>Amount</TableHead>
-                              <TableHead>Status</TableHead>
+<TableHead>Status</TableHead>
+                            <TableHead>Customer Refund</TableHead>
+
                             </TableRow>
                           </TableHeader>
                           <TableBody>
