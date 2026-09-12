@@ -26,8 +26,8 @@ Deno.serve(async (req) => {
   const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!bearerToken) return json({ error: "Authentication required" }, 401);
 
-  const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "", {
-    global: { headers: { Authorization: `Bearer ${bearerToken}` } },
+  const userClient = createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: userData, error: userError } = await userClient.auth.getUser(bearerToken);
   if (userError || !userData.user) return json({ error: "Authentication required" }, 401);

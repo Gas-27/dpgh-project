@@ -31,7 +31,9 @@ export async function refundStorefrontOrder(input: StorefrontRefundInput) {
 
   let { data: payload, error } = await invokeRefund(accessToken);
   if (error?.context?.status === 401) {
-    throw new Error("Refund authorization failed. Your session was preserved; please retry without refreshing the page.");
+    const context = error.context;
+    const details = context ? await context.clone().json().catch(() => null) : null;
+    throw new Error(details?.error || "Refund authorization failed. Your session was preserved; please retry without refreshing the page.");
   }
   if (error) {
     const context = (error as any).context;
