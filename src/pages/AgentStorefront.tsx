@@ -550,7 +550,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��────────────���������────────────────────�������────────────────
+// ─�����������────────────────────────��────────────�����������────────────────────�������────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -1040,7 +1040,7 @@ const searchOrders = useCallback(async (input?: string) => {
   // ── JSX ──
   return (
   <div
-    className="min-h-screen relative"
+    className="storefront-readable min-h-screen relative"
     style={{ backgroundColor: backgroundColor } as React.CSSProperties}
   >
     <NotificationPopup surface="agent-storefront" />

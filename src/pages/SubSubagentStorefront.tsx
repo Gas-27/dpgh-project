@@ -919,7 +919,7 @@ const searchOrders = useCallback(async (input?: string) => {
   }
 
   return (
-  <div className="min-h-screen font-sans" style={{ background: bgColor, color: "#fff" }}>
+  <div className="storefront-readable min-h-screen font-sans" style={{ background: bgColor, color: "#fff" }}>
   <NotificationPopup surface="subsubagent-storefront" />
   {/* Notification Modal */}
       {modalOpen && undismissedNotifications.length > 0 && (

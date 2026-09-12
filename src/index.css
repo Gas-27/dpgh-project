@@ -80,6 +80,11 @@
   .storefront-section-active.storefront-section-blue { border-color: hsl(197 91% 52%); }
   .storefront-section-active.storefront-section-teal { border-color: hsl(183 78% 47%); }
   .storefront-section-active .storefront-section-icon { transform: scale(1.04); }
+  .storefront-readable { color: hsl(0 0% 98%); }
+  .storefront-readable .text-muted-foreground { color: hsl(215 20% 78%); }
+  .storefront-readable .text-foreground { color: hsl(0 0% 98%); }
+  .storefront-readable .text-primary { color: hsl(190 95% 70%); }
+  .storefront-readable .bg-card, .storefront-readable [data-card] { color: hsl(0 0% 98%); }
 }
 
 @layer base {
