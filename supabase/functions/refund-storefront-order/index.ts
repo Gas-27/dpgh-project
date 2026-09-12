@@ -80,10 +80,16 @@ Deno.serve(async (req) => {
   const paystackBody = await paystack.json().catch(() => ({}));
 
   if (!paystack.ok || paystackBody?.status === false) {
-    await admin.from("paystack_refunds").update({ status: "failed", wallet_deduction_status: "restored", reason: paystackBody?.message ?? "Paystack refund failed", provider_payload: paystackBody, updated_at: new Date().toISOString() }).eq("id", refundId);
+    await admin.rpc("restore_storefront_refund_wallet", {
+      p_refund_id: refundId,
+      p_reason: paystackBody?.message ?? "Paystack refund failed",
+    });
+    await admin.from("paystack_refunds").update({ status: "failed", reason: paystackBody?.message ?? "Paystack refund failed", provider_payload: paystackBody, updated_at: new Date().toISOString() }).eq("id", refundId);
     return json({ error: paystackBody?.message ?? "Paystack could not start the refund" }, 502);
   }
 
-  await admin.from("paystack_refunds").update({ paystack_refund_id: String(paystackBody?.data?.id ?? ""), provider_payload: paystackBody, updated_at: new Date().toISOString() }).eq("id", refundId);
-  return json({ success: true, refund_id: refundId, status: "pending", message: "Refund through Paystack submitted. Refunds take 30 minutes to 7 days to reach the customer number used for the purchase." });
+  const paystackStatus = String(paystackBody?.data?.status ?? "pending").toLowerCase();
+  const status = paystackStatus === "processed" || paystackStatus === "completed" ? "processed" : paystackStatus === "failed" ? "failed" : "pending";
+  await admin.from("paystack_refunds").update({ paystack_refund_id: String(paystackBody?.data?.id ?? ""), status, provider_payload: paystackBody, processed_at: status === "processed" ? new Date().toISOString() : null, wallet_deduction_status: status === "processed" ? "deducted" : "reserved", updated_at: new Date().toISOString() }).eq("id", refundId);
+  return json({ success: true, refund_id: refundId, status, message: "Refund through Paystack submitted. Refunds usually take 20 minutes to 72 hours. The money returns to the original payment account or number, and Paystack will notify the customer." });
 });

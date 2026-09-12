@@ -67,18 +67,24 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    if (["refund.pending", "refund.processed", "refund.failed"].includes(payload.event)) {
+    if (["refund.pending", "refund.processing", "refund.processed", "refund.failed"].includes(payload.event)) {
       const refundData = payload.data ?? {};
       const reference = String(refundData.transaction_reference ?? refundData.transaction ?? refundData.reference ?? "");
-      const status = payload.event === "refund.processed" ? "processed" : payload.event === "refund.failed" ? "failed" : "pending";
-      const { data: refund } = await supabaseClient.from("paystack_refunds").select("id, status, wallet_deduction_status, storefront_kind, storefront_id, wallet_amount").eq("paystack_reference", reference).maybeSingle();
+      const status = payload.event === "refund.processed" ? "processed" : payload.event === "refund.failed" ? "failed" : payload.event === "refund.processing" ? "processing" : "pending";
+      const { data: refund } = await supabaseClient.from("paystack_refunds").select("id, status, wallet_deduction_status, wallet_amount").eq("paystack_reference", reference).maybeSingle();
       if (!refund) return new Response(JSON.stringify({ message: "Refund not found" }), { status: 200, headers: corsHeaders });
-      const updates: Record<string, unknown> = { status, provider_payload: payload, webhook_event_id: payload.id ?? null, updated_at: new Date().toISOString(), processed_at: status === "processed" ? new Date().toISOString() : null };
+      const updates: Record<string, unknown> = {
+        status,
+        provider_payload: payload,
+        webhook_event_id: payload.id ?? null,
+        updated_at: new Date().toISOString(),
+        processed_at: status === "processed" ? new Date().toISOString() : null,
+      };
       if (status === "failed" && refund.wallet_deduction_status === "reserved") {
-        const table = refund.storefront_kind === "agent" ? "agent_stores" : refund.storefront_kind === "subagent" ? "subagent_stores" : "sub_subagent_stores";
-        const { data: store } = await supabaseClient.from(table).select("wallet_balance").eq("id", refund.storefront_id).maybeSingle();
-        if (store) await supabaseClient.from(table).update({ wallet_balance: Number(store.wallet_balance || 0) + Number(refund.wallet_amount) }).eq("id", refund.storefront_id);
-        updates.wallet_deduction_status = "restored";
+        await supabaseClient.rpc("restore_storefront_refund_wallet", {
+          p_refund_id: refund.id,
+          p_reason: String(refundData.message ?? "Paystack refund failed"),
+        });
       } else if (status === "processed") {
         updates.wallet_deduction_status = "deducted";
       }
