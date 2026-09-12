@@ -11,10 +11,9 @@ export interface StorefrontRefundInput {
 }
 
 export async function refundStorefrontOrder(input: StorefrontRefundInput) {
-  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-  const { data: sessionData } = refreshed.session ? { data: refreshed } : await supabase.auth.getSession();
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
-  if (refreshError || !accessToken) throw new Error("Your session has expired. Please sign in again before requesting a refund.");
+  if (sessionError || !accessToken) throw new Error("Your session has expired. Please sign in again before requesting a refund.");
 
   const requestBody = {
     order_id: input.orderId,
@@ -32,8 +31,7 @@ export async function refundStorefrontOrder(input: StorefrontRefundInput) {
 
   let { data: payload, error } = await invokeRefund(accessToken);
   if (error?.context?.status === 401) {
-    await supabase.auth.signOut({ scope: "local" });
-    throw new Error("Your sign-in session is no longer valid. Please sign in again, then retry the refund.");
+    throw new Error("Refund authorization failed. Your session was preserved; please retry without refreshing the page.");
   }
   if (error) {
     const context = (error as any).context;

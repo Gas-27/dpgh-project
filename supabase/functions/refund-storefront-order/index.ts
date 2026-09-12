@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const authHeader = req.headers.get("Authorization");
-  const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
+  const secret = Deno.env.get("PAYSTACK_API_KEY") ?? Deno.env.get("PAYSTACK_SECRET_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!authHeader) return json({ error: "Authentication required" }, 401);
@@ -53,6 +53,11 @@ Deno.serve(async (req) => {
   if (storedReference !== reference) return json({ error: "The Paystack reference does not match this order." }, 400);
   const serverAmount = Number(order.amount ?? order.total_amount ?? order.agent_price ?? order.base_price ?? order.selling_price ?? 0);
   if (!Number.isFinite(serverAmount) || serverAmount <= 0) return json({ error: "This order has no valid refundable amount." }, 400);
+
+  const { data: existingRefund } = await admin.from("paystack_refunds").select("id, status, paystack_refund_id").eq("order_id", orderId).eq("paystack_reference", storedReference).in("status", ["pending", "processing", "completed"]).maybeSingle();
+  if (existingRefund) {
+    return json({ success: true, refund_id: existingRefund.id, status: existingRefund.status, message: "This refund has already been submitted for the order." });
+  }
 
   const { data: reservation, error: reservationError } = await admin.rpc("refund_storefront_order", {
     p_order_id: orderId,
