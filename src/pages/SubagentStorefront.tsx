@@ -503,6 +503,10 @@ export function SubagentStorefront() {
   
   // Bulk Orders
   const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms" | "services" | "products">("data");
+  useEffect(() => {
+    const configured = (store?.theme_config as any)?.default_section;
+    if (["data", "afa", "bulk", "sms", "services", "products"].includes(configured)) setActiveSection(configured as typeof activeSection);
+  }, [store?.theme_config]);
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");
   const [bulkRecipients, setBulkRecipients] = useState("");
   const [bulkGlobalSize, setBulkGlobalSize] = useState<number | null>(null);

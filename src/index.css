@@ -57,7 +57,7 @@
 }
 
 @layer components {
-  .storefront-section-cyan { background: linear-gradient(135deg, hsl(211 88% 16%), hsl(214 76% 12%)); border-color: hsl(203 88% 39%); color: hsl(0 0% 98%); }
+  .storefront-section-cyan { background: linear-gradient(145deg, hsl(213 91% 25%), hsl(216 83% 13%)); border-color: hsl(199 96% 44%); color: hsl(0 0% 98%); }
   .storefront-section-violet { background: linear-gradient(135deg, hsl(252 62% 20%), hsl(247 62% 14%)); border-color: hsl(261 76% 48%); color: hsl(0 0% 98%); }
   .storefront-section-green { background: linear-gradient(135deg, hsl(170 70% 14%), hsl(167 56% 10%)); border-color: hsl(168 72% 34%); color: hsl(0 0% 98%); }
   .storefront-section-amber { background: linear-gradient(135deg, hsl(28 48% 16%), hsl(25 33% 12%)); border-color: hsl(31 72% 38%); color: hsl(0 0% 98%); }

@@ -493,6 +493,10 @@ export function SubSubagentStorefront() {
   // Sub-Subagent Registration
   // ── AFA Packages ──
   const [activeSection, setActiveSection] = useState<"data" | "afa" | "sms" | "services" | "products">("data");
+  useEffect(() => {
+    const configured = (store?.theme_config as any)?.default_section;
+    if (["data", "afa", "sms", "services", "products"].includes(configured)) setActiveSection(configured as typeof activeSection);
+  }, [store?.theme_config]);
   const [afaPaymentPkg, setAfaPaymentPkg] = useState<{ id: string; size_gb: number; price: number; network: string } | null>(null);
   const [afaPaymentOpen, setAfaPaymentOpen] = useState(false);
 

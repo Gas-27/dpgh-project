@@ -550,7 +550,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��────────────�����������────────────────────�������────────────────
+// ─�����������────────────────────────��────────────�������������────────────────────�������────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -599,6 +599,11 @@ const AgentStorefront = () => {
   const [activeCategory, setActiveCategory] = useState<
     "data" | "afa" | "vouchers" | "services" | "bulk" | "sms" | "products"
   >("data");
+  useEffect(() => {
+    const configured = (store?.theme_config as any)?.default_section;
+    const next = configured === "instant" ? "vouchers" : configured;
+    if (["data", "afa", "vouchers", "services", "bulk", "sms", "products"].includes(next)) setActiveCategory(next as typeof activeCategory);
+  }, [store?.theme_config]);
   
   // ── Bulk Orders ──
   const [bulkNetwork, setBulkNetwork] = useState<"mtn" | "telecel" | "airteltigo">("mtn");

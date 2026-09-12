@@ -71,7 +71,7 @@ interface Order {
   paystack_reference: string | null; created_at: string | null; agent_store_id: string | null;
   payment_method: string; subagent_store_id?: string | null; customer_id?: string | null;
   api_user?: string | null; package_id?: string | null; base_price?: number | null;
-  agent_price?: number | null; refunded_amount?: number | null; fulfillment_provider?: string | null;
+  agent_price?: number | null; refunded_amount?: number | null; fulfillment_provider?: string | null; provider_attempts?: Array<{ provider?: string; status?: string; created_at?: string }> | null;
 }
   interface WithdrawalRequest {
     id: string; agent_store_id: string | null; subagent_store_id?: string | null; sub_subagent_store_id?: string | null; amount: number; status: string;
@@ -184,7 +184,7 @@ const AdminDashboard = () => {
   const orderSearch = useDatabaseSearch<Order>(
     "orders",
     "customer_number",
-    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id, fulfillment_provider"
+    "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, package_id, refunded_amount, refunded_at, api_user, sub_subagent_store_id, fulfillment_provider, provider_attempts"
   );
   
   const profileSearch = useDatabaseSearch<UserProfile>(
@@ -645,7 +645,7 @@ const AdminDashboard = () => {
         setTopupHistory(data ?? []);
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
-        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount, sub_subagent_store_id", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount, sub_subagent_store_id, fulfillment_provider, provider_attempts", { column: "created_at", ascending: false }, 1000);
         setOrders(data ?? []);
         // Auto-refund any orders that are already order_status="failed" but not yet refunded.
         // These may have arrived before the realtime listener was active.

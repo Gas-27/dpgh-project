@@ -1498,7 +1498,7 @@ const searchOrders = async (input?: string) => {
   const catLabels: Record<string, string> = { data: "Data Bundles", afa: "AFA Bundles", vouchers: "Instant Data", services: "Services", bulk: "Bulk Orders", sms: "Bulk SMS" };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="storefront-readable min-h-screen bg-background">
       <NotificationPopup surface="packages" />
       <Navbar />
       <div className="container pt-24 pb-16">
