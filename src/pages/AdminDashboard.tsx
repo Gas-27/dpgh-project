@@ -156,6 +156,7 @@ const AdminDashboard = () => {
   const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
   const [refundAction, setRefundAction] = useState<"" | "refund">("") ;
   const [showRefundedOnly, setShowRefundedOnly] = useState(false);
+  const [paystackRefundOrderIds, setPaystackRefundOrderIds] = useState<Set<string>>(new Set());
   const [reversingRefundIds, setReversingRefundIds] = useState<Set<string>>(new Set());
   // Incremented by the realtime listener to signal the auto-refund draining effect
   const [pendingAutoRefundTick, setPendingAutoRefundTick] = useState(0);
@@ -371,9 +372,20 @@ const AdminDashboard = () => {
       if (orderBy) {
         query = query.order(orderBy.column, { ascending: orderBy.ascending });
       }
-      // Use range instead of limit to avoid Supabase's 1000-row limit
-      const { data, error } = await query.range(0, limit - 1);
-      if (error) {
+  // Fetch in pages so requests above Supabase's 1000-row response limit work.
+  const pageSize = 1000;
+  const rows: any[] = [];
+  for (let offset = 0; offset < limit; offset += pageSize) {
+    const { data: page, error } = await query.range(offset, Math.min(offset + pageSize, limit) - 1);
+    if (error) {
+      console.error(`[v0] Error fetching ${table}:`, error?.message || error);
+      return [];
+    }
+    rows.push(...(page || []));
+    if (!page || page.length < pageSize) break;
+  }
+  const data = rows;
+  if (false) {
         console.error(`[v0] Error fetching ${table}:`, error?.message || error);
         return [];
       }
@@ -2613,8 +2625,8 @@ const AdminDashboard = () => {
     // Refund filter — an order is considered refunded when status OR fulfillment_status is "refunded"
     // (order_status is preserved as the original value, e.g. "failed", so we don't check it here)
     if (showRefundedOnly) {
-      const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded";
-      if (!isRefunded) return false;
+  const isRefunded = order.fulfillment_status === "refunded" || order.status === "refunded" || Number(order.refunded_amount) > 0 || paystackRefundOrderIds.has(order.id);
+  if (!isRefunded) return false;
     }
 
     // Date range
@@ -2920,7 +2932,16 @@ const AdminDashboard = () => {
                   <input
                     type="checkbox"
                     checked={showRefundedOnly}
-                    onChange={(e) => setShowRefundedOnly(e.target.checked)}
+                    onChange={async (e) => {
+    const checked = e.target.checked;
+    setShowRefundedOnly(checked);
+    if (checked) {
+      const { data } = await supabase.from("paystack_refunds").select("order_id").in("status", ["pending", "processing", "processed"]);
+      setPaystackRefundOrderIds(new Set((data || []).map((refund: any) => refund.order_id)));
+    } else {
+      setPaystackRefundOrderIds(new Set());
+    }
+  }}
                     className="rounded border-border"
                   />
                   <span>Show refunded orders only</span>

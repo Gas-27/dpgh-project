@@ -51,7 +51,9 @@ Deno.serve(async (req) => {
   const storedReference = String(order.paystack_reference ?? "").trim();
   if (!storedReference) return json({ error: "This order has no Paystack reference and cannot be refunded." }, 400);
   if (storedReference !== reference) return json({ error: "The Paystack reference does not match this order." }, 400);
-  const serverAmount = Number(order.amount ?? order.total_amount ?? order.agent_price ?? order.base_price ?? order.selling_price ?? 0);
+  const serverAmount = role === "agent"
+    ? Number(order.agent_price ?? order.base_price ?? order.amount ?? 0)
+    : Number(order.amount ?? order.selling_price ?? order.agent_price ?? 0);
   if (!Number.isFinite(serverAmount) || serverAmount <= 0) return json({ error: "This order has no valid refundable amount." }, 400);
 
   const { data: existingRefund } = await admin.from("paystack_refunds").select("id, status, paystack_refund_id").eq("order_id", orderId).eq("paystack_reference", storedReference).in("status", ["pending", "processing", "completed"]).maybeSingle();

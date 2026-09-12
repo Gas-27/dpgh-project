@@ -47,5 +47,5 @@ export async function refundStorefrontOrder(input: StorefrontRefundInput) {
     throw new Error(details?.error || details?.message || error.message || "Refund request failed");
   }
   if (!payload?.success) throw new Error(payload?.error || "Unable to start Paystack refund");
-  return payload as { success: true; refund_id: string; status: "pending"; message: "Refund through Paystack submitted. Refunds usually take 20 minutes to 72 hours. The money will return to the account or number used for the purchase, and Paystack will notify the customer." };
+  return payload as { success: true; refund_id: string; status: "pending" | "processing" | "processed" | "failed"; message: string };
 }
