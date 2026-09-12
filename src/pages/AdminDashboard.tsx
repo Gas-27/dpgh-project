@@ -2769,7 +2769,13 @@ const AdminDashboard = () => {
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
                   ].map(({ key, label }) => (
-                    <Button key={key} variant={networkFilter === key ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(key)}>
+                    <Button
+                      key={key}
+                      variant={networkFilter === key ? "hero" : "outline"}
+                      size="sm"
+                      className={networkFilter === key ? "text-primary-foreground" : "text-foreground"}
+                      onClick={() => setNetworkFilter(key)}
+                    >
                       {label}
                     </Button>
                   ))}
