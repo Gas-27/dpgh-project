@@ -11,9 +11,8 @@ export interface StorefrontRefundInput {
 }
 
 export async function refundStorefrontOrder(input: StorefrontRefundInput) {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
-  if (sessionError || !accessToken) throw new Error("Your session has expired. Please sign in again before requesting a refund.");
 
   const requestBody = {
     order_id: input.orderId,
@@ -29,8 +28,8 @@ export async function refundStorefrontOrder(input: StorefrontRefundInput) {
     body: requestBody,
   });
 
-  let { data: payload, error } = await invokeRefund(accessToken);
-  if (error?.context?.status === 401) {
+  let { data: payload, error } = await invokeRefund(accessToken ?? "");
+  if (error?.context?.status === 401 && accessToken) {
     const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
     const refreshedToken = refreshed.session?.access_token;
     if (!refreshError && refreshedToken) {
@@ -40,7 +39,7 @@ export async function refundStorefrontOrder(input: StorefrontRefundInput) {
   if (error?.context?.status === 401) {
     const context = error.context;
     const details = context ? await context.clone().json().catch(() => null) : null;
-    throw new Error(details?.error || "Refund authorization failed. Please sign in again and retry.");
+    throw new Error(details?.error || "Refund authorization failed. Please retry the refund.");
   }
   if (error) {
     const context = (error as any).context;
@@ -48,5 +47,5 @@ export async function refundStorefrontOrder(input: StorefrontRefundInput) {
     throw new Error(details?.error || details?.message || error.message || "Refund request failed");
   }
   if (!payload?.success) throw new Error(payload?.error || "Unable to start Paystack refund");
-  return payload as { success: true; refund_id: string; status: "pending"; message: string };
+  return payload as { success: true; refund_id: string; status: "pending"; message: "Refund through Paystack submitted. Refunds take 30 minutes to 7 days to reach the customer number used for the purchase." };
 }

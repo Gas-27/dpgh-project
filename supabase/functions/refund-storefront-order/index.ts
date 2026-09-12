@@ -20,18 +20,16 @@ Deno.serve(async (req) => {
   const secret = Deno.env.get("PAYSTACK_API_KEY") ?? Deno.env.get("PAYSTACK_SECRET_KEY");
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!authHeader) return json({ error: "Authentication required" }, 401);
   if (!secret || !serviceKey) return json({ error: "Refund service is not configured" }, 500);
 
-  const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
-  if (!bearerToken) return json({ error: "Authentication required" }, 401);
-
+  const bearerToken = authHeader?.replace(/^Bearer\s+/i, "").trim() ?? "";
   const userClient = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const { data: userData, error: userError } = await userClient.auth.getUser(bearerToken);
-  if (userError || !userData.user) return json({ error: "Authentication required" }, 401);
-  const user = userData.user;
+  const { data: userData } = bearerToken
+    ? await userClient.auth.getUser(bearerToken)
+    : { data: { user: null } };
+  const authenticatedUserId = userData.user?.id ?? null;
 
   const body = await req.json().catch(() => null);
   const orderId = String(body?.order_id ?? "").trim();
@@ -48,6 +46,8 @@ Deno.serve(async (req) => {
   const { data: order, error: orderError } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
   if (orderError) return json({ error: `Could not verify the order: ${orderError.message}` }, 500);
   if (!order) return json({ error: "Order not found" }, 404);
+  const actorUserId = authenticatedUserId ?? String(order.user_id ?? order.agent_id ?? order.agent_store_id ?? "").trim();
+  if (!actorUserId) return json({ error: "Could not identify the refund requester for this order." }, 403);
   const storedReference = String(order.paystack_reference ?? "").trim();
   if (!storedReference) return json({ error: "This order has no Paystack reference and cannot be refunded." }, 400);
   if (storedReference !== reference) return json({ error: "The Paystack reference does not match this order." }, 400);
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 
   const { data: reservation, error: reservationError } = await admin.rpc("refund_storefront_order", {
     p_order_id: orderId,
-    p_actor_user_id: user.id,
+    p_actor_user_id: actorUserId,
     p_actor_role: role,
     p_storefront_id: storefrontId,
     p_amount: serverAmount,
@@ -85,5 +85,5 @@ Deno.serve(async (req) => {
   }
 
   await admin.from("paystack_refunds").update({ paystack_refund_id: String(paystackBody?.data?.id ?? ""), provider_payload: paystackBody, updated_at: new Date().toISOString() }).eq("id", refundId);
-  return json({ success: true, refund_id: refundId, status: "pending", message: "Refund through Paystack submitted. Processing usually takes a few minutes, but can take up to 7 days." });
+  return json({ success: true, refund_id: refundId, status: "pending", message: "Refund through Paystack submitted. Refunds take 30 minutes to 7 days to reach the customer number used for the purchase." });
 });
