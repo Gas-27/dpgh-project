@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.txtconnect-sms]
 verify_jwt = false
+
+[functions.refund-storefront-order]
+verify_jwt = false
