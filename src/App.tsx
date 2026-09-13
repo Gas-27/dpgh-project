@@ -325,6 +325,7 @@ return (
                   <Route path="/afa-bundles" element={<Packages />} />
                   <Route path="/instant-data" element={<Packages />} />
                   <Route path="/services" element={<Packages />} />
+                  <Route path="/subscription" element={<Packages />} />
                   <Route path="/bulk-orders" element={<Packages />} />
                   <Route path="/bulk-sms" element={<Packages />} />
                   <Route path="/agent-onboarding" element={<AgentOnboarding />} />
