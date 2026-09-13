@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +43,7 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
   const [serviceCategory, setServiceCategory] = useState<ServiceCategory>("electricity");
   const [service, setService] = useState("ECG Prepaid");
   const [amount, setAmount] = useState("");
+  const [selectedInstantItem, setSelectedInstantItem] = useState<{ label: string; amount: string } | null>(null);
   const [phone, setPhone] = useState("");
   const [account, setAccount] = useState("");
   const [busy, setBusy] = useState(false);
@@ -53,6 +55,10 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
 
   async function submit() {
     const customer = mode === "instant" ? phone : account;
+    if (mode === "instant" && !selectedInstantItem) {
+      toast({ title: "Choose a bundle first", description: "Select a data bundle or airtime amount to continue.", variant: "destructive" });
+      return;
+    }
     if (!amount || Number(amount) <= 0 || !customer) {
       toast({ title: "Complete the form", description: "Enter an amount and recipient number.", variant: "destructive" });
       return;
@@ -82,10 +88,13 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
     }
     toast({ title: "Purchase started", description: `Transaction ${data?.transaction_id || "received"} is processing.` });
     setAmount("");
+    setSelectedInstantItem(null);
+    setPhone("");
   }
 
   if (mode === "instant") {
     return (
+      <>
       <Card className="mx-auto w-full max-w-4xl overflow-hidden border-primary/25 shadow-sm">
         <CardHeader>
           <CardTitle>Airtime & Instant Data</CardTitle>
@@ -109,7 +118,7 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
           {instantProduct === "data" ? (
             <div className="grid gap-2 sm:grid-cols-2">
               {networkBundles[network].map((bundle) => (
-                <button key={`${network}-${bundle.name}`} type="button" onClick={() => setAmount(bundle.price.replace(/[^0-9.]/g, ""))} className="flex min-h-12 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition hover:border-primary hover:bg-muted">
+                <button key={`${network}-${bundle.name}`} type="button" onClick={() => { const selectedAmount = bundle.price.replace(/[^0-9.]/g, ""); setAmount(selectedAmount); setSelectedInstantItem({ label: bundle.name, amount: selectedAmount }); }} className="flex min-h-12 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition hover:border-primary hover:bg-muted">
                   <span className="leading-5">{bundle.name}</span><span className="shrink-0 font-semibold text-primary">{bundle.price}</span>
                 </button>
               ))}
@@ -117,20 +126,31 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {["1", "2", "5", "10", "20", "50", "100", "200", "300", "500"].map((value) => (
-                <button key={value} type="button" onClick={() => setAmount(value)} className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 text-left text-sm transition hover:border-primary hover:bg-muted">
+                <button key={value} type="button" onClick={() => { setAmount(value); setSelectedInstantItem({ label: `GHS ${value} airtime`, amount: value }); }} className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 text-left text-sm transition hover:border-primary hover:bg-muted">
                   <span>GHS {value} airtime</span><span className="font-semibold text-primary">GHS {value}.00</span>
                 </button>
               ))}
             </div>
           )}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2"><Label htmlFor="korba-amount">Amount (GHS)</Label><Input id="korba-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="20.00" /></div>
-            <div className="grid gap-2"><Label htmlFor="korba-phone">Phone number</Label><Input id="korba-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0240000000" /></div>
-          </div>
-          {walletOnly && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">This dashboard purchase uses your wallet only. Available: GHC {Number(walletBalance).toFixed(2)}.</p>}
-          <Button onClick={submit} disabled={busy || (walletOnly && Number(amount) > Number(walletBalance))}>{busy ? "Starting purchase…" : instantProduct === "airtime" ? "Buy airtime" : "Buy data"}</Button>
+          <p className="rounded-lg border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Select a data bundle or airtime amount above to enter the recipient number and complete your wallet purchase.</p>
+          <p className="text-center text-sm text-muted-foreground">Tap a bundle or airtime amount to open the wallet purchase form.</p>
         </CardContent>
       </Card>
+      <Dialog open={selectedInstantItem !== null} onOpenChange={(open) => { if (!open) setSelectedInstantItem(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{instantProduct === "airtime" ? "Buy airtime" : "Buy data"}</DialogTitle>
+            <DialogDescription>{selectedInstantItem?.label} selected. The amount is fixed from your selection.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="rounded-xl border bg-muted/40 px-4 py-3"><p className="text-sm text-muted-foreground">Amount</p><p className="text-2xl font-bold text-primary">GHS {selectedInstantItem?.amount || "0.00"}</p></div>
+            <div className="grid gap-2"><Label htmlFor="korba-instant-phone">Phone number</Label><Input id="korba-instant-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0240000000" autoFocus /></div>
+            {walletOnly && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">This dashboard purchase uses your wallet only. Available: GHC {Number(walletBalance).toFixed(2)}.</p>}
+            <Button onClick={submit} disabled={busy || !phone || (walletOnly && Number(selectedInstantItem?.amount || 0) > Number(walletBalance))}>{busy ? "Starting purchase…" : instantProduct === "airtime" ? "Buy airtime" : "Buy data"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      </>
     );
   }
 
