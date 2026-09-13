@@ -5,6 +5,7 @@ import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import KorbaPurchasePanel from "@/components/KorbaPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
@@ -1630,14 +1631,9 @@ const searchOrders = async (input?: string) => {
             toast({ title: "Service selected", description: `${service.name} is ready for secure activation.` });
           }} />
         ) : activeCategory === "services" ? (
-          <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12" aria-labelledby="services-coming-soon-heading">
-            <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-accent/10 shadow-lg">
-              <CardContent className="flex flex-col items-center gap-4 p-8 text-center sm:p-12">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-inner"><Rocket className="h-8 w-8" aria-hidden="true" /></div>
-                <div className="space-y-2"><h2 id="services-coming-soon-heading" className="font-display text-2xl font-bold sm:text-3xl">Services are coming soon</h2><p className="mx-auto max-w-md text-sm leading-6 text-muted-foreground">We are preparing more useful digital services for you. Check back soon for the next release.</p></div>
-              </CardContent>
-            </Card>
-          </section>
+          <KorbaPurchasePanel mode="services" />
+        ) : activeCategory === "vouchers" ? (
+          <KorbaPurchasePanel mode="instant" />
   ) : activeCategory === "sms" ? (
   <section className="mx-auto w-full max-w-4xl" aria-labelledby="packages-sms-heading">
     <Card className="border-primary/30 bg-primary/5">
