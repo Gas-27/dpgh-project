@@ -17,20 +17,26 @@ export default function AdminDomainPurchasesPanel() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [purchases, agents, subagents, subSubagents] = await Promise.all([
+    const [purchases, owners] = await Promise.all([
       supabase.rpc("admin_list_domain_purchases"),
-      supabase.from("agent_stores").select("id, store_name, user_id").order("store_name"),
-      supabase.from("subagent_stores").select("id, store_name, user_id").order("store_name"),
-      supabase.from("sub_subagent_stores").select("id, store_name, user_id").order("store_name"),
+      supabase.rpc("admin_list_domain_store_owners"),
     ]);
     if (purchases.error) toast({ title: "Could not load domain purchases", description: purchases.error.message, variant: "destructive" });
-    const options: StoreOption[] = [
-      ...(agents.data ?? []).map((store: any) => ({ id: store.id, label: `Agent · ${store.store_name || store.user_id}`, kind: "agent" as const, userId: store.user_id ?? null })),
-      ...(subagents.data ?? []).map((store: any) => ({ id: store.id, label: `Sub-agent · ${store.store_name || store.user_id}`, kind: "subagent" as const, userId: store.user_id ?? null })),
-      ...(subSubagents.data ?? []).map((store: any) => ({ id: store.id, label: `Sub-sub-agent · ${store.store_name || store.user_id}`, kind: "subsubagent" as const, userId: store.user_id ?? null })),
-    ];
+    if (owners.error) toast({ title: "Could not load purchaser storefronts", description: owners.error.message, variant: "destructive" });
+    const options: StoreOption[] = (owners.data ?? []).map((store: any) => ({
+      id: store.store_id,
+      label: `${store.store_kind === "agent" ? "Agent" : store.store_kind === "subagent" ? "Sub-agent" : "Sub-sub-agent"} · ${store.store_name || store.user_id}`,
+      kind: store.store_kind as StoreOption["kind"],
+      userId: store.user_id ?? null,
+    }));
+    const ownerByBuyer = new Map(options.filter((store) => store.userId).map((store) => [store.userId, store]));
+    const resolvedPurchases = (purchases.data ?? []).map((item: any) => {
+      if (item.store_id) return item;
+      const owner = item.buyer_user_id ? ownerByBuyer.get(item.buyer_user_id) : undefined;
+      return owner ? { ...item, store_id: owner.id, store_kind: owner.kind } : item;
+    });
     setStores(options);
-    setItems(purchases.data ?? []);
+    setItems(resolvedPurchases);
     setLoading(false);
   }, [toast]);
 
