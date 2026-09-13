@@ -195,6 +195,7 @@ const UserDashboard = () => {
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "instant-data", label: "Instant Data", icon: Zap },
     { id: "services", label: "Services", icon: CreditCard },
+    { id: "subscription", label: "Subscription", icon: CreditCard },
     { id: "orders", label: "Orders", icon: BarChart3 },
     { id: "refunds", label: "Refunds", icon: Wallet },
     { id: "my-complaints", label: "My Complaints", icon: MessageCircle },
@@ -928,8 +929,10 @@ const UserDashboard = () => {
         return renderApiOrders();
       case "afa-registration":
         return renderAfaRegistration();
-case "services":
-      return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} />;
+  case "services":
+  return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="services" />;
+  case "subscription":
+  return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="subscription" />;
       case "sms":
         return <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="customer" ownerId={effectiveUserId} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="customer" ownerId={effectiveUserId} /></TabsContent></Tabs>;
       case "topup":

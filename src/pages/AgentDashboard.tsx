@@ -119,6 +119,8 @@ const menuItems = [
   { id: "store", label: "Store Prices", icon: Store },
   { id: "products", label: "Products", icon: Package },
   { id: "services", label: "Services", icon: BriefcaseBusiness },
+  { id: "subscription", label: "Subscription", icon: CreditCard },
+  { id: "subscription-price", label: "Subscription (Price Set)", icon: Save },
   { id: "subagents", label: "Subagents", icon: Users },
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
   { id: "sub-subagents", label: "Sub-Subagents", icon: Users },
@@ -2700,7 +2702,9 @@ return (
           </TabsContent>
 
           {/* ============================= BUY DATA ============================= */}
-          <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} /></TabsContent>
+          <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="instant" /></TabsContent>
+  <TabsContent value="subscription" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription" /></TabsContent>
+  <TabsContent value="subscription-price" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription-price" /></TabsContent>
   <TabsContent value="buy" className="space-y-4 mt-0">
             {store && (<Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
@@ -4563,8 +4567,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
   {/* ============================= SERVICES ============================= */}
 <TabsContent value="services" className="mt-0 space-y-6">
-  <DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} />
-  {store && <AgentDigitalServicesPricing agentStoreId={store.id} />}
+  <DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices />
   </TabsContent>
 
   {/* ============================= SUBAGENTS ============================= */}
