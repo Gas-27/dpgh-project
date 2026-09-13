@@ -26,6 +26,7 @@ import ReportCenter from "@/components/ReportCenter";
 import AdminDigitalServicesManager from "@/components/AdminDigitalServicesManager";
 import AdminPublicProductsManager from "@/components/AdminPublicProductsManager";
 import AdminDomainPurchasesPanel from "@/components/AdminDomainPurchasesPanel";
+import AdminDomainRenewalsPanel from "@/components/AdminDomainRenewalsPanel";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import AdminAFABundleManager from "@/components/AdminAFABundleManager";
 import AdminAFABundleRegistrations from "@/components/AdminAFABundleRegistrations";
@@ -2765,11 +2766,13 @@ const AdminDashboard = () => {
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
 <TabsTrigger value="spaceship_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Custom Branding (Domain)</TabsTrigger>
   <TabsTrigger value="domain_purchases" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Custom Branding Assignments</TabsTrigger>
+  <TabsTrigger value="domain_renewals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Domain Renewals</TabsTrigger>
             <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
 
           <TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedSenderIds /></TabsContent>
           <TabsContent value="domain_purchases" className="space-y-6"><AdminDomainPurchasesPanel /></TabsContent>
+  <TabsContent value="domain_renewals" className="space-y-6"><AdminDomainRenewalsPanel /></TabsContent>
 
   {/* PRICES TAB */}
           {canSee("prices") && (
