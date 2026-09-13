@@ -18,7 +18,17 @@ const networks = [
   { value: "AIRTELTIGO", label: "AirtelTigo", tone: "bg-blue-700 text-white" },
 ];
 
-const bundles = ["1GB", "2GB", "3GB", "5GB", "10GB", "15GB", "20GB", "30GB"];
+const networkBundles: Record<string, { name: string; price: string }[]> = {
+  MTN: [
+    ["Midnight 2.01GB", "₵1.00"], ["Video 158.05MB", "₵1.00"], ["Social Media 82.57MB", "₵1.00"], ["Kokrokoo 460.1MB, 5am to 8am", "₵1.22"], ["Midnight 4.02GB", "₵2.00"], ["Midnight 5.03GB", "₵2.50"], ["406.89MB", "₵3.00"], ["Midnight 8.48GB", "₵3.00"], ["Video 790.25MB", "₵5.00"], ["Social Media 412.85MB", "₵5.00"], ["837.55MB", "₵10.00"], ["Video 1.54GB", "₵10.00"], ["Social Media 825.7MB", "₵10.00"], ["1.39GB", "₵20.00"], ["Social Media 1.61GB", "₵20.00"], ["2.78GB", "₵40.00"], ["Video 6.17GB", "₵40.00"], ["4.17GB", "₵60.00"], ["Video 9.26GB", "₵60.00"], ["Social Media 4.84GB", "₵60.00"], ["5.56GB", "₵80.00"], ["9.17GB", "₵100.00"], ["Social Media 8.06GB", "₵100.00"], ["11.00GB", "₵120.00"], ["13.75GB", "₵150.00"], ["30.87GB", "₵200.00"], ["Video 30.87GB", "₵200.00"], ["38.59GB", "₵250.00"], ["Video 38.59GB", "₵250.00"], ["92.75GB", "₵300.00"], ["Video 46.30GB", "₵300.00"], ["Social Media 24.19GB", "₵300.00"], ["108.21GB", "₵350.00"], ["Video 54.02GB", "₵350.00"], ["217.34GB", "₵399.00"], ["Social Media 32.17GB", "₵399.00"], ["Video 77.17GB", "₵500.00"],
+  ].map(([name, price]) => ({ name, price })),
+  TELECEL: [
+    ["No Expiry - 22.29MB", "₵0.50"], ["No Expiry - 50.14MB", "₵1.00"], ["1 Hour - 440MB", "₵1.00"], ["No Expiry - 111.43MB", "₵2.00"], ["No Expiry (12am - 5am) - 3.85GB", "₵2.00"], ["1 Hour - 1.1GB", "₵2.00"], ["No Expiry (12am - 5am) - 9.9GB", "₵3.00"], ["1 day - 445.72MB", "₵3.00"], ["No Expiry - 557.15MB", "₵5.00"], ["3 days - 780MB", "₵5.00"], ["No Expiry - 891.44MB", "₵10.00"], ["5 days - 1.14GB", "₵10.00"], ["15 days - 1GB", "₵10.00"], ["5 days - 2.0GB", "₵15.00"], ["No Expiry - 1.71GB", "₵20.00"], ["30 days - 2.51GB", "₵20.00"], ["5 days - 2.62GB", "₵20.00"], ["15 days - 5.13GB", "₵43.50"], ["No Expiry - 4.56GB", "₵50.00"], ["30 days - 6.27GB", "₵50.00"], ["No Expiry - 10.27GB", "₵100.00"], ["30 days - 13.12GB", "₵100.00"], ["No Expiry - 34.2GB", "₵200.00"], ["30 days - 39.93GB", "₵200.00"], ["No Expiry - 102.7GB", "₵300.00"], ["30 days - 114.1GB", "₵300.00"], ["No Expiry - 259.3GB", "₵400.00"], ["30 days - 269.7GB", "₵400.00"],
+  ].map(([name, price]) => ({ name, price })),
+  AIRTELTIGO: [
+    ["51MB", "₵1.00"], ["111MB", "₵2.00"], ["26mins 40MB", "₵2.00"], ["390MB", "₵3.00"], ["Kokoo 446MB (GHS3-1Day(s))", "₵3.00"], ["557MB", "₵5.00"], ["66mins 120MB", "₵5.00"], ["Kokoo 780MB (GHS5-3Day(s))", "₵5.00"], ["Kokoo 1GB (GHS6-2Day(s))", "₵6.00"], ["891MB", "₵10.00"], ["138mins 260MB", "₵10.00"], ["Kokoo 1.1GB (GHS10-5Day(s))", "₵10.00"], ["Kokoo 1.2GB (GHS11-2Day(s))", "₵11.00"], ["210mins 400MB", "₵15.00"], ["Kokoo 2GB (GHS15-4Day(s))", "₵15.00"], ["1.7GB", "₵20.00"], ["280mins 500MB", "₵20.00"], ["Kokoo 2.5GB (GHS20-5Day(s))", "₵20.00"], ["450mins 1GB", "₵30.00"], ["4.5GB", "₵50.00"], ["600mins 2.4GB", "₵50.00"], ["Kokoo 6.1GB (GHS50-15Day(s))", "₵50.00"], ["XXL 12.8GB", "₵99.00"], ["10GB", "₵100.00"], ["33.4GB", "₵200.00"], ["XXL 39GB", "₵200.00"], ["100.3GB", "₵300.00"], ["117GB", "₵350.00"], ["XXL Pack 130.4GB", "₵350.00"], ["253.3GB", "₵400.00"],
+  ].map(([name, price]) => ({ name, price })),
+};
 const services = {
   electricity: ["ECG Prepaid", "ECG Postpaid", "NEDCo"],
   water: ["Ghana Water Company"],
@@ -89,13 +99,23 @@ export default function KorbaPurchasePanel({ mode, orderId }: { mode: Mode; orde
               </button>
             ))}
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {bundles.map((bundle, index) => (
-              <button key={bundle} type="button" onClick={() => setAmount(String((index + 1) * 2))} className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 text-left text-sm transition hover:border-primary hover:bg-muted">
-                <span>{bundle} {instantProduct === "airtime" ? "airtime" : "bundle"}</span><span className="font-semibold text-primary">GHS {(index + 1) * 2}.00</span>
-              </button>
-            ))}
-          </div>
+          {instantProduct === "data" ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {networkBundles[network].map((bundle) => (
+                <button key={`${network}-${bundle.name}`} type="button" onClick={() => setAmount(bundle.price.replace(/[^0-9.]/g, ""))} className="flex min-h-12 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition hover:border-primary hover:bg-muted">
+                  <span className="leading-5">{bundle.name}</span><span className="shrink-0 font-semibold text-primary">{bundle.price}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {["1", "2", "5", "10", "20", "50", "100", "200", "300", "500"].map((value) => (
+                <button key={value} type="button" onClick={() => setAmount(value)} className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 text-left text-sm transition hover:border-primary hover:bg-muted">
+                  <span>GHS {value} airtime</span><span className="font-semibold text-primary">GHS {value}.00</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2"><Label htmlFor="korba-amount">Amount (GHS)</Label><Input id="korba-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="20.00" /></div>
             <div className="grid gap-2"><Label htmlFor="korba-phone">Phone number</Label><Input id="korba-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0240000000" /></div>
