@@ -35,7 +35,7 @@ const services = {
   tv: ["DStv", "GOtv", "StarTimes", "KweseTV", "GBC TV"],
 };
 
-export default function KorbaPurchasePanel({ mode, orderId }: { mode: Mode; orderId?: string }) {
+export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, walletBalance = 0, ownerType, ownerId }: { mode: Mode; orderId?: string; walletOnly?: boolean; walletBalance?: number; ownerType?: string; ownerId?: string }) {
   const { toast } = useToast();
   const [instantProduct, setInstantProduct] = useState<InstantProduct>("data");
   const [network, setNetwork] = useState("MTN");
@@ -57,10 +57,17 @@ export default function KorbaPurchasePanel({ mode, orderId }: { mode: Mode; orde
       toast({ title: "Complete the form", description: "Enter an amount and recipient number.", variant: "destructive" });
       return;
     }
+    if (walletOnly && Number(amount) > Number(walletBalance)) {
+      toast({ title: "Insufficient wallet balance", description: `Your wallet has GHC ${Number(walletBalance).toFixed(2)} available.`, variant: "destructive" });
+      return;
+    }
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("korba-gateway", {
       body: {
         operation: "collect",
+        wallet_only: walletOnly,
+        wallet_balance_owner_type: ownerType,
+        wallet_balance_owner_id: ownerId,
         amount: Number(amount),
         customer_number: customer,
         network_code: mode === "instant" ? network : service,
@@ -120,7 +127,8 @@ export default function KorbaPurchasePanel({ mode, orderId }: { mode: Mode; orde
             <div className="grid gap-2"><Label htmlFor="korba-amount">Amount (GHS)</Label><Input id="korba-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="20.00" /></div>
             <div className="grid gap-2"><Label htmlFor="korba-phone">Phone number</Label><Input id="korba-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0240000000" /></div>
           </div>
-          <Button onClick={submit} disabled={busy}>{busy ? "Starting purchase…" : instantProduct === "airtime" ? "Buy airtime" : "Buy data"}</Button>
+          {walletOnly && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">This dashboard purchase uses your wallet only. Available: GHC {Number(walletBalance).toFixed(2)}.</p>}
+          <Button onClick={submit} disabled={busy || (walletOnly && Number(amount) > Number(walletBalance))}>{busy ? "Starting purchase…" : instantProduct === "airtime" ? "Buy airtime" : "Buy data"}</Button>
         </CardContent>
       </Card>
     );
@@ -138,7 +146,8 @@ export default function KorbaPurchasePanel({ mode, orderId }: { mode: Mode; orde
           </div>
           <div className="grid gap-3"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Select provider</p><div className="grid gap-3 sm:grid-cols-3">{services[serviceCategory].map((item) => <button key={item} type="button" onClick={() => setService(item)} className={`rounded-xl border px-3 py-5 text-sm font-semibold transition ${service === item ? "border-primary bg-primary/10 text-primary" : "bg-background hover:border-primary/50"}`}>{item}</button>)}</div></div>
           <div className="grid gap-4 sm:grid-cols-2"><div className="grid gap-2"><Label htmlFor="korba-service-account">Meter / decoder / account number</Label><Input id="korba-service-account" inputMode="numeric" value={account} onChange={(event) => setAccount(event.target.value)} placeholder="Account number" /></div><div className="grid gap-2"><Label htmlFor="korba-service-amount">Amount (GHS)</Label><Input id="korba-service-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="2.00" /></div></div>
-          <Button onClick={submit} disabled={busy}>{busy ? "Starting payment…" : "Proceed to payment"}</Button>
+          {walletOnly && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">This dashboard payment uses your wallet only. Available: GHC {Number(walletBalance).toFixed(2)}.</p>}
+          <Button onClick={submit} disabled={busy || (walletOnly && Number(amount) > Number(walletBalance))}>{busy ? "Starting payment…" : "Proceed to payment"}</Button>
         </div>
         <aside className="h-fit rounded-2xl border bg-muted/40 p-5"><p className="text-sm font-bold uppercase tracking-wide">Payment summary</p><dl className="mt-5 grid gap-3 text-sm"><div className="flex justify-between gap-4"><dt className="text-muted-foreground">Provider</dt><dd className="font-semibold">{service}</dd></div><div className="flex justify-between gap-4"><dt className="text-muted-foreground">Account</dt><dd className="font-semibold">{account || "—"}</dd></div><div className="flex justify-between gap-4"><dt className="text-muted-foreground">Top up amount</dt><dd className="font-semibold">GHS {amount || "0.00"}</dd></div></dl></aside>
       </CardContent>

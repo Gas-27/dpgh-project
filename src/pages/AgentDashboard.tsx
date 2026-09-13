@@ -38,6 +38,7 @@ import ChatBot from "@/components/ChatBot";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
 import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
+import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
 import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
@@ -2435,7 +2436,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "instant-data", label: "Instant Data" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
   
   {/* ============================= DOMAINS ============================= */}
           <TabsContent value="domains" className="space-y-6 mt-0">
@@ -2699,7 +2700,8 @@ return (
           </TabsContent>
 
           {/* ============================= BUY DATA ============================= */}
-          <TabsContent value="buy" className="space-y-4 mt-0">
+          <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} /></TabsContent>
+  <TabsContent value="buy" className="space-y-4 mt-0">
             {store && (<Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
@@ -4560,8 +4562,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   </TabsContent>
 
   {/* ============================= SERVICES ============================= */}
-  <TabsContent value="services" className="mt-0 space-y-6">
-    {store && <AgentDigitalServicesPricing agentStoreId={store.id} />}
+<TabsContent value="services" className="mt-0 space-y-6">
+  <DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} />
+  {store && <AgentDigitalServicesPricing agentStoreId={store.id} />}
   </TabsContent>
 
   {/* ============================= SUBAGENTS ============================= */}
