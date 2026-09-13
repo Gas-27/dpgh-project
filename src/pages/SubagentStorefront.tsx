@@ -1064,7 +1064,7 @@ const searchOrders = useCallback(async (input?: string) => {
               size="sm"
               onClick={() => { setNetworkFilter(net); setActiveSection("data"); }}
               style={activeSection === "data" && networkFilter === net ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
-              className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
+className="whitespace-nowrap flex-shrink-0 border-foreground/40 bg-background text-foreground hover:bg-muted hover:text-foreground text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
               {formatNetworkName(net)}

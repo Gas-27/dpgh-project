@@ -1328,7 +1328,7 @@ const searchOrders = useCallback(async (input?: string) => {
                   key={net}
                   variant={networkFilter === net ? "default" : "outline"}
                   size="sm"
-                  className="border-foreground/25 text-foreground text-xs sm:text-sm hover:bg-muted"
+                  className="border-foreground/40 bg-background text-foreground hover:bg-muted hover:text-foreground text-xs sm:text-sm"
                   style={networkFilter === net && net === "mtn" ? { background: "#fbbf24", color: "#000" } :
                          networkFilter === net && net === "mtn_express" ? { background: "#f59e0b", color: "#000" } :
                          networkFilter === net && net === "telecel" ? { background: "#ef4444", color: "#fff" } :
