@@ -17,7 +17,7 @@ export default function AdminDomainPurchasesPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     const [purchases, agents, subagents, subSubagents] = await Promise.all([
-      supabase.from("domain_purchases").select("*").order("created_at", { ascending: false }),
+      supabase.rpc("admin_list_domain_purchases"),
       supabase.from("agent_stores").select("id, store_name, user_id").order("store_name"),
       supabase.from("subagent_stores").select("id, store_name, user_id").order("store_name"),
       supabase.from("sub_subagent_stores").select("id, store_name, user_id").order("store_name"),
@@ -49,7 +49,7 @@ export default function AdminDomainPurchasesPanel() {
       p_store_id: storeId,
     });
     if (error) toast({ title: "Could not assign domain", description: error.message, variant: "destructive" });
-    else { toast({ title: "Domain assigned", description: `${item.domain} is now assigned to the selected storefront.` }); await load(); }
+    else { toast({ title: "Domain assigned", description: `${item.domain || item.assigned_domain || "The purchased domain"} is now an additional URL for the selected storefront. Its default URL is unchanged.` }); await load(); }
     setLoading(false);
   }
 
@@ -62,9 +62,14 @@ export default function AdminDomainPurchasesPanel() {
       <CardContent className="space-y-3">
         {items.length === 0 ? <p className="text-sm text-muted-foreground">No domain purchases yet.</p> : items.map((item) => {
           const assigned = item.store_kind && item.store_id ? stores.find((store) => store.kind === item.store_kind && store.id === item.store_id) : null;
+          const purchasedDomain = item.domain || item.assigned_domain || item.domain_name || item.hostname;
           return (
             <div key={item.id} className="grid gap-3 rounded-lg border p-4 md:grid-cols-[1.1fr_1fr_1.6fr_auto] md:items-center">
-              <div><p className="font-semibold">{item.domain}</p><p className="text-xs text-muted-foreground">Purchased {new Date(item.created_at).toLocaleDateString()}</p></div>
+              <div>
+                <p className="font-semibold">{purchasedDomain || "Unnamed purchased domain"}</p>
+                <p className="text-xs text-muted-foreground">Purchased {item.created_at ? new Date(item.created_at).toLocaleDateString() : "Date unavailable"}</p>
+                {item.buyer_user_id && <p className="text-xs text-muted-foreground">Buyer: {item.buyer_user_id}</p>}
+              </div>
               <Badge variant={item.status === "active" ? "default" : "outline"}>{item.status || "purchased"}</Badge>
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">{assigned ? `Assigned to ${assigned.label}` : "Not assigned"}</p>
