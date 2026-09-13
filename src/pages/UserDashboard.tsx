@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
 import { UserComplaintsView } from "@/components/UserComplaintsView";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
@@ -2763,7 +2764,8 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   const renderSettings = () => (
   <div className="space-y-6">
   <CustomDomainPanel />
-      <Card>
+  <ChangePasswordForm />
+  <Card>
         <CardHeader>
           <CardTitle>Account Settings</CardTitle>
         </CardHeader>

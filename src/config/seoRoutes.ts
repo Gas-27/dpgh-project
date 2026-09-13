@@ -19,7 +19,7 @@ export function getStorefrontSeo(hostname = typeof window !== "undefined" ? wind
   const brand = getSeoBrand(hostname);
   if (brand === "agentsstore") return { siteName: "Agents Store", title: "Discover Digital Services from Independent Agents", description: "Explore trusted digital services, subscriptions, and tools offered by independent agents in one convenient marketplace.", keywords: ["agent marketplace", "digital services", "online subscriptions", "independent agents"] };
   if (brand === "datastores") return { siteName: "DataStores", title: "Digital Services and Agent Stores Online", description: "Browse digital services and storefronts from trusted agents, with simple access and convenient online purchasing.", keywords: ["digital services marketplace", "agent stores", "online services", "digital subscriptions"] };
-  return { siteName: "DataPlug Store", title: "Buy Data Bundles and Digital Services Online", description: "Shop reliable data bundles, subscriptions, and digital services online with convenient access and secure checkout.", keywords: ["digital services Ghana", "data bundles", "online subscriptions", "digital marketplace"] };
+  return { siteName: "DataPlug Store", title: "Cheap Data Bundles Ghana | Buy MTN, Telecel & AirtelTigo Data Online", description: "DataPlug Ghana helps you buy cheap MTN, Telecel and AirtelTigo data bundles online with affordable internet bundles, instant delivery, and trusted reseller services.", keywords: ["DataPlug Ghana", "cheap data Ghana", "cheap data bundles Ghana", "MTN data bundles Ghana", "Telecel data Ghana", "AirtelTigo data Ghana", "buy data online Ghana", "data reseller Ghana"] };
 }
 
 export const PUBLIC_SEO_PATHS = [

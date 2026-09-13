@@ -402,6 +402,16 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       toast({ title: "Complete the SMS form", description: "Choose an approved sender, add recipients, and write a message.", variant: "destructive" });
       return;
     }
+    const { data: blockedBeforeSend, error: blockedCheckError } = await supabase.rpc("is_sms_sender_blocked", { p_sender_id: senderId.trim().replace(/\s+/g, " ").toUpperCase() });
+    if (blockedCheckError) {
+      toast({ title: "Sender ID could not be checked", description: "Please try again before sending.", variant: "destructive" });
+      return;
+    }
+    if (blockedBeforeSend) {
+      toast({ title: "Sender ID is already taken", description: "This sender ID is already in use by another person and cannot be assigned to you.", variant: "destructive" });
+      await loadSenders();
+      return;
+    }
     setLoading(true);
     const cleanMessage = message.trim()
       .replace(/https?:\/\/\S+/gi, "")

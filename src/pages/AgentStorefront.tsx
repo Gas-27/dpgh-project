@@ -550,7 +550,7 @@ const NotificationModal = ({
 
 // ─────��─────────────────────────────────────────����─────────────────────────────
 // MAIN AGENT STOREFRONT
-// ─�����������────────────────────────��────────────�������������────────────────────�������────────────────
+// ─�����������────────────────────────��────────────���������������────────────────────�������────────────────
 const AgentStorefront = () => {
   let { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const subdomainStoreName = getStoreNameFromSubdomain(window.location.hostname);
@@ -1167,7 +1167,7 @@ const searchOrders = useCallback(async (input?: string) => {
         </div>
       )}
 
-      <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={(id) => setActiveCategory(id === "instant" ? "vouchers" : id as SectionId & typeof activeCategory)} onBecomeAgent={() => navigate("/become-agent")} />
+      <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={(id) => setActiveCategory(id === "instant" ? "vouchers" : id as SectionId & typeof activeCategory)} onBecomeAgent={() => { window.location.assign(`${window.location.origin}/become-agent`); }} />
 
       <div id="storefront-section-content" className="scroll-mt-6" />
   {activeCategory === "products" ? (
