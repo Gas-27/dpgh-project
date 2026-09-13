@@ -1040,7 +1040,7 @@ const searchOrders = useCallback(async (input?: string) => {
         </div>
       )}
 
-<main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
+<main className="mx-auto max-w-6xl px-0 py-6 space-y-6 sm:px-4">
   <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   {activeSection === "products" && <PublicProductsSection />}

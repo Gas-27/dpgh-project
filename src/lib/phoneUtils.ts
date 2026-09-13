@@ -50,30 +50,30 @@ export const getNetworkInfo = (network: NetworkType): {
     case "mtn":
       return { 
         name: "MTN", 
-        color: "text-yellow-400", 
+        color: "text-foreground", 
         bgColor: "bg-yellow-500/20", 
-        borderColor: "border-yellow-500/50" 
+        borderColor: "border-yellow-600/60" 
       };
     case "telecel":
       return { 
         name: "Telecel", 
-        color: "text-red-400", 
+        color: "text-foreground", 
         bgColor: "bg-red-500/20", 
-        borderColor: "border-red-500/50" 
+        borderColor: "border-red-600/60" 
       };
     case "airteltigo":
       return { 
         name: "AirtelTigo", 
-        color: "text-blue-400", 
+        color: "text-foreground", 
         bgColor: "bg-blue-500/20", 
-        borderColor: "border-blue-500/50" 
+        borderColor: "border-blue-600/60" 
       };
     default:
       return { 
         name: "Unknown", 
-        color: "text-gray-400", 
-        bgColor: "bg-gray-500/20", 
-        borderColor: "border-gray-500/50" 
+        color: "text-foreground", 
+        bgColor: "bg-muted", 
+        borderColor: "border-border" 
       };
   }
 };
