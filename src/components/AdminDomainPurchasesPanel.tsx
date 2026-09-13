@@ -31,8 +31,11 @@ export default function AdminDomainPurchasesPanel() {
     }));
     const ownerByBuyer = new Map(options.filter((store) => store.userId).map((store) => [store.userId, store]));
     const resolvedPurchases = (purchases.data ?? []).map((item: any) => {
-      if (item.store_id) return item;
-      const owner = item.buyer_user_id ? ownerByBuyer.get(item.buyer_user_id) : undefined;
+      const owner = options.find((store) =>
+        (item.store_kind && item.store_id && store.kind === item.store_kind && store.id === item.store_id) ||
+        (item.agent_store_id && store.kind === "agent" && store.id === item.agent_store_id) ||
+        (item.buyer_user_id && store.userId === item.buyer_user_id)
+      );
       return owner ? { ...item, store_id: owner.id, store_kind: owner.kind } : item;
     });
     setStores(options);
