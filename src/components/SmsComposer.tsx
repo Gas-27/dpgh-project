@@ -310,18 +310,14 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   setSubmitting(true);
   let data: any = null;
   let error: any = null;
-  if (publicMode) {
-    const result = await supabase.rpc("submit_sms_sender_id", { p_sender_id: value, p_phone_number: phone });
-    data = result.data;
-    error = result.error;
-  } else {
-    const result = await supabase.from("sms_sender_ids").insert({ user_id: (await supabase.auth.getUser()).data.user?.id, sender_id: value, phone_number: phone });
-    data = result.data;
-    error = result.error;
-  }
+  const result = await supabase.rpc("submit_sms_sender_id", { p_sender_id: value, p_phone_number: phone });
+  data = result.data;
+  error = result.error;
   setSubmitting(false);
   if (error || data?.error) {
-      toast({ title: "Could not submit sender ID", description: error?.message || "Sender approval requires a completed storefront payment. Please return to the storefront after payment and try again.", variant: "destructive" });
+      const message = error?.message || "Sender approval requires a completed storefront payment. Please return to the storefront after payment and try again.";
+      const blocked = /locked|blocked|cannot be used/i.test(message);
+      toast({ title: blocked ? "Sender ID is blocked" : "Could not submit sender ID", description: blocked ? `${value} is already blocked by an administrator and cannot be sent for approval.` : message, variant: "destructive" });
       return;
     }
     setCustom("");
