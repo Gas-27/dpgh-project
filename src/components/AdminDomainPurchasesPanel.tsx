@@ -11,7 +11,6 @@ export default function AdminDomainPurchasesPanel() {
   const { toast } = useToast();
   const [items, setItems] = useState<any[]>([]);
   const [stores, setStores] = useState<StoreOption[]>([]);
-  const [selectedStores, setSelectedStores] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -35,21 +34,20 @@ export default function AdminDomainPurchasesPanel() {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function assign(item: any) {
-    const value = selectedStores[item.id];
-    const [storeKind, storeId] = value?.split(":") ?? [];
-    if (!storeKind || !storeId) {
-      toast({ title: "Select a person", description: "Choose the agent or sub-agent who should receive this domain.", variant: "destructive" });
-      return;
-    }
+  async function toggleAssignment(item: any) {
     setLoading(true);
-    const { error } = await supabase.rpc("admin_reassign_domain_purchase", {
+    const enabled = !item.custom_domain_enabled;
+    const { error } = await supabase.rpc("admin_toggle_domain_assignment", {
       p_domain_purchase_id: item.id,
-      p_store_kind: storeKind,
-      p_store_id: storeId,
+      p_enabled: enabled,
     });
-    if (error) toast({ title: "Could not assign domain", description: error.message, variant: "destructive" });
-    else { toast({ title: "Domain assigned", description: `${item.domain || item.assigned_domain || "The purchased domain"} is now an additional URL for the selected storefront. Its default URL is unchanged.` }); await load(); }
+    if (error) {
+      toast({ title: enabled ? "Could not assign domain" : "Could not unassign domain", description: error.message, variant: "destructive" });
+    } else {
+      const domain = item.domain || item.assigned_domain || "The purchased domain";
+      toast({ title: enabled ? "Domain assigned" : "Domain unassigned", description: enabled ? `${domain} is active as an additional store URL. The default URL is unchanged.` : `${domain} was removed from the custom URL while the purchase remains with the original buyer.` });
+      await load();
+    }
     setLoading(false);
   }
 
@@ -57,12 +55,13 @@ export default function AdminDomainPurchasesPanel() {
     <Card>
       <CardHeader>
         <CardTitle>Purchased Domains</CardTitle>
-        <p className="text-sm text-muted-foreground">Every purchased domain appears here. Assign or reassign each domain to the storefront owner who should receive it.</p>
+        <p className="text-sm text-muted-foreground">Each domain stays linked to the storefront that purchased it. Admin can assign or unassign that custom URL, but cannot change its owner.</p>
       </CardHeader>
       <CardContent className="space-y-3">
         {items.length === 0 ? <p className="text-sm text-muted-foreground">No domain purchases yet.</p> : items.map((item) => {
           const assigned = item.store_kind && item.store_id ? stores.find((store) => store.kind === item.store_kind && store.id === item.store_id) : null;
           const purchasedDomain = item.domain || item.assigned_domain || item.domain_name || item.hostname;
+          const isAssigned = Boolean(item.custom_domain_enabled);
           return (
             <div key={item.id} className="grid gap-3 rounded-lg border p-4 md:grid-cols-[1.1fr_1fr_1.6fr_auto] md:items-center">
               <div>
@@ -70,15 +69,12 @@ export default function AdminDomainPurchasesPanel() {
                 <p className="text-xs text-muted-foreground">Purchased {item.created_at ? new Date(item.created_at).toLocaleDateString() : "Date unavailable"}</p>
                 {item.buyer_user_id && <p className="text-xs text-muted-foreground">Buyer: {item.buyer_user_id}</p>}
               </div>
-              <Badge variant={item.status === "active" ? "default" : "outline"}>{item.status || "purchased"}</Badge>
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{assigned ? `Assigned to ${assigned.label}` : "Not assigned"}</p>
-                <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={selectedStores[item.id] ?? (assigned ? `${assigned.kind}:${assigned.id}` : "")} onChange={(event) => setSelectedStores((current) => ({ ...current, [item.id]: event.target.value }))} aria-label={`Assign ${item.domain}`}>
-                  <option value="">Select storefront owner</option>
-                  {stores.map((store) => <option key={`${store.kind}:${store.id}`} value={`${store.kind}:${store.id}`}>{store.label}</option>)}
-                </select>
+              <Badge variant={isAssigned ? "default" : "outline"}>{isAssigned ? "assigned" : "unassigned"}</Badge>
+              <div>
+                <p className="text-xs text-muted-foreground">{assigned ? `Purchased by ${assigned.label}` : "Original storefront not recorded"}</p>
+                <p className="text-sm">{assigned ? "Owner is fixed to this storefront" : "Cannot assign until the purchase storefront is known"}</p>
               </div>
-              <Button onClick={() => void assign(item)} disabled={loading}>{assigned ? "Reassign" : "Assign"}</Button>
+              <Button onClick={() => void toggleAssignment(item)} disabled={loading || !assigned}>{isAssigned ? "Unassign" : "Assign"}</Button>
             </div>
           );
         })}
