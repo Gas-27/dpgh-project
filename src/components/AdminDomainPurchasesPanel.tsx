@@ -102,7 +102,8 @@ export default function AdminDomainPurchasesPanel() {
         {items.length === 0 ? <p className="text-sm text-muted-foreground">No domain purchases yet.</p> : filteredItems.length === 0 ? <p className="text-sm text-muted-foreground">No purchased domains match your search.</p> : filteredItems.map((item) => {
           const assigned = stores.find((store) =>
             (item.store_kind && item.store_id && store.kind === item.store_kind && store.id === item.store_id) ||
-            (!item.store_id && item.buyer_user_id && store.userId === item.buyer_user_id)
+            (item.agent_store_id && store.kind === "agent" && store.id === item.agent_store_id) ||
+            (item.buyer_user_id && store.userId === item.buyer_user_id)
           );
           const purchasedDomain = item.domain || item.assigned_domain || item.domain_name || item.hostname;
           const isAssigned = Boolean(item.custom_domain_enabled);
