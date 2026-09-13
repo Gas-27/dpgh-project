@@ -1256,12 +1256,12 @@ const Packages = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const checkingOrderIds = useOrderStatusRefresh(orders, setOrders);
-  type PackageCategory = "data" | "afa" | "vouchers" | "services" | "bulk" | "sms" | "products";
+  type PackageCategory = "data" | "afa" | "vouchers" | "services" | "subscription" | "bulk" | "sms" | "products";
   const categoryPaths: Record<PackageCategory, string> = {
-    data: "/packages", afa: "/afa-bundles", vouchers: "/instant-data", services: "/services", bulk: "/bulk-orders", sms: "/bulk-sms", products: "/products",
+    data: "/packages", afa: "/afa-bundles", vouchers: "/instant-data", services: "/services", subscription: "/subscription", bulk: "/bulk-orders", sms: "/bulk-sms", products: "/products",
   };
-  const handleStorefrontSectionSelect = (section: "data" | "afa" | "instant" | "services" | "bulk" | "sms" | "products") => {
-    changeCategory(section === "instant" ? "vouchers" : section);
+  const handleStorefrontSectionSelect = (section: "data" | "afa" | "instant" | "services" | "subscription" | "bulk" | "sms" | "products") => {
+  changeCategory(section === "instant" ? "vouchers" : section);
   };
   const pathCategories: Record<string, PackageCategory> = Object.fromEntries(Object.entries(categoryPaths).map(([category, path]) => [path, category as PackageCategory]));
   const initialCategory = pathCategories[window.location.pathname] ?? "data";
@@ -1624,11 +1624,20 @@ const searchOrders = async (input?: string) => {
               )}
             </section>
           </>
-        ) : activeCategory === "services" ? (
+        ) : activeCategory === "subscription" ? (
           <DigitalServicesCatalog onBuy={(service) => {
             setSelectedService(service);
             toast({ title: "Service selected", description: `${service.name} is ready for secure activation.` });
           }} />
+        ) : activeCategory === "services" ? (
+          <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12" aria-labelledby="services-coming-soon-heading">
+            <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-accent/10 shadow-lg">
+              <CardContent className="flex flex-col items-center gap-4 p-8 text-center sm:p-12">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-inner"><Rocket className="h-8 w-8" aria-hidden="true" /></div>
+                <div className="space-y-2"><h2 id="services-coming-soon-heading" className="font-display text-2xl font-bold sm:text-3xl">Services are coming soon</h2><p className="mx-auto max-w-md text-sm leading-6 text-muted-foreground">We are preparing more useful digital services for you. Check back soon for the next release.</p></div>
+              </CardContent>
+            </Card>
+          </section>
   ) : activeCategory === "sms" ? (
   <section className="mx-auto w-full max-w-4xl" aria-labelledby="packages-sms-heading">
     <Card className="border-primary/30 bg-primary/5">
