@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
-type StoreOption = { id: string; label: string; kind: "agent" | "subagent" | "subsubagent" };
+type StoreOption = { id: string; label: string; kind: "agent" | "subagent" | "subsubagent"; userId: string | null };
 
 export default function AdminDomainPurchasesPanel() {
   const { toast } = useToast();
@@ -23,9 +23,9 @@ export default function AdminDomainPurchasesPanel() {
     ]);
     if (purchases.error) toast({ title: "Could not load domain purchases", description: purchases.error.message, variant: "destructive" });
     const options: StoreOption[] = [
-      ...(agents.data ?? []).map((store: any) => ({ id: store.id, label: `Agent · ${store.store_name || store.user_id}`, kind: "agent" as const })),
-      ...(subagents.data ?? []).map((store: any) => ({ id: store.id, label: `Sub-agent · ${store.store_name || store.user_id}`, kind: "subagent" as const })),
-      ...(subSubagents.data ?? []).map((store: any) => ({ id: store.id, label: `Sub-sub-agent · ${store.store_name || store.user_id}`, kind: "subsubagent" as const })),
+      ...(agents.data ?? []).map((store: any) => ({ id: store.id, label: `Agent · ${store.store_name || store.user_id}`, kind: "agent" as const, userId: store.user_id ?? null })),
+      ...(subagents.data ?? []).map((store: any) => ({ id: store.id, label: `Sub-agent · ${store.store_name || store.user_id}`, kind: "subagent" as const, userId: store.user_id ?? null })),
+      ...(subSubagents.data ?? []).map((store: any) => ({ id: store.id, label: `Sub-sub-agent · ${store.store_name || store.user_id}`, kind: "subsubagent" as const, userId: store.user_id ?? null })),
     ];
     setStores(options);
     setItems(purchases.data ?? []);
@@ -59,7 +59,10 @@ export default function AdminDomainPurchasesPanel() {
       </CardHeader>
       <CardContent className="space-y-3">
         {items.length === 0 ? <p className="text-sm text-muted-foreground">No domain purchases yet.</p> : items.map((item) => {
-          const assigned = item.store_kind && item.store_id ? stores.find((store) => store.kind === item.store_kind && store.id === item.store_id) : null;
+          const assigned = stores.find((store) =>
+            (item.store_kind && item.store_id && store.kind === item.store_kind && store.id === item.store_id) ||
+            (!item.store_id && item.buyer_user_id && store.userId === item.buyer_user_id)
+          );
           const purchasedDomain = item.domain || item.assigned_domain || item.domain_name || item.hostname;
           const isAssigned = Boolean(item.custom_domain_enabled);
           return (
@@ -72,7 +75,7 @@ export default function AdminDomainPurchasesPanel() {
               <Badge variant={isAssigned ? "default" : "outline"}>{isAssigned ? "assigned" : "unassigned"}</Badge>
               <div>
                 <p className="text-xs text-muted-foreground">{assigned ? `Purchased by ${assigned.label}` : "Original storefront not recorded"}</p>
-                <p className="text-sm">{assigned ? "Owner is fixed to this storefront" : "Cannot assign until the purchase storefront is known"}</p>
+                <p className="text-sm">{assigned ? "Owner is fixed to this storefront" : "Purchase owner could not be resolved"}</p>
               </div>
               <Button onClick={() => void toggleAssignment(item)} disabled={loading || !assigned}>{isAssigned ? "Unassign" : "Assign"}</Button>
             </div>
