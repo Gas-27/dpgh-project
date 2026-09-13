@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ export default function AdminDomainPurchasesPanel() {
   const [items, setItems] = useState<any[]>([]);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedStoreByItem, setSelectedStoreByItem] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -33,6 +35,32 @@ export default function AdminDomainPurchasesPanel() {
   }, [toast]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const filteredItems = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return items;
+    return items.filter((item) => {
+      const owner = stores.find((store) => store.id === item.store_id && store.kind === item.store_kind);
+      return [item.domain, item.assigned_domain, item.buyer_user_id, owner?.label].filter(Boolean).join(" ").toLowerCase().includes(query);
+    });
+  }, [items, search, stores]);
+
+  async function assignUnresolved(item: any) {
+    const selected = stores.find((store) => store.id === selectedStoreByItem[item.id]);
+    if (!selected) return;
+    setLoading(true);
+    const { error } = await supabase.rpc("admin_reassign_domain_purchase", {
+      p_domain_purchase_id: item.id,
+      p_store_kind: selected.kind,
+      p_store_id: selected.id,
+    });
+    if (error) toast({ title: "Could not link purchased domain", description: error.message, variant: "destructive" });
+    else {
+      toast({ title: "Domain linked", description: `${item.domain || item.assigned_domain} is now linked to ${selected.label}.` });
+      await load();
+    }
+    setLoading(false);
+  }
 
   async function toggleAssignment(item: any) {
     setLoading(true);
@@ -58,7 +86,14 @@ export default function AdminDomainPurchasesPanel() {
         <p className="text-sm text-muted-foreground">Each domain stays linked to the storefront that purchased it. Admin can assign or unassign that custom URL, but cannot change its owner.</p>
       </CardHeader>
       <CardContent className="space-y-3">
-        {items.length === 0 ? <p className="text-sm text-muted-foreground">No domain purchases yet.</p> : items.map((item) => {
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search domain, buyer ID, or storefront"
+          aria-label="Search purchased domains"
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+        />
+        {items.length === 0 ? <p className="text-sm text-muted-foreground">No domain purchases yet.</p> : filteredItems.length === 0 ? <p className="text-sm text-muted-foreground">No purchased domains match your search.</p> : filteredItems.map((item) => {
           const assigned = stores.find((store) =>
             (item.store_kind && item.store_id && store.kind === item.store_kind && store.id === item.store_id) ||
             (!item.store_id && item.buyer_user_id && store.userId === item.buyer_user_id)
@@ -74,10 +109,27 @@ export default function AdminDomainPurchasesPanel() {
               </div>
               <Badge variant={isAssigned ? "default" : "outline"}>{isAssigned ? "assigned" : "unassigned"}</Badge>
               <div>
-                <p className="text-xs text-muted-foreground">{assigned ? `Purchased by ${assigned.label}` : "Original storefront not recorded"}</p>
-                <p className="text-sm">{assigned ? "Owner is fixed to this storefront" : "Purchase owner could not be resolved"}</p>
+                {assigned ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">Purchased by {assigned.label}</p>
+                    <p className="text-sm">Owner is fixed to this storefront</p>
+                  </>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={selectedStoreByItem[item.id] ?? ""}
+                      onChange={(event) => setSelectedStoreByItem((current) => ({ ...current, [item.id]: event.target.value }))}
+                      aria-label={`Select purchaser storefront for ${purchasedDomain}`}
+                      className="min-w-64 rounded-md border bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Search/select purchaser storefront</option>
+                      {stores.filter((store) => !search || store.label.toLowerCase().includes(search.toLowerCase()) || store.userId === item.buyer_user_id).map((store) => <option key={`${store.kind}:${store.id}`} value={store.id}>{store.label}</option>)}
+                    </select>
+                    <Button onClick={() => void assignUnresolved(item)} disabled={loading || !selectedStoreByItem[item.id]}>Link purchaser</Button>
+                  </div>
+                )}
               </div>
-              <Button onClick={() => void toggleAssignment(item)} disabled={loading || !assigned}>{isAssigned ? "Unassign" : "Assign"}</Button>
+              {assigned && <Button onClick={() => void toggleAssignment(item)} disabled={loading}>{isAssigned ? "Unassign" : "Assign"}</Button>}
             </div>
           );
         })}
