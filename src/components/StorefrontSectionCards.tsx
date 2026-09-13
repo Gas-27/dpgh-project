@@ -19,7 +19,7 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
   const visibleSections = sections.filter(({ id }) => !hiddenIds.includes(id));
 
   return (
-    <div className="mx-auto w-full max-w-[700px] px-0">
+    <div className="relative left-1/2 w-screen -translate-x-1/2 max-w-[700px] sm:static sm:mx-auto sm:w-full sm:translate-x-0">
       <div className="relative aspect-[697/595] w-full overflow-hidden rounded-[14px] bg-cover bg-center bg-no-repeat shadow-[0_12px_30px_rgba(5,8,35,0.35)]" style={{ backgroundImage: "url(https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-xVD5fr2vu96iSlpUekCJbeLglj4xX4.png)" }}>
         <div className="relative grid h-full grid-cols-2 grid-rows-5 gap-[1.4%] p-[1.1%]">
           {visibleSections.map(({ id, label, description, icon: Icon }) => {
