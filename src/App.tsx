@@ -53,6 +53,7 @@ const PendingApproval = lazyWithReload(() => import("./pages/PendingApproval"));
 const AdminDashboard = lazyWithReload(() => import("./pages/AdminDashboard"));
 const AgentDashboard = lazyWithReload(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazyWithReload(() => import("./pages/AgentStorefront"));
+const ProductDetail = lazyWithReload(() => import("./pages/ProductDetail"));
 const BecomeAgent = lazyWithReload(() => import("./pages/BecomeAgent"));
 const AgentRegistrationCallback = lazyWithReload(() => import("./pages/AgentRegistrationCallback"));
 const SubagentDashboard = lazyWithReload(() => import("./pages/SubagentDashboard"));
@@ -329,6 +330,7 @@ return (
                   <Route path="/agent-onboarding" element={<AgentOnboarding />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />
                   {/* Old paths – redirect to subdomain */}
+                  <Route path="/store/:storeName/product/:productId" element={<ProductDetail />} />
                   <Route path="/agent/:storeName" element={<RedirectToAgentSubdomain />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
