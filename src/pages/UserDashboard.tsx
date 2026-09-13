@@ -214,7 +214,6 @@ const UserDashboard = () => {
     { id: "subagent-prices", label: "Subagent Prices", icon: TrendingUp },
     { id: "appearance", label: "Appearance", icon: Settings },
     { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "withdraw", label: "Withdraw", icon: Wallet },
     { id: "ussd-code", label: "USSD Code", icon: Smartphone },
     { id: "view-subagents", label: "View Subagents", icon: Users },
     { id: "view-sub-subagents", label: "View Sub-Subagents", icon: Users },
@@ -996,7 +995,7 @@ const UserDashboard = () => {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="packages" /><Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveMenu("withdraw")}>Withdraw</Button></div>
+      <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="packages" /></div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -1200,11 +1200,16 @@ const Packages = () => {
   // Keep the purchase gate in the page as well as in the payment flow. This
   // prevents guests from ever opening a payment dialog from the Packages page.
   const openPackageCheckout = useCallback((pkg: DataPackage) => {
-    if (!currentUser) {
-      setShowLoginRequired(true);
-      return;
-    }
-    setPaymentPkg(pkg);
+  if (!currentUser) {
+  setShowLoginRequired(true);
+  return;
+  }
+  if (isAgent && agentStoreIdForPayment) {
+    toast({ title: "Buy data from your dashboard", description: "Approved agents must purchase data from the Buy Data tab in the Agent Dashboard." });
+    navigate("/agent");
+    return;
+  }
+  setPaymentPkg(pkg);
   }, [currentUser]);
 
   useEffect(() => {
