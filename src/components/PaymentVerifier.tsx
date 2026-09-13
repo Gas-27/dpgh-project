@@ -30,28 +30,65 @@ const PaymentVerifier = () => {
   }, [searchParams]);
 
   const verifyPayment = async (reference: string) => {
+    const orderExists = async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, paystack_reference, status, fulfillment_status")
+        .eq("paystack_reference", reference)
+        .limit(1)
+        .maybeSingle();
+
+      return !error && Boolean(data?.id);
+    };
+
+    const showSuccess = () => {
+      setStatus("success");
+      setMessage("Payment confirmed! Your data is being processed and will be delivered shortly.");
+    };
+
     try {
-      const { data, error } = await supabase.functions.invoke("verify-payment", {
-        body: { reference },
-      });
-
-      if (error) {
-        const errorMessage = error.message || "Payment verification request failed.";
-        throw new Error(errorMessage);
+      // The webhook may have already created the order. Prefer that durable result
+      // so a slow or already-processed verification request cannot block the user.
+      if (await orderExists()) {
+        showSuccess();
+        return;
       }
 
-      if (data?.success || data?.payment_confirmed) {
-        setStatus("success");
-        setMessage(data?.fulfillment_pending
-          ? "Payment confirmed! Your order was created, and delivery is being retried automatically."
-          : "Payment confirmed! Your data is being processed and will be delivered shortly.");
-      } else {
-        setStatus("error");
-        setMessage(data?.error || "Payment verification failed.");
+      const verification = supabase.functions.invoke("verify-payment", { body: { reference } });
+      const timeout = new Promise<never>((_, reject) =>
+        window.setTimeout(() => reject(new Error("Verification is still processing")), 5000),
+      );
+      const result = await Promise.race([verification, timeout]);
+      const { data, error } = result;
+
+      if (!error && (data?.success || data?.payment_confirmed)) {
+        showSuccess();
+        return;
       }
-    } catch (err: any) {
+
+      // Do not show a false failure when the webhook/verification is still writing.
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        if (await orderExists()) {
+          showSuccess();
+          return;
+        }
+      }
+
       setStatus("error");
-      setMessage(err.message || "Something went wrong verifying your payment.");
+      setMessage(error?.message || data?.error || "Payment verification is still processing. Please check your orders shortly.");
+    } catch (err: any) {
+      // A timeout or non-2xx response is not proof that payment failed. The
+      // webhook may still have confirmed the payment and created the order.
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        if (await orderExists()) {
+          showSuccess();
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      }
+      setStatus("error");
+      setMessage("Payment is still processing. Please check your orders shortly.");
     }
   };
 
