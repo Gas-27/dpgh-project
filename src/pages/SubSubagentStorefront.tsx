@@ -29,6 +29,7 @@ import RoleServicesPanel from "@/components/RoleServicesPanel";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import KorbaPurchasePanel from "@/components/KorbaPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
   import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 import ChatBot from "@/components/ChatBot";
@@ -1066,7 +1067,8 @@ const searchOrders = useCallback(async (input?: string) => {
   <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => toast({ title: "Coming soon", description: "Become an Agent will be available soon." })} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   {activeSection === "products" && <PublicProductsSection />}
-  {activeSection === "services" && <RoleServicesPanel agentStoreId={store?.id} />}
+  {activeSection === "services" && <KorbaPurchasePanel mode="services" />}
+  {activeSection === "data" && <KorbaPurchasePanel mode="instant" />}
 {activeSection === "data" && <>
   <TrackOrderDropdown source="subsubagent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <SpinToWinCard target="subsubagent" />
