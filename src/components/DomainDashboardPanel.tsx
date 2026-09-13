@@ -83,7 +83,7 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
   async function renewDomain(item: any) {
     setRenewingId(item.id); setError(""); setMessage("");
     try {
-      const { error: renewError } = await supabase.rpc("renew_domain_for_store", { p_domain_purchase_id: item.id, p_idempotency_key: `${item.id}:renew:${Date.now()}` });
+      const { error: renewError } = await supabase.rpc("process_due_domain_renewals");
       if (renewError) throw renewError;
       setMessage(`${item.assigned_domain || item.domain} renewed for another year.`);
       await loadDomains();
