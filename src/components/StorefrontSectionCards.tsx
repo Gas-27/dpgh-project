@@ -20,7 +20,7 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
 
   return (
     <div className="mx-auto w-full max-w-[700px] px-0">
-      <div className="relative aspect-[697/595] w-full overflow-hidden rounded-[14px] bg-cover bg-center bg-no-repeat shadow-[0_12px_30px_rgba(5,8,35,0.35)]" style={{ backgroundImage: "url(https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-Fog4NCh6xSOdVnw7jEJd1EfTLUNtnTT7RbsxArhGUNJXat8FqNqW9mw9.png)" }}>
+      <div className="relative aspect-[697/595] w-full overflow-hidden rounded-[14px] bg-cover bg-center bg-no-repeat shadow-[0_12px_30px_rgba(5,8,35,0.35)]" style={{ backgroundImage: "url(https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-xVD5fr2vu96iSlpUekCJbeLglj4xX4.png)" }}>
         <div className="relative grid h-full grid-cols-2 grid-rows-5 gap-[1.4%] p-[1.1%]">
           {visibleSections.map(({ id, label, description, icon: Icon }) => {
             const isAgent = id === "agent";
@@ -34,24 +34,12 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
             };
 
             return (
-              <button
-                key={id}
-                type="button"
-                onClick={handleClick}
-                aria-label={`${label}: ${description}`}
-                aria-pressed={active === id}
-                className={`group relative min-h-0 overflow-hidden rounded-xl border border-border/40 bg-transparent p-2.5 text-left shadow-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-3 ${active === id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
-              >
+              <button key={id} type="button" onClick={handleClick} aria-label={`${label}: ${description}`} aria-pressed={active === id} className={`group relative min-h-0 overflow-hidden rounded-xl border border-border/40 bg-transparent p-2.5 text-left shadow-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-3 ${active === id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
                 <span className="sr-only">{label}: {description}</span>
                 <span aria-hidden="true" className="absolute inset-0" />
                 <span aria-hidden="true" className="relative flex min-w-0 items-center gap-2.5 opacity-0 sm:gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-background/25 text-foreground shadow-inner sm:size-12">
-                    <Icon aria-hidden="true" className="size-5 sm:size-6" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold leading-tight text-foreground sm:text-base">{label}</span>
-                    <span className="mt-1 block line-clamp-3 text-[10px] font-medium leading-[1.25] text-foreground/90 sm:text-xs">{description}</span>
-                  </span>
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-background/25 text-foreground shadow-inner sm:size-12"><Icon aria-hidden="true" className="size-5 sm:size-6" /></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold leading-tight text-foreground sm:text-base">{label}</span><span className="mt-1 block line-clamp-3 text-[10px] font-medium leading-[1.25] text-foreground/90 sm:text-xs">{description}</span></span>
                   <ArrowRight aria-hidden="true" className="size-5 shrink-0 text-foreground/85 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </button>
@@ -64,4 +52,3 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
 }
 
 export type { SectionId };
-
