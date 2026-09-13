@@ -39,16 +39,23 @@ Deno.serve(async (request) => {
     if (operation !== "collect") return json({ error: "Unsupported Korba operation" }, 400);
 
     const amount = Number(body.amount);
-    const customerNumber = String(body.customer_number || "");
-    const networkCode = String(body.network_code || "").toUpperCase();
-    if (!Number.isFinite(amount) || amount <= 0) return json({ error: "Enter a valid amount" }, 400);
-    if (!/^02\d{8}$/.test(customerNumber)) return json({ error: "Enter a valid Ghana phone number" }, 400);
-    if (!networkCode) return json({ error: "Network is required" }, 400);
+    const customerNumber = String(body.customer_number || "").replace(/\s+/g, "");
+    const networkCode = String(body.network_code || "").trim().toUpperCase();
+    const productType = String(body.product_type || (body.mode === "services" ? "bill" : "data")).trim().toLowerCase();
+    const allowedProductTypes = new Set(["airtime", "data", "electricity", "ecg", "water", "gotv", "dstv", "bill"]);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 5000) return json({ error: "Enter an amount between GHC 0.01 and GHC 5,000" }, 400);
+    if (!/^0[235]\d{8}$/.test(customerNumber)) return json({ error: "Enter a valid Ghana phone number" }, 400);
+    if (!allowedProductTypes.has(productType)) return json({ error: "Unsupported Korba service type" }, 400);
+    if (!networkCode) return json({ error: "Network or service code is required" }, 400);
 
-    const result = await korbaRequest("/collect/", {
+    const providerPayload = {
       amount: amount.toFixed(2), customer_number: customerNumber, network_code: networkCode,
-      description: String(body.description || "DataPlug purchase"), transaction_id, callback_url: callbackUrl(),
-    }) as { success?: boolean; error_code?: number; error_message?: string; [key: string]: unknown };
+      product_type: productType, meter_number: body.meter_number ? String(body.meter_number) : undefined,
+      account_number: body.account_number ? String(body.account_number) : undefined,
+      package_code: body.package_code ? String(body.package_code) : undefined,
+      description: String(body.description || `DataPlug ${productType} purchase`), transaction_id, callback_url: callbackUrl(),
+    };
+    const result = await korbaRequest("/collect/", providerPayload) as { success?: boolean; error_code?: number; error_message?: string; [key: string]: unknown };
 
     if (result.success === false) return json({ ...result, user_message: userMessage(result.error_code) });
 
