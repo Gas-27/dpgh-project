@@ -201,7 +201,9 @@ const UserDashboard = () => {
     { id: "my-complaints", label: "My Complaints", icon: MessageCircle },
   { id: "reports", label: "Report an Issue", icon: AlertTriangle },
     { id: "rewards", label: "Rewards & Benefits", icon: ImageIcon },
-    { id: "api-info", label: "API Info", icon: BookOpen },
+    { id: "api-key", label: "API Key", icon: Zap },
+    { id: "api-docs", label: "API Docs", icon: BookOpen },
+    { id: "api-orders", label: "API Orders", icon: BarChart3 },
     { id: "afa-registration", label: "AFA Registration", icon: Package },
     { id: "sms", label: "Send SMS", icon: Send },
     { id: "topup", label: "Top Up", icon: Coins },
@@ -919,19 +921,12 @@ const UserDashboard = () => {
   return <ReportCenter reporterRole={isImpersonating ? "user" : "user"} />;
       case "rewards":
         return renderFlyerGenerator();
-      case "api-info":
-        return (
-          <Tabs defaultValue="api-key" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="api-key">API Key</TabsTrigger>
-              <TabsTrigger value="api-orders">API Orders</TabsTrigger>
-              <TabsTrigger value="api-docs">API Docs</TabsTrigger>
-            </TabsList>
-            <TabsContent value="api-key">{renderApiKey()}</TabsContent>
-            <TabsContent value="api-orders">{renderApiOrders()}</TabsContent>
-            <TabsContent value="api-docs">{renderApiDocs()}</TabsContent>
-          </Tabs>
-        );
+      case "api-key":
+        return renderApiKey();
+      case "api-docs":
+        return renderApiDocs();
+      case "api-orders":
+        return renderApiOrders();
       case "afa-registration":
         return renderAfaRegistration();
   case "services":
