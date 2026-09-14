@@ -28,7 +28,7 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
       <section className="space-y-4">
         <WalletBanner balance={wallet} label="Wallet-only subscription purchases" />
         <DigitalServicesCatalog agentStoreId={ownerId} onBuy={setService} />
-        <ServicePurchaseDialog service={service} ownerType={ownerType} ownerId={ownerId} onOpenChange={(open) => { if (!open) setService(null); }} />
+        <ServicePurchaseDialog service={service} ownerType={ownerType} ownerId={ownerId} walletBalance={wallet} onOpenChange={(open) => { if (!open) setService(null); }} />
       </section>
     );
   }
