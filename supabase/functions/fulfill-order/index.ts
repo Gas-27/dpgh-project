@@ -236,14 +236,29 @@ Deno.serve(async (req) => {
       }
     }
 
+    const normalizedOrderNetwork = (order.network ?? "").toLowerCase().trim();
+    const mappedProviderForLock = (await supabase.rpc("get_network_provider_route", { p_network_key: normalizedOrderNetwork, p_flow: "fulfillment" })).data || NETWORK_TO_PROVIDER[normalizedOrderNetwork];
+
+    // Fricopay rejects duplicate submissions and refunds the duplicate. A failed
+    // Fricopay response is therefore not safe to retry automatically: the
+    // provider may have accepted the request before returning an error.
+    if (mappedProviderForLock === "fricopay" && order.fulfillment_status === "failed") {
+      console.warn(`[FULFILL] Fricopay order ${order_id} is failed and requires manual provider verification before retry.`);
+      return new Response(JSON.stringify({ success: false, message: "Fricopay order requires manual verification before retry", retryable: false }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ─── Atomically claim the order before calling any provider ───────────────
     // A conditional update plus select prevents concurrent callbacks from both
     // passing the pending/failed guard and sending the same bundle twice.
+    const allowedStatuses = mappedProviderForLock === "fricopay" ? ["pending"] : ["pending", "failed"];
     const { data: claimedOrder, error: lockErr } = await supabase
       .from("orders")
       .update({ fulfillment_status: "processing" })
       .eq("id", order_id)
-      .in("fulfillment_status", ["pending", "failed"])
+      .in("fulfillment_status", allowedStatuses)
       .select("id")
       .maybeSingle();
 

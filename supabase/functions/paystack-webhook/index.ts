@@ -1084,6 +1084,17 @@ Deno.serve(async (req) => {
       }
     }
 
+    const { data: existingOrder } = await supabaseClient
+      .from("orders")
+      .select("id, fulfillment_status")
+      .eq("paystack_reference", reference)
+      .maybeSingle();
+
+    if (existingOrder) {
+      console.log(`[PAYSTACK] Reference ${reference} already processed as order ${existingOrder.id}; skipping duplicate webhook.`);
+      return new Response(JSON.stringify({ message: "Payment already processed", order_id: existingOrder.id, duplicate: true }), { status: 200, headers: corsHeaders });
+    }
+
     const orderData: Record<string, unknown> = {
       customer_number: phone, package_id, network, size_gb: sizeGb,
       ...(!agent_store_id && !subagent_store_id && !subsubagent_store_id && metadata?.user_id
@@ -1107,6 +1118,15 @@ Deno.serve(async (req) => {
 
     const { data: order, error: orderInsertError } = await supabaseClient.from("orders").insert(orderData).select("id").single();
     if (orderInsertError) {
+      if (orderInsertError.code === "23505") {
+        const { data: concurrentOrder } = await supabaseClient
+          .from("orders")
+          .select("id")
+          .eq("paystack_reference", reference)
+          .maybeSingle();
+        console.log(`[PAYSTACK] Concurrent duplicate for ${reference}; existing order ${concurrentOrder?.id || "unknown"} retained.`);
+        return new Response(JSON.stringify({ message: "Payment already processed", order_id: concurrentOrder?.id, duplicate: true }), { status: 200, headers: corsHeaders });
+      }
       console.error("Failed to insert order:", orderInsertError);
       return new Response(JSON.stringify({ error: "Failed to create order" }), { status: 500, headers: corsHeaders });
     }
