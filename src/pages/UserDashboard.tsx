@@ -187,6 +187,7 @@ const UserDashboard = () => {
 
   // Menu navigation
   const [activeMenu, setActiveMenu] = useState("overview");
+  const [overviewTab, setOverviewTab] = useState("buy-data");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const menuItems = [
@@ -957,6 +958,39 @@ const UserDashboard = () => {
 
     return (
     <div className="space-y-6">
+      <Tabs value={overviewTab} onValueChange={setOverviewTab} className="w-full">
+        <TabsList className="hidden" />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+          {[
+            { id: "buy-data", label: "Buy Data" },
+            { id: "instant-data", label: "Instant Data" },
+            { id: "services", label: "Services" },
+            { id: "subscription", label: "Subscription" },
+            { id: "sms", label: "Send SMS" },
+            { id: "afa-registration", label: "AFA Registration" },
+            { id: "api-info", label: "API Info" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setOverviewTab(tab.id)}
+              className={`rounded-full border px-3 py-2 text-sm font-semibold transition-colors ${overviewTab === tab.id ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-4">
+          {overviewTab === "buy-data" && <TabsContent value="buy-data" className="mt-0"><DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="instant" /></TabsContent>}
+          {overviewTab === "instant-data" && <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="instant" /></TabsContent>}
+          {overviewTab === "services" && <TabsContent value="services" className="mt-0"><DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="services" /></TabsContent>}
+          {overviewTab === "subscription" && <TabsContent value="subscription" className="mt-0"><DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="subscription" /></TabsContent>}
+          {overviewTab === "sms" && <TabsContent value="sms" className="mt-0"><Tabs defaultValue="send" className="w-full"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="customer" ownerId={effectiveUserId} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="customer" ownerId={effectiveUserId} /></TabsContent></Tabs></TabsContent>}
+          {overviewTab === "afa-registration" && <TabsContent value="afa-registration" className="mt-0">{renderAfaRegistration()}</TabsContent>}
+          {overviewTab === "api-info" && <TabsContent value="api-info" className="mt-0"><Tabs defaultValue="api-key" className="w-full"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="api-key">API Key</TabsTrigger><TabsTrigger value="api-orders">API Orders</TabsTrigger><TabsTrigger value="api-docs">API Docs</TabsTrigger></TabsList><TabsContent value="api-key">{renderApiKey()}</TabsContent><TabsContent value="api-orders">{renderApiOrders()}</TabsContent><TabsContent value="api-docs">{renderApiDocs()}</TabsContent></Tabs></TabsContent>}
+        </div>
+      </Tabs>
+
             {/* Announcement Video — collapsible dropdown at very top */}
       {announcement && embedUrl && (
         <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
