@@ -17,6 +17,13 @@ function transactionId() {
   return `DP-${crypto.randomUUID()}`;
 }
 
+function dataEndpoint(networkCode: string) {
+  if (networkCode === "MTN") return "/mtn_data_topup/";
+  if (networkCode === "TELECEL") return "/vodafone_data_topup/";
+  if (networkCode === "AIRTELTIGO") return "/airteltigo_data_topup/";
+  return "/collect/";
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -56,7 +63,8 @@ Deno.serve(async (request) => {
       package_code: body.package_code ? String(body.package_code) : undefined,
       description: String(body.description || `DataPlug ${productType} purchase`), transaction_id, callback_url: callbackUrl(),
     };
-    const result = await korbaRequest("/collect/", providerPayload) as { success?: boolean; error_code?: number; error_message?: string; [key: string]: unknown };
+    const endpoint = operation === "data" ? dataEndpoint(networkCode) : "/collect/";
+    const result = await korbaRequest(endpoint, providerPayload) as { success?: boolean; error_code?: number; error_message?: string; [key: string]: unknown };
 
     if (result.success === false) return json({ ...result, user_message: userMessage(result.error_code) });
 

@@ -39,7 +39,8 @@ export async function korbaRequest<T>(path: string, payload: KorbaPayload): Prom
   const secretKey = Deno.env.get("KORBA_SECRET_KEY");
   if (!clientId || !clientKey || !secretKey) throw new Error("Korba credentials are not configured");
 
-  const body = { ...payload, client_id: clientId };
+  const numericClientId = Number(clientId);
+  const body = { ...payload, client_id: Number.isFinite(numericClientId) ? numericClientId : clientId };
   const signature = await hmacSha256(secretKey, canonicalize(body));
   const response = await fetch(`${korbaBaseUrl()}${path}`, {
     method: "POST",
