@@ -77,6 +77,40 @@ Deno.serve(async (req) => {
     );
 
     // =====================================
+    // PRIVATE-SHARE SUBSCRIPTION PAYMENT HANDLER
+    // =====================================
+    if (paymentType === "service_payment" || paymentType === "subscription" || metadata?.service_payment === true || metadata?.service_payment === "true") {
+      const serviceName = String(metadata?.service_name || metadata?.service_title || "Private-share subscription").trim();
+      const serviceLink = String(metadata?.service_link || metadata?.link || "").trim();
+      const customerPhone = String(metadata?.customer_phone || metadata?.phone || txData.customer?.phone || "").trim();
+      const customerName = String(metadata?.customer_name || txData.customer?.first_name || "").trim();
+      const customerEmail = String(metadata?.customer_email || txData.customer?.email || "").trim().toLowerCase();
+      const amountPaid = Number(amount || 0) / 100;
+      const baseAmount = Number(metadata?.base_amount || amountPaid);
+      const feeAmount = Number(metadata?.fee_amount || 0);
+      const sellerStoreKind = String(metadata?.seller_store_kind || (metadata?.subsubagent_store_id ? "subsubagent" : metadata?.subagent_store_id ? "subagent" : metadata?.agent_store_id ? "agent" : "")).trim();
+      const sellerStoreId = metadata?.seller_store_id || metadata?.subsubagent_store_id || metadata?.subagent_store_id || metadata?.agent_store_id || null;
+      const serviceId = metadata?.service_id ? String(metadata.service_id) : null;
+      if (!serviceName || !reference) return new Response(JSON.stringify({ error: "Subscription metadata is incomplete" }), { status: 400, headers: corsHeaders });
+      const { data: existing } = await supabaseClient.from("private_share_subscriptions").select("id, payment_status, whatsapp_url").eq("payment_reference", reference).maybeSingle();
+      if (existing?.payment_status === "paid") return new Response(JSON.stringify({ success: true, already_processed: true, subscription_id: existing.id, whatsapp_url: existing.whatsapp_url }), { status: 200, headers: corsHeaders });
+      const { data: settings } = await supabaseClient.from("subscription_settings").select("whatsapp_number").eq("id", true).maybeSingle();
+      const whatsappNumber = String(settings?.whatsapp_number || "+233274467682").replace(/[^0-9]/g, "");
+      const paidAt = new Date().toISOString();
+      const message = [`Private-share subscription payment`, `Service: ${serviceName}`, serviceLink ? `Link: ${serviceLink}` : "", `Customer: ${customerName || "Not provided"}`, `Phone: ${customerPhone || "Not provided"}`, `Amount paid: GHS ${amountPaid.toFixed(2)}`, `Payment reference: ${reference}`, `Paid at: ${paidAt}`].filter(Boolean).join("\\n");
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+      const record = { payment_reference: reference, customer_id: metadata?.customer_id || metadata?.user_id || null, customer_name: customerName || null, customer_email: customerEmail || null, customer_phone: customerPhone || null, service_id: serviceId, service_name: serviceName, service_link: serviceLink || null, amount: amountPaid, fee_amount: feeAmount, selling_price: baseAmount, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(sellerStoreKind) ? sellerStoreKind : null, seller_store_id: sellerStoreId, payment_status: "paid", confirmation_status: "pending", paid_at: paidAt, whatsapp_number: `+${whatsappNumber}`, whatsapp_url: whatsappUrl, whatsapp_message: message, provider_payload: payload, updated_at: paidAt };
+      const { data: subscription, error: subscriptionError } = existing ? await supabaseClient.from("private_share_subscriptions").update(record).eq("id", existing.id).select("id").single() : await supabaseClient.from("private_share_subscriptions").insert(record).select("id").single();
+      if (subscriptionError || !subscription) return new Response(JSON.stringify({ error: "Could not record subscription payment", details: subscriptionError?.message }), { status: 500, headers: corsHeaders });
+      if (sellerStoreId && ["agent", "subagent", "subsubagent"].includes(sellerStoreKind)) {
+        const table = sellerStoreKind === "agent" ? "agent_stores" : sellerStoreKind === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+        const { data: store } = await supabaseClient.from(table).select("wallet_balance").eq("id", sellerStoreId).maybeSingle();
+        if (store) await supabaseClient.from(table).update({ wallet_balance: Number(store.wallet_balance || 0) + baseAmount }).eq("id", sellerStoreId);
+      }
+      return new Response(JSON.stringify({ success: true, payment_confirmed: true, subscription_id: subscription.id, payment_reference: reference, whatsapp_url: whatsappUrl }), { status: 200, headers: corsHeaders });
+    }
+
+    // =====================================
     // PUBLIC SMS PAYMENT HANDLER
     // =====================================
     if (paymentType === "sms_campaign") {

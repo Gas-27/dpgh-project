@@ -790,7 +790,17 @@ Deno.serve(async (req) => {
         customer_phone: customerPhone,
         access_pin: accessPin,
         customer_id: metadata.customer_id || null,
+        customer_name: metadata.customer_name || metadata.name || "",
+        customer_email: paymentEmail,
+        service_name: metadata.service_name || metadata.service_title || "Private-share subscription",
+        service_link: metadata.service_link || metadata.link || "",
+        seller_store_kind: metadata.seller_store_kind || (metadata.subsubagent_store_id ? "subsubagent" : metadata.subagent_store_id ? "subagent" : metadata.agent_store_id ? "agent" : null),
+        seller_store_id: metadata.seller_store_id || metadata.subsubagent_store_id || metadata.subagent_store_id || metadata.agent_store_id || null,
+        agent_store_id: metadata.agent_store_id || null,
+        subagent_store_id: metadata.subagent_store_id || null,
+        subsubagent_store_id: metadata.subsubagent_store_id || null,
         base_amount: baseAmount,
+        selling_price: baseAmount,
         fee_amount: feeAmount,
       };
 
