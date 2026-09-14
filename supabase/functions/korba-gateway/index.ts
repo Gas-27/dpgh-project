@@ -36,7 +36,7 @@ Deno.serve(async (request) => {
     if (operation === "transactions") {
       return json(await korbaRequest("/client_transactions/", {}));
     }
-    if (operation !== "collect") return json({ error: "Unsupported Korba operation" }, 400);
+    if (operation !== "collect" && operation !== "data") return json({ error: "Unsupported Korba operation" }, 400);
 
     const amount = Number(body.amount);
     const customerNumber = String(body.customer_number || "").replace(/\s+/g, "");
@@ -50,7 +50,8 @@ Deno.serve(async (request) => {
 
     const providerPayload = {
       amount: amount.toFixed(2), customer_number: customerNumber, network_code: networkCode,
-      product_type: productType, meter_number: body.meter_number ? String(body.meter_number) : undefined,
+      product_type: productType, product_id: body.product_id ? String(body.product_id) : undefined,
+      meter_number: body.meter_number ? String(body.meter_number) : undefined,
       account_number: body.account_number ? String(body.account_number) : undefined,
       package_code: body.package_code ? String(body.package_code) : undefined,
       description: String(body.description || `DataPlug ${productType} purchase`), transaction_id, callback_url: callbackUrl(),

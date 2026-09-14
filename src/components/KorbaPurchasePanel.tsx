@@ -70,7 +70,9 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("korba-gateway", {
       body: {
-        operation: "collect",
+        operation: mode === "instant" && instantProduct === "data" ? "data" : "collect",
+        product_type: mode === "instant" ? instantProduct : "service",
+        package_code: selectedInstantItem?.label,
         wallet_only: walletOnly,
         wallet_balance_owner_type: ownerType,
         wallet_balance_owner_id: ownerId,
