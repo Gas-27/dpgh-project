@@ -24,6 +24,7 @@ import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import ReportCenter from "@/components/ReportCenter";
 import AdminDigitalServicesManager from "@/components/AdminDigitalServicesManager";
+import SubscriptionPaymentsPanel from "@/components/SubscriptionPaymentsPanel";
 import AdminPublicProductsManager from "@/components/AdminPublicProductsManager";
 import AdminDomainPurchasesPanel from "@/components/AdminDomainPurchasesPanel";
 import AdminDomainRenewalsPanel from "@/components/AdminDomainRenewalsPanel";
@@ -89,7 +90,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "sms" | "public_products" | "settings";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "sms" | "public_products" | "settings" | "subscriptions";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -2737,6 +2738,7 @@ const AdminDashboard = () => {
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
             <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>
             <TabsTrigger value="order_approvals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><ClipboardList className="h-3 w-3 md:h-4 md:w-4" /> Approvals</TabsTrigger>
+<TabsTrigger value="subscriptions" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Paid subscriptions</TabsTrigger>
 <TabsTrigger value="orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
               <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" /> Orders
               {failedCount > 0 && <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{failedCount}</Badge>}
@@ -2770,7 +2772,8 @@ const AdminDashboard = () => {
             <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedSenderIds /></TabsContent>
+          <TabsContent value="subscriptions" className="space-y-6"><SubscriptionPaymentsPanel admin /></TabsContent>
+<TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedSenderIds /></TabsContent>
           <TabsContent value="domain_purchases" className="space-y-6"><AdminDomainPurchasesPanel /></TabsContent>
   <TabsContent value="domain_renewals" className="space-y-6"><AdminDomainRenewalsPanel /></TabsContent>
 
