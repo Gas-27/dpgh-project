@@ -1634,7 +1634,7 @@ const searchOrders = async (input?: string) => {
                     const packageName = pkg.size_gb_text || `${pkg.size_gb}GB`;
                     const available = pkg.active !== false;
                     return (
-                      <Card key={pkg.id} className={`border-0 bg-[#2f176d] shadow-none ${available ? "" : "opacity-45"}`}>
+                      <Card key={pkg.id} className={`package-reference-card border-0 bg-[#2f176d] shadow-none ${available ? "" : "opacity-45"}`}>
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
                           <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
                           <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
@@ -1664,9 +1664,9 @@ const searchOrders = async (input?: string) => {
             toast({ title: "Service selected", description: `${service.name} is ready for secure activation.` });
           }} />
         ) : activeCategory === "services" ? (
-          <KorbaPurchasePanel mode="services" />
+          <div className="storefront-light-form"><KorbaPurchasePanel mode="services" /></div>
         ) : activeCategory === "vouchers" ? (
-          <KorbaPurchasePanel mode="instant" />
+          <div className="storefront-light-form"><KorbaPurchasePanel mode="instant" /></div>
   ) : activeCategory === "sms" ? (
   <section className="storefront-light-form mx-auto w-full max-w-4xl" aria-labelledby="packages-sms-heading">
     <Card className="border-primary/30 bg-primary/5">
@@ -1679,7 +1679,7 @@ const searchOrders = async (input?: string) => {
   </section>
   ) : activeCategory === "bulk" ? (
   
-  <div className="max-w-3xl mx-auto">
+  <div className="storefront-light-form max-w-3xl mx-auto">
             <Card className="border-yellow-500/30 bg-yellow-500/5">
               <CardContent className="p-6 space-y-6">
                 <div className="text-center mb-4">

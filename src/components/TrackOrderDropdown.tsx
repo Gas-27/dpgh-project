@@ -9,7 +9,7 @@ type Props = { source: string; storeId?: string | null; onTrack?: (value: string
 export default function TrackOrderDropdown({ source, storeId, onTrack, onCancel, hasResults = false, searching = false, primaryColor = "#2563eb" }: Props) {
   const [open, setOpen] = useState(false);
   const [lookup, setLookup] = useState("");
-  return <div className="overflow-hidden rounded-[22px] border border-cyan-400/80 bg-gradient-to-r from-slate-950 via-blue-950 to-blue-700 shadow-lg shadow-blue-950/30">
+  return <div className="track-order-card overflow-hidden rounded-[22px] border border-cyan-400/80 bg-gradient-to-r from-slate-950 via-blue-950 to-blue-700 shadow-lg shadow-blue-950/30">
     <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left text-white sm:px-6">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-500/25"><Package className="h-5 w-5 text-cyan-200" /></span>
       <span className="min-w-0 flex-1 border-l border-white/20 pl-3"><span className="block text-base font-bold">Track Your Order</span><span className="block text-xs text-blue-100/80">Enter your phone number or order ID to check your purchase status.</span></span>

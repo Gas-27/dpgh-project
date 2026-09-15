@@ -75,18 +75,22 @@
 }
 
 @layer components {
-  :root:not(.dark) .text-white { color: hsl(var(--foreground)) !important; }
-
   .storefront-section-card,
   .storefront-section-card * { color: hsl(0 0% 98%) !important; }
-  .storefront-section-card .bg-background\/25 { color: hsl(0 0% 98%) !important; }
-  .storefront-readable .storefront-light-form,
-  .storefront-readable .storefront-light-form label,
-  .storefront-readable .storefront-light-form input,
-  .storefront-readable .storefront-light-form textarea,
-  .storefront-readable .storefront-light-form select { color: hsl(var(--foreground)) !important; }
-  .storefront-readable .storefront-light-form input::placeholder,
-  .storefront-readable .storefront-light-form textarea::placeholder { color: hsl(var(--muted-foreground)) !important; opacity: 1; }
+  .track-order-card,
+  .track-order-card * { color: hsl(0 0% 98%) !important; }
+  .delivery-progress-card,
+  .delivery-progress-card * { color: hsl(0 0% 98%) !important; }
+  .package-reference-card,
+  .package-reference-card * { color: hsl(0 0% 98%) !important; }
+  .storefront-light-form,
+  .storefront-light-form label,
+  .storefront-light-form input,
+  .storefront-light-form textarea,
+  .storefront-light-form select { color: hsl(0 0% 8%) !important; }
+  .storefront-light-form input::placeholder,
+  .storefront-light-form textarea::placeholder { color: hsl(215 16% 40%) !important; opacity: 1; }
+  .storefront-light-form .text-muted-foreground { color: hsl(215 16% 35%) !important; }
 
   .dark-surface,
   .dark-surface * {
