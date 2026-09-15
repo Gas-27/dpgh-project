@@ -75,9 +75,37 @@
 }
 
 @layer components {
-  .storefront-tabs-shell {
-    background: radial-gradient(circle at 10% 10%, rgba(46, 115, 190, 0.35), transparent 34%), radial-gradient(circle at 85% 80%, rgba(192, 24, 188, 0.38), transparent 35%), #160b3d;
+  .storefront-reference-grid {
+    position: relative;
+    aspect-ratio: 706 / 632;
+    overflow: hidden;
+    background: url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-b0ld8fsZwHiJ6qZvc6YI9F3EIy89QE.png") center / 100% 100% no-repeat;
   }
+  .storefront-reference-hotspot {
+    position: absolute;
+    display: block;
+    width: 46%;
+    height: 16.9%;
+    border: 0;
+    border-radius: 22px;
+    background: transparent;
+    cursor: pointer;
+    transition: filter 160ms ease, transform 160ms ease;
+  }
+  .storefront-reference-hotspot:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .storefront-reference-hotspot:focus-visible { outline: 3px solid hsl(190 90% 65%); outline-offset: 3px; }
+  .storefront-reference-hotspot.is-active { outline: 3px solid hsl(190 90% 65%); outline-offset: -3px; }
+  .storefront-reference-hotspot-0 { left: 3.7%; top: 2%; }
+  .storefront-reference-hotspot-1 { left: 50.5%; top: 2%; }
+  .storefront-reference-hotspot-2 { left: 3.7%; top: 20.2%; }
+  .storefront-reference-hotspot-3 { left: 50.5%; top: 20.2%; }
+  .storefront-reference-hotspot-4 { left: 3.7%; top: 39.4%; }
+  .storefront-reference-hotspot-5 { left: 50.5%; top: 39.4%; }
+  .storefront-reference-hotspot-6 { left: 3.7%; top: 58.3%; }
+  .storefront-reference-hotspot-7 { left: 50.5%; top: 58.3%; }
+  .storefront-reference-hotspot-8 { left: 3.7%; top: 77.3%; }
+  .storefront-reference-hotspot-9 { left: 50.5%; top: 77.3%; }
+
   .storefront-section-card,
   .storefront-section-card * { color: hsl(0 0% 98%) !important; }
   .track-order-card,
