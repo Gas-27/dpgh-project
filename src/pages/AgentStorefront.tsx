@@ -566,6 +566,7 @@ const AgentStorefront = () => {
   const [showGroupTooltip, setShowGroupTooltip] = useState(true);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
+  const [agentSubagentPrices, setAgentSubagentPrices] = useState<Record<string, number>>({});
   const [storeProducts, setStoreProducts] = useState<Array<{ id: string; title: string; description: string; price: number; image_urls: string[] }>>([]);
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [loading, setLoading] = useState(true);
@@ -772,15 +773,19 @@ const AgentStorefront = () => {
   const { data: productRows } = await supabase.from("store_products").select("id,title,description,price,image_urls").eq("store_id", matched.id).eq("status", "active").eq("available", true).order("created_at", { ascending: false });
   setStoreProducts((productRows || []) as typeof storeProducts);
   
-  const [pkgRes, priceRes, appSettingsRes] = await Promise.all([
+  const [pkgRes, priceRes, agentSubagentPriceRes, appSettingsRes] = await Promise.all([
         supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
+        supabase.from("subagent_package_prices").select("package_id, base_price, created_at").eq("agent_store_id", matched.id).is("subagent_store_id", null).order("created_at", { ascending: false }),
         supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
       ]);
       setPackages(pkgRes.data ?? []);
       const priceMap: Record<string, number> = {};
-      (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = p.sell_price; });
+      (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = Number(p.sell_price); });
+      const agentPriceMap: Record<string, number> = {};
+      (agentSubagentPriceRes.data ?? []).forEach((p: any) => { if (p.base_price != null && agentPriceMap[p.package_id] == null) agentPriceMap[p.package_id] = Number(p.base_price); });
       setAgentPrices(priceMap);
+      setAgentSubagentPrices(agentPriceMap);
       if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
       setLoading(false);
     };
@@ -1417,8 +1422,11 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                             {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
                             <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb}GB</p>
                             <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)}</p>
+                            <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
+                              <span>Agent price: <strong className="text-cyan-300">{Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
+                            </div>
                             <div className="leading-tight">
-                              <p className="text-sm font-semibold text-white/75">Your price:</p>
+                              <p className="text-sm font-semibold text-white/75">Your price (user price):</p>
                               <p className="text-2xl font-extrabold text-white">GHC{Number(price).toFixed(2)}</p>
                             </div>
                             <Button variant="outline" size="lg" disabled={isInactive} className="mt-1 h-9 w-full rounded-full border-white/30 bg-white/10 text-sm font-bold text-white hover:bg-white/20 hover:text-white" onClick={() => !isInactive && setPaymentPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
