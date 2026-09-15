@@ -34,7 +34,7 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
             };
 
             return (
-              <button key={id} type="button" onClick={handleClick} aria-label={`${label}: ${description}`} aria-pressed={active === id} className={`group relative min-h-0 overflow-hidden rounded-xl border border-border/40 bg-transparent p-2.5 text-left shadow-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-3 ${active === id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
+              <button key={id} type="button" onClick={handleClick} aria-label={`${label}: ${description}`} aria-pressed={active === id} className={`storefront-section-card group relative min-h-0 overflow-hidden rounded-xl border border-white/20 bg-transparent p-2.5 text-left text-white shadow-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-3 ${active === id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
                 <span className="sr-only">{label}: {description}</span>
                 <span aria-hidden="true" className="absolute inset-0" />
                 <span aria-hidden="true" className="relative flex min-w-0 items-center gap-2.5 opacity-0 sm:gap-3">

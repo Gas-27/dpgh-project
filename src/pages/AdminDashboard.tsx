@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play, MessageCircle, KeyRound, Route, ClipboardList,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play, MessageCircle, KeyRound, Route, ClipboardList, Crown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -308,6 +308,8 @@ const AdminDashboard = () => {
   const [savingChatbot, setSavingChatbot] = useState(false);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
   const [savingPriceBreakdown, setSavingPriceBreakdown] = useState(false);
+  const [subscriptionComingSoon, setSubscriptionComingSoon] = useState(false);
+  const [savingSubscriptionComingSoon, setSavingSubscriptionComingSoon] = useState(false);
 
   // Free Data Offer settings
   const [freeDataConfig, setFreeDataConfig] = useState({
@@ -707,7 +709,7 @@ const AdminDashboard = () => {
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
         supabase
           .from("app_settings")
-          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown")
+          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown, subscription_coming_soon")
           .eq("id", 1)
           .single(),
       ]);
@@ -728,9 +730,12 @@ const AdminDashboard = () => {
         if (typeof appSettings.chatbot_enabled === 'boolean') {
           setChatbotEnabled(appSettings.chatbot_enabled);
         }
-        if (typeof appSettings.show_price_breakdown === 'boolean') {
-          setShowPriceBreakdown(appSettings.show_price_breakdown);
-        }
+  if (typeof appSettings.show_price_breakdown === 'boolean') {
+  setShowPriceBreakdown(appSettings.show_price_breakdown);
+  }
+  if (typeof appSettings.subscription_coming_soon === 'boolean') {
+  setSubscriptionComingSoon(appSettings.subscription_coming_soon);
+  }
       }
     } catch (error) {
       console.error("[v0] Error in refreshData:", error);
@@ -819,6 +824,19 @@ const AdminDashboard = () => {
       toast({ title: "Price breakdown setting saved" });
     }
     setSavingPriceBreakdown(false);
+  };
+
+  const saveSubscriptionComingSoon = async (enabled: boolean) => {
+    setSavingSubscriptionComingSoon(true);
+    const { error } = await supabase.from("app_settings").upsert({ id: 1, subscription_coming_soon: enabled, updated_at: new Date().toISOString() });
+    if (error) {
+      setSubscriptionComingSoon(!enabled);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setSubscriptionComingSoon(enabled);
+      toast({ title: enabled ? "Subscription marked Coming Soon" : "Subscription is live" });
+    }
+    setSavingSubscriptionComingSoon(false);
   };
 
   // Save free data offer settings
@@ -4792,6 +4810,16 @@ const AdminDashboard = () => {
                         </p>
                       </CardContent>
                     </Card>
+
+  <Card className="border-border">
+  <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Crown className="h-5 w-5 text-amber-500" /> Premium Subscription</CardTitle></CardHeader>
+  <CardContent>
+  <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-900/10 p-4">
+  <div className="space-y-0.5"><Label className="text-base font-semibold">Show Coming Soon dialog</Label><p className="text-sm text-muted-foreground">Temporarily pause the public Premium Subscription section without removing its plans.</p></div>
+  <div className="flex items-center gap-3">{savingSubscriptionComingSoon && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}<Switch checked={subscriptionComingSoon} onCheckedChange={saveSubscriptionComingSoon} disabled={savingSubscriptionComingSoon} aria-label="Show Premium Subscription coming soon dialog" /></div>
+  </div>
+  </CardContent>
+  </Card>
 
   <Card className="border-border">
   <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><DollarSign className="h-5 w-5 text-emerald-500" /> Customer Price Breakdown</CardTitle></CardHeader>

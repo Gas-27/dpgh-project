@@ -1269,6 +1269,10 @@ const Packages = () => {
     data: "/packages", afa: "/afa-bundles", vouchers: "/instant-data", services: "/services", subscription: "/subscription", bulk: "/bulk-orders", sms: "/bulk-sms", products: "/products",
   };
   const handleStorefrontSectionSelect = (section: "data" | "afa" | "instant" | "services" | "subscription" | "bulk" | "sms" | "products") => {
+  if (section === "subscription" && subscriptionComingSoon) {
+    setShowSubscriptionComingSoon(true);
+    return;
+  }
   changeCategory(section === "instant" ? "vouchers" : section);
   };
   const pathCategories: Record<string, PackageCategory> = Object.fromEntries(Object.entries(categoryPaths).map(([category, path]) => [path, category as PackageCategory]));
@@ -1293,6 +1297,8 @@ const Packages = () => {
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
+  const [subscriptionComingSoon, setSubscriptionComingSoon] = useState(false);
+  const [showSubscriptionComingSoon, setShowSubscriptionComingSoon] = useState(false);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
@@ -1333,11 +1339,14 @@ const Packages = () => {
         );
       });
     // Load customer-facing pricing display settings
-    supabase.from("app_settings").select("free_data_enabled,show_price_breakdown").eq("id", 1).single()
+    supabase.from("app_settings").select("free_data_enabled,show_price_breakdown,subscription_coming_soon").eq("id", 1).single()
       .then(({ data }) => {
         if (data) {
           setFreeDataEnabled(data.free_data_enabled ?? true);
           setShowPriceBreakdown(data.show_price_breakdown ?? false);
+          const comingSoon = data.subscription_coming_soon === true;
+          setSubscriptionComingSoon(comingSoon);
+          if (comingSoon && activeCategory === "subscription") setShowSubscriptionComingSoon(true);
         }
       });
   }, []);
@@ -1524,8 +1533,17 @@ const searchOrders = async (input?: string) => {
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
 
-        <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={handleStorefrontSectionSelect} onBecomeAgent={() => setShowBecomeAgent(true)} />
-        <div id="storefront-section-content" className="scroll-mt-6" />
+  <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={handleStorefrontSectionSelect} onBecomeAgent={() => setShowBecomeAgent(true)} />
+  <Dialog open={showSubscriptionComingSoon} onOpenChange={setShowSubscriptionComingSoon}>
+    <DialogContent className="border-amber-400/50 bg-slate-950 text-white sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle className="font-display text-xl text-white">Premium Subscription is coming soon</DialogTitle>
+        <DialogDescription className="text-slate-300">We&apos;re preparing exclusive discounted bundles, priority processing, and monthly rewards. Check back soon.</DialogDescription>
+      </DialogHeader>
+      <Button onClick={() => setShowSubscriptionComingSoon(false)} className="w-full bg-primary text-primary-foreground">Got it</Button>
+    </DialogContent>
+  </Dialog>
+  <div id="storefront-section-content" className="scroll-mt-6" />
         {activeCategory === "products" ? (
           <PublicProductsSection />
         ) : activeCategory === "data" ? (
@@ -1650,7 +1668,7 @@ const searchOrders = async (input?: string) => {
         ) : activeCategory === "vouchers" ? (
           <KorbaPurchasePanel mode="instant" />
   ) : activeCategory === "sms" ? (
-  <section className="mx-auto w-full max-w-4xl" aria-labelledby="packages-sms-heading">
+  <section className="storefront-light-form mx-auto w-full max-w-4xl" aria-labelledby="packages-sms-heading">
     <Card className="border-primary/30 bg-primary/5">
       <CardContent className="p-4 sm:p-6">
         <h2 id="packages-sms-heading" className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2>
@@ -1868,8 +1886,8 @@ const searchOrders = async (input?: string) => {
             </Card>
           </div>
         ) : activeCategory === "afa" ? (
-          <div className="w-full pb-20 space-y-6">
-            <AFARegistrationTracker />
+  <div className="storefront-light-form w-full pb-20 space-y-6">
+  <AFARegistrationTracker />
             <AFAPackagesDisplay
   onRegisterClick={(packageId, packageName, price) => {
   setPaymentPkg({

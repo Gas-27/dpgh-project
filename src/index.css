@@ -77,6 +77,17 @@
 @layer components {
   :root:not(.dark) .text-white { color: hsl(var(--foreground)) !important; }
 
+  .storefront-section-card,
+  .storefront-section-card * { color: hsl(0 0% 98%) !important; }
+  .storefront-section-card .bg-background\/25 { color: hsl(0 0% 98%) !important; }
+  .storefront-readable .storefront-light-form,
+  .storefront-readable .storefront-light-form label,
+  .storefront-readable .storefront-light-form input,
+  .storefront-readable .storefront-light-form textarea,
+  .storefront-readable .storefront-light-form select { color: hsl(var(--foreground)) !important; }
+  .storefront-readable .storefront-light-form input::placeholder,
+  .storefront-readable .storefront-light-form textarea::placeholder { color: hsl(var(--muted-foreground)) !important; opacity: 1; }
+
   .dark-surface,
   .dark-surface * {
     --foreground: 0 0% 100%;
