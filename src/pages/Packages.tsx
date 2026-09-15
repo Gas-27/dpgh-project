@@ -1620,13 +1620,11 @@ const searchOrders = async (input?: string) => {
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
                           <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
                           <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
-                          {showPriceBreakdown && (
-                            <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
-                              <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
-                              <span className="text-white/50">|</span>
-                              <span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
-                            </div>
-                          )}
+                          <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
+                            <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
+                            <span className="text-white/50">|</span>
+                            <span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
+                          </div>
                           <div className="leading-tight">
                             <p className="text-sm font-semibold text-white/75">Your price (user price):</p>
                             <p className="text-2xl font-extrabold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
