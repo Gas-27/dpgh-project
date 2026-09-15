@@ -1229,7 +1229,7 @@ const Packages = () => {
     if (searchParams.get("service_payment") !== "verifying") return;
     const pendingRaw = sessionStorage.getItem("pending_service_payment");
     if (!pendingRaw) return;
-    const pending = JSON.parse(pendingRaw) as { reference: string; serviceName?: string; serviceType?: string; price?: number; phone?: string };
+    const pending = JSON.parse(pendingRaw) as { reference: string; serviceName?: string; serviceType?: string; privateDeliveryMode?: string; price?: number; phone?: string };
     supabase.functions.invoke("verify-payment", { body: { reference: pending.reference } }).then(async ({ data, error }) => {
       if (error || data?.error) {
         let detail = data?.error || error?.message || "The payment could not be verified yet.";
@@ -1238,9 +1238,14 @@ const Packages = () => {
         return;
       }
       sessionStorage.removeItem("pending_service_payment");
-      toast({ title: "Service payment successful", description: "Your access has been assigned. Opening WhatsApp with your purchase details." });
-      const whatsappText = encodeURIComponent(`Private service purchase confirmed.\n\nService: ${pending.serviceName || "Digital service"}\nShare: ${pending.serviceType === "private_shared" ? "Private share" : "Public share"}\nPaid: GHC ${Number(pending.price || 0).toFixed(2)}\nCustomer phone: ${pending.phone || "Not provided"}\nOrder code: ${pending.reference}\n\nPlease process my purchase.`);
-      window.location.assign(`https://wa.me/233274467682?text=${whatsappText}`);
+      const isPrivateWhatsApp = pending.serviceType === "private_shared" && pending.privateDeliveryMode === "whatsapp";
+      if (isPrivateWhatsApp) {
+        toast({ title: "Service payment successful", description: "Opening WhatsApp with your private-share purchase details." });
+        const whatsappText = encodeURIComponent(`Private service purchase confirmed.\n\nService: ${pending.serviceName || "Digital service"}\nPaid: GHC ${Number(pending.price || 0).toFixed(2)}\nCustomer phone: ${pending.phone || "Not provided"}\nOrder code: ${pending.reference}\n\nPlease process my purchase.`);
+        window.location.assign(`https://wa.me/233274467682?text=${whatsappText}`);
+      } else {
+        toast({ title: "Service payment successful", description: pending.serviceType === "public_shared" ? "Your access is ready. Return to the service login page and enter your phone number and access code." : "Your private access is ready on this site." });
+      }
     });
   }, [searchParams, toast]);
 

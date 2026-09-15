@@ -794,6 +794,8 @@ Deno.serve(async (req) => {
         customer_email: paymentEmail,
         service_name: metadata.service_name || metadata.service_title || "Private-share subscription",
         service_link: metadata.service_link || metadata.link || "",
+        service_type: metadata.service_type || "private_shared",
+        private_delivery_mode: metadata.private_delivery_mode || "whatsapp",
         seller_store_kind: metadata.seller_store_kind || (metadata.subsubagent_store_id ? "subsubagent" : metadata.subagent_store_id ? "subagent" : metadata.agent_store_id ? "agent" : null),
         seller_store_id: metadata.seller_store_id || metadata.subsubagent_store_id || metadata.subagent_store_id || metadata.agent_store_id || null,
         agent_store_id: metadata.agent_store_id || null,
