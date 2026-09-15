@@ -97,7 +97,7 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
   if (mode === "instant") {
     return (
       <>
-      <Card className="mx-auto w-full max-w-4xl overflow-hidden border-primary/25 shadow-sm">
+      <Card className="storefront-light-form mx-auto w-full max-w-4xl overflow-hidden border-primary/25 shadow-sm">
         <CardHeader>
           <CardTitle>Airtime & Instant Data</CardTitle>
           <CardDescription>Choose a product, network, and bundle to continue.</CardDescription>
@@ -157,7 +157,7 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
   }
 
   return (
-    <Card className="mx-auto w-full max-w-5xl border-primary/25 shadow-sm">
+    <Card className="storefront-light-form mx-auto w-full max-w-5xl border-primary/25 shadow-sm">
       <CardHeader className="text-center"><CardTitle className="text-3xl">Pay Bills & Utilities</CardTitle><CardDescription>Top up ECG, settle Ghana Water, or renew TV subscriptions instantly.</CardDescription></CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
         <div className="grid gap-5 rounded-2xl border bg-card p-4 sm:p-6">

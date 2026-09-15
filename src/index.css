@@ -83,15 +83,6 @@
   .delivery-progress-card * { color: hsl(0 0% 98%) !important; }
   .package-reference-card,
   .package-reference-card * { color: hsl(0 0% 98%) !important; }
-  .storefront-light-form,
-  .storefront-light-form label,
-  .storefront-light-form input,
-  .storefront-light-form textarea,
-  .storefront-light-form select { color: hsl(0 0% 8%) !important; }
-  .storefront-light-form input::placeholder,
-  .storefront-light-form textarea::placeholder { color: hsl(215 16% 40%) !important; opacity: 1; }
-  .storefront-light-form .text-muted-foreground { color: hsl(215 16% 35%) !important; }
-
   .dark-surface,
   .dark-surface * {
     --foreground: 0 0% 100%;
@@ -150,6 +141,24 @@
   .storefront-readable .storefront-section-pink span span,
   .storefront-readable .storefront-section-blue span span,
   .storefront-readable .storefront-section-teal span span { color: hsl(215 28% 86%) !important; }
+
+  :root:not(.dark) .storefront-light-form,
+  :root:not(.dark) .storefront-light-form * {
+    color: hsl(0 0% 8%) !important;
+  }
+  :root:not(.dark) .storefront-light-form input::placeholder,
+  :root:not(.dark) .storefront-light-form textarea::placeholder {
+    color: hsl(215 16% 40%) !important;
+    opacity: 1;
+  }
+  :root:not(.dark) .storefront-light-form button,
+  :root:not(.dark) .storefront-light-form [role="tab"] {
+    color: hsl(0 0% 8%) !important;
+  }
+  :root:not(.dark) .storefront-light-form .text-primary,
+  :root:not(.dark) .storefront-light-form .text-muted-foreground {
+    color: hsl(0 0% 8%) !important;
+  }
 }
 
 @layer base {

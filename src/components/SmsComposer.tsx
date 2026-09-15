@@ -457,7 +457,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const pending = senders.filter((item) => item.status === "pending");
 
   return (
-    <div className="space-y-6">
+    <div className="storefront-light-form space-y-6">
       {videoUrl && (
         <Card className="border-primary/20 overflow-hidden">
           <CardHeader className="pb-3">
