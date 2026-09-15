@@ -75,6 +75,9 @@
 }
 
 @layer components {
+  .storefront-tabs-shell {
+    background: radial-gradient(circle at 10% 10%, rgba(46, 115, 190, 0.35), transparent 34%), radial-gradient(circle at 85% 80%, rgba(192, 24, 188, 0.38), transparent 35%), #160b3d;
+  }
   .storefront-section-card,
   .storefront-section-card * { color: hsl(0 0% 98%) !important; }
   .track-order-card,
