@@ -41,6 +41,7 @@ import NetworkProviderRoutingAdmin from "@/components/NetworkProviderRoutingAdmi
 import AdminSpaceshipPricing from "@/components/AdminSpaceshipPricing";
 import AdminOrderNumberApprovals from "@/components/AdminOrderNumberApprovals";
   import AdminBlockedSenderIds from "@/components/AdminBlockedSenderIds";
+import WeeklyOrderTargetAdmin from "@/components/WeeklyOrderTargetAdmin";
 import SmsAdmin from "@/components/SmsAdmin";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
@@ -4709,6 +4710,7 @@ const AdminDashboard = () => {
   {canSee("settings") && (
   <TabsContent value="settings" className="space-y-6">
   <DeliveryProgressAdmin />
+  <WeeklyOrderTargetAdmin />
   <Card className="border-border">
 
                   <CardHeader>
