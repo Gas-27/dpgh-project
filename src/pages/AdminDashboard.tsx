@@ -42,6 +42,7 @@ import AdminSpaceshipPricing from "@/components/AdminSpaceshipPricing";
 import AdminOrderNumberApprovals from "@/components/AdminOrderNumberApprovals";
   import AdminBlockedSenderIds from "@/components/AdminBlockedSenderIds";
 import WeeklyOrderTargetAdmin from "@/components/WeeklyOrderTargetAdmin";
+import PriceReductionRequestsAdmin from "@/components/PriceReductionRequestsAdmin";
 import SmsAdmin from "@/components/SmsAdmin";
 import { DOMAINS } from "@/config/domains";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
@@ -91,7 +92,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "sms" | "public_products" | "settings" | "subscriptions";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "sms" | "public_products" | "settings" | "subscriptions" | "price_reduction_requests";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -2787,6 +2788,7 @@ const AdminDashboard = () => {
                 <TabsTrigger value="sms" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><MessageCircle className="h-3 w-3 md:h-4 md:w-4" /> SMS</TabsTrigger>
  <TabsTrigger value="public_products" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> Store Products</TabsTrigger>
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
+            <TabsTrigger value="price_reduction_requests" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Price requests</TabsTrigger>
 <TabsTrigger value="spaceship_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Custom Branding (Domain)</TabsTrigger>
   <TabsTrigger value="domain_purchases" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Custom Branding Assignments</TabsTrigger>
   <TabsTrigger value="domain_renewals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Domain Renewals</TabsTrigger>
@@ -2794,6 +2796,7 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="subscriptions" className="space-y-6"><SubscriptionPaymentsPanel admin /></TabsContent>
+          <TabsContent value="price_reduction_requests" className="space-y-6"><PriceReductionRequestsAdmin /></TabsContent>
 <TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedSenderIds /></TabsContent>
           <TabsContent value="domain_purchases" className="space-y-6"><AdminDomainPurchasesPanel /></TabsContent>
   <TabsContent value="domain_renewals" className="space-y-6"><AdminDomainRenewalsPanel /></TabsContent>
