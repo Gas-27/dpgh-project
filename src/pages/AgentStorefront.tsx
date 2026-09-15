@@ -308,7 +308,7 @@ const OrderTrackingCard = ({
   // ── Delivered / Refunded state ──
   if (currentStep === 4) {
     return (
-      <div className="space-y-4">
+      <div className="dark-surface space-y-4 rounded-xl bg-slate-950 p-4 text-white">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-foreground">Delivery Status</span>
           {isRefunded ? (

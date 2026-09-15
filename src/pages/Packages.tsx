@@ -1550,7 +1550,7 @@ const searchOrders = async (input?: string) => {
                           <p className="text-sm font-medium text-foreground">Found {orders.length} order(s):</p>
                           <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
                             {orders.map((order) => (
-                              <div key={order.id} className="flex flex-col p-4 border border-border rounded-lg bg-background/50 hover:bg-background transition-colors">
+                              <div key={order.id} className="dark-surface flex flex-col p-4 border border-slate-700 rounded-lg bg-slate-950 hover:bg-slate-900 transition-colors">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/50">
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2 flex-wrap">
