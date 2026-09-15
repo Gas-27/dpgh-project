@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { refundStorefrontOrder } from "@/services/paystackRefund";
 
 const networks = [
   ["all", "All networks"],
@@ -33,7 +34,7 @@ export default function AdminOrderStatusUpdater() {
   const [provider, setProvider] = useState("all");
   const [includeContacts, setIncludeContacts] = useState("");
   const [excludeContacts, setExcludeContacts] = useState("");
-  const [matches, setMatches] = useState<{ id: string; network: string; fulfillment_status: string; order_status?: string; created_at: string; customer_number?: string }[]>([]);
+  const [matches, setMatches] = useState<{ id: string; network: string; fulfillment_status: string; order_status?: string; created_at: string; customer_number?: string; payment_method?: string; paystack_reference?: string; amount?: number; agent_store_id?: string; subagent_store_id?: string; sub_subagent_store_id?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const canSearch = Boolean(from && to && fromStatus && toStatus && from <= to && fromTime && toTime && (from < to || fromTime <= toTime));
@@ -42,7 +43,7 @@ export default function AdminOrderStatusUpdater() {
   const preview = async () => {
     if (!canSearch) { toast({ title: "Complete the filters", description: "Choose a valid start and end date.", variant: "destructive" }); return; }
     setLoading(true);
-    let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, fulfillment_provider, created_at, customer_number").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
+    let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, fulfillment_provider, created_at, customer_number, payment_method, paystack_reference, amount, total_amount, agent_store_id, subagent_store_id, sub_subagent_store_id").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
     if (network !== "all") {
       const networkValues = network === "mtn_express"
         ? ["mtn_express", "mtn-express", "mtnexpress"]
@@ -86,9 +87,23 @@ export default function AdminOrderStatusUpdater() {
       toast({ title: "Update failed", description: failed.error.message, variant: "destructive" });
       return;
     }
+    let refundCount = 0;
+    if (normalize(toStatus) === "failed") {
+      const paystackOrders = matches.filter((row) => normalize(String(row.payment_method)) === "paystack" && row.paystack_reference);
+      for (const row of paystackOrders) {
+        const storefront = row.sub_subagent_store_id ? { role: "sub_subagent" as const, id: row.sub_subagent_store_id } : row.subagent_store_id ? { role: "subagent" as const, id: row.subagent_store_id } : row.agent_store_id ? { role: "agent" as const, id: row.agent_store_id } : null;
+        if (!storefront) continue;
+        try {
+          await refundStorefrontOrder({ orderId: row.id, actorRole: storefront.role, storefrontId: storefront.id, amount: Number((row as any).amount || (row as any).total_amount || 0), paystackReference: row.paystack_reference!, phone: row.customer_number, reason: "Automatic refund after order failed" });
+          refundCount += 1;
+        } catch (error) {
+          console.error("[v0] Automatic Paystack refund failed", row.id, error);
+        }
+      }
+    }
     setUpdating(false);
     setMatches((rows) => rows.map((row) => ({ ...row, fulfillment_status: toStatus, order_status: toStatus })));
-    toast({ title: "Orders updated", description: `${ids.length} order${ids.length === 1 ? "" : "s"} marked ${toStatus}.` });
+    toast({ title: "Orders updated", description: `${ids.length} order${ids.length === 1 ? "" : "s"} marked ${toStatus}.${refundCount ? ` ${refundCount} Paystack refund${refundCount === 1 ? "" : "s"} submitted.` : ""}` });
   };
 
   return <Card className="border-border">
