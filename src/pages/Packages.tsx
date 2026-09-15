@@ -1617,24 +1617,21 @@ const searchOrders = async (input?: string) => {
                     const available = pkg.active !== false;
                     return (
                       <Card key={pkg.id} className={`border-0 bg-[#2f176d] shadow-none ${available ? "" : "opacity-45"}`}>
-                        <CardContent className="flex flex-col items-center gap-2 px-4 py-4 text-center">
-                          <p className="font-display text-3xl font-extrabold leading-none text-white">{packageName}</p>
-                          <p className={`text-xs font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
-                          <p className="text-lg font-extrabold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
+                        <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
+                          <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
+                          <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
                           {showPriceBreakdown && (
-                            <div className="w-full rounded-lg bg-white/10 px-3 py-2 text-left text-[11px] leading-5 text-white/75">
-                              <div className="flex justify-between gap-3"><span>Base price</span><span>GHC{Number(pkg.price).toFixed(2)}</span></div>
-                              <div className="flex justify-between gap-3"><span>Agent price</span><span>GHC{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</span></div>
-                              <div className="flex justify-between gap-3"><span>API price</span><span>GHC{Number(pkg.api_price ?? pkg.price).toFixed(2)}</span></div>
+                            <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
+                              <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
+                              <span className="text-white/50">|</span>
+                              <span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
                             </div>
                           )}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={!available}
-                            onClick={() => openPackageCheckout(pkg)}
-                            className="h-8 w-full rounded-lg border-white/25 bg-white/10 text-xs font-bold text-white hover:bg-white/20 hover:text-white"
-                          >
+                          <div className="leading-tight">
+                            <p className="text-sm font-semibold text-white/75">Your price (user price):</p>
+                            <p className="text-2xl font-extrabold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
+                          </div>
+                          <Button type="button" variant="outline" disabled={!available} onClick={() => openPackageCheckout(pkg)} className="mt-1 h-9 w-full rounded-full border-white/30 bg-white/10 text-sm font-bold text-white hover:bg-white/20 hover:text-white">
                             {available ? "Buy Now" : "Not Available"}
                           </Button>
                         </CardContent>

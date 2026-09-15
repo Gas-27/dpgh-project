@@ -1324,29 +1324,18 @@ const UserDashboard = () => {
             {packages
               .filter(pkg => pkg.network.toLowerCase() === networkFilter.toLowerCase())
               .map(pkg => (
-                <Card key={pkg.id} className={pkg.active ? "" : "opacity-50"}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{pkg.size_gb}GB</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-1">{pkg.network.toUpperCase()}</p>
-                      </div>
-                      {!pkg.active && <Badge variant="secondary">Offline</Badge>}
+                <Card key={pkg.id} className={`border-0 bg-[#2f176d] text-white shadow-none ${pkg.active ? "" : "opacity-50"}`}>
+                  <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
+                    {!pkg.active && <Badge variant="secondary">Offline</Badge>}
+                    <p className="font-display text-4xl font-extrabold leading-none">{pkg.size_gb}GB</p>
+                    <p className="text-sm font-bold uppercase text-yellow-300">{pkg.network}</p>
+                    <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
+                      <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
+                      <span className="text-white/50">|</span>
+                      <span>Agent price: <strong className="text-cyan-300">{Number(pkg.price).toFixed(2)}</strong></span>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground">User Price</p>
-                      <p className="font-display text-2xl font-bold text-cyan-400">GHC {Number(pkg.price).toFixed(2)}</p>
-                    </div>
-                    <Button
-                      onClick={() => openBuyDialog(pkg)}
-                      disabled={!pkg.active}
-                      className="w-full"
-                      size="sm"
-                    >
-                      {pkg.active ? "Buy Now" : "Unavailable"}
-                    </Button>
+                    <div className="leading-tight"><p className="text-sm font-semibold text-white/75">Your price (user price):</p><p className="text-2xl font-extrabold">GHC {Number(pkg.price).toFixed(2)}</p></div>
+                    <Button onClick={() => openBuyDialog(pkg)} disabled={!pkg.active} variant="outline" className="mt-1 h-9 w-full rounded-full border-white/30 bg-white/10 font-bold text-white hover:bg-white/20" size="sm">{pkg.active ? "Buy Now" : "Unavailable"}</Button>
                   </CardContent>
                 </Card>
               ))}

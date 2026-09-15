@@ -1413,50 +1413,15 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                         </>
                       ) : (
                         <>
-                          <CardContent className={`${getPadding()} text-center space-y-1 sm:space-y-2 w-full`}>
-                            {(isInactive || isOffline) && (
-                              <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />
-                            )}
-                            <p
-                              className={`${getGbFontSize()} font-bold break-words`}
-                              style={{ color: gbTextColor }}
-                            >
-                              {pkg.size_gb}GB
-                            </p>
-                            <p
-                              className="text-xs sm:text-sm font-semibold uppercase tracking-wide break-words"
-                              style={{ color: getNetworkLabelColor(networkFilter) }}
-                            >
-                              {formatNetworkName(networkFilter)}
-                            </p>
-                            <p
-                              className={`${getPriceFontSize()} font-bold break-words`}
-                              style={{ color: priceTextColor }}
-                            >
-                              GHC{Number(price).toFixed(2)}
-                            </p>
-                            <Button
-                              variant="secondary"
-                              size={getButtonSize() === "xs" ? "sm" : (getButtonSize() as any)}
-                              disabled={isInactive}
-                              className="w-full mt-2 font-medium text-xs sm:text-sm whitespace-nowrap disabled:opacity-100 disabled:cursor-not-allowed"
-                              style={isInactive ? {
-                                backgroundColor: "transparent",
-                                color: "inherit",
-                                borderColor: buttonBorderColor,
-                                borderWidth: "1px",
-                                borderStyle: "solid",
-                              } : {
-                                backgroundColor: buttonBgColor,
-                                color: buttonTextColor,
-                                borderColor: buttonBorderColor,
-                                borderWidth: "1px",
-                                borderStyle: "solid",
-                              }}
-                              onClick={() => !isInactive && setPaymentPkg(pkg)}
-                            >
-                              {isInactive ? "Not Available" : "Buy Now"}
-                            </Button>
+                          <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center w-full">
+                            {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
+                            <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb}GB</p>
+                            <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)}</p>
+                            <div className="leading-tight">
+                              <p className="text-sm font-semibold text-white/75">Your price:</p>
+                              <p className="text-2xl font-extrabold text-white">GHC{Number(price).toFixed(2)}</p>
+                            </div>
+                            <Button variant="outline" size="lg" disabled={isInactive} className="mt-1 h-9 w-full rounded-full border-white/30 bg-white/10 text-sm font-bold text-white hover:bg-white/20 hover:text-white" onClick={() => !isInactive && setPaymentPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                           </CardContent>
                         </>
                       )}

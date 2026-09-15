@@ -1191,10 +1191,10 @@ const searchOrders = useCallback(async (input?: string) => {
                         </>
                       ) : (
                         <>
-                          <Badge style={{ background: getNetworkColor(pkg.network), color: "#000" }}>{formatNetworkName(pkg.network)}</Badge>
-                          <p className="text-3xl font-bold" style={{ color: primaryColor }}>{pkg.size_gb}<span className="text-lg text-muted-foreground">GB</span></p>
-                          <p className="text-xl font-semibold text-green-400">GHC {Number(price).toFixed(2)}</p>
-                                                  <Button size="lg" disabled={isInactive} className="w-full font-semibold disabled:opacity-100 disabled:cursor-not-allowed" style={isInactive ? { background: "transparent", color: "inherit", border: "1px solid var(--border)" } : { background: primaryColor, color: primaryForeground }}>{isInactive ? "Not Available" : "Buy Now"}</Button>
+                          <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb}GB</p>
+                          <p className="text-sm font-bold uppercase" style={{ color: getNetworkColor(pkg.network) }}>{formatNetworkName(pkg.network)}</p>
+                          <div className="leading-tight"><p className="text-sm font-semibold text-white/75">Your price:</p><p className="text-2xl font-extrabold text-white">GHC {Number(price).toFixed(2)}</p></div>
+                          <Button size="lg" disabled={isInactive} className="mt-1 h-9 w-full rounded-full border border-white/30 bg-white/10 font-bold text-white hover:bg-white/20" onClick={(event) => { event.stopPropagation(); if (!isInactive) { setPaymentPkg(pkg); setPaymentOpen(true); } }}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                         </>
                       )}
                     </CardContent>
