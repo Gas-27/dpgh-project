@@ -56,6 +56,8 @@ interface DataPackage {
   size_gb_text?: string;
   mins?: number;
   price: number;
+  agent_price?: number;
+  api_price?: number;
   active?: boolean;
   is_online?: boolean;
   offline_reason?: string;
@@ -1291,6 +1293,7 @@ const Packages = () => {
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
     chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
@@ -1329,14 +1332,19 @@ const Packages = () => {
           : { ...data, default_network: data.default_network as Network, segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
         );
       });
-    // Load free data enabled setting
-    supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single()
-      .then(({ data }) => { if (data) setFreeDataEnabled(data.free_data_enabled ?? true); });
+    // Load customer-facing pricing display settings
+    supabase.from("app_settings").select("free_data_enabled,show_price_breakdown").eq("id", 1).single()
+      .then(({ data }) => {
+        if (data) {
+          setFreeDataEnabled(data.free_data_enabled ?? true);
+          setShowPriceBreakdown(data.show_price_breakdown ?? false);
+        }
+      });
   }, []);
 
   useEffect(() => {
     // Fetch packages with caching - include size_gb_text for mtn_mashup packages
-    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price,active").order("size_gb", { ascending: true })
+    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,price,agent_price,api_price,active").order("size_gb", { ascending: true })
       .then(({ data, error }) => {
         if (error) console.error("[v0] Failed to fetch data packages:", error);
         setPackages(data ?? []);
@@ -1350,7 +1358,7 @@ const Packages = () => {
     async () => {
       const { data, error } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,price,active")
+        .select("id,network,size_gb,size_gb_text,price,agent_price,api_price,active")
         .order("size_gb", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -1373,7 +1381,7 @@ const Packages = () => {
     const refreshPackages = async () => {
       const { data } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,price,active")
+        .select("id,network,size_gb,size_gb_text,price,agent_price,api_price,active")
         .order("size_gb", { ascending: true });
       if (data) setPackages(data);
     };
@@ -1613,6 +1621,13 @@ const searchOrders = async (input?: string) => {
                           <p className="font-display text-3xl font-extrabold leading-none text-white">{packageName}</p>
                           <p className={`text-xs font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
                           <p className="text-lg font-extrabold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
+                          {showPriceBreakdown && (
+                            <div className="w-full rounded-lg bg-white/10 px-3 py-2 text-left text-[11px] leading-5 text-white/75">
+                              <div className="flex justify-between gap-3"><span>Base price</span><span>GHC{Number(pkg.price).toFixed(2)}</span></div>
+                              <div className="flex justify-between gap-3"><span>Agent price</span><span>GHC{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</span></div>
+                              <div className="flex justify-between gap-3"><span>API price</span><span>GHC{Number(pkg.api_price ?? pkg.price).toFixed(2)}</span></div>
+                            </div>
+                          )}
                           <Button
                             type="button"
                             variant="outline"

@@ -304,6 +304,8 @@ const AdminDashboard = () => {
   // Chatbot on/off toggle
   const [chatbotEnabled, setChatbotEnabled] = useState(true);
   const [savingChatbot, setSavingChatbot] = useState(false);
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  const [savingPriceBreakdown, setSavingPriceBreakdown] = useState(false);
 
   // Free Data Offer settings
   const [freeDataConfig, setFreeDataConfig] = useState({
@@ -703,7 +705,7 @@ const AdminDashboard = () => {
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
         supabase
           .from("app_settings")
-          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled")
+          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown")
           .eq("id", 1)
           .single(),
       ]);
@@ -723,6 +725,9 @@ const AdminDashboard = () => {
         });
         if (typeof appSettings.chatbot_enabled === 'boolean') {
           setChatbotEnabled(appSettings.chatbot_enabled);
+        }
+        if (typeof appSettings.show_price_breakdown === 'boolean') {
+          setShowPriceBreakdown(appSettings.show_price_breakdown);
         }
       }
     } catch (error) {
@@ -799,6 +804,21 @@ const AdminDashboard = () => {
     }
   };
   
+  const savePriceBreakdownSetting = async (enabled: boolean) => {
+    setSavingPriceBreakdown(true);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ id: 1, show_price_breakdown: enabled, updated_at: new Date().toISOString() });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      setShowPriceBreakdown(!enabled);
+    } else {
+      setShowPriceBreakdown(enabled);
+      toast({ title: "Price breakdown setting saved" });
+    }
+    setSavingPriceBreakdown(false);
+  };
+
   // Save free data offer settings
   const saveFreeDataSettings = async () => {
     setFreeDataSaving(true);
@@ -4749,7 +4769,7 @@ const AdminDashboard = () => {
                             <Label className="text-base font-semibold">Enable Support ChatBot</Label>
                             <p className="text-sm text-muted-foreground">
                               {chatbotEnabled
-                                ? "Chat is live — visitors can open the support chat on all pages."
+                                ? "Chat is live �� visitors can open the support chat on all pages."
                                 : "Chat is off — visitors see \"We are currently unavailable, come back later\"."}
                             </p>
                           </div>
@@ -4768,8 +4788,24 @@ const AdminDashboard = () => {
                       </CardContent>
                     </Card>
 
-                    {/* Free Data Offer Settings */}
-                    <Card className="border-border">
+  <Card className="border-border">
+  <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><DollarSign className="h-5 w-5 text-emerald-500" /> Customer Price Breakdown</CardTitle></CardHeader>
+  <CardContent>
+  <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-900/10 p-4">
+  <div className="space-y-0.5">
+  <Label className="text-base font-semibold">Show base, agent, and API prices</Label>
+  <p className="text-sm text-muted-foreground">When enabled, customer package cards explain how each displayed price is calculated.</p>
+  </div>
+  <div className="flex items-center gap-3">
+  {savingPriceBreakdown && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+  <Switch checked={showPriceBreakdown} onCheckedChange={savePriceBreakdownSetting} disabled={savingPriceBreakdown} aria-label="Show customer price breakdown" />
+  </div>
+  </div>
+  </CardContent>
+  </Card>
+
+  {/* Free Data Offer Settings */}
+  <Card className="border-border">
                       <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Gift className="h-5 w-5 text-green-500" /> Free Data Offer Settings</CardTitle></CardHeader>
                       <CardContent className="space-y-6">
                         {/* Enable/Disable Toggle */}
