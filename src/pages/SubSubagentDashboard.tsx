@@ -1745,6 +1745,7 @@ const handleSaveStore = async () => {
   { id: "products", label: "Products", icon: Package },
   { id: "services", label: "Services", icon: BriefcaseBusiness },
   { id: "orders", label: "Orders", icon: ShoppingCart },
+  { id: "refunds", label: "Refunds", icon: RotateCcw },
   { id: "topup", label: "Top Up", icon: Wallet },
   { id: "sms", label: "Send SMS", icon: Send },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
@@ -1754,7 +1755,6 @@ const handleSaveStore = async () => {
     { id: "flyer", label: "Flyer Generator", icon: Image },
   // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
-    { id: "refunds", label: "Refunds", icon: RotateCcw },
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "notifications", label: "Notifications", icon: Bell },
   { id: "reports", label: "Report an Issue", icon: AlertTriangle },
