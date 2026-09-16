@@ -61,9 +61,12 @@ export default async function handler(
 
     const sizeMatch = packageData.name?.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
-    const { data: routedProvider } = await supabase.rpc("get_network_provider_route", {
-      p_network_key: String(network).toLowerCase(),
+    const rawNetwork = String(network).toLowerCase().trim().replace(/[\s-]+/g, "_");
+    const normalizedNetwork = ["mtn_xpress", "mtnexpress", "express_mtn"].includes(rawNetwork) ? "mtn_express" : ["airtel_tigo", "airtel", "tigo"].includes(rawNetwork) ? "airteltigo" : rawNetwork === "vodafone" ? "telecel" : rawNetwork;
+    const { data: routedProvider } = await supabase.rpc("get_network_provider_route_for_size", {
+      p_network_key: normalizedNetwork,
       p_flow: "purchase",
+      p_size_gb: Number(sizeGb),
     });
     const purchaseProvider = routedProvider ? String(routedProvider) : null;
 

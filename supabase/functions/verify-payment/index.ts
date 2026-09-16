@@ -915,6 +915,16 @@ Deno.serve(async (req) => {
       profitForOrder = 0;
     }
 
+    const rawNetwork = String(network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+    const normalizedNetwork = ["mtn_xpress", "mtnexpress", "express_mtn"].includes(rawNetwork) ? "mtn_express" : ["airtel_tigo", "airtel", "tigo"].includes(rawNetwork) ? "airteltigo" : rawNetwork === "vodafone" ? "telecel" : rawNetwork;
+    const { data: routedProvider, error: routeError } = await supabase.rpc("get_network_provider_route_for_size", {
+      p_network_key: normalizedNetwork,
+      p_flow: "purchase",
+      p_size_gb: Number(sizeGb),
+    });
+    if (routeError) console.warn("[v0] Paystack size route lookup failed:", routeError.message);
+    const resolvedPurchaseProvider = routedProvider ? String(routedProvider) : String(metadata.purchase_provider || metadata.provider || "auto").trim().toLowerCase() || "auto";
+
     const orderInsert: Record<string, unknown> = {
       customer_number: phone,
       package_id: packageId,
@@ -935,7 +945,8 @@ Deno.serve(async (req) => {
       // Agent/subagent orders intentionally remain attributed to their store.
       customer_id: resolvedCustomerId,
       user_id: resolvedCustomerId,
-      purchase_provider: String(metadata.purchase_provider || metadata.provider || "auto").trim().toLowerCase() || "auto",
+      purchase_provider: resolvedPurchaseProvider,
+      purchase_provider_source: routedProvider ? "size_override" : "paystack",
     };
     
     if (pkgAgentStoreId) {

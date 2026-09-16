@@ -8,7 +8,7 @@ export default function TabMaintenanceOverlay({ label, message, availableFrom, a
     ? `Availability: ${availableFrom ? new Date(availableFrom).toLocaleString() : "now"}${availableUntil ? ` – ${new Date(availableUntil).toLocaleString()}` : ""}.`
     : "We will let you know as soon as this service is available.";
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-label={`${label} maintenance`}>
+    <div className="relative z-20 flex min-h-[18rem] items-center justify-center rounded-2xl bg-slate-950/75 p-4 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-label={`${label} maintenance`}>
       <div className="w-full max-w-md rounded-3xl border border-cyan-300/40 bg-[#321274] p-6 text-center text-white shadow-2xl">
         <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-cyan-300/15 text-cyan-200"><AlertTriangle className="size-7" /></div>
         <h2 className="text-xl font-extrabold">{label} is temporarily unavailable</h2>
