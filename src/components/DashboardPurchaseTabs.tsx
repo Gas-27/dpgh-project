@@ -4,6 +4,7 @@ import DigitalServicesCatalog, { type Service } from "@/components/DigitalServic
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 import { Wallet } from "lucide-react";
 import { useState } from "react";
+import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 
 type DashboardTab = "instant" | "services" | "subscription" | "subscription-price";
 
@@ -33,9 +34,12 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
     );
   }
 
+  const maintenanceKey = initialTab === "services" ? "services" : initialTab === "subscription" ? "subscription" : "instant";
+
   return (
-    <section className="space-y-4">
-      <WalletBanner balance={wallet} label="Wallet-only dashboard payments" />
+  <section className="relative space-y-4">
+  <WalletBanner balance={wallet} label="Wallet-only dashboard payments" />
+  <ActiveTabMaintenance active={maintenanceKey} label={maintenanceKey === "instant" ? "Data and Airtime" : maintenanceKey} />
       <KorbaPurchasePanel
         mode={initialTab === "services" ? "services" : "instant"}
         walletOnly

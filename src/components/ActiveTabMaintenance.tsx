@@ -15,7 +15,14 @@ export default function ActiveTabMaintenance({ active, label }: Props) {
     const channel = supabase.channel("tab-controls-live").on("postgres_changes", { event: "*", schema: "public", table: "app_settings" }, load).subscribe();
     return () => { mounted = false; window.clearInterval(interval); void supabase.removeChannel(channel); };
   }, []);
-  const control = controls[active];
+  const aliases: Record<string, string[]> = {
+    instant: ["instant", "data-airtime", "data_and_airtime", "airtime"],
+    data: ["data", "cheap-data", "cheap_data"],
+    packages: ["packages", "package"],
+    services: ["services", "service"],
+    products: ["products", "product"],
+  };
+  const control = [active, ...(aliases[active] ?? [])].map((key) => controls[key]).find(Boolean);
   if (!control || !isTabUnavailable(control)) return null;
   return <TabMaintenanceOverlay label={label ?? active} {...control} />;
 }
