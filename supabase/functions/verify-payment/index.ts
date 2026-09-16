@@ -86,7 +86,9 @@ Deno.serve(async (req) => {
       const recipients = Array.isArray(metadata.recipients) ? metadata.recipients : [];
       const senderId = String(metadata.sender_id || "").trim();
       const message = String(metadata.message || "").trim();
-      const providerAuth = Deno.env.get("CURL_AUTH_HEADER_12") || Deno.env.get("CURL_AUTH_HEADER") || Deno.env.get("TXT_CONNECT_API") || Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("API_KEY");
+      // Prefer a dedicated TxtConnect credential; the generic CURL_AUTH_HEADER/API_KEY slots
+      // are shared with other providers and can rotate to a value TxtConnect rejects.
+      const providerAuth = Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("TXT_CONNECT_API") || Deno.env.get("CURL_AUTH_HEADER_12") || Deno.env.get("CURL_AUTH_HEADER") || Deno.env.get("API_KEY");
       const providerHeaders = { Authorization: providerAuth?.startsWith("Bearer ") ? providerAuth : `Bearer ${providerAuth || ""}`, "Content-Type": "application/json" };
       if (!recipients.length || !senderId || !message || !providerAuth) {
         return new Response(JSON.stringify({ error: "SMS payment metadata or provider configuration is incomplete" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });

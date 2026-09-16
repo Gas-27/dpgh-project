@@ -35,7 +35,10 @@ Deno.serve(async (request) => {
     const auth = request.headers.get("Authorization");
     const body = await request.json();
     const action = body.action || "send";
-    const providerAuth = Deno.env.get("CURL_AUTH_HEADER_12") || Deno.env.get("CURL_AUTH_HEADER") || Deno.env.get("TXT_CONNECT_API") || Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("API_KEY");
+    // Prefer a dedicated TxtConnect credential. The generic CURL_AUTH_HEADER/API_KEY slots
+    // are shared with other providers (e.g. Paystack) and can silently rotate to a value
+    // TxtConnect no longer recognizes, so they are only a last-resort fallback.
+    const providerAuth = Deno.env.get("TXTCONNECT_API_KEY") || Deno.env.get("TXT_CONNECT_API") || Deno.env.get("CURL_AUTH_HEADER_12") || Deno.env.get("CURL_AUTH_HEADER") || Deno.env.get("API_KEY");
     const providerHeaders = { Authorization: providerAuth?.startsWith("Bearer ") ? providerAuth : `Bearer ${providerAuth || ""}`, "Content-Type": "application/json" };
     const normalizeSenderPhone = (value: string) => normalizeLocalGh(value);
     if (action === "generate") {
