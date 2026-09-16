@@ -40,7 +40,11 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
               onClick={handleClick}
               aria-label={`${label}: ${description}`}
               aria-pressed={active === id}
-              className={`storefront-reference-hotspot storefront-reference-hotspot-${index} ${active === id ? "is-active" : ""}`}
+              style={{
+                left: index % 2 === 0 ? "3.7%" : "50.5%",
+                top: `${2 + Math.floor(index / 2) * 19.05}%`,
+              }}
+              className={`storefront-reference-hotspot ${active === id ? "is-active" : ""}`}
             >
               <span className="sr-only">{label}: {description}</span>
             </button>
