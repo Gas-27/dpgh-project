@@ -4838,8 +4838,8 @@ const AdminDashboard = () => {
   <CardContent>
   <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-900/10 p-4">
   <div className="space-y-0.5">
-  <Label className="text-base font-semibold">Show base, agent, and API prices</Label>
-  <p className="text-sm text-muted-foreground">When enabled, customer package cards explain how each displayed price is calculated.</p>
+  <Label className="text-base font-semibold">Show API and agent prices</Label>
+  <p className="text-sm text-muted-foreground">When enabled, package cards across the site show API price and Agent price. When disabled, customers see only their price.</p>
   </div>
   <div className="flex items-center gap-3">
   {savingPriceBreakdown && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}

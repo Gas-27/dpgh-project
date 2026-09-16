@@ -1623,15 +1623,15 @@ const searchOrders = async (input?: string) => {
                     const packageName = pkg.size_gb_text || `${pkg.size_gb}GB`;
                     const available = pkg.active !== false;
                     return (
-                      <Card key={pkg.id} className={`package-reference-card border-0 bg-[#2f176d] shadow-none ${available ? "" : "opacity-45"}`}>
+                      <Card key={pkg.id} style={{ backgroundColor: "#2f176d", color: "#ffffff" }} className={`package-reference-card border-0 shadow-none ${available ? "" : "opacity-45"}`}>
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
                           <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
                           <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
-                          <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
-                            <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
-                            <span className="text-white/50">|</span>
-                            <span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
-                          </div>
+{showPriceBreakdown && <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
+  <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
+  <span className="text-white/50">|</span>
+  <span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
+  </div>}
                           <div className="leading-tight">
                             <p className="text-sm font-semibold text-white/75">Your price (user price):</p>
                             <p className="text-2xl font-extrabold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
