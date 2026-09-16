@@ -112,6 +112,7 @@ const TELECEL_SIZES = [2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 50, 100];
 
 const menuItems = [
   { id: "overview", label: "Overview", icon: BarChart3 },
+  { id: "refunds", label: "Refunds", icon: RotateCcw },
  { id: "approvals", label: "Submit for Approval", icon: Send },
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
   { id: "instant-data", label: "Instant Data", icon: Zap },

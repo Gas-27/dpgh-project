@@ -12,10 +12,10 @@ export type TabControls = Record<string, TabControl>;
 export const defaultTabControls: TabControls = {};
 
 export function isTabUnavailable(control?: TabControl, now = new Date()) {
-  if (!control || control.enabled) return false;
-  if (control.availableFrom && now < new Date(control.availableFrom)) return false;
-  if (control.availableUntil && now >= new Date(control.availableUntil)) return false;
-  return true;
+  if (!control) return false;
+  if (control.availableFrom && now < new Date(control.availableFrom)) return true;
+  if (control.availableUntil && now >= new Date(control.availableUntil)) return true;
+  return control.enabled === false;
 }
 
 export async function fetchTabControls() {

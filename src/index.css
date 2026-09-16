@@ -75,6 +75,8 @@
 }
 
 @layer components {
+  .network-tabs .network-tab-inactive { background: #f8fafc !important; color: #0f172a !important; border-color: #d5dce8 !important; }
+  .network-tabs .network-tab-active { background: #08b8d8 !important; color: #07121f !important; border-color: #08b8d8 !important; }
   .delivery-progress-card,
   .delivery-progress-card [data-slot="card-header"],
   .delivery-progress-card [data-slot="card-content"] { color: #fff !important; background: #321274 !important; }
@@ -89,7 +91,10 @@
   .delivery-progress-card .delivery-status-message p,
   .delivery-progress-card .delivery-status-message strong { color: #fff !important; }
   .delivery-progress-card .delivery-status-message strong { font-weight: 800; }
-  .delivery-progress-card [data-slot="card-content"] > div:nth-child(2) { background: #15102f !important; border-color: #29365b !important; }
+  .delivery-progress-card .delivery-last-order { background: #15102f !important; border-color: #29365b !important; }
+  .delivery-progress-card .delivery-last-order,
+  .delivery-progress-card .delivery-last-order p,
+  .delivery-progress-card .delivery-last-order span { color: #fff !important; }
   .delivery-progress-card [data-slot="card-content"] > div:nth-child(2),
   .delivery-progress-card [data-slot="card-content"] > div:nth-child(2) p,
   .delivery-progress-card [data-slot="card-content"] > div:nth-child(2) span { color: #fff !important; }

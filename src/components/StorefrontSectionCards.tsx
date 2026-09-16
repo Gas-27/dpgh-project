@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Box, BriefcaseBusiness, Gamepad2, Layers3, MessageCircle, Package, UserRoundPlus, Wifi, Zap } from "lucide-react";
 import { fetchTabControls, isTabUnavailable, type TabControls } from "@/lib/tabControls";
+import TabMaintenanceOverlay from "@/components/TabMaintenanceOverlay";
 
 const sections = [
   { id: "data", label: "Data", description: "Buy data bundles instantly", icon: Wifi },
@@ -20,6 +21,7 @@ type SectionId = (typeof sections)[number]["id"];
 
 export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent, hiddenIds = [] }: { active?: string; onSelect: (id: SectionId) => void; onBecomeAgent?: () => void; hiddenIds?: SectionId[] }) {
   const [tabControls, setTabControls] = useState<TabControls>({});
+  const [blockedSection, setBlockedSection] = useState<SectionId | null>(null);
   useEffect(() => {
     let mounted = true;
     fetchTabControls().then((controls) => { if (mounted) setTabControls(controls); });
@@ -34,7 +36,7 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
           const isAgent = id === "agent";
           const unavailable = isTabUnavailable(tabControls[id]);
           const handleClick = () => {
-            if (unavailable) return;
+            if (unavailable) { setBlockedSection(id); return; }
             if (isAgent) {
               onBecomeAgent?.();
               return;
@@ -63,6 +65,7 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
           );
         })}
       </div>
+      {blockedSection && tabControls[blockedSection] && <TabMaintenanceOverlay label={sections.find((section) => section.id === blockedSection)?.label ?? "Service"} {...tabControls[blockedSection]} />}
     </div>
   );
 }

@@ -25,6 +25,7 @@ import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NetworkTabs from "@/components/NetworkTabs";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsComposer from "@/components/SmsComposer";
@@ -1611,19 +1612,7 @@ const searchOrders = async (input?: string) => {
             <section aria-labelledby="data-bundles-heading" className="mx-auto w-full max-w-md pb-12">
               <h2 id="data-bundles-heading" className="sr-only">Data Bundles</h2>
               <DeliveryProgressCard selectedNetwork={selectedNetwork} />
-              <div className="mb-6 flex flex-wrap justify-center gap-3">
-                {(["mtn", "mtn_express", "airteltigo", "telecel"] as Network[]).map((network) => (
-                  <Button
-                    key={network}
-                    type="button"
-                    variant={selectedNetwork === network ? "hero" : "outline"}
-                    onClick={() => setSelectedNetwork(network)}
-                    className="h-10 rounded-xl px-4 text-sm font-bold"
-                  >
-                    {networkConfig[network].label}
-                  </Button>
-                ))}
-              </div>
+              <NetworkTabs value={selectedNetwork} onChange={setSelectedNetwork} className="mb-6 justify-center" />
               {loading ? (
                 <div className="flex justify-center py-10" aria-label="Loading data bundles"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
               ) : filtered.length === 0 ? (
