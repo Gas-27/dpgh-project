@@ -82,11 +82,26 @@ export default {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
         },
+        "liquid-flow": {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { "box-shadow": "0 0 20px hsl(190, 95%, 55% / 0.2), 0 0 40px hsl(190, 95%, 55% / 0.1)" },
+          "50%": { "box-shadow": "0 0 40px hsl(190, 95%, 55% / 0.4), 0 0 80px hsl(190, 95%, 55% / 0.2)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "scroll-left": "scroll-left 20s linear infinite",
+        "liquid-flow": "liquid-flow 8s ease-in-out infinite",
+        "float": "float 6s ease-in-out infinite",
+        "glow-pulse": "glow-pulse 3s ease-in-out infinite",
       },
     },
   },
