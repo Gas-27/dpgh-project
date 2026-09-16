@@ -36,6 +36,7 @@ export const tabControlOptions = [
   { id: "bulk", label: "Bulk Orders" },
   { id: "services", label: "Services" },
   { id: "products", label: "Products" },
+  { id: "global-products", label: "Global Products" },
   { id: "afa", label: "AFA Registration" },
   { id: "sms", label: "Bulk SMS" },
 ];

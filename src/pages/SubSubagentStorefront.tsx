@@ -1068,7 +1068,7 @@ const searchOrders = useCallback(async (input?: string) => {
   <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => toast({ title: "Coming soon", description: "Become an Agent will be available soon." })} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={activeCategory === "vouchers" ? "Instant Data" : activeCategory} />
-  {activeSection === "products" && <PublicProductsSection />}
+  {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subsubagent" />}
   {activeSection === "services" && <KorbaPurchasePanel mode="services" />}
   {activeSection === "data" && <KorbaPurchasePanel mode="instant" />}
 {activeSection === "data" && <>
