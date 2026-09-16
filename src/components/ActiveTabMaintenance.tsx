@@ -25,6 +25,10 @@ export default function ActiveTabMaintenance({ active, label }: Props) {
   const control = [active, ...(aliases[active] ?? [])].map((key) => controls[key]).find(Boolean);
   if (!control || !isTabUnavailable(control)) return null;
   return <TabMaintenanceOverlay label={label ?? active} {...control} onReturn={() => {
-    if (window.history.length > 1) window.history.back();
+    if (window.history.length > 1) {
+      window.history.go(-1);
+    } else {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
   }} />;
 }

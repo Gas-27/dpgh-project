@@ -90,16 +90,18 @@ export default function AdminOrderStatusUpdater() {
     let refundCount = 0;
     if (normalize(toStatus) === "failed") {
       const paystackOrders = matches.filter((row) => normalize(String(row.payment_method)) === "paystack" && row.paystack_reference);
-      for (const row of paystackOrders) {
+      const refundResults = await Promise.all(paystackOrders.map(async (row) => {
         const storefront = row.sub_subagent_store_id ? { role: "sub_subagent" as const, id: row.sub_subagent_store_id } : row.subagent_store_id ? { role: "subagent" as const, id: row.subagent_store_id } : row.agent_store_id ? { role: "agent" as const, id: row.agent_store_id } : null;
-        if (!storefront) continue;
+        if (!storefront) return false;
         try {
           await refundStorefrontOrder({ orderId: row.id, actorRole: storefront.role, storefrontId: storefront.id, amount: Number((row as any).amount || (row as any).total_amount || 0), paystackReference: row.paystack_reference!, phone: row.customer_number, reason: "Automatic refund after order failed" });
-          refundCount += 1;
+          return true;
         } catch (error) {
           console.error("[v0] Automatic Paystack refund failed", row.id, error);
+          return false;
         }
-      }
+      }));
+      refundCount = refundResults.filter(Boolean).length;
     }
     setUpdating(false);
     setMatches((rows) => rows.map((row) => ({ ...row, fulfillment_status: toStatus, order_status: toStatus })));
