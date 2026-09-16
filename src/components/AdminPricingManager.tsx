@@ -19,6 +19,9 @@ const fields = [
   ["dashboard_data_price", "Dashboard data price adjustment"],
   ["packages_data_price", "Packages page data price adjustment"],
   ["storefront_data_price", "Storefront data price adjustment"],
+  ["global_product_advertising_fee", "Global product advertising fee"],
+  ["serious_vendor_monthly_fee", "Serious vendor monthly fee"],
+  ["serious_vendor_product_limit", "Serious vendor product limit"],
 ] as const;
 
 export default function AdminPricingManager() {

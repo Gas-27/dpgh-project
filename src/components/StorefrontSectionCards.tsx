@@ -36,13 +36,21 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
           const isAgent = id === "agent";
           const unavailable = isTabUnavailable(tabControls[id]);
           const handleClick = () => {
-            if (unavailable) { setBlockedSection(id); return; }
+            // Select the normal tab first so its real page remains visible beneath the modal.
             if (isAgent) {
               onBecomeAgent?.();
+            } else {
+              onSelect(id);
+              window.setTimeout(() => document.getElementById("storefront-section-content")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+            }
+            if (unavailable) {
+              setBlockedSection(id);
               return;
             }
-            onSelect(id);
-            window.setTimeout(() => document.getElementById("storefront-section-content")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+            if (isAgent) {
+              return;
+            }
+            setBlockedSection(null);
           };
 
           return (

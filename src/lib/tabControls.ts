@@ -29,6 +29,7 @@ export async function saveTabControls(tab_controls: TabControls) {
 
 export const tabControlOptions = [
   { id: "data", label: "Cheap Data" },
+  { id: "packages", label: "Packages" },
   { id: "gamehub", label: "GameHub" },
   { id: "subscription", label: "Subscription" },
   { id: "instant", label: "Data and Airtime" },
