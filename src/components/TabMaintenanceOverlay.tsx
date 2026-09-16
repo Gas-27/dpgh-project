@@ -14,7 +14,7 @@ export default function TabMaintenanceOverlay({ label, message, availableFrom, a
         <h2 className="text-xl font-extrabold">{label} is temporarily unavailable</h2>
         <p className="mt-3 leading-6 text-white/90">{message || "We are working to bring this service to you. Please expect it soon."}</p>
         <p className="mt-3 text-sm text-cyan-100">{windowText}</p>
-        <Button type="button" onClick={onReturn} className="mt-5 w-full bg-[#4d2a9a] text-white shadow-none hover:bg-[#5d36ad]">Please check back later</Button>
+        <Button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); onReturn?.(); }} className="mt-5 w-full bg-[#4d2a9a] text-white shadow-none hover:bg-[#5d36ad]">Please check back later</Button>
       </div>
     </div>
   );
