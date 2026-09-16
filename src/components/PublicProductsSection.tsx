@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-type PublicProduct = { id: string; title: string; description: string; price: number; image_urls: string[] };
+type PublicProduct = { id: string; title: string; description: string; price: number; image_urls: string[]; boost_global?: boolean; boost_global_expires_at?: string | null; boost_sitewide?: boolean; boost_sitewide_expires_at?: string | null };
 export default function PublicProductsSection({ supportPhone, storeId, storeKind, siteWide = false }: { supportPhone?: string | null; storeId?: string | null; storeKind?: string; siteWide?: boolean }) {
   const [globalProducts, setGlobalProducts] = useState<PublicProduct[]>([]);
   const [storeProducts, setStoreProducts] = useState<PublicProduct[]>([]);
@@ -25,9 +25,9 @@ export default function PublicProductsSection({ supportPhone, storeId, storeKind
       boostedQuery.order("created_at", { ascending: false }),
     ]).then(([globalResult, storeResult, boostedResult]) => {
       const curated = (globalResult.data ?? []) as PublicProduct[];
-      const boosted = ((boostedResult.data ?? []) as PublicProduct[]).map(({ id, title, description, price, image_urls }) => ({ id, title, description, price, image_urls }));
+      const boosted = ((boostedResult.data ?? []) as PublicProduct[]).map(({ id, title, description, price, image_urls, boost_global, boost_global_expires_at, boost_sitewide, boost_sitewide_expires_at }) => ({ id, title, description, price, image_urls, boost_global, boost_global_expires_at, boost_sitewide, boost_sitewide_expires_at }));
       const seen = new Set<string>();
-      const global = [...curated, ...boosted].filter((product) => (seen.has(product.id) ? false : (seen.add(product.id), true)));
+      const global = [...boosted, ...curated].filter((product) => (seen.has(product.id) ? false : (seen.add(product.id), true)));
       const store = (storeResult.data ?? []) as PublicProduct[];
       setGlobalProducts(global); setStoreProducts(store); setProducts(store.length ? store : global);
     });
