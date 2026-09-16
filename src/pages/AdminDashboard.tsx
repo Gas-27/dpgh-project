@@ -709,7 +709,7 @@ const AdminDashboard = () => {
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
         supabase
           .from("app_settings")
-          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown, subscription_coming_soon")
+          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown")
           .eq("id", 1)
           .single(),
       ]);
@@ -828,7 +828,7 @@ const AdminDashboard = () => {
 
   const saveSubscriptionComingSoon = async (enabled: boolean) => {
     setSavingSubscriptionComingSoon(true);
-    const { error } = await supabase.from("app_settings").upsert({ id: 1, subscription_coming_soon: enabled, updated_at: new Date().toISOString() });
+    const { error } = await supabase.from("app_settings").upsert({ id: 1, updated_at: new Date().toISOString() });
     if (error) {
       setSubscriptionComingSoon(!enabled);
       toast({ title: "Error", description: error.message, variant: "destructive" });

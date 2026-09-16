@@ -1339,7 +1339,7 @@ const Packages = () => {
         );
       });
     // Load customer-facing pricing display settings
-    supabase.from("app_settings").select("free_data_enabled,show_price_breakdown,subscription_coming_soon").eq("id", 1).single()
+    supabase.from("app_settings").select("free_data_enabled,show_price_breakdown").eq("id", 1).single()
       .then(({ data }) => {
         if (data) {
           setFreeDataEnabled(data.free_data_enabled ?? true);

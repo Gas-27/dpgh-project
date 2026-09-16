@@ -75,6 +75,18 @@
 }
 
 @layer components {
+  .delivery-progress-card .delivery-status-message,
+  .delivery-progress-card .delivery-status-message p,
+  .delivery-progress-card .delivery-status-message strong,
+  .delivery-progress-card [data-radix-select-trigger],
+  .delivery-progress-card [data-radix-select-trigger] span {
+    color: #000 !important;
+  }
+  .delivery-progress-card .delivery-status-message { background: #fff !important; }
+
+  :root:not(.dark) .subscription-section,
+  :root:not(.dark) .subscription-section * { color: #000 !important; }
+
   .storefront-reference-grid {
     position: relative;
     aspect-ratio: 706 / 632;
