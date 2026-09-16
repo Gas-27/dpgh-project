@@ -295,7 +295,7 @@ Deno.serve(async (req) => {
     // ─── Determine provider ──────────────────────────────────────────────────
     const normalizedNetwork = (order.network ?? "").toLowerCase().trim();
     const fallbackProvider = NETWORK_TO_PROVIDER[normalizedNetwork];
-    const { data: mappedProvider, error: routeError } = await supabase.rpc("get_network_provider_route", { p_network_key: normalizedNetwork, p_flow: "fulfillment" });
+    const { data: mappedProvider, error: routeError } = await supabase.rpc("get_network_provider_route_for_size", { p_network_key: normalizedNetwork, p_flow: "fulfillment", p_size_gb: order.size_gb });
     if (routeError) console.warn(`[FULFILL] Route lookup failed, using fallback: ${routeError.message}`);
     const provider = mappedProvider || fallbackProvider;
 
