@@ -30,6 +30,7 @@ import RoleServicesPanel from "@/components/RoleServicesPanel";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import KorbaPurchasePanel from "@/components/KorbaPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
 import ChatBot from "@/components/ChatBot";
@@ -1044,6 +1045,7 @@ const searchOrders = useCallback(async (input?: string) => {
 <main className="mx-auto max-w-6xl px-0 py-6 space-y-6 sm:px-4">
   <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
   <div id="storefront-section-content" className="scroll-mt-6" />
+  <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={activeCategory === "vouchers" ? "Instant Data" : activeCategory} />
   {activeSection === "products" && <PublicProductsSection />}
   {activeSection === "services" && <KorbaPurchasePanel mode="services" />}
   {activeSection === "data" && <KorbaPurchasePanel mode="instant" />}
