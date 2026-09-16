@@ -1,5 +1,7 @@
 
+import { useEffect, useState } from "react";
 import { Box, BriefcaseBusiness, Gamepad2, Layers3, MessageCircle, Package, UserRoundPlus, Wifi, Zap } from "lucide-react";
+import { fetchTabControls, isTabUnavailable, type TabControls } from "@/lib/tabControls";
 
 const sections = [
   { id: "data", label: "Data", description: "Buy data bundles instantly", icon: Wifi },
@@ -17,6 +19,12 @@ const sections = [
 type SectionId = (typeof sections)[number]["id"];
 
 export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent, hiddenIds = [] }: { active?: string; onSelect: (id: SectionId) => void; onBecomeAgent?: () => void; hiddenIds?: SectionId[] }) {
+  const [tabControls, setTabControls] = useState<TabControls>({});
+  useEffect(() => {
+    let mounted = true;
+    fetchTabControls().then((controls) => { if (mounted) setTabControls(controls); });
+    return () => { mounted = false; };
+  }, []);
   const visibleSections = sections.filter(({ id }) => !hiddenIds.includes(id));
 
   return (
@@ -24,7 +32,9 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
       <div className="storefront-reference-grid mx-auto w-full max-w-[720px]">
         {visibleSections.map(({ id, label, description }, index) => {
           const isAgent = id === "agent";
+          const unavailable = isTabUnavailable(tabControls[id]);
           const handleClick = () => {
+            if (unavailable) return;
             if (isAgent) {
               onBecomeAgent?.();
               return;
@@ -40,6 +50,8 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
               onClick={handleClick}
               aria-label={`${label}: ${description}`}
               aria-pressed={active === id}
+              aria-disabled={unavailable}
+              title={unavailable ? (tabControls[id]?.message || "This service is temporarily under maintenance.") : description}
               style={{
                 left: index % 2 === 0 ? "3.7%" : "50.5%",
                 top: `${2 + Math.floor(index / 2) * 19.05}%`,

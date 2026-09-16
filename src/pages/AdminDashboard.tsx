@@ -15,9 +15,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { tabControlOptions, type TabControls, saveTabControls } from "@/lib/tabControls";
 import {
   Zap, Check, X, Save, Eye, Plus, Trash2, Users, RefreshCw, ShoppingCart,
-  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play, MessageCircle, KeyRound, Route, ClipboardList, Crown,
+  Loader2, Wallet, Search, Bell, Send, ArrowDownToLine, ShieldAlert, Shield, Gift, AlertCircle, Settings2, Megaphone, Smartphone, LogIn, DollarSign, Package, Play, MessageCircle, KeyRound, Route, ClipboardList, Crown, Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -310,6 +311,8 @@ const AdminDashboard = () => {
   const [savingPriceBreakdown, setSavingPriceBreakdown] = useState(false);
   const [subscriptionComingSoon, setSubscriptionComingSoon] = useState(false);
   const [savingSubscriptionComingSoon, setSavingSubscriptionComingSoon] = useState(false);
+  const [tabControls, setTabControls] = useState<TabControls>({});
+  const [savingTabControls, setSavingTabControls] = useState(false);
 
   // Free Data Offer settings
   const [freeDataConfig, setFreeDataConfig] = useState({
@@ -709,7 +712,7 @@ const AdminDashboard = () => {
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
         supabase
           .from("app_settings")
-          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown")
+          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown, tab_controls")
           .eq("id", 1)
           .single(),
       ]);
@@ -717,6 +720,7 @@ const AdminDashboard = () => {
       setPackages(pkgResult.data ?? []);
 
       const appSettings = appSettingsResult.data;
+      setTabControls((appSettings?.tab_controls as TabControls) ?? {});
       if (appSettings?.agent_registration_fee) {
         setAgentRegistrationFee(appSettings.agent_registration_fee);
       }
@@ -837,6 +841,14 @@ const AdminDashboard = () => {
       toast({ title: enabled ? "Subscription marked Coming Soon" : "Subscription is live" });
     }
     setSavingSubscriptionComingSoon(false);
+  };
+
+  const saveManagedTabControls = async () => {
+    setSavingTabControls(true);
+    const { error } = await saveTabControls(tabControls);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else toast({ title: "Tab controls saved", description: "Changes now apply across package pages and storefronts." });
+    setSavingTabControls(false);
   };
 
   // Save free data offer settings
@@ -4835,6 +4847,22 @@ const AdminDashboard = () => {
   </div>
   </div>
   </CardContent>
+  </Card>
+
+  <Card className="border-border">
+    <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Settings className="h-5 w-5 text-cyan-500" /> Tab Control</CardTitle></CardHeader>
+    <CardContent className="space-y-4">
+      <p className="text-sm text-muted-foreground">Turn a service tab off everywhere and optionally schedule when it becomes available again.</p>
+      {tabControlOptions.map(({ id, label }) => {
+        const control = tabControls[id] ?? { enabled: true, message: "We are working to bring this service to you. Please expect it soon." };
+        return <div key={id} className="space-y-3 rounded-lg border p-4">
+          <div className="flex items-center justify-between gap-3"><Label className="text-base font-semibold">{label}</Label><Switch checked={control.enabled !== false} onCheckedChange={(enabled) => setTabControls((current) => ({ ...current, [id]: { ...control, enabled } }))} /></div>
+          <Textarea value={control.message} onChange={(event) => setTabControls((current) => ({ ...current, [id]: { ...control, message: event.target.value } }))} placeholder="Maintenance message shown to customers" rows={2} />
+          <div className="grid gap-3 sm:grid-cols-2"><div><Label>Available from</Label><Input type="datetime-local" value={control.availableFrom ?? ""} onChange={(event) => setTabControls((current) => ({ ...current, [id]: { ...control, availableFrom: event.target.value } }))} /></div><div><Label>Available until</Label><Input type="datetime-local" value={control.availableUntil ?? ""} onChange={(event) => setTabControls((current) => ({ ...current, [id]: { ...control, availableUntil: event.target.value } }))} /></div></div>
+        </div>;
+      })}
+      <Button onClick={saveManagedTabControls} disabled={savingTabControls}>{savingTabControls ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save Tab Controls</Button>
+    </CardContent>
   </Card>
 
   {/* Free Data Offer Settings */}
