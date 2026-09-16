@@ -1,4 +1,6 @@
 
+import { Box, BriefcaseBusiness, Gamepad2, Layers3, MessageCircle, Package, UserRoundPlus, Wifi, Zap } from "lucide-react";
+
 const sections = [
   { id: "data", label: "Data", description: "Buy data bundles instantly", icon: Wifi },
   { id: "gamehub", label: "GameHub", description: "Play, enjoy and win rewards", icon: Gamepad2 },
