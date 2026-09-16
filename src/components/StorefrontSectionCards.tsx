@@ -32,7 +32,15 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
       <div className="storefront-reference-grid mx-auto w-full max-w-[720px]">
         {visibleSections.map(({ id, label, description }, index) => {
           const isAgent = id === "agent";
-          const unavailable = isTabUnavailable(tabControls[id]);
+          const aliases: Record<string, string[]> = {
+            instant: ["instant", "vouchers", "data-airtime", "airtime"],
+            data: ["data", "cheap-data", "cheap_data"],
+            packages: ["packages", "package"],
+            services: ["services", "service"],
+            products: ["products", "product"],
+          };
+          const control = [id, ...(aliases[id] ?? [])].map((key) => tabControls[key]).find(Boolean);
+          const unavailable = isTabUnavailable(control);
           const handleClick = () => {
             // Select the normal tab first so its real page remains visible beneath the modal.
             if (isAgent) {
