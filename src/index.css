@@ -131,8 +131,16 @@
   .track-order-card * { color: hsl(0 0% 98%) !important; }
   .delivery-progress-card,
   .delivery-progress-card * { color: hsl(0 0% 98%) !important; }
+  .package-reference-card {
+    background: #2f176d !important;
+    border-color: #2f176d !important;
+    color: #ffffff !important;
+  }
   .package-reference-card,
-  .package-reference-card * { color: hsl(0 0% 98%) !important; }
+  .package-reference-card * { color: #ffffff !important; }
+  .package-reference-card .text-cyan-300 { color: #27e5ff !important; }
+  .package-reference-card .text-yellow-300 { color: #ffe100 !important; }
+  .package-reference-card button { background: #4b3285 !important; border-color: #7259a7 !important; color: #ffffff !important; }
   .dark .dark-surface,
   .dark .dark-surface * {
     --foreground: 0 0% 100%;
