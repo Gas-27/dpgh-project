@@ -1002,10 +1002,10 @@ const searchOrders = useCallback(async (input?: string) => {
         <div className="relative px-4 py-6 overflow-hidden">
           <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)` }} />
           <div className="max-w-6xl mx-auto relative z-10">
-            <div className="rounded-xl border-2 p-6 backdrop-blur-sm" style={{ borderColor: `${primaryColor}40`, backgroundColor: `${primaryColor}08` }}>
+            <div className="rounded-[28px] border border-cyan-300/70 bg-gradient-to-r from-[#08152d] via-[#142b72] to-[#274fd1] p-5 text-white shadow-[0_0_24px_rgba(40,120,255,0.28)]">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex-1">
-                <h2 className="mb-1 text-xl font-bold text-foreground">{store.store_name}</h2>
+                <h2 className="mb-1 text-xl font-bold text-white">{store.store_name}</h2>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
                     <Share2 className="h-3 w-3" /> Share Your Store
                   </p>
@@ -1560,7 +1560,7 @@ className="whitespace-nowrap flex-shrink-0 border-foreground/40 bg-background te
       </Suspense>
 
       {/* WhatsApp contact FAB - Draggable */}
-  <DraggableFAB storageKey="whatsapp-contact-subagent" href={whatsappLink} title="Chat on WhatsApp">
+  <DraggableFAB initialBottom={24} initialRight={88} storageKey="whatsapp-contact-subagent" href={whatsappLink} title="Chat on WhatsApp">
     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg">
       <MessageCircle className="h-6 w-6" />
     </div>

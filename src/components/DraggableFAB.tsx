@@ -26,6 +26,7 @@ export const DraggableFAB = ({
   const [position, setPosition] = useState({ bottom: initialBottom, right: initialRight });
   const [isDragging, setIsDragging] = useState(false);
   const [hasMoved, setHasMoved] = useState(false);
+  const movedRef = useRef(false);
   const dragRef = useRef<HTMLDivElement>(null);
   const startPos = useRef({ x: 0, y: 0 });
   const startOffset = useRef({ bottom: 0, right: 0 });
@@ -53,8 +54,9 @@ export const DraggableFAB = ({
   };
 
   const handleStart = (clientX: number, clientY: number) => {
-    setIsDragging(true);
+      setIsDragging(true);
     setHasMoved(false);
+    movedRef.current = false;
     startPos.current = { x: clientX, y: clientY };
     startOffset.current = { bottom: position.bottom, right: position.right };
   };
@@ -68,6 +70,7 @@ export const DraggableFAB = ({
     // Only consider it moved if dragged more than 5px
     if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
       setHasMoved(true);
+      movedRef.current = true;
     }
 
     // Moving right decreases "right" value, moving down decreases "bottom" value
@@ -147,7 +150,7 @@ export const DraggableFAB = ({
     </div>
   );
 
-  if (href && !hasMoved) {
+  if (href) {
     return (
       <a
         href={href}
@@ -155,8 +158,10 @@ export const DraggableFAB = ({
         rel="noopener noreferrer"
         className="contents"
         onClick={(e) => {
-          if (hasMoved) {
+          if (movedRef.current) {
             e.preventDefault();
+            movedRef.current = false;
+            setHasMoved(false);
           }
         }}
       >
