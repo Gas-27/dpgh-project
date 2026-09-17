@@ -1004,8 +1004,9 @@ const searchOrders = useCallback(async (input?: string) => {
           <div className="max-w-6xl mx-auto relative z-10">
             <div className="rounded-xl border-2 p-6 backdrop-blur-sm" style={{ borderColor: `${primaryColor}40`, backgroundColor: `${primaryColor}08` }}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+              <div className="flex-1">
+                <h2 className="mb-1 text-xl font-bold text-foreground">{store.store_name}</h2>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
                     <Share2 className="h-3 w-3" /> Share Your Store
                   </p>
                   <p className="text-sm text-muted-foreground mb-3">Spread the word and earn more! Share this link with your network:</p>
@@ -1558,7 +1559,14 @@ className="whitespace-nowrap flex-shrink-0 border-foreground/40 bg-background te
         )}
       </Suspense>
 
-      {/* Floating WhatsApp Group Icon - Draggable */}
+      {/* WhatsApp contact FAB - Draggable */}
+  <DraggableFAB storageKey="whatsapp-contact-subagent" href={whatsappLink} title="Chat on WhatsApp">
+    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg">
+      <MessageCircle className="h-6 w-6" />
+    </div>
+  </DraggableFAB>
+
+  {/* Floating WhatsApp Group Icon - Draggable */}
       {groupLink && (
         <DraggableFAB
           initialBottom={freeDataEnabled ? 88 : 24}

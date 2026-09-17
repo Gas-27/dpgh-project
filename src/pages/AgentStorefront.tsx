@@ -1085,7 +1085,6 @@ const searchOrders = useCallback(async (input?: string) => {
             >
               <Zap className="h-5 w-5" style={{ color: primaryForeground }} />
             </div>
-            <span className="font-display text-lg font-bold">{store.store_name}</span>
           </div>
           <div className="flex items-center gap-2">
             {groupLink && (
@@ -1122,8 +1121,9 @@ const searchOrders = useCallback(async (input?: string) => {
           <div className="container mx-auto max-w-none relative z-10">
             <div className="rounded-xl border-2 p-6 backdrop-blur-sm" style={{ borderColor: `${primaryColor}40`, backgroundColor: `${primaryColor}08` }}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+              <div className="flex-1">
+                <h2 className="mb-1 text-xl font-bold text-foreground">{store.store_name}</h2>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
                     <Share2 className="h-3 w-3" /> Share Your Store
                   </p>
                   <p className="text-sm text-muted-foreground mb-3">Spread the word and earn more! Share this link with your network:</p>
@@ -1726,7 +1726,14 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         </div>
       </footer>
 
-      {/* WhatsApp group FAB - Draggable */}
+      {/* WhatsApp contact FAB - Draggable */}
+  <DraggableFAB storageKey="whatsapp-contact-agent" href={whatsappLink} title="Chat on WhatsApp">
+    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg">
+      <MessageCircle className="h-6 w-6" />
+    </div>
+  </DraggableFAB>
+
+  {/* WhatsApp group FAB - Draggable */}
       {groupLink && (
         <DraggableFAB
           initialBottom={freeDataEnabled ? 88 : 24}
