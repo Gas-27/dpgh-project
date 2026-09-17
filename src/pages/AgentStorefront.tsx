@@ -1116,18 +1116,22 @@ const searchOrders = useCallback(async (input?: string) => {
 
       {/* Store URL Banner - Redesigned for better appeal */}
       {store && theme.showShareStore !== false && (
-        <div className="relative px-4 py-6 overflow-hidden">
+        <>
+        <div className="bg-[#11152f] px-4 py-7 text-center">
+    <p className="text-2xl font-semibold uppercase tracking-wide text-white">Welcome to <span className="text-cyan-400">{store.store_name}</span></p>
+    <p className="mt-1 text-2xl font-semibold uppercase text-white">Available</p>
+    <button type="button" className="mt-5 rounded-full bg-emerald-400 px-8 py-3 text-lg font-semibold uppercase text-white shadow-lg" onClick={() => document.getElementById("storefront-services")?.scrollIntoView({ behavior: "smooth" })}>View Our Available Services</button>
+  </div>
+  <div id="storefront-services" className="relative px-4 py-6 overflow-hidden">
           <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)` }} />
           <div className="container mx-auto max-w-none relative z-10">
             <div className="rounded-[28px] border border-cyan-300/70 bg-gradient-to-r from-[#08152d] via-[#142b72] to-[#274fd1] p-5 text-white shadow-[0_0_24px_rgba(40,120,255,0.28)]">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex-1">
-                <h2 className="mb-1 text-xl font-bold text-white">{store.store_name}</h2>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+<div className="flex-1">
+  <p className="text-xs font-semibold uppercase tracking-wide text-white/80 mb-2 flex items-center gap-2">
                     <Share2 className="h-3 w-3" /> Share Your Store
                   </p>
-                  <p className="text-sm text-muted-foreground mb-3">Spread the word and earn more! Share this link with your network:</p>
-                  <code 
+                                  <code 
                     className="block w-full rounded-lg px-3 py-2 font-mono text-sm font-semibold break-all"
                     style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, border: `1px solid ${primaryColor}30` }}
                   >
@@ -1137,7 +1141,7 @@ const searchOrders = useCallback(async (input?: string) => {
                 <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
                   <Button 
                     size="sm" 
-                    className="flex-1 sm:flex-auto rounded-lg font-semibold"
+                    className="flex-1 sm:flex-auto rounded-full bg-white text-slate-900 font-semibold hover:bg-slate-100"
                     style={{ backgroundColor: primaryColor, color: primaryForeground }}
                     onClick={() => {
                       const url = store.custom_domain ? `https://${store.custom_domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}` : DOMAINS.getAgentStoreUrl(store.store_name);
@@ -1180,6 +1184,7 @@ const searchOrders = useCallback(async (input?: string) => {
             </div>
           </div>
         </div>
+        </>
       )}
 
       <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={(id) => setActiveCategory(id === "instant" ? "vouchers" : id as SectionId & typeof activeCategory)} onBecomeAgent={() => { window.location.assign(`${window.location.origin}/become-agent`); }} />
