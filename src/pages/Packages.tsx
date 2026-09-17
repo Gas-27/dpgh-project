@@ -224,6 +224,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   // Check both order_status and status fields — refunded may be set on either
   const orderStatus = normalizeOrderStatus(order);
   let step = 1, msg = "", note: string | null = null;
+  const isPaystackRefund = String((order as any).payment_method || "").toLowerCase().includes("paystack") || Boolean(order.paystack_reference);
 
   if (orderStatus === "delivered") {
     step = 4;
@@ -253,9 +254,9 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     const isMtn = ["mtn", "mtn_express"].includes((order.network || "").toLowerCase());
     const eligibleAt = order.mtn_retry_eligible_at ? new Date(order.mtn_retry_eligible_at) : null;
     const days = eligibleAt ? Math.max(0, Math.ceil((eligibleAt.getTime() - Date.now()) / 86400000)) : 5;
-  const genericRefundNote = isFromStore
-  ? "Your order has been refunded to the account you bought from — your agent's wallet on the site (not your MoMo wallet). Your agent will refund you shortly."
-  : "Your order has been refunded to your user wallet on the site. Visit your dashboard to see your refund.";
+  const genericRefundNote = isPaystackRefund
+  ? "A refund has been initiated through Paystack and will be sent back to the wallet/account used to make the payment. Paystack refunds can take a few minutes to up to two days."
+  : "Your order has been refunded to your wallet on the site. Visit your dashboard to see your refund.";
   const mtnRefundNote = isMtn
   ? `MTN delivery failed because MTN now requires your number to be approved on our beneficiary list before delivery. We have captured your number and sent it to MTN for approval. Approval can take up to 5 days. You can retry using ${order.network === "mtn" ? "MTN Express" : "MTN"} while waiting, but please wait ${days} day${days === 1 ? "" : "s"} before retrying this same MTN option. ${isFromStore ? "Your agent will retry it for you using the other MTN option, or may choose to refund you directly if that retry also fails. If the retry fails, your agent will refund you shortly." : "These are MTN rules, and we are sorry for the inconvenience."}`
   : null;
@@ -335,6 +336,7 @@ Please investigate and assist. Thank you.`;
         <div className="p-3 rounded-lg bg-red-600/10 border border-red-600/30">
           <p className="text-sm font-semibold text-red-400 uppercase tracking-wide">{msg}</p>
           {note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-red-600/20">{note}</p>}
+          {isRefunded && isPaystackRefund && <a href="https://support.paystack.com/en/articles/2127106" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs font-semibold text-red-400 underline underline-offset-2 hover:text-red-300">Read Paystack refund policy</a>}
         </div>
       ) : (
         <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">

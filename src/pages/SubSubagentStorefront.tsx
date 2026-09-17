@@ -257,7 +257,10 @@ const SubSubagentOrderTrackingCard = ({
   } else if (orderStatus === "refunded") {
     currentStep = 4;
     statusMessage = "REFUNDED";
-    extraNote = "Your order has been refunded to the account you bought from — your agent's wallet on the site (not your MoMo wallet). Your agent will refund you shortly.";
+    const isPaystackRefund = String((order as any).payment_method || "").toLowerCase().includes("paystack") || Boolean((order as any).paystack_reference);
+  extraNote = isPaystackRefund
+    ? "A refund has been initiated through Paystack and will be sent back to the wallet/account used to make the payment. Paystack refunds can take a few minutes to up to two days."
+    : "Wallet refunded. The amount has been returned to the wallet used for this order.";
   } else if (orderStatus === "failed") {
     currentStep = 1;
     statusMessage = "This order could not be fulfilled.";
@@ -325,6 +328,7 @@ const SubSubagentOrderTrackingCard = ({
           <div className="p-3 rounded-lg bg-red-600/10 border border-red-600/30">
             <p className="text-sm font-semibold text-red-400 uppercase tracking-wide">{statusMessage}</p>
             {extraNote && <p className="text-xs text-muted-foreground mt-2 border-t pt-2 border-red-600/20">{extraNote}</p>}
+  {isRefunded && (String((order as any).payment_method || "").toLowerCase().includes("paystack") || Boolean((order as any).paystack_reference)) && <a href="https://support.paystack.com/en/articles/2127106" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs font-semibold text-red-400 underline underline-offset-2 hover:text-red-300">Read Paystack refund policy</a>}
           </div>
         ) : (
           <div className="p-3 rounded-lg bg-green-600/10 border border-green-600/30">
