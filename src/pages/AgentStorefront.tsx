@@ -1095,9 +1095,9 @@ const searchOrders = useCallback(async (input?: string) => {
               </Button>
             )}
             <Button variant="outline" size="sm" asChild>
-              <a href={`tel:${store.support_number}`}>
-                <Phone className="h-4 w-4 mr-1" /> Call
-              </a>
+  <a href={`https://wa.me/${(store.whatsapp_number || store.support_number || "").replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
+  <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp
+  </a>
             </Button>
 
           </div>
@@ -1655,8 +1655,9 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
           </Card>
         </div>
       ) : activeCategory === "afa" ? (
-        <div className="w-full pb-20">
-          <AFAPackagesDisplay
+  <div className="w-full space-y-8 pb-20">
+  <AFARegistrationTracker storeLabel={store?.store_name} />
+  <AFAPackagesDisplay
             agentStoreId={store?.id}
             onRegisterClick={(packageId, packageName, price) => {
               setPaymentPkg({
