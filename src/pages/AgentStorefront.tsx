@@ -601,7 +601,8 @@ const AgentStorefront = () => {
   // ── Claim Free Data dialog ──
   const [claimFreeDataOpen, setClaimFreeDataOpen] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
-
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
     "data" | "afa" | "vouchers" | "services" | "bulk" | "sms" | "products"
@@ -782,7 +783,7 @@ const AgentStorefront = () => {
         supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
         supabase.from("subagent_package_prices").select("package_id, base_price, created_at").eq("agent_store_id", matched.id).is("subagent_store_id", null).order("created_at", { ascending: false }),
-        supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
+        supabase.from("app_settings").select("free_data_enabled, show_price_breakdown").eq("id", 1).single(),
       ]);
       setPackages(pkgRes.data ?? []);
       const priceMap: Record<string, number> = {};
@@ -791,7 +792,10 @@ const AgentStorefront = () => {
       (agentSubagentPriceRes.data ?? []).forEach((p: any) => { if (p.base_price != null && agentPriceMap[p.package_id] == null) agentPriceMap[p.package_id] = Number(p.base_price); });
       setAgentPrices(priceMap);
       setAgentSubagentPrices(agentPriceMap);
-      if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
+      if (appSettingsRes.data) {
+    setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
+    setShowPriceBreakdown(appSettingsRes.data.show_price_breakdown ?? false);
+  }
       setLoading(false);
     };
     fetchStore();
@@ -1428,9 +1432,9 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                             {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
                             <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb}GB</p>
                             <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)}</p>
-                            <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
-                              <span>Agent price: <strong className="text-cyan-300">{Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
-                            </div>
+  {showPriceBreakdown && <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
+  <span>Agent price: <strong className="text-cyan-300">{Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
+  </div>}
                             <div className="leading-tight">
                               <p className="text-sm font-semibold text-white/75">Your price (user price):</p>
                               <p className="text-2xl font-extrabold text-white">GHC{Number(price).toFixed(2)}</p>
