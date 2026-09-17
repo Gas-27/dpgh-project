@@ -1008,9 +1008,7 @@ const searchOrders = useCallback(async (input?: string) => {
         <>
         <div className="bg-[#11152f] px-4 py-7 text-center">
     <p className="text-2xl font-semibold uppercase tracking-wide text-white">Welcome to <span className="text-cyan-400">{store.store_name}</span></p>
-    <p className="mt-1 text-2xl font-semibold uppercase text-white">Available</p>
-    <button type="button" className="mt-5 rounded-full bg-emerald-400 px-8 py-3 text-lg font-semibold uppercase text-white shadow-lg" onClick={() => document.getElementById("storefront-services")?.scrollIntoView({ behavior: "smooth" })}>View Our Available Services</button>
-  </div>
+    </div>
   <div id="storefront-services" className="relative px-4 py-6 overflow-hidden">
           <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)` }} />
           <div className="max-w-6xl mx-auto relative z-10">
@@ -1234,13 +1232,7 @@ const searchOrders = useCallback(async (input?: string) => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <MessageCircle className="h-5 w-5 flex-shrink-0" style={{ color: primaryColor }} />
-                <div>
-                  <p className="text-muted-foreground text-xs">WhatsApp</p>
-                  <a href={`${whatsappLink}?text=Hello, I need help with my order.`} target="_blank" rel="noopener noreferrer" className="hover:underline">{displayWhatsApp}</a>
-                </div>
-              </div>
+
             </div>
           </CardContent>
         </Card>
@@ -1313,14 +1305,7 @@ const searchOrders = useCallback(async (input?: string) => {
         )}
       </Suspense>
 
-      {/* WhatsApp contact FAB - Draggable */}
-  <DraggableFAB initialBottom={24} initialRight={88} storageKey="whatsapp-contact-subsubagent" href={whatsappLink} title="Chat on WhatsApp">
-    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg">
-      <MessageCircle className="h-6 w-6" />
-    </div>
-  </DraggableFAB>
-
-  {/* Floating WhatsApp Group Icon - Draggable */}
+      {/* Floating WhatsApp Group Icon - Draggable */}
       {groupLink && (
         <DraggableFAB
           initialBottom={freeDataEnabled ? 88 : 24}
