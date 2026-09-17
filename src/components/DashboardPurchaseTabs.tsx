@@ -14,9 +14,10 @@ type Props = {
   ownerId?: string;
   canSetPrices?: boolean;
   initialTab?: DashboardTab;
+  onMaintenanceReturn?: () => void;
 };
 
-export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerId, canSetPrices = false, initialTab = "instant" }: Props) {
+export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerId, canSetPrices = false, initialTab = "instant", onMaintenanceReturn }: Props) {
   const [service, setService] = useState<Service | null>(null);
   const wallet = Number(walletBalance || 0);
 
@@ -39,7 +40,7 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
   return (
   <section className="relative space-y-4">
   <WalletBanner balance={wallet} label="Wallet-only dashboard payments" />
-  <ActiveTabMaintenance active={maintenanceKey} label={maintenanceKey === "instant" ? "Data and Airtime" : maintenanceKey} />
+  <ActiveTabMaintenance active={maintenanceKey} label={maintenanceKey === "instant" ? "Data and Airtime" : maintenanceKey} onReturn={onMaintenanceReturn} />
       <KorbaPurchasePanel
         mode={initialTab === "services" ? "services" : "instant"}
         walletOnly

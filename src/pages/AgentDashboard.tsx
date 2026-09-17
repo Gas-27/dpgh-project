@@ -2705,7 +2705,7 @@ return (
           </TabsContent>
 
           {/* ============================= BUY DATA ============================= */}
-          <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="instant" /></TabsContent>
+          <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
   <TabsContent value="subscription" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription" /></TabsContent>
   <TabsContent value="subscription-price" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription-price" /></TabsContent>
   <TabsContent value="buy" className="space-y-4 mt-0">
@@ -4570,7 +4570,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
   {/* ============================= SERVICES ============================= */}
 <TabsContent value="services" className="mt-0 space-y-6">
-  <DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} initialTab="services" />
+  <DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} initialTab="services" onMaintenanceReturn={() => setActiveTab("overview")} />
   </TabsContent>
 
   {/* ============================= SUBAGENTS ============================= */}

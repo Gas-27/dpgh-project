@@ -3,9 +3,9 @@ import TabMaintenanceOverlay from "@/components/TabMaintenanceOverlay";
 import { fetchTabControls, isTabUnavailable, type TabControls } from "@/lib/tabControls";
 import { supabase } from "@/integrations/supabase/client";
 
-type Props = { active: string; label?: string };
+type Props = { active: string; label?: string; onReturn?: () => void };
 
-export default function ActiveTabMaintenance({ active, label }: Props) {
+export default function ActiveTabMaintenance({ active, label, onReturn }: Props) {
   const [controls, setControls] = useState<TabControls>({});
   useEffect(() => {
     let mounted = true;
@@ -25,10 +25,10 @@ export default function ActiveTabMaintenance({ active, label }: Props) {
   const control = [active, ...(aliases[active] ?? [])].map((key) => controls[key]).find(Boolean);
   if (!control || !isTabUnavailable(control)) return null;
   return <TabMaintenanceOverlay label={label ?? active} {...control} onReturn={() => {
-    if (window.history.length > 1) {
-      window.history.go(-1);
-    } else {
-      window.dispatchEvent(new PopStateEvent("popstate"));
+    if (onReturn) {
+      onReturn();
+      return;
     }
+    if (window.history.length > 1) window.history.go(-1);
   }} />;
 }

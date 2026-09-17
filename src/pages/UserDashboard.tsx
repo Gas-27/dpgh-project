@@ -945,7 +945,7 @@ const UserDashboard = () => {
       case "buy-data":
         return renderBuyData();
       case "instant-data":
-        return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} />;
+        return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} onMaintenanceReturn={() => setActiveMenu("overview")} />;
       case "orders":
         return renderOrders();
       case "refunds":
@@ -965,7 +965,7 @@ const UserDashboard = () => {
       case "afa-registration":
         return renderAfaRegistration();
   case "services":
-  return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="services" />;
+  return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="services" onMaintenanceReturn={() => setActiveMenu("overview")} />;
   case "subscription":
   return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="subscription" />;
       case "sms":
