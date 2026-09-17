@@ -1065,12 +1065,11 @@ const searchOrders = useCallback(async (input?: string) => {
       )}
 
 <main className="mx-auto max-w-6xl px-0 py-6 space-y-6 sm:px-4">
-  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "data" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
+  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "vouchers" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "data" ? "Cheap Data" : activeSection === "vouchers" ? "Airtime & Data" : activeSection} onReturn={() => setActiveSection("data")} />
   {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subagent" />}
   {activeSection === "services" && <KorbaPurchasePanel mode="services" />}
-  {activeSection === "data" && <KorbaPurchasePanel mode="instant" />}
 {activeSection === "data" && <>
   <TrackOrderDropdown source="subagent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <SpinToWinCard target="subagent" />
