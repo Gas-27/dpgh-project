@@ -105,8 +105,10 @@
   .delivery-progress-card [data-slot="select-content"],
   .delivery-progress-card [data-slot="select-item"] { color: #000 !important; }
   @media (max-width: 639px) {
+    .delivery-progress-card { margin-inline: 0; }
     .delivery-progress-card [data-slot="card-header"] > div { align-items: stretch; flex-direction: column; }
-    .delivery-progress-card [data-slot="select-trigger"] { width: 100%; }
+    .delivery-progress-card [data-slot="select-trigger"] { width: 100%; max-width: 100%; }
+    .delivery-progress-card [data-slot="card-content"], .delivery-progress-card [data-slot="card-header"] { min-width: 0; }
   }
 
   :root:not(.dark) .subscription-section,

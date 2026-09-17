@@ -15,10 +15,7 @@ function resolveTheme(theme: Theme): ResolvedTheme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = window.localStorage.getItem("dataplug-theme");
-    return stored === "light" || stored === "dark" ? stored : "dark";
-  });
+  const [theme, setThemeState] = useState<Theme>("dark");
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
 
   useEffect(() => {
@@ -36,7 +33,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     theme,
     resolvedTheme,
     setTheme: (nextTheme: Theme) => {
-      window.localStorage.setItem("dataplug-theme", nextTheme);
       setThemeState(nextTheme);
     },
   }), [theme, resolvedTheme]);
