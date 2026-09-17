@@ -20,7 +20,7 @@ import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
   ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw, Layers, FileSpreadsheet, Upload, Zap,
-  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList, Package, Globe2
+  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList, Package, Globe2, CreditCard
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
