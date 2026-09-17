@@ -1141,7 +1141,7 @@ const searchOrders = useCallback(async (input?: string) => {
         {activeSection === "data" && <>
         {/* USSD Info Banner */}
           {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
-            <a href="tel:*380*455#" className="block mb-4 p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
+            <a href="tel:*380*455#" className="block mb-4 rounded-xl border border-[#064e5f] bg-[#071316] p-4 text-black shadow-sm hover:bg-[#071316] transition-colors">
               <div className="flex items-center justify-center gap-3 text-center">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                   <Phone className="h-5 w-5 text-primary" />
