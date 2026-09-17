@@ -1538,7 +1538,7 @@ const searchOrders = async (input?: string) => {
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
 
   <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={handleStorefrontSectionSelect} onBecomeAgent={() => setShowBecomeAgent(true)} />
-  <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={catLabels[activeCategory] || activeCategory} />
+  <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={catLabels[activeCategory] || activeCategory} onReturn={() => changeCategory("data")} />
   <Dialog open={showSubscriptionComingSoon} onOpenChange={setShowSubscriptionComingSoon}>
     <DialogContent className="border-amber-400/50 bg-slate-950 text-white sm:max-w-md">
       <DialogHeader>
