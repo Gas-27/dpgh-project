@@ -116,15 +116,17 @@
 
   .storefront-reference-grid {
     position: relative;
-  aspect-ratio: 682 / 1024;
-  overflow: hidden;
-  background: url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-0DLtkmqNM46ECGThe8BxytO18NfH7z.png") center / 100% 100% no-repeat;
+    width: 100%;
+    max-width: 580px;
+    aspect-ratio: 1024 / 957;
+    overflow: hidden;
+    background: url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-0DLtkmqNM46ECGThe8BxytO18NfH7z.png") center / 100% 100% no-repeat;
   }
   .storefront-reference-hotspot {
     position: absolute;
     display: block;
-  width: 46%;
-  height: 12.2%;
+    width: 46%;
+    height: 17.5%;
     border: 0;
     border-radius: 22px;
     background: transparent;
