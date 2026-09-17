@@ -101,6 +101,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     try {
       setSavingPrices(true);
 
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: "Sign-in required", description: "Please sign in again before saving subagent prices.", variant: "destructive" });
+        return;
+      }
+
       // Validate that no price is below base price (agent's cost price, which is already overridden with admin's custom price if set)
       for (const [packageId, priceVal] of Object.entries(editedPrices)) {
         const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
@@ -181,9 +187,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       
       // Refresh data to show saved prices
       if (onPricesSaved) onPricesSaved();
-    } catch (error) {
-      console.error("Error saving prices:", error);
-      toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
+    } catch (error: any) {
+      console.error("[v0] Error saving prices:", error);
+      const description = error?.code === "42501"
+        ? "Your agent account is not authorized for this store. Refresh the dashboard and try again."
+        : "Failed to save prices. Please try again.";
+      toast({ title: "Error", description, variant: "destructive" });
     } finally {
       setSavingPrices(false);
     }

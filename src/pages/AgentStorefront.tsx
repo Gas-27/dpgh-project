@@ -21,6 +21,7 @@ const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDia
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
+import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import {
   Zap, Phone, Wifi, Shield, Clock, Star, Search, Package,
   CheckCircle, XCircle, X, Loader2, Check, Copy, Bell, Megaphone, Rocket, AlertTriangle, Gift,
