@@ -606,15 +606,25 @@ export function SubagentStorefront() {
       setPackages(pkgRes.data || []);
       if (agentInfoRes.data) setAgentInfo(agentInfoRes.data);
 
-      // Build price map: Subagent storefront sell price -> Agent's configured
-      // Subagent base price -> admin package price.
+      // Build the hierarchy: the price this subagent explicitly set for customers,
+      // then the price their agent assigned them, then the admin-assigned agent price.
       const priceMap: Record<string, number> = {};
-      (pkgRes.data || []).forEach((p: any) => { priceMap[p.id] = Number(p.price); });
-      (agentSubagentBasePriceRes.data || []).forEach((p: any) => {
-        if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price);
+      (pkgRes.data || []).forEach((p: any) => {
+        priceMap[p.id] = Number(p.agent_price ?? p.price);
       });
+      const seenBasePrices = new Set<string>();
+      (agentSubagentBasePriceRes.data || []).forEach((p: any) => {
+        if (p.base_price != null && !seenBasePrices.has(p.package_id)) {
+          priceMap[p.package_id] = Number(p.base_price);
+          seenBasePrices.add(p.package_id);
+        }
+      });
+      const seenOwnPrices = new Set<string>();
       (subagentOwnPriceRes.data || []).forEach((p: any) => {
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price);
+        if (p.sell_price != null && !seenOwnPrices.has(p.package_id)) {
+          priceMap[p.package_id] = Number(p.sell_price);
+          seenOwnPrices.add(p.package_id);
+        }
       });
       
       setSubagentPrices(priceMap);
@@ -658,12 +668,20 @@ export function SubagentStorefront() {
       ]);
 
       const priceMap: Record<string, number> = {};
-      packages.forEach((p: any) => { priceMap[p.id] = Number(p.price); });
+      packages.forEach((p: any) => { priceMap[p.id] = Number(p.agent_price ?? p.price); });
+      const seenBasePrices = new Set<string>();
       (agentSubagentBasePriceRes.data || []).forEach((p: any) => {
-        if (p.base_price != null) priceMap[p.package_id] = Number(p.base_price);
+        if (p.base_price != null && !seenBasePrices.has(p.package_id)) {
+          priceMap[p.package_id] = Number(p.base_price);
+          seenBasePrices.add(p.package_id);
+        }
       });
+      const seenOwnPrices = new Set<string>();
       (subagentOwnPriceRes.data || []).forEach((p: any) => {
-        if (p.sell_price != null) priceMap[p.package_id] = Number(p.sell_price);
+        if (p.sell_price != null && !seenOwnPrices.has(p.package_id)) {
+          priceMap[p.package_id] = Number(p.sell_price);
+          seenOwnPrices.add(p.package_id);
+        }
       });
       setSubagentPrices(priceMap);
     };

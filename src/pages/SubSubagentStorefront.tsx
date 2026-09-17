@@ -587,11 +587,15 @@ export function SubSubagentStorefront() {
 
       // Build "Cost from Agent" map (levels 1-3)
       const baseCostMap: Record<string, number> = {};
-      // 1. admin/default package price
-      (pkgRes.data || []).forEach((p: any) => { baseCostMap[p.id] = p.price; });
+      // 1. admin-assigned agent price, falling back to the public customer price
+      (pkgRes.data || []).forEach((p: any) => { baseCostMap[p.id] = Number(p.agent_price ?? p.price); });
       // 2. parent subagent's own cost from their agent
-      (agentCostRes.data || []).forEach((p: any) => { 
-        if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
+      const seenAgentCosts = new Set<string>();
+      (agentCostRes.data || []).forEach((p: any) => {
+        if (p.base_price != null && !seenAgentCosts.has(p.package_id)) {
+          baseCostMap[p.package_id] = Number(p.base_price);
+          seenAgentCosts.add(p.package_id);
+        }
       });
       // 3. parent subagent's sub-subagent template price
       (templatePricesRes.data || []).forEach((p: any) => { 
@@ -650,8 +654,8 @@ export function SubSubagentStorefront() {
       ]);
       
       const baseCostMap: Record<string, number> = {};
-      // 1. admin prices
-      (pkgs.data || []).forEach((p: any) => { baseCostMap[p.id] = p.price; });
+      // 1. admin-assigned agent prices, falling back to the public customer price
+      (pkgs.data || []).forEach((p: any) => { baseCostMap[p.id] = Number(p.agent_price ?? p.price); });
       // 2. parent subagent's own cost from their agent
       (agentCost.data || []).forEach((p: any) => { 
         if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price); 
