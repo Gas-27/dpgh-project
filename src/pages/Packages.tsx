@@ -1174,7 +1174,7 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
   );
 };
 
-// ──────────────────────���──────────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
+// ──────────────────────���──���───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
 const Packages = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -1527,7 +1527,7 @@ const searchOrders = async (input?: string) => {
     data: <Wifi className="h-4 w-4 mr-2" />, afa: <Package className="h-4 w-4 mr-2" />,
     vouchers: <CheckCircle className="h-4 w-4 mr-2" />, services: <Wifi className="h-4 w-4 mr-2" />,
   };
-  const catLabels: Record<string, string> = { data: "Data Bundles", afa: "AFA Bundles", vouchers: "Instant Data", services: "Services", bulk: "Bulk Orders", sms: "Bulk SMS" };
+  const catLabels: Record<string, string> = { data: "Cheap Data", afa: "AFA Bundles", vouchers: "Airtime & Data", services: "Services", bulk: "Bulk Orders", sms: "Bulk SMS" };
 
   return (
     <div className="storefront-readable min-h-screen bg-background">

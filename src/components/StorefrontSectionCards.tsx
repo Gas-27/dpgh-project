@@ -4,10 +4,10 @@ import { Box, BriefcaseBusiness, Gamepad2, Layers3, MessageCircle, Package, User
 import { fetchTabControls, isTabUnavailable, type TabControls } from "@/lib/tabControls";
 
 const sections = [
-  { id: "data", label: "Data", description: "Buy data bundles instantly", icon: Wifi },
+  { id: "data", label: "Cheap Data", description: "Buy affordable data packages", icon: Wifi },
   { id: "gamehub", label: "GameHub", description: "Play, enjoy and win rewards", icon: Gamepad2 },
   { id: "subscription", label: "Subscription", description: "Netflix, ChatGPT, Canva & more", icon: Package },
-  { id: "instant", label: "Instant Data", description: "Buy all your normal MTN, Telecel and AirtelTigo bundles and airtime directly here for yourself or others", icon: Zap },
+  { id: "instant", label: "Airtime & Data", description: "Buy airtime and regular data bundles directly", icon: Zap },
   { id: "bulk", label: "Bulk Orders", description: "Order in bulk & save more", icon: Layers3 },
   { id: "services", label: "Services", description: "Pay your ECG, DSTV, GOtv and StarTimes bills instantly", icon: BriefcaseBusiness },
   { id: "products", label: "Products", description: "Explore our products", icon: Box },
