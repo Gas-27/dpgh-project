@@ -1,24 +1,23 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 
-type Theme = "light" | "dark" | "system";
+type Theme = "light" | "dark";
 type ResolvedTheme = "light" | "dark";
 
 const ThemeContext = createContext<{
   theme: Theme;
   resolvedTheme: ResolvedTheme;
   setTheme: (theme: Theme) => void;
-}>({ theme: "system", resolvedTheme: "light", setTheme: () => undefined });
+}>({ theme: "dark", resolvedTheme: "dark", setTheme: () => undefined });
 
 function resolveTheme(theme: Theme): ResolvedTheme {
-  if (theme !== "system") return theme;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return theme;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = window.localStorage.getItem("dataplug-theme");
-    return stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+    return stored === "light" || stored === "dark" ? stored : "dark";
   });
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
 
@@ -30,9 +29,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setResolvedTheme(resolved);
     };
     apply();
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
+    return undefined;
   }, [theme]);
 
   const value = useMemo(() => ({
@@ -53,8 +50,8 @@ export function useTheme() {
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const nextTheme = theme === "system" ? "dark" : theme === "dark" ? "light" : "system";
-  const label = theme === "system" ? "System theme" : theme === "dark" ? "Dark theme" : "Light theme";
+  const nextTheme = theme === "dark" ? "light" : "dark";
+  const label = theme === "dark" ? "Dark theme" : "Light theme";
 
   return (
     <button
@@ -64,7 +61,7 @@ export function ThemeToggle() {
       aria-label={`${label}. Switch to ${nextTheme} theme`}
       title={`${label} · switch to ${nextTheme}`}
     >
-      {theme === "system" ? <Monitor className="h-4 w-4" aria-hidden="true" /> : theme === "dark" ? <Moon className="h-4 w-4" aria-hidden="true" /> : <Sun className="h-4 w-4" aria-hidden="true" />}
+      {theme === "dark" ? <Moon className="h-4 w-4" aria-hidden="true" /> : <Sun className="h-4 w-4" aria-hidden="true" />}
     </button>
   );
 }

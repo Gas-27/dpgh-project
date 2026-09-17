@@ -1002,6 +1002,7 @@ const searchOrders = useCallback(async (input?: string) => {
         <>
         <div className="bg-[#11152f] px-4 py-7 text-center">
     <p className="text-2xl font-semibold uppercase tracking-wide text-white">Welcome to <span className="text-cyan-400">{store.store_name}</span></p>
+    <button type="button" className="mt-5 rounded-full bg-emerald-400 px-8 py-3 text-lg font-semibold uppercase text-white shadow-lg" onClick={() => document.getElementById("storefront-services")?.scrollIntoView({ behavior: "smooth" })}>View Our Available Services</button>
     </div>
   <div id="storefront-services" className="relative px-4 py-6 overflow-hidden">
           <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)` }} />
