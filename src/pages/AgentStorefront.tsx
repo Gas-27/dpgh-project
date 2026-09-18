@@ -1341,7 +1341,7 @@ const searchOrders = useCallback(async (input?: string) => {
                   key={net}
                   variant="outline"
                   size="sm"
-                  className={`h-11 shrink-0 whitespace-nowrap rounded-full border px-5 text-base font-semibold ${networkFilter === net ? "border-amber-400 bg-amber-400 text-slate-950 hover:bg-amber-300" : "border-slate-500 bg-transparent text-foreground hover:bg-slate-900"}`}
+                  className={`h-9 shrink-0 whitespace-nowrap rounded-full border px-4 text-sm font-semibold ${networkFilter === net ? "border-amber-400 bg-amber-400 text-slate-950 hover:bg-amber-300" : "border-slate-500 bg-transparent text-foreground hover:bg-muted"}`}
                   onClick={() => setNetworkFilter(net)}
                 >
                   {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
