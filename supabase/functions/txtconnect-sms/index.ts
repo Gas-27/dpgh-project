@@ -138,7 +138,7 @@ Deno.serve(async (request) => {
     const unicode = hasUnicode(message);
     const results = await Promise.all(recipients.map(async (to: string) => {
       try {
-        const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: providerHeaders, body: JSON.stringify({ to, from: senderId, unicode: unicode ? "unicode" : "regular", sms: message }) });
+        const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: providerHeaders, body: JSON.stringify({ to, from: senderId, unicode, sms: message }) });
         const raw = await response.text();
         let body: Record<string, unknown> = {};
         try { body = JSON.parse(raw) as Record<string, unknown>; } catch { body = { raw }; }
