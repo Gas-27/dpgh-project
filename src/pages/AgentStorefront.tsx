@@ -1345,6 +1345,7 @@ const searchOrders = useCallback(async (input?: string) => {
                   onClick={() => setNetworkFilter(net)}
                 >
                   {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                </Button>
               ))}
             </div>
           </div>
