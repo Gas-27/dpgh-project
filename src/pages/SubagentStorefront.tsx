@@ -1095,7 +1095,7 @@ const searchOrders = useCallback(async (input?: string) => {
               variant="outline"
               size="sm"
               onClick={() => { setNetworkFilter(net); setActiveSection("data"); }}
-              className={`h-9 shrink-0 whitespace-nowrap rounded-full border px-4 text-sm font-semibold ${activeSection === "data" && networkFilter === net ? "border-amber-400 bg-amber-400 text-slate-950 hover:bg-amber-300" : "border-slate-500 bg-transparent text-foreground hover:bg-muted"}`}
+              className={`h-11 shrink-0 whitespace-nowrap rounded-full border px-5 text-base font-semibold ${activeSection === "data" && networkFilter === net ? "border-amber-400 bg-amber-400 text-slate-950 hover:bg-amber-300" : "border-slate-500 bg-transparent text-foreground hover:bg-slate-900"}`}
             >
               {formatNetworkName(net)}
             </Button>

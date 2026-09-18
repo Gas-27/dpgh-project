@@ -29,7 +29,6 @@ export default function AdminDomainPurchasesPanel() {
       kind: store.store_kind as StoreOption["kind"],
       userId: store.user_id ?? null,
     }));
-    const ownerByBuyer = new Map(options.filter((store) => store.userId).map((store) => [store.userId, store]));
     const resolvedPurchases = (purchases.data ?? []).map((item: any) => {
       const owner = options.find((store) =>
         (item.store_kind && item.store_id && store.kind === item.store_kind && store.id === item.store_id) ||
@@ -43,6 +42,21 @@ export default function AdminDomainPurchasesPanel() {
     });
     setStores(options);
     setItems(resolvedPurchases);
+    setSelectedStoreByItem((current) => {
+      const next = { ...current };
+      resolvedPurchases.forEach((item: any) => {
+        const owner = options.find((store) =>
+          (item.store_kind && item.store_id && store.kind === item.store_kind && store.id === item.store_id) ||
+          (item.agent_store_id && store.kind === "agent" && store.id === item.agent_store_id) ||
+          (item.buyer_user_id && store.userId === item.buyer_user_id) ||
+          (item.buyer_id && store.userId === item.buyer_id) ||
+          (item.purchaser_id && store.userId === item.purchaser_id) ||
+          (item.user_id && store.userId === item.user_id)
+        );
+        if (owner) next[item.id] = owner.id;
+      });
+      return next;
+    });
     setLoading(false);
   }, [toast]);
 
