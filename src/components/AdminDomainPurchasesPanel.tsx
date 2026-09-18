@@ -23,7 +23,11 @@ export default function AdminDomainPurchasesPanel() {
     ]);
     if (purchases.error) toast({ title: "Could not load domain purchases", description: purchases.error.message, variant: "destructive" });
     if (owners.error) toast({ title: "Could not load purchaser storefronts", description: owners.error.message, variant: "destructive" });
-    const options: StoreOption[] = (owners.data ?? []).map((store: any) => ({
+    const purchaseRows = purchases.data ?? [];
+    const agentIds = purchaseRows.map((item: any) => item.agent_store_id || (item.store_kind === "agent" ? item.store_id : null)).filter(Boolean);
+    const { data: directAgents } = await supabase.from("agent_stores").select("id, user_id, store_name").in("id", agentIds);
+    const ownerRows = [...(owners.data ?? []), ...(directAgents ?? []).map((store: any) => ({ store_id: store.id, user_id: store.user_id, store_name: store.store_name, store_kind: "agent" }))];
+    const options: StoreOption[] = ownerRows.map((store: any) => ({
       id: store.store_id,
       label: `${store.store_kind === "agent" ? "Agent" : store.store_kind === "subagent" ? "Sub-agent" : "Sub-sub-agent"} · ${store.store_name || store.user_id}`,
       kind: store.store_kind as StoreOption["kind"],
@@ -128,10 +132,7 @@ export default function AdminDomainPurchasesPanel() {
             (item.buyer_user_id && store.userId === item.buyer_user_id) ||
             (item.buyer_id && store.userId === item.buyer_id) ||
             (item.purchaser_id && store.userId === item.purchaser_id) ||
-            (item.user_id && store.userId === item.user_id) ||
-        (item.buyer_id && store.userId === item.buyer_id) ||
-        (item.purchaser_id && store.userId === item.purchaser_id) ||
-        (item.user_id && store.userId === item.user_id)
+            (item.user_id && store.userId === item.user_id)
           );
           const purchasedDomain = item.domain || item.assigned_domain || item.domain_name || item.hostname;
           const isAssigned = Boolean(item.custom_domain_enabled);
@@ -140,7 +141,7 @@ export default function AdminDomainPurchasesPanel() {
               <div>
                 <p className="font-semibold">{purchasedDomain || "Unnamed purchased domain"}</p>
                 <p className="text-xs text-muted-foreground">Purchased {item.created_at ? new Date(item.created_at).toLocaleDateString() : "Date unavailable"}</p>
-                {(item.buyer_user_id || item.buyer_id || item.purchaser_id || item.user_id) && <p className="text-xs text-muted-foreground">Buyer: {item.buyer_user_id || item.buyer_id || item.purchaser_id || item.user_id}</p>}
+                {(item.buyer_user_id || item.buyer_id || item.purchaser_id || item.user_id) && <p className="text-xs text-muted-foreground">Buyer code: {item.buyer_user_id || item.buyer_id || item.purchaser_id || item.user_id}</p>}
               </div>
               <Badge variant={isAssigned ? "default" : "outline"}>{isAssigned ? "assigned" : "unassigned"}</Badge>
               <div>

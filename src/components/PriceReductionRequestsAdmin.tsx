@@ -15,16 +15,30 @@ export default function PriceReductionRequestsAdmin() {
   const [busy, setBusy] = useState<string | null>(null);
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data, error }, { data: owners }] = await Promise.all([
-      supabase.from("price_reduction_requests").select("*").order("created_at", { ascending: false }),
-      supabase.rpc("admin_list_domain_store_owners"),
-    ]);
+    const { data, error } = await supabase.from("price_reduction_requests").select("*").order("created_at", { ascending: false });
     if (!error) {
-      const ownerById = new Map((owners ?? []).map((owner: any) => [owner.store_id, owner.store_name]).filter(([id]) => id));
-      setRequests(((data || []) as RequestRow[]).map((request) => ({
-        ...request,
-        requester_store_name: request.requester_store_name || request.store_name || ownerById.get(request.requester_store_id) || null,
-      })));
+      const rows = (data || []) as RequestRow[];
+      const idsByType = new Map<string, string[]>();
+      rows.forEach((request) => {
+        const key = String(request.requester_type || "agent").toLowerCase().replace(/[-_ ]/g, "").replace("store", "");
+        idsByType.set(key, [...(idsByType.get(key) || []), request.requester_store_id]);
+      });
+      const allRequesterIds = rows.map((request) => request.requester_store_id).filter(Boolean);
+      const [agents, subagents, subsubagents] = await Promise.all([
+        supabase.from("agent_stores").select("id, store_name, topup_reference").in("id", allRequesterIds),
+        supabase.from("subagent_stores").select("id, store_name, topup_reference").in("id", allRequesterIds),
+        supabase.from("sub_subagent_stores").select("id, store_name, topup_reference").in("id", allRequesterIds),
+      ]);
+      const storesByKey = new Map<string, any>();
+      [...(agents.data || []), ...(subagents.data || []), ...(subsubagents.data || [])].forEach((store: any) => storesByKey.set(store.id, store));
+      setRequests(rows.map((request) => {
+        const store = storesByKey.get(request.requester_store_id);
+        return {
+          ...request,
+          requester_store_name: request.requester_store_name || store?.store_name || null,
+          topup_reference: request.topup_reference || store?.topup_reference || null,
+        };
+      }));
     }
     setLoading(false);
   }, []);
