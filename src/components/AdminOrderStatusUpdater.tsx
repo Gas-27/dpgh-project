@@ -43,7 +43,7 @@ export default function AdminOrderStatusUpdater() {
   const preview = async () => {
     if (!canSearch) { toast({ title: "Complete the filters", description: "Choose a valid start and end date.", variant: "destructive" }); return; }
     setLoading(true);
-    let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, fulfillment_provider, created_at, customer_number, payment_method, paystack_reference, amount, total_amount, agent_store_id, subagent_store_id, sub_subagent_store_id").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
+    let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, fulfillment_provider, created_at, customer_number, payment_method, paystack_reference, amount, agent_store_id, subagent_store_id, sub_subagent_store_id").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
     if (network !== "all") {
       const networkValues = network === "mtn_express"
         ? ["mtn_express", "mtn-express", "mtnexpress"]
@@ -71,7 +71,14 @@ export default function AdminOrderStatusUpdater() {
   };
 
   const updateOrders = async () => {
-    if (!matches.length || fromStatus === toStatus) return;
+    if (!matches.length) {
+      toast({ title: "No orders selected", description: "Preview matching orders before updating delivery status.", variant: "destructive" });
+      return;
+    }
+    if (fromStatus === toStatus) {
+      toast({ title: "Choose a new status", description: "The new status must differ from the current status.", variant: "destructive" });
+      return;
+    }
     setUpdating(true);
     const ids = matches.map((row) => row.id);
     const updatedAt = new Date().toISOString();
