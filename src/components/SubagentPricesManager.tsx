@@ -15,6 +15,7 @@ interface SubagentPricesManagerProps {
 }
 
 export default function SubagentPricesManager({ agentStoreId, packages, agentPrices, onPricesSaved }: SubagentPricesManagerProps) {
+  const [networkFilter, setNetworkFilter] = useState("mtn");
   const [markupPercent, setMarkupPercent] = useState("");
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [savedBasePrices, setSavedBasePrices] = useState<Record<string, number>>({});
@@ -53,7 +54,15 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     fetchSavedPrices();
   }, [agentStoreId]);
 
-  const filteredPackages = packages.filter(p => p.active !== false);
+  const filteredPackages = packages.filter(p => {
+    let networkMatch;
+    if (networkFilter === "airteltigo") {
+      networkMatch = p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+    } else {
+      networkMatch = p.network === networkFilter;
+    }
+    return networkMatch && p.active !== false;
+  });
 
   const handlePriceChange = (packageId: string, value: string) => {
     // Allow empty string for clearing the box - store as string for display
@@ -70,6 +79,8 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     }
 
     const markup = parseFloat(markupPercent) / 100;
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    
     filteredPackages.forEach(pkg => {
       // Use agent_price as the base (this already has admin's custom price if set)
       const basePrice = pkg.agent_price || pkg.price;
@@ -81,7 +92,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     });
 
     toast({
-      title: "Markup applied to packages",
+      title: `Markup applied to ${networkName} packages`,
       description: `All prices increased by ${markupPercent}%`
     });
   };
@@ -190,7 +201,23 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Set base prices for all active packages.</p>
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { key: "mtn", label: "MTN" },
+            { key: "mtn_express", label: "MTN Express" },
+            { key: "airteltigo", label: "AirtelTigo" },
+            { key: "telecel", label: "Telecel" },
+          ].map(({ key, label }) => (
+            <Button
+              key={key}
+              variant={networkFilter === key ? "hero" : "outline"}
+              size="sm"
+              onClick={() => setNetworkFilter(key)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Markup:</span>
           <Input
