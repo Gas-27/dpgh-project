@@ -448,7 +448,27 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     toast({ title: authFailure ? "Sign-in session expired" : "SMS was not sent", description: authFailure ? "Please sign out and sign in again before sending SMS." : data?.error || parsedContext?.error || providerDetails || contextDetails || error?.message || "Please try again.", variant: "destructive" });
       return;
     }
-    toast({ title: "SMS sent", description: `${data.sent || numbers.length} recipient(s) processed - ${data.pages || pages} page(s) each.` });
+    const { error: historyError } = await supabase.from("sms_messages").insert({
+      user_id: sessionData.session.user.id,
+      owner_type: ownerType,
+      owner_id: ownerId || null,
+      recipients: numbers,
+      sender_id: senderId,
+      message: outgoingMessage,
+      total_charge: totalCost,
+      unit_price: contactPrice,
+      status: "sent",
+      sent_count: Number(data?.sent || numbers.length),
+      failed_count: Number(data?.failed || 0),
+      provider_response: data || null,
+      completed_at: new Date().toISOString(),
+    });
+    if (historyError) {
+      console.error("[v0] SMS history insert failed:", historyError);
+      toast({ title: "SMS sent, history not saved", description: "The messages were sent, but the dashboard could not save this record.", variant: "destructive" });
+    } else {
+      toast({ title: "SMS sent", description: `${data.sent || numbers.length} recipient(s) processed - ${data.pages || pages} page(s) each.` });
+    }
     setRecipients("");
     setMessage("");
   };
@@ -672,7 +692,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
             </div>
           </div>
 
-          <Button type="button" className="w-full" size="lg" onClick={() => void send()} disabled={loading}>
+          <Button type="button" className="w-full" size="lg" onClick={(event) => { event.preventDefault(); void send(); }} disabled={loading}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
             Send Now ({numbers.length} recipient{numbers.length === 1 ? "" : "s"})
           </Button>
