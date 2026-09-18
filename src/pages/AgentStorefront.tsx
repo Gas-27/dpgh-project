@@ -1335,13 +1335,13 @@ const searchOrders = useCallback(async (input?: string) => {
 
           {/* ── Network filter ── */}
           <div className="container pb-6">
-            <div className="flex gap-2 justify-center flex-wrap">
+            <div className="flex w-full items-center justify-center gap-1 overflow-hidden">
               {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
                 <Button
                   key={net}
                   variant={networkFilter === net ? "default" : "outline"}
                   size="sm"
-                  className="border-foreground/40 bg-background text-foreground hover:bg-muted hover:text-foreground text-xs sm:text-sm"
+                  className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-background px-1 text-foreground hover:bg-muted hover:text-foreground text-[10px] sm:flex-none sm:px-3 sm:text-sm"
                   style={networkFilter === net && net === "mtn" ? { background: "#fbbf24", color: "#000" } :
                          networkFilter === net && net === "mtn_express" ? { background: "#f59e0b", color: "#000" } :
                          networkFilter === net && net === "telecel" ? { background: "#ef4444", color: "#fff" } :

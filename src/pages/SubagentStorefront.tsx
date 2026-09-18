@@ -1088,7 +1088,7 @@ const searchOrders = useCallback(async (input?: string) => {
 
         {activeSection === "data" && <>
         {/* Network Tabs */}
-        <div className="flex flex-nowrap items-center gap-1 overflow-x-auto pb-2">
+        <div className="flex w-full items-center justify-center gap-1 overflow-hidden pb-2">
         {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
             <Button
               key={net}
@@ -1096,7 +1096,7 @@ const searchOrders = useCallback(async (input?: string) => {
               size="sm"
               onClick={() => { setNetworkFilter(net); setActiveSection("data"); }}
               style={activeSection === "data" && networkFilter === net ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
-className="h-8 whitespace-nowrap flex-shrink-0 border-foreground/40 bg-background px-2 text-foreground hover:bg-muted hover:text-foreground text-[11px] sm:text-xs"
+className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-background px-1 text-foreground hover:bg-muted hover:text-foreground text-[10px] sm:flex-none sm:px-2 sm:text-xs"
             >
               <Wifi className="h-4 w-4 mr-1" />
               {formatNetworkName(net)}
