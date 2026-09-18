@@ -553,11 +553,13 @@ const SubagentDashboard = () => {
         const store = storeData;
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
         // Always use the database value for allow_sub_subagent_registration
-        setSubagentStore({
-          ...store,
-          allow_sub_subagent_registration: store.allow_sub_subagent_registration || false
-        });
-        setStoreForm(store);
+  setSubagentStore({
+  ...store,
+  allow_sub_subagent_registration: store.allow_sub_subagent_registration || false
+  });
+  setShowAgentPrice(Boolean(store.theme_config?.show_agent_price));
+  setShowSubSubagentPrice(Boolean(store.theme_config?.show_subsubagent_price));
+  setStoreForm(store);
         setLoadError(null);
         
         // Set theme colors and headline from store (with null checks)
@@ -737,9 +739,11 @@ const SubagentDashboard = () => {
 
         const store = storeData[0];
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
-        setSubagentStore(store);
-        setStoreForm(store);
-        setLoadError(null);
+  setSubagentStore(store);
+  setShowAgentPrice(Boolean(store.theme_config?.show_agent_price));
+  setShowSubSubagentPrice(Boolean(store.theme_config?.show_subsubagent_price));
+  setStoreForm(store);
+  setLoadError(null);
         
         // Set theme colors and headline from store (with null checks)
         if (store?.theme_config && typeof store.theme_config === 'object') {
