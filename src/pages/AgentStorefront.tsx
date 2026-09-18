@@ -1335,21 +1335,16 @@ const searchOrders = useCallback(async (input?: string) => {
 
           {/* ── Network filter ── */}
           <div className="container pb-6">
-            <div className="flex gap-2 justify-center flex-wrap">
+            <div className="flex flex-nowrap items-center justify-center gap-2 overflow-x-auto">
               {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
                 <Button
                   key={net}
-                  variant={networkFilter === net ? "default" : "outline"}
+                  variant="outline"
                   size="sm"
-                  className="border-foreground/40 bg-background text-foreground hover:bg-muted hover:text-foreground text-xs sm:text-sm"
-                  style={networkFilter === net && net === "mtn" ? { background: "#fbbf24", color: "#000" } :
-                         networkFilter === net && net === "mtn_express" ? { background: "#f59e0b", color: "#000" } :
-                         networkFilter === net && net === "telecel" ? { background: "#ef4444", color: "#fff" } :
-                         networkFilter === net && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } : {}}
+                  className={`h-9 shrink-0 whitespace-nowrap rounded-full border px-4 text-sm font-semibold ${networkFilter === net ? "border-amber-400 bg-amber-400 text-slate-950 hover:bg-amber-300" : "border-slate-500 bg-transparent text-foreground hover:bg-muted"}`}
                   onClick={() => setNetworkFilter(net)}
                 >
                   {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
-                </Button>
               ))}
             </div>
           </div>

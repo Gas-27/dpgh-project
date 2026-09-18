@@ -1371,20 +1371,22 @@ const AgentDashboard = () => {
       return;
     }
     setSendingSubagentNotification(true);
-    const { error: legacyError } = await supabase.from("agent_to_subagent_notifications").insert({
-      agent_store_id: store.id,
-      message: subagentNotificationMsg.trim(),
-      is_active: true,
-    });
-    const { error: sharedError } = legacyError ? { error: legacyError } : await supabase.from("notifications").insert({
-      title: "Message from your agent",
-      message: subagentNotificationMsg.trim(),
-      target_role: "subagent",
-      target_surfaces: ["subagent-dashboard", "subagent-storefront"],
-      display_limit: 1,
-      is_active: true,
-    });
-    const error = sharedError || legacyError;
+  const { error: sharedError } = await supabase.from("notifications").insert({
+  title: "Message from your agent",
+  message: subagentNotificationMsg.trim(),
+  target_role: "subagent",
+  target_surfaces: ["subagent-dashboard", "subagent-storefront"],
+  display_limit: 1,
+  is_active: true,
+  });
+  // Keep the legacy feed in sync when its table is available, but do not let a
+  // legacy/RLS failure prevent the shared dashboard notification from arriving.
+  const { error: legacyError } = await supabase.from("agent_to_subagent_notifications").insert({
+  agent_store_id: store.id,
+  message: subagentNotificationMsg.trim(),
+  is_active: true,
+  });
+  const error = sharedError || (legacyError && !sharedError ? legacyError : null);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {

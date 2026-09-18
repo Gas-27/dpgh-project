@@ -557,8 +557,8 @@ const SubagentDashboard = () => {
   ...store,
   allow_sub_subagent_registration: store.allow_sub_subagent_registration || false
   });
-  setShowAgentPrice(Boolean(store.theme_config?.show_agent_price));
-  setShowSubSubagentPrice(Boolean(store.theme_config?.show_subsubagent_price));
+  setShowAgentPrice(Boolean(store.theme_config?.show_storefront_agent_price));
+  setShowSubSubagentPrice(Boolean(store.theme_config?.show_storefront_subagent_price));
   setStoreForm(store);
         setLoadError(null);
         
@@ -740,8 +740,8 @@ const SubagentDashboard = () => {
         const store = storeData[0];
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
   setSubagentStore(store);
-  setShowAgentPrice(Boolean(store.theme_config?.show_agent_price));
-  setShowSubSubagentPrice(Boolean(store.theme_config?.show_subsubagent_price));
+  setShowAgentPrice(Boolean(store.theme_config?.show_storefront_agent_price));
+  setShowSubSubagentPrice(Boolean(store.theme_config?.show_storefront_subagent_price));
   setStoreForm(store);
   setLoadError(null);
         
@@ -1772,7 +1772,7 @@ const handleSaveStore = async () => {
     }
   };
 
-  const savePriceVisibility = async (key: "show_agent_price" | "show_subsubagent_price", value: boolean) => {
+  const savePriceVisibility = async (key: "show_storefront_agent_price" | "show_storefront_subagent_price", value: boolean) => {
     if (!subagentStore?.id) return;
     const nextTheme = { ...(subagentStore.theme_config || DEFAULT_THEME), [key]: value };
     const { error } = await supabase.from("subagent_stores").update({ theme_config: nextTheme }).eq("id", subagentStore.id);
@@ -3782,8 +3782,8 @@ return (
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                   <p className="mb-2 text-sm font-semibold">Storefront price visibility</p>
                   <div className="flex flex-wrap gap-4">
-                    <label className="flex items-center gap-2 text-sm"><Switch checked={showAgentPrice} onCheckedChange={(value) => { setShowAgentPrice(value); void savePriceVisibility("show_agent_price", value); }} />Show Agent price</label>
-                    <label className="flex items-center gap-2 text-sm"><Switch checked={showSubSubagentPrice} onCheckedChange={(value) => { setShowSubSubagentPrice(value); void savePriceVisibility("show_subsubagent_price", value); }} />Show Subagent price</label>
+                    <label className="flex items-center gap-2 text-sm"><Switch checked={showAgentPrice} onCheckedChange={(value) => { setShowAgentPrice(value); void savePriceVisibility("show_storefront_agent_price", value); }} />Show Agent price</label>
+                    <label className="flex items-center gap-2 text-sm"><Switch checked={showSubSubagentPrice} onCheckedChange={(value) => { setShowSubSubagentPrice(value); void savePriceVisibility("show_storefront_subagent_price", value); }} />Show Subagent price</label>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
