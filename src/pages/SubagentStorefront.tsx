@@ -96,6 +96,8 @@ interface SubagentStore {
     background: string;
     card_background: string;
     gridColumns?: number;
+    show_agent_price?: boolean;
+    show_subsubagent_price?: boolean;
   };
   agent_store_id: string;
   approved?: boolean;
@@ -1086,7 +1088,7 @@ const searchOrders = useCallback(async (input?: string) => {
 
         {activeSection === "data" && <>
         {/* Network Tabs */}
-        <div className="flex flex-wrap gap-2 pb-2 items-center">
+        <div className="flex flex-nowrap items-center gap-1 overflow-x-auto pb-2">
         {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
             <Button
               key={net}
@@ -1094,7 +1096,7 @@ const searchOrders = useCallback(async (input?: string) => {
               size="sm"
               onClick={() => { setNetworkFilter(net); setActiveSection("data"); }}
               style={activeSection === "data" && networkFilter === net ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
-className="whitespace-nowrap flex-shrink-0 border-foreground/40 bg-background text-foreground hover:bg-muted hover:text-foreground text-xs sm:text-sm"
+className="h-8 whitespace-nowrap flex-shrink-0 border-foreground/40 bg-background px-2 text-foreground hover:bg-muted hover:text-foreground text-[11px] sm:text-xs"
             >
               <Wifi className="h-4 w-4 mr-1" />
               {formatNetworkName(net)}
@@ -1434,7 +1436,7 @@ className="whitespace-nowrap flex-shrink-0 border-foreground/40 bg-background te
                         <>
                           <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb}GB</p>
                           <p className="text-sm font-bold uppercase" style={{ color: getNetworkColor(pkg.network) }}>{formatNetworkName(pkg.network)}</p>
-                          <div className="leading-tight"><p className="text-sm font-semibold text-white/75">Your price:</p><p className="text-2xl font-extrabold text-white">GHC {Number(price).toFixed(2)}</p></div>
+                          <div className="space-y-1 leading-tight">{theme.show_agent_price && <p className="text-xs font-semibold text-white/60">Agent price: <span className="text-cyan-300">GHC {Number(pkg.price).toFixed(2)}</span></p>}{theme.show_subsubagent_price && <p className="text-xs font-semibold text-white/60">Subagent price: <span className="text-cyan-300">GHC {Number(price).toFixed(2)}</span></p>}<p className="text-xs font-semibold text-white/75">Your price:</p><p className="text-2xl font-extrabold text-white">GHC {Number(price).toFixed(2)}</p></div>
                           <Button size="lg" disabled={isInactive} className="mt-1 h-9 w-full rounded-full border border-white/30 bg-white/10 font-bold text-white hover:bg-white/20" onClick={(event) => { event.stopPropagation(); if (!isInactive) { setPaymentPkg(pkg); setPaymentOpen(true); } }}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                         </>
                       )}

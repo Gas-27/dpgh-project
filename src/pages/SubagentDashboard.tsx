@@ -239,6 +239,8 @@ const SubagentDashboard = () => {
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
   const [savingTheme, setSavingTheme] = useState(false);
+  const [showAgentPrice, setShowAgentPrice] = useState(false);
+  const [showSubSubagentPrice, setShowSubSubagentPrice] = useState(false);
   const [storeHeadline, setStoreHeadline] = useState("");
   const [savingHeadline, setSavingHeadline] = useState(false);
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
@@ -1764,6 +1766,18 @@ const handleSaveStore = async () => {
     } finally {
       setSavingPrices(false);
     }
+  };
+
+  const savePriceVisibility = async (key: "show_agent_price" | "show_subsubagent_price", value: boolean) => {
+    if (!subagentStore?.id) return;
+    const nextTheme = { ...(subagentStore.theme_config || DEFAULT_THEME), [key]: value };
+    const { error } = await supabase.from("subagent_stores").update({ theme_config: nextTheme }).eq("id", subagentStore.id);
+    if (error) {
+      toast({ title: "Error", description: "Could not update price visibility", variant: "destructive" });
+      return;
+    }
+    setThemeColors(prev => ({ ...prev, [key]: value } as typeof prev));
+    setSubagentStore(prev => prev ? { ...prev, theme_config: nextTheme } : prev);
   };
 
   // Sub-Subagent pricing handlers - for setting prices we charge sub-subagents
@@ -3761,6 +3775,13 @@ return (
               </Card>
             ) : (
               <>
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <p className="mb-2 text-sm font-semibold">Storefront price visibility</p>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 text-sm"><Switch checked={showAgentPrice} onCheckedChange={(value) => { setShowAgentPrice(value); void savePriceVisibility("show_agent_price", value); }} />Show Agent price</label>
+                    <label className="flex items-center gap-2 text-sm"><Switch checked={showSubSubagentPrice} onCheckedChange={(value) => { setShowSubSubagentPrice(value); void savePriceVisibility("show_subsubagent_price", value); }} />Show Subagent price</label>
+                  </div>
+                </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex gap-2 flex-wrap">
                     {[
