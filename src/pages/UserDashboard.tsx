@@ -33,6 +33,7 @@ import RoleServicesPanel from "@/components/RoleServicesPanel";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NetworkTabs from "@/components/NetworkTabs";
 import NotificationPopup from "@/components/NotificationPopup";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -1301,24 +1302,7 @@ const UserDashboard = () => {
         <CardContent className="space-y-4">
           <DeliveryProgressCard selectedNetwork={networkFilter} />
 
-          {/* Network Filter */}
-          <div className="flex gap-2 flex-wrap">
-            {[
-              { key: 'mtn', label: 'MTN' },
-              { key: 'mtn_express', label: 'MTN Express' },
-              { key: 'telecel', label: 'Telecel' },
-              { key: 'airteltigo', label: 'AirtelTigo' },
-            ].map(({ key, label }) => (
-              <Button
-                key={key}
-                variant={networkFilter === key ? "default" : "outline"}
-                onClick={() => setNetworkFilter(key)}
-                className="text-xs sm:text-sm"
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
+          <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
 
           {/* Packages Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">

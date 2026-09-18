@@ -53,6 +53,7 @@ import SmsComposer from "@/components/SmsComposer";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NetworkTabs from "@/components/NetworkTabs";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import ReportCenter from "@/components/ReportCenter";
@@ -2713,23 +2714,7 @@ return (
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
             <DeliveryProgressCard selectedNetwork={networkFilter} />
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { key: "mtn", label: "MTN" },
-                { key: "mtn_express", label: "MTN Express" },
-                { key: "airteltigo", label: "AirtelTigo" },
-                { key: "telecel", label: "Telecel" },
-              ].map(({ key, label }) => (
-                <Button 
-                  key={key} 
-                  variant={networkFilter === key ? "hero" : "outline"} 
-                  size="sm" 
-                  onClick={() => setNetworkFilter(key)}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
+  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {packages.filter(p => {
                 if (false && networkFilter === "mtn_mashup") {

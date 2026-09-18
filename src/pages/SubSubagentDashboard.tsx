@@ -46,6 +46,7 @@ import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NetworkTabs from "@/components/NetworkTabs";
 import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 
@@ -2283,18 +2284,7 @@ return (
               </CardContent>
             </Card>
             <DeliveryProgressCard selectedNetwork={networkFilter} />
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { key: "mtn", label: "MTN" },
-                { key: "mtn_express", label: "MTN Express" },
-                { key: "airteltigo", label: "AirtelTigo" },
-                { key: "telecel", label: "Telecel" },
-              ].map(({ key, label }) => (
-                <Button key={key} variant={networkFilter === key ? "hero" : "outline"} size="sm" onClick={() => setNetworkFilter(key)}>
-                  {label}
-                </Button>
-              ))}
-            </div>
+  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {filteredPackages.map(pkg => {
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;
