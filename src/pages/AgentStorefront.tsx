@@ -602,7 +602,7 @@ const AgentStorefront = () => {
   // ── Claim Free Data dialog ──
   const [claimFreeDataOpen, setClaimFreeDataOpen] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
-  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  const [showAgentPrice, setShowAgentPrice] = useState(false);
   
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
@@ -795,7 +795,7 @@ const AgentStorefront = () => {
       setAgentSubagentPrices(agentPriceMap);
       if (appSettingsRes.data) {
     setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
-    setShowPriceBreakdown(appSettingsRes.data.show_price_breakdown ?? false);
+    setShowAgentPrice((matched.theme_config as any)?.show_agent_price ?? false);
   }
       setLoading(false);
     };
@@ -1427,7 +1427,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                             {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
                             <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb}GB</p>
                             <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)}</p>
-  {showPriceBreakdown && <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
+  {showAgentPrice && <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
   <span>Agent price: <strong className="text-cyan-300">{Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
   </div>}
                             <div className="leading-tight">

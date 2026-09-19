@@ -1303,7 +1303,6 @@ const Packages = () => {
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
   const [subscriptionComingSoon, setSubscriptionComingSoon] = useState(false);
   const [showSubscriptionComingSoon, setShowSubscriptionComingSoon] = useState(false);
-  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
   const [spinConfig, setSpinConfig] = useState<{
     enabled: boolean; default_network: Network; payment_required: boolean; payment_amount: number; segments: SpinSegment[];
     chance_2gb?: number; chance_1gb?: number; chance_extra_spin?: number;
@@ -1343,12 +1342,11 @@ const Packages = () => {
         );
       });
     // Load customer-facing pricing display settings
-    supabase.from("app_settings").select("free_data_enabled,show_price_breakdown").eq("id", 1).single()
+    supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single()
       .then(({ data }) => {
         if (data) {
           setFreeDataEnabled(data.free_data_enabled ?? true);
-          setShowPriceBreakdown(data.show_price_breakdown ?? false);
-          const comingSoon = data.subscription_coming_soon === true;
+                  const comingSoon = data.subscription_coming_soon === true;
           setSubscriptionComingSoon(comingSoon);
           if (comingSoon && activeCategory === "subscription") setShowSubscriptionComingSoon(true);
         }
@@ -1631,15 +1629,11 @@ const searchOrders = async (input?: string) => {
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
                           <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
                           <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
-{showPriceBreakdown && <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
+<div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
   <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
   <span className="text-white/50">|</span>
   <span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
-  </div>}
-                          <div className="leading-tight">
-                            <p className="text-sm font-semibold text-white/75">Your price (user price):</p>
-                            <p className="text-2xl font-extrabold text-white">GHC{Number(pkg.price).toFixed(2)}</p>
-                          </div>
+  </div>
                           <Button type="button" variant="outline" disabled={!available} onClick={() => openPackageCheckout(pkg)} className="mt-1 h-9 w-full rounded-full border-white/30 bg-white/10 text-sm font-bold text-white hover:bg-white/20 hover:text-white">
                             {available ? "Buy Now" : "Not Available"}
                           </Button>
