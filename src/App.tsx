@@ -16,6 +16,7 @@ import ChatBot from "@/components/ChatBot";
 import RouteSeoGuard from "@/components/RouteSeoGuard";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 import { ThemeProvider, ThemeToggle } from "@/components/ThemeProvider";
+import SocialBoost from "./pages/SocialBoost";
 
 // Wraps React.lazy so that a stale-deploy chunk failure (old bundle requesting
 // chunk filenames that no longer exist -> server returns index.html with a
@@ -328,6 +329,7 @@ return (
                   <Route path="/subscription" element={<Packages />} />
                   <Route path="/bulk-orders" element={<Packages />} />
                   <Route path="/bulk-sms" element={<Packages />} />
+ <Route path="/social-boost" element={<SocialBoost />} />
                   <Route path="/agent-onboarding" element={<AgentOnboarding />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />
                   {/* Old paths – redirect to subdomain */}

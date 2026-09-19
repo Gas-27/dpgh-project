@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { Box, BriefcaseBusiness, Gamepad2, Layers3, MessageCircle, Package, UserRoundPlus, Wifi, Zap } from "lucide-react";
+import { Box, BriefcaseBusiness, Gamepad2, Layers3, MessageCircle, Package, Sparkles, UserRoundPlus, Wifi, Zap } from "lucide-react";
 import { fetchTabControls, isTabUnavailable, type TabControls } from "@/lib/tabControls";
 
 const sections = [
@@ -14,6 +14,7 @@ const sections = [
   { id: "afa", label: "AFA Registration", description: "Become an AFA member & enjoy benefits", icon: UserRoundPlus },
   { id: "sms", label: "Bulk SMS", description: "Send messages in mass easily.", icon: MessageCircle },
   { id: "agent", label: "Become an Agent", description: "Earn with us today", icon: UserRoundPlus },
+  { id: "social-boost", label: "Social Boost", description: "Boost your social presence across popular platforms", icon: Sparkles },
 ] as const;
 
 type SectionId = (typeof sections)[number]["id"];
@@ -45,6 +46,8 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
             // Select the normal tab first so its real page remains visible beneath the modal.
             if (isAgent) {
               onBecomeAgent?.();
+            } else if (id === "social-boost") {
+              window.location.assign("/social-boost");
             } else {
               onSelect(id);
               window.setTimeout(() => document.getElementById("storefront-section-content")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
@@ -62,10 +65,10 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
               aria-disabled={unavailable}
               title={unavailable ? (tabControls[id]?.message || "This service is temporarily under maintenance.") : description}
               style={{
-                left: index % 2 === 0 ? "2.1%" : "50.8%",
-                top: `${[2.5, 19.8, 38.3, 55.3, 72.6][Math.floor(index / 2)]}%`,
+                left: id === "social-boost" ? "2.1%" : index % 2 === 0 ? "2.1%" : "50.8%",
+                top: id === "social-boost" ? "89.5%" : `${[2.5, 19.8, 38.3, 55.3, 72.6][Math.floor(index / 2)]}%`,
               }}
-              className={`storefront-reference-hotspot ${active === id ? "is-active" : ""}`}
+              className={`storefront-reference-hotspot ${id === "social-boost" ? "is-wide" : ""} ${active === id ? "is-active" : ""}`}
             >
               <span className="sr-only">{label}: {description}</span>
             </button>
