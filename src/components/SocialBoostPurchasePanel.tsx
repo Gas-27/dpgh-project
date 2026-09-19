@@ -53,6 +53,14 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     return () => { mounted = false; };
   }, [ownerType, toast]);
 
+  useEffect(() => {
+    let mounted = true;
+    (supabase as any).from("social_boost_service_pricing").select("admin_price_per_1000").eq("service_id", service.service).maybeSingle().then(({ data }: any) => {
+      if (mounted && data?.admin_price_per_1000 != null) setPrice(Number(data.admin_price_per_1000));
+    });
+    return () => { mounted = false; };
+  }, [service.service]);
+
   const providerRate = Number(service.rate) || 0;
   const total = useMemo(() => Math.round((quantity / 1000) * (price || providerRate) * 100) / 100, [quantity, price, providerRate]);
   const buy = async () => {
