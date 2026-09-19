@@ -120,6 +120,7 @@ const menuItems = [
   { id: "services", label: "Services", icon: BriefcaseBusiness },
   { id: "subscription", label: "Subscription", icon: CreditCard },
   { id: "subscription-price", label: "Subscription (Price Set)", icon: Save },
+  { id: "store", label: "Store Prices", icon: CreditCard },
   { id: "subagents", label: "Subagents", icon: Users },
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
   { id: "sub-subagents", label: "Sub-Subagents", icon: Users },

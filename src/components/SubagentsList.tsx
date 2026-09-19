@@ -12,6 +12,7 @@ import { DOMAINS } from "@/config/domains";
 interface SubagentStore {
   id: string;
   store_name: string;
+  email?: string;
   whatsapp_number: string;
   support_number: string;
   momo_name: string;
@@ -192,6 +193,10 @@ export default function SubagentsList({ agentStoreId, subagents, onRefresh }: Su
               </Button>
 
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Registration email</p>
+                  <p className="font-semibold break-all">{selectedSubagent.email || "Not available"}</p>
+                </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">WhatsApp</p>
                   <p className="font-semibold">{selectedSubagent.whatsapp_number}</p>
