@@ -76,7 +76,10 @@
 
 @layer components {
   .network-tabs .network-tab-inactive { background: #f8fafc !important; color: #0f172a !important; border-color: #d5dce8 !important; }
-  .network-tabs .network-tab-active { background: #08b8d8 !important; color: #07121f !important; border-color: #08b8d8 !important; }
+  .network-tabs .network-tab-active.network-tab-mtn,
+  .network-tabs .network-tab-active.network-tab-mtn_express { background: #fbbf24 !important; color: #111827 !important; border-color: #fbbf24 !important; }
+  .network-tabs .network-tab-active.network-tab-airteltigo { background: #3b82f6 !important; color: #ffffff !important; border-color: #3b82f6 !important; }
+  .network-tabs .network-tab-active.network-tab-telecel { background: #ef4444 !important; color: #ffffff !important; border-color: #ef4444 !important; }
   .delivery-progress-card,
   .delivery-progress-card [data-slot="card-header"],
   .delivery-progress-card [data-slot="card-content"] { color: #fff !important; background: #321274 !important; }

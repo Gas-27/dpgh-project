@@ -21,7 +21,7 @@ export default function NetworkTabs({ value, onChange, className = "" }: Props) 
           role="tab"
           aria-selected={value === network.key}
           onClick={() => onChange(network.key)}
-          className={`network-tab h-10 min-w-0 flex-1 whitespace-nowrap rounded-full border px-1 text-[10px] font-bold shadow-none transition-colors sm:h-11 sm:flex-none sm:px-5 sm:text-base ${value === network.key ? "network-tab-active" : "network-tab-inactive"}`}
+          className={`network-tab h-10 min-w-0 flex-1 whitespace-nowrap rounded-full border px-1 text-[10px] font-bold shadow-none transition-colors sm:h-11 sm:flex-none sm:px-5 sm:text-base ${value === network.key ? `network-tab-active network-tab-${network.key}` : "network-tab-inactive"}`}
           style={value === network.key ? {
             backgroundColor: network.key === "mtn" || network.key === "mtn_express" ? "#fbbf24" : network.key === "airteltigo" ? "#3b82f6" : "#ef4444",
             borderColor: network.key === "mtn" || network.key === "mtn_express" ? "#fbbf24" : network.key === "airteltigo" ? "#3b82f6" : "#ef4444",
