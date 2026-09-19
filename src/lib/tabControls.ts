@@ -39,4 +39,5 @@ export const tabControlOptions = [
   { id: "global-products", label: "Global Products" },
   { id: "afa", label: "AFA Registration" },
   { id: "sms", label: "Bulk SMS" },
+  { id: "social-boost", label: "Social Boost" },
 ];

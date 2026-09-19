@@ -1,41 +1,31 @@
-import { ArrowUpRight, CheckCircle2, Sparkles, TrendingUp, Users, Zap } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Clock3, Link2, Package, Search, ShieldCheck, ShoppingCart, Sparkles, UserRound, Users, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const benefits = [
-  { icon: TrendingUp, title: "Grow faster", text: "Put your brand in front of more people with campaigns built for social platforms." },
-  { icon: Users, title: "Reach real audiences", text: "Promote content across popular channels and connect with customers who matter." },
-  { icon: Zap, title: "Simple ordering", text: "Choose a service, share your details, and let our team handle the boost." },
-];
-
-const channels = ["TikTok", "Instagram", "Snapchat", "Facebook", "WhatsApp", "X"];
+const platforms = ["TikTok", "Instagram", "Snapchat", "Facebook", "YouTube", "WhatsApp"];
+const services = ["TikTok Followers", "TikTok Likes", "Instagram Followers", "Instagram Likes", "YouTube Views"];
 
 export default function SocialBoost() {
+  const [platform, setPlatform] = useState("TikTok");
+  const [service, setService] = useState("TikTok Followers");
+  const [link, setLink] = useState("");
+  const [quantity, setQuantity] = useState(50);
+  const price = useMemo(() => Math.max(49, Math.ceil(quantity / 1000) * 49), [quantity]);
+
   return (
-    <main className="min-h-screen bg-[#071426] px-4 py-8 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition hover:text-white">
-          <ArrowUpRight className="h-4 w-4 rotate-[225deg]" aria-hidden="true" /> Back to home
-        </Link>
-        <section className="relative overflow-hidden rounded-[2rem] border border-cyan-400/40 bg-gradient-to-br from-blue-600 via-indigo-600 to-fuchsia-600 p-6 shadow-2xl sm:p-10">
-          <div className="relative z-10 max-w-3xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-sm font-bold backdrop-blur">
-              <Sparkles className="h-4 w-4" aria-hidden="true" /> Social Boost
-            </div>
-            <h1 className="text-balance text-4xl font-black tracking-tight sm:text-6xl">Make your social presence impossible to miss.</h1>
-            <p className="mt-5 max-w-2xl text-pretty text-lg leading-8 text-white/85 sm:text-xl">Boost your TikTok, Instagram, Snapchat, Facebook, WhatsApp, and X presence with simple, affordable social growth services.</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              {channels.map((channel) => <span key={channel} className="rounded-full border border-white/25 bg-black/15 px-4 py-2 text-sm font-semibold">{channel}</span>)}
-            </div>
+    <main className="min-h-screen bg-[#061326] px-2 py-4 text-white sm:px-4">
+      <div className="mx-auto max-w-[780px] space-y-3">
+        <Link to="/" className="inline-flex items-center gap-2 px-2 text-sm font-semibold text-cyan-200 hover:text-white"><ArrowLeft className="h-4 w-4" /> Back</Link>
+        <section className="overflow-hidden rounded-2xl border border-cyan-300/70 bg-gradient-to-br from-[#104fb9] via-[#073b91] to-[#7b0ed9] p-4 shadow-[0_0_30px_rgba(0,142,255,.28)] sm:p-6">
+          <div className="grid gap-5 sm:grid-cols-[1.15fr_.85fr] sm:items-center">
+            <div><span className="inline-flex rounded-full bg-cyan-400/25 px-3 py-1 text-sm font-bold text-cyan-100">Grow Your Presence</span><h1 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">Social <span className="text-cyan-300">Boost</span></h1><p className="mt-2 max-w-md text-sm leading-6 text-blue-50 sm:text-base">Boost all your social across tiktok, instagram, snapchat, facebook, youtube and whatsapp with real, targeted engagement.</p><div className="mt-5 grid grid-cols-3 gap-2 text-xs"><span className="border-r border-white/30 px-2"><Sparkles className="mb-1 h-5 w-5 text-cyan-300" />More followers</span><span className="border-r border-white/30 px-2"><Zap className="mb-1 h-5 w-5 text-cyan-300" />More engagement</span><span className="px-2"><Users className="mb-1 h-5 w-5 text-cyan-300" />More growth</span></div></div>
+            <div className="hidden h-44 items-center justify-center rounded-full bg-cyan-400/10 sm:flex"><div className="text-center text-7xl">↗</div></div>
           </div>
-          <div className="pointer-events-none absolute -right-12 -top-12 hidden h-64 w-64 rounded-full bg-cyan-300/25 blur-3xl sm:block" aria-hidden="true" />
         </section>
-        <section className="mt-8 grid gap-4 md:grid-cols-3" aria-label="Social Boost benefits">
-          {benefits.map(({ icon: Icon, title, text }) => <article key={title} className="rounded-2xl border border-white/10 bg-[#102442] p-6"><Icon className="mb-5 h-8 w-8 text-cyan-300" aria-hidden="true" /><h2 className="text-xl font-bold">{title}</h2><p className="mt-2 leading-7 text-white/65">{text}</p></article>)}
-        </section>
-        <section className="mt-8 rounded-2xl border border-fuchsia-400/30 bg-[#121d38] p-6 sm:p-8">
-          <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center"><div><p className="text-sm font-bold uppercase tracking-[0.2em] text-fuchsia-300">Ready to get noticed?</p><h2 className="mt-2 text-2xl font-black">Choose your social boost service</h2><p className="mt-2 max-w-xl leading-7 text-white/65">Browse available services and place your order from the Social Boost catalogue.</p></div><Link to="/packages" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-indigo-700 transition hover:bg-cyan-100">Open catalogue <ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link></div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">{["Campaign-ready options", "Fast, simple ordering", "Support when you need it", "Affordable social growth"].map((item) => <div key={item} className="flex items-center gap-2 text-sm font-semibold text-white/80"><CheckCircle2 className="h-4 w-4 text-cyan-300" aria-hidden="true" />{item}</div>)}</div>
-        </section>
+        <section className="rounded-2xl border border-blue-500/60 bg-[#0a1d3c] p-3 sm:p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="flex items-center gap-3 sm:w-1/3"><Search className="h-7 w-7 text-cyan-300" /><div><h2 className="font-bold">Track Order</h2><p className="text-xs text-blue-100/70">Check your order status anytime.</p></div></div><div className="flex flex-1 gap-2"><input className="min-w-0 flex-1 rounded-xl border border-blue-500 bg-[#061326] px-3 py-3 text-sm outline-none focus:border-cyan-300" placeholder="Enter Order ID" /><button className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 px-4 font-bold">Check Status</button></div></div></section>
+        <section className="rounded-2xl border border-blue-500/60 bg-[#071a36] p-4"><div className="flex items-center gap-3"><Users className="h-8 w-8 text-cyan-300" /><div><h2 className="font-bold">Select Platform <span className="text-cyan-300">ⓘ</span></h2><p className="text-xs text-blue-100/70">Choose where you want to grow</p></div></div><div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">{platforms.map((item) => <button key={item} onClick={() => setPlatform(item)} className={`rounded-xl border p-3 text-xs font-semibold transition ${platform === item ? "border-cyan-300 bg-blue-500/30 text-white shadow-[0_0_14px_rgba(0,210,255,.35)]" : "border-blue-500/50 bg-[#061326] text-blue-100/80"}`}><span className="mb-2 block text-2xl">{item === "TikTok" ? "♪" : item === "YouTube" ? "▶" : "●"}</span>{item}{platform === item && <Check className="mx-auto mt-1 h-4 w-4 text-cyan-300" />}</button>)}</div></section>
+        <section className="space-y-4 rounded-2xl border border-blue-500/60 bg-[#071a36] p-4 sm:p-5"><div className="flex items-center gap-3"><UserRound className="h-8 w-8 text-cyan-300" /><div><h2 className="font-bold">Service <span className="text-cyan-300">ⓘ</span></h2><p className="text-xs text-blue-100/70">What do you want to boost?</p></div></div><label className="relative block"><select value={service} onChange={(event) => setService(event.target.value)} className="w-full appearance-none rounded-xl border border-blue-500 bg-[#061326] px-4 py-3 text-sm"><option>{services[0]}</option>{services.slice(1).map((item) => <option key={item}>{item}</option>)}</select><ChevronDown className="pointer-events-none absolute right-4 top-3 h-5 w-5" /></label><div className="flex items-center gap-3"><Link2 className="h-8 w-8 text-cyan-300" /><div><h2 className="font-bold">{platform} account link</h2><p className="text-xs text-blue-100/70">Enter your {platform} username or profile link.</p></div></div><div className="flex items-center gap-2 rounded-xl border border-blue-500 bg-[#061326] px-3"><Link2 className="h-5 w-5 text-blue-200" /><input value={link} onChange={(event) => setLink(event.target.value)} className="w-full bg-transparent px-2 py-3 text-sm outline-none" placeholder={`e.g. https://${platform.toLowerCase()}.com/yourusername`} /></div><div className="grid gap-4 sm:grid-cols-[1fr_.9fr]"><label className="block"><span className="mb-2 flex items-center gap-2 font-bold"><Package className="h-6 w-6 text-cyan-300" /> Quantity</span><input type="number" min={50} max={50000} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} className="w-full rounded-xl border border-blue-500 bg-[#061326] px-4 py-3 outline-none" /><small className="text-blue-100/70">Min: 50 - Max: 50,000</small></label><div className="rounded-xl border border-blue-500 bg-[#061326] p-4"><span className="flex items-center gap-2 font-bold"><span className="text-2xl">$</span> Price <b className="rounded-full bg-cyan-500 px-3 py-1 text-xs">GHS</b></span><strong className="mt-2 block text-3xl text-cyan-200">{price} GHS</strong><small className="text-blue-100/70">/ 1K {service.split(" ").pop()}</small></div></div><div className="rounded-xl border border-blue-500 bg-gradient-to-r from-[#092b5b] to-[#26125e] p-4 text-sm"><strong className="text-cyan-200">Note</strong><p className="mt-1 text-blue-50/80">Make sure the account is not private, and do not change the username while your order is being processed.</p></div><button className="flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-fuchsia-500 px-5 py-4 text-lg font-black shadow-lg"><ShoppingCart className="h-6 w-6" /> Purchase Now <ArrowRight className="ml-auto h-6 w-6" /></button></section>
+        <section className="grid grid-cols-2 gap-2 rounded-2xl border border-blue-500/50 bg-[#071a36] p-3 text-xs sm:grid-cols-4"><span className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-cyan-300" />Safe & Secure</span><span className="flex items-center gap-2"><Zap className="h-6 w-6 text-cyan-300" />Fast Delivery</span><span className="flex items-center gap-2"><Clock3 className="h-6 w-6 text-cyan-300" />24/7 Support</span><span className="flex items-center gap-2"><Sparkles className="h-6 w-6 text-cyan-300" />Trusted Service</span></section>
       </div>
     </main>
   );
