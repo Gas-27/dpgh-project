@@ -5,8 +5,9 @@ import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 import { Wallet } from "lucide-react";
 import { useState } from "react";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
+import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 
-type DashboardTab = "instant" | "services" | "subscription" | "subscription-price";
+type DashboardTab = "instant" | "services" | "subscription" | "subscription-price" | "social-boost";
 
 type Props = {
   walletBalance: number;
@@ -20,6 +21,10 @@ type Props = {
 export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerId, canSetPrices = false, initialTab = "instant", onMaintenanceReturn }: Props) {
   const [service, setService] = useState<Service | null>(null);
   const wallet = Number(walletBalance || 0);
+
+  if (initialTab === "social-boost") {
+    return <SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} />;
+  }
 
   if (initialTab === "subscription-price") {
     return canSetPrices ? <AgentDigitalServicesPricing agentStoreId={ownerId ?? ""} /> : null;

@@ -118,6 +118,7 @@ const menuItems = [
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
   { id: "instant-data", label: "Instant Data", icon: Zap },
   { id: "services", label: "Services", icon: BriefcaseBusiness },
+  { id: "social-boost", label: "Social Boost", icon: Sparkles },
   { id: "subscription", label: "Subscription", icon: CreditCard },
   { id: "subscription-price", label: "Subscription (Price Set)", icon: Save },
   { id: "store", label: "Store Prices", icon: CreditCard },
@@ -4573,9 +4574,10 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   </TabsContent>
 
   {/* ============================= SERVICES ============================= */}
-<TabsContent value="services" className="mt-0 space-y-6">
+  <TabsContent value="services" className="mt-0 space-y-6">
   <DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} initialTab="services" onMaintenanceReturn={() => setActiveTab("overview")} />
   </TabsContent>
+  <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} initialTab="social-boost" /></TabsContent>
 
   {/* ============================= SUBAGENTS ============================= */}
   <TabsContent value="subagents" className="mt-0 space-y-6">

@@ -1745,6 +1745,7 @@ const handleSaveStore = async () => {
     { id: "store", label: "Store Prices", icon: Store },
   { id: "products", label: "Products", icon: Package },
   { id: "services", label: "Services", icon: BriefcaseBusiness },
+  { id: "social-boost", label: "Social Boost", icon: Sparkles },
   { id: "orders", label: "Orders", icon: ShoppingCart },
   { id: "refunds", label: "Refunds", icon: RotateCcw },
   { id: "topup", label: "Top Up", icon: Wallet },
@@ -2019,6 +2020,7 @@ return (
   <TabsContent value="subscription" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subsubagent" ownerId={subagentStore?.id} canSetPrices initialTab="subscription" /></TabsContent>
   <TabsContent value="subscription-price" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subsubagent" ownerId={subagentStore?.id} canSetPrices initialTab="subscription-price" /></TabsContent>
   <TabsContent value="services" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subsubagent" ownerId={subagentStore?.id} initialTab="services" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
+  <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="sub_subagent" ownerId={subagentStore?.id} initialTab="social-boost" /></TabsContent>
   <TabsContent value="store" className="mt-0">{/* Store Prices */}</TabsContent>
 
   <TabsContent value="sms" className="mt-0 space-y-6">

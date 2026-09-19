@@ -194,6 +194,7 @@ const UserDashboard = () => {
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "instant-data", label: "Instant Data", icon: Zap },
     { id: "services", label: "Services", icon: CreditCard },
+  { id: "social-boost", label: "Social Boost", icon: Sparkles },
     { id: "subscription", label: "Subscription", icon: CreditCard },
     { id: "orders", label: "Orders", icon: BarChart3 },
     { id: "refunds", label: "Refunds", icon: Wallet },
@@ -905,6 +906,7 @@ const UserDashboard = () => {
       { id: "buy-data", label: "Buy Data", className: "border-cyan-500/50 bg-cyan-500/10 text-cyan-700" },
       { id: "instant-data", label: "Instant Data", className: "border-amber-500/50 bg-amber-500/10 text-amber-700" },
       { id: "services", label: "Services", className: "border-orange-500/50 bg-orange-500/10 text-orange-700" },
+  { id: "social-boost", label: "Social Boost", className: "border-cyan-500/50 bg-cyan-500/10 text-cyan-700" },
       { id: "subscription", label: "Subscription", className: "border-fuchsia-500/50 bg-fuchsia-500/10 text-fuchsia-700" },
       { id: "sms", label: "Send SMS", className: "border-emerald-500/50 bg-emerald-500/10 text-emerald-700" },
       { id: "afa-registration", label: "AFA Registration", className: "border-violet-500/50 bg-violet-500/10 text-violet-700" },
@@ -967,6 +969,8 @@ const UserDashboard = () => {
         return renderAfaRegistration();
   case "services":
   return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="services" onMaintenanceReturn={() => setActiveMenu("overview")} />;
+  case "social-boost":
+  return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="social-boost" />;
   case "subscription":
   return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="subscription" />;
       case "sms":
