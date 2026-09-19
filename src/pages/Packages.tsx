@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
 import KorbaPurchasePanel from "@/components/KorbaPurchasePanel";
+import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
@@ -1174,7 +1175,7 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
   );
 };
 
-// ──────────────────────���──���───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
+// ──────────────────────���──�����───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
 const Packages = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -1872,6 +1873,10 @@ const searchOrders = async (input?: string) => {
               </CardContent>
             </Card>
           </div>
+        ) : activeCategory === "social-boost" ? (
+  <div className="w-full pb-20">
+    <SocialBoostPurchasePanel walletBalance={0} ownerType="user" />
+  </div>
         ) : activeCategory === "afa" ? (
   <div className="storefront-light-form w-full pb-20 space-y-6">
   <AFARegistrationTracker />

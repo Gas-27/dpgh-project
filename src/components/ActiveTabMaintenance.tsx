@@ -21,6 +21,7 @@ export default function ActiveTabMaintenance({ active, label, onReturn }: Props)
     packages: ["packages", "package"],
     services: ["services", "service"],
     products: ["products", "product"],
+    "social-boost": ["social-boost", "social_boost", "socialBoost"],
   };
   const control = [active, ...(aliases[active] ?? [])].map((key) => controls[key]).find(Boolean);
   if (!control || !isTabUnavailable(control)) return null;
