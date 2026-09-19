@@ -126,16 +126,17 @@
   .storefront-reference-hotspot {
     position: absolute;
     display: block;
-    width: 46%;
-    height: 16.9%;
+    width: 47.3%;
+    height: 16%;
     border: 0;
     border-radius: 22px;
     background: transparent;
     cursor: pointer;
     transition: filter 160ms ease, transform 160ms ease;
   }
-  .storefront-reference-hotspot:hover { filter: brightness(1.12); transform: translateY(-1px); }
-  .storefront-reference-hotspot:focus-visible { outline: 3px solid hsl(190 90% 65%); outline-offset: 3px; }
+  .storefront-reference-hotspot.is-wide { width: 95.8%; }
+  .storefront-reference-hotspot:hover { filter: brightness(1.12); }
+  .storefront-reference-hotspot:focus-visible { outline: 3px solid hsl(190 90% 65%); outline-offset: 0; }
   .storefront-reference-hotspot.is-active { box-shadow: inset 0 0 0 3px hsl(190 90% 65%); }
 
 

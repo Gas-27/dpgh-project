@@ -62,10 +62,10 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
               aria-disabled={unavailable}
               title={unavailable ? (tabControls[id]?.message || "This service is temporarily under maintenance.") : description}
               style={{
-                left: index % 2 === 0 ? "3.7%" : "50.5%",
-                top: `${2 + Math.floor(index / 2) * 19.05}%`,
+                left: index === 10 ? "2.1%" : index % 2 === 0 ? "2.1%" : "50.8%",
+                top: `${2.5 + Math.floor(index / 2) * 19.85}%`,
               }}
-              className={`storefront-reference-hotspot ${active === id ? "is-active" : ""}`}
+              className={`storefront-reference-hotspot ${index === 10 ? "is-wide" : ""} ${active === id ? "is-active" : ""}`}
             >
               <span className="sr-only">{label}: {description}</span>
             </button>
