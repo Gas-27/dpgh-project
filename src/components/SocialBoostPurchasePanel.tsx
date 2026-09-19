@@ -68,8 +68,13 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     const minimum = Number(service.min) || 10;
     const maximum = Number(service.max) || 50000;
     if (quantity < minimum || quantity > maximum) return toast({ title: "Invalid quantity", description: `This service accepts ${minimum.toLocaleString()} to ${maximum.toLocaleString()}.`, variant: "destructive" });
-    setBuying(true);
-    const { data, error } = await (supabase as any).rpc("purchase_social_boost", { p_platform: platform, p_service: `${service.service}:${service.name}`, p_target_link: targetLink.trim(), p_quantity: quantity });
+  setBuying(true);
+  const provider = await supabase.functions.invoke("social-boost", { body: { action: "add", service: service.service, link: targetLink.trim(), quantity } });
+  if (provider.error || !provider.data?.order) {
+    setBuying(false);
+    return toast({ title: "Provider order failed", description: provider.error?.message ?? provider.data?.error ?? "ExoBoost did not accept this order.", variant: "destructive" });
+  }
+  const { data, error } = await (supabase as any).rpc("purchase_social_boost", { p_platform: platform, p_service: `${service.service}:${service.name}`, p_target_link: targetLink.trim(), p_quantity: quantity });
     setBuying(false);
     if (error) return toast({ title: "Purchase failed", description: error.message.includes("Insufficient") ? "Insufficient wallet balance." : error.message, variant: "destructive" });
     setOrderId(data?.id ?? "");
