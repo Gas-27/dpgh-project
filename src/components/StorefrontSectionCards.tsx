@@ -46,8 +46,6 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
             // Select the normal tab first so its real page remains visible beneath the modal.
             if (isAgent) {
               onBecomeAgent?.();
-            } else if (id === "social-boost") {
-              window.location.assign("/social-boost");
             } else {
               onSelect(id);
               window.setTimeout(() => document.getElementById("storefront-section-content")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
