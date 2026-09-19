@@ -1177,7 +1177,7 @@ const searchOrders = useCallback(async (input?: string) => {
         </>
       )}
 
-      <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={(id) => setActiveCategory(id === "instant" ? "vouchers" : id as SectionId & typeof activeCategory)} onBecomeAgent={() => { window.location.assign(`${window.location.origin}/become-agent`); }} />
+      <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={(id) => setActiveCategory(id === "instant" ? "vouchers" : id as SectionId & typeof activeCategory)} onBecomeAgent={() => { window.location.assign(`${DOMAINS.getAgentStoreUrl(store?.store_name || "")}/become-agent`); }} />
 
       <div id="storefront-section-content" className="scroll-mt-6" />
   <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={activeCategory === "data" ? "Cheap Data" : activeCategory === "vouchers" ? "Airtime & Data" : activeCategory} onReturn={() => setActiveCategory("data")} />
