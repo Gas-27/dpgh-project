@@ -6,6 +6,8 @@ import { Wallet } from "lucide-react";
 import { useState } from "react";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
+import SocialBoostPricingManager from "@/components/SocialBoostPricingManager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type DashboardTab = "instant" | "services" | "subscription" | "subscription-price" | "social-boost";
 
@@ -23,7 +25,15 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
   const wallet = Number(walletBalance || 0);
 
   if (initialTab === "social-boost") {
-    return <SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} canSetPrices={ownerType !== "user"} />;
+    const canPrice = ownerType !== "user";
+    return <Tabs defaultValue={canPrice ? "purchase" : "purchase"} className="space-y-4">
+      <TabsList className="grid w-full grid-cols-2">
+        {canPrice && <TabsTrigger value="pricing">Set prices</TabsTrigger>}
+        <TabsTrigger value="purchase">Purchase Social Boost</TabsTrigger>
+      </TabsList>
+      {canPrice && <TabsContent value="pricing"><SocialBoostPricingManager /></TabsContent>}
+      <TabsContent value="purchase"><SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} canSetPrices={false} /></TabsContent>
+    </Tabs>;
   }
 
   if (initialTab === "subscription-price") {
