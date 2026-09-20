@@ -1343,7 +1343,7 @@ const AgentDashboard = () => {
     if (store?.id) fetchSubagentNotifications(); 
   }, [store?.id]);
 
-  // ── Real-time order status updates ──
+  // ─�� Real-time order status updates ──
   useEffect(() => {
     if (!store?.id) return;
     
@@ -4578,7 +4578,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   <TabsContent value="services" className="mt-0 space-y-6">
   <DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} initialTab="services" onMaintenanceReturn={() => setActiveTab("overview")} />
   </TabsContent>
-  <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} initialTab="social-boost" /></TabsContent>
 
   {/* ============================= SUBAGENTS ============================= */}
   <TabsContent value="subagents" className="mt-0 space-y-6">
