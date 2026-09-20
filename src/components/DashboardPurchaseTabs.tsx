@@ -23,7 +23,7 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
   const wallet = Number(walletBalance || 0);
 
   if (initialTab === "social-boost") {
-    return <SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} />;
+    return <SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} canSetPrices={ownerType !== "user"} />;
   }
 
   if (initialTab === "subscription-price") {

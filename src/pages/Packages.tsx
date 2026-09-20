@@ -1175,7 +1175,7 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
   );
 };
 
-// ���─────────────────────���──�����───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
+// �����─────────────────────���──�����───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
 const Packages = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -1634,6 +1634,8 @@ const searchOrders = async (input?: string) => {
   <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
   <span className="text-white/50">|</span>
   <span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
+  <span className="text-white/50">|</span>
+  <span>User price: <strong className="text-cyan-300">{Number(pkg.price).toFixed(2)}</strong></span>
   </div>
                           <Button type="button" variant="outline" disabled={!available} onClick={() => openPackageCheckout(pkg)} className="mt-1 h-9 w-full rounded-full border-white/30 bg-white/10 text-sm font-bold text-white hover:bg-white/20 hover:text-white">
                             {available ? "Buy Now" : "Not Available"}
