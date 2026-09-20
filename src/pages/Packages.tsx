@@ -259,7 +259,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
   ? "A refund has been initiated through Paystack and will be sent back to the wallet/account used to make the payment. Paystack refunds can take a few minutes to up to two days."
   : "Your order has been refunded to your wallet on the site. Visit your dashboard to see your refund.";
   const mtnRefundNote = isMtn
-  ? `MTN delivery failed because MTN now requires your number to be approved on our beneficiary list before delivery. We have captured your number and sent it to MTN for approval. Approval can take up to 5 days. You can retry using ${order.network === "mtn" ? "MTN Express" : "MTN"} while waiting, but please wait ${days} day${days === 1 ? "" : "s"} before retrying this same MTN option. ${isFromStore ? "Your agent will retry it for you using the other MTN option, or may choose to refund you directly if that retry also fails. If the retry fails, your agent will refund you shortly." : "These are MTN rules, and we are sorry for the inconvenience."}`
+  ? `MTN delivery failed because MTN now requires your number to be approved on our beneficiary list before delivery. We have captured your number and sent it to MTN for approval. Approval can take up to 4 days. You can retry using ${order.network === "mtn" ? "MTN Express" : "MTN"} while waiting, but please wait ${days} day${days === 1 ? "" : "s"} before retrying this same MTN option. ${isFromStore ? "Your agent will retry it for you using the other MTN option, or may choose to refund you directly if that retry also fails. If the retry fails, your agent will refund you shortly." : "These are MTN rules, and we are sorry for the inconvenience."}`
   : null;
   note = mtnRefundNote ? `${genericRefundNote} ${mtnRefundNote}` : genericRefundNote;
   } else if (orderStatus === "failed") {
@@ -1175,7 +1175,7 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
   );
 };
 
-// ──────────────────────���──�����───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
+// ���─────────────────────���──�����───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
 const Packages = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();

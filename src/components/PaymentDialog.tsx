@@ -612,7 +612,7 @@ const PaymentDialog = ({
   <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3">
               <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">If the order fails</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                In some cases the order may fail during verification. If this happens, your payment will be <span className="font-medium text-foreground">fully refunded</span>. Your number will be sent to MTN for beneficiary approval, and this same MTN route will be blocked for <span className="font-semibold text-foreground">5 days</span>. You may use the other MTN option while waiting; once approved, delivery will go through normally.
+                In some cases the order may fail during verification. If this happens, your payment will be <span className="font-medium text-foreground">fully refunded</span>. Your number will be sent to MTN for beneficiary approval, and this same MTN route will be blocked for <span className="font-semibold text-foreground">4 days</span>. You may use the other MTN option while waiting; once approved, delivery will go through normally.
               </p>
             </div>
 
@@ -665,7 +665,7 @@ const PaymentDialog = ({
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               {mtnPendingRoutes.length > 0 && (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-                  This number is currently being verified by MTN for {mtnPendingRoutes.map((route) => route === "mtn" ? "MTN" : "MTN Express").join(" and ")}. MTN must approve it for the beneficiary list first. The failed route is unavailable for 5 days; use the other MTN option while waiting.
+                  This number is currently being verified by MTN for {mtnPendingRoutes.map((route) => route === "mtn" ? "MTN" : "MTN Express").join(" and ")}. MTN must approve it for the beneficiary list first. The failed route is unavailable for 4 days; use the other MTN option while waiting.
                 </div>
               )}
               <Input
