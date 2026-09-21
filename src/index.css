@@ -117,6 +117,48 @@
   :root:not(.dark) .subscription-section,
   :root:not(.dark) .subscription-section * { color: #000 !important; }
 
+  .social-boost-reference { width: min(100%, 780px); margin-inline: auto; gap: 12px !important; padding: 10px !important; border: 1px solid #087dff; border-radius: 16px; background: #020b1d !important; box-shadow: 0 0 34px rgba(0, 112, 255, .22); }
+  .social-boost-reference > .relative.overflow-hidden { min-height: 284px; padding: 22px 24px !important; border: 1px solid #0aa8ff !important; border-radius: 15px !important; background: #073b9c url('/social-boost-reference.png') center top / 100% auto no-repeat !important; }
+  .social-boost-reference > .relative.overflow-hidden > * { visibility: hidden; }
+  .social-boost-reference > .relative.overflow-hidden { box-shadow: inset 0 0 28px rgba(0, 128, 255, .3); }
+  .social-boost-reference > .relative.overflow-hidden > .relative.z-10 { max-width: 54% !important; }
+  .social-boost-reference h1 { margin-top: 10px !important; font-size: clamp(3rem, 7vw, 4.8rem) !important; line-height: .9 !important; letter-spacing: -.065em !important; }
+  .social-boost-reference h1 span { background: linear-gradient(90deg,#20e1ff,#0b8fff) !important; background-clip: text !important; -webkit-background-clip: text !important; color: transparent !important; }
+  .social-boost-reference > .relative.overflow-hidden p { max-width: 410px; font-size: 15px !important; line-height: 1.45 !important; }
+  .social-boost-reference > .relative.overflow-hidden .flex.flex-wrap { gap: 20px !important; margin-top: 22px !important; }
+  .social-boost-reference > .relative.overflow-hidden .flex.flex-wrap > span { border-right: 1px solid rgba(116,209,255,.45); padding-right: 17px; }
+  .social-boost-reference > .relative.overflow-hidden .relative.z-10 + .relative.z-10 { right: 14px !important; width: 43% !important; }
+  .social-boost-reference > .relative.overflow-hidden .relative.z-10 + .relative.z-10 > div { width: 100%; height: 235px; }
+  .social-boost-reference > div.rounded-2xl { border: 1px solid #087dff !important; border-radius: 14px !important; background: linear-gradient(105deg,#061737,#062d6c) !important; box-shadow: 0 0 15px rgba(0, 124, 255, .16); }
+  .social-boost-reference > div:nth-of-type(2) { padding: 13px 18px !important; }
+  .social-boost-reference > div:nth-of-type(2) > div { gap: 16px !important; }
+  .social-boost-reference > div:nth-of-type(2) > div:first-child { min-width: 285px; }
+  .social-boost-reference > div:nth-of-type(2) > div:first-child > span { width: 52px; height: 52px; border: 1px solid #088cff; background: #06265e; }
+  .social-boost-reference > div:nth-of-type(2) h2 { font-size: 20px; }
+  .social-boost-reference > div:nth-of-type(2) p { font-size: 13px; }
+  .social-boost-reference > div:nth-of-type(2) > div:last-child { max-width: 430px; }
+  .social-boost-reference > div:nth-of-type(2) input { height: 46px; border-radius: 9px; }
+  .social-boost-reference > div:nth-of-type(2) button { height: 46px; border-radius: 9px; padding-inline: 22px; }
+  .social-boost-reference > div:nth-of-type(3) { padding: 14px 18px !important; }
+  .social-boost-reference > div:nth-of-type(3) h2 { font-size: 18px; }
+  .social-boost-reference > div:nth-of-type(3) > p { font-size: 13px; }
+  .social-boost-reference > div:nth-of-type(3) .grid { gap: 9px !important; }
+  .social-boost-reference > div:nth-of-type(3) button { min-height: 78px; border-radius: 11px; border-color: #1b73ce; background: #061b43; }
+  .social-boost-reference > div:nth-of-type(3) button span { height: 42px; width: 42px; }
+  .social-boost-reference > div:nth-of-type(3) button span img { height: 28px; width: 28px; }
+  .social-boost-reference > .space-y-4 { padding: 18px 22px !important; gap: 16px !important; }
+  .social-boost-reference > .space-y-4 > div { min-height: 70px; }
+  .social-boost-reference > .space-y-4 > div > span { width: 54px; height: 54px; border: 1px solid #078aff; background: #06265e; }
+  .social-boost-reference > .space-y-4 select, .social-boost-reference > .space-y-4 input { height: 42px; border-radius: 8px; border-color: #078aff !important; background: #08275c !important; }
+  .social-boost-reference > .space-y-4 > div:nth-of-type(4) > div { display: grid; grid-template-columns: minmax(0,1fr) 268px; gap: 18px; }
+  .social-boost-reference > .space-y-4 > div:nth-of-type(4) > div > div:last-child { min-height: 106px; display: flex; flex-direction: column; justify-content: center; border-color: #078aff; background: linear-gradient(135deg,#061b43,#14165e) !important; }
+  .social-boost-reference > .space-y-4 > div:nth-of-type(4) > div > div:last-child p:last-child { font-size: 38px; line-height: 1; }
+  .social-boost-reference > .space-y-4 > div:nth-of-type(5) > div > div { height: 42px; border-radius: 8px; }
+  .social-boost-reference > .space-y-4 > div:nth-of-type(6) { min-height: 125px; border-color: #078aff; background: linear-gradient(135deg,#071d50,#071a3e) !important; }
+  .social-boost-reference > .space-y-4 > button { height: 48px; border-radius: 10px; background: linear-gradient(90deg,#08b9ee,#1764ee 54%,#d116db) !important; }
+  .social-boost-reference > div:last-child { padding: 13px 18px !important; }
+  @media (max-width: 700px) { .social-boost-reference { padding: 6px !important; } .social-boost-reference > .relative.overflow-hidden { min-height: 285px; } .social-boost-reference > .relative.overflow-hidden > .relative.z-10 { max-width: 58% !important; } .social-boost-reference > .relative.overflow-hidden p { font-size: 11px !important; } .social-boost-reference > .relative.overflow-hidden .relative.z-10 + .relative.z-10 { right: 0 !important; width: 42% !important; } .social-boost-reference > .relative.overflow-hidden .relative.z-10 + .relative.z-10 > div { height: 190px; } .social-boost-reference > div:nth-of-type(2) > div:first-child { min-width: 0; } .social-boost-reference > div:nth-of-type(2) > div { gap: 8px !important; } .social-boost-reference > div:nth-of-type(2) button { padding-inline: 11px; font-size: 11px; } .social-boost-reference > .space-y-4 { padding: 12px !important; } .social-boost-reference > .space-y-4 > div:nth-of-type(4) > div { grid-template-columns: minmax(0,1fr) 170px; gap: 9px; } .social-boost-reference > .space-y-4 > div:nth-of-type(4) > div > div:last-child p:last-child { font-size: 25px; } }
+
   .storefront-reference-grid {
     position: relative;
   aspect-ratio: 770 / 720;
