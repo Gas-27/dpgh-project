@@ -9,7 +9,7 @@ export default function SocialBoost() {
         <Link to="/" className="mb-3 inline-flex items-center gap-2 px-2 text-sm font-semibold text-cyan-200 hover:text-white">
           <ArrowLeft className="h-4 w-4" /> Back
         </Link>
-        <SocialBoostPurchasePanel walletBalance={0} />
+        <SocialBoostPurchasePanel walletBalance={0} ownerType="storefront" checkoutMode="paystack" />
       </div>
     </main>
   );

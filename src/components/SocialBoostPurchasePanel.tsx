@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-type Props = { walletBalance: number; ownerType?: string; canSetPrices?: boolean };
+type Props = { walletBalance: number; ownerType?: string; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack" };
 type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
 const platforms = ["TikTok", "Instagram", "Snapchat", "Facebook", "YouTube", "WhatsApp"];
 const platformIcons: Record<string, string> = {
@@ -18,7 +18,7 @@ const platformIcons: Record<string, string> = {
 };
 const fallbackServices: ProviderService[] = [{ service: 1, name: "Followers", category: "TikTok", rate: "0.90", min: "50", max: "50000", average_time: "4 Hours", refill: true, cancel: true }];
 
-export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", canSetPrices = false }: Props) {
+export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", canSetPrices = false, checkoutMode = "wallet" }: Props) {
   const { toast } = useToast();
   const [platform, setPlatform] = useState("TikTok");
   const [catalog, setCatalog] = useState<ProviderService[]>(fallbackServices);
@@ -54,11 +54,16 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     if (!targetLink.trim()) return toast({ title: "Account link required", description: "Enter the social profile or post link to boost.", variant: "destructive" });
     if (quantity < min || quantity > max) return toast({ title: "Invalid quantity", description: `This service accepts ${min.toLocaleString()} to ${max.toLocaleString()}.`, variant: "destructive" });
     setBuying(true);
-    const provider = await supabase.functions.invoke("social-boost", { body: { action: "add", service: service.service, link: targetLink.trim(), quantity } });
-    if (provider.error || !provider.data?.order) { setBuying(false); return toast({ title: "Provider order failed", description: provider.error?.message ?? provider.data?.error ?? "ExoBoost did not accept this order.", variant: "destructive" }); }
+    if (checkoutMode === "paystack") {
+      const { data, error } = await supabase.functions.invoke("initialize-payment", { body: { email: `social_boost_${Date.now()}@datapluggh.com`, amount: total, callback_url: `${window.location.origin}/social-boost?payment=success`, metadata: { kind: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity } } });
+      setBuying(false);
+      if (error || !data?.authorization_url) return toast({ title: "Payment could not start", description: error?.message ?? "Paystack did not return a checkout link.", variant: "destructive" });
+      window.location.assign(data.authorization_url);
+      return;
+    }
     const { data, error } = await (supabase as any).rpc("purchase_social_boost", { p_platform: platform, p_service: `${service.service}:${service.name}`, p_target_link: targetLink.trim(), p_quantity: quantity });
     setBuying(false);
-    if (error) return toast({ title: "Purchase failed", description: error.message, variant: "destructive" });
+    if (error) return toast({ title: "Wallet purchase failed", description: error.message, variant: "destructive" });
     setOrderId(data?.id ?? ""); toast({ title: "Social Boost order placed", description: `GHC ${Number(data?.amount ?? total).toFixed(2)} was deducted from your wallet.` });
   };
   const trackOrder = async () => { if (!searchOrder.trim()) return; const { data } = await supabase.functions.invoke("social-boost", { body: { action: "status", order: searchOrder.trim() } }); setOrderStatus(data?.status ? `Status: ${data.status}` : data?.error ?? "Order status unavailable"); };

@@ -1879,7 +1879,7 @@ const searchOrders = async (input?: string) => {
           </div>
         ) : activeCategory === "social-boost" ? (
   <div className="w-full pb-20">
-    <SocialBoostPurchasePanel walletBalance={0} ownerType="user" />
+    <SocialBoostPurchasePanel walletBalance={0} ownerType="storefront" checkoutMode="paystack" />
   </div>
         ) : activeCategory === "afa" ? (
   <div className="storefront-light-form w-full pb-20 space-y-6">

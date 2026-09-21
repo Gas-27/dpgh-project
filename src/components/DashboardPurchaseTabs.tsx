@@ -28,11 +28,11 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
     const canPrice = ownerType !== "user";
     return <Tabs defaultValue={canPrice ? "purchase" : "purchase"} className="space-y-4">
       <TabsList className="grid w-full grid-cols-2">
-        {canPrice && <TabsTrigger value="pricing">Set prices</TabsTrigger>}
+        {canPrice && ownerType !== "customer" && <TabsTrigger value="pricing">Set prices</TabsTrigger>}
         <TabsTrigger value="purchase">Purchase Social Boost</TabsTrigger>
       </TabsList>
       {canPrice && <TabsContent value="pricing"><SocialBoostPricingManager /></TabsContent>}
-      <TabsContent value="purchase"><SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} canSetPrices={false} /></TabsContent>
+      <TabsContent value="purchase"><SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} canSetPrices={false} checkoutMode="wallet" /></TabsContent>
     </Tabs>;
   }
 
