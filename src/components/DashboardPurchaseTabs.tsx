@@ -3,6 +3,8 @@ import AgentDigitalServicesPricing from "@/components/AgentDigitalServicesPricin
 import DigitalServicesCatalog, { type Service } from "@/components/DigitalServicesCatalog";
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 import { Wallet } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import SocialBoostPricingManager from "@/components/SocialBoostPricingManager";
 import { useState } from "react";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
@@ -23,9 +25,14 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
   const wallet = Number(walletBalance || 0);
 
   if (initialTab === "social-boost") {
-    return <div className="space-y-4">
-      <SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} canSetPrices={false} checkoutMode="wallet" />
-    </div>;
+    return <Tabs defaultValue="purchase" className="space-y-4">
+      <TabsList className="grid w-full grid-cols-2">
+        {canSetPrices && <TabsTrigger value="pricing">Set prices</TabsTrigger>}
+        <TabsTrigger value="purchase">Purchase Social Boost</TabsTrigger>
+      </TabsList>
+      {canSetPrices && <TabsContent value="pricing"><SocialBoostPricingManager /></TabsContent>}
+      <TabsContent value="purchase"><SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} canSetPrices={false} checkoutMode="wallet" /></TabsContent>
+    </Tabs>;
   }
 
   if (initialTab === "subscription-price") {
