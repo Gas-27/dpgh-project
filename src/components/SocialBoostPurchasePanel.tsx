@@ -28,11 +28,10 @@ import { useToast } from "@/hooks/use-toast";
 type Props = { walletBalance: number; ownerType?: string; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack" };
 type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
 
-const platforms = ["TikTok", "Instagram", "Snapchat", "Facebook", "YouTube", "WhatsApp"];
+const platforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp"];
 const platformIcons: Record<string, string> = {
   TikTok: "https://cdn.simpleicons.org/tiktok",
   Instagram: "https://cdn.simpleicons.org/instagram/white",
-  Snapchat: "https://cdn.simpleicons.org/snapchat",
   Facebook: "https://cdn.simpleicons.org/facebook/white",
   YouTube: "https://cdn.simpleicons.org/youtube/white",
   WhatsApp: "https://cdn.simpleicons.org/whatsapp/white",
@@ -40,7 +39,6 @@ const platformIcons: Record<string, string> = {
 const platformTileBg: Record<string, string> = {
   TikTok: "bg-black",
   Instagram: "bg-gradient-to-br from-fuchsia-500 via-pink-500 to-amber-400",
-  Snapchat: "bg-yellow-400",
   Facebook: "bg-blue-600",
   YouTube: "bg-red-600",
   WhatsApp: "bg-green-500",
@@ -195,12 +193,13 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     toast(error ? { title: "Prices not saved", description: error.message, variant: "destructive" } : { title: "Social Boost prices saved" });
   };
 
-  const noteLines = String(service.note || service.notes || "Make sure the account is not private, and don't change the account username while the order is processing!\nAlmost no drop after delivery.\nAverage quality means a shorter guarantee: length, semi-real looking accounts/engagements, and average drops.")
-    .split("\n")
-    .filter(Boolean);
+const noteLines = String(service.notes || service.note || "No additional note has been configured for this service.")
+  .split(/\r?\n|•|\|/)
+  .map((line) => line.trim())
+  .filter(Boolean);
 
   return (
-    <section className="space-y-3 rounded-2xl bg-[#020c22] p-3 text-white sm:p-4">
+    <section className="social-boost-phone-shell space-y-3 rounded-[22px] bg-[#020c22] p-3 text-white sm:p-4">
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl border border-cyan-400/40 bg-gradient-to-br from-[#0b3fb4] via-[#0a2f8f] to-[#3a0f8f] p-5 sm:p-8">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_25%,rgba(56,189,248,0.35),transparent_55%)]" />
@@ -210,7 +209,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
             Social <span className="text-cyan-300">Boost</span>
           </h1>
           <p className="mt-3 text-sm leading-6 text-blue-50/90 sm:text-base">
-            Boost all your social across TikTok, Instagram, Snapchat, Facebook, YouTube and WhatsApp with real, targeted engagement.
+            Boost all your social across TikTok, Instagram, Facebook, YouTube and WhatsApp with real, targeted engagement.
           </p>
           <div className="mt-5 flex flex-wrap gap-4 text-xs font-semibold sm:gap-6 sm:text-sm">
             <span className="flex items-center gap-2">

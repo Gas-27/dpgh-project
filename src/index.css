@@ -117,6 +117,8 @@
   :root:not(.dark) .subscription-section,
   :root:not(.dark) .subscription-section * { color: #000 !important; }
 
+  .social-boost-phone-shell { width: min(100%, 780px); margin-inline: auto; border: 1px solid #148dff; border-radius: 22px !important; overflow: hidden; box-shadow: 0 0 0 2px rgba(3, 32, 92, .9), 0 0 28px rgba(0, 116, 255, .24); }
+  .social-boost-phone-shell > * { border-radius: 14px; }
   .social-boost-reference { width: min(100%, 780px); margin-inline: auto; gap: 12px !important; padding: 10px !important; border: 1px solid #087dff; border-radius: 16px; background: #020b1d !important; box-shadow: 0 0 34px rgba(0, 112, 255, .22); }
   .social-boost-reference > .relative.overflow-hidden { min-height: 284px; padding: 22px 24px !important; border: 1px solid #0aa8ff !important; border-radius: 15px !important; background: #073b9c url('/social-boost-reference.png') center top / 100% auto no-repeat !important; }
   .social-boost-reference > .relative.overflow-hidden > * { visibility: hidden; }
