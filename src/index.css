@@ -117,6 +117,19 @@
   :root:not(.dark) .subscription-section,
   :root:not(.dark) .subscription-section * { color: #000 !important; }
 
+  .social-boost-reference { max-width: 780px; margin-inline: auto; background: #020b1d !important; border-color: #087dff !important; box-shadow: 0 0 38px rgba(0, 105, 255, .22); }
+  .social-boost-reference .social-boost-hero { min-height: 284px; background: linear-gradient(135deg, #071e68 0%, #0649bd 52%, #7c13dc 100%); box-shadow: inset 0 0 34px rgba(0, 188, 255, .2); }
+  .social-boost-reference .social-boost-hero h1 { font-size: clamp(3rem, 8vw, 4.5rem); line-height: .95; letter-spacing: -.06em; }
+  .social-boost-reference .social-boost-hero h1 span { background: linear-gradient(90deg, #16d9ff, #0aa3ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .social-boost-reference > div { border-color: #087dff !important; box-shadow: 0 0 16px rgba(0, 122, 255, .12); }
+  .social-boost-reference .social-boost-form label { color: #f5f7ff; }
+  .social-boost-reference .social-boost-form select,
+  .social-boost-reference .social-boost-form input { min-height: 42px; border-color: #0787ff !important; background: #06245a !important; box-shadow: inset 0 0 12px rgba(0, 95, 255, .15); }
+  .social-boost-reference .social-boost-form > div:last-child { background: linear-gradient(90deg, #08b9ee, #8c16df) !important; border-color: #13d9ff !important; }
+  .social-boost-reference button { border-color: #0787ff; }
+  .social-boost-reference button.bg-gradient-to-r { background: linear-gradient(90deg, #04b9ed, #245ff0, #c417d8) !important; color: #061326 !important; font-weight: 800; }
+  .social-boost-reference .social-boost-hero img { filter: saturate(1.18) contrast(1.08); }
+
   .storefront-reference-grid {
     position: relative;
   aspect-ratio: 770 / 720;
