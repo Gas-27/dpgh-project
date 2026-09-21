@@ -309,6 +309,8 @@ const AdminDashboard = () => {
   const [chatbotEnabled, setChatbotEnabled] = useState(true);
   const [savingChatbot, setSavingChatbot] = useState(false);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  const [showApiPrice, setShowApiPrice] = useState(true);
+  const [showAgentPrice, setShowAgentPrice] = useState(true);
   const [savingPriceBreakdown, setSavingPriceBreakdown] = useState(false);
   const [subscriptionComingSoon, setSubscriptionComingSoon] = useState(false);
   const [savingSubscriptionComingSoon, setSavingSubscriptionComingSoon] = useState(false);
@@ -713,7 +715,7 @@ const AdminDashboard = () => {
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
         supabase
           .from("app_settings")
-          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown, tab_controls")
+          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown, show_api_price, show_agent_price, tab_controls")
           .eq("id", 1)
           .single(),
       ]);
@@ -735,9 +737,9 @@ const AdminDashboard = () => {
         if (typeof appSettings.chatbot_enabled === 'boolean') {
           setChatbotEnabled(appSettings.chatbot_enabled);
         }
-  if (typeof appSettings.show_price_breakdown === 'boolean') {
-  setShowPriceBreakdown(appSettings.show_price_breakdown);
-  }
+  if (typeof appSettings.show_price_breakdown === 'boolean') setShowPriceBreakdown(appSettings.show_price_breakdown);
+  if (typeof appSettings.show_api_price === 'boolean') setShowApiPrice(appSettings.show_api_price);
+  if (typeof appSettings.show_agent_price === 'boolean') setShowAgentPrice(appSettings.show_agent_price);
   if (typeof appSettings.subscription_coming_soon === 'boolean') {
   setSubscriptionComingSoon(appSettings.subscription_coming_soon);
   }
@@ -816,6 +818,13 @@ const AdminDashboard = () => {
     }
   };
   
+  const savePackagePriceVisibility = async (field: "show_api_price" | "show_agent_price", enabled: boolean) => {
+  const setter = field === "show_api_price" ? setShowApiPrice : setShowAgentPrice;
+  setter(enabled);
+  const { error } = await supabase.from("app_settings").upsert({ id: 1, [field]: enabled, updated_at: new Date().toISOString() });
+  if (error) { setter(!enabled); toast({ title: "Error", description: error.message, variant: "destructive" }); }
+};
+
   const savePriceBreakdownSetting = async (enabled: boolean) => {
     setSavingPriceBreakdown(true);
     const { error } = await supabase
@@ -4811,12 +4820,12 @@ const AdminDashboard = () => {
   <CardContent>
   <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-900/10 p-4">
   <div className="space-y-0.5">
-  <Label className="text-base font-semibold">Show API and agent prices</Label>
-  <p className="text-sm text-muted-foreground">When enabled, package cards across the site show API price and Agent price. When disabled, customers see only their price.</p>
+  <Label className="text-base font-semibold">Package price visibility</Label>
+  <p className="text-sm text-muted-foreground">Control which wholesale prices appear on public package cards. Customer price always remains visible.</p>
   </div>
   <div className="flex items-center gap-3">
   {savingPriceBreakdown && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-  <Switch checked={showPriceBreakdown} onCheckedChange={savePriceBreakdownSetting} disabled={savingPriceBreakdown} aria-label="Show customer price breakdown" />
+  <div className="flex flex-wrap items-center gap-4"><label className="flex items-center gap-2 text-sm"><Switch checked={showApiPrice} onCheckedChange={(enabled) => savePackagePriceVisibility("show_api_price", enabled)} aria-label="Show API price" /> API price</label><label className="flex items-center gap-2 text-sm"><Switch checked={showAgentPrice} onCheckedChange={(enabled) => savePackagePriceVisibility("show_agent_price", enabled)} aria-label="Show Agent price" /> Agent price</label></div>
   </div>
   </div>
   </CardContent>

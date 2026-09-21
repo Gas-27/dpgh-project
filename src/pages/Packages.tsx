@@ -1257,6 +1257,8 @@ const Packages = () => {
   }, [searchParams, toast]);
 
   const [packages, setPackages] = useState<DataPackage[]>([]);
+  const [showApiPrice, setShowApiPrice] = useState(true);
+  const [showAgentPrice, setShowAgentPrice] = useState(true);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
     const n = searchParams.get("network");
     return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" ? n : "mtn";
@@ -1343,10 +1345,12 @@ const Packages = () => {
         );
       });
     // Load customer-facing pricing display settings
-    supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single()
+    supabase.from("app_settings").select("free_data_enabled,show_api_price,show_agent_price").eq("id", 1).single()
       .then(({ data }) => {
         if (data) {
           setFreeDataEnabled(data.free_data_enabled ?? true);
+          setShowApiPrice(data.show_api_price !== false);
+          setShowAgentPrice(data.show_agent_price !== false);
                   const comingSoon = data.subscription_coming_soon === true;
           setSubscriptionComingSoon(comingSoon);
           if (comingSoon && activeCategory === "subscription") setShowSubscriptionComingSoon(true);
@@ -1631,10 +1635,8 @@ const searchOrders = async (input?: string) => {
                           <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
                           <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
 <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
-  <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
-  <span className="text-white/50">|</span>
-  <span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
-  <span className="text-white/50">|</span>
+  {showApiPrice && <><span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span><span className="text-white/50">|</span></>}
+  {showAgentPrice && <><span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span><span className="text-white/50">|</span></>}
   <span>User price: <strong className="text-cyan-300">{Number(pkg.price).toFixed(2)}</strong></span>
   </div>
                           <Button type="button" variant="outline" disabled={!available} onClick={() => openPackageCheckout(pkg)} className="mt-1 h-9 w-full rounded-full border-white/30 bg-white/10 text-sm font-bold text-white hover:bg-white/20 hover:text-white">
