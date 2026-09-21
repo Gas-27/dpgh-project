@@ -63,11 +63,20 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
       toast({ title: "Complete the form", description: "Enter an amount and recipient number.", variant: "destructive" });
       return;
     }
-    if (walletOnly && Number(amount) > Number(walletBalance)) {
-      toast({ title: "Insufficient wallet balance", description: `Your wallet has GHC ${Number(walletBalance).toFixed(2)} available.`, variant: "destructive" });
-      return;
-    }
-    setBusy(true);
+  let currentWalletBalance = Number(walletBalance);
+  if (walletOnly && ownerType === "agent" && ownerId) {
+    const { data: freshStore, error: balanceError } = await supabase
+      .from("agent_stores")
+      .select("wallet_balance")
+      .eq("id", ownerId)
+      .maybeSingle();
+    if (!balanceError && freshStore) currentWalletBalance = Number(freshStore.wallet_balance ?? 0);
+  }
+  if (walletOnly && Number(amount) > currentWalletBalance) {
+    toast({ title: "Insufficient wallet balance", description: `Your wallet has GHC ${currentWalletBalance.toFixed(2)} available.`, variant: "destructive" });
+    return;
+  }
+  setBusy(true);
     const { data, error } = await supabase.functions.invoke("korba-gateway", {
       body: {
         operation: mode === "instant" && instantProduct === "data" ? "data" : "collect",
@@ -148,7 +157,7 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
             <div className="rounded-xl border bg-muted/40 px-4 py-3"><p className="text-sm text-muted-foreground">Amount</p><p className="text-2xl font-bold text-primary">GHS {selectedInstantItem?.amount || "0.00"}</p></div>
             <div className="grid gap-2"><Label htmlFor="korba-instant-phone">Phone number</Label><Input id="korba-instant-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0240000000" autoFocus /></div>
             {walletOnly && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">This dashboard purchase uses your wallet only. Available: GHC {Number(walletBalance).toFixed(2)}.</p>}
-            <Button onClick={submit} disabled={busy || !phone || (walletOnly && Number(selectedInstantItem?.amount || 0) > Number(walletBalance))}>{busy ? "Starting purchase…" : instantProduct === "airtime" ? "Buy airtime" : "Buy data"}</Button>
+            <Button onClick={submit} disabled={busy || !phone}>{busy ? "Starting purchase…" : instantProduct === "airtime" ? "Buy airtime" : "Buy data"}</Button>
           </div>
         </DialogContent>
       </Dialog>
