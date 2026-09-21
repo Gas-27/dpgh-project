@@ -169,6 +169,16 @@
   .social-boost-reference .social-boost-form + div svg { height: 10px; width: 10px; }
   .social-boost-reference .social-boost-form + div b { font-size: 5px; }
   .social-boost-reference .social-boost-form + div small { font-size: 4px; }
+  /* The supplied reference is the visual surface; the order controls remain live above it. */
+  .social-boost-reference.social-boost-image-surface { position: relative; width: min(100%, 488px); min-height: 792px; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: #031a48 url('/social-boost-reference.png') center top / 100% 100% no-repeat !important; box-shadow: none !important; overflow: hidden; }
+  .social-boost-image-surface > * { display: none !important; }
+  .social-boost-image-surface > :nth-child(2) { display: block !important; position: absolute; top: 181px; left: 1.5%; width: 97%; height: 52px; padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; pointer-events: auto; }
+  .social-boost-image-surface > :nth-child(2) > div:first-child,
+  .social-boost-image-surface > :nth-child(2) > span,
+  .social-boost-image-surface > :nth-child(2) > div:last-child > :not(input):not(button) { display: none !important; }
+  .social-boost-image-surface > :nth-child(2) > div:last-child { display: flex !important; position: absolute; top: 10px; right: 3%; width: 57%; gap: 5px; pointer-events: auto; }
+  .social-boost-image-surface > :nth-child(2) input { display: block !important; height: 30px !important; min-height: 30px !important; flex: 1; border: 1px solid #168eff !important; border-radius: 7px !important; background: #031b4a !important; color: white !important; font-size: 12px !important; }
+  .social-boost-image-surface > :nth-child(2) button { display: inline-flex !important; height: 30px; min-height: 30px; padding: 0 10px; border-radius: 7px; background: linear-gradient(90deg, #09baf2, #175df0) !important; color: white !important; font-size: 10px; pointer-events: auto; }
 
   .storefront-reference-grid {
     position: relative;
