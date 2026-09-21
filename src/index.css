@@ -118,6 +118,13 @@
   :root:not(.dark) .subscription-section * { color: #000 !important; }
 
   .social-boost-reference { max-width: 780px; margin-inline: auto; background: #020b1d !important; border-color: #087dff !important; box-shadow: 0 0 38px rgba(0, 105, 255, .22); }
+  .social-boost-reference > .social-boost-hero,
+  .social-boost-reference > div { border-radius: 14px; }
+  .social-boost-reference .social-boost-form { padding: 1rem; }
+  .social-boost-reference .social-boost-form > label { display: block; border-left: 3px solid #08bdf3; padding-left: .9rem; }
+  .social-boost-reference .social-boost-form > label + label { margin-top: .25rem; }
+  .social-boost-reference .social-boost-form > div { border-radius: 12px; }
+  @media (max-width: 640px) { .social-boost-reference { padding: .5rem !important; } .social-boost-reference .social-boost-hero { min-height: 300px; } .social-boost-reference .social-boost-hero > div { max-width: 70%; } .social-boost-reference .social-boost-hero img { width: 48%; } }
   .social-boost-reference .social-boost-hero { min-height: 284px; background: linear-gradient(135deg, #071e68 0%, #0649bd 52%, #7c13dc 100%); box-shadow: inset 0 0 34px rgba(0, 188, 255, .2); }
   .social-boost-reference .social-boost-hero h1 { font-size: clamp(3rem, 8vw, 4.5rem); line-height: .95; letter-spacing: -.06em; }
   .social-boost-reference .social-boost-hero h1 span { background: linear-gradient(90deg, #16d9ff, #0aa3ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
