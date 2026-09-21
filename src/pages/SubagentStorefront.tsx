@@ -30,6 +30,7 @@ import RoleServicesPanel from "@/components/RoleServicesPanel";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import KorbaPurchasePanel from "@/components/KorbaPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
@@ -510,7 +511,7 @@ export function SubagentStorefront() {
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
   
   // Bulk Orders
-  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms" | "services" | "products">("data");
+  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms" | "services" | "products" | "social-boost">("data");
   useEffect(() => {
     const configured = (store?.theme_config as any)?.default_section;
     if (["data", "afa", "bulk", "sms", "services", "products"].includes(configured)) setActiveSection(configured as typeof activeSection);
@@ -556,7 +557,7 @@ export function SubagentStorefront() {
   const cardBg = theme.card_background || defaultTheme.card_background;
   const gridColumns = Math.min(2, Math.max(1, Number(theme.gridColumns) || 1));
 
-  // ── Update page metadata when store loads ──
+  // ── Update page metadata when store loads ��─
   useEffect(() => {
     if (store?.store_name) {
       updatePageMetadata(store.store_name);
@@ -1075,6 +1076,7 @@ const searchOrders = useCallback(async (input?: string) => {
   <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "vouchers" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "data" ? "Cheap Data" : activeSection === "vouchers" ? "Airtime & Data" : activeSection} onReturn={() => setActiveSection("data")} />
+  {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="storefront" checkoutMode="paystack" />}
   {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subagent" />}
   {activeSection === "services" && <KorbaPurchasePanel mode="services" />}
 {activeSection === "data" && <>

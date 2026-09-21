@@ -29,6 +29,7 @@ import RoleServicesPanel from "@/components/RoleServicesPanel";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import KorbaPurchasePanel from "@/components/KorbaPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
@@ -498,7 +499,7 @@ export function SubSubagentStorefront() {
 
   // Sub-Subagent Registration
   // ── AFA Packages ──
-  const [activeSection, setActiveSection] = useState<"data" | "afa" | "sms" | "services" | "products">("data");
+  const [activeSection, setActiveSection] = useState<"data" | "afa" | "sms" | "services" | "products" | "social-boost">("data");
   useEffect(() => {
     const configured = (store?.theme_config as any)?.default_section;
     if (["data", "afa", "sms", "services", "products"].includes(configured)) setActiveSection(configured as typeof activeSection);
@@ -1081,6 +1082,7 @@ const searchOrders = useCallback(async (input?: string) => {
   <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "vouchers" : id as typeof activeSection)} onBecomeAgent={() => toast({ title: "Coming soon", description: "Become an Agent will be available soon." })} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "vouchers" ? "Instant Data" : activeSection} onReturn={() => setActiveSection("data")} />
+  {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="storefront" checkoutMode="paystack" />}
   {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subsubagent" />}
   {activeSection === "services" && <KorbaPurchasePanel mode="services" />}
 {activeSection === "data" && <>
