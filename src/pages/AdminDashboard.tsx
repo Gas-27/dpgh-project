@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminSocialBoostPricing from "@/components/AdminSocialBoostPricing";
+import AdminSocialBoostOrders from "@/components/AdminSocialBoostOrders";
 import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import ReportCenter from "@/components/ReportCenter";
@@ -2769,6 +2770,7 @@ const AdminDashboard = () => {
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
             <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>
   <TabsTrigger value="social-boost" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Social Boost</TabsTrigger>
+<TabsTrigger value="social-boost-orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Boost Orders</TabsTrigger>
             <TabsTrigger value="order_approvals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><ClipboardList className="h-3 w-3 md:h-4 md:w-4" /> Approvals</TabsTrigger>
 <TabsTrigger value="subscriptions" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Paid subscriptions</TabsTrigger>
 <TabsTrigger value="orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
@@ -2812,6 +2814,7 @@ const AdminDashboard = () => {
   <TabsContent value="domain_renewals" className="space-y-6"><AdminDomainRenewalsPanel /></TabsContent>
 
   <TabsContent value="social-boost" className="space-y-6"><AdminSocialBoostPricing /></TabsContent>
+<TabsContent value="social-boost-orders" className="space-y-6"><AdminSocialBoostOrders /></TabsContent>
 
   {/* PRICES TAB */}
   {canSee("prices") && (
