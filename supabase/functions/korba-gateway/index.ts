@@ -24,10 +24,44 @@ function dataEndpoint(networkCode: string) {
   return "/collect/";
 }
 
+function walletClient() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Supabase wallet service is not configured");
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+async function debitWallet(body: Record<string, unknown>, amount: number) {
+  if (body.wallet_only !== true) return null;
+  const ownerType = String(body.wallet_balance_owner_type || "").toLowerCase();
+  const ownerId = String(body.wallet_balance_owner_id || "");
+  if (!ownerType || !ownerId) throw new Error("Wallet owner is required for wallet purchases");
+  const { data, error } = await walletClient().rpc("debit_purchase_wallet", {
+    p_owner_type: ownerType,
+    p_owner_id: ownerId,
+    p_amount: amount,
+  });
+  if (error) throw new Error(`Wallet debit failed: ${error.message}`);
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result?.success) throw new Error(result?.message || "Insufficient wallet balance");
+  return { ownerType, ownerId, amount, balance: Number(result.balance ?? 0) };
+}
+
+async function refundWallet(debit: { ownerType: string; ownerId: string; amount: number } | null) {
+  if (!debit) return;
+  const { error } = await walletClient().rpc("credit_purchase_wallet", {
+    p_owner_type: debit.ownerType,
+    p_owner_id: debit.ownerId,
+    p_amount: debit.amount,
+  });
+  if (error) console.error("[korba-gateway] wallet refund failed", error);
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  let debit: { ownerType: string; ownerId: string; amount: number; balance: number } | null = null;
   try {
     const body = await request.json();
     const operation = body.operation;
@@ -55,6 +89,7 @@ Deno.serve(async (request) => {
     if (!allowedProductTypes.has(productType)) return json({ error: "Unsupported Korba service type" }, 400);
     if (!networkCode) return json({ error: "Network or service code is required" }, 400);
 
+    debit = await debitWallet(body, amount);
     const providerPayload = {
       amount: amount.toFixed(2), customer_number: customerNumber, network_code: networkCode,
       product_type: productType, product_id: body.product_id ? String(body.product_id) : undefined,
@@ -66,15 +101,18 @@ Deno.serve(async (request) => {
     const endpoint = operation === "data" ? dataEndpoint(networkCode) : "/collect/";
     const result = await korbaRequest(endpoint, providerPayload) as { success?: boolean; error_code?: number; error_message?: string; [key: string]: unknown };
 
-    if (result.success === false) return json({ ...result, user_message: userMessage(result.error_code) });
-
+    if (result.success === false) {
+      await refundWallet(debit);
+      return json({ ...result, user_message: userMessage(result.error_code), wallet_refunded: Boolean(debit) });
+    }
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
     if (body.order_id) {
       await supabase.from("orders").update({ status: "processing", fulfillment_status: "pending", api_response: JSON.stringify(result), purchase_provider: "korba", purchase_provider_source: transaction_id }).eq("id", body.order_id);
     }
     return json({ ...result, transaction_id });
   } catch (error) {
+    await refundWallet(debit);
     console.error("[korba-gateway]", error);
-    return json({ error: error instanceof Error ? error.message : "Korba request failed" }, 502);
+    return json({ error: error instanceof Error ? error.message : "Korba request failed", wallet_refunded: Boolean(debit) }, 502);
   }
 });
