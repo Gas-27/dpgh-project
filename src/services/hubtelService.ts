@@ -46,6 +46,9 @@ const invokeHubtel = async <T>(body: Record<string, unknown>) => {
 export const getHubtelDataCatalog = (request: Pick<HubtelRequest, "service" | "destination">) =>
   invokeHubtel({ operation: "data_catalog", ...request });
 
+export const getHubtelBillCatalog = (request: Pick<HubtelRequest, "service" | "accountNumber" | "destination">) =>
+  invokeHubtel({ operation: "bill_catalog", ...request });
+
 export const buyHubtelAirtime = (request: HubtelRequest) =>
   invokeHubtel({ operation: "airtime", ...request });
 
@@ -89,6 +92,7 @@ export const toHubtelBillService = (value: string): HubtelBillService | null =>
 
 export default {
   getHubtelDataCatalog,
+  getHubtelBillCatalog,
   buyHubtelAirtime,
   buyHubtelData,
   payHubtelBill,
