@@ -75,6 +75,25 @@ const amount = (value: unknown) => {
     throw new Error("Amount must be greater than zero");
   return Math.round(result * 100) / 100;
 };
+const providerAccepted = (data: unknown) => {
+  const responseCode = String(
+    (data as { ResponseCode?: string; responseCode?: string })?.ResponseCode ??
+      (data as { responseCode?: string })?.responseCode ??
+      "",
+  );
+  if (responseCode && !["0000", "0001"].includes(responseCode)) {
+    const message = String(
+      (data as { Message?: string; message?: string })?.Message ||
+        (data as { message?: string })?.message ||
+        "Hubtel rejected the transaction",
+    );
+    throw new Error(
+      `Hubtel rejected the transaction (${responseCode}): ${message}`,
+    );
+  }
+  return data;
+};
+
 const clientReference = (value: unknown, prefix = "HUBTEL") => {
   const supplied = String(value || "")
     .replace(/[^a-zA-Z0-9_-]/g, "")
@@ -118,8 +137,15 @@ async function refundWallet(
   });
 }
 
-const requestHubtel = async (path: string, init: RequestInit = {}) => {
-  const account = env("HUBTEL_DISBURSEMENT_ACCOUNT_NUMBER");
+const requestHubtel = async (
+  path: string,
+  init: RequestInit = {},
+  accountName: "disbursement" | "collection" = "disbursement",
+) => {
+  const account =
+    accountName === "collection"
+      ? Deno.env.get("HUBTEL_COLLECTION_ACCOUNT_NUMBER") || "2040631"
+      : env("HUBTEL_DISBURSEMENT_ACCOUNT_NUMBER");
   const baseUrl = Deno.env.get("HUBTEL_BASE_URL") || "https://cs.hubtel.com";
   const apiId =
     Deno.env.get("HUBTEL_API_ID") || Deno.env.get("HUBTEL_CLIENT_ID");
@@ -188,6 +214,8 @@ Deno.serve(async (request) => {
       const verificationService = "3e0841e70afc42fb97d13d19abd36384";
       const data = await requestHubtel(
         `/commissionservices/{account}/${verificationService}?destination=${encodeURIComponent(destination)}`,
+        {},
+        "collection",
       );
       const items = Array.isArray((data as { Data?: unknown }).Data)
         ? (data as { Data: Array<{ Display?: string; Value?: string }> }).Data
@@ -304,7 +332,6 @@ Deno.serve(async (request) => {
       if (!callbackUrl)
         throw new Error("callbackUrl or HUBTEL_CALLBACK_URL is required");
       const purchaseAmount = amount(body.amount);
-      walletDebit = await debitWallet(body, purchaseAmount);
       const payload: Record<string, unknown> = {
         Destination: destination,
         Amount: purchaseAmount,
@@ -353,15 +380,20 @@ Deno.serve(async (request) => {
         if (body.packageCode)
           payload.Extradata = { package: String(body.packageCode) };
       }
+      walletDebit = await debitWallet(body, Number(payload.Amount));
+      const providerResponse = providerAccepted(
+        await requestHubtel(`/commissionservices/{account}/${serviceId}`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        }),
+      );
+
       return json({
         success: true,
         operation,
         service,
         clientReference: reference,
-        data: await requestHubtel(
-          `/commissionservices/{account}/${serviceId}`,
-          { method: "POST", body: JSON.stringify(payload) },
-        ),
+        data: providerResponse,
       });
     }
 
