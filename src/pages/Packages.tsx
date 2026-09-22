@@ -5,7 +5,7 @@ import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
-import KorbaPurchasePanel from "@/components/KorbaPurchasePanel";
+import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
 import PaymentDialog from "@/components/PaymentDialog";
@@ -1175,7 +1175,7 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
   );
 };
 
-// �����─────────────────────���──�����───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
+// �������─────────────────────���──�����───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
 const Packages = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -1656,9 +1656,9 @@ const searchOrders = async (input?: string) => {
             toast({ title: "Service selected", description: `${service.name} is ready for secure activation.` });
           }} />
         ) : activeCategory === "services" ? (
-          <div className="storefront-light-form"><KorbaPurchasePanel mode="services" /></div>
+          <div className="storefront-light-form"><HubtelPurchasePanel mode="services" /></div>
         ) : activeCategory === "vouchers" ? (
-          <div className="storefront-light-form"><KorbaPurchasePanel mode="instant" /></div>
+          <div className="storefront-light-form"><HubtelPurchasePanel mode="instant" /></div>
   ) : activeCategory === "sms" ? (
   <section className="storefront-light-form mx-auto w-full max-w-4xl" aria-labelledby="packages-sms-heading">
     <Card className="border-primary/30 bg-primary/5">

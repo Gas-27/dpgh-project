@@ -37,7 +37,7 @@ const services = {
   tv: ["DStv", "GOtv", "StarTimes", "KweseTV", "GBC TV"],
 };
 
-export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, walletBalance = 0, ownerType, ownerId }: { mode: Mode; orderId?: string; walletOnly?: boolean; walletBalance?: number; ownerType?: string; ownerId?: string }) {
+export default function HubtelPurchasePanel({ mode, orderId, walletOnly = false, walletBalance = 0, ownerType, ownerId }: { mode: Mode; orderId?: string; walletOnly?: boolean; walletBalance?: number; ownerType?: string; ownerId?: string }) {
   const { toast } = useToast();
   const [instantProduct, setInstantProduct] = useState<InstantProduct>("data");
   const [network, setNetwork] = useState("MTN");

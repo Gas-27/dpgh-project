@@ -1,4 +1,4 @@
-import KorbaPurchasePanel from "@/components/KorbaPurchasePanel";
+import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
 import AgentDigitalServicesPricing from "@/components/AgentDigitalServicesPricing";
 import DigitalServicesCatalog, { type Service } from "@/components/DigitalServicesCatalog";
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
@@ -55,7 +55,7 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
   <section className="relative space-y-4">
   <WalletBanner balance={wallet} label="Wallet-only dashboard payments" />
   <ActiveTabMaintenance active={maintenanceKey} label={maintenanceKey === "instant" ? "Data and Airtime" : maintenanceKey} onReturn={onMaintenanceReturn} />
-      <KorbaPurchasePanel
+      <HubtelPurchasePanel
         mode={initialTab === "services" ? "services" : "instant"}
         walletOnly
         walletBalance={wallet}

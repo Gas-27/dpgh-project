@@ -31,7 +31,7 @@ import { SpinToWinCard } from "@/components/SpinToWinCard";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
-import KorbaPurchasePanel from "@/components/KorbaPurchasePanel";
+import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
   import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 import ChatBot from "@/components/ChatBot";
@@ -1084,7 +1084,7 @@ const searchOrders = useCallback(async (input?: string) => {
   <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "vouchers" ? "Instant Data" : activeSection} onReturn={() => setActiveSection("data")} />
   {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="storefront" checkoutMode="paystack" />}
   {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subsubagent" />}
-  {activeSection === "services" && <KorbaPurchasePanel mode="services" />}
+  {activeSection === "services" && <HubtelPurchasePanel mode="services" />}
 {activeSection === "data" && <>
   <TrackOrderDropdown source="subsubagent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <SpinToWinCard target="subsubagent" />
