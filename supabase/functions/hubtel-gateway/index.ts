@@ -29,7 +29,11 @@ const clientReference = (value: unknown, prefix = "HUBTEL") => { const result = 
 const requestHubtel = async (path: string, init: RequestInit = {}) => {
   const account = env("HUBTEL_DISBURSEMENT_ACCOUNT_NUMBER");
   const baseUrl = Deno.env.get("HUBTEL_BASE_URL") || "https://cs.hubtel.com";
-  const auth = btoa(`${env("HUBTEL_CLIENT_ID")}:${env("HUBTEL_CLIENT_SECRET")}`);
+  const apiId = Deno.env.get("HUBTEL_API_ID") || Deno.env.get("HUBTEL_CLIENT_ID");
+  const apiKey = Deno.env.get("HUBTEL_API_KEY") || Deno.env.get("HUBTEL_CLIENT_SECRET");
+  if (!apiId) throw new Error("Missing HUBTEL_API_ID");
+  if (!apiKey) throw new Error("Missing HUBTEL_API_KEY");
+  const auth = btoa(`${apiId}:${apiKey}`);
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}${path.replace("{account}", account)}`, { ...init, headers: { Authorization: `Basic ${auth}`, Accept: "application/json", "Content-Type": "application/json", ...(init.headers || {}) } });
   const text = await response.text();
   let data: unknown; try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
