@@ -45,6 +45,7 @@ export default function HubtelPurchasePanel({ mode, orderId, walletOnly = false,
   const [service, setService] = useState("ECG Prepaid");
   const [amount, setAmount] = useState("");
   const [selectedInstantItem, setSelectedInstantItem] = useState<{ label: string; amount: string } | null>(null);
+  const [customAirtimeAmount, setCustomAirtimeAmount] = useState("");
   const [phone, setPhone] = useState("");
   const [account, setAccount] = useState("");
   const [busy, setBusy] = useState(false);
@@ -82,8 +83,12 @@ export default function HubtelPurchasePanel({ mode, orderId, walletOnly = false,
 
   async function submit() {
     const customer = mode === "instant" ? phone : account;
-    if (mode === "instant" && !selectedInstantItem) {
-      toast({ title: "Choose a bundle first", description: "Select a data bundle or airtime amount to continue.", variant: "destructive" });
+    if (mode === "instant" && instantProduct === "data" && !selectedInstantItem) {
+      toast({ title: "Choose a bundle first", description: "Select a data bundle to continue.", variant: "destructive" });
+      return;
+    }
+    if (mode === "instant" && instantProduct === "airtime" && (!customAirtimeAmount || Number(customAirtimeAmount) <= 0)) {
+      toast({ title: "Enter an airtime amount", description: "Enter an amount between GHS 0.01 and GHS 100.00.", variant: "destructive" });
       return;
     }
     if (mode === "instant" && detectedNetwork && detectedNetwork !== network) {
@@ -111,24 +116,30 @@ export default function HubtelPurchasePanel({ mode, orderId, walletOnly = false,
     toast({ title: "Insufficient wallet balance", description: `Your wallet has GHC ${currentWalletBalance.toFixed(2)} available.`, variant: "destructive" });
     return;
   }
-  setBusy(true);
-    const wallet = { walletOnly, walletOwnerType: ownerType, walletOwnerId: ownerId };
-    let response;
-    if (mode === "instant") {
-      const service = toHubtelService(network, instantProduct);
-      response = instantProduct === "data"
-        ? await buyHubtelData({ service, destination: customer, amount: Number(amount), bundle: selectedInstantItem?.label, packageCode: selectedInstantItem?.label, ...wallet })
-        : await buyHubtelAirtime({ service, destination: customer, amount: Number(amount), ...wallet });
-    } else {
-      const billService = toHubtelBillService(service);
-      if (!billService) throw new Error("This utility service is not configured for Hubtel yet.");
-      response = await payHubtelBill({ service: billService, accountNumber: customer, destination: customer, amount: Number(amount), ...wallet });
+    setBusy(true);
+    try {
+      const wallet = { walletOnly, walletOwnerType: ownerType, walletOwnerId: ownerId };
+      let response;
+      if (mode === "instant") {
+        const service = toHubtelService(network, instantProduct);
+        response = instantProduct === "data"
+          ? await buyHubtelData({ service, destination: customer, amount: Number(amount), bundle: selectedInstantItem?.label, packageCode: selectedInstantItem?.label, ...wallet })
+          : await buyHubtelAirtime({ service, destination: customer, amount: Number(customAirtimeAmount), ...wallet });
+      } else {
+        const billService = toHubtelBillService(service);
+        if (!billService) throw new Error("This utility service is not configured for Hubtel yet.");
+        response = await payHubtelBill({ service: billService, accountNumber: customer, destination: customer, amount: Number(amount), ...wallet });
+      }
+      toast({ title: "Purchase started", description: `Transaction ${response.clientReference || "received"} is processing.` });
+      setAmount("");
+      setCustomAirtimeAmount("");
+      setSelectedInstantItem(null);
+      setPhone("");
+    } catch (error) {
+      toast({ title: "Purchase could not start", description: error instanceof Error ? error.message : "Hubtel could not process this request.", variant: "destructive" });
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
-    toast({ title: "Purchase started", description: `Transaction ${response.clientReference || "received"} is processing.` });
-    setAmount("");
-    setSelectedInstantItem(null);
-    setPhone("");
   }
 
   if (mode === "instant") {
@@ -163,12 +174,19 @@ export default function HubtelPurchasePanel({ mode, orderId, walletOnly = false,
               ))}
             </div>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {["1", "2", "5", "10", "20", "50", "100", "200", "300", "500"].map((value) => (
-                <button key={value} type="button" onClick={() => { setAmount(value); setSelectedInstantItem({ label: `GHS ${value} airtime`, amount: value }); }} className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 text-left text-sm transition hover:border-primary hover:bg-muted">
-                  <span>GHS {value} airtime</span><span className="font-semibold text-primary">GHS {value}.00</span>
-                </button>
-              ))}
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="custom-airtime-amount">Exact airtime amount (GHS)</Label>
+                <Input id="custom-airtime-amount" inputMode="decimal" min="0.01" max="100" step="0.01" value={customAirtimeAmount} onChange={(event) => { const value = event.target.value; setCustomAirtimeAmount(value); setAmount(value); setSelectedInstantItem(value ? { label: `GHS ${value} airtime`, amount: value } : null); }} placeholder="Enter any amount from 0.01 to 100.00" />
+                <p className="text-xs text-muted-foreground">Hubtel allows airtime top-ups up to GHS 100 per request.</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {["1", "2", "5", "10", "20", "50", "100"].map((value) => (
+                  <button key={value} type="button" onClick={() => { setCustomAirtimeAmount(value); setAmount(value); setSelectedInstantItem({ label: `GHS ${value} airtime`, amount: value }); }} className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 text-left text-sm transition hover:border-primary hover:bg-muted">
+                    <span>GHS {value} airtime</span><span className="font-semibold text-primary">GHS {value}.00</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <p className="rounded-lg border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Select a data bundle or airtime amount above to enter the recipient number and complete your wallet purchase.</p>
@@ -183,7 +201,7 @@ export default function HubtelPurchasePanel({ mode, orderId, walletOnly = false,
           </DialogHeader>
           <div className="grid gap-4">
             <div className="rounded-xl border bg-muted/40 px-4 py-3"><p className="text-sm text-muted-foreground">Amount</p><p className="text-2xl font-bold text-primary">GHS {selectedInstantItem?.amount || "0.00"}</p></div>
-            <div className="grid gap-2"><Label htmlFor="korba-instant-phone">Phone number</Label><Input id="korba-instant-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0240000000" autoFocus />{detectedNetwork && <p className="text-xs text-muted-foreground">Detected network: <span className="font-semibold text-foreground">{detectedNetwork}</span></p>}{verifyingName && <p className="text-xs text-muted-foreground">Checking SIM registration name…</p>}{verifiedName && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{verifiedName}</span></p>}{verificationError && <p className="text-xs text-destructive">Could not verify this number yet. You can try again.</p>}</div>
+            <div className="grid gap-2"><Label htmlFor="hubtel-instant-phone">Phone number</Label><Input id="hubtel-instant-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0240000000" autoFocus />{detectedNetwork && <p className="text-xs text-muted-foreground">Detected network: <span className="font-semibold text-foreground">{detectedNetwork}</span></p>}{verifyingName && <p className="text-xs text-muted-foreground">Checking SIM registration name…</p>}{verifiedName && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{verifiedName}</span></p>}{verificationError && <p className="text-xs text-destructive">Could not verify this number yet. You can try again.</p>}</div>
             {walletOnly && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">This dashboard purchase uses your wallet only. Available: GHC {Number(walletBalance).toFixed(2)}.</p>}
             <Button onClick={submit} disabled={busy || !phone}>{busy ? "Starting purchase…" : instantProduct === "airtime" ? "Buy airtime" : "Buy data"}</Button>
           </div>
@@ -204,7 +222,7 @@ export default function HubtelPurchasePanel({ mode, orderId, walletOnly = false,
             ))}
           </div>
           <div className="grid gap-3"><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Select provider</p><div className="grid gap-3 sm:grid-cols-3">{services[serviceCategory].map((item) => <button key={item} type="button" onClick={() => setService(item)} className={`rounded-xl border px-3 py-5 text-sm font-semibold transition ${service === item ? "border-primary bg-primary/10 text-primary" : "bg-background hover:border-primary/50"}`}>{item}</button>)}</div></div>
-          <div className="grid gap-4 sm:grid-cols-2"><div className="grid gap-2"><Label htmlFor="korba-service-account">Meter / decoder / account number</Label><Input id="korba-service-account" inputMode="numeric" value={account} onChange={(event) => setAccount(event.target.value)} placeholder="Account number" /></div><div className="grid gap-2"><Label htmlFor="korba-service-amount">Amount (GHS)</Label><Input id="korba-service-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="2.00" /></div></div>
+          <div className="grid gap-4 sm:grid-cols-2"><div className="grid gap-2"><Label htmlFor="hubtel-service-account">Meter / decoder / account number</Label><Input id="hubtel-service-account" inputMode="numeric" value={account} onChange={(event) => setAccount(event.target.value)} placeholder="Account number" /></div><div className="grid gap-2"><Label htmlFor="hubtel-service-amount">Amount (GHS)</Label><Input id="hubtel-service-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="2.00" /></div></div>
           {walletOnly && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">This dashboard payment uses your wallet only. Available: GHC {Number(walletBalance).toFixed(2)}.</p>}
           <Button onClick={submit} disabled={busy || (walletOnly && Number(amount) > Number(walletBalance))}>{busy ? "Starting payment…" : "Proceed to payment"}</Button>
         </div>

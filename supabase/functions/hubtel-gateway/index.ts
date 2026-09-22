@@ -140,5 +140,5 @@ Deno.serve(async (request) => {
       return json({ success: true, operation, data: await requestHubtel(`/commissionservices/{account}/status/${encodeURIComponent(reference)}`) });
     }
     throw new Error("Unsupported operation: data_catalog, bill_catalog, airtime, data, bill, callback, transaction_status");
-  } catch (error) { await refundWallet(walletDebit); console.error("[hubtel-gateway]", error); return json({ success: false, error: error instanceof Error ? error.message : "Hubtel request failed", wallet_refunded: Boolean(walletDebit) }, 400); }
+  } catch (error) { await refundWallet(walletDebit); console.error("[hubtel-gateway]", error); return json({ success: false, error: error instanceof Error ? error.message : "Hubtel request failed", wallet_refunded: Boolean(walletDebit) }, 200); }
 });
