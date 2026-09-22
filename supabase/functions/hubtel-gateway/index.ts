@@ -68,7 +68,10 @@ const requestHubtel = async (path: string, init: RequestInit = {}) => {
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}${path.replace("{account}", account)}`, { ...init, headers: { Authorization: `Basic ${auth}`, Accept: "application/json", "Content-Type": "application/json", ...(init.headers || {}) } });
   const text = await response.text();
   let data: unknown; try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
-  if (!response.ok) throw new Error(`Hubtel request failed (${response.status})`);
+  if (!response.ok) {
+    const detail = typeof data === "object" && data !== null ? JSON.stringify(data) : String(data || "");
+    throw new Error(`Hubtel request failed (${response.status})${detail ? `: ${detail.slice(0, 300)}` : ""}`);
+  }
   return data;
 };
 
@@ -130,7 +133,16 @@ Deno.serve(async (request) => {
       const purchaseAmount = amount(body.amount);
       walletDebit = await debitWallet(body, purchaseAmount);
       const payload: Record<string, unknown> = { Destination: destination, Amount: purchaseAmount, CallbackUrl: callbackUrl, ClientReference: reference };
-      if (operation === "data") { const bundle = String(body.bundle || body.packageCode || "").trim(); if (!bundle) throw new Error("bundle is required; query data_catalog first"); payload.Extradata = { bundle }; }
+      if (operation === "data") {
+        const requestedBundle = String(body.bundle || body.packageCode || "").trim();
+        if (!requestedBundle) throw new Error("bundle is required; query data_catalog first");
+        const catalog = await requestHubtel(`/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`) as { Data?: Array<{ Display?: string; Value?: string; Amount?: number }> };
+        const match = (catalog.Data || []).find((item) => String(item.Display || "").trim().toLowerCase() === requestedBundle.toLowerCase() || String(item.Value || "").trim().toLowerCase() === requestedBundle.toLowerCase());
+        if (!match?.Value) throw new Error("This data bundle is no longer available. Please refresh the bundle list and try again.");
+        if (typeof match.Amount === "number" && Math.abs(match.Amount - purchaseAmount) > 0.01) throw new Error("The selected bundle price changed. Please select the bundle again.");
+        payload.Amount = typeof match.Amount === "number" ? match.Amount : purchaseAmount;
+        payload.Extradata = { bundle: match.Value };
+      }
       if (operation === "bill") { const accountNumber = String(body.accountNumber || "").trim(); if (!accountNumber) throw new Error("accountNumber is required"); payload.Destination = accountNumber; if (body.packageCode) payload.Extradata = { package: String(body.packageCode) }; }
       return json({ success: true, operation, service, clientReference: reference, data: await requestHubtel(`/commissionservices/{account}/${serviceId}`, { method: "POST", body: JSON.stringify(payload) }) });
     }
