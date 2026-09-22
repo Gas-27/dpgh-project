@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-idempotency-key",
@@ -51,6 +53,9 @@ const env = (name: string) => { const value = Deno.env.get(name); if (!value) th
 const phone = (value: unknown) => { const digits = String(value ?? "").replace(/\D/g, ""); if (digits.length === 10 && digits.startsWith("0")) return `233${digits.slice(1)}`; if (digits.length === 12 && digits.startsWith("233")) return digits; throw new Error("Enter a valid Ghana phone number"); };
 const amount = (value: unknown) => { const result = Number(value); if (!Number.isFinite(result) || result <= 0) throw new Error("Amount must be greater than zero"); return Math.round(result * 100) / 100; };
 const clientReference = (value: unknown, prefix = "HUBTEL") => { const result = String(value || `${prefix}-${crypto.randomUUID()}`).replace(/[^a-zA-Z0-9_-]/g, ""); if (result.length < 3 || result.length > 36) throw new Error("clientReference must be 3-36 characters"); return result; };
+const walletClient = () => { const url = Deno.env.get("SUPABASE_URL"); const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"); if (!url || !key) throw new Error("Supabase wallet service is not configured"); return createClient(url, key, { auth: { persistSession: false } }); };
+async function debitWallet(body: Record<string, unknown>, value: number) { if (body.walletOnly !== true) return null; const ownerType = String(body.walletOwnerType || "").toLowerCase(); const ownerId = String(body.walletOwnerId || ""); if (!ownerType || !ownerId) throw new Error("Wallet owner is required"); const { data, error } = await walletClient().rpc("debit_purchase_wallet", { p_owner_type: ownerType, p_owner_id: ownerId, p_amount: value }); if (error) throw new Error(`Wallet debit failed: ${error.message}`); const row = Array.isArray(data) ? data[0] : data; if (!row?.success) throw new Error(row?.message || "Insufficient wallet balance"); return { ownerType, ownerId, amount: value }; }
+async function refundWallet(item: { ownerType: string; ownerId: string; amount: number } | null) { if (!item) return; await walletClient().rpc("credit_purchase_wallet", { p_owner_type: item.ownerType, p_owner_id: item.ownerId, p_amount: item.amount }); }
 
 const requestHubtel = async (path: string, init: RequestInit = {}) => {
   const account = env("HUBTEL_DISBURSEMENT_ACCOUNT_NUMBER");
@@ -70,6 +75,7 @@ const requestHubtel = async (path: string, init: RequestInit = {}) => {
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST" && request.method !== "GET") return json({ error: "Only GET and POST are supported" }, 405);
+  let walletDebit: { ownerType: string; ownerId: string; amount: number } | null = null;
   try {
     const body = request.method === "GET" ? Object.fromEntries(new URL(request.url).searchParams) : await request.json();
     const operation = String(body.operation || "").toLowerCase();
@@ -121,7 +127,9 @@ Deno.serve(async (request) => {
       const reference = clientReference(body.clientReference, operation.toUpperCase());
       const callbackUrl = String(body.callbackUrl || Deno.env.get("HUBTEL_CALLBACK_URL") || "");
       if (!callbackUrl) throw new Error("callbackUrl or HUBTEL_CALLBACK_URL is required");
-      const payload: Record<string, unknown> = { Destination: destination, Amount: amount(body.amount), CallbackUrl: callbackUrl, ClientReference: reference };
+      const purchaseAmount = amount(body.amount);
+      walletDebit = await debitWallet(body, purchaseAmount);
+      const payload: Record<string, unknown> = { Destination: destination, Amount: purchaseAmount, CallbackUrl: callbackUrl, ClientReference: reference };
       if (operation === "data") { const bundle = String(body.bundle || body.packageCode || "").trim(); if (!bundle) throw new Error("bundle is required; query data_catalog first"); payload.Extradata = { bundle }; }
       if (operation === "bill") { const accountNumber = String(body.accountNumber || "").trim(); if (!accountNumber) throw new Error("accountNumber is required"); payload.Destination = accountNumber; if (body.packageCode) payload.Extradata = { package: String(body.packageCode) }; }
       return json({ success: true, operation, service, clientReference: reference, data: await requestHubtel(`/commissionservices/{account}/${serviceId}`, { method: "POST", body: JSON.stringify(payload) }) });
@@ -132,5 +140,5 @@ Deno.serve(async (request) => {
       return json({ success: true, operation, data: await requestHubtel(`/commissionservices/{account}/status/${encodeURIComponent(reference)}`) });
     }
     throw new Error("Unsupported operation: data_catalog, bill_catalog, airtime, data, bill, callback, transaction_status");
-  } catch (error) { console.error("[hubtel-gateway]", error); return json({ success: false, error: error instanceof Error ? error.message : "Hubtel request failed" }, 400); }
+  } catch (error) { await refundWallet(walletDebit); console.error("[hubtel-gateway]", error); return json({ success: false, error: error instanceof Error ? error.message : "Hubtel request failed", wallet_refunded: Boolean(walletDebit) }, 400); }
 });

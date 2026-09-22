@@ -24,6 +24,9 @@ export interface HubtelRequest {
   packageCode?: string;
   clientReference?: string;
   callbackUrl?: string;
+  walletOnly?: boolean;
+  walletOwnerType?: string;
+  walletOwnerId?: string;
 }
 
 export interface HubtelResponse<T = unknown> {
@@ -90,8 +93,17 @@ export const toHubtelService = (network: string, type: "airtime" | "data") => {
 export const hubtelBillServices = ["ecg", "ghana_water", "dstv", "gotv", "startimes", "telecel_broadband", "telecel_postpaid"] as const;
 export type HubtelBillService = (typeof hubtelBillServices)[number];
 
-export const toHubtelBillService = (value: string): HubtelBillService | null =>
-  hubtelBillServices.includes(value as HubtelBillService) ? (value as HubtelBillService) : null;
+export const toHubtelBillService = (value: string): HubtelBillService | null => {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("ecg")) return "ecg";
+  if (normalized.includes("water")) return "ghana_water";
+  if (normalized.includes("dstv")) return "dstv";
+  if (normalized.includes("gotv")) return "gotv";
+  if (normalized.includes("startimes")) return "startimes";
+  if (normalized.includes("broadband")) return "telecel_broadband";
+  if (normalized.includes("postpaid")) return "telecel_postpaid";
+  return null;
+};
 
 export default {
   getHubtelDataCatalog,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { verifyHubtelMsisdn } from "@/services/hubtelService";
+import { buyHubtelAirtime, buyHubtelData, payHubtelBill, toHubtelBillService, toHubtelService, verifyHubtelMsisdn } from "@/services/hubtelService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -61,7 +61,7 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
 
   useEffect(() => {
     let cancelled = false;
-    if (mode !== "instant" || normalizedPhone.length !== 10 || !/^0\\d{9}$/.test(normalizedPhone)) {
+    if (mode !== "instant" || normalizedPhone.length !== 10 || !/^0\d{9}$/.test(normalizedPhone)) {
       setVerifiedName(null);
       setVerificationError(null);
       return;
@@ -112,27 +112,20 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
     return;
   }
   setBusy(true);
-    const { data, error } = await supabase.functions.invoke("korba-gateway", {
-      body: {
-        operation: mode === "instant" && instantProduct === "data" ? "data" : "collect",
-        product_type: mode === "instant" ? instantProduct : "service",
-        package_code: selectedInstantItem?.label,
-        wallet_only: walletOnly,
-        wallet_balance_owner_type: ownerType,
-        wallet_balance_owner_id: ownerId,
-        amount: Number(amount),
-        customer_number: customer,
-        network_code: mode === "instant" ? network : service,
-        description: mode === "instant" ? `${instantProduct === "airtime" ? "Airtime" : "Data"} purchase` : `${service} bill payment`,
-        order_id: orderId,
-      },
-    });
-    setBusy(false);
-    if (error || data?.error || data?.success === false) {
-      toast({ title: "Purchase could not start", description: data?.user_message || error?.message || "Please try again.", variant: "destructive" });
-      return;
+    const wallet = { walletOnly, walletOwnerType: ownerType, walletOwnerId: ownerId };
+    let response;
+    if (mode === "instant") {
+      const service = toHubtelService(network, instantProduct);
+      response = instantProduct === "data"
+        ? await buyHubtelData({ service, destination: customer, amount: Number(amount), bundle: selectedInstantItem?.label, packageCode: selectedInstantItem?.label, ...wallet })
+        : await buyHubtelAirtime({ service, destination: customer, amount: Number(amount), ...wallet });
+    } else {
+      const billService = toHubtelBillService(service);
+      if (!billService) throw new Error("This utility service is not configured for Hubtel yet.");
+      response = await payHubtelBill({ service: billService, accountNumber: customer, destination: customer, amount: Number(amount), ...wallet });
     }
-    toast({ title: "Purchase started", description: `Transaction ${data?.transaction_id || "received"} is processing.` });
+    setBusy(false);
+    toast({ title: "Purchase started", description: `Transaction ${response.clientReference || "received"} is processing.` });
     setAmount("");
     setSelectedInstantItem(null);
     setPhone("");
