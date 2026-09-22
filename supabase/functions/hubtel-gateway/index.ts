@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-idempotency-key",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-idempotency-key",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -23,7 +24,10 @@ const serviceIds: Record<string, string> = {
   startimes: "6598652d34ea4112949c93c079c501ce",
 };
 
-const fallbackBundles: Record<string, Array<{ Display: string; Value: string; Amount: number }>> = {
+const fallbackBundles: Record<
+  string,
+  Array<{ Display: string; Value: string; Amount: number }>
+> = {
   mtn_data: [
     { Display: "80MB Bundle (GHS 1)", Value: "DATA1", Amount: 1 },
     { Display: "200MB Bundle (GHS 2)", Value: "DATA2", Amount: 2 },
@@ -48,109 +52,346 @@ const fallbackBundles: Record<string, Array<{ Display: string; Value: string; Am
   ],
 };
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-const env = (name: string) => { const value = Deno.env.get(name); if (!value) throw new Error(`Missing ${name}`); return value; };
-const phone = (value: unknown) => { const digits = String(value ?? "").replace(/\D/g, ""); if (digits.length === 10 && digits.startsWith("0")) return `233${digits.slice(1)}`; if (digits.length === 12 && digits.startsWith("233")) return digits; throw new Error("Enter a valid Ghana phone number"); };
-const amount = (value: unknown) => { const result = Number(value); if (!Number.isFinite(result) || result <= 0) throw new Error("Amount must be greater than zero"); return Math.round(result * 100) / 100; };
-const clientReference = (value: unknown, prefix = "HUBTEL") => { const result = String(value || `${prefix}-${crypto.randomUUID()}`).replace(/[^a-zA-Z0-9_-]/g, ""); if (result.length < 3 || result.length > 36) throw new Error("clientReference must be 3-36 characters"); return result; };
-const walletClient = () => { const url = Deno.env.get("SUPABASE_URL"); const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"); if (!url || !key) throw new Error("Supabase wallet service is not configured"); return createClient(url, key, { auth: { persistSession: false } }); };
-async function debitWallet(body: Record<string, unknown>, value: number) { if (body.walletOnly !== true) return null; const ownerType = String(body.walletOwnerType || "").toLowerCase(); const ownerId = String(body.walletOwnerId || ""); if (!ownerType || !ownerId) throw new Error("Wallet owner is required"); const { data, error } = await walletClient().rpc("debit_purchase_wallet", { p_owner_type: ownerType, p_owner_id: ownerId, p_amount: value }); if (error) throw new Error(`Wallet debit failed: ${error.message}`); const row = Array.isArray(data) ? data[0] : data; if (!row?.success) throw new Error(row?.message || "Insufficient wallet balance"); return { ownerType, ownerId, amount: value }; }
-async function refundWallet(item: { ownerType: string; ownerId: string; amount: number } | null) { if (!item) return; await walletClient().rpc("credit_purchase_wallet", { p_owner_type: item.ownerType, p_owner_id: item.ownerId, p_amount: item.amount }); }
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+const env = (name: string) => {
+  const value = Deno.env.get(name);
+  if (!value) throw new Error(`Missing ${name}`);
+  return value;
+};
+const phone = (value: unknown) => {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (digits.length === 10 && digits.startsWith("0"))
+    return `233${digits.slice(1)}`;
+  if (digits.length === 12 && digits.startsWith("233")) return digits;
+  throw new Error("Enter a valid Ghana phone number");
+};
+const amount = (value: unknown) => {
+  const result = Number(value);
+  if (!Number.isFinite(result) || result <= 0)
+    throw new Error("Amount must be greater than zero");
+  return Math.round(result * 100) / 100;
+};
+const clientReference = (value: unknown, prefix = "HUBTEL") => {
+  const supplied = String(value || "")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 36);
+  if (supplied.length >= 3) return supplied;
+
+  // Hubtel accepts references up to 36 characters. Keep generated references short.
+  return `${prefix.slice(0, 8)}-${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
+};
+const walletClient = () => {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key)
+    throw new Error("Supabase wallet service is not configured");
+  return createClient(url, key, { auth: { persistSession: false } });
+};
+async function debitWallet(body: Record<string, unknown>, value: number) {
+  if (body.walletOnly !== true) return null;
+  const ownerType = String(body.walletOwnerType || "").toLowerCase();
+  const ownerId = String(body.walletOwnerId || "");
+  if (!ownerType || !ownerId) throw new Error("Wallet owner is required");
+  const { data, error } = await walletClient().rpc("debit_purchase_wallet", {
+    p_owner_type: ownerType,
+    p_owner_id: ownerId,
+    p_amount: value,
+  });
+  if (error) throw new Error(`Wallet debit failed: ${error.message}`);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.success)
+    throw new Error(row?.message || "Insufficient wallet balance");
+  return { ownerType, ownerId, amount: value };
+}
+async function refundWallet(
+  item: { ownerType: string; ownerId: string; amount: number } | null,
+) {
+  if (!item) return;
+  await walletClient().rpc("credit_purchase_wallet", {
+    p_owner_type: item.ownerType,
+    p_owner_id: item.ownerId,
+    p_amount: item.amount,
+  });
+}
 
 const requestHubtel = async (path: string, init: RequestInit = {}) => {
   const account = env("HUBTEL_DISBURSEMENT_ACCOUNT_NUMBER");
   const baseUrl = Deno.env.get("HUBTEL_BASE_URL") || "https://cs.hubtel.com";
-  const apiId = Deno.env.get("HUBTEL_API_ID") || Deno.env.get("HUBTEL_CLIENT_ID");
-  const apiKey = Deno.env.get("HUBTEL_API_KEY") || Deno.env.get("HUBTEL_CLIENT_SECRET");
+  const apiId =
+    Deno.env.get("HUBTEL_API_ID") || Deno.env.get("HUBTEL_CLIENT_ID");
+  const apiKey =
+    Deno.env.get("HUBTEL_API_KEY") || Deno.env.get("HUBTEL_CLIENT_SECRET");
   if (!apiId) throw new Error("Missing HUBTEL_API_ID");
   if (!apiKey) throw new Error("Missing HUBTEL_API_KEY");
   const auth = btoa(`${apiId}:${apiKey}`);
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}${path.replace("{account}", account)}`, { ...init, headers: { Authorization: `Basic ${auth}`, Accept: "application/json", "Content-Type": "application/json", ...(init.headers || {}) } });
+  const response = await fetch(
+    `${baseUrl.replace(/\/$/, "")}${path.replace("{account}", account)}`,
+    {
+      ...init,
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(init.headers || {}),
+      },
+    },
+  );
   const text = await response.text();
-  let data: unknown; try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+  let data: unknown;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { raw: text };
+  }
   if (!response.ok) {
-    const detail = typeof data === "object" && data !== null ? JSON.stringify(data) : String(data || "");
-    throw new Error(`Hubtel request failed (${response.status})${detail ? `: ${detail.slice(0, 300)}` : ""}`);
+    const detail =
+      typeof data === "object" && data !== null
+        ? JSON.stringify(data)
+        : String(data || "");
+    throw new Error(
+      `Hubtel request failed (${response.status})${detail ? `: ${detail.slice(0, 300)}` : ""}`,
+    );
   }
   return data;
 };
 
 Deno.serve(async (request) => {
-  if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (request.method !== "POST" && request.method !== "GET") return json({ error: "Only GET and POST are supported" }, 405);
-  let walletDebit: { ownerType: string; ownerId: string; amount: number } | null = null;
+  if (request.method === "OPTIONS")
+    return new Response("ok", { headers: corsHeaders });
+  if (request.method !== "POST" && request.method !== "GET")
+    return json({ error: "Only GET and POST are supported" }, 405);
+  let walletDebit: {
+    ownerType: string;
+    ownerId: string;
+    amount: number;
+  } | null = null;
   try {
-    const body = request.method === "GET" ? Object.fromEntries(new URL(request.url).searchParams) : await request.json();
+    const body =
+      request.method === "GET"
+        ? Object.fromEntries(new URL(request.url).searchParams)
+        : await request.json();
     const operation = String(body.operation || "").toLowerCase();
-    const service = String(body.service || body.serviceCode || "").toLowerCase();
-    const serviceId = serviceIds[service] || (service.match(/^[a-f0-9]{32}$/) ? service : "");
+    const service = String(
+      body.service || body.serviceCode || "",
+    ).toLowerCase();
+    const serviceId =
+      serviceIds[service] || (service.match(/^[a-f0-9]{32}$/) ? service : "");
 
     if (operation === "verify_msisdn") {
-      const destination = phone(body.destination || body.phoneNumber || body.customerMsisdn);
+      const destination = phone(
+        body.destination || body.phoneNumber || body.customerMsisdn,
+      );
       const verificationService = "3e0841e70afc42fb97d13d19abd36384";
-      const data = await requestHubtel(`/commissionservices/{account}/${verificationService}?destination=${encodeURIComponent(destination)}`);
-      const items = Array.isArray((data as { Data?: unknown }).Data) ? (data as { Data: Array<{ Display?: string; Value?: string }> }).Data : [];
-      const name = items.find((item) => String(item.Display || "").toLowerCase() === "name")?.Value || items[0]?.Value || null;
-      return json({ success: true, operation, destination, name, data });
+      const data = await requestHubtel(
+        `/commissionservices/{account}/${verificationService}?destination=${encodeURIComponent(destination)}`,
+      );
+      const items = Array.isArray((data as { Data?: unknown }).Data)
+        ? (data as { Data: Array<{ Display?: string; Value?: string }> }).Data
+        : [];
+      const nameItem = items.find((item) =>
+        /name|customer|subscriber/i.test(String(item.Display || "")),
+      );
+      const name = String(nameItem?.Value || "").trim() || null;
+      const providerMessage =
+        String((data as { Message?: string }).Message || "").trim() || null;
+
+      return json({
+        success: true,
+        operation,
+        destination,
+        verified: Boolean(name),
+        name,
+        providerMessage,
+        data,
+      });
     }
 
     if (operation === "data_catalog") {
-      const destination = phone(body.destination || body.phoneNumber || body.customerMsisdn);
-      if (!serviceId || !service.endsWith("_data")) throw new Error("Use mtn_data, telecel_data, or airteltigo_data");
+      const destination = phone(
+        body.destination || body.phoneNumber || body.customerMsisdn,
+      );
+      if (!serviceId || !service.endsWith("_data"))
+        throw new Error("Use mtn_data, telecel_data, or airteltigo_data");
       try {
-        const live = await requestHubtel(`/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`);
-        return json({ success: true, operation, service, data: live, source: "hubtel" });
+        const live = await requestHubtel(
+          `/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`,
+        );
+        return json({
+          success: true,
+          operation,
+          service,
+          data: live,
+          source: "hubtel",
+        });
       } catch (error) {
         console.warn("[hubtel-gateway] catalog fallback", error);
-        return json({ success: true, operation, service, data: { ResponseCode: "0000", Message: "Fallback catalog", Data: fallbackBundles[service] || [] }, source: "fallback" });
+        return json({
+          success: true,
+          operation,
+          service,
+          data: {
+            ResponseCode: "0000",
+            Message: "Fallback catalog",
+            Data: fallbackBundles[service] || [],
+          },
+          source: "fallback",
+        });
       }
     }
 
     if (operation === "bill_catalog") {
-      if (!serviceId || !["ecg", "ghana_water", "telecel_broadband", "telecel_postpaid"].includes(service)) throw new Error("This service does not support account lookup");
-      const destination = String(body.accountNumber || body.destination || "").trim();
+      if (
+        !serviceId ||
+        ![
+          "ecg",
+          "ghana_water",
+          "telecel_broadband",
+          "telecel_postpaid",
+        ].includes(service)
+      )
+        throw new Error("This service does not support account lookup");
+      const destination = String(
+        body.accountNumber || body.destination || "",
+      ).trim();
       if (!destination) throw new Error("accountNumber is required");
-      return json({ success: true, operation, service, data: await requestHubtel(`/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`) });
+      return json({
+        success: true,
+        operation,
+        service,
+        data: await requestHubtel(
+          `/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`,
+        ),
+      });
     }
 
     if (operation === "callback") {
       const callback = body;
-      console.log("[hubtel-gateway] callback received", JSON.stringify(callback));
+      console.log(
+        "[hubtel-gateway] callback received",
+        JSON.stringify(callback),
+      );
       return json({ success: true, operation, received: true });
     }
 
-    if (operation === "airtime" || operation === "data" || operation === "bill") {
+    if (
+      operation === "airtime" ||
+      operation === "data" ||
+      operation === "bill"
+    ) {
       if (!serviceId) throw new Error("A valid Hubtel service is required");
-      if (operation === "data" && !service.endsWith("_data")) throw new Error("Data purchases require an MTN, Telecel, or AirtelTigo data service");
-      if (operation === "airtime" && !service.endsWith("_airtime")) throw new Error("Airtime purchases require an airtime service");
-      const destination = operation === "bill"
-        ? String(body.accountNumber || "").trim()
-        : phone(body.destination || body.phoneNumber || body.customerMsisdn);
+      if (operation === "data" && !service.endsWith("_data"))
+        throw new Error(
+          "Data purchases require an MTN, Telecel, or AirtelTigo data service",
+        );
+      if (operation === "airtime" && !service.endsWith("_airtime"))
+        throw new Error("Airtime purchases require an airtime service");
+      const destination =
+        operation === "bill"
+          ? String(body.accountNumber || "").trim()
+          : phone(body.destination || body.phoneNumber || body.customerMsisdn);
       if (!destination) throw new Error("accountNumber is required");
-      const reference = clientReference(body.clientReference, operation.toUpperCase());
-      const callbackUrl = String(body.callbackUrl || Deno.env.get("HUBTEL_CALLBACK_URL") || "");
-      if (!callbackUrl) throw new Error("callbackUrl or HUBTEL_CALLBACK_URL is required");
+      const reference = clientReference(
+        body.clientReference,
+        operation.toUpperCase(),
+      );
+      const callbackUrl = String(
+        body.callbackUrl || Deno.env.get("HUBTEL_CALLBACK_URL") || "",
+      );
+      if (!callbackUrl)
+        throw new Error("callbackUrl or HUBTEL_CALLBACK_URL is required");
       const purchaseAmount = amount(body.amount);
       walletDebit = await debitWallet(body, purchaseAmount);
-      const payload: Record<string, unknown> = { Destination: destination, Amount: purchaseAmount, CallbackUrl: callbackUrl, ClientReference: reference };
+      const payload: Record<string, unknown> = {
+        Destination: destination,
+        Amount: purchaseAmount,
+        CallbackUrl: callbackUrl,
+        ClientReference: reference,
+      };
       if (operation === "data") {
-        const requestedBundle = String(body.bundle || body.packageCode || "").trim();
-        if (!requestedBundle) throw new Error("bundle is required; query data_catalog first");
-        const catalog = await requestHubtel(`/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`) as { Data?: Array<{ Display?: string; Value?: string; Amount?: number }> };
-        const match = (catalog.Data || []).find((item) => String(item.Display || "").trim().toLowerCase() === requestedBundle.toLowerCase() || String(item.Value || "").trim().toLowerCase() === requestedBundle.toLowerCase());
-        if (!match?.Value) throw new Error("This data bundle is no longer available. Please refresh the bundle list and try again.");
-        if (typeof match.Amount === "number" && Math.abs(match.Amount - purchaseAmount) > 0.01) throw new Error("The selected bundle price changed. Please select the bundle again.");
-        payload.Amount = typeof match.Amount === "number" ? match.Amount : purchaseAmount;
+        const requestedBundle = String(
+          body.bundle || body.packageCode || "",
+        ).trim();
+        if (!requestedBundle)
+          throw new Error("bundle is required; query data_catalog first");
+        const catalog = (await requestHubtel(
+          `/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`,
+        )) as {
+          Data?: Array<{ Display?: string; Value?: string; Amount?: number }>;
+        };
+        const match = (catalog.Data || []).find(
+          (item) =>
+            String(item.Display || "")
+              .trim()
+              .toLowerCase() === requestedBundle.toLowerCase() ||
+            String(item.Value || "")
+              .trim()
+              .toLowerCase() === requestedBundle.toLowerCase(),
+        );
+        if (!match?.Value)
+          throw new Error(
+            "This data bundle is no longer available. Please refresh the bundle list and try again.",
+          );
+        if (
+          typeof match.Amount === "number" &&
+          Math.abs(match.Amount - purchaseAmount) > 0.01
+        )
+          throw new Error(
+            "The selected bundle price changed. Please select the bundle again.",
+          );
+        payload.Amount =
+          typeof match.Amount === "number" ? match.Amount : purchaseAmount;
         payload.Extradata = { bundle: match.Value };
       }
-      if (operation === "bill") { const accountNumber = String(body.accountNumber || "").trim(); if (!accountNumber) throw new Error("accountNumber is required"); payload.Destination = accountNumber; if (body.packageCode) payload.Extradata = { package: String(body.packageCode) }; }
-      return json({ success: true, operation, service, clientReference: reference, data: await requestHubtel(`/commissionservices/{account}/${serviceId}`, { method: "POST", body: JSON.stringify(payload) }) });
+      if (operation === "bill") {
+        const accountNumber = String(body.accountNumber || "").trim();
+        if (!accountNumber) throw new Error("accountNumber is required");
+        payload.Destination = accountNumber;
+        if (body.packageCode)
+          payload.Extradata = { package: String(body.packageCode) };
+      }
+      return json({
+        success: true,
+        operation,
+        service,
+        clientReference: reference,
+        data: await requestHubtel(
+          `/commissionservices/{account}/${serviceId}`,
+          { method: "POST", body: JSON.stringify(payload) },
+        ),
+      });
     }
 
     if (operation === "transaction_status") {
-      const reference = String(body.clientReference || body.transactionId || "").trim(); if (!reference) throw new Error("clientReference or transactionId is required");
-      return json({ success: true, operation, data: await requestHubtel(`/commissionservices/{account}/status/${encodeURIComponent(reference)}`) });
+      const reference = String(
+        body.clientReference || body.transactionId || "",
+      ).trim();
+      if (!reference)
+        throw new Error("clientReference or transactionId is required");
+      return json({
+        success: true,
+        operation,
+        data: await requestHubtel(
+          `/commissionservices/{account}/status/${encodeURIComponent(reference)}`,
+        ),
+      });
     }
-    throw new Error("Unsupported operation: data_catalog, bill_catalog, airtime, data, bill, callback, transaction_status");
-  } catch (error) { await refundWallet(walletDebit); console.error("[hubtel-gateway]", error); return json({ success: false, error: error instanceof Error ? error.message : "Hubtel request failed", wallet_refunded: Boolean(walletDebit) }, 200); }
+    throw new Error(
+      "Unsupported operation: data_catalog, bill_catalog, airtime, data, bill, callback, transaction_status",
+    );
+  } catch (error) {
+    await refundWallet(walletDebit);
+    console.error("[hubtel-gateway]", error);
+    return json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Hubtel request failed",
+        wallet_refunded: Boolean(walletDebit),
+      },
+      200,
+    );
+  }
 });
