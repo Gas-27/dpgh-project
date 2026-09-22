@@ -76,6 +76,15 @@ Deno.serve(async (request) => {
     const service = String(body.service || body.serviceCode || "").toLowerCase();
     const serviceId = serviceIds[service] || (service.match(/^[a-f0-9]{32}$/) ? service : "");
 
+    if (operation === "verify_msisdn") {
+      const destination = phone(body.destination || body.phoneNumber || body.customerMsisdn);
+      const verificationService = "3e0841e70afc42fb97d13d19abd36384";
+      const data = await requestHubtel(`/commissionservices/{account}/${verificationService}?destination=${encodeURIComponent(destination)}`);
+      const items = Array.isArray((data as { Data?: unknown }).Data) ? (data as { Data: Array<{ Display?: string; Value?: string }> }).Data : [];
+      const name = items.find((item) => String(item.Display || "").toLowerCase() === "name")?.Value || items[0]?.Value || null;
+      return json({ success: true, operation, destination, name, data });
+    }
+
     if (operation === "data_catalog") {
       const destination = phone(body.destination || body.phoneNumber || body.customerMsisdn);
       if (!serviceId || !service.endsWith("_data")) throw new Error("Use mtn_data, telecel_data, or airteltigo_data");

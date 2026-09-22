@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -47,6 +48,32 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
   const [phone, setPhone] = useState("");
   const [account, setAccount] = useState("");
   const [busy, setBusy] = useState(false);
+  const [verifiedName, setVerifiedName] = useState<string | null>(null);
+  const [verifyingName, setVerifyingName] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
+  const normalizedPhone = phone.replace(/\D/g, "");
+  const detectedNetwork = normalizedPhone.startsWith("0") ? ({
+    "024": "MTN", "025": "MTN", "053": "MTN", "054": "MTN", "055": "MTN", "059": "MTN",
+    "020": "TELECEL", "050": "TELECEL",
+    "026": "AIRTELTIGO", "027": "AIRTELTIGO", "056": "AIRTELTIGO", "057": "AIRTELTIGO",
+  } as Record<string, string>)[normalizedPhone.slice(0, 3)] || null : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (mode !== "instant" || normalizedPhone.length !== 10 || !/^0\\d{9}$/.test(normalizedPhone)) {
+      setVerifiedName(null);
+      setVerificationError(null);
+      return;
+    }
+    setVerifyingName(true);
+    setVerificationError(null);
+    verifyHubtelMsisdn(normalizedPhone)
+      .then((response) => { if (!cancelled) setVerifiedName(response.data?.name || null); })
+      .catch((error: Error) => { if (!cancelled) setVerificationError(error.message); })
+      .finally(() => { if (!cancelled) setVerifyingName(false); });
+    return () => { cancelled = true; };
+  }, [mode, normalizedPhone]);
 
   function chooseServiceCategory(category: ServiceCategory) {
     setServiceCategory(category);
@@ -57,6 +84,14 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
     const customer = mode === "instant" ? phone : account;
     if (mode === "instant" && !selectedInstantItem) {
       toast({ title: "Choose a bundle first", description: "Select a data bundle or airtime amount to continue.", variant: "destructive" });
+      return;
+    }
+    if (mode === "instant" && detectedNetwork && detectedNetwork !== network) {
+      toast({ title: "Network mismatch", description: `This number is ${detectedNetwork}. Select ${detectedNetwork} before purchasing.`, variant: "destructive" });
+      return;
+    }
+    if (mode === "instant" && normalizedPhone.length !== 10) {
+      toast({ title: "Invalid phone number", description: "Enter a valid 10-digit Ghana number.", variant: "destructive" });
       return;
     }
     if (!amount || Number(amount) <= 0 || !customer) {
@@ -155,7 +190,7 @@ export default function KorbaPurchasePanel({ mode, orderId, walletOnly = false, 
           </DialogHeader>
           <div className="grid gap-4">
             <div className="rounded-xl border bg-muted/40 px-4 py-3"><p className="text-sm text-muted-foreground">Amount</p><p className="text-2xl font-bold text-primary">GHS {selectedInstantItem?.amount || "0.00"}</p></div>
-            <div className="grid gap-2"><Label htmlFor="korba-instant-phone">Phone number</Label><Input id="korba-instant-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0240000000" autoFocus /></div>
+            <div className="grid gap-2"><Label htmlFor="korba-instant-phone">Phone number</Label><Input id="korba-instant-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0240000000" autoFocus />{detectedNetwork && <p className="text-xs text-muted-foreground">Detected network: <span className="font-semibold text-foreground">{detectedNetwork}</span></p>}{verifyingName && <p className="text-xs text-muted-foreground">Checking SIM registration name…</p>}{verifiedName && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{verifiedName}</span></p>}{verificationError && <p className="text-xs text-destructive">Could not verify this number yet. You can try again.</p>}</div>
             {walletOnly && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">This dashboard purchase uses your wallet only. Available: GHC {Number(walletBalance).toFixed(2)}.</p>}
             <Button onClick={submit} disabled={busy || !phone}>{busy ? "Starting purchase…" : instantProduct === "airtime" ? "Buy airtime" : "Buy data"}</Button>
           </div>

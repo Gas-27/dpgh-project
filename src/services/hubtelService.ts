@@ -43,6 +43,9 @@ const invokeHubtel = async <T>(body: Record<string, unknown>) => {
   return response;
 };
 
+export const verifyHubtelMsisdn = (destination: string) =>
+  invokeHubtel<{ name: string | null; destination: string }>({ operation: "verify_msisdn", destination });
+
 export const getHubtelDataCatalog = (request: Pick<HubtelRequest, "service" | "destination">) =>
   invokeHubtel({ operation: "data_catalog", ...request });
 
