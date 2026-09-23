@@ -8,6 +8,7 @@ import {
   toHubtelBillService,
   toHubtelService,
   verifyHubtelMsisdn,
+  getHubtelDataCatalog,
 } from "@/services/hubtelService";
 import { Button } from "@/components/ui/button";
 import {
@@ -174,6 +175,9 @@ export default function HubtelPurchasePanel({
     label: string;
     amount: string;
   } | null>(null);
+  const [liveBundles, setLiveBundles] = useState<
+    Record<string, { name: string; price: string }[]>
+  >({});
   const [customAirtimeAmount, setCustomAirtimeAmount] = useState("");
   const [phone, setPhone] = useState("");
   const [account, setAccount] = useState("");
@@ -208,6 +212,52 @@ export default function HubtelPurchasePanel({
     let cancelled = false;
     if (
       mode !== "instant" ||
+      instantProduct !== "data" ||
+      normalizedPhone.length !== 10 ||
+      !/^0\d{9}$/.test(normalizedPhone)
+    ) {
+      return;
+    }
+    getHubtelDataCatalog({
+      service: toHubtelService(network, "data"),
+      destination: normalizedPhone,
+    })
+      .then((response) => {
+        const items = Array.isArray((response.data as { Data?: unknown })?.Data)
+          ? (
+              response.data as {
+                Data: Array<{
+                  Display?: string;
+                  Value?: string;
+                  Amount?: number;
+                }>;
+              }
+            ).Data
+          : [];
+        if (!cancelled && items.length) {
+          setLiveBundles((current) => ({
+            ...current,
+            [network]: items
+              .filter(
+                (item) => item.Display && Number.isFinite(Number(item.Amount)),
+              )
+              .map((item) => ({
+                name: String(item.Display),
+                price: `₵${Number(item.Amount).toFixed(2)}`,
+              })),
+          }));
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, instantProduct, normalizedPhone, network]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (
+      mode !== "instant" ||
       normalizedPhone.length !== 10 ||
       !/^0\d{9}$/.test(normalizedPhone)
     ) {
@@ -219,7 +269,8 @@ export default function HubtelPurchasePanel({
     setVerificationError(null);
     verifyHubtelMsisdn(normalizedPhone)
       .then((response) => {
-        if (!cancelled) setVerifiedName(response.data?.name || null);
+        if (!cancelled)
+          setVerifiedName(response.name || response.data?.name || null);
       })
       .catch((error: Error) => {
         if (!cancelled) setVerificationError(error.message);
@@ -419,29 +470,31 @@ export default function HubtelPurchasePanel({
             </div>
             {instantProduct === "data" ? (
               <div className="grid gap-2 sm:grid-cols-2">
-                {networkBundles[network].map((bundle) => (
-                  <button
-                    key={`${network}-${bundle.name}`}
-                    type="button"
-                    onClick={() => {
-                      const selectedAmount = bundle.price.replace(
-                        /[^0-9.]/g,
-                        "",
-                      );
-                      setAmount(selectedAmount);
-                      setSelectedInstantItem({
-                        label: bundle.name,
-                        amount: selectedAmount,
-                      });
-                    }}
-                    className="flex min-h-12 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition hover:border-primary hover:bg-muted"
-                  >
-                    <span className="leading-5">{bundle.name}</span>
-                    <span className="shrink-0 font-semibold text-primary">
-                      {bundle.price}
-                    </span>
-                  </button>
-                ))}
+                {(liveBundles[network] || networkBundles[network]).map(
+                  (bundle) => (
+                    <button
+                      key={`${network}-${bundle.name}`}
+                      type="button"
+                      onClick={() => {
+                        const selectedAmount = bundle.price.replace(
+                          /[^0-9.]/g,
+                          "",
+                        );
+                        setAmount(selectedAmount);
+                        setSelectedInstantItem({
+                          label: bundle.name,
+                          amount: selectedAmount,
+                        });
+                      }}
+                      className="flex min-h-12 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition hover:border-primary hover:bg-muted"
+                    >
+                      <span className="leading-5">{bundle.name}</span>
+                      <span className="shrink-0 font-semibold text-primary">
+                        {bundle.price}
+                      </span>
+                    </button>
+                  ),
+                )}
               </div>
             ) : (
               <div className="grid gap-4">
