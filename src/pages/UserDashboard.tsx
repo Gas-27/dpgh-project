@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -143,6 +144,9 @@ const UserDashboard = () => {
   const [showNewNumberWarning, setShowNewNumberWarning] = useState(false);
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("paystack");
   const [buyLoading, setBuyLoading] = useState(false);
+  const [buySimName, setBuySimName] = useState<string | null>(null);
+  const [buySimLookupLoading, setBuySimLookupLoading] = useState(false);
+  const [buySimLookupError, setBuySimLookupError] = useState(false);
   const [topupReference, setTopupReference] = useState<string>("");
   const [showApiWalletTopup, setShowApiWalletTopup] = useState(false);
   const [orderFilter, setOrderFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
@@ -150,6 +154,26 @@ const UserDashboard = () => {
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
   const [showNormalWalletTopup, setShowNormalWalletTopup] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const normalized = buyPhone.replace(/\D/g, "");
+    setBuySimName(null);
+    setBuySimLookupError(false);
+    if (!/^0\d{9}$/.test(normalized)) return;
+    setBuySimLookupLoading(true);
+    verifyHubtelMsisdn(normalized)
+      .then((result) => {
+        if (!cancelled) setBuySimName(result.name || result.data?.name || null);
+      })
+      .catch(() => {
+        if (!cancelled) setBuySimLookupError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setBuySimLookupLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [buyPhone]);
 
   // API Orders state
   const [apiOrders, setApiOrders] = useState<any[]>([]);
@@ -3011,6 +3035,9 @@ return (
                     Phone number doesn&apos;t match {buyPkg?.network === "mtn_express" ? "MTN Express" : buyPkg?.network === "airteltigo" ? "AirtelTigo" : (buyPkg?.network || "").toUpperCase()} network
                   </p>
                 )}
+                {buySimLookupLoading && <p className="text-xs text-muted-foreground mt-1">Checking who this SIM is registered to…</p>}
+                {buySimName && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs mt-2">SIM registered to <span className="font-semibold">{buySimName}</span></p>}
+                {buySimLookupError && <p className="text-xs text-muted-foreground mt-1">SIM registration lookup unavailable. You can still continue.</p>}
               </div>
 
               {/* Network provider debt warning — shown before payment selection */}

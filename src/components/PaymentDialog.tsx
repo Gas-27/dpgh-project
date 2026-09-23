@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork } from "@/lib/phoneUtils";
+import { verifyHubtelMsisdn } from "@/services/hubtelService";
 
 interface PaymentDialogProps {
   open?: boolean;
@@ -83,6 +84,9 @@ const PaymentDialog = ({
   const [showNewNumberWarning, setShowNewNumberWarning] = useState(false);
   const [mtnPendingRoutes, setMtnPendingRoutes] = useState<string[]>([]);
   const [mtnRetryEligibleAt, setMtnRetryEligibleAt] = useState<string | null>(null);
+  const [simName, setSimName] = useState<string | null>(null);
+  const [simLookupLoading, setSimLookupLoading] = useState(false);
+  const [simLookupError, setSimLookupError] = useState(false);
 
   // Support both prop patterns
   const isDialogOpen = open ?? isOpen ?? false;
@@ -101,6 +105,25 @@ const PaymentDialog = ({
   const { charge, total } = calculateTotal(price);
 
   const isPhoneValid = (value: string) => /^\d{10}$/.test(value);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSimName(null);
+    setSimLookupError(false);
+    if (!isPhoneValid(phone)) return;
+    setSimLookupLoading(true);
+    verifyHubtelMsisdn(phone)
+      .then((result) => {
+        if (!cancelled) setSimName(result.name || result.data?.name || null);
+      })
+      .catch(() => {
+        if (!cancelled) setSimLookupError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setSimLookupLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [phone]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digitsOnly = e.target.value.replace(/\D/g, "");
@@ -668,18 +691,18 @@ const PaymentDialog = ({
                   This number is currently being verified by MTN for {mtnPendingRoutes.map((route) => route === "mtn" ? "MTN" : "MTN Express").join(" and ")}. MTN must approve it for the beneficiary list first. The failed route is unavailable for 4 days; use the other MTN option while waiting.
                 </div>
               )}
-              <Input
-                ref={phoneInputRef}
-                      id="pay-phone"
-                      type="tel"
-                      inputMode="numeric"
-                      placeholder="024XXXXXXX"
-                      value={phone}
-                      onChange={handlePhoneChange}
-                      onFocus={handlePhoneFocus}
-                      maxLength={10}
-                      className={`pl-10 ${!isPhoneValid(phone) && phone.length > 0 ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                    />
+          <Input
+            ref={phoneInputRef}
+            value={phone}
+            onChange={handlePhoneChange}
+            onFocus={handlePhoneFocus}
+            placeholder="0241234567"
+            inputMode="tel"
+            maxLength={10}
+          />
+          {simLookupLoading && <p className="text-xs text-muted-foreground">Checking who this SIM is registered to…</p>}
+          {simName && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{simName}</span></p>}
+          {simLookupError && <p className="text-xs text-muted-foreground">SIM registration lookup unavailable. You can still continue.</p>}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Enter exactly 10 digits (e.g., 024XXXXXXX)
