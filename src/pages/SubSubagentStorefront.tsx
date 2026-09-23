@@ -1096,8 +1096,8 @@ const searchOrders = useCallback(async (input?: string) => {
 
         {activeSection === "data" && <>
         {/* Network Tabs */}
-        <div className="flex flex-wrap gap-2 pb-2 items-center">
-        {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
+<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-4">
+  {["mtn", "mtn_express", "telecel", "airteltigo"].map((net) => (
             <Button
               key={net}
               variant={activeSection === "data" && networkFilter === net ? "default" : "outline"}

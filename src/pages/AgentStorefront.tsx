@@ -1338,8 +1338,8 @@ const searchOrders = useCallback(async (input?: string) => {
 
           {/* ── Network filter ── */}
           <div className="container pb-6">
-            <div className="flex w-full items-center justify-center gap-1 overflow-hidden">
-              {["mtn", "mtn_express", "airteltigo", "telecel"].map((net) => (
+<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-4">
+  {["mtn", "mtn_express", "telecel", "airteltigo"].map((net) => (
                 <Button
                   key={net}
                   variant={networkFilter === net ? "default" : "outline"}

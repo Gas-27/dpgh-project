@@ -15,7 +15,7 @@ begin
   if length(normalized) < 3 or length(normalized) > 11 then raise exception 'Sender ID must be 3-11 characters including spaces'; end if;
   if normalized !~ '^[A-Z0-9 ]+$' then raise exception 'Sender ID cannot contain special characters'; end if;
   if replace(normalized, ' ', '') ~ '^[0-9]+$' then raise exception 'Sender ID cannot be only numbers'; end if;
-  if normalized_phone is null or normalized_phone !~ '^(0|233)[2-5][0-9]{8}$' then raise exception 'A valid Ghana phone number is required'; end if;
+  if normalized_phone is not null and normalized_phone !~ '^(0|233)[2-5][0-9]{8}$' then raise exception 'A valid Ghana phone number is required'; end if;
   if public.is_sms_sender_blocked(normalized) then raise exception 'This sender ID is locked and cannot be used'; end if;
   if exists (select 1 from public.sms_sender_ids where public.normalize_sms_sender_id(sender_id) = normalized) then raise exception 'This sender ID already exists'; end if;
 

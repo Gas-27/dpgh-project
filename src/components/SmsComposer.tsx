@@ -302,8 +302,9 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       toast({ title: "Sender ID not allowed", description: `${value} is locked and cannot be submitted or used.`, variant: "destructive" });
       return;
     }
-  const phone = hideSenderPhone ? null : normalizeGh(senderPhone);
-  if (!hideSenderPhone && !phone) {
+  const requiresSenderPhone = publicMode && !hideSenderPhone;
+  const phone = requiresSenderPhone ? normalizeGh(senderPhone) : null;
+  if (requiresSenderPhone && !phone) {
     toast({ title: "Phone number required", description: "Enter the Ghana number that should own this sender ID.", variant: "destructive" });
     return;
   }
