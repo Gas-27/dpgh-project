@@ -212,10 +212,12 @@ Deno.serve(async (request) => {
         body.destination || body.phoneNumber || body.customerMsisdn,
       );
       const verificationService = "3e0841e70afc42fb97d13d19abd36384";
-      const data = await requestHubtel(
-        `/commissionservices/{account}/${verificationService}?destination=${encodeURIComponent(destination)}`,
-        {},
-        "collection",
+      const data = providerAccepted(
+        await requestHubtel(
+          `/commissionservices/{account}/${verificationService}?destination=${encodeURIComponent(destination)}`,
+          {},
+          "collection",
+        ),
       );
       const items = Array.isArray((data as { Data?: unknown }).Data)
         ? (data as { Data: Array<{ Display?: string; Value?: string }> }).Data
@@ -244,31 +246,18 @@ Deno.serve(async (request) => {
       );
       if (!serviceId || !service.endsWith("_data"))
         throw new Error("Use mtn_data, telecel_data, or airteltigo_data");
-      try {
-        const live = await requestHubtel(
+      const live = providerAccepted(
+        await requestHubtel(
           `/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`,
-        );
-        return json({
-          success: true,
-          operation,
-          service,
-          data: live,
-          source: "hubtel",
-        });
-      } catch (error) {
-        console.warn("[hubtel-gateway] catalog fallback", error);
-        return json({
-          success: true,
-          operation,
-          service,
-          data: {
-            ResponseCode: "0000",
-            Message: "Fallback catalog",
-            Data: fallbackBundles[service] || [],
-          },
-          source: "fallback",
-        });
-      }
+        ),
+      );
+      return json({
+        success: true,
+        operation,
+        service,
+        data: live,
+        source: "hubtel",
+      });
     }
 
     if (operation === "bill_catalog") {

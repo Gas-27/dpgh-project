@@ -174,9 +174,10 @@ export default function HubtelPurchasePanel({
   const [selectedInstantItem, setSelectedInstantItem] = useState<{
     label: string;
     amount: string;
+    value?: string;
   } | null>(null);
   const [liveBundles, setLiveBundles] = useState<
-    Record<string, { name: string; price: string }[]>
+    Record<string, { name: string; price: string; value?: string }[]>
   >({});
   const [customAirtimeAmount, setCustomAirtimeAmount] = useState("");
   const [phone, setPhone] = useState("");
@@ -244,6 +245,7 @@ export default function HubtelPurchasePanel({
               .map((item) => ({
                 name: String(item.Display),
                 price: `₵${Number(item.Amount).toFixed(2)}`,
+                value: String(item.Value || item.Display),
               })),
           }));
         }
@@ -290,6 +292,17 @@ export default function HubtelPurchasePanel({
 
   async function submit() {
     const customer = mode === "instant" ? phone : account;
+    if (
+      mode === "instant" &&
+      !verifiedName
+    ) {
+      toast({
+        title: "Verify the SIM first",
+        description: verificationError || "Enter a registered Ghana number and wait for its registered name to appear.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (
       mode === "instant" &&
       instantProduct === "data" &&
@@ -372,8 +385,8 @@ export default function HubtelPurchasePanel({
                 service,
                 destination: customer,
                 amount: Number(amount),
-                bundle: selectedInstantItem?.label,
-                packageCode: selectedInstantItem?.label,
+                bundle: selectedInstantItem?.value || selectedInstantItem?.label,
+                packageCode: selectedInstantItem?.value || selectedInstantItem?.label,
                 ...wallet,
               })
             : await buyHubtelAirtime({
@@ -484,6 +497,7 @@ export default function HubtelPurchasePanel({
                         setSelectedInstantItem({
                           label: bundle.name,
                           amount: selectedAmount,
+                          value: bundle.value || bundle.name,
                         });
                       }}
                       className="flex min-h-12 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition hover:border-primary hover:bg-muted"
