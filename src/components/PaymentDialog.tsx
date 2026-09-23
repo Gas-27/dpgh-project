@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Phone, ShieldCheck, AlertTriangle, Clock, RefreshCw, UserCheck } from "lucide-react";
+import { Loader2, ShieldCheck, AlertTriangle, Clock, RefreshCw, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -684,8 +684,7 @@ const PaymentDialog = ({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="pay-phone">Recipient Phone Number (10 digits)</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <div>
               {mtnPendingRoutes.length > 0 && (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
                   This number is currently being verified by MTN for {mtnPendingRoutes.map((route) => route === "mtn" ? "MTN" : "MTN Express").join(" and ")}. MTN must approve it for the beneficiary list first. The failed route is unavailable for 4 days; use the other MTN option while waiting.
@@ -738,10 +737,15 @@ const PaymentDialog = ({
                   <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
                   <div className="text-sm">
                     <p className="font-semibold">Please confirm:</p>
-                    <p>
-                      The contact <span className="font-bold">{phone}</span> is correct and
-                      it belongs to  <span className="font-bold">{(network || "").toUpperCase()}</span> network.
+                  <p>
+                    The contact <span className="font-bold">{phone}</span> is correct and
+                    it belongs to <span className="font-bold">{(network || "").toUpperCase()}</span> network.
+                  </p>
+                  {simName && (
+                    <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+                      SIM registered to <span className="font-semibold">{simName}</span>
                     </p>
+                  )}
                     <p className="text-xs mt-1 font-medium">
                       ⚠️ Network providers rule: You can't purchase for the same number again until {LOCK_MINUTES} minutes have passed. This helps prevent duplicate orders and ensures your purchase is delivered correctly.
                     </p>
@@ -766,6 +770,12 @@ const PaymentDialog = ({
                     <span className="text-muted-foreground">Phone</span>
                     <span className="font-semibold text-foreground">{phone}</span>
                   </div>
+                  {simName && (
+                    <div className="flex justify-between gap-4 text-sm">
+                      <span className="text-muted-foreground">SIM registered to</span>
+                      <span className="text-right font-semibold text-foreground">{simName}</span>
+                    </div>
+                  )}
 
                   <div className="border-t border-border my-1" />
 

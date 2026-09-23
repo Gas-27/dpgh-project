@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
+import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
@@ -378,7 +379,30 @@ const AgentDashboard = () => {
   const [showNewNumberWarning, setShowNewNumberWarning] = useState(false);
   const [buyPaymentMethod, setBuyPaymentMethod] = useState<"paystack" | "wallet">("wallet");
   const [buyLoading, setBuyLoading] = useState(false);
+  const [buySimName, setBuySimName] = useState<string | null>(null);
+  const [buySimLookupLoading, setBuySimLookupLoading] = useState(false);
+  const [buySimLookupError, setBuySimLookupError] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const normalized = buyPhone.replace(/\D/g, "");
+    setBuySimName(null);
+    setBuySimLookupError(false);
+    if (!/^0\d{9}$/.test(normalized)) return;
+    setBuySimLookupLoading(true);
+    verifyHubtelMsisdn(normalized)
+      .then((result) => {
+        if (!cancelled) setBuySimName(result.name || result.data?.name || null);
+      })
+      .catch(() => {
+        if (!cancelled) setBuySimLookupError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setBuySimLookupLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [buyPhone]);
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState<string>("");
   const [createNewRecipient, setCreateNewRecipient] = useState(false);
@@ -1343,7 +1367,7 @@ const AgentDashboard = () => {
     if (store?.id) fetchSubagentNotifications(); 
   }, [store?.id]);
 
-  // ─��� Real-time order status updates ──
+  // ─���� Real-time order status updates ──
   useEffect(() => {
     if (!store?.id) return;
     
@@ -5052,12 +5076,12 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy ${(buyPkg as any).mins || 0} mins + ${buyPkg?.size_gb}GB` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
           {buyStep === "phone" ? (
-            <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`pl-10 ${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus /></div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={async () => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } const detected = detectNetwork(buyPhone); if ((buyPkg?.network === "mtn_mashup" || buyPkg?.network === "mashup") && detected !== "mtn") { toast({ title: "MTN Only", description: `This package is only available for MTN numbers. This appears to be ${detected.toUpperCase()}.`, variant: "destructive" }); return; } if (buyPkg?.network && buyPkg.network !== "mtn_mashup" && buyPkg.network !== "mashup" && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express"; if (isMTNPackage) { const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyPhone.trim()); if ((count ?? 0) === 0) { setShowNewNumberWarning(true); return; } } setBuyStep("confirm"); }}>Continue</Button></div>
+            <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus />{buySimLookupLoading && <p className="mt-1 text-xs text-muted-foreground">Checking who this SIM is registered to…</p>}{buySimName && <p className="mt-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{buySimName}</span></p>}{buySimLookupError && <p className="mt-1 text-xs text-muted-foreground">SIM registration lookup unavailable. You can still continue.</p>}</div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={async () => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } const detected = detectNetwork(buyPhone); if ((buyPkg?.network === "mtn_mashup" || buyPkg?.network === "mashup") && detected !== "mtn") { toast({ title: "MTN Only", description: `This package is only available for MTN numbers. This appears to be ${detected.toUpperCase()}.`, variant: "destructive" }); return; } if (buyPkg?.network && buyPkg.network !== "mtn_mashup" && buyPkg.network !== "mashup" && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express"; if (isMTNPackage) { const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyPhone.trim()); if ((count ?? 0) === 0) { setShowNewNumberWarning(true); return; } } setBuyStep("confirm"); }}>Continue</Button></div>
           ) : (
             <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
               <>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>{buySimName && <div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">SIM registered to</span><span className="text-right font-semibold">{buySimName}</span></div>}
               </>
             <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GHC {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠���� You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-400 leading-relaxed"><span className="font-semibold block mb-1">Important Notice</span>Make sure the recipient number has no outstanding airtime, MoMo, or bundle debt. Network providers will not deliver data to numbers with unpaid balances — this is a network rule we cannot override.</div><div className="space-y-2"><Label>Payment Method</Label><div className="grid grid-cols-1 gap-2"><div className="flex gap-2 items-stretch">
                     <button type="button" onClick={() => setBuyPaymentMethod("wallet")} aria-pressed={buyPaymentMethod === "wallet"} className={`flex-1 flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${buyPaymentMethod === "wallet" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}><span className="flex items-center gap-2"><span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "wallet" ? "border-primary" : "border-muted-foreground"}`}>{buyPaymentMethod === "wallet" && <span className="h-2 w-2 rounded-full bg-primary" />}</span><Wallet className="h-4 w-4" />Wallet (GHC {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span><span className="text-xs text-green-400 font-medium">No fee added</span></button>
