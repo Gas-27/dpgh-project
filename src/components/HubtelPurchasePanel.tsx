@@ -294,17 +294,6 @@ export default function HubtelPurchasePanel({
     const customer = mode === "instant" ? phone : account;
     if (
       mode === "instant" &&
-      !verifiedName
-    ) {
-      toast({
-        title: "Verify the SIM first",
-        description: verificationError || "Enter a registered Ghana number and wait for its registered name to appear.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (
-      mode === "instant" &&
       instantProduct === "data" &&
       !selectedInstantItem
     ) {
@@ -564,8 +553,7 @@ export default function HubtelPurchasePanel({
               </div>
             )}
             <p className="rounded-lg border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-              Select a data bundle or airtime amount above to enter the
-              recipient number and complete your wallet purchase.
+              Select a data bundle or airtime amount, then enter the recipient number. The SIM registration lookup runs automatically and is informational only.
             </p>
             <p className="text-center text-sm text-muted-foreground">
               Tap a bundle or airtime amount to open the wallet purchase form.
@@ -615,7 +603,7 @@ export default function HubtelPurchasePanel({
                 )}
                 {verifyingName && (
                   <p className="text-xs text-muted-foreground">
-                    Checking the registered SIM name…
+                      Looking up the SIM registration…
                   </p>
                 )}
                 {verifiedName && (
@@ -625,8 +613,8 @@ export default function HubtelPurchasePanel({
                   </p>
                 )}
                 {verificationError && (
-                  <p className="text-xs text-destructive">
-                    SIM verification unavailable: {verificationError}
+                    <p className="text-xs text-muted-foreground">
+                    SIM lookup unavailable. You can still continue with the purchase.
                   </p>
                 )}
                 {!verifyingName &&
