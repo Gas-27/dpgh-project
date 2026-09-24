@@ -515,8 +515,17 @@ Deno.serve(async (request) => {
         ),
       );
 
+      const responseCode = String(
+        (providerResponse as { ResponseCode?: string; responseCode?: string })
+          ?.ResponseCode ||
+          (providerResponse as { responseCode?: string })?.responseCode ||
+          "",
+      );
+      const pending = responseCode === "0001";
       return json({
         success: true,
+        pending,
+        fulfilled: responseCode === "0000",
         operation,
         service,
         clientReference: reference,

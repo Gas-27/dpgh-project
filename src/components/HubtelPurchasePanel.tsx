@@ -302,6 +302,8 @@ export default function HubtelPurchasePanel({
     !!billService &&
     ["ecg", "dstv", "gotv", "startimes", "ghana_water"].includes(billService);
   const trimmedAccount = account.trim();
+  const isEcg = billService === "ecg";
+  const trimmedEcgPhone = phone.trim();
 
   useEffect(() => {
     let cancelled = false;
@@ -317,6 +319,7 @@ export default function HubtelPurchasePanel({
       getHubtelBillCatalog({
         service: billService as HubtelService,
         accountNumber: trimmedAccount,
+        phoneNumber: isEcg ? trimmedEcgPhone : undefined,
       })
         .then((response) => {
           if (cancelled) return;
@@ -396,6 +399,14 @@ export default function HubtelPurchasePanel({
       });
       return;
     }
+    if (billService === "ecg" && !phone.trim()) {
+      toast({
+        title: "Registered mobile number required",
+        description: "Enter the mobile number linked to the ECG meter before paying.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!amount || Number(amount) <= 0 || !customer) {
       toast({
         title: "Complete the form",
@@ -459,13 +470,17 @@ export default function HubtelPurchasePanel({
           service: billService,
           accountNumber: customer,
           destination: customer,
+          phoneNumber: billService === "ecg" ? phone : undefined,
+          mobile: billService === "ecg" ? phone : undefined,
           amount: Number(amount),
           ...wallet,
         });
       }
       toast({
-        title: "Purchase started",
-        description: `Transaction ${response.clientReference || "received"} is processing.`,
+        title: response.pending ? "Purchase pending with Hubtel" : "Purchase started",
+        description: response.pending
+          ? `Hubtel accepted transaction ${response.clientReference || "received"} and is waiting for fulfillment confirmation.`
+          : `Transaction ${response.clientReference || "received"} is processing.`,
       });
       setAmount("");
       setCustomAirtimeAmount("");
@@ -763,6 +778,21 @@ export default function HubtelPurchasePanel({
               ))}
             </div>
           </div>
+          {isEcg && (
+            <div className="grid gap-2">
+              <Label htmlFor="hubtel-ecg-mobile">Registered mobile number</Label>
+              <Input
+                id="hubtel-ecg-mobile"
+                inputMode="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="024 000 0000"
+              />
+              <p className="text-xs text-muted-foreground">
+                Required by Hubtel for ECG crediting when you enter a meter number.
+              </p>
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="hubtel-service-account">
